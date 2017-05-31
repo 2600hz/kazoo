@@ -94,10 +94,9 @@
         },
         "realm": {
             "description": "The realm of the account, ie: 'account1.2600hz.com'",
-            "format": "uri",
             "maxLength": 253,
             "minLength": 4,
-            "pattern": "^([.\\w_-]+)$",
+            "pattern": "^[.\\w_-]+$",
             "type": "string"
         },
         "ringtones": {

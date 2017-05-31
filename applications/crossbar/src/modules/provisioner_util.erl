@@ -20,6 +20,7 @@
 -export([get_provision_defaults/1]).
 -export([is_mac_address_in_use/2]).
 -export([maybe_sync_sip_data/2]).
+-export([cleanse_mac_address/1]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 -define(PROVISIONER_CONFIG, <<"provisioner">>).
@@ -41,12 +42,18 @@ get_old_mac_address(Context) ->
         end,
     cleanse_mac_address(MACAddress).
 
--spec cleanse_mac_address(api_binary()) -> api_binary().
+-spec cleanse_mac_address(api_ne_binary()) -> api_ne_binary().
 cleanse_mac_address('undefined') -> 'undefined';
 cleanse_mac_address(MACAddress) ->
-    re:replace(MACAddress, <<"[^0-9a-fA-F]">>, <<>>, ['global'
-                                                     ,{'return','binary'}
-                                                     ]).
+    ReOptions = ['global'
+                ,{'return','binary'}
+                ],
+    MAC = kz_term:to_lower_binary(
+            re:replace(MACAddress, <<"[^0-9a-fA-F]">>, <<>>, ReOptions)),
+    case kz_term:is_empty(MAC) of
+        false -> MAC;
+        true -> undefined
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

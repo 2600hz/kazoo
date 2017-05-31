@@ -11,9 +11,9 @@
         },
         "account_realm": {
             "description": "The account realm of the user",
-            "format": "uri",
-            "maxLength": 64,
-            "minLength": 1,
+            "maxLength": 253,
+            "minLength": 4,
+            "pattern": "^[.\\w_-]+$",
             "type": "string"
         },
         "credentials": {

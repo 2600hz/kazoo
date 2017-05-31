@@ -284,6 +284,58 @@
         "provision": {
             "description": "Provision data",
             "properties": {
+                "combo_keys": {
+                    "description": "Feature Keys",
+                    "patternProperties": {
+                        "^[0-9]+$": {
+                            "properties": {
+                                "type": {
+                                    "description": "Feature key type",
+                                    "enum": [
+                                        "line",
+                                        "presence",
+                                        "parking",
+                                        "personal_parking",
+                                        "speed_dial"
+                                    ],
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "description": "Feature key value",
+                                    "maximum": 10,
+                                    "minimum": 1,
+                                    "type": [
+                                        "string",
+                                        "integer"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "type"
+                            ],
+                            "type": [
+                                "object",
+                                "null"
+                            ]
+                        }
+                    },
+                    "type": "object"
+                },
+                "endpoint_brand": {
+                    "description": "Brand of the phone",
+                    "type": "string"
+                },
+                "endpoint_family": {
+                    "description": "Family name of the phone",
+                    "type": "string"
+                },
+                "endpoint_model": {
+                    "description": "Model name of the phone",
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
+                },
                 "feature_keys": {
                     "description": "Feature Keys",
                     "patternProperties": {
@@ -403,7 +455,9 @@
                 },
                 "realm": {
                     "description": "The realm this device should use, overriding the account realm. Should rarely be necessary.",
-                    "format": "uri",
+                    "maxLength": 253,
+                    "minLength": 4,
+                    "pattern": "^[.\\w_-]+$",
                     "type": "string"
                 },
                 "route": {
