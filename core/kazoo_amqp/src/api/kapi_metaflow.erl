@@ -93,7 +93,7 @@
                                         ,<<"Endpoint-ID">>, <<"Listen-On">>
                                         ]).
 -define(METAFLOW_BIND_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
-                              ,{<<"Event-Name">>, <<"bind">>}
+                              ,{<<"Event-Name">>, <<"bindings">>}
                               ,{<<"Binding-Digit">>, ?ANY_DIGIT}
                               ,{<<"Listen-On">>, [<<"both">>, <<"self">>, <<"peer">>, <<"aleg">>, <<"bleg">>]}
                               ]).
