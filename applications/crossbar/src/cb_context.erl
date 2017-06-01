@@ -336,9 +336,7 @@ should_paginate(#cb_context{api_version=?VERSION_1}) ->
     'false';
 should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
     case req_value(Context, <<"paginate">>) of
-        'undefined' ->
-            lager:debug("checking if request has query-string filter"),
-            not crossbar_doc:has_qs_filter(Context);
+        'undefined' -> 'true';
         ShouldPaginate ->
             lager:debug("request has paginate flag: ~s", [ShouldPaginate]),
             kz_term:is_true(ShouldPaginate)

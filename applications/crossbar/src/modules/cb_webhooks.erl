@@ -40,7 +40,7 @@
 %%% API
 %%%===================================================================
 
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
@@ -58,7 +58,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.patch.webhooks">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account'),
-    ok.
+    'ok'.
 
 -spec init_master_account_db() -> 'ok'.
 init_master_account_db() ->
@@ -143,12 +143,15 @@ authenticate(_Context, _Verb, _Nouns) -> 'false'.
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
+
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_PATCH].
+
 allowed_methods(?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET];
 allowed_methods(_WebhookId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
 allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET].
 
@@ -164,8 +167,8 @@ allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_Id, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
+resource_exists(_WebhookId) -> 'true'.
+resource_exists(_WebhookId, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -207,27 +210,27 @@ validate(Context, Id) ->
 
 -spec validate_webhook(cb_context:context(), path_token(), http_method()) ->
                               cb_context:context().
-validate_webhook(Context, Id, ?HTTP_GET) ->
-    read(Id, Context);
-validate_webhook(Context, Id, ?HTTP_POST) ->
-    update(Id, Context);
-validate_webhook(Context, Id, ?HTTP_PATCH) ->
-    validate_patch(read(Id, Context), Id);
-validate_webhook(Context, Id, ?HTTP_DELETE) ->
-    read(Id, Context).
+validate_webhook(Context, WebhookId, ?HTTP_GET) ->
+    read(WebhookId, Context);
+validate_webhook(Context, WebhookId, ?HTTP_POST) ->
+    update(WebhookId, Context);
+validate_webhook(Context, WebhookId, ?HTTP_PATCH) ->
+    validate_patch(read(WebhookId, Context), WebhookId);
+validate_webhook(Context, WebhookId, ?HTTP_DELETE) ->
+    read(WebhookId, Context).
 
-validate(Context, Id=?NE_BINARY, ?PATH_TOKEN_ATTEMPTS) ->
-    summary_attempts(Context, Id).
+validate(Context, WebhookId=?NE_BINARY, ?PATH_TOKEN_ATTEMPTS) ->
+    summary_attempts(Context, WebhookId).
 
 -spec validate_patch(cb_context:context(), ne_binary()) ->
                             cb_context:context().
-validate_patch(Context, Id) ->
+validate_patch(Context, WebhookId) ->
     case cb_context:resp_status(Context) of
         'success' ->
             PatchJObj = kz_doc:public_fields(cb_context:req_data(Context)),
             JObj = kz_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
             OnValidateReqDataSuccess =
-                fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(kzd_webhook:type())) end,
+                fun(C) -> crossbar_doc:load_merge(WebhookId, C, ?TYPE_CHECK_OPTION(kzd_webhook:type())) end,
             cb_context:validate_request_data(<<"webhooks">>
                                             ,cb_context:set_req_data(Context, JObj)
                                             ,OnValidateReqDataSuccess
@@ -249,8 +252,8 @@ put(Context) ->
 patch(Context) ->
     reenable_hooks(Context).
 
-patch(Context, Id) ->
-    post(Context, Id).
+patch(Context, WebhookId) ->
+    post(Context, WebhookId).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
@@ -445,34 +448,45 @@ normalize_available(JObj, Acc) ->
             [kz_json:set_value(<<"id">>, Name, Doc) | Acc]
     end.
 
--spec summary_attempts(cb_context:context()) -> cb_context:context().
--spec summary_attempts(cb_context:context(), api_binary()) -> cb_context:context().
-summary_attempts(Context) ->
-    summary_attempts(Context, 'undefined').
+-type created_times() :: {gregorian_seconds(), gregorian_seconds()} |
+                         cb_context:context().
 
-summary_attempts(Context, 'undefined') ->
-    ViewOptions = [{'endkey', 0}
-                  ,{'startkey', get_attempts_start_key(Context)}
+-spec summary_attempts(cb_context:context()) -> cb_context:context().
+-spec summary_attempts(cb_context:context(), api_ne_binary(), created_times()) -> cb_context:context().
+summary_attempts(Context) ->
+    summary_attempts(Context, 'undefined', cb_modules_util:range_view_options(Context)).
+
+summary_attempts(Context, HookId) ->
+    summary_attempts(Context, HookId, cb_modules_util:range_view_options(Context)).
+
+summary_attempts(Context, 'undefined', CreatedTimes) ->
+    ViewOptions = [{'endkey', created_from_time(CreatedTimes)}
+                  ,{'startkey', created_to_time(Context, CreatedTimes)}
                   ,'include_docs'
                   ,'descending'
                   ],
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_ACCOUNT);
-summary_attempts(Context, <<_/binary>> = HookId) ->
-    ViewOptions = [{'endkey', [HookId, 0]}
-                  ,{'startkey', [HookId, get_attempts_start_key(Context)]}
+summary_attempts(Context, <<_/binary>> = HookId, CreatedTimes) ->
+    ViewOptions = [{'endkey', [HookId, created_from_time(CreatedTimes)]}
+                  ,{'startkey', [HookId, created_to_time(Context, CreatedTimes)]}
                   ,'include_docs'
                   ,'descending'
                   ],
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_HOOK).
 
--spec get_summary_start_key(cb_context:context()) -> ne_binary() | integer().
-get_summary_start_key(Context) ->
-    get_start_key(Context, 0, fun kz_term:identity/1).
+created_from_time({CreatedFrom, _CreatedTo}) -> CreatedFrom;
+created_from_time(_) -> 0.
 
--spec get_attempts_start_key(cb_context:context()) ->
-                                    integer() | ?EMPTY_JSON_OBJECT.
-get_attempts_start_key(Context) ->
-    get_start_key(Context, kz_json:new(), fun kz_term:to_integer/1).
+created_to_time(Context, {_CreatedFrom, CreatedTo}) ->
+    get_summary_start_key(Context, CreatedTo);
+created_to_time(Context, _) -> get_summary_start_key(Context).
+
+-spec get_summary_start_key(cb_context:context()) -> ne_binary() | integer().
+-spec get_summary_start_key(cb_context:context(), non_neg_integer()) -> integer().
+get_summary_start_key(Context) ->
+    get_summary_start_key(Context, 0).
+get_summary_start_key(Context, Default) ->
+    get_start_key(Context, Default, fun kz_term:to_integer/1).
 
 -spec get_start_key(cb_context:context(), any(), fun()) -> any().
 get_start_key(Context, Default, Formatter) ->
@@ -493,7 +507,8 @@ summary_attempts_fetch(Context, ViewOpts, View) ->
                                     ,ViewOptions
                                     ,Context
                                     ,fun normalize_attempt_results/2
-                                    ));
+                                    )
+             );
         Ctx -> Ctx
     end.
 

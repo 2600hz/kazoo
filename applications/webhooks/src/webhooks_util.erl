@@ -224,7 +224,8 @@ handle_resp(Hook, _EventId, _JObj, Debug, {'ok', 200, _, _} = Resp) ->
 handle_resp(Hook, _EventId, _JObj, Debug, {'ok', RespCode, _, _} = Resp) ->
     _ = failed_hook(Hook, Debug, Resp),
     lager:debug("non-200 response code: ~p on account ~s for event ~s"
-               ,[RespCode, Hook#webhook.account_id, _EventId]);
+               ,[RespCode, Hook#webhook.account_id, _EventId]
+               );
 handle_resp(Hook, EventId, JObj, Debug, {'error', _E} = Resp) ->
     lager:debug("failed to fire hook(~s): ~p", [EventId, _E]),
     _ = failed_hook(Hook, Debug, Resp),
