@@ -84,11 +84,11 @@ props_to_xml([{K, V}|T], Xml) ->
 %%--------------------------------------------------------------------
 -spec bt_error_to_json(bt_error()) -> kz_json:object().
 bt_error_to_json(BtError) ->
-    Props = [{<<"code">>, BtError#bt_error.code}
-            ,{<<"message">>, BtError#bt_error.message}
-            ,{<<"attribute">>, BtError#bt_error.attribute}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"code">>, BtError#bt_error.code}
+      ,{<<"message">>, BtError#bt_error.message}
+      ,{<<"attribute">>, BtError#bt_error.attribute}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -98,16 +98,16 @@ bt_error_to_json(BtError) ->
 %%--------------------------------------------------------------------
 -spec bt_verification_to_json(bt_verification()) -> kz_json:object().
 bt_verification_to_json(BtVerification) ->
-    Props = [{<<"verification_status">>, BtVerification#bt_verification.verification_status}
-            ,{<<"processor_response_code">>, BtVerification#bt_verification.processor_response_code}
-            ,{<<"processor_response_text">>, BtVerification#bt_verification.processor_response_text}
-            ,{<<"cvv_response_code">>, BtVerification#bt_verification.cvv_response_code}
-            ,{<<"avs_response_code">>, BtVerification#bt_verification.avs_response_code}
-            ,{<<"postal_response_code">>, BtVerification#bt_verification.postal_response_code}
-            ,{<<"street_response_code">>, BtVerification#bt_verification.street_response_code}
-            ,{<<"gateway_rejection_reason">>, BtVerification#bt_verification.gateway_rejection_reason}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"verification_status">>, BtVerification#bt_verification.verification_status}
+      ,{<<"processor_response_code">>, BtVerification#bt_verification.processor_response_code}
+      ,{<<"processor_response_text">>, BtVerification#bt_verification.processor_response_text}
+      ,{<<"cvv_response_code">>, BtVerification#bt_verification.cvv_response_code}
+      ,{<<"avs_response_code">>, BtVerification#bt_verification.avs_response_code}
+      ,{<<"postal_response_code">>, BtVerification#bt_verification.postal_response_code}
+      ,{<<"street_response_code">>, BtVerification#bt_verification.street_response_code}
+      ,{<<"gateway_rejection_reason">>, BtVerification#bt_verification.gateway_rejection_reason}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -117,11 +117,11 @@ bt_verification_to_json(BtVerification) ->
 %%--------------------------------------------------------------------
 -spec bt_api_error_to_json(bt_api_error()) -> kz_json:object().
 bt_api_error_to_json(BtApiError) ->
-    Props = [{<<"errors">>, [bt_error_to_json(Error) || Error <- BtApiError#bt_api_error.errors]}
-            ,{<<"verification">>, bt_verification_to_json(BtApiError#bt_api_error.verification)}
-            ,{<<"message">>, BtApiError#bt_api_error.message}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"errors">>, [bt_error_to_json(Error) || Error <- BtApiError#bt_api_error.errors]}
+      ,{<<"verification">>, bt_verification_to_json(BtApiError#bt_api_error.verification)}
+      ,{<<"message">>, BtApiError#bt_api_error.message}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public

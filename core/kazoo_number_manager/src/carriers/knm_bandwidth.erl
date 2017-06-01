@@ -327,19 +327,19 @@ number_order_response_to_json([]) ->
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
-    Props = [{<<"order_id">>, get_cleaned("orderID/text()", Xml)}
-            ,{<<"order_number">>, get_cleaned("orderNumber/text()", Xml)}
-            ,{<<"order_name">>, get_cleaned("orderName/text()", Xml)}
-            ,{<<"ext_ref_id">>, get_cleaned("extRefID/text()", Xml)}
-            ,{<<"accountID">>, get_cleaned("accountID/text()", Xml)}
-            ,{<<"accountName">>, get_cleaned("accountName/text()", Xml)}
-            ,{<<"quantity">>, get_cleaned("quantity/text()", Xml)}
-            ,{<<"number">>, number_search_response_to_json(
-                              xmerl_xpath:string("telephoneNumbers/telephoneNumber", Xml)
-                             )
-             }
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"order_id">>, get_cleaned("orderID/text()", Xml)}
+      ,{<<"order_number">>, get_cleaned("orderNumber/text()", Xml)}
+      ,{<<"order_name">>, get_cleaned("orderName/text()", Xml)}
+      ,{<<"ext_ref_id">>, get_cleaned("extRefID/text()", Xml)}
+      ,{<<"accountID">>, get_cleaned("accountID/text()", Xml)}
+      ,{<<"accountName">>, get_cleaned("accountName/text()", Xml)}
+      ,{<<"quantity">>, get_cleaned("quantity/text()", Xml)}
+      ,{<<"number">>, number_search_response_to_json(
+                        xmerl_xpath:string("telephoneNumbers/telephoneNumber", Xml)
+                       )
+       }
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -353,15 +353,15 @@ number_search_response_to_json([]) ->
 number_search_response_to_json([Xml]) ->
     number_search_response_to_json(Xml);
 number_search_response_to_json(Xml) ->
-    Props = [{<<"number_id">>, get_cleaned("numberID/text()", Xml)}
-            ,{<<"ten_digit">>, get_cleaned("tenDigit/text()", Xml)}
-            ,{<<"formatted_number">>, get_cleaned("formattedNumber/text()", Xml)}
-            ,{<<"e164">>, get_cleaned("e164/text()", Xml)}
-            ,{<<"npa_nxx">>, get_cleaned("npaNxx/text()", Xml)}
-            ,{<<"status">>, get_cleaned("status/text()", Xml)}
-            ,{<<"rate_center">>, rate_center_to_json(xmerl_xpath:string("rateCenter", Xml))}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"number_id">>, get_cleaned("numberID/text()", Xml)}
+      ,{<<"ten_digit">>, get_cleaned("tenDigit/text()", Xml)}
+      ,{<<"formatted_number">>, get_cleaned("formattedNumber/text()", Xml)}
+      ,{<<"e164">>, get_cleaned("e164/text()", Xml)}
+      ,{<<"npa_nxx">>, get_cleaned("npaNxx/text()", Xml)}
+      ,{<<"status">>, get_cleaned("status/text()", Xml)}
+      ,{<<"rate_center">>, rate_center_to_json(xmerl_xpath:string("rateCenter", Xml))}
+      ]).
 
 -spec get_cleaned(kz_deeplist(), xml_el()) -> api_binary().
 get_cleaned(Path, Xml) ->
@@ -382,11 +382,11 @@ rate_center_to_json([]) ->
 rate_center_to_json([Xml]) ->
     rate_center_to_json(Xml);
 rate_center_to_json(Xml) ->
-    Props = [{<<"name">>, get_cleaned("name/text()", Xml)}
-            ,{<<"lata">>, get_cleaned("lata/text()", Xml)}
-            ,{<<"state">>, get_cleaned("state/text()", Xml)}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"name">>, get_cleaned("name/text()", Xml)}
+      ,{<<"lata">>, get_cleaned("lata/text()", Xml)}
+      ,{<<"state">>, get_cleaned("state/text()", Xml)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private

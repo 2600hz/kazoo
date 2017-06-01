@@ -6,13 +6,12 @@
 
 -define(KEYS_FUN(A, B, C, D), ?KEYS_FUN(A, B, C, D, undefined)).
 -define(KEYS_FUN(A, B, C, D, E), kz_json:from_list(
-                                   props:filter_undefined(
-                                     [{<<"presence">>, A}
-                                     ,{<<"speed_dial">>, B}
-                                     ,{<<"parking">>, C}
-                                     ,{<<"personal_parking">>, D}
-                                     ,{<<"line">>, E}
-                                     ]))).
+                                   [{<<"presence">>, A}
+                                   ,{<<"speed_dial">>, B}
+                                   ,{<<"parking">>, C}
+                                   ,{<<"personal_parking">>, D}
+                                   ,{<<"line">>, E}
+                                   ])).
 
 -define(LOCAL_FEATURE_KEYS, kz_json:from_list(
                               [{<<"polycom">>, ?POLYCOM_FEATURE_KEYS}

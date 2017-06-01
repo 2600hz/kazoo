@@ -48,11 +48,9 @@
 
 -define(CONFIGURED_EMAILS(Type, Addresses)
        ,kz_json:from_list(
-          props:filter_undefined(
-            [{<<"type">>, Type}
-            ,{<<"email_addresses">>, Addresses}
-            ])
-         )
+          [{<<"type">>, Type}
+          ,{<<"email_addresses">>, Addresses}
+          ])
        ).
 -define(CONFIGURED_EMAILS(Type), kz_json:from_list([{<<"type">>, Type}])).
 

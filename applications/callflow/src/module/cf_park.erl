@@ -263,24 +263,23 @@ create_slot(ParkerCallId, PresenceType, Call) ->
     User = kapps_call:request_user(Call),
     Realm = kapps_call:account_realm(Call),
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Call-ID">>, CallId}
-        ,{<<"Slot-Call-ID">>, SlotCallId}
-        ,{<<"Switch-URI">>, kapps_call:switch_uri(Call)}
-        ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
-        ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
-        ,{<<"Parker-Call-ID">>, ParkerCallId}
-        ,{<<"Ringback-ID">>, RingbackId}
-        ,{<<"Presence-User">>, User}
-        ,{<<"Presence-Realm">>, Realm}
-        ,{<<"Presence-ID">>, <<User/binary, "@", Realm/binary>>}
-        ,{<<"Node">>, kapps_call:switch_nodename(Call)}
-        ,{<<"CID-Number">>, kapps_call:caller_id_number(Call)}
-        ,{<<"CID-Name">>, kapps_call:caller_id_name(Call)}
-        ,{<<"CID-URI">>, kapps_call:from(Call)}
-        ,{<<"Hold-Media">>, kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call)}
-        ,{?PRESENCE_TYPE_KEY, PresenceType}
-        ])).
+      [{<<"Call-ID">>, CallId}
+      ,{<<"Slot-Call-ID">>, SlotCallId}
+      ,{<<"Switch-URI">>, kapps_call:switch_uri(Call)}
+      ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
+      ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
+      ,{<<"Parker-Call-ID">>, ParkerCallId}
+      ,{<<"Ringback-ID">>, RingbackId}
+      ,{<<"Presence-User">>, User}
+      ,{<<"Presence-Realm">>, Realm}
+      ,{<<"Presence-ID">>, <<User/binary, "@", Realm/binary>>}
+      ,{<<"Node">>, kapps_call:switch_nodename(Call)}
+      ,{<<"CID-Number">>, kapps_call:caller_id_number(Call)}
+      ,{<<"CID-Name">>, kapps_call:caller_id_name(Call)}
+      ,{<<"CID-URI">>, kapps_call:from(Call)}
+      ,{<<"Hold-Media">>, kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call)}
+      ,{?PRESENCE_TYPE_KEY, PresenceType}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private

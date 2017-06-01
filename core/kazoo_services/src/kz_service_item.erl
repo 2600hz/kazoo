@@ -81,20 +81,20 @@
 %%--------------------------------------------------------------------
 -spec public_json(item()) -> kz_json:object().
 public_json(Item) ->
-    Props = [{<<"category">>, Item#kz_service_item.category}
-            ,{<<"item">>, Item#kz_service_item.item}
-            ,{<<"name">>, Item#kz_service_item.name}
-            ,{<<"quantity">>, Item#kz_service_item.quantity}
-            ,{<<"rate">>, Item#kz_service_item.rate}
-            ,{<<"single_discount">>, Item#kz_service_item.single_discount}
-            ,{<<"single_discount_rate">>, Item#kz_service_item.single_discount_rate}
-            ,{<<"cumulative_discount">>, Item#kz_service_item.cumulative_discount}
-            ,{<<"cumulative_discount_rate">>, Item#kz_service_item.cumulative_discount_rate}
-            ,{<<"activation_charge">>, Item#kz_service_item.activation_charge}
-            ,{<<"minimum">>, Item#kz_service_item.minimum}
-            ,{<<"exceptions">>, Item#kz_service_item.exceptions}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"category">>, Item#kz_service_item.category}
+      ,{<<"item">>, Item#kz_service_item.item}
+      ,{<<"name">>, Item#kz_service_item.name}
+      ,{<<"quantity">>, Item#kz_service_item.quantity}
+      ,{<<"rate">>, Item#kz_service_item.rate}
+      ,{<<"single_discount">>, Item#kz_service_item.single_discount}
+      ,{<<"single_discount_rate">>, Item#kz_service_item.single_discount_rate}
+      ,{<<"cumulative_discount">>, Item#kz_service_item.cumulative_discount}
+      ,{<<"cumulative_discount_rate">>, Item#kz_service_item.cumulative_discount_rate}
+      ,{<<"activation_charge">>, Item#kz_service_item.activation_charge}
+      ,{<<"minimum">>, Item#kz_service_item.minimum}
+      ,{<<"exceptions">>, Item#kz_service_item.exceptions}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public

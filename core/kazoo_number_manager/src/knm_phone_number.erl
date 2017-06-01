@@ -697,17 +697,15 @@ features_fold(Feature=?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
     kz_json:set_value(Feature, Data, Acc);
 features_fold(Feature=?FEATURE_RINGBACK, Acc, JObj) ->
     Data = kz_json:from_list(
-             props:filter_undefined(
-               [{?RINGBACK_EARLY, kz_json:get_ne_value([Feature, ?RINGBACK_EARLY], JObj)}
-               ,{?RINGBACK_TRANSFER, kz_json:get_ne_value([Feature, ?RINGBACK_TRANSFER], JObj)}
-               ])),
+             [{?RINGBACK_EARLY, kz_json:get_ne_value([Feature, ?RINGBACK_EARLY], JObj)}
+             ,{?RINGBACK_TRANSFER, kz_json:get_ne_value([Feature, ?RINGBACK_TRANSFER], JObj)}
+             ]),
     kz_json:set_value(Feature, Data, Acc);
 features_fold(Feature=?FEATURE_FAILOVER, Acc, JObj) ->
     Data = kz_json:from_list(
-             props:filter_undefined(
-               [{?FAILOVER_E164, kz_json:get_ne_value([Feature, ?FAILOVER_E164], JObj)}
-               ,{?FAILOVER_SIP, kz_json:get_ne_value([Feature, ?FAILOVER_SIP], JObj)}
-               ])),
+             [{?FAILOVER_E164, kz_json:get_ne_value([Feature, ?FAILOVER_E164], JObj)}
+             ,{?FAILOVER_SIP, kz_json:get_ne_value([Feature, ?FAILOVER_SIP], JObj)}
+             ]),
     kz_json:set_value(Feature, Data, Acc);
 features_fold(Feature=?FEATURE_PREPEND, Acc, JObj) ->
     IsEnabled = kz_json:is_true([Feature, ?PREPEND_ENABLED], JObj),

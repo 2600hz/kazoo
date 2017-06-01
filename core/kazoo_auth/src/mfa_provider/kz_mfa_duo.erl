@@ -245,17 +245,14 @@ is_user_name(Maps) ->
                         {'error', ne_binary()}.
 map_config(Claims, JObj) ->
     Identity = maps:from_list(
-                 props:filter_undefined(
-                   [{<<"user_name">>, props:get_value(<<"owner_id">>, Claims)}
-                   ,{<<"integration_key">>, kz_json:get_value(<<"integration_key">>, JObj)}
-                   ,{<<"secret_key">>, kz_json:get_value(<<"secret_key">>, JObj)}
-                   ,{<<"application_secret_key">>, kz_json:get_value(<<"application_secret_key">>, JObj)}
-                   ,{<<"api_hostname">>, kz_json:get_value(<<"api_hostname">>, JObj)}
-                   ,{<<"duo_expire">>, kz_json:get_integer_value(<<"duo_expire">>, JObj, ?DUO_EXPIRE)}
-                   ,{<<"app_expire">>, kz_json:get_integer_value(<<"app_expire">>, JObj, ?APP_EXPIRE)}
-                   ]
-                  )
-                ),
+                 [{<<"user_name">>, props:get_value(<<"owner_id">>, Claims)}
+                 ,{<<"integration_key">>, kz_json:get_value(<<"integration_key">>, JObj)}
+                 ,{<<"secret_key">>, kz_json:get_value(<<"secret_key">>, JObj)}
+                 ,{<<"application_secret_key">>, kz_json:get_value(<<"application_secret_key">>, JObj)}
+                 ,{<<"api_hostname">>, kz_json:get_value(<<"api_hostname">>, JObj)}
+                 ,{<<"duo_expire">>, kz_json:get_integer_value(<<"duo_expire">>, JObj, ?DUO_EXPIRE)}
+                 ,{<<"app_expire">>, kz_json:get_integer_value(<<"app_expire">>, JObj, ?APP_EXPIRE)}
+                 ]),
     case validate_values(Identity) of
         'true' -> Identity;
         KeyError -> {'error', <<"invalid duo configuration, ", KeyError/binary>>}

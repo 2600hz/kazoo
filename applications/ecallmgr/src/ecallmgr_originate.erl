@@ -753,12 +753,11 @@ publish_originate_resp(ServerId, JObj, UUID) ->
 publish_originate_started('undefined', _, _, _) -> 'ok';
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = kz_json:from_list(
-             props:filter_undefined(
-               [{<<"Call-ID">>, CallId}
-               ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-               ,{<<"Control-Queue">>, CtrlQ}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-               ])),
+             [{<<"Call-ID">>, CallId}
+             ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+             ,{<<"Control-Queue">>, CtrlQ}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
     kapi_resource:publish_originate_started(ServerId, Resp).
 
 -spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.

@@ -818,10 +818,9 @@ whapp_to_json({K, Info}) ->
 
 whapp_info_to_json(#whapp_info{startup=Start, roles=Roles}) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Startup">>, Start}
-        ,{<<"Roles">>, Roles}
-        ])).
+      [{<<"Startup">>, Start}
+      ,{<<"Roles">>, Roles}
+      ]).
 
 -spec get_zone() -> atom().
 get_zone() ->

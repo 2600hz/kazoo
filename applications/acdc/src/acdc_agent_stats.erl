@@ -393,8 +393,7 @@ status_stat_to_doc(#status_stat{id=Id
            ,{<<"caller_id_name">>, CIDName}
            ,{<<"caller_id_number">>, CIDNum}
            ],
-    kz_doc:update_pvt_parameters(
-      kz_json:from_list(props:filter_undefined(Prop))
+    kz_doc:update_pvt_parameters(kz_json:from_list(Prop)
                                 ,acdc_stats_util:db_name(AccountId)
                                 ,[{'account_id', AccountId}
                                  ,{'type', <<"status_stat">>}

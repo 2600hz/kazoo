@@ -39,7 +39,7 @@ connection_options(Props) ->
 
 -spec connection(kz_proplist() | map()) -> data_connection().
 connection(List) when is_list(List) ->
-    connection(maps:from_list(props:filter_undefined(List)));
+    connection(maps:from_list(List));
 connection(#{driver := App}=Map)
   when not is_atom(App) ->
     connection(Map#{driver => kz_term:to_atom(App, 'true')});

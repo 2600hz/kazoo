@@ -80,13 +80,11 @@ reason(#ci_analysis{reason=Reason}) ->
 -spec to_json(analysis()) -> kz_json:object().
 to_json(#ci_analysis{}=Analysis) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"originate_type">>, originate_type(Analysis)}
-        ,{<<"terminate_type">>, terminate_type(Analysis)}
-        ,{<<"failure_location">>, failure_location(Analysis)}
-        ,{<<"reason">>, reason(Analysis)}
-        ])
-     ).
+      [{<<"originate_type">>, originate_type(Analysis)}
+      ,{<<"terminate_type">>, terminate_type(Analysis)}
+      ,{<<"failure_location">>, failure_location(Analysis)}
+      ,{<<"reason">>, reason(Analysis)}
+      ]).
 
 -spec is_analysis(any()) -> boolean().
 is_analysis(#ci_analysis{}) -> 'true';

@@ -96,18 +96,17 @@ from_json(Context, JObj) ->
 -spec to_json(context()) -> kz_json:object().
 to_json(Context) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"auth_token">>, auth_token(Context)}
-        ,{<<"auth_account_id">>, auth_account_id(Context)}
-        ,{<<"bindings">>, bindings(Context)}
-        ,{<<"websocket_session_id">>, websocket_session_id(Context)}
-        ,{<<"timestamp">>, timestamp(Context)}
-        ,{<<"name">>, name(Context)}
-        ,{<<"metadata">>, metadata(Context)}
-        ,{<<"destination">>, destination(Context)}
-        ,{<<"source">>, source(Context)}
-        ,{<<"req_id">>, req_id(Context)}
-        ])).
+      [{<<"auth_token">>, auth_token(Context)}
+      ,{<<"auth_account_id">>, auth_account_id(Context)}
+      ,{<<"bindings">>, bindings(Context)}
+      ,{<<"websocket_session_id">>, websocket_session_id(Context)}
+      ,{<<"timestamp">>, timestamp(Context)}
+      ,{<<"name">>, name(Context)}
+      ,{<<"metadata">>, metadata(Context)}
+      ,{<<"destination">>, destination(Context)}
+      ,{<<"source">>, source(Context)}
+      ,{<<"req_id">>, req_id(Context)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public

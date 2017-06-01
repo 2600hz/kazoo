@@ -720,11 +720,9 @@ query_channels({[#channel{uuid=CallId}=Channel], Continuation}
               ,Fields, Channels) ->
     ChannelProps = ecallmgr_fs_channel:to_api_props(Channel),
     JObj = kz_json:from_list(
-             props:filter_undefined(
-               [{Field, props:get_value(Field, ChannelProps)}
-                || Field <- Fields
-               ]
-              )),
+             [{Field, props:get_value(Field, ChannelProps)}
+              || Field <- Fields
+             ]),
     query_channels(ets:match_object(Continuation)
                   ,Fields
                   ,kz_json:set_value(CallId, JObj, Channels)
@@ -834,15 +832,14 @@ connection_ccvs(#channel{account_id=AccountId
                         ,owner_id=OwnerId
                         }) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Account-ID">>, AccountId}
-        ,{<<"Authorizing-ID">>, AuthorizingId}
-        ,{<<"Authorizing-Type">>, AuthorizingType}
-        ,{<<"Resource-ID">>, ResourceId}
-        ,{<<"Fetch-ID">>, FetchId}
-        ,{<<"Bridge-ID">>, BridgeId}
-        ,{<<"Owner-ID">>, OwnerId}
-        ])).
+      [{<<"Account-ID">>, AccountId}
+      ,{<<"Authorizing-ID">>, AuthorizingId}
+      ,{<<"Authorizing-Type">>, AuthorizingType}
+      ,{<<"Resource-ID">>, ResourceId}
+      ,{<<"Fetch-ID">>, FetchId}
+      ,{<<"Bridge-ID">>, BridgeId}
+      ,{<<"Owner-ID">>, OwnerId}
+      ]).
 
 -define(MAX_CHANNEL_UPTIME_KEY, <<"max_channel_uptime_s">>).
 

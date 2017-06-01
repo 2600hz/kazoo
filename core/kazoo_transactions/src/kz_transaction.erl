@@ -379,32 +379,32 @@ is_reason(_, _) -> 'false'.
 %%--------------------------------------------------------------------
 -spec to_json(transaction()) -> kz_json:object().
 to_json(#kz_transaction{}=T) ->
-    Props = [{<<"_id">>, T#kz_transaction.id}
-            ,{<<"_rev">>, T#kz_transaction.rev}
-            ,{<<"description">>, T#kz_transaction.description}
-            ,{<<"call_id">>, T#kz_transaction.call_id}
-            ,{<<"sub_account_id">>, T#kz_transaction.sub_account_id}
-            ,{<<"sub_account_name">>, T#kz_transaction.sub_account_name}
-            ,{<<"event">>, T#kz_transaction.event}
-            ,{<<"number">>, T#kz_transaction.number}
-            ,{<<"numbers">>, T#kz_transaction.numbers}
-            ,{<<"feature">>, T#kz_transaction.feature}
-            ,{<<"bookkeeper_info">>, T#kz_transaction.bookkeeper_info}
-            ,{<<"metadata">>, T#kz_transaction.metadata}
-            ,{<<"pvt_status">>, T#kz_transaction.pvt_status}
-            ,{<<"pvt_reason">>, T#kz_transaction.pvt_reason}
-            ,{<<"pvt_code">>, T#kz_transaction.pvt_code}
-            ,{<<"pvt_amount">>, T#kz_transaction.pvt_amount}
-            ,{<<"pvt_type">>, T#kz_transaction.pvt_type}
-            ,{<<"pvt_created">>, T#kz_transaction.pvt_created}
-            ,{<<"pvt_modified">>, T#kz_transaction.pvt_modified}
-            ,{<<"pvt_account_id">>, T#kz_transaction.pvt_account_id}
-            ,{<<"pvt_account_db">>, T#kz_transaction.pvt_account_db}
-            ,{<<"pvt_vsn">>, T#kz_transaction.pvt_vsn}
-            ,{<<"order_id">>, T#kz_transaction.order_id}
-            ],
-    Transaction = kz_json:from_list(props:filter_undefined(Props)),
-    maybe_correct_transaction(Transaction).
+    maybe_correct_transaction(
+      kz_json:from_list(
+        [{<<"_id">>, T#kz_transaction.id}
+        ,{<<"_rev">>, T#kz_transaction.rev}
+        ,{<<"description">>, T#kz_transaction.description}
+        ,{<<"call_id">>, T#kz_transaction.call_id}
+        ,{<<"sub_account_id">>, T#kz_transaction.sub_account_id}
+        ,{<<"sub_account_name">>, T#kz_transaction.sub_account_name}
+        ,{<<"event">>, T#kz_transaction.event}
+        ,{<<"number">>, T#kz_transaction.number}
+        ,{<<"numbers">>, T#kz_transaction.numbers}
+        ,{<<"feature">>, T#kz_transaction.feature}
+        ,{<<"bookkeeper_info">>, T#kz_transaction.bookkeeper_info}
+        ,{<<"metadata">>, T#kz_transaction.metadata}
+        ,{<<"pvt_status">>, T#kz_transaction.pvt_status}
+        ,{<<"pvt_reason">>, T#kz_transaction.pvt_reason}
+        ,{<<"pvt_code">>, T#kz_transaction.pvt_code}
+        ,{<<"pvt_amount">>, T#kz_transaction.pvt_amount}
+        ,{<<"pvt_type">>, T#kz_transaction.pvt_type}
+        ,{<<"pvt_created">>, T#kz_transaction.pvt_created}
+        ,{<<"pvt_modified">>, T#kz_transaction.pvt_modified}
+        ,{<<"pvt_account_id">>, T#kz_transaction.pvt_account_id}
+        ,{<<"pvt_account_db">>, T#kz_transaction.pvt_account_db}
+        ,{<<"pvt_vsn">>, T#kz_transaction.pvt_vsn}
+        ,{<<"order_id">>, T#kz_transaction.order_id}
+        ])).
 
 %%--------------------------------------------------------------------
 %% @public
