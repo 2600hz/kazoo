@@ -47,6 +47,10 @@ handle_req(JObj, _Props) ->
 
     lager:debug("a new account has been created, sending email notification"),
 
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
+
     AccountDb = case {kz_json:get_value(<<"Account-DB">>, JObj), kz_json:get_value(<<"Account-ID">>, JObj)} of
                     {'undefined', 'undefined'} -> 'undefined';
                     {'undefined', Id1} -> kz_util:format_account_id(Id1, 'encoded');
@@ -74,8 +78,9 @@ handle_req(JObj, _Props) ->
     To = kz_json:get_value(<<"email">>, Admin, kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>)),
     RepEmail = notify_util:get_rep_email(Account),
 
-    _ = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
-    build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props).
+    SendResult0 = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
+    SendResult1 = build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props),
+    notify_util:maybe_send_update(lists:flatten([SendResult0, SendResult1]), RespQ, MsgId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,10 +115,9 @@ create_template_props(Event, Admin, Account, AllDocs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), kz_proplist()) ->
-                                  'ok' | {'error', any()}.
+-spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),

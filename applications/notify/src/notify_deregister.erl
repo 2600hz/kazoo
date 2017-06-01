@@ -50,6 +50,10 @@ handle_req(JObj, _Props) ->
 
     lager:debug("endpoint has become unregistered, sending email notification"),
 
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
+
     {ok, Account} = notify_util:get_account_doc(JObj),
 
     lager:debug("creating deregisted notice"),
@@ -67,7 +71,11 @@ handle_req(JObj, _Props) ->
 
     To = kz_json:get_value([<<"notifications">>, <<"deregister">>, <<"send_to">>], Account
                           ,kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>)),
-    build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
+
+    notify_util:maybe_send_update(build_and_send_email(TxtBody, HTMLBody, Subject, To, Props)
+                                 ,RespQ
+                                 ,MsgId
+                                 ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,9 +96,9 @@ create_template_props(Event, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),

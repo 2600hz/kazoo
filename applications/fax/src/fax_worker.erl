@@ -745,12 +745,13 @@ set_default_update_fields(JObj) ->
 -spec maybe_notify(kz_json:object(), kz_json:object(), ne_binary()) -> any().
 maybe_notify(JObj, Resp, <<"completed">>) ->
     Message = notify_fields(JObj, Resp),
-    kapi_notifications:publish_fax_outbound(Message);
+    kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound/1);
 maybe_notify(JObj, Resp, <<"failed">>) ->
-    Message = [{<<"Fax-Error">>, fax_error(kz_json:merge_jobjs(JObj, Resp))}
-               | notify_fields(JObj, Resp)
-              ],
-    kapi_notifications:publish_fax_outbound_error(props:filter_undefined(Message));
+    Message = props:filter_undefined(
+                [{<<"Fax-Error">>, fax_error(kz_json:merge_jobjs(JObj, Resp))}
+                 | notify_fields(JObj, Resp)
+                ]),
+    kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound_error/1);
 maybe_notify(_JObj, _Resp, Status) ->
     lager:debug("notify Status ~p not handled",[Status]).
 

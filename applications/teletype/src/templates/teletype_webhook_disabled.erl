@@ -62,9 +62,13 @@ handle_webhook_disabled(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-        orelse teletype_util:stop_processing("template ~s not enabled for account ~s", [?TEMPLATE_ID, AccountId]),
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+        'true' -> handle_req(DataJObj, AccountId)
+    end.
 
+-spec handle_req(kz_json:object(), ne_binary()) -> 'ok'.
+handle_req(DataJObj, AccountId) ->
     HookId = kz_json:get_value(<<"hook_id">>, DataJObj),
 
     lager:debug("looking for hook ~s in account ~s", [HookId, AccountId]),

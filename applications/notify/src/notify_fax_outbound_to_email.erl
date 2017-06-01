@@ -35,18 +35,26 @@ handle_req(JObj, _Props) ->
 
     lager:debug("new outbound fax left, sending to email if enabled"),
 
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
+
     AccountDb = kapi_notifications:account_db(JObj),
     JobId = kz_json:get_value(<<"Fax-JobId">>, JObj),
     lager:debug("account-db: ~s, fax-id: ~s", [AccountDb, JobId]),
 
-    case kz_datamgr:open_cache_doc(AccountDb, JobId) of
-        {'ok', FaxDoc} ->
-            process_req(FaxDoc, JObj, _Props);
-        {'error', Err} ->
-            lager:error("could not load fax document: ~p", [Err])
-    end.
+    SendResult =
+        case kz_datamgr:open_cache_doc(AccountDb, JobId) of
+            {'ok', FaxDoc} ->
+                process_req(FaxDoc, JObj, _Props);
+            {'error', Err} ->
+                Msg = io_lib:format("could not load fax document: ~p", [Err]),
+                lager:error(Msg),
+                {'error', Msg}
+        end,
+    notify_util:maybe_send_update(SendResult, RespQ, MsgId).
 
--spec process_req(kzd_fax:doc(), kz_json:object(), kz_proplist()) -> any().
+-spec process_req(kzd_fax:doc(), kz_json:object(), kz_proplist()) -> send_email_return().
 process_req(FaxDoc, JObj, _Props) ->
     Emails = kz_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
@@ -71,13 +79,14 @@ process_req(FaxDoc, JObj, _Props) ->
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props), AccountDb) of
-        _ -> lager:debug("built and sent")
+    try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props), AccountDb)
     catch
         C:R ->
-            lager:debug("failed: ~s:~p", [C, R]),
+            Msg = io_lib:format("failed: ~s:~p", [C, R]),
+            lager:debug(Msg),
             ST = erlang:get_stacktrace(),
-            kz_util:log_stacktrace(ST)
+            kz_util:log_stacktrace(ST),
+            {'error', Msg}
     end.
 
 %%--------------------------------------------------------------------
@@ -131,9 +140,9 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist(), ne_binary()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist(), ne_binary()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, AccountDb) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, AccountDb) || T <- To];
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, AccountDb) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, AccountDb) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),

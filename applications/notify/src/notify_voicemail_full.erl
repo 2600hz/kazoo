@@ -45,14 +45,22 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:voicemail_full_v(JObj),
     kz_util:put_callid(JObj),
-    lager:debug("voicemail full notice, sending to email if enabled"),
-    {'ok', Account} = notify_util:get_account_doc(JObj),
-    case is_notice_enabled(Account) of
-        'true' -> send(JObj, Account);
-        'false' -> 'ok'
-    end.
 
--spec send(kz_json:object(), kz_json:object()) -> 'ok'.
+    lager:debug("voicemail full notice, sending to email if enabled"),
+
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
+
+    {'ok', Account} = notify_util:get_account_doc(JObj),
+    SendResult =
+        case is_notice_enabled(Account) of
+            'true' -> send(JObj, Account);
+            'false' -> lager:debug("voicemail full notice is disabled")
+        end,
+    notify_util:maybe_send_update(SendResult, RespQ, MsgId).
+
+-spec send(kz_json:object(), kz_json:object()) -> send_email_return().
 send(JObj, Account) ->
     lager:debug("a vm_full notice has been received, sending email notification"),
 
@@ -159,9 +167,9 @@ get_vm_doc(JObj) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> 'ok'.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
 

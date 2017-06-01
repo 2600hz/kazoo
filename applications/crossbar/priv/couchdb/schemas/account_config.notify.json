@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.notify",
+    "description": "Schema for notify account_config",
+    "properties": {
+        "notify_presist_exceptions": {
+            "default": [
+                "system_alert"
+            ],
+            "description": "List of notification types have to be ignored to presist if they failed to publish",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "should_presist_for_retry": {
+            "default": true,
+            "description": "Enabled presist of failed to publish notifications for account/system",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

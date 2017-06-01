@@ -276,16 +276,7 @@ handle_quick_sale_response(BtTransaction) ->
                                      {boolean(), ne_binary()}.
 send_topup_notification(Success, BillingId, Amount, BraintreeTransaction) ->
     Props = notification_data(Success, BillingId, Amount, BraintreeTransaction),
-    _ = case kz_amqp_worker:cast(Props
-                                ,fun kapi_notifications:publish_topup/1
-                                )
-        of
-            'ok' -> lager:debug("topup notification sent for ~s", [BillingId]);
-            {'error', _R} ->
-                lager:error("failed to send topup notification for ~s : ~p"
-                           ,[BillingId, _R]
-                           )
-        end,
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_topup/1),
     {Success, props:get_value(<<"Response">>, Props)}.
 
 -spec notification_data(boolean(), ne_binary(), integer(), bt_transaction() | 'undefined') -> kz_proplist().

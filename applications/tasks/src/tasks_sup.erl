@@ -26,6 +26,8 @@
                   ,?WORKER('knm_number_crawler')
                    %% DB
                   ,?WORKER('kz_account_crawler')
+                   %% Standalone tasks
+                  ,?WORKER('kz_notify_resend')
                   ]).
 
 %% ===================================================================

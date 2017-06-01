@@ -101,6 +101,6 @@ send_port_unconfirmed_notification(?NE_BINARY = AccountId, Id) ->
           ,{<<"Port-Request-ID">>, Id}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1).
 
 %%% End of Module.

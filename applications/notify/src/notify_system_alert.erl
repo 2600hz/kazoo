@@ -45,27 +45,58 @@ init() ->
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:system_alert_v(JObj),
+
     kz_util:put_callid(JObj),
+
     lager:debug("creating system alert notice"),
+
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
+
     UseEmail = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true'),
     SUBUrl = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"subscriber_url">>),
-    case kz_json:get_value([<<"Details">>,<<"Format">>], JObj) of
-        'undefined' ->
-            alert_using_email('true', JObj);
-        _Format ->
-            alert_using_email(UseEmail, JObj),
-            alert_using_POST(SUBUrl, JObj, UseEmail)
+
+    SendResult =
+        case kz_json:get_value([<<"Details">>,<<"Format">>], JObj) of
+            'undefined' ->
+                alert_using_email('true', JObj);
+            _Format ->
+                EmailResult = alert_using_email(UseEmail, JObj),
+                case alert_using_POST(SUBUrl, JObj) of
+                    'ok' -> EmailResult;
+                    {'error', _}=Error ->
+                        [Error] ++ [OK
+                                    || OK <- alert_using_email(not UseEmail, JObj),
+                                       'ok' =:= OK
+                                           orelse (is_list(OK)
+                                                   andalso lists:member('ok', OK))
+                                   ] ++ [EmailResult]
+                end
+        end,
+    send_update(lists:flatten(SendResult), RespQ, MsgId).
+
+-spec send_update(send_email_return(), ne_binary(), ne_binary()) -> 'ok'.
+send_update(Result, RespQ, MsgId) ->
+    notify_util:maybe_send_update(Result, RespQ, MsgId).
+
+-spec alert_using_POST(ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
+alert_using_POST(Url, JObj) ->
+    Headers = [{"Content-Type", "application/json"}],
+    Encoded = kz_json:encode(JObj),
+
+    case kz_http:post(kz_term:to_list(Url), Headers, Encoded) of
+        {'ok', _2xx, _ResponseHeaders, _ResponseBody}
+          when (_2xx - 200) < 100 -> %% ie: match "2"++_
+            lager:debug("JSON data successfully POSTed to '~s'", [Url]);
+        _Error ->
+            Msg = io_lib:format("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),
+            lager:debug(Msg),
+            {'error', kz_term:to_binary(Msg)}
     end.
 
--spec alert_using_POST(ne_binary(), kz_json:object(), boolean()) -> 'ok'.
-alert_using_POST(Url, JObj, EmailUsed) ->
-    Fallback = fun(TheJObj) ->
-                       alert_using_email(not EmailUsed, TheJObj)
-               end,
-    notify_util:post_json(Url, JObj, Fallback).
-
--spec alert_using_email(boolean(), kz_json:object()) -> 'ok'.
-alert_using_email('false', _JObj) -> 'ok';
+-spec alert_using_email(boolean(), kz_json:object()) -> send_email_return() | 'disabled'.
+alert_using_email('false', _JObj) -> 'disabled';
 alert_using_email('true', JObj) ->
     Props = create_template_props(JObj),
     {'ok', TxtBody} = notify_util:render_template('undefined', ?DEFAULT_TEXT_TMPL, Props),
@@ -107,10 +138,9 @@ create_template_props(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> 'ok'.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
-    'ok';
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
@@ -147,5 +177,4 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
               }
              ]
             },
-    notify_util:send_email(From, To, Email),
-    lager:debug("sent email to be processed: ~s", [TxtBody]).
+    notify_util:send_email(From, To, Email).

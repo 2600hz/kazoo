@@ -573,7 +573,7 @@ send_deny_emergency_notification(OffnetReq) ->
         ,{?KEY_OUTBOUND_CALLER_ID_NAME, kapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    kapi_notifications:publish_denied_emergency_bridge(Props).
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_denied_emergency_bridge/1).
 
 -spec send_deny_emergency_response(kapi_offnet_resource:req(), ne_binary()) ->
                                           {'ok', ne_binary()} |

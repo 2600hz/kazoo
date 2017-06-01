@@ -1107,7 +1107,7 @@ maybe_send_register_notice(#registration{username=Username
 send_register_notice(Reg) ->
     Props = to_props(Reg)
         ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION),
-    kapi_notifications:publish_register(Props).
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_register/1).
 
 -spec maybe_send_deregister_notice(registration()) -> 'ok'.
 maybe_send_deregister_notice(#registration{username=Username

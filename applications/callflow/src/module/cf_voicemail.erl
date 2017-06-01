@@ -389,7 +389,6 @@ compose_voicemail(#mailbox{exists='false'}, _, Call) ->
 compose_voicemail(#mailbox{max_message_count=MaxCount
                           ,message_count=Count
                           ,mailbox_id=VMBId
-                          ,mailbox_number=VMBN
                           ,keys=#keys{login=Login}
                           }=Box, _, Call) when Count >= MaxCount
                                                andalso MaxCount > 0 ->
@@ -400,10 +399,8 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
             ,{<<"Message-Count">>, Count}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    _ = kz_amqp_worker:call(Props
-                           ,fun kapi_notifications:publish_voicemail_full/1
-                           ,fun kapi_notifications:voicemail_full_v/1
-                           ),
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_voicemail_full/1),
+
     lager:debug("playing mailbox greeting to caller"),
     _ = play_greeting_intro(Box, Call),
     _ = play_greeting(Box, Call),

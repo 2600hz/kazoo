@@ -343,6 +343,5 @@ maybe_notify_reseller(Context, Services, AuditLog) ->
                     ,{<<"Audit-Log">>, AuditLog}
                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
-            kz_amqp_worker:cast(Props, fun kapi_notifications:publish_service_added/1),
-            lager:debug("published service_added to reseller account ~s~n", [ResellerId])
+            kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_service_added/1)
   end.

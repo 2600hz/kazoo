@@ -12,7 +12,7 @@
 -include("notify.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 
--export([init/0, send/2
+-export([init/0
         ,handle_req/2
         ]).
 
@@ -42,20 +42,16 @@ init() ->
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:first_occurrence_v(JObj),
-    {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
-    send(kz_json:get_binary_value(<<"Occurrence">>, JObj)
-        ,Account
-        ).
+    kz_util:put_callid(JObj),
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Send an email notifying that a first occurrence event has happened.
-%% @end
-%%--------------------------------------------------------------------
--spec send(ne_binary(), kz_json:object()) -> any().
-send(Occurrence, Account) ->
     lager:debug("creating first occurrence notice"),
+
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
+
+    {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
+    Occurrence = kz_json:get_binary_value(<<"Occurrence">>, JObj),
 
     Props = create_template_props(Account, Occurrence),
 
@@ -72,8 +68,9 @@ send(Occurrence, Account) ->
                           ,kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>)),
     RepEmail = notify_util:get_rep_email(Account),
 
-    _ = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
-    build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props).
+    SendResult0 = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
+    SendResult1 = build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props),
+    notify_util:maybe_send_update(lists:flatten([SendResult0, SendResult1]), RespQ, MsgId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,9 +93,9 @@ create_template_props(Account, Occurrence) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), kz_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), api_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),

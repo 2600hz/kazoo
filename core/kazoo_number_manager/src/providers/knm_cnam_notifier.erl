@@ -154,4 +154,4 @@ publish_cnam_update(Number, 'false') ->
              ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    kapi_notifications:publish_cnam_request(Notify).
+    kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_cnam_request/1).

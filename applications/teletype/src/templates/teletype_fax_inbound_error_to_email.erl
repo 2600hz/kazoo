@@ -72,16 +72,48 @@ handle_fax_inbound_error(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID)
-    end,
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED)
-        andalso is_true_fax_error(AccountId, JObj)
+    case {is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
+         ,is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED)
+         }
     of
-        'false' -> lager:debug("filtered notification handling not configured for this account");
-        'true' -> handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID_FILTERED)
+        {'false', 'false'} ->
+            teletype_util:notification_disabled(DataJObj, kz_binary:join([?TEMPLATE_ID, ?TEMPLATE_ID_FILTERED]));
+        {'false', 'true'} ->
+            lager:debug("notification ~s handling not configured for account ~s, only handling ~s"
+                       ,[?TEMPLATE_ID, AccountId, ?TEMPLATE_ID_FILTERED]
+                       ),
+            Res = handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID_FILTERED),
+            send_update(DataJObj, Res);
+        {'true', 'false'} ->
+            lager:debug("notification ~s handling not configured for account ~s, only handling ~s"
+                       ,[?TEMPLATE_ID_FILTERED, AccountId, ?TEMPLATE_ID]
+                       ),
+            Res = handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID),
+            send_update(DataJObj, Res);
+        {'true', 'true'} ->
+            Res0 = handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID),
+            Res1 = handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID_FILTERED),
+            send_update(DataJObj, Res0, Res1)
     end.
+-type send_email_return() :: 'ok' | {'error', any()}.
+-spec send_update(kz_json:object(), send_email_return()) -> 'ok'.
+send_update(DataJObj, 'ok') ->
+    teletype_util:send_update(DataJObj, <<"completed">>);
+send_update(DataJObj, {'error', Reason}) ->
+    teletype_util:send_update(DataJObj, <<"failed">>, Reason).
+
+-spec send_update(kz_json:object(), send_email_return(), send_email_return()) -> 'ok'.
+send_update(DataJObj, 'ok', _) -> send_update(DataJObj, 'ok');
+send_update(DataJObj, _, 'ok') -> send_update(DataJObj, 'ok');
+send_update(DataJObj, {'error', _}=Error, _) -> send_update(DataJObj, Error).
+
+-spec is_notice_enabled(ne_binary(), kz_json:object(), ne_binary()) -> boolean().
+is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) ->
+    teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID);
+is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED) ->
+    teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED)
+        andalso is_true_fax_error(AccountId, JObj).
+
 
 -spec is_true_fax_error(ne_binary(), kz_json:object()) -> boolean().
 is_true_fax_error(AccountId, JObj) ->
@@ -91,7 +123,7 @@ is_true_fax_error(AccountId, JObj) ->
     Codes = kapps_account_config:get(AccountId, ?MOD_CONFIG_CAT, <<"filter_error_codes">>, DefaultCodes),
     not lists:member(Code, Codes).
 
--spec handle_fax_inbound(kz_json:object(), ne_binary()) -> 'ok'.
+-spec handle_fax_inbound(kz_json:object(), ne_binary()) -> send_email_return().
 handle_fax_inbound(DataJObj, TemplateId) ->
     TemplateData = build_template_data(DataJObj),
     EmailAttachements = teletype_fax_util:get_attachments(DataJObj, TemplateData),
@@ -122,8 +154,8 @@ handle_fax_inbound(DataJObj, TemplateId) ->
                                          ),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> 'ok';
+        {'error', _}=Error -> Error
     end.
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().

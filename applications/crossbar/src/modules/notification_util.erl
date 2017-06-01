@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2017, 2600Hz INC
-%%% @doc
-%%%
-%%% Provide helper functions for firing notifications based on crossbar changes
-%%%
+%%% @doc Provide helper functions for firing notifications based on crossbar changes
 %%% @end
 %%% @contributors
 %%%     Mark Magnusson
@@ -34,12 +31,11 @@ maybe_notify_account_change(Old, New) ->
 -spec maybe_notify(api_binary(), {ne_binary(), kz_json:object()}) -> 'ok'.
 maybe_notify(Account, {<<"zones">>, Zones}) ->
     lager:info("publishing zone change notification for ~p, zones: ~p", [Account, Zones]),
-    Notify = [
-              {<<"Account-ID">>, Account}
-             ,{<<"Zones">>, Zones}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
-             ],
-    kapi_notifications:publish_account_zone_change(Notify);
+    Props = [{<<"Account-ID">>, Account}
+            ,{<<"Zones">>, Zones}
+             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+            ],
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_account_zone_change/1);
 
 maybe_notify(_Account, {_Key, _Value}) ->
     'ok'.

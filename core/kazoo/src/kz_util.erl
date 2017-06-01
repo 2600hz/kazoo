@@ -44,7 +44,7 @@
         ]).
 
 -export([runs_in/3]).
--export([put_callid/1, get_callid/0
+-export([put_callid/1, get_callid/0, find_callid/1
         ,spawn/1, spawn/2
         ,spawn_link/1, spawn_link/2
         ,spawn_monitor/2
@@ -644,15 +644,15 @@ put_callid(Atom) when is_atom(Atom) ->
     lager:md([{'callid', Atom}]),
     erlang:put('callid', Atom);
 put_callid(APITerm) ->
-    put_callid(callid(APITerm)).
+    put_callid(find_callid(APITerm)).
 
 -spec get_callid() -> ne_binary().
 get_callid() -> erlang:get('callid').
 
--spec callid(api_terms()) -> api_binary().
-callid(APITerm) when is_list(APITerm) ->
+-spec find_callid(api_terms()) -> api_binary().
+find_callid(APITerm) when is_list(APITerm) ->
     find_callid(APITerm, fun props:get_first_defined/3);
-callid(APITerm) ->
+find_callid(APITerm) ->
     find_callid(APITerm, fun kz_json:get_first_defined/3).
 
 -spec find_callid(api_terms(), fun()) -> api_binary().

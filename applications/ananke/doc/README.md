@@ -3,7 +3,7 @@
 
 This application originate calls on various events
 
-## *new_voicemail*
+## *voicemail_saved*
 
 When this event is received the following fields are checked
 
@@ -114,7 +114,7 @@ Mandatory property:
 #### Action `check_voicemail`
 
 When task of this type will be runned it will check voicemail box for unread messages.
-If any is found, then application will do the same thing as in `new_voicemail` event.
+If any is found, then application will do the same thing as in `voicemail_saved` event.
 
 Mandatory properties:
 * `account_id`

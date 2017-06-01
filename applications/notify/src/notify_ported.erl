@@ -47,6 +47,10 @@ handle_req(JObj, _Props) ->
 
     lager:debug("a ported notice has been received, sending email notification"),
 
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
+
     {'ok', Account} = notify_util:get_account_doc(JObj),
 
     Props = create_template_props(JObj, Account),
@@ -60,13 +64,15 @@ handle_req(JObj, _Props) ->
     CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"ported">>, <<"email_subject_template">>], Account),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    case notify_util:get_rep_email(Account) of
-        'undefined' ->
-            SysAdminEmail = kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>),
-            build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props);
-        RepEmail ->
-            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props)
-    end.
+    Result =
+        case notify_util:get_rep_email(Account) of
+            'undefined' ->
+                SysAdminEmail = kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>),
+                build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props);
+            RepEmail ->
+                build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props)
+        end,
+    notify_util:maybe_send_update(Result, RespQ, MsgId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,9 +110,9 @@ get_send_from(Admin) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> 'ok'.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
