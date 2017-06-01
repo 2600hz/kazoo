@@ -1,5 +1,15 @@
 -ifndef(KZ_AST_HRL).
 
+-type clauses() :: [erl_parse:abstract_clause()].
+-type ast_functions() :: [{module(), function(), non_neg_integer(), clauses()}].
+-type ast_records() :: [{atom(), [atom()]}].
+
+-record(module_ast, {functions = [] :: ast_functions()
+                    ,records = [] :: ast_records()
+                    }).
+
+-type module_ast() :: #module_ast{}.
+
 %% Helper macros for processing Erlang AST forms
 
 -define(CLAUSE(Args, Guards, Body)

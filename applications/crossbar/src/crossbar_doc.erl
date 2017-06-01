@@ -80,6 +80,7 @@
                           ,view_options = [] :: view_options()
                           ,context :: cb_context:context()
                           ,start_key :: startkey()
+                          ,should_paginate = 'true' :: boolean()
                           ,page_size :: non_neg_integer() | api_binary()
                           ,filter_fun :: filter_fun()
                           ,dbs = [] :: ne_binaries()
@@ -387,22 +388,25 @@ load_view(#load_view_params{dbs=[]
             handle_datamgr_success(cb_context:doc(Context), Context);
         _Status -> Context
     end;
-load_view(#load_view_params{page_size=PageSize
-                           ,context=Context
-                           }) when PageSize =< 0 ->
+load_view(#load_view_params{page_size = PageSize
+                           ,context = Context
+                           ,should_paginate = 'true'
+                           })
+  when is_integer(PageSize)
+       andalso PageSize =< 0 ->
     lager:debug("page_size exhausted: ~p", [PageSize]),
-    case cb_context:resp_status(Context) of
-        'success' -> handle_datamgr_success(cb_context:doc(Context), Context);
-        _Status -> Context
+    case 'success' =:= cb_context:resp_status(Context) of
+        'false' -> Context;
+        'true' -> handle_datamgr_success(cb_context:doc(Context), Context)
     end;
-load_view(#load_view_params{view=View
-                           ,view_options=Options
-                           ,context=Context
-                           ,start_key=StartKey
-                           ,page_size=PageSize
-                           ,dbs=[Db|Dbs]
-                           ,direction=_Direction
-                           }=LVPs) ->
+load_view(#load_view_params{view = View
+                           ,view_options = Options
+                           ,context = Context
+                           ,start_key = StartKey
+                           ,page_size = PageSize
+                           ,dbs = [Db|_]=Dbs
+                           ,direction = _Direction
+                           } = LVPs) ->
     Limit = limit_by_page_size(Context, PageSize),
 
     lager:debug("limit: ~p page_size: ~p dir: ~p", [Limit, PageSize, _Direction]),
@@ -431,12 +435,12 @@ load_view(#load_view_params{view=View
 
     case kz_datamgr:get_results(Db, View, ViewOptions) of
         %% There were more dbs, so move to the next one
-        {'error', 'not_found'} when Dbs =:= [] ->
+        {'error', 'not_found'} when [] =:= tl(Dbs) ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             crossbar_util:response_missing_view(Context);
         {'error', 'not_found'} ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
-            load_view(LVPs#load_view_params{dbs=Dbs});
+            load_view(LVPs#load_view_params{dbs = tl(Dbs)});
         {'error', Error} ->
             handle_datamgr_errors(Error, View, Context);
         {'ok', JObjs} ->
@@ -872,101 +876,102 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey, 'tr
 
 -spec handle_datamgr_pagination_success(kz_json:objects(), api_pos_integer(), ne_binary(), load_view_params()) ->
                                                cb_context:context().
+%% If v1, just append results and try next database
 handle_datamgr_pagination_success(JObjs
                                  ,_PageSize
                                  ,?VERSION_1
-                                 ,#load_view_params{context=Context
-                                                   ,filter_fun=FilterFun
-                                                   ,direction=Direction
-                                                   }=LVPs
+                                 ,#load_view_params{context = Context
+                                                   ,filter_fun = FilterFun
+                                                   ,direction = Direction
+                                                   ,dbs=[_Db|Dbs]
+                                                   } = LVPs
                                  ) ->
-    load_view(LVPs#load_view_params{
-                context=cb_context:set_doc(Context
-                                          ,apply_filter(FilterFun, JObjs, Context, Direction)
-                                           ++ cb_context:doc(Context)
-                                          )
-               });
+    NewDoc = apply_filter(FilterFun, JObjs, Context, Direction) ++ cb_context:doc(Context),
+    load_view(LVPs#load_view_params{context = cb_context:set_doc(Context, NewDoc)
+                                   ,dbs=Dbs
+                                   });
 
+%% if no results from this db, go to next db (if any)
 handle_datamgr_pagination_success([]
                                  ,_PageSize
                                  ,_Version
-                                 ,#load_view_params{context=Context
-                                                   ,start_key=StartKey
-                                                   }=LVPs
+                                 ,#load_view_params{context = Context
+                                                   ,start_key = StartKey
+                                                   ,dbs=[_Db|Dbs]
+                                                   } = LVPs
                                  ) ->
-    load_view(LVPs#load_view_params{context=update_pagination_envelope_params(Context, StartKey, 0)});
+    load_view(LVPs#load_view_params{context = update_pagination_envelope_params(Context, StartKey, 0)
+                                   ,dbs=Dbs
+                                   });
 
+%% if no page size was specified
 handle_datamgr_pagination_success([_|_]=JObjs
                                  ,'undefined'
                                  ,_Version
-                                 ,#load_view_params{context=Context
-                                                   ,start_key=StartKey
-                                                   ,filter_fun=FilterFun
-                                                   ,page_size=PageSize
-                                                   ,direction=Direction
-                                                   }=LVPs
+                                 ,#load_view_params{context = Context
+                                                   ,start_key = StartKey
+                                                   ,filter_fun = FilterFun
+                                                   ,page_size = PageSize
+                                                   ,direction = Direction
+                                                   ,dbs = [_|Dbs]
+                                                   } = LVPs
                                  ) ->
     Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
     FilteredCount = length(Filtered),
-
-    load_view(LVPs#load_view_params{context=
-                                        update_pagination_envelope_params(
-                                          cb_context:set_doc(Context, Filtered ++ cb_context:doc(Context))
-                                                                         ,StartKey
-                                                                         ,FilteredCount
-                                         )
-                                   ,page_size=PageSize-FilteredCount
+    ContextWithDocs = cb_context:set_doc(Context, Filtered ++ cb_context:doc(Context)),
+    NewContext = update_pagination_envelope_params(ContextWithDocs, StartKey, FilteredCount),
+    load_view(LVPs#load_view_params{context = NewContext
+                                   ,page_size = PageSize - FilteredCount
+                                   ,dbs = Dbs
                                    });
 
 handle_datamgr_pagination_success([_|_]=JObjs
                                  ,PageSize
                                  ,_Version
-                                 ,#load_view_params{context=Context
-                                                   ,start_key=StartKey
-                                                   ,filter_fun=FilterFun
-                                                   ,direction=Direction
-                                                   }=LVPs
+                                 ,#load_view_params{context = Context
+                                                   ,page_size = CurrentPageSize
+                                                   ,start_key = StartKey
+                                                   ,filter_fun = FilterFun
+                                                   ,direction = Direction
+                                                   ,dbs = [_|Dbs]
+                                                   } = LVPs
                                  ) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
+            %% exhausted this db, but may need more from Dbs to fulfill PageSize
             Filtered = apply_filter(FilterFun, Results, Context, Direction),
-
-            load_view(LVPs#load_view_params{
-                        context=
-                            cb_context:set_doc(
-                              update_pagination_envelope_params(Context, StartKey, PageSize)
-                                              ,Filtered ++ cb_context:doc(Context)
-                             )
-                                           ,page_size=0
-                       });
+            UpdatedContext = update_pagination_envelope_params(Context, StartKey, PageSize),
+            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
+            load_view(LVPs#load_view_params{context = NewContext
+                                           ,page_size = CurrentPageSize - PageSize
+                                           ,dbs = Dbs
+                                           });
         {Results, [NextJObj]} ->
+            %% Current db may have more results to give
             NextStartKey = kz_json:get_value(<<"key">>, NextJObj),
             Filtered = apply_filter(FilterFun, Results, Context, Direction),
             lager:debug("next start key: ~p", [NextStartKey]),
-
-            load_view(LVPs#load_view_params{
-                        context=
-                            cb_context:set_doc(
-                              update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey)
-                                              ,Filtered ++ cb_context:doc(Context)
-                             )
-                                           ,page_size=0
-                       })
+            lager:debug("page size: ~p filtered: ~p"
+                       ,[PageSize, length(Filtered)]
+                       ),
+            UpdatedContext = update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey),
+            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
+            load_view(LVPs#load_view_params{context = NewContext
+                                           ,page_size = PageSize - length(Filtered)
+                                           ,start_key = NextStartKey
+                                           })
     catch
         'error':'badarg' ->
             Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
             FilteredCount = length(Filtered),
 
             lager:debug("recv less than ~p results: ~p", [PageSize, FilteredCount]),
-
-            load_view(LVPs#load_view_params{
-                        context=
-                            cb_context:set_doc(
-                              update_pagination_envelope_params(Context, StartKey, FilteredCount)
-                                              ,Filtered ++ cb_context:doc(Context)
-                             )
-                                           ,page_size=PageSize - FilteredCount
-                       })
+            UpdatedContext = update_pagination_envelope_params(Context, StartKey, FilteredCount),
+            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
+            load_view(LVPs#load_view_params{context = NewContext
+                                           ,page_size = PageSize - FilteredCount
+                                           ,dbs = Dbs
+                                           })
     end.
 
 -type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
