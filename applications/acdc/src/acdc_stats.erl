@@ -828,11 +828,10 @@ handle_missed_stat(JObj, Props) ->
 
 -spec create_miss(kz_json:object()) -> agent_miss().
 create_miss(JObj) ->
-    #agent_miss{
-       agent_id = kz_json:get_value(<<"Agent-ID">>, JObj)
+    #agent_miss{agent_id = kz_json:get_value(<<"Agent-ID">>, JObj)
                ,miss_reason = kz_json:get_value(<<"Miss-Reason">>, JObj)
                ,miss_timestamp = kz_json:get_value(<<"Miss-Timestamp">>, JObj)
-      }.
+               }.
 
 -spec handle_abandoned_stat(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_abandoned_stat(JObj, Props) ->
@@ -907,8 +906,7 @@ create_call_stat(Id, JObj, Props) ->
                                         }
                       }).
 
--spec update_call_stat(ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
+-type updates() :: [{pos_integer(), any()}].
+-spec update_call_stat(ne_binary(), updates(), kz_proplist()) -> 'ok'.
 update_call_stat(Id, Updates, Props) ->
-    gen_listener:cast(props:get_value('server', Props)
-                     ,{'update_call', Id, Updates}
-                     ).
+    gen_listener:cast(props:get_value('server', Props), {'update_call', Id, Updates}).

@@ -33,7 +33,7 @@
 -export([status/1, set_status/2]).
 -export([order_id/1, set_order_id/2]).
 
--export([new/0]).
+-export([new/1]).
 -export([debit/2]).
 -export([credit/2]).
 
@@ -50,29 +50,29 @@
 
 -define(KZ_SERVICES_DB, <<"services">>).
 
--record(kz_transaction, {id :: api_binary()
-                        ,rev :: api_binary()
+-record(kz_transaction, {id :: api_ne_binary()
+                        ,rev :: api_ne_binary()
                         ,description :: api_binary()
-                        ,call_id :: api_binary()
-                        ,sub_account_id :: ne_binary()
+                        ,call_id :: api_ne_binary()
+                        ,sub_account_id :: api_ne_binary()
                         ,sub_account_name :: api_binary()
-                        ,event :: api_binary()
+                        ,event :: api_ne_binary()
                         ,number :: api_ne_binary()
                         ,numbers :: api_ne_binaries()
                         ,feature :: api_ne_binary()
                         ,bookkeeper_info :: api_object()
                         ,metadata :: api_object()
-                        ,pvt_status :: api_binary()
-                        ,pvt_reason :: api_binary()
+                        ,pvt_status :: api_ne_binary()
+                        ,pvt_reason :: api_ne_binary()
                         ,pvt_code :: api_integer()
                         ,pvt_amount = 0 :: units()
                         ,pvt_type :: ne_binary()
-                        ,pvt_created :: gregorian_seconds()
-                        ,pvt_modified :: gregorian_seconds()
+                        ,pvt_created :: api_seconds()
+                        ,pvt_modified :: api_seconds()
                         ,pvt_account_id :: ne_binary()
                         ,pvt_account_db :: ne_binary()
-                        ,pvt_vsn = 2 :: integer()
-                        ,order_id :: api_binary()
+                        ,pvt_vsn = 2 :: pos_integer()
+                        ,order_id :: api_ne_binary()
                         }).
 
 -type transaction() :: #kz_transaction{}.
@@ -192,9 +192,22 @@ order_id(#kz_transaction{order_id=OrderId}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec new() -> transaction().
-new() ->
-    #kz_transaction{}.
+-type new() :: #{account_id => ne_binary()
+                ,account_db => ne_binary()
+                ,amount => units()
+                ,type => ne_binary()
+                }.
+-spec new(new()) -> transaction().
+new(#{account_id := AccountId
+     ,account_db := AccountDb
+     ,amount := Amount
+     ,type := Type
+     }) ->
+    #kz_transaction{pvt_account_id = AccountId
+                   ,pvt_account_db = AccountDb
+                   ,pvt_amount = Amount
+                   ,pvt_type = Type
+                   }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -604,13 +617,8 @@ service_save_transaction(#kz_transaction{pvt_account_id=AccountId}=Transaction) 
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_transaction(transaction()) ->
-                                 transaction() |
-                                 {'error', any()}.
-prepare_transaction(#kz_transaction{pvt_account_id='undefined'}) ->
-    {'error', 'account_id_missing'};
-prepare_transaction(#kz_transaction{pvt_account_db='undefined'}) ->
-    {'error', 'account_db_missing'};
+-spec prepare_transaction(transaction()) -> transaction() |
+                                            {'error', any()}.
 prepare_transaction(#kz_transaction{id='undefined'}=Transaction) ->
     prepare_transaction(Transaction#kz_transaction{id=modb_doc_id()});
 prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
@@ -639,8 +647,14 @@ prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
 prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
   when ?CODE_TOPUP =:= Code ->
     prepare_topup_transaction(Transaction);
-prepare_transaction(Transaction) ->
-    Transaction.
+prepare_transaction(Transaction=#kz_transaction{pvt_account_id = AccountId
+                                               ,pvt_account_db = AccountDb
+                                               }) ->
+    case {AccountId, AccountDb} of
+        {?MATCH_ACCOUNT_RAW(_), ?MATCH_ACCOUNT_ENCODED(_)} -> Transaction;
+        {_, ?MATCH_ACCOUNT_ENCODED(_)} -> {error, account_id_missing};
+        {?MATCH_ACCOUNT_RAW(_), _} -> {error, account_db_missing}
+    end.
 
 -spec prepare_call_transaction(transaction()) ->
                                       transaction() |

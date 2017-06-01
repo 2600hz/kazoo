@@ -50,6 +50,9 @@
         ,code_change/3
         ]).
 
+-export_type([updates/0
+             ]).
+
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
@@ -203,6 +206,7 @@ destroy(UUID, Node) ->
 -spec update(ne_binary(), pos_integer(), any()) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
+
 
 -spec updates(ne_binary(), channel_updates()) -> 'ok'.
 updates(UUID, Updates) ->

@@ -28,7 +28,7 @@
                ,control_queue :: api_binary()
                ,response_queue :: api_binary()
                ,queue :: api_binary()
-               ,timeout :: reference()
+               ,timeout :: api_reference()
                ,call_id :: api_binary()
                }).
 -type state() :: #state{}.

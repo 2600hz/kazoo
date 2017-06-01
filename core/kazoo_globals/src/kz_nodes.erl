@@ -448,14 +448,18 @@ init([]) ->
                                          ,{'node_type', 'all'}
                                          ]),
     lager:debug("monitoring nodes"),
-    State = #state{tab=Tab, zone=get_zone()},
     Version = <<(kz_util:kazoo_version())/binary
                 ," - "
                 ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
               >>,
+    State = #state{tab = Tab
+                  ,zone = get_zone()
+                  ,md5 = node_encoded()
+                  ,version = Version
+                  },
 
     self() ! {'heartbeat', State#state.heartbeat_ref},
-    {'ok', State#state{version=Version, md5=node_encoded()}}.
+    {'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
