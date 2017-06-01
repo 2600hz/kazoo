@@ -230,7 +230,7 @@ update_views(Server, Db, Update, CurrentViews, NewViews) ->
                                 update_views_fold(CurrentViews, NewViews, Id, Acc)
                         end, [], Update),
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
-    [kz_json:get_value(<<"id">>, JObj)
+    [kz_doc:id(JObj)
      || JObj <- JObjs,
         <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
     ].
@@ -252,7 +252,7 @@ update_if_view_exists(Id, _Rev, _NewView, 'undefined', Acc) ->
     Acc;
 
 update_if_view_exists(Id, Rev, NewView, OldView, Acc) ->
-    case NewView =:= OldView of
+    case kz_json:are_equal(kz_doc:delete_revision(NewView), OldView) of
         'true' ->
             lager:debug("view ~s does not require update", [Id]),
             Acc;
