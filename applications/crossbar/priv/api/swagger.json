@@ -529,6 +529,10 @@
                     "properties": {},
                     "required": false,
                     "type": "object"
+                },
+                "should_block_anonymous": {
+                    "description": "Should block Anonymous call",
+                    "type": "boolean"
                 }
             },
             "required": true,
