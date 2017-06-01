@@ -91,7 +91,11 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
         andalso maybe_create_current_modb(AccountMODb)
     of
         'true' -> get_results(Account, View, ViewOptions, 'not_found', Retry-1);
-        'false' when ShouldCreate -> {'ok', []};
+        'too_old' ->
+            {'ok', []};
+        'false' when ShouldCreate ->
+            lager:info("modb ~s creation failed, maybe due to race condition, re-trying get_results", [AccountMODb]),
+            get_results(Account, View, ViewOptions, 'not_found', Retry-1);
         'false' ->
             lager:info("create_db is false, not creating modb ~s ...", [AccountMODb]),
             {'ok', []}
@@ -205,8 +209,13 @@ couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
             case ShouldCreate
                 andalso maybe_create_current_modb(AccountMODb)
             of
-                'true' -> couch_save(AccountMODb, Doc, Options, 'not_found', Retry-1);
-                'false' when ShouldCreate -> NotFound;
+                'true' ->
+                    couch_save(AccountMODb, Doc, Options, 'not_found', Retry-1);
+                'too_old' ->
+                    NotFound;
+                'false' when ShouldCreate ->
+                    lager:info("modb ~s creation failed, maybe due to race condition, re-trying save_doc", [AccountMODb]),
+                    couch_save(AccountMODb, Doc, Options, 'not_found', Retry-1);
                 'false' ->
                     lager:info("create_db is false, not creating modb ~s ...", [AccountMODb]),
                     NotFound
@@ -252,7 +261,11 @@ move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
         {'error', 'not_found'} ->
             case maybe_create_destination_db(FromDb, ToDb, Options) of
                 'true' -> move_doc(FromDb, FromId, ToDb, ToId, Options, 'not_found', Retry-1);
-                'false' -> {'error', 'not_found'}
+                'source_not_exists' -> {'error', 'not_found'};
+                'too_old' -> {'error', 'not_found'};
+                'false' ->
+                    lager:info("modb ~s creation failed, maybe due to race condition, re-trying move_doc", [ToDb]),
+                    move_doc(FromDb, FromId, ToDb, ToId, Options, 'not_found', Retry-1)
             end;
         {'error', 'conflict'}=Conflict -> Conflict;
         {'error', 'timeout'} -> move_doc(FromDb, FromId, ToDb, ToId, Options, 'timeout', Retry-1);
@@ -291,14 +304,21 @@ copy_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
         {'error', 'not_found'} ->
             case maybe_create_destination_db(FromDb, ToDb, Options) of
                 'true' -> copy_doc(FromDb, FromId, ToDb, ToId, Options, 'not_found', Retry-1);
-                'false' -> {'error', 'not_found'}
+                'source_not_exists' -> {'error', 'not_found'};
+                'too_old' -> {'error', 'not_found'};
+                'false' ->
+                    lager:info("modb ~s creation failed, maybe due to race condition, re-trying copy_doc", [ToDb]),
+                    copy_doc(FromDb, FromId, ToDb, ToId, Options, 'not_found', Retry-1)
             end;
         {'error', 'conflict'}=Conflict -> Conflict;
         {'error', 'timeout'} -> copy_doc(FromDb, FromId, ToDb, ToId, Options, 'timeout', Retry-1);
         {'error', _}=Error -> Error
     end.
 
--spec maybe_create_destination_db(ne_binary(), ne_binary(), kz_proplist()) -> boolean().
+-spec maybe_create_destination_db(ne_binary(), ne_binary(), kz_proplist()) ->
+                                         'source_not_exists' |
+                                         'too_old'|
+                                         boolean().
 maybe_create_destination_db(FromDb, ToDb, Options) ->
     ShouldCreate = props:get_is_true('create_db', Options, 'true'),
     lager:info("destination modb ~p not found, maybe creating...", [ToDb]),
@@ -307,10 +327,10 @@ maybe_create_destination_db(FromDb, ToDb, Options) ->
     of
         'false' when ShouldCreate ->
             lager:info("source modb ~s does not exist, not creating destination modb ~s", [FromDb, ToDb]),
-            'false';
+            'source_not_exists';
         'false' ->
             lager:info("create_db is false, not creating modb ~s ...", [ToDb]),
-            'false';
+            'source_not_exists';
         'true' ->
             maybe_create_current_modb(ToDb)
     end.
@@ -370,7 +390,7 @@ get_modb(Account, Year, Month) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_create_current_modb(ne_binary()) -> boolean().
+-spec maybe_create_current_modb(ne_binary()) -> 'too_old' | boolean().
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
     case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
@@ -378,7 +398,7 @@ maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = Acco
             maybe_create(AccountMODb);
         {_Year, _Month} ->
             lager:info("modb ~p is not for the current month, skip creating", [AccountMODb]),
-            'false'
+            'too_old'
     end;
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
     maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw'));
