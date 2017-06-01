@@ -44,10 +44,16 @@ db_create(#server{}=Conn, DbName) ->
 -spec db_create(server(), ne_binary(), db_create_options()) -> boolean().
 db_create(#server{}=Conn, DbName, Options) ->
     case do_db_create_db(Conn, DbName, Options, []) of
-        {'error', Error} ->
-            lager:error("failed to create database ~s : ~p", [DbName, Error]),
-            'false';
-        {'ok', _} -> 'true'
+        {'ok', _} -> 'true';
+        {error, db_exists} ->
+            lager:warning("db ~s already exists", [DbName]),
+            true;
+        {'error', {bad_response, {500, _Headers, Body}}=Error} ->
+            Reason = kz_json:get_value(<<"reason">>, kz_json:decode(Body)),
+            check_db_create_error(DbName, Error, Reason);
+        {'error', _Error} ->
+            lager:error("failed to create database ~s: ~p", [DbName, _Error]),
+            'false'
     end.
 
 do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Params) ->
@@ -63,6 +69,14 @@ do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Pa
         Error ->
             Error
     end.
+
+-spec check_db_create_error(ne_binary(), any(), any()) -> boolean().
+check_db_create_error(_DbName, _Error, <<"conflict">>) ->
+    lager:warning("db ~s creation failed with HTTP error 500 and conflict reason, assuming db is created", [_DbName]),
+    'true';
+check_db_create_error(_DbName, _Error, _Reason) ->
+    lager:error("failed to create database ~s: ~p", [_DbName, _Error]),
+    'false'.
 
 -spec db_delete(server(), ne_binary()) -> boolean().
 db_delete(#server{}=Conn, DbName) ->
