@@ -508,12 +508,9 @@ get_call_termination_reason(JObj) ->
 -spec get_views_json(atom(), string()) -> kz_datamgr:views_listing().
 get_views_json(App, Folder) ->
     Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
-    [JObj
+    [ViewListing
      || File <- Files,
-        begin
-            JObj = (catch(get_view_json(File))),
-            case JObj of {'EXIT', _} -> 'false'; _ -> 'true' end
-        end
+        {?NE_BINARY,_}=ViewListing <- [catch get_view_json(File)]
     ].
 
 %%--------------------------------------------------------------------
@@ -547,8 +544,8 @@ get_view_json(Path) ->
 update_views(Db, Views) ->
     update_views(Db, Views, 'false').
 
-update_views(Db, Views, Remove) ->
-    kz_term:is_true(kz_datamgr:db_view_update(Db, Views, Remove)).
+update_views(Db, Views, ShouldRemove) ->
+    kz_term:is_true(kz_datamgr:db_view_update(Db, Views, ShouldRemove)).
 
 %%--------------------------------------------------------------------
 %% @private
