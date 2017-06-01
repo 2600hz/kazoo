@@ -486,7 +486,7 @@ created_to_time(Context, _) -> get_summary_start_key(Context).
 get_summary_start_key(Context) ->
     get_summary_start_key(Context, 0).
 get_summary_start_key(Context, Default) ->
-    get_start_key(Context, Default, fun kz_term:to_integer/1).
+    get_start_key(Context, Default, fun kz_util:to_integer/1).
 
 -spec get_start_key(cb_context:context(), any(), fun()) -> any().
 get_start_key(Context, Default, Formatter) ->
