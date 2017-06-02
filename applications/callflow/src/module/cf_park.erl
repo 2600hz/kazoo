@@ -762,23 +762,10 @@ ringback_parker(EndpointId, SlotNumber, Data, Call0) ->
     case kz_endpoint:build(EndpointId, kz_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
         {'ok', Endpoints} ->
             lager:info("attempting to ringback endpoint ~s : ~p", [EndpointId, Endpoints]),
-            bridge_to_parker(Endpoints, ?DEFAULT_TIMEOUT_S, TmpCID, Call),
+            kapps_call_command:bridge(Endpoints, Call),
             wait_for_ringback(Timeout, Call);
         _ -> 'failed'
     end.
-
--spec bridge_to_parker(kz_json:objects(), integer(), ne_binary(), kapps_call:call()) -> 'ok'.
-bridge_to_parker(Endpoints, Timeout, TmpCID, Call) ->
-    Cmd = [{<<"Application-Name">>, <<"bridge">>}
-          ,{<<"Endpoints">>, Endpoints}
-          ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Caller-ID-Name">>, TmpCID}
-                                                         ])}
-          ,{<<"Timeout">>, Timeout}
-          ,{<<"Ignore-Early-Media">>, true}
-          ,{<<"Dial-Endpoint-Method">>, kapi_dialplan:dial_method_single()}
-          ],
-    kapps_call_command:send_command(Cmd, Call).
-
 
 -spec wait_for_ringback(kz_timeout(), kapps_call:call()) -> ringback_parker_result().
 wait_for_ringback(Timeout, Call) ->
@@ -836,7 +823,10 @@ wait_for_parker(Timeout, Call, Start, {'ok', JObj}) ->
             lager:info("bridge channel destroy completed with result ~s(~s)", [Disposition, Result]),
             {Result, JObj};
         {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
-            lager:debug("channel intercepted : ~p", [JObj]),
+            lager:debug("ringback channel intercepted"),
+            {'ok', JObj};
+        {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
+            lager:debug("ringback channel bridged"),
             {'ok', JObj};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
             lager:info("bridge execute completed with result ~s(~s)", [Disposition, Result]),
