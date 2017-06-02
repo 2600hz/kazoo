@@ -11,7 +11,7 @@
 -include("kz_data.hrl").
 
 -export([flush/0]).
--export([flush_dataplans/0]).
+-export([flush_data_plans/0]).
 -export([flush_docs/0
         ,flush_docs/1
         ,flush_docs/2
@@ -28,8 +28,8 @@ flush() ->
     _ = kz_cache:flush_local(?KAZOO_DATA_PLAN_CACHE),
     io:format("flushed all data manager caches~n").
 
--spec flush_dataplans() -> 'ok'.
-flush_dataplans() ->
+-spec flush_data_plans() -> 'ok'.
+flush_data_plans() ->
     _ = kz_cache:flush_local(?KAZOO_DATA_PLAN_CACHE),
     io:format("flushed all data plans~n").
 
