@@ -12406,6 +12406,9 @@
                     },
                     "type": "object"
                 },
+                "qubicle": {
+                    "$ref": "qubicle_recipients"
+                },
                 "require_password_update": {
                     "default": false,
                     "description": "UI flag that the user should update their password.",
