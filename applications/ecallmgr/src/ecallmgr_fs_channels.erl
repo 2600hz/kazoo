@@ -50,9 +50,6 @@
         ,code_change/3
         ]).
 
--export_type([updates/0
-             ]).
-
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
