@@ -38,7 +38,6 @@ flush_data_plans() ->
 -spec flush_docs(ne_binary(), ne_binary()) -> 'ok'.
 flush_docs() ->
     _ = kz_datamgr:flush_cache_docs(),
-    _ = kz_cache:flush_local(?KAZOO_DATA_PLAN_CACHE),
     io:format("flushed all cached docs~n").
 
 flush_docs(Account) ->
