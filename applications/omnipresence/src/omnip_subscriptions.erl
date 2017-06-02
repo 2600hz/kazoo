@@ -320,27 +320,26 @@ subscription_to_json(#omnip_subscription{user=User
                                         ,user_agent=UA
                                         }) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"user">>, User}
-        ,{<<"from">>, From}
-        ,{<<"stalker">>, Stalker}
-        ,{<<"expires">>, Expires}
-        ,{<<"timestamp">>, Timestamp}
-        ,{<<"protocol">>, Protocol}
-        ,{<<"username">>, Username}
-        ,{<<"realm">>, Realm}
-        ,{<<"event">>, Event}
-        ,{<<"contact">>, Contact}
-        ,{<<"call_id">>, CallId}
-        ,{<<"subscription_id">>, SubId}
-        ,{<<"proxy_route">>, ProxyRoute}
-        ,{<<"version">>, Version}
-        ,{<<"notify">>, kz_json:from_list([{<<"sequence">>, Sequence}
-                                          ,{<<"reply">>, Reply}
-                                          ,{<<"body">>, Body}
-                                          ])}
-        ,{<<"user_agent">>, UA}
-        ])).
+      [{<<"user">>, User}
+      ,{<<"from">>, From}
+      ,{<<"stalker">>, Stalker}
+      ,{<<"expires">>, Expires}
+      ,{<<"timestamp">>, Timestamp}
+      ,{<<"protocol">>, Protocol}
+      ,{<<"username">>, Username}
+      ,{<<"realm">>, Realm}
+      ,{<<"event">>, Event}
+      ,{<<"contact">>, Contact}
+      ,{<<"call_id">>, CallId}
+      ,{<<"subscription_id">>, SubId}
+      ,{<<"proxy_route">>, ProxyRoute}
+      ,{<<"version">>, Version}
+      ,{<<"notify">>, kz_json:from_list([{<<"sequence">>, Sequence}
+                                        ,{<<"reply">>, Reply}
+                                        ,{<<"body">>, Body}
+                                        ])}
+      ,{<<"user_agent">>, UA}
+      ]).
 
 -spec start_expire_ref() -> reference().
 start_expire_ref() ->

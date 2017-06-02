@@ -243,7 +243,7 @@ json_to_iolist_test_() ->
                ,kz_json:from_list([{<<"account_id">>,<<>>}, {<<"e164">>,<<"+14157215235">>}, {<<"cnam.outbound">>,<<>>}])
                ],
     [?_assertEqual(<<"A\na1\n42\n">>, kz_csv:json_to_iolist(Records1))
-    ,?_assertEqual(<<"field1,field deux\n,QUUX\n,\nr'bla.+\\n',\n">>, kz_csv:json_to_iolist(Records2))
+    ,?_assertEqual(<<"field1,field deux\n,QUUX\n,\nr'bla.+\\n',\n">>, kz_csv:json_to_iolist(Records2, [<<"field1">>,<<"field deux">>]))
     ,?_assertEqual(<<"account_id,e164,cnam.outbound\n009afc511c97b2ae693c6cc4920988e8,+14157215234,me\n,+14157215235,\n">>, kz_csv:json_to_iolist(Records3))
     ].
 

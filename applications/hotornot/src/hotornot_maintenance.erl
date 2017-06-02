@@ -71,12 +71,11 @@ rates_for_did(DID, Direction, AccountId, RouteOptions) when is_list(RouteOptions
         {'error', _E} -> io:format("rate lookup error: ~p~n", [_E]);
         {'ok', Rates} ->
             ReqJObj = kz_json:from_list(
-                        props:filter_undefined(
-                          [{<<"Account-ID">>, AccountId}
-                          ,{<<"Direction">>, Direction}
-                          ,{<<"Options">>, RouteOptions}
-                          ,{<<"To-DID">>, DID}
-                          ])),
+                        [{<<"Account-ID">>, AccountId}
+                        ,{<<"Direction">>, Direction}
+                        ,{<<"Options">>, RouteOptions}
+                        ,{<<"To-DID">>, DID}
+                        ]),
             io:format("Candidates:~n"),
             ?LOCAL_SUMMARY_HEADER,
             lists:foreach(fun print_rate/1, Rates),

@@ -1174,14 +1174,13 @@ get_custom_sip_interface(JObj) ->
                                    kz_json:object().
 create_skype_endpoint(Endpoint, Properties, _Call) ->
     SkypeJObj = kz_json:get_value(<<"skype">>, Endpoint),
-    Prop =
-        [{<<"Invite-Format">>, <<"username">>}
-        ,{<<"To-User">>, get_to_user(SkypeJObj, Properties)}
-        ,{<<"To-Username">>, get_to_username(SkypeJObj)}
-        ,{<<"Endpoint-Type">>, <<"skype">>}
-        ,{<<"Endpoint-Options">>, kz_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
-        ],
-    kz_json:from_list(props:filter_undefined(Prop)).
+    kz_json:from_list(
+      [{<<"Invite-Format">>, <<"username">>}
+      ,{<<"To-User">>, get_to_user(SkypeJObj, Properties)}
+      ,{<<"To-Username">>, get_to_username(SkypeJObj)}
+      ,{<<"Endpoint-Type">>, <<"skype">>}
+      ,{<<"Endpoint-Options">>, kz_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1208,25 +1207,26 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
                'undefined' -> get_clid(Endpoint, Properties, Call, <<"external">>);
                _Else -> #clid{}
            end,
-    Prop = [{<<"Invite-Format">>, <<"route">>}
-           ,{<<"To-DID">>, kz_json:get_value(<<"number">>, Endpoint, kapps_call:request_user(Call))}
-           ,{<<"Route">>, <<"loopback/", (kz_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary>>}
-           ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-           ,{<<"Bypass-Media">>, <<"false">>}
-           ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
-           ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
-           ,{<<"Endpoint-Delay">>, get_delay(Properties)}
-           ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-           ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
-           ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
-           ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
-           ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
-           ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
-           ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
-           ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
-           ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
-           ],
-    kz_json:from_list(props:filter_undefined(Prop)).
+
+    kz_json:from_list(
+      [{<<"Invite-Format">>, <<"route">>}
+      ,{<<"To-DID">>, kz_json:get_value(<<"number">>, Endpoint, kapps_call:request_user(Call))}
+      ,{<<"Route">>, <<"loopback/", (kz_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary>>}
+      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+      ,{<<"Bypass-Media">>, <<"false">>}
+      ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
+      ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
+      ,{<<"Endpoint-Delay">>, get_delay(Properties)}
+      ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
+      ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
+      ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
+      ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
+      ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
+      ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
+      ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
+      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+      ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1254,20 +1254,20 @@ create_mobile_audio_endpoint(Endpoint, Properties, Call) ->
         Route ->
             Codecs = kapps_config:get(?MOBILE_CONFIG_CAT, <<"codecs">>, ?DEFAULT_MOBILE_CODECS),
             SIPInterface = kapps_config:get_binary(?MOBILE_CONFIG_CAT, <<"custom_sip_interface">>),
-            Prop = [{<<"Invite-Format">>, <<"route">>}
-                   ,{<<"Ignore-Early-Media">>, <<"true">>}
-                   ,{<<"Route">>, Route}
-                   ,{<<"Ignore-Early-Media">>, <<"true">>}
-                   ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
-                   ,{<<"Endpoint-Delay">>, get_delay(Properties)}
-                   ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-                   ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
-                   ,{<<"Codecs">>, Codecs}
-                   ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
-                   ,{<<"SIP-Interface">>, SIPInterface}
-                   ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
-                   ],
-            kz_json:from_list(props:filter_undefined(Prop))
+            kz_json:from_list(
+              [{<<"Invite-Format">>, <<"route">>}
+              ,{<<"Ignore-Early-Media">>, <<"true">>}
+              ,{<<"Route">>, Route}
+              ,{<<"Ignore-Early-Media">>, <<"true">>}
+              ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
+              ,{<<"Endpoint-Delay">>, get_delay(Properties)}
+              ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
+              ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+              ,{<<"Codecs">>, Codecs}
+              ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, kz_json:new())}
+              ,{<<"SIP-Interface">>, SIPInterface}
+              ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
+              ])
     end.
 
 -spec maybe_build_mobile_route(kz_json:object()) ->

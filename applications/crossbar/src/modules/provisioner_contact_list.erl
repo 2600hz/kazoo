@@ -31,11 +31,11 @@ build(AccountDb) ->
 contact_to_json(#contact{name=Name
                         ,external_numbers=ExternalNumbers
                         ,internal_numbers=InternalNumbers}) ->
-    Props = [{<<"name">>, Name}
-            ,{<<"external_number">>, first_number(ExternalNumbers)}
-            ,{<<"internal_number">>, first_number(InternalNumbers)}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"name">>, Name}
+      ,{<<"external_number">>, first_number(ExternalNumbers)}
+      ,{<<"internal_number">>, first_number(InternalNumbers)}
+      ]).
 
 first_number([Number|_]) -> Number;
 first_number(_) -> undefined.

@@ -766,15 +766,12 @@ format_app(Lang, AppJObj) ->
     I18N = kzd_app:i18n(AppJObj),
     DefaultLabel = kz_json:get_value([?DEFAULT_LANGUAGE, <<"label">>], I18N),
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"id">>, kzd_app:id(AppJObj)}
-        ,{<<"name">>, kzd_app:name(AppJObj)}
-        ,{<<"api_url">>, kzd_app:api_url(AppJObj)}
-        ,{<<"source_url">>, kzd_app:source_url(AppJObj)}
-        ,{<<"label">>, kz_json:get_value([Lang, <<"label">>], I18N, DefaultLabel)}
-        ]
-       )
-     ).
+      [{<<"id">>, kzd_app:id(AppJObj)}
+      ,{<<"name">>, kzd_app:name(AppJObj)}
+      ,{<<"api_url">>, kzd_app:api_url(AppJObj)}
+      ,{<<"source_url">>, kzd_app:source_url(AppJObj)}
+      ,{<<"label">>, kz_json:get_value([Lang, <<"label">>], I18N, DefaultLabel)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public

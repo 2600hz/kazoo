@@ -111,10 +111,10 @@ maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
 -spec log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), ne_binary()) -> 'ok'.
 log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
-    Doc = props:filter_undefined(
+    Doc = kz_json:from_list(
             [{<<"rendered_templates">>, kz_json:from_list(RenderedTemplates)}
             ,{<<"subject">>, Subject}
-            ,{<<"emails">>, kz_json:from_list(props:filter_undefined(Emails))}
+            ,{<<"emails">>, kz_json:from_list(Emails)}
             ,{<<"receipt">>, Receipt}
             ,{<<"error">>, Error}
             ,{<<"pvt_type">>, <<"notify_smtp_log">>}
@@ -127,7 +127,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
             ,{<<"_id">>, make_smtplog_id(AccountDb)}
             ]),
     lager:debug("attempting to save notify smtp log"),
-    _ = kazoo_modb:save_doc(AccountDb, kz_json:from_list(Doc)),
+    _ = kazoo_modb:save_doc(AccountDb, Doc),
     'ok'.
 
 -spec make_smtplog_id(ne_binary()) -> ne_binary().

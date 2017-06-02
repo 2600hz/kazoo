@@ -1092,16 +1092,14 @@ gateway_is_emergency(JObj, IsEmergency) ->
 -spec endpoint_options(kz_json:object(), api_binary()) -> kz_json:object().
 endpoint_options(JObj, <<"freetdm">>) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Span">>, kz_json:get_value(<<"span">>, JObj)}
-        ,{<<"Channel-Selection">>, kz_json:get_value(<<"channel_selection">>, JObj, <<"ascending">>)}
-        ]));
+      [{<<"Span">>, kz_json:get_value(<<"span">>, JObj)}
+      ,{<<"Channel-Selection">>, kz_json:get_value(<<"channel_selection">>, JObj, <<"ascending">>)}
+      ]);
 endpoint_options(JObj, <<"skype">>) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Skype-Interface">>, kz_json:get_value(<<"interface">>, JObj)}
-        ,{<<"Skype-RR">>, kz_json:is_true(<<"skype_rr">>, JObj, true)}
-        ]));
+      [{<<"Skype-Interface">>, kz_json:get_value(<<"interface">>, JObj)}
+      ,{<<"Skype-RR">>, kz_json:is_true(<<"skype_rr">>, JObj, true)}
+      ]);
 endpoint_options(JObj, <<"amqp">>) ->
     Server = kz_json:get_value(<<"server">>, JObj),
     User = kz_json:get_value(<<"username">>, JObj),
@@ -1109,24 +1107,20 @@ endpoint_options(JObj, <<"amqp">>) ->
     Broker = <<"amqp://", User/binary, ":", Password/binary, "@", Server/binary>>,
 
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"AMQP-Broker">>, Broker}
-        ,{<<"Exchange-ID">>, kz_json:get_value(<<"amqp_exchange">>, JObj)}
-        ,{<<"Exchange-Type">>, kz_json:get_value(<<"amqp_exchange_type">>, JObj)}
-        ,{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}
-        ,{<<"System-ID">>, kz_json:get_value(<<"system_id">>, JObj)}
-        ,{<<"Broker-Name">>, kz_json:get_value(<<"broker_name">>, JObj, kz_binary:rand_hex(6))}
-        ,{<<"Exchange-Options">>, kz_json:get_value(<<"amqp_exchange_options">>, JObj, ?DEFAULT_AMQP_EXCHANGE_OPTIONS)}
-        ]
-       )
-     );
+      [{<<"AMQP-Broker">>, Broker}
+      ,{<<"Exchange-ID">>, kz_json:get_value(<<"amqp_exchange">>, JObj)}
+      ,{<<"Exchange-Type">>, kz_json:get_value(<<"amqp_exchange_type">>, JObj)}
+      ,{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}
+      ,{<<"System-ID">>, kz_json:get_value(<<"system_id">>, JObj)}
+      ,{<<"Broker-Name">>, kz_json:get_value(<<"broker_name">>, JObj, kz_binary:rand_hex(6))}
+      ,{<<"Exchange-Options">>, kz_json:get_value(<<"amqp_exchange_options">>, JObj, ?DEFAULT_AMQP_EXCHANGE_OPTIONS)}
+      ]);
 endpoint_options(JObj, <<"sip">>) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}]
-       )
-     );
-endpoint_options(_, _) -> kz_json:new().
+      [{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}
+      ]);
+endpoint_options(_, _) ->
+    kz_json:new().
 
 %%--------------------------------------------------------------------
 %% @private

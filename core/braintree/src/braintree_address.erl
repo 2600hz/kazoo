@@ -200,24 +200,24 @@ json_to_record(JObj) ->
 -spec record_to_json(bt_address() | 'undefined') -> api_object().
 record_to_json('undefined') -> 'undefined';
 record_to_json(#bt_address{}=Address) ->
-    Props = [{<<"id">>, Address#bt_address.id}
-            ,{<<"customer_id">>, Address#bt_address.customer_id}
-            ,{<<"first_name">>, Address#bt_address.first_name}
-            ,{<<"last_name">>, Address#bt_address.last_name}
-            ,{<<"company">>, Address#bt_address.company}
-            ,{<<"street_address">>, Address#bt_address.street_address}
-            ,{<<"extended_address">>, Address#bt_address.extended_address}
-            ,{<<"locality">>, Address#bt_address.locality}
-            ,{<<"region">>, Address#bt_address.region}
-            ,{<<"postal_code">>, Address#bt_address.postal_code}
-            ,{<<"country_code_two">>, Address#bt_address.country_code_two}
-            ,{<<"country_code_three">>, Address#bt_address.country_code_three}
-            ,{<<"country_code">>, Address#bt_address.country_code}
-            ,{<<"country_name">>, Address#bt_address.country_name}
-            ,{<<"created_at">>, Address#bt_address.created_at}
-            ,{<<"updated_at">>, Address#bt_address.updated_at}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"id">>, Address#bt_address.id}
+      ,{<<"customer_id">>, Address#bt_address.customer_id}
+      ,{<<"first_name">>, Address#bt_address.first_name}
+      ,{<<"last_name">>, Address#bt_address.last_name}
+      ,{<<"company">>, Address#bt_address.company}
+      ,{<<"street_address">>, Address#bt_address.street_address}
+      ,{<<"extended_address">>, Address#bt_address.extended_address}
+      ,{<<"locality">>, Address#bt_address.locality}
+      ,{<<"region">>, Address#bt_address.region}
+      ,{<<"postal_code">>, Address#bt_address.postal_code}
+      ,{<<"country_code_two">>, Address#bt_address.country_code_two}
+      ,{<<"country_code_three">>, Address#bt_address.country_code_three}
+      ,{<<"country_code">>, Address#bt_address.country_code}
+      ,{<<"country_name">>, Address#bt_address.country_name}
+      ,{<<"created_at">>, Address#bt_address.created_at}
+      ,{<<"updated_at">>, Address#bt_address.updated_at}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public

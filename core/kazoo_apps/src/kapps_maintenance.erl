@@ -742,18 +742,16 @@ migrate_limits(Account) ->
                 end,
     {TT, IT} = clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks),
     JObj = kz_json:from_list(
-             props:filter_undefined(
-               [{<<"_id">>, <<"limits">>}
-               ,{<<"twoway_trunks">>, TT}
-               ,{<<"inbound_trunks">>, IT}
-               ,{<<"pvt_account_db">>, AccountDb}
-               ,{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
-               ,{<<"pvt_type">>, <<"limits">>}
-               ,{<<"pvt_created">>, TStamp}
-               ,{<<"pvt_modified">>, TStamp}
-               ,{<<"pvt_vsn">>, 1}
-               ]
-              )),
+             [{<<"_id">>, <<"limits">>}
+             ,{<<"twoway_trunks">>, TT}
+             ,{<<"inbound_trunks">>, IT}
+             ,{<<"pvt_account_db">>, AccountDb}
+             ,{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
+             ,{<<"pvt_type">>, <<"limits">>}
+             ,{<<"pvt_created">>, TStamp}
+             ,{<<"pvt_modified">>, TStamp}
+             ,{<<"pvt_vsn">>, 1}
+             ]),
     _ = kz_datamgr:save_doc(AccountDb, JObj),
     'ok'.
 

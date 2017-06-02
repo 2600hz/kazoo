@@ -309,17 +309,15 @@ settings_sip(JObj) ->
 settings_advanced(JObj) ->
     EncryptionMethods = kz_json:get_value([<<"media">>, <<"encryption">>, <<"methods">>], JObj, []),
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"expire">>, kz_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj)}
-         | [{M, 'true'} || M <- EncryptionMethods]
-        ])).
+      [{<<"expire">>, kz_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj)}
+       | [{M, 'true'} || M <- EncryptionMethods]
+      ]).
 
 -spec settings_datetime(kz_json:object()) -> kz_json:object().
 settings_datetime(JObj) ->
     kz_json:from_list(
-      props:filter_empty(
-        [{<<"time">>, settings_time(JObj)}
-        ])).
+      [{<<"time">>, settings_time(JObj)}
+      ]).
 
 -spec settings_feature_keys(kz_json:object()) -> kz_json:object().
 settings_feature_keys(JObj) ->
@@ -358,50 +356,45 @@ get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
         'undefined' -> 'undefined';
         Presence ->
             kz_json:from_list(
-              props:filter_undefined(
-                [{<<"label">>, Presence}
-                ,{<<"value">>, Presence}
-                ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
-                ,{<<"account">>, get_line_key(Brand, Family)}
-                ]))
+              [{<<"label">>, Presence}
+              ,{<<"value">>, Presence}
+              ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+              ,{<<"account">>, get_line_key(Brand, Family)}
+              ])
     end;
 get_feature_key(<<"speed_dial">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"label">>, Value}
-        ,{<<"value">>, Value}
-        ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
-        ,{<<"account">>, get_line_key(Brand, Family)}
-        ]));
+      [{<<"label">>, Value}
+      ,{<<"value">>, Value}
+      ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+      ,{<<"account">>, get_line_key(Brand, Family)}
+      ]);
 get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
             kz_json:from_list(
-              props:filter_undefined(
-                [{<<"label">>, <<>>}
-                ,{<<"value">>, <<"*3", Presence/binary>>}
-                ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
-                ,{<<"account">>, get_line_key(Brand, Family)}
-                ]))
+              [{<<"label">>, <<>>}
+              ,{<<"value">>, <<"*3", Presence/binary>>}
+              ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+              ,{<<"account">>, get_line_key(Brand, Family)}
+              ])
     end;
 get_feature_key(<<"parking">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"label">>, <<>>}
-        ,{<<"value">>, <<"*3", Value/binary>>}
-        ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
-        ,{<<"account">>, get_line_key(Brand, Family)}
-        ]));
+      [{<<"label">>, <<>>}
+      ,{<<"value">>, <<"*3", Value/binary>>}
+      ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+      ,{<<"account">>, get_line_key(Brand, Family)}
+      ]);
 get_feature_key(<<"line">>=Type, _Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"label">>, <<>>}
-        ,{<<"value">>, <<>>}
-        ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
-        ,{<<"account">>, get_line_key(Brand, Family)}
-        ])).
+      [{<<"label">>, <<>>}
+      ,{<<"value">>, <<>>}
+      ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+      ,{<<"account">>, get_line_key(Brand, Family)}
+      ]).
 
 -spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
 get_line_key(<<"yealink">>, _) -> <<"0">>;
@@ -432,9 +425,8 @@ maybe_add_feature_key(Key, FeatureKey, JObj) ->
 -spec settings_time(kz_json:object()) -> kz_json:object().
 settings_time(JObj) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"timezone">>, kz_json:get_value(<<"timezone">>, JObj)}
-        ])).
+      [{<<"timezone">>, kz_json:get_value(<<"timezone">>, JObj)}
+      ]).
 
 -spec settings_codecs(kz_json:object()) -> kz_json:object().
 settings_codecs(JObj) ->

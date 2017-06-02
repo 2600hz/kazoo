@@ -270,12 +270,11 @@ guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
             halt(1)
     end,
     kz_json:from_list(
-      props:filter_undefined(
-        [{?SOURCE, SourceModule}
-        ,{<<"description">>, Description}
-        ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
-         | type(Type)
-        ]));
+      [{?SOURCE, SourceModule}
+      ,{<<"description">>, Description}
+      ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
+       | type(Type)
+      ]);
 
 guess_properties(Document, Source, [Key], Type, Default)
   when is_binary(Key) ->

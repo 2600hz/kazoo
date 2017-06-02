@@ -395,21 +395,21 @@ maybe_add_credit_card(JObj) ->
 %%--------------------------------------------------------------------
 -spec record_to_json(customer()) -> kz_json:object().
 record_to_json(Customer) ->
-    Props = [{<<"id">>, Customer#bt_customer.id}
-            ,{<<"first_name">>, Customer#bt_customer.first_name}
-            ,{<<"last_name">>, Customer#bt_customer.last_name}
-            ,{<<"company">>, Customer#bt_customer.company}
-            ,{<<"email">>, Customer#bt_customer.email}
-            ,{<<"phone">>, Customer#bt_customer.phone}
-            ,{<<"fax">>, Customer#bt_customer.fax}
-            ,{<<"website">>, Customer#bt_customer.website}
-            ,{<<"created_at">>, Customer#bt_customer.created_at}
-            ,{<<"updated_at">>, Customer#bt_customer.updated_at}
-            ,{<<"credit_cards">>, [braintree_card:record_to_json(Card)
-                                   || Card <- Customer#bt_customer.credit_cards
-                                  ]}
-            ,{<<"addresses">>, [braintree_address:record_to_json(Address)
-                                || Address <- Customer#bt_customer.addresses
-                               ]}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"id">>, Customer#bt_customer.id}
+      ,{<<"first_name">>, Customer#bt_customer.first_name}
+      ,{<<"last_name">>, Customer#bt_customer.last_name}
+      ,{<<"company">>, Customer#bt_customer.company}
+      ,{<<"email">>, Customer#bt_customer.email}
+      ,{<<"phone">>, Customer#bt_customer.phone}
+      ,{<<"fax">>, Customer#bt_customer.fax}
+      ,{<<"website">>, Customer#bt_customer.website}
+      ,{<<"created_at">>, Customer#bt_customer.created_at}
+      ,{<<"updated_at">>, Customer#bt_customer.updated_at}
+      ,{<<"credit_cards">>, [braintree_card:record_to_json(Card)
+                             || Card <- Customer#bt_customer.credit_cards
+                            ]}
+      ,{<<"addresses">>, [braintree_address:record_to_json(Address)
+                          || Address <- Customer#bt_customer.addresses
+                         ]}
+      ]).

@@ -48,7 +48,7 @@ format_call_data(Call) ->
     kz_json:recursive_to_proplist(kz_json:normalize_jobj(JObj, RemoveKeys, [])).
 
 -spec set_hook(kz_json:object(), kz_proplist()) -> kz_proplist().
-set_hook(Data, CallJObj) ->
+set_hook(Data, CallProps) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
     props:filter_undefined(
       [{<<"_id">>, kz_term:to_binary(Now)}
@@ -56,6 +56,6 @@ set_hook(Data, CallJObj) ->
       ,{<<"hook">>, <<"callflow">>}
       ,{<<"http_verb">>, kz_json:get_ne_binary_value(<<"http_verb">>, Data)}
       ,{<<"retries">>, kz_json:get_integer_value(<<"retries">>, Data)}
-      ,{<<"pvt_account_id">>, props:get_ne_binary_value(<<"account_id">>, CallJObj)}
+      ,{<<"pvt_account_id">>, props:get_ne_binary_value(<<"account_id">>, CallProps)}
       ,{<<"custom_data">>, kz_json:get_json_value(<<"custom_data">>, Data)}
       ]).

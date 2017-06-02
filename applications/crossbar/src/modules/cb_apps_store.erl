@@ -401,19 +401,18 @@ normalize_apps_result([App|Apps], Acc) ->
         'true' ->
             JObj =
                 kz_json:from_list(
-                  props:filter_undefined([{<<"id">>, kzd_app:id(App)}
-                                         ,{<<"name">>, kzd_app:name(App)}
-                                         ,{<<"i18n">>, kzd_app:i18n(App)}
-                                         ,{<<"tags">>, kzd_app:tags(App)}
-                                         ,{<<"api_url">>, kzd_app:api_url(App)}
-                                         ,{<<"source_url">>, kzd_app:source_url(App)}
-                                         ,{<<"account_id">>, kzd_app:account_id(App)}
-                                         ,{<<"users">>, kzd_app:users(App)}
-                                         ,{<<"allowed_users">>, kzd_app:allowed_users(App)}
-                                         ,{<<"masqueradable">>, kzd_app:masqueradable(App)}
-                                         ,{<<"phase">>, kzd_app:phase(App)}
-                                         ])
-                 ),
+                  [{<<"id">>, kzd_app:id(App)}
+                  ,{<<"name">>, kzd_app:name(App)}
+                  ,{<<"i18n">>, kzd_app:i18n(App)}
+                  ,{<<"tags">>, kzd_app:tags(App)}
+                  ,{<<"api_url">>, kzd_app:api_url(App)}
+                  ,{<<"source_url">>, kzd_app:source_url(App)}
+                  ,{<<"account_id">>, kzd_app:account_id(App)}
+                  ,{<<"users">>, kzd_app:users(App)}
+                  ,{<<"allowed_users">>, kzd_app:allowed_users(App)}
+                  ,{<<"masqueradable">>, kzd_app:masqueradable(App)}
+                  ,{<<"phase">>, kzd_app:phase(App)}
+                  ]),
             normalize_apps_result(Apps, [JObj|Acc])
     end.
 

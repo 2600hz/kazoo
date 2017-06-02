@@ -286,13 +286,10 @@ send_response(Request) ->
     OutboundFlags = maybe_get_outbound_flags(AuthType, AuthId, AccountDb),
 
     CCVs = kz_json:from_list(
-             props:filter_undefined(
-               [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
-               ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
-               ,{<<"Outbound-Flags">>, OutboundFlags}
-               ]
-              )
-            ),
+             [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
+             ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
+             ,{<<"Outbound-Flags">>, OutboundFlags}
+             ]),
 
     Resp = props:filter_undefined(
              [{<<"Is-Authorized">>, kz_term:to_binary(j5_request:is_authorized(Request))}

@@ -316,14 +316,13 @@ debug_resp({'ok', RespCode, RespHeaders, RespBody}, Debug, Retries) ->
                       _ -> Retries - 1
                   end,
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"resp_status_code">>, kz_term:to_binary(RespCode)}
-        ,{<<"resp_headers">>, Headers}
-        ,{<<"resp_body">>, RespBody}
-        ,{<<"try">>, Retries}
-        ,{<<"retries_left">>, RetriesLeft}
-         | Result ++ Debug
-        ]));
+      [{<<"resp_status_code">>, kz_term:to_binary(RespCode)}
+      ,{<<"resp_headers">>, Headers}
+      ,{<<"resp_body">>, RespBody}
+      ,{<<"try">>, Retries}
+      ,{<<"retries_left">>, RetriesLeft}
+       | Result ++ Debug
+      ]);
 debug_resp({'error', E}, Debug, Retries) ->
     Error = try fix_error_value(E) of
                 Bin -> Bin
