@@ -204,7 +204,7 @@ destroy(UUID, Node) ->
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
 
--spec updates(ne_binary(), kz_proplist()) -> 'ok'.
+-spec updates(ne_binary(), channel_updates()) -> 'ok'.
 updates(UUID, Updates) ->
     gen_server:call(?SERVER, {'channel_updates', UUID, Updates}).
 
@@ -434,6 +434,7 @@ handle_call(_, _, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'destroy_channel', UUID, Node}, State) ->
+    kz_util:put_callid(UUID),
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
                  ,[{'andalso', {'=:=', '$2', {'const', Node}}
                    ,{'=:=', '$1', UUID}}
