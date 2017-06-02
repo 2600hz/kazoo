@@ -434,6 +434,7 @@ handle_call(_, _, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'destroy_channel', UUID, Node}, State) ->
+    kz_util:put_callid(UUID),
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
                  ,[{'andalso', {'=:=', '$2', {'const', Node}}
                    ,{'=:=', '$1', UUID}}
