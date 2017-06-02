@@ -204,7 +204,7 @@ destroy(UUID, Node) ->
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
 
--spec updates(ne_binary(), kz_proplist()) -> 'ok'.
+-spec updates(ne_binary(), channel_updates()) -> 'ok'.
 updates(UUID, Updates) ->
     gen_server:call(?SERVER, {'channel_updates', UUID, Updates}).
 

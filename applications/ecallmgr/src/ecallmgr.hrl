@@ -103,6 +103,7 @@
 
 -type channel() :: #channel{}.
 -type channels() :: [channel()].
+-type channel_updates() :: [{pos_integer(), any()}].
 
 -record(conference, {name :: api_binary() | '$1' | '_'
                     ,uuid :: api_binary() | '$1' | '_'
