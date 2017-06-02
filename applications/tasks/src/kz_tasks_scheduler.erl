@@ -160,6 +160,7 @@ worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, CSVPath=?NE_BINA
     _ = gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}),
     _ = try_maybe_strip_columns(Columns, CSVPath),
     {'ok', CSV} = file:read_file(CSVPath),
+    lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
     Max = ?UPLOAD_ATTEMPTS,
     attempt_upload(TaskId, ?KZ_TASKS_ANAME_OUT, CSV, CSVPath, Max, Max).
 
@@ -176,6 +177,7 @@ maybe_strip_columns(Columns, CSVPath) ->
     true = ColumnsWritten > 0,
     {ok, Bin} = file:read_file(CSVPath),
     {FullHeader, CSV} = kz_csv:take_row(Bin),
+    lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
     true = ColumnsWritten < length(FullHeader),
     OutputPath = <<CSVPath/binary, "_reversed">>,
     Header = [Column || Column <- FullHeader,
