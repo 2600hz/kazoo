@@ -55,6 +55,8 @@
 
 -type output_header() :: kz_csv:header() | {replace, kz_csv:header()}.
 
+-type columns() :: sets:set(ne_binary()).
+
 -type help_error() :: {'error', 'unknown_category_action'}.
 
 -type return() :: 'ok' | api_ne_binary() |
@@ -72,6 +74,7 @@
 -export_type([id/0
              ,input/0
              ,output_header/0
+             ,columns/0
              ,help_error/0
              ,return/0
              ,iterator/0
