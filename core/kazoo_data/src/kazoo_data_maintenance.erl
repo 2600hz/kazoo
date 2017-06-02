@@ -25,12 +25,12 @@
 -spec flush() -> 'ok'.
 flush() ->
     _ = kz_datamgr:flush_cache_docs(),
-    _ = kz_cache:flush_local(?KAZOO_DATA_PLAN_CACHE),
+    _ = kzs_plan:flush(),
     io:format("flushed all data manager caches~n").
 
 -spec flush_data_plans() -> 'ok'.
 flush_data_plans() ->
-    _ = kz_cache:flush_local(?KAZOO_DATA_PLAN_CACHE),
+    _ = kzs_plan:flush(),
     io:format("flushed all data plans~n").
 
 -spec flush_docs() -> 'ok'.
