@@ -10,28 +10,41 @@
 
 -include("kz_data.hrl").
 
--export([flush/0
-        ,flush/1
-        ,flush/2
-
-        ,trace_module/1
+-export([flush/0]).
+-export([flush_data_plans/0]).
+-export([flush_docs/0
+        ,flush_docs/1
+        ,flush_docs/2
+        ]).
+-export([trace_module/1
         ,trace_function/1, trace_function/2
         ,trace_pid/1
         ,stop_trace/1
         ]).
 
 -spec flush() -> 'ok'.
--spec flush(ne_binary()) -> 'ok'.
--spec flush(ne_binary(), ne_binary()) -> 'ok'.
 flush() ->
+    _ = kz_datamgr:flush_cache_docs(),
+    _ = kzs_plan:flush(),
+    io:format("flushed all data manager caches~n").
+
+-spec flush_data_plans() -> 'ok'.
+flush_data_plans() ->
+    _ = kzs_plan:flush(),
+    io:format("flushed all data plans~n").
+
+-spec flush_docs() -> 'ok'.
+-spec flush_docs(ne_binary()) -> 'ok'.
+-spec flush_docs(ne_binary(), ne_binary()) -> 'ok'.
+flush_docs() ->
     _ = kz_datamgr:flush_cache_docs(),
     io:format("flushed all cached docs~n").
 
-flush(Account) ->
+flush_docs(Account) ->
     _ = kz_datamgr:flush_cache_docs(kz_util:format_account_db(Account)),
     io:format("flushed all docs cached for account ~s~n", [Account]).
 
-flush(Account, DocId) ->
+flush_docs(Account, DocId) ->
     _ = kz_datamgr:flush_cache_doc(kz_util:format_account_db(Account), DocId),
     io:format("flushed cached doc ~s for account ~s~n", [DocId, Account]).
 
