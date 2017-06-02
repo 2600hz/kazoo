@@ -836,7 +836,10 @@ wait_for_parker(Timeout, Call, Start, {'ok', JObj}) ->
             lager:info("bridge channel destroy completed with result ~s(~s)", [Disposition, Result]),
             {Result, JObj};
         {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
-            lager:debug("channel intercepted : ~p", [JObj]),
+            lager:debug("ringback channel intercepted"),
+            {'ok', JObj};
+        {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
+            lager:debug("ringback channel bridged"),
             {'ok', JObj};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
             lager:info("bridge execute completed with result ~s(~s)", [Disposition, Result]),
