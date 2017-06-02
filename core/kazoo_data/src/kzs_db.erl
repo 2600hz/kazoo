@@ -114,18 +114,22 @@ db_info(#{server := {App, Conn}}) -> App:db_info(Conn).
 db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
 
 -spec db_exists(map(), ne_binary()) -> boolean().
-db_exists(#{server := {App, Conn}}, DbName) ->
+db_exists(#{server := {App, Conn}}=Server, DbName) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}) of
         {'ok', Exists} -> Exists;
         _ ->
             case App:db_exists(Conn, DbName) of
                 {'error', 'resource_not_available'} -> 'true';
-                Exists ->
-                    Props = [{'origin', {'db', DbName}}],
-                    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}, Exists, Props),
-                    Exists
+                Exists -> maybe_cache_db_exists(Exists, Server, DbName)
             end
     end.
+
+-spec maybe_cache_db_exists(boolean(), map(), ne_binary()) -> boolean().
+maybe_cache_db_exists('false', _, _) -> 'false';
+maybe_cache_db_exists('true', #{server := {App, Conn}}, DbName) ->
+    Props = [{'origin', {'db', DbName}}],
+    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}, 'true', Props),
+    'true'.
 
 -spec db_exists_all(map(), ne_binary()) -> boolean().
 db_exists_all(Map, DbName) ->
