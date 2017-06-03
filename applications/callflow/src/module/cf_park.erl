@@ -364,42 +364,6 @@ do_save_slot(SlotNumber, Slot, Call) ->
             {'error', 'occupied'}
     end.
 
-%% -spec maybe_resolve_conflict(ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
-%%                                     {'ok', kz_json:object()} |
-%%                                     {'error', atom()}.
-%% maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
-%%     AccountDb = kapps_call:account_db(Call),
-%%     ExpectedParkedCall = kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
-%%     {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME),
-%%     case kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj1) of
-%%         ExpectedParkedCall ->
-%%             UpdatedJObj = kz_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1),
-%%             case kz_datamgr:save_doc(AccountDb, UpdatedJObj) of
-%%                 {'error', 'conflict'} ->
-%%                     maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call);
-%%                 {'ok', JObj2}=Ok ->
-%%                     lager:info("conflict when attempting to store call parking data for slot ~s due to a different slot update", [SlotNumber]),
-%%                     CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-%%                     kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
-%%                     Ok;
-%%                 {'error', _Error} ->
-%%                     lager:info("error when attempting to store call parking data for slot ~s due to a different slot update : ~p", [SlotNumber, _Error]),
-%%                     {'error', 'occupied'}
-%%             end;
-%%         CurrentParkedCall ->
-%%             lager:debug("attempt to store parking data conflicted with a recent update to slot ~s", [SlotNumber]),
-%%             CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-%%             kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj1, CacheProps),
-%%             case kapps_call_command:b_channel_status(CurrentParkedCall) of
-%%                 {'ok', _} ->
-%%                     lager:debug("slot ~s is now occupied by ~s", [SlotNumber, CurrentParkedCall]),
-%%                     {'error', 'occupied'};
-%%                 _Else ->
-%%                     lager:info("slot ~s was updated to inactive call ~s", [SlotNumber, CurrentParkedCall]),
-%%                     save_slot(SlotNumber, Slot, JObj1, Call)
-%%             end
-%%     end.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
