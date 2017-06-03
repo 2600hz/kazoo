@@ -1268,9 +1268,9 @@ get_single_result(DbName, DesignDoc, Options) ->
     end.
 
 -spec get_result_doc(ne_binary(), ne_binary(), ne_binary()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', 'multiple_results'} |
-                               data_error().
+                            {'ok', kz_json:object()} |
+                            {'error', 'multiple_results'} |
+                            data_error().
 get_result_doc(DbName, DesignDoc, Key) ->
     Options = ['include_docs'
               ,{'key', Key}
@@ -1283,8 +1283,8 @@ get_result_doc(DbName, DesignDoc, Key) ->
     end.
 
 -spec get_result_docs(ne_binary(), ne_binary(), ne_binaries()) ->
-                               {'ok', kz_json:object()} |
-                               data_error().
+                             {'ok', kz_json:object()} |
+                             data_error().
 get_result_docs(DbName, DesignDoc, Keys) ->
     Options = ['include_docs'
               ,{'keys', Keys}

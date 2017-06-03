@@ -847,7 +847,7 @@ slot_doc(SlotNumber, Slot, Call) ->
     AccountDb = kapps_call:account_db(Call),
     Doc = case kz_json:get_json_value(<<"pvt_fields">>, Slot) of
               'undefined' -> kz_json:set_value(<<"slot">>, Slot, kz_json:new());
-              Pvt -> kz_json:set_value(<<"slot">>, kz_json:public_fields(Slot), Pvt)
+              Pvt -> kz_json:set_value(<<"slot">>, kz_doc:public_fields(Slot), Pvt)
           end,
     Options = [{'type', ?PARKED_CALL_DOC_TYPE}
               ,{'account_id', kapps_call:account_id(Call)}
