@@ -50,6 +50,9 @@
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
 
+-define(REQ_COMMENT, <<"comment">>).
+-define(REQ_COMMENT_IS_PRIVATE, <<"is_private">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -895,11 +898,11 @@ can_update_port_request(Context, _) ->
 %%--------------------------------------------------------------------
 -spec successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
 successful_validation(Context, 'undefined') ->
-    Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
-    Unconf = [{<<"pvt_type">>, <<"port_request">>}
-             ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
-             ],
-    cb_context:set_doc(Context, kz_json:set_values(Unconf, Normalized));
+    PortReq = knm_port_request:new(cb_context:doc(Context)
+                                  ,cb_context:auth_account_id(Context)
+                                  ,cb_context:auth_user_id(Context)
+                                  ),
+    cb_context:set_doc(Context, PortReq);
 successful_validation(Context, _Id) ->
     Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
     cb_context:set_doc(Context, Normalized).
@@ -1006,34 +1009,36 @@ load_attachment(Id, AttachmentId, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment(ne_binary(), cb_context:context()) ->
-                             cb_context:context().
+-spec load_attachment(ne_binary(), cb_context:context()) -> cb_context:context().
 load_attachment(AttachmentId, Context) ->
+    Context1 = crossbar_doc:load_attachment(cb_context:doc(Context)
+                                           ,AttachmentId
+                                           ,?TYPE_CHECK_OPTION(<<"port_request">>)
+                                           ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                           ),
     Headers =
         [{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
         ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
         ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
         ],
-    cb_context:add_resp_headers(
-      crossbar_doc:load_attachment(cb_context:doc(Context)
-                                  ,AttachmentId
-                                  ,?TYPE_CHECK_OPTION(<<"port_request">>)
-                                  ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                                  )
-                               ,Headers
-     ).
+    cb_context:add_resp_headers(Context1, Headers).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) ->
-                              cb_context:context().
+-spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_move_state(Context, Id, PortState) ->
+    IsCommentPrivate = kz_term:is_true(cb_context:req_value(Context, ?REQ_COMMENT_IS_PRIVATE)),
+    Metadata = knm_port_request:transition_metadata(cb_context:auth_account_id(Context)
+                                                   ,cb_context:auth_user_id(Context)
+                                                   ,cb_context:req_value(Context, ?REQ_COMMENT)
+                                                   ,IsCommentPrivate
+                                                   ),
     Context1 = load_port_request(Context, Id),
     try cb_context:resp_status(Context1) =:= 'success'
-             andalso knm_port_request:maybe_transition(cb_context:doc(Context1), PortState)
+             andalso knm_port_request:maybe_transition(cb_context:doc(Context1), Metadata, PortState)
     of
         'false' -> Context1;
         {'ok', PortRequest} ->
