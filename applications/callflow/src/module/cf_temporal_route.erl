@@ -470,13 +470,14 @@ next_rule_date(#rule{cycle = <<"daily">>
 next_rule_date(#rule{cycle = <<"weekly">>
                     ,interval=I0
                     ,wdays=Weekdays
-                    ,start_date={Y0, M0, D0}=_StartDate
+                    ,start_date={Y0, M0, D0}=StartDate
                     }
               ,{Y1, M1, D1}=_PrevDate
               ) ->
     DOW0 = calendar:day_of_the_week({Y1, M1, D1}),
     Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
     Offset = trunc( Distance / I0 ) * I0,
+    Weekday = calendar:day_of_the_week(StartDate),
 
     case find_active_days(Weekdays, DOW0) of
         %% During an 'active' week but before the last weekday in the list
@@ -484,6 +485,18 @@ next_rule_date(#rule{cycle = <<"weekly">>
         [Day|_] when Distance =:= Offset ->
             lager:debug("next day in rule is ~w", [Day]),
             normalize_date({Y1, M1, D1 + Day - DOW0});
+
+        %% This case handles a situation where the changeover of weeks could potentially
+        %% impact the calculation.  If there is 1 week difference between the start and previous
+        %% date, and the dow is a monday (when this edge case occurs) and also the actual
+        %% difference of the number of days between the two is less than 7, we can be sure that
+        %% we have the specific case where prevday is actually the sunday before a monday start day.
+        _Val when Weekday =:= 1
+                  andalso abs(D0 - D1) < 7
+                  andalso Distance =:= 1 ->
+
+            StartDate;
+
         %% Empty list:
         %%   The last DOW during an 'active' week,
         %% Non Empty List that failed the guard:
