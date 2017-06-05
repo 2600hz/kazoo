@@ -761,17 +761,14 @@ normalize_summary_results(Context) ->
                      dict:append_list(AccountId, [NewJObj], D)
              end, dict:new(), cb_context:resp_data(Context)),
     Names = get_account_names(dict:fetch_keys(Dict)),
-    cb_context:set_resp_data(
-      Context,
-      [kz_json:from_list(
-         [{<<"account_id">>, AccountId}
-         ,{<<"account_name">>, props:get_value(AccountId, Names, <<"unknown">>)}
-         ,{<<"port_requests">>, JObjs}
-         ]
-        )
-       || {AccountId, JObjs} <- dict:to_list(Dict)
-      ]
-     ).
+    JObj = [kz_json:from_list(
+              [{<<"account_id">>, AccountId}
+              ,{<<"account_name">>, props:get_value(AccountId, Names, <<"unknown">>)}
+              ,{<<"port_requests">>, JObjs}
+              ])
+            || {AccountId, JObjs} <- dict:to_list(Dict)
+           ],
+    cb_context:set_resp_data(Context, JObj).
 
 -spec get_account_names(ne_binaries()) -> kz_proplist().
 get_account_names(Keys) ->
@@ -809,16 +806,15 @@ normalize_view_results(Res, Acc) ->
 -spec leak_pvt_fields(kz_json:object(), kz_json:object()) -> kz_json:object().
 leak_pvt_fields(Res, JObj) ->
     Fields = [{[<<"doc">>, <<"pvt_account_id">>], <<"account_id">>}],
-    lists:foldl(
-      fun({Field, Key}, J) ->
-              case kz_json:get_ne_value(Field, Res) of
-                  'undefined' -> J;
-                  Value -> kz_json:set_value(Key, Value, J)
-              end
-      end
+    lists:foldl(fun({Field, Key}, J) ->
+                        case kz_json:get_ne_value(Field, Res) of
+                            'undefined' -> J;
+                            Value -> kz_json:set_value(Key, Value, J)
+                        end
+                end
                ,JObj
                ,Fields
-     ).
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -844,7 +840,8 @@ on_successful_validation(Context, 'undefined') ->
 on_successful_validation(Context, Id) ->
     Context1 = crossbar_doc:load_merge(Id
                                       ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                                      ,?TYPE_CHECK_OPTION(<<"port_request">>)),
+                                      ,?TYPE_CHECK_OPTION(<<"port_request">>)
+                                      ),
     on_successful_validation(Context1, Id, can_update_port_request(Context1)).
 
 on_successful_validation(Context, Id, 'true') ->
@@ -866,8 +863,7 @@ on_successful_validation(Context, Id, 'true') ->
     end;
 on_successful_validation(Context, _Id, 'false') ->
     PortState = kz_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
-    lager:debug("port state ~s is not valid for updating a port request"
-               ,[PortState]),
+    lager:debug("port state ~s is not valid for updating a port request", [PortState]),
     Msg = kz_json:from_list(
             [{<<"message">>, <<"Updating port requests not allowed in current port state">>}
             ,{<<"cause">>, PortState}

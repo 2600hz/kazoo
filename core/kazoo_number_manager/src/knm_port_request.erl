@@ -351,7 +351,7 @@ completed_port(PortReq) ->
 -spec transition_numbers(kz_json:object()) -> transition_response().
 transition_numbers(PortReq) ->
     PortReqId = kz_doc:id(PortReq),
-    AccountId = kz_json:get_value(?PVT_ACCOUNT_ID, PortReq),
+    AccountId = kz_json:get_value(?PORT_PVT_ACCOUNT_ID, PortReq),
     Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
               ,{assign_to, AccountId}
               ,{dry_run, false}
@@ -451,19 +451,19 @@ send_request(JObj, Url) ->
               ,{"User-Agent", kz_term:to_list(node())}
               ],
     Uri = kz_term:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
-    Remove = [?PVT_REV
+    Remove = [?PORT_PVT_REV
              ,<<"ui_metadata">>
              ,<<"_attachments">>
              ,<<"pvt_request_id">>
-             ,?PVT_TYPE
-             ,?PVT_VSN
-             ,?PVT_ACCOUNT_DB
+             ,?PORT_PVT_TYPE
+             ,?PORT_PVT_VSN
+             ,?PORT_PVT_ACCOUNT_DB
              ],
-    Replace = [{?PVT_ID, <<"id">>}
+    Replace = [{?PORT_PVT_ID, <<"id">>}
               ,{?PORT_PVT_STATE, <<"port_state">>}
-              ,{?PVT_ACCOUNT_ID, <<"account_id">>}
-              ,{?PVT_CREATED, <<"created">>}
-              ,{?PVT_MODIFIED, <<"modified">>}
+              ,{?PORT_PVT_ACCOUNT_ID, <<"account_id">>}
+              ,{?PORT_PVT_CREATED, <<"created">>}
+              ,{?PORT_PVT_MODIFIED, <<"modified">>}
               ],
     Data = kz_json:encode(kz_json:normalize_jobj(JObj, Remove, Replace)),
     case kz_http:post(Uri, Headers, Data) of
@@ -535,7 +535,7 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
 %%--------------------------------------------------------------------
 -spec set_flag(kz_json:object()) -> 'ok'.
 set_flag(JObj) ->
-    Doc = kz_json:set_value(?PVT_SENT, 'true', JObj),
+    Doc = kz_json:set_value(?PORT_PVT_SENT, 'true', JObj),
     case save_doc(Doc) of
         {'ok', _} -> lager:debug("flag for submitted_port_request successfully set");
         {'error', _R} ->
@@ -578,7 +578,7 @@ prepare_docs_for_migrate(Docs) ->
 
 -spec migrate_doc(kz_json:object()) -> api_object().
 migrate_doc(PortRequest) ->
-    case kz_json:get_value(?PVT_TREE, PortRequest) of
+    case kz_json:get_value(?PORT_PVT_TREE, PortRequest) of
         'undefined' -> update_doc(PortRequest);
         _Tree -> 'undefined'
     end.
@@ -593,7 +593,7 @@ update_doc(_Doc, 'undefined') ->
     'undefined';
 update_doc(PortRequest, AccountId) ->
     {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    kz_json:set_value(?PVT_TREE, kz_account:tree(AccountDoc), PortRequest).
+    kz_json:set_value(?PORT_PVT_TREE, kz_account:tree(AccountDoc), PortRequest).
 
 -spec fetch_docs(binary(), pos_integer()) -> {'ok', kz_json:objects()}.
 fetch_docs(StartKey, Limit) ->
