@@ -461,8 +461,8 @@ next_rule_date(#rule{cycle = <<"weekly">>
         %% difference of the number of days between the two is less than 7, we can be sure that
         %% we have the specific case where prevday is actually the sunday before a monday start day.
         _Val when Weekday =:= 1
-            andalso abs(D0 - D1) < 7
-            andalso Distance =:= 1 ->
+                  andalso abs(D0 - D1) < 7
+                  andalso Distance =:= 1 ->
 
             StartDate;
 
