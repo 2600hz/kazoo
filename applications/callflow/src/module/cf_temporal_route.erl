@@ -18,9 +18,7 @@
 -include("callflow.hrl").
 -include("cf_temporal_route.hrl").
 
--export([handle/2
-        ,normalize_date/1
-        ]).
+-export([handle/2]).
 
 -ifdef(TEST).
 -export([next_rule_date/2
@@ -110,9 +108,10 @@ process_rules(#temporal{local_sec=LSec
               ]
              ,Call) ->
     lager:info("processing temporal rule ~s (~s) part of rule set? ~p", [Id, Name, RuleSet]),
-    PrevDay = normalize_date({Y, M, D - 1}),
+    PrevDay = kz_date:normalize({Y, M, D - 1}),
     BaseDate = next_rule_date(Rule, PrevDay),
     BaseTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
+
     case {BaseTime + TStart, BaseTime + TStop} of
         {Start, _} when LSec < Start ->
             lager:info("rule applies in the future ~w", [calendar:gregorian_seconds_to_datetime(Start)]),
@@ -187,14 +186,14 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
                         ,month =
                              kz_json:get_integer_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
                         ,start_date =
-                             get_date(kz_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ)
+                             kz_date:from_gregorian_seconds(kz_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ)
                         ,wtime_start =
                              kz_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
                         ,wtime_stop =
                              kz_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
                         ,rule_set = RuleSet
                         },
-            case date_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
+            case kz_date:relative_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
                 'future' ->
                     lager:warning("rule ~p is in the future discarding", [Rule#rule.name]),
                     get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
@@ -203,20 +202,6 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
                 'equal' ->
                     get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, [Rule | Rules])
             end
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec date_difference(kz_datetime(), kz_datetime()) -> 'future' | 'equal' | 'past'.
-date_difference(Date1, Date2) ->
-    case calendar:time_difference(Date1, Date2) of
-        {D, _} when D > 0 -> 'future';
-        {D, _} when D < 0 -> 'past';
-        {0, {0, 0, 0}} -> 'equal';
-        {0, _} -> 'future'
     end.
 
 %%--------------------------------------------------------------------
@@ -265,20 +250,6 @@ get_rule_set(RuleSetId, Call) ->
             [];
         {'ok', JObj} -> kz_json:get_list_value(<<"temporal_rules">>, JObj, [])
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Accepts a term and tries to convert it to a kz_date()
-%% @end
-%%--------------------------------------------------------------------
--spec get_date(non_neg_integer(), ne_binary()) -> kz_date().
-get_date(Seconds, TZ) when is_integer(Seconds) ->
-    {Date, _} = localtime:utc_to_local(
-                  calendar:gregorian_seconds_to_datetime(Seconds)
-                                      ,kz_term:to_list(TZ)
-                 ),
-    Date.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -465,32 +436,44 @@ next_rule_date(#rule{cycle = <<"daily">>
     DS0 = calendar:date_to_gregorian_days({Y0, M0, D0}),
     DS1 = calendar:date_to_gregorian_days({Y1, M1, D1}),
     Offset = trunc( ( DS1 - DS0 ) / I0 ) * I0,
-    normalize_date({Y0, M0, D0 + Offset + I0});
+    kz_date:normalize({Y0, M0, D0 + Offset + I0});
 next_rule_date(#rule{cycle = <<"weekly">>
                     ,interval=I0
                     ,wdays=Weekdays
-                    ,start_date={Y0, M0, D0}=_StartDate
+                    ,start_date={Y0, M0, D0}=StartDate
                     }
               ,{Y1, M1, D1}=_PrevDate
               ) ->
     DOW0 = calendar:day_of_the_week({Y1, M1, D1}),
     Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
     Offset = trunc( Distance / I0 ) * I0,
-
+    Weekday = calendar:day_of_the_week(StartDate),
     case find_active_days(Weekdays, DOW0) of
         %% During an 'active' week but before the last weekday in the list
         %%   move to the next day this week
         [Day|_] when Distance =:= Offset ->
             lager:debug("next day in rule is ~w", [Day]),
-            normalize_date({Y1, M1, D1 + Day - DOW0});
+            kz_date:normalize({Y1, M1, D1 + Day - DOW0});
+
+        %% This case handles a situation where the changeover of weeks could potentially
+        %% impact the calculation.  If there is 1 week difference between the start and previous
+        %% date, and the dow is a monday (when this edge case occurs) and also the actual
+        %% difference of the number of days between the two is less than 7, we can be sure that
+        %% we have the specific case where prevday is actually the sunday before a monday start day.
+        _Val when Weekday =:= 1
+                  andalso abs(D0 - D1) < 7
+                  andalso Distance =:= 1 ->
+
+            StartDate;
+
         %% Empty list:
         %%   The last DOW during an 'active' week,
         %% Non Empty List that failed the guard:
         %%   During an 'inactive' week
-        _ ->
+        _Val ->
             {WY0, W0} = calendar:iso_week_number({Y0, M0, D0}),
-            {Y2, M2, D2} = iso_week_to_gregorian_date({WY0, W0 + Offset + I0}),
-            normalize_date({Y2, M2, ( D2 - 1 ) + to_dow( hd( Weekdays ) )})
+            {Y2, M2, D2} = kz_date:from_iso_week({WY0, W0 + Offset + I0}),
+            kz_date:normalize({Y2, M2, ( D2 - 1 ) + kz_date:wday_to_dow( hd( Weekdays ) )})
     end;
 
 next_rule_date(#rule{cycle = <<"monthly">>
@@ -503,13 +486,13 @@ next_rule_date(#rule{cycle = <<"monthly">>
     case [D || D <- Days, D > D1] of
         %% The day hasn't happend on an 'active' month
         [Day|_] when Distance =:= Offset ->
-            normalize_date({Y0, M0 + Offset, Day});
+            kz_date:normalize({Y0, M0 + Offset, Day});
         %% Empty List:
         %%   All of the days in the list have already happened
         %% Non Empty List that failed the guard:
         %%   The day hasn't happend on an 'inactive' month
         _ ->
-            normalize_date({Y0, M0 + Offset + I0, hd( Days )})
+            kz_date:normalize({Y0, M0 + Offset + I0, hd( Days )})
     end;
 
 next_rule_date(#rule{cycle = <<"monthly">>
@@ -522,7 +505,7 @@ next_rule_date(#rule{cycle = <<"monthly">>
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
     case Distance =:= Offset
-        andalso find_next_weekday({Y1, M1, D1}, Weekday)
+        andalso kz_date:find_next_weekday({Y1, M1, D1}, Weekday)
     of
         %% If the next occurence of the weekday is during an 'active' month
         %%   and does not span the current month/year then it is correct
@@ -645,7 +628,7 @@ next_rule_date(#rule{cycle = <<"yearly">>
     Distance = Y1 - Y0,
     Offset = trunc( Distance / I0 ) * I0,
     case Distance =:= Offset
-        andalso find_next_weekday({Y1, Month, D1}, Weekday)
+        andalso kz_date:find_next_weekday({Y1, Month, D1}, Weekday)
     of
         %% During an 'active' year before the target month the calculated
         %%   occurance is accurate
@@ -718,101 +701,6 @@ next_rule_date(#rule{cycle = <<"yearly">>
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes dates, for example corrects for months that are given
-%% with more days then they have (ie: {2011, 1, 36} -> {2011, 2, 5}).
-%% I have been refering to this as 'spanning a month/year border'
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_date(improper_date()) -> kz_date().
-normalize_date({Y, 13, D}) ->
-    normalize_date({Y + 1, 1, D});
-normalize_date({Y, 0, D}) ->
-    normalize_date({Y - 1, 12, D});
-normalize_date({Y, M, D}) when M > 12 ->
-    normalize_date({Y + 1, M - 12, D});
-normalize_date({Y, M, D}) when M < 1 ->
-    normalize_date({Y - 1, M + 12, D});
-normalize_date({Y, M, D}) when D < 1 ->
-    {Y1, M1, _} = normalize_date({Y, M - 1, 1}),
-    D0 = calendar:last_day_of_the_month(Y1, M1),
-    normalize_date({Y1, M1, D + D0});
-normalize_date({Y, M, D}=Date) ->
-    case calendar:last_day_of_the_month(Y, M) of
-        Days when D > Days ->
-            normalize_date({Y, M + 1, D - Days});
-        _ ->
-            Date
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert the ordinal words to cardinal numbers representing
-%% the position
-%% @end
-%%--------------------------------------------------------------------
--spec from_ordinal(strict_ordinal()) -> 0..4.
-from_ordinal(<<"first">>) -> 0;
-from_ordinal(<<"second">>) -> 1;
-from_ordinal(<<"third">>) -> 2;
-from_ordinal(<<"fourth">>) -> 3;
-from_ordinal(<<"fifth">>) -> 4.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Map the days of the week to cardinal numbers representing the
-%% position, in accordance with ISO 8601
-%% @end
-%%--------------------------------------------------------------------
--spec to_dow(wday()) -> kz_daynum().
-to_dow(<<"monday">>) -> 1;
-to_dow(<<"tuesday">>) -> 2;
-to_dow(<<"wednesday">>) -> 3;
-to_dow(<<"wensday">>) -> 3;
-to_dow(<<"thursday">>) -> 4;
-to_dow(<<"friday">>) -> 5;
-to_dow(<<"saturday">>) -> 6;
-to_dow(<<"sunday">>) -> 7.
-
--spec to_wday(kz_daynum()) -> wday().
-to_wday(1) -> <<"monday">>;
-to_wday(2) -> <<"tuesday">>;
-to_wday(3) -> <<"wednesday">>;
-to_wday(4) -> <<"thursday">>;
-to_wday(5) -> <<"friday">>;
-to_wday(6) -> <<"saturday">>;
-to_wday(7) -> <<"sunday">>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Calculates the date of the next occurance of a weekday from the given
-%% start date.
-%%
-%% NOTICE!
-%% It is possible for this function to cross month/year boundaries.
-%% @end
-%%--------------------------------------------------------------------
--spec find_next_weekday(kz_date(), wday()) -> kz_date().
-find_next_weekday({Y, M, D}, Weekday) ->
-    RefDOW = to_dow(Weekday),
-    case calendar:day_of_the_week({Y, M, D}) of
-        %% Today is the DOW we wanted, calculate for next week
-        RefDOW ->
-            normalize_date({Y, M, D + 7});
-        %% If the DOW has not occured this week yet
-        DOW when RefDOW > DOW ->
-            normalize_date({Y, M, D + (RefDOW - DOW)});
-        %% If the DOW occurance has already happend, calculate
-        %%   for the next week using the current DOW as a reference
-        DOW ->
-            normalize_date({Y, M, D + ( 7 - DOW ) + RefDOW})
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Safety wrapper on date_of_dow used to loop over failing attempts
 %% until the date can be calculated.  The date can be provided as an
 %% improper date.
@@ -876,8 +764,8 @@ date_of_dow(Year, 1, Weekday, Ordinal) ->
 date_of_dow(Year, Month, Weekday, Ordinal) ->
     RefDate = {Year, Month - 1, calendar:last_day_of_the_month(Year, Month - 1)},
     RefDays = calendar:date_to_gregorian_days(RefDate),
-    DOW = to_dow(Weekday),
-    Occurance = from_ordinal(Ordinal),
+    DOW = kz_date:wday_to_dow(Weekday),
+    Occurance = kz_date:ordinal_to_position(Ordinal),
     Days = case calendar:day_of_the_week(RefDate) of
                DOW ->
                    RefDays + 7 + (7 * Occurance );
@@ -887,7 +775,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
                    RefDays + abs(DOW - RefDOW) + (7 * Occurance)
            end,
     {Y, M, D} = calendar:gregorian_days_to_date(Days),
-    normalize_date({Y, M, D}).
+    kz_date:normalize({Y, M, D}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -905,39 +793,21 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %%--------------------------------------------------------------------
 -spec iso_week_difference(kz_date(), kz_date()) -> non_neg_integer().
 iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
-    DS0 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(calendar:iso_week_number({Y0, M0, D0}))),
-    DS1 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(calendar:iso_week_number({Y1, M1, D1}))),
+    DS0 = calendar:date_to_gregorian_days(kz_date:from_iso_week(calendar:iso_week_number({Y0, M0, D0}))),
+    DS1 = calendar:date_to_gregorian_days(kz_date:from_iso_week(calendar:iso_week_number({Y1, M1, D1}))),
     trunc( abs( DS0 - DS1 ) / 7 ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Caclulates the gregorian date of a given ISO 8601 week
-%% @end
-%%--------------------------------------------------------------------
--spec iso_week_to_gregorian_date(kz_iso_week()) -> kz_date().
-iso_week_to_gregorian_date({Year, Week}) ->
-    Jan1 = calendar:date_to_gregorian_days(Year, 1, 1),
-    Offset = 4 - calendar:day_of_the_week(Year, 1, 4),
-    Days =
-        case Offset =:= 0 of
-            'true' -> Jan1 + ( Week * 7 );
-            'false' ->
-                Jan1 + Offset + ( ( Week - 1 ) * 7 )
-        end,
-    calendar:gregorian_days_to_date(Days).
 
 -spec find_active_days(ne_binaries(), kz_day()) -> [kz_daynum()].
 find_active_days(Weekdays, DOW0) ->
     [DOW1
-     || DOW1 <- [to_dow(D) || D <- Weekdays],
+     || DOW1 <- [kz_date:wday_to_dow(D) || D <- Weekdays],
         DOW1 > DOW0
     ].
 
 -spec sort_wdays([wday()]) -> [wday()].
-sort_wdays([]) -> [to_wday(D) || D <- lists:seq(1, 7)];
+sort_wdays([]) -> [kz_date:dow_to_wday(D) || D <- lists:seq(1, 7)];
 sort_wdays(WDays0) ->
     {_, WDays1} = lists:unzip(
-                    lists:keysort(1, [{to_dow(Day), Day} || Day <- WDays0])
+                    lists:keysort(1, [{kz_date:wday_to_dow(Day), Day} || Day <- WDays0])
                    ),
     WDays1.
