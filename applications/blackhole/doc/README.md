@@ -10,7 +10,7 @@
 1. Copy the **Example Client** code into an HTML file (named e.g. `kazoo_example_ws_client.html`)
     1. Replace `{BLACKHOLE_IP_ADDRESS}` with your Kazoo server's IP address
     1. Replace default `5555` with the port number you can configure in **sysconfig > blackhole > port** (integer)
-    1. Replace the `{ACCOUNT_ID}` and `{AUTH_TOKEN}` fields with your data
+    1. Replace the `{ACCOUNT_ID}` and `{AUTH_TOKEN}` fields with your data. `{REQUEST_ID}` is optional, a self generated guid which is present in the event message. You can just use same as `{ACCOUNT_ID}` or any random number.
 1. You're all set!
 
 Now access `kazoo_example_ws_client.html` with your favourite Web browser and open the Javascript console.
@@ -35,23 +35,32 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
         socket.onopen = function() {
             send({
                 action: 'subscribe',
-                account_id: '{ACCOUNT_ID}',
                 auth_token: '{AUTH_TOKEN}',
-                binding: 'call.CHANNEL_CREATE.*'
+                request_id: '{REQUEST_ID}',
+                data: {
+                    account_id: '{ACCOUNT_ID}',
+                    binding: 'call.CHANNEL_CREATE.*'
+                }
             });
 
             send({
                 action: 'subscribe',
-                account_id: '{ACCOUNT_ID}',
                 auth_token: '{AUTH_TOKEN}',
-                bindings: ['call.CHANNEL_ANSWER.*', 'call.CHANNEL_DESTROY.*']
+                request_id: '{REQUEST_ID}',
+                data: {
+                    account_id: '{ACCOUNT_ID}',
+                    bindings: ['call.CHANNEL_ANSWER.*', 'call.CHANNEL_DESTROY.*']
+                }
             });
 
             send({
                 action: 'subscribe',
-                account_id: accountId,
-                auth_token: token,
-                bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
+                auth_token: '{AUTH_TOKEN}',
+                request_id: '{REQUEST_ID}',
+                data: {
+                    account_id: '{ACCOUNT_ID}',
+                    bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
+                }
             });
         }
 
@@ -74,17 +83,23 @@ You can add one or multiple bindings by using:
 // For one use: binding
 send({
     action: 'subscribe',
-    account_id: '{ACCOUNT_ID}',
     auth_token: '{AUTH_TOKEN}',
-    binding: 'doc_edited.*.user.*'
+    request_id: '{REQUEST_ID}',
+    data: {
+        account_id: '{ACCOUNT_ID}',
+        binding: 'doc_edited.*.user.*'
+    }
 });
 
 // For multiple use: bindings
 send({
     action: 'subscribe',
-    account_id: '{ACCOUNT_ID}',
     auth_token: '{AUTH_TOKEN}',
-    bindings: ['doc_edited.*.user.*', 'doc_deleted.*.user.*']
+    request_id: '{REQUEST_ID}',
+    data: {
+        account_id: '{ACCOUNT_ID}',
+        bindings: ['doc_edited.*.user.*', 'doc_deleted.*.user.*']
+    }
 });
 ```
 
@@ -93,13 +108,16 @@ You can also add a friendly name and some metadata to any subscribe command.
 ``` javascript
 send({
     action: 'subscribe',
-    account_id: '{ACCOUNT_ID}',
     auth_token: '{AUTH_TOKEN}',
-    name: "My new socket",
-    metadata: {
-        test: "test"
-    },
-    binding: 'doc_edited.*.user.*'
+    request_id: '{REQUEST_ID}',
+    data: {
+        account_id: '{ACCOUNT_ID}',
+        name: "My new socket",
+        metadata: {
+            test: "test"
+        },
+        binding: 'doc_edited.*.user.*'
+    }
 });
 ```
 
@@ -108,12 +126,23 @@ To remove unnecessary bindings use 'unsubscribe' event:
 
 For particular subscription:
 ```
-send({ action: 'unsubscribe', account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
+send({
+    action: 'unsubscribe',
+    auth_token: '{AUTH_TOKEN}',
+    request_id: '{REQUEST_ID}',
+    data: {
+        account_id: '{ACCOUNT_ID}',
+        binding: 'call.CHANNEL_CREATE.*'
+    }
+});
 ```
 
 For all previous subscriptions:
 ```
-send({ action: 'unsubscribe', auth_token: '{AUTH_TOKEN}' });
+send({
+    action: 'unsubscribe',
+    auth_token: '{AUTH_TOKEN}'
+});
 ```
 
 
