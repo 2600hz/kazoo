@@ -84,8 +84,8 @@ public_fields(JObj) ->
                        ,{<<"created">>, kz_doc:created(JObj)}
                        ,{<<"updated">>, kz_doc:modified(JObj)}
                        ,{<<"uploads">>, normalize_attachments(As)}
-                       ,{<<"port_state">>, kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED)}
-                       ,{<<"sent">>, kz_json:get_value(?PORT_PVT_SENT, JObj, 'false')}
+                       ,{<<"port_state">>, kz_json:get_ne_binary_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED)}
+                       ,{<<"sent">>, kz_json:is_true(?PORT_PVT_SENT, JObj)}
                        ]
                       ,kz_doc:public_fields(JObj)
                       ).

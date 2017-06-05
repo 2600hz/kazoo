@@ -366,21 +366,15 @@ patch_then_notify(Context, PortId, PortState) ->
 %% @private
 -spec do_patch(cb_context:context()) -> cb_context:context().
 do_patch(Context) ->
-    UpdatedDoc =
-        kz_json:merge(cb_context:doc(Context)
-                     ,kz_doc:public_fields(cb_context:req_data(Context))
-                     ),
+    UpdatedDoc = kz_json:merge(cb_context:doc(Context), kz_doc:public_fields(cb_context:req_data(Context))),
 
     Context1  = crossbar_doc:save(update_port_request_for_save(Context, UpdatedDoc)),
     RespData1 = knm_port_request:public_fields(cb_context:doc(Context1)),
     RespData2 = filter_private_comments(Context1, RespData1),
 
     case cb_context:resp_status(Context1) of
-        'success' ->
-            cb_context:set_resp_data(Context1, RespData2);
-
-        _Status ->
-            Context1
+        'success' -> cb_context:set_resp_data(Context1, RespData2);
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
