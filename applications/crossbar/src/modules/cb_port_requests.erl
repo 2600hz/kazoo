@@ -50,8 +50,8 @@
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
 
--define(REQ_COMMENT, <<"comment">>).
--define(REQ_COMMENT_IS_PRIVATE, <<"is_private">>).
+-define(REQ_REASON, <<"reason">>).
+-define(REQ_REASON_IS_PRIVATE, <<"reason_is_private">>).
 
 %%%===================================================================
 %%% API
@@ -734,13 +734,6 @@ maybe_normalize_summary_results(Context, 'true') ->
         _Else -> Context
     end.
 
--spec private_comment_filter(kz_json:object(), list()) -> list().
-private_comment_filter(Comment, Acc) ->
-    case kz_json:get_value(<<"superduper_comment">>, Comment, false) of
-        true  -> Acc;
-        false -> [Comment|Acc]
-    end.
-
 -spec filter_private_comments(cb_context:context(), kz_json:object()) -> kz_json:object().
 filter_private_comments(Context, JObj) ->
     case cb_context:is_superduper_admin(Context) of
@@ -750,9 +743,10 @@ filter_private_comments(Context, JObj) ->
 
 -spec run_comment_filter(kz_json:object()) -> kz_json:object().
 run_comment_filter(JObj) ->
-    Comments = kz_json:get_value(<<"comments">>, JObj, []),
-    Filtered = lists:foldl(fun private_comment_filter/2, [], Comments),
-
+    Filtered = [Comment
+                || Comment <- kz_json:get_list_value(<<"comments">>, JObj, []),
+                   not kz_json:is_true(<<"superduper_comment">>, Comment)
+               ],
     kz_json:set_value(<<"comments">>, Filtered, JObj).
 
 -spec normalize_summary_results(cb_context:context()) -> cb_context:context().
@@ -1030,11 +1024,11 @@ load_attachment(AttachmentId, Context) ->
 %%--------------------------------------------------------------------
 -spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_move_state(Context, Id, PortState) ->
-    IsCommentPrivate = kz_term:is_true(cb_context:req_value(Context, ?REQ_COMMENT_IS_PRIVATE)),
+    IsReasonPrivate = kz_term:is_true(cb_context:req_value(Context, ?REQ_REASON_IS_PRIVATE)),
     Metadata = knm_port_request:transition_metadata(cb_context:auth_account_id(Context)
                                                    ,cb_context:auth_user_id(Context)
-                                                   ,cb_context:req_value(Context, ?REQ_COMMENT)
-                                                   ,IsCommentPrivate
+                                                   ,cb_context:req_value(Context, ?REQ_REASON)
+                                                   ,IsReasonPrivate
                                                    ),
     Context1 = load_port_request(Context, Id),
     try cb_context:resp_status(Context1) =:= 'success'

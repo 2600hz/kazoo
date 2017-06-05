@@ -25,8 +25,8 @@
 -define(PORT_PVT_VSN, <<"pvt_vsn">>).
 
 -define(METADATA_AUTH_ACCOUNT_ID, <<"auth_account_id">>).
--define(METADATA_COMMENT, <<"comment">>).
--define(METADATA_COMMENT_IS_PRIVATE, <<"comment_is_private">>).
+-define(METADATA_REASON, <<"reason">>).
+-define(METADATA_REASON_IS_PRIVATE, <<"reason_is_private">>).
 -define(METADATA_NEW_STATE, <<"new_state">>).
 -define(METADATA_OLD_STATE, <<"old_state">>).
 -define(METADATA_TIMESTAMP, <<"timestamp">>).

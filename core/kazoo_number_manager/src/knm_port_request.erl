@@ -276,8 +276,8 @@ transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
                                               ,auth_user_id := OptionalUserId
                                               ,user_first_name := OptionalFirstName
                                               ,user_last_name := OptionalLastName
-                                              ,optional_comment := OptionalComment
-                                              ,is_comment_private := IsPrivate
+                                              ,optional_reason := OptionalReason
+                                              ,is_reason_private := IsPrivate
                                               }) ->
     kz_json:from_list(
       [{?METADATA_TIMESTAMP, kz_time:current_tstamp()}
@@ -288,13 +288,13 @@ transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
       ,{?METADATA_USER_ID, OptionalUserId}
       ,{?METADATA_USER_FIRST_NAME, OptionalFirstName}
       ,{?METADATA_USER_LAST_NAME, OptionalLastName}
-       | comment_metadata(OptionalComment, IsPrivate)
+       | reason_metadata(OptionalReason, IsPrivate)
       ]).
 
-comment_metadata(undefined, _) -> [];
-comment_metadata(Comment, IsPrivate) ->
-    [{?METADATA_COMMENT_IS_PRIVATE, IsPrivate}
-    ,{?METADATA_COMMENT, Comment}
+reason_metadata(undefined, _) -> [];
+reason_metadata(Reason, IsPrivate) ->
+    [{?METADATA_REASON_IS_PRIVATE, IsPrivate}
+    ,{?METADATA_REASON, Reason}
     ].
 
 %% @public
@@ -302,8 +302,8 @@ comment_metadata(Comment, IsPrivate) ->
                                 ,auth_user_id => api_ne_binary()
                                 ,user_first_name => api_ne_binary()
                                 ,user_last_name => api_ne_binary()
-                                ,optional_comment => api_ne_binary()
-                                ,is_comment_private => boolean()
+                                ,optional_reason => api_ne_binary()
+                                ,is_reason_private => boolean()
                                 }.
 
 %% @public
@@ -313,23 +313,23 @@ transition_metadata(AuthAccountId, AuthUserId) ->
 
 %% @public
 -spec transition_metadata(ne_binary(), api_ne_binary(), api_ne_binary(), boolean()) -> transition_metadata().
-transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Comment, IsPrivate)
+transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason, IsPrivate)
   when is_boolean(IsPrivate) ->
     OptionalUserId = case UserId of
                          ?NE_BINARY -> UserId;
                          _ -> undefined
                      end,
     {FirstName, LastName} = get_user_name(AuthAccountId, OptionalUserId),
-    OptionalComment = case Comment of
-                          ?NE_BINARY -> Comment;
-                          _ -> undefined
-                      end,
+    OptionalReason = case Reason of
+                         ?NE_BINARY -> Reason;
+                         _ -> undefined
+                     end,
     #{auth_account_id => AuthAccountId
      ,auth_user_id => OptionalUserId
      ,user_first_name => FirstName
      ,user_last_name => LastName
-     ,optional_comment => OptionalComment
-     ,is_comment_private => IsPrivate
+     ,optional_reason => OptionalReason
+     ,is_reason_private => IsPrivate
      }.
 
 get_user_name(AuthAccountId, UserId) ->
