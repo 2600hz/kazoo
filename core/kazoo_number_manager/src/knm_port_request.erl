@@ -86,7 +86,6 @@ public_fields(JObj) ->
                        ,{<<"uploads">>, normalize_attachments(As)}
                        ,{<<"port_state">>, kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED)}
                        ,{<<"sent">>, kz_json:get_value(?PORT_PVT_SENT, JObj, 'false')}
-                       ,{<<"timeline">>, kz_json:get_list_value(?PORT_PVT_TIMELINE, JObj, [])}
                        ]
                       ,kz_doc:public_fields(JObj)
                       ).
