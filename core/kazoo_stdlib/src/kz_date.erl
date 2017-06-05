@@ -18,14 +18,14 @@
         ,find_next_weekday/2
         ,normalize/1
         ,relative_difference/2
-]).
+        ]).
 
 %% Utility Functions
 -export([
          ordinal_to_position/1
         ,wday_to_dow/1
         ,dow_to_wday/1
-]).
+        ]).
 
 %%--------------------------------------------------------------------
 %% @doc Convert a gregorian seconds integer to kz_date taking into consideration timezone
