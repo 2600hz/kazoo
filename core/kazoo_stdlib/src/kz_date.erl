@@ -106,7 +106,7 @@ relative_difference(Date1, Date2) ->
 %% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
--spec find_next_weekday(kz_date(), integer()) -> kz_date().
+-spec find_next_weekday(kz_date(), binary()) -> kz_date().
 find_next_weekday({Y, M, D}, Weekday) ->
     RefDOW = wday_to_dow(Weekday),
     case calendar:day_of_the_week({Y, M, D}) of
