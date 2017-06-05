@@ -12,19 +12,19 @@
 
 %% Date object functions
 -export([
-    from_gregorian_seconds/2
-   ,from_iso_week/1
+         from_gregorian_seconds/2
+        ,from_iso_week/1
 
-   ,find_next_weekday/2
-   ,normalize/1
-   ,relative_difference/2
+        ,find_next_weekday/2
+        ,normalize/1
+        ,relative_difference/2
 ]).
 
 %% Utility Functions
 -export([
-    ordinal_to_position/1
-   ,wday_to_dow/1
-   ,dow_to_wday/1
+         ordinal_to_position/1
+        ,wday_to_dow/1
+        ,dow_to_wday/1
 ]).
 
 %%--------------------------------------------------------------------
