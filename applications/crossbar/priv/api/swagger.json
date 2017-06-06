@@ -19677,6 +19677,26 @@
                 }
             }
         },
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/PORT_REQUEST_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/accounts/{ACCOUNT_ID}/presence": {
             "get": {
                 "parameters": [
