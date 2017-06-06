@@ -435,8 +435,6 @@ to_public_json(PN) ->
             ,UsedBy
             ,Features
             ,{<<"features_available">>, knm_providers:available_features(PN)}
-            ,{<<"features_allowed">>, features_allowed(PN)}
-            ,{<<"features_denied">>, features_denied(PN)}
             ,{<<"carrier_module">>, ModuleName}
             ])
          ),
