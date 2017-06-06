@@ -280,7 +280,7 @@ create_slot(ParkerCallId, PresenceType, Call) ->
 %% was provided
 %% @end
 %%--------------------------------------------------------------------
--spec get_slot_number(kapps_call:call(), api_binary()) -> ne_binary().
+-spec get_slot_number(kz_json:object(), api_binary()) -> ne_binary().
 get_slot_number(_, CaptureGroup) when byte_size(CaptureGroup) > 0 ->
     CaptureGroup;
 get_slot_number(ParkedCalls, _) ->
@@ -447,10 +447,12 @@ get_parked_calls(?NE_BINARY = AccountDb) ->
 get_parked_calls(Call) ->
     get_parked_calls(kapps_call:account_db(Call)).
 
+-spec load_parked_calls(kz_json:objects()) -> kz_json:object().
 load_parked_calls(JObjs) ->
     Slots = [load_parked_call(JObj) || JObj <- JObjs],
     kz_json:from_list([{<<"slots">>, kz_json:from_list(Slots)}]).
 
+-spec load_parked_call(kz_json:object()) -> {ne_binary(), kz_json:object()}.
 load_parked_call(JObj) ->
     Doc = kz_json:get_json_value(<<"doc">>, JObj),
     <<"parking-slot-", SlotNumber/binary>> = kz_doc:id(Doc),
