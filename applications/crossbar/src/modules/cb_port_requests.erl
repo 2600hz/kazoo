@@ -742,18 +742,27 @@ timeline(Context) ->
         true ->
             Doc = cb_context:doc(Context),
             Comments = kz_json:get_value(<<"comments">>, filter_private_comments(Context, Doc)),
-            Transitions = filter_private_transitions(Context, kz_json:get_list_value(<<"transitions">>, Doc, [])),
-            Indexed = [{kz_json:get_integer_value(?METADATA_TIMESTAMP, JObj), JObj}
+            Transitions = filter_private_transitions(Context, Doc),
+            Indexed = [{kz_json:get_integer_value(?METADATA_TIMESTAMP, JObj)
+                       ,kz_json:set_value(<<"type">>, timeline_event_type(JObj), JObj)
+                       }
                        || JObj <- Comments ++ Transitions
                       ],
             {_, NewDoc} = lists:unzip(lists:keysort(1, Indexed)),
             cb_context:set_resp_data(Context, NewDoc)
     end.
 
--spec filter_private_transitions(cb_context:context(), kz_json:objects()) -> kz_json:objects().
-filter_private_transitions(Context, JObjs) ->
+timeline_event_type(JObj) ->
+    case undefined =:= kz_json:get_ne_binary_value(?METADATA_NEW_STATE, JObj) of
+        true -> <<"comment">>;
+        false -> <<"transition">>
+    end.
+
+-spec filter_private_transitions(cb_context:context(), kz_json:object()) -> kz_json:objects().
+filter_private_transitions(Context, Doc) ->
+    JObjs = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
     case cb_context:is_superduper_admin(Context)
-        orelse kz_term:is_true(cb_context:req_value(?REQ_SHOW_PRIVATE_TRANSITIONS, Context))
+        orelse kz_term:is_true(cb_context:req_value(Context, ?REQ_SHOW_PRIVATE_TRANSITIONS))
     of
         true -> JObjs;
         false ->
@@ -1182,13 +1191,13 @@ send_port_notification(Context, Id, State, Fun) ->
         Context
     catch
         _E:_R ->
+            kz_util:log_stacktrace(),
             lager:debug("failed to send the  port ~s notification: ~s:~p", [State, _E, _R]),
             _ = revert_patch(Context),
-            Msg = <<"failed to send port ", State/binary, " email">>,
-            cb_context:add_system_error('bad_gateway'
-                                       ,kz_json:from_list([{<<"message">>, Msg}])
-                                       ,Context
-                                       )
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"failed to send port ", State/binary, " email">>}
+                    ]),
+            cb_context:add_system_error('bad_gateway', Msg, Context)
     end.
 
 %%--------------------------------------------------------------------
