@@ -50,8 +50,11 @@
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
 
--define(REQ_REASON, <<"reason">>).
--define(REQ_REASON_IS_PRIVATE, <<"reason_is_private">>).
+-define(PATH_TOKEN_TIMELINE, <<"timeline">>).
+
+-define(REQ_TRANSITION, <<"transition">>).
+-define(REQ_TRANSITION_IS_PRIVATE, <<"transition_is_private">>).
+-define(REQ_SHOW_PRIVATE_TRANSITIONS, <<"show_private_transitions">>).
 
 %%%===================================================================
 %%% API
@@ -123,6 +126,8 @@ allowed_methods(_PortRequestId, ?PORT_CANCELED) ->
 allowed_methods(_PortRequestId, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_PortRequestId, ?PATH_TOKEN_LOA) ->
+    [?HTTP_GET];
+allowed_methods(_PortRequestId, ?PATH_TOKEN_TIMELINE) ->
     [?HTTP_GET].
 
 allowed_methods(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) ->
@@ -153,6 +158,7 @@ resource_exists(_PortRequestId, ?PORT_REJECTED) -> 'true';
 resource_exists(_PortRequestId, ?PORT_CANCELED) -> 'true';
 resource_exists(_PortRequestId, ?PORT_ATTACHMENT) -> 'true';
 resource_exists(_PortRequestId, ?PATH_TOKEN_LOA) -> 'true';
+resource_exists(_PortRequestId, ?PATH_TOKEN_TIMELINE) -> 'true';
 resource_exists(_PortRequestId, _) -> 'false'.
 
 resource_exists(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
@@ -270,7 +276,9 @@ validate(Context, Id, ?PORT_CANCELED) ->
 validate(Context, Id, ?PORT_ATTACHMENT) ->
     validate_attachments(Context, Id, cb_context:req_verb(Context));
 validate(Context, Id, ?PATH_TOKEN_LOA) ->
-    generate_loa(read(Context, Id)).
+    generate_loa(read(Context, Id));
+validate(Context, Id, ?PATH_TOKEN_TIMELINE) ->
+    timeline(load_port_request(Context, Id)).
 
 validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
@@ -728,6 +736,32 @@ maybe_normalize_summary_results(Context, 'true') ->
         _Else -> Context
     end.
 
+timeline(Context) ->
+    case success =:= cb_context:resp_status(Context) of
+        false -> Context;
+        true ->
+            Doc = cb_context:doc(Context),
+            Comments = kz_json:get_value(<<"comments">>, filter_private_comments(Context, Doc)),
+            Transitions = filter_private_transitions(Context, kz_json:get_list_value(<<"transitions">>, Doc, [])),
+            Indexed = [{kz_json:get_integer_value(?METADATA_TIMESTAMP, JObj), JObj}
+                       || JObj <- Comments ++ Transitions
+                      ],
+            {_, NewDoc} = lists:unzip(lists:keysort(1, Indexed)),
+            cb_context:set_resp_data(Context, NewDoc)
+    end.
+
+-spec filter_private_transitions(cb_context:context(), kz_json:objects()) -> kz_json:objects().
+filter_private_transitions(Context, JObjs) ->
+    case cb_context:is_superduper_admin(Context)
+        orelse kz_term:is_true(cb_context:req_value(?REQ_SHOW_PRIVATE_TRANSITIONS, Context))
+    of
+        true -> JObjs;
+        false ->
+            [JObj || JObj <- JObjs,
+                     not kz_json:is_true(?METADATA_TRANSITION_IS_PRIVATE, JObj)
+            ]
+    end.
+
 -spec filter_private_comments(cb_context:context(), kz_json:object()) -> kz_json:object().
 filter_private_comments(Context, JObj) ->
     case cb_context:is_superduper_admin(Context) of
@@ -1018,11 +1052,11 @@ load_attachment(AttachmentId, Context) ->
 %%--------------------------------------------------------------------
 -spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_move_state(Context, Id, PortState) ->
-    IsReasonPrivate = kz_term:is_true(cb_context:req_value(Context, ?REQ_REASON_IS_PRIVATE)),
+    IsTransitionPrivate = kz_term:is_true(cb_context:req_value(Context, ?REQ_TRANSITION_IS_PRIVATE)),
     Metadata = knm_port_request:transition_metadata(cb_context:auth_account_id(Context)
                                                    ,cb_context:auth_user_id(Context)
-                                                   ,cb_context:req_value(Context, ?REQ_REASON)
-                                                   ,IsReasonPrivate
+                                                   ,cb_context:req_value(Context, ?REQ_TRANSITION)
+                                                   ,IsTransitionPrivate
                                                    ),
     Context1 = load_port_request(Context, Id),
     try cb_context:resp_status(Context1) =:= 'success'

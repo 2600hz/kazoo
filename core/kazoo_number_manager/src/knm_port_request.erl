@@ -182,7 +182,7 @@ new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
     Metadata = transition_metadata(AuthAccountId, AuthUserId),
     Unconf = [{?PORT_PVT_TYPE, <<"port_request">>}
              ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
-             ,{?PORT_PVT_TIMELINE, [transition_metadata_jobj(undefined, ?PORT_UNCONFIRMED, Metadata)]}
+             ,{?PORT_PVT_TRANSITIONS, [transition_metadata_jobj(undefined, ?PORT_UNCONFIRMED, Metadata)]}
              ],
     kz_json:set_values(Unconf, Normalized).
 
@@ -265,9 +265,9 @@ transition(JObj, Metadata, [_FromState | FromStates], ToState, CurrentState) ->
 -spec successful_transition(kz_json:object(), ne_binary(), ne_binary(), transition_metadata()) -> kz_json:object().
 successful_transition(JObj, FromState, ToState, Metadata) ->
     MetadataJObj = transition_metadata_jobj(FromState, ToState, Metadata),
-    NewTimeline = [MetadataJObj | kz_json:get_list_value(?PORT_PVT_TIMELINE, JObj, [])],
+    NewTransitions = [MetadataJObj | kz_json:get_list_value(?PORT_PVT_TRANSITIONS, JObj, [])],
     Values = [{?PORT_PVT_STATE, ToState}
-             ,{?PORT_PVT_TIMELINE, NewTimeline}
+             ,{?PORT_PVT_TRANSITIONS, NewTransitions}
              ],
     kz_json:set_values(Values, JObj).
 
@@ -277,7 +277,7 @@ transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
                                               ,user_first_name := OptionalFirstName
                                               ,user_last_name := OptionalLastName
                                               ,optional_reason := OptionalReason
-                                              ,is_reason_private := IsPrivate
+                                              ,is_private := IsPrivate
                                               }) ->
     kz_json:from_list(
       [{?METADATA_TIMESTAMP, kz_time:current_tstamp()}
@@ -293,7 +293,7 @@ transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
 
 reason_metadata(undefined, _) -> [];
 reason_metadata(Reason, IsPrivate) ->
-    [{?METADATA_REASON_IS_PRIVATE, IsPrivate}
+    [{?METADATA_TRANSITION_IS_PRIVATE, IsPrivate}
     ,{?METADATA_REASON, Reason}
     ].
 
@@ -303,7 +303,7 @@ reason_metadata(Reason, IsPrivate) ->
                                 ,user_first_name => api_ne_binary()
                                 ,user_last_name => api_ne_binary()
                                 ,optional_reason => api_ne_binary()
-                                ,is_reason_private => boolean()
+                                ,is_private => boolean()
                                 }.
 
 %% @public
@@ -329,7 +329,7 @@ transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason, IsPrivate
      ,user_first_name => FirstName
      ,user_last_name => LastName
      ,optional_reason => OptionalReason
-     ,is_reason_private => IsPrivate
+     ,is_private => IsPrivate
      }.
 
 get_user_name(AuthAccountId, UserId) ->

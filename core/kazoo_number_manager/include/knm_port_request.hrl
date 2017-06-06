@@ -19,19 +19,19 @@
 -define(PORT_PVT_REV, <<"_rev">>).
 -define(PORT_PVT_SENT, <<"pvt_sent">>).
 -define(PORT_PVT_STATE, <<"pvt_port_state">>).
--define(PORT_PVT_TIMELINE, <<"pvt_timeline">>).
+-define(PORT_PVT_TRANSITIONS, <<"pvt_transitions">>).
 -define(PORT_PVT_TREE, <<"pvt_tree">>).
 -define(PORT_PVT_TYPE, <<"pvt_type">>).
 -define(PORT_PVT_VSN, <<"pvt_vsn">>).
 
 -define(METADATA_AUTH_ACCOUNT_ID, <<"auth_account_id">>).
--define(METADATA_REASON, <<"reason">>).
--define(METADATA_REASON_IS_PRIVATE, <<"reason_is_private">>).
+-define(METADATA_REASON, <<"content">>).
+-define(METADATA_TRANSITION_IS_PRIVATE, <<"transition_is_private">>).
 -define(METADATA_NEW_STATE, <<"new_state">>).
 -define(METADATA_OLD_STATE, <<"old_state">>).
 -define(METADATA_TIMESTAMP, <<"timestamp">>).
 -define(METADATA_USER_FIRST_NAME, <<"auth_user_first_name">>).
--define(METADATA_USER_ID, <<"auth_user_id">>).
+-define(METADATA_USER_ID, <<"user_id">>).
 -define(METADATA_USER_LAST_NAME, <<"auth_user_last_name">>).
 
 -define(PORT_STATES, [?PORT_UNCONFIRMED
