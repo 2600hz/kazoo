@@ -85,7 +85,7 @@ listeners(Type, Action, AccountDb, AccountMODB) ->
     end.
 
 -spec bind_options(ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
-bind_options(Action, Db, Type) ->
+bind_options(Action, Type, Db) ->
     [{'action', Action}
     ,{'db', Db}
     ,{'doc_type', Type}
