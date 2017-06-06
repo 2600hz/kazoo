@@ -25,6 +25,8 @@
     - [Get](#get-port-request-details)
     - [Update](#edit-a-port-request)
     - [Delete](#delete-a-port-request)
+* Timeline
+    - [Listing transitions and comments](#listing-transitions-and-comments)
 * Update Status
     - [`submitted`](#indicate-a-port-is-ready-to-be-processed)
         + [Success](#success_1)
@@ -824,6 +826,81 @@ curl -v -X DELETE \
 }
 ```
 
+#### Listing transitions and comments
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline
+
+This shows the port request's timeline.
+
+Admins are able to list every comment and transitions regardless of their privacy setting.
+Non admins only see public comments and transitions.
+
+Private transitions can be listed by an authenticated user by setting the request value `show_private_transitions` to `true` (defaults to `false`).
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline?show_private_transitions=true
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "auth_account_id": "{AUTH_ACCOUNT_ID}",
+            "auth_user_first_name": "John",
+            "auth_user_last_name": "Doe",
+            "new_state": "unconfirmed",
+            "old_state": "undefined",
+            "timestamp": 63663993575,
+            "type": "transition",
+            "user_id": "0d46906ff1eb36bff4d09b5b32fc14be"
+        },
+        {
+            "content": "the previous comment was private, this one is not",
+            "superduper_comment": false,
+            "timestamp": 63664000760,
+            "type": "comment",
+            "user_id": "0d46906ff1eb36bff4d09b5b32fc14be"
+        },
+        {
+            "content": "this is not private",
+            "superduper_comment": false,
+            "timestamp": 63664000768,
+            "type": "comment",
+            "user_id": "0d46906ff1eb36bff4d09b5b32fc14be"
+        },
+        {
+            "auth_account_id": "{AUTH_ACCOUNT_ID}",
+            "auth_user_first_name": "John",
+            "auth_user_last_name": "Doe",
+            "content": "this was approved by Jane Doe",
+            "new_state": "submitted",
+            "old_state": "unconfirmed",
+            "timestamp": 63664000869,
+            "transition_is_private": true,
+            "type": "transition",
+            "user_id": "0d46906ff1eb36bff4d09b5b32fc14be"
+        }
+    ],
+    "node": "{NODE}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "2017-06-06T20:41:13",
+    "version": "4.1.11"
+}
+```
+
+
+### Updating a port request's status
+
+When PATCHing a port request a reason can be added to the transition with the following request values:
+* `transition`: an optional string that can be used to describe the reason for the transition
+* `transition_is_private`: boolean that defaults to `true`
+
+This information will then be available in the timeline.
 
 #### Indicate a port is ready to be processed
 
