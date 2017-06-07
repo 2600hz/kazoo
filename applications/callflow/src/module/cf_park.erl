@@ -17,6 +17,12 @@
 -export([update_presence/3]).
 -export([maybe_cleanup_slot/3]).
 
+-define(PARKED_CALL_DOC_TYPE, <<"parked_call">>).
+-define(PARKED_CALLS_VIEW, <<"parking/parked_calls">>).
+-define(PARKED_CALL_VIEW, <<"parking/parked_call">>).
+
+-define(SLOT_DOC_ID(A), <<"parking-slot-", A/binary>>).
+
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".park">>).
 
 -define(DB_DOC_NAME, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
@@ -39,28 +45,10 @@
 %%--------------------------------------------------------------------
 -spec update_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(SlotNumber, _PresenceId, AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-    ParkedCalls = get_parked_calls(AccountDb, AccountId),
-    case get_slot_call_id(SlotNumber, ParkedCalls) of
-        'undefined' -> 'ok';
-        ParkedCallId ->
-            update_parked_call_presence(SlotNumber, get_slot(SlotNumber, ParkedCalls), ParkedCallId, AccountId)
+    case get_slot(SlotNumber, AccountDb) of
+        {'ok', Slot} -> update_presence(Slot);
+        _ -> 'ok'
     end.
-
--spec update_parked_call_presence(ne_binary(), kz_json:object(), ne_binary(), ne_binary()) -> 'ok'.
-update_parked_call_presence(SlotNumber, Slot, ParkedCallId, AccountId) ->
-    case kapps_call_command:b_channel_status(ParkedCallId) of
-        {'ok', _Status} -> update_presence(Slot);
-        {'error', _} -> cleanup_slot(SlotNumber, ParkedCallId, kz_util:format_account_db(AccountId))
-    end.
-
--spec get_slot_call_id(kz_json:path(), kz_json:object()) -> api_binary().
-get_slot_call_id(SlotNumber, ParkedCalls) ->
-    kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls).
-
--spec get_slot(kz_json:path(), kz_json:object()) -> api_object().
-get_slot(SlotNumber, ParkedCalls) ->
-    kz_json:get_json_value([<<"slots">>, SlotNumber], ParkedCalls).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,15 +71,15 @@ handle(Data, Call) ->
         'nomatch' ->
             handle_nomatch(Data, Call, PresenceType, ParkedCalls, SlotNumber, ReferredTo);
         {'match', [Replaces]} ->
-            handle_replaces(Data, Call, Replaces, ParkedCalls)
+            handle_replaces(Data, Call, Replaces)
     end.
 
--spec handle_replaces(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object()) ->
+-spec handle_replaces(kz_json:object(), kapps_call:call(), ne_binary()) ->
                              'ok' |
                              {'error', 'timeout' | 'failed'}.
-handle_replaces(Data, Call, Replaces, ParkedCalls) ->
+handle_replaces(Data, Call, Replaces) ->
     lager:info("call was the result of an attended-transfer completion, updating call id"),
-    {'ok', FoundInSlotNumber, Slot} = update_call_id(Replaces, ParkedCalls, Call),
+    {'ok', FoundInSlotNumber, Slot} = update_call_id(Replaces, Call),
     wait_for_pickup(FoundInSlotNumber, Slot, Data, Call).
 
 -spec handle_nomatch(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), ne_binary()) -> 'ok'.
@@ -110,8 +98,9 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
             park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
         <<"retrieve">> ->
             lager:info("action is to retrieve a parked call"),
-            case retrieve(SlotNumber, ParkedCalls, Call) of
-                {'ok', _} -> 'ok';
+            case retrieve(SlotNumber, Call) of
+                {'ok', _} ->
+                    cf_exe:transfer(Call);
                 _Else ->
                     _ = kapps_call_command:b_answer(Call),
                     _ = kapps_call_command:b_prompt(<<"park-no_caller">>, Call),
@@ -119,10 +108,12 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
             end;
         <<"auto">> ->
             lager:info("action is to automatically determine if we should retrieve or park"),
-            Slot = create_slot(cf_exe:callid(Call), PresenceType, Call),
-            case retrieve(SlotNumber, ParkedCalls, Call) of
-                {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
-                {'ok', _} -> cf_exe:transfer(Call)
+            case retrieve(SlotNumber, Call) of
+                {'error', _} ->
+                    Slot = create_slot(cf_exe:callid(Call), PresenceType, Call),
+                    park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
+                {'ok', _} ->
+                    cf_exe:transfer(Call)
             end
     end.
 
@@ -132,33 +123,34 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve(ne_binary(), kz_json:object(), kapps_call:call()) ->
+-spec retrieve(ne_binary(), kapps_call:call()) ->
                       {'ok', 'channel_hungup'} |
                       {'error', 'slot_empty' | 'timeout' | 'failed'}.
-retrieve(SlotNumber, ParkedCalls, Call) ->
-    case kz_json:get_json_value([<<"slots">>, SlotNumber], ParkedCalls) of
-        'undefined' ->
-            lager:info("the parking slot ~s is empty, unable to retrieve caller", [SlotNumber]),
-            {'error', 'slot_empty'};
-        Slot ->
+retrieve(SlotNumber, Call) ->
+    case get_slot(SlotNumber, kapps_call:account_db(Call)) of
+        {'ok', Slot} ->
             ParkedCall = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
             lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
-            case maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) of
+            case maybe_retrieve_slot(ParkedCall, Call) of
                 'ok' ->
                     _ = publish_retrieved(Call, SlotNumber),
                     _ = cleanup_slot(SlotNumber, ParkedCall, kapps_call:account_db(Call)),
-                    kapps_call_command:wait_for_hangup();
+                    {'ok', 'retrieved'};
+                                                %                    kapps_call_command:wait_for_hangup();
                 {'error', _E}=E ->
                     update_presence(<<"terminated">>, Slot),
                     lager:debug("failed to retrieve slot: ~p", [_E]),
                     E
-            end
+            end;
+        {'error', _} ->
+            lager:info("the parking slot ~s is empty, unable to retrieve caller", [SlotNumber]),
+            {'error', 'slot_empty'}
     end.
 
--spec maybe_retrieve_slot(ne_binary(), kz_json:object(), ne_binary(), kapps_call:call()) ->
+-spec maybe_retrieve_slot(ne_binary(), kapps_call:call()) ->
                                  'ok' |
                                  {'error', 'timeout' | 'failed'}.
-maybe_retrieve_slot(_SlotNumber, _Slot, ParkedCall, Call) ->
+maybe_retrieve_slot(ParkedCall, Call) ->
     lager:info("retrieved parked call from slot, maybe bridging to caller ~s", [ParkedCall]),
     _ = send_pickup(ParkedCall, Call),
     wait_for_pickup(Call).
@@ -288,7 +280,7 @@ create_slot(ParkerCallId, PresenceType, Call) ->
 %% was provided
 %% @end
 %%--------------------------------------------------------------------
--spec get_slot_number(kz_json:object(), kapps_call:call()) -> ne_binary().
+-spec get_slot_number(kz_json:object(), api_binary()) -> ne_binary().
 get_slot_number(_, CaptureGroup) when byte_size(CaptureGroup) > 0 ->
     CaptureGroup;
 get_slot_number(ParkedCalls, _) ->
@@ -325,7 +317,7 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     of
         'true' ->
             lager:info("slot has parked call '~s' by parker '~s', it is available", [ParkedCallId, ParkerCallId]),
-            do_save_slot(SlotNumber, Slot, ParkedCalls, Call);
+            do_save_slot(SlotNumber, Slot, Call);
         'false' ->
             case kapps_call_command:b_channel_status(ParkedCallId) of
                 {'ok', _} ->
@@ -333,70 +325,25 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                     {'error', 'occupied'};
                 _Else ->
                     lager:info("slot is availabled because parked call '~s' no longer exists: ~p", [ParkedCallId, _Else]),
-                    do_save_slot(SlotNumber, Slot, ParkedCalls, Call)
+                    do_save_slot(SlotNumber, Slot, Call)
             end
     end.
 
--spec do_save_slot(ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
+-spec do_save_slot(ne_binary(), kz_json:object(), kapps_call:call()) ->
                           {'ok', kz_json:object()} |
                           {'error', atom()}.
-do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
+do_save_slot(SlotNumber, Slot, Call) ->
+    Doc = slot_doc(SlotNumber, Slot, Call),
     AccountDb = kapps_call:account_db(Call),
     CallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
-    case kapps_call_command:b_channel_status(CallId) of
-        {'ok', _} ->
-            lager:debug("attempting to update parked calls document for slot ~s with call ~s", [SlotNumber, CallId]),
-            case kz_datamgr:save_doc(AccountDb, kz_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
-                {'ok', JObj}=Ok ->
-                    lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
-                    CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-                    kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
-                    Ok;
-                {'error', 'conflict'} ->
-                    maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call);
-                {'error', _Error} ->
-                    lager:info("error when attempting to store call parking data for slot ~s : ~p", [SlotNumber, _Error]),
-                    {'error', 'occupied'}
-            end;
-        _Else ->
-            lager:debug("ignoring attempt to park terminated call ~s", [CallId]),
-            {'error', 'terminated'}
-    end.
-
--spec maybe_resolve_conflict(ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'error', atom()}.
-maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
-    AccountDb = kapps_call:account_db(Call),
-    ExpectedParkedCall = kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
-    {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME),
-    case kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj1) of
-        ExpectedParkedCall ->
-            UpdatedJObj = kz_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1),
-            case kz_datamgr:save_doc(AccountDb, UpdatedJObj) of
-                {'error', 'conflict'} ->
-                    maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call);
-                {'ok', JObj2}=Ok ->
-                    lager:info("conflict when attempting to store call parking data for slot ~s due to a different slot update", [SlotNumber]),
-                    CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-                    kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
-                    Ok;
-                {'error', _Error} ->
-                    lager:info("error when attempting to store call parking data for slot ~s due to a different slot update : ~p", [SlotNumber, _Error]),
-                    {'error', 'occupied'}
-            end;
-        CurrentParkedCall ->
-            lager:debug("attempt to store parking data conflicted with a recent update to slot ~s", [SlotNumber]),
-            CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-            kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj1, CacheProps),
-            case kapps_call_command:b_channel_status(CurrentParkedCall) of
-                {'ok', _} ->
-                    lager:debug("slot ~s is now occupied by ~s", [SlotNumber, CurrentParkedCall]),
-                    {'error', 'occupied'};
-                _Else ->
-                    lager:info("slot ~s was updated to inactive call ~s", [SlotNumber, CurrentParkedCall]),
-                    save_slot(SlotNumber, Slot, JObj1, Call)
-            end
+    lager:debug("attempting to update parked call document for slot ~s with call ~s", [SlotNumber, CallId]),
+    case kz_datamgr:save_doc(AccountDb, Doc) of
+        {'ok', _}=Ok ->
+            lager:info("saved call parking data for slot ~s", [SlotNumber]),
+            Ok;
+        {'error', _Error} ->
+            lager:info("error when attempting to store call parking data for slot ~s : ~p", [SlotNumber, _Error]),
+            {'error', 'occupied'}
     end.
 
 %%--------------------------------------------------------------------
@@ -407,20 +354,15 @@ maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
 %% actuall "A-Leg".  Find the old callid and update it with the new one.
 %% @end
 %%--------------------------------------------------------------------
--spec update_call_id(ne_binary(), kz_json:object(), kapps_call:call()) ->
+-spec update_call_id(ne_binary(), kapps_call:call()) ->
                             {'ok', ne_binary(), kz_json:object()}.
-update_call_id(Replaces, ParkedCalls, Call) ->
-    update_call_id(Replaces, ParkedCalls, Call, 0).
-
-update_call_id(_, _, _, Loops) when Loops > 5 ->
-    lager:info("unable to update parked call id after ~p tries", [Loops]),
-    {'error', 'update_failed'};
-update_call_id(Replaces, ParkedCalls, Call, Loops) ->
+update_call_id(Replaces, Call) ->
     CallId = cf_exe:callid(Call),
     lager:info("update parked call id ~s with new call id ~s", [Replaces, CallId]),
-    Slots = kz_json:get_json_value(<<"slots">>, ParkedCalls, kz_json:new()),
-    case find_slot_by_callid(Slots, Replaces) of
-        {'ok', SlotNumber, Slot} ->
+    AccountDb = kapps_call:account_db(Call),
+    case kz_datamgr:get_result_doc(AccountDb, ?PARKED_CALL_VIEW, Replaces) of
+        {'ok', Doc} ->
+            ?SLOT_DOC_ID(SlotNumber) = kz_doc:id(Doc),
             lager:info("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
             _ = publish_parked(Call, SlotNumber),
             CallerNode = kapps_call:switch_nodename(Call),
@@ -432,25 +374,18 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                        ,fun(J) -> maybe_set_hold_media(J, Call) end
                        ,fun(J) -> maybe_set_ringback_id(J, Call) end
                        ],
+            Slot = kz_json:get_json_value(<<"slot">>, Doc),
             UpdatedSlot = lists:foldr(fun(F, J) -> F(J) end, Slot, Updaters),
-            JObj = kz_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
-            case kz_datamgr:save_doc(kapps_call:account_db(Call), JObj) of
+            JObj = kz_json:set_value(<<"slot">>, UpdatedSlot, Doc),
+            case kz_datamgr:save_doc(AccountDb, JObj) of
                 {'ok', _} ->
                     update_presence(UpdatedSlot),
                     {'ok', SlotNumber, UpdatedSlot};
-                {'error', 'conflict'} ->
-                    AccountDb = kapps_call:account_db(Call),
-                    kz_cache:erase_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb)),
-                    update_call_id(Replaces, get_parked_calls(Call), Call);
-                {'error', _R} ->
-                    lager:info("failed to update parking slot with call id ~s: ~p", [Replaces, _R]),
-                    timer:sleep(250),
-                    update_call_id(Replaces, get_parked_calls(Call), Call, Loops + 1)
+                {'error', _R} = E -> E
             end;
-        {'error', _R} ->
+        {'error', _R} = E ->
             lager:info("failed to find parking slot with call id ~s: ~p", [Replaces, _R]),
-            timer:sleep(250),
-            update_call_id(Replaces, get_parked_calls(Call), Call, Loops + 1)
+            E
     end.
 
 -spec maybe_set_ringback_id(kz_json:object(), kapps_call:call()) -> kz_json:object().
@@ -496,72 +431,33 @@ maybe_get_ringback_id(Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Given the parked calls and a list of parked keys find the slot with
-%% the provided call id.
-%% @end
-%%--------------------------------------------------------------------
--spec find_slot_by_callid(kz_json:object(), ne_binary()) ->
-                                 {'ok', ne_binary(), kz_json:object()} |
-                                 {'error', 'not_found'}.
-find_slot_by_callid(Slots, CallId) ->
-    find_slot_by_callid(kz_json:get_keys(Slots), Slots, CallId).
-
--spec find_slot_by_callid(ne_binaries(), kz_json:object(), ne_binary()) ->
-                                 {'ok', ne_binary(), kz_json:object()} |
-                                 {'error', 'not_found'}.
-find_slot_by_callid([], _, _) ->
-    {'error', 'not_found'};
-find_slot_by_callid([SlotNumber|SlotNumbers], Slots, CallId) ->
-    Slot = kz_json:get_json_value(SlotNumber, Slots),
-    case kz_json:get_ne_binary_value(<<"Call-ID">>, Slot) of
-        CallId -> {'ok', SlotNumber, Slot};
-        _ ->
-            case kz_json:get_ne_binary_value(<<"Slot-Call-ID">>, Slot) of
-                CallId -> {'ok', SlotNumber, Slot};
-                _ -> find_slot_by_callid(SlotNumbers, Slots, CallId)
-            end
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Attempts to retrieve the parked calls list from the datastore, if
 %% the list does not exist then it returns an new empty instance
 %% @end
 %%--------------------------------------------------------------------
--spec get_parked_calls(kapps_call:call()) -> kz_json:object().
+-spec get_parked_calls(kapps_call:call() | ne_binary()) -> kz_json:object().
+get_parked_calls(?NE_BINARY = AccountDb) ->
+    Options = ['include_docs'
+              ,{'doc_type', ?PARKED_CALL_DOC_TYPE}
+              ],
+    case kz_datamgr:get_results(AccountDb, ?PARKED_CALLS_VIEW, Options) of
+        {'error', _} -> load_parked_calls([]);
+        {'ok', JObjs} -> load_parked_calls(JObjs)
+    end;
 get_parked_calls(Call) ->
-    get_parked_calls(kapps_call:account_db(Call), kapps_call:account_id(Call)).
+    get_parked_calls(kapps_call:account_db(Call)).
 
--spec get_parked_calls(ne_binary(), ne_binary()) -> kz_json:object().
-get_parked_calls(AccountDb, AccountId) ->
-    case kz_cache:peek_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb)) of
-        {'ok', JObj} -> JObj;
-        {'error', 'not_found'} ->
-            fetch_parked_calls(AccountDb, AccountId)
-    end.
+-spec load_parked_calls(kz_json:objects()) -> kz_json:object().
+load_parked_calls(JObjs) ->
+    Slots = [load_parked_call(JObj) || JObj <- JObjs],
+    kz_json:from_list([{<<"slots">>, kz_json:from_list(Slots)}]).
 
--spec fetch_parked_calls(ne_binary(), ne_binary()) -> kz_json:object().
-fetch_parked_calls(AccountDb, AccountId) ->
-    DocName = ?DB_DOC_NAME,
-    case kz_datamgr:open_doc(AccountDb, DocName) of
-        {'error', 'not_found'} ->
-            TS = kz_time:current_tstamp(),
-            Generators = [fun(J) -> kz_doc:set_id(J, DocName) end
-                         ,fun(J) -> kz_doc:set_type(J, DocName) end
-                         ,fun(J) -> kz_doc:set_account_id(J, AccountId) end
-                         ,fun(J) -> kz_doc:set_account_db(J, AccountDb) end
-                         ,fun(J) -> kz_doc:set_created(J, TS) end
-                         ,fun(J) -> kz_doc:set_modified(J, TS) end
-                         ,fun(J) -> kz_doc:set_vsn(J, <<"1">>) end
-                         ,fun(J) -> kz_json:set_value(<<"slots">>, kz_json:new(), J) end],
-            lists:foldr(fun(F, J) -> F(J) end, kz_json:new(), Generators);
-        {'ok', JObj} ->
-            JObj;
-        {'error', _R}=E ->
-            lager:info("unable to get parked calls: ~p", [_R]),
-            E
-    end.
+-spec load_parked_call(kz_json:object()) -> {ne_binary(), kz_json:object()}.
+load_parked_call(JObj) ->
+    Doc = kz_json:get_json_value(<<"doc">>, JObj),
+    <<"parking-slot-", SlotNumber/binary>> = kz_doc:id(Doc),
+    Slot = kz_json:get_json_value(<<"slot">>, Doc),
+    {SlotNumber, kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(Doc), Slot)}.
 
 -spec maybe_cleanup_slot(ne_binary(), kapps_call:call(), ne_binary()) -> 'ok'.
 maybe_cleanup_slot(SlotNumber, Call, OldCallId) ->
@@ -595,19 +491,18 @@ maybe_cleanup_slot(_SlotNumber, _OldCallId, _NewCallId, _AccountDb) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
-    case kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME) of
+    case kz_datamgr:open_doc(AccountDb, ?SLOT_DOC_ID(SlotNumber)) of
         {'ok', JObj} ->
-            case kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
+            case kz_json:get_ne_binary_value([<<"slot">>, <<"Call-ID">>], JObj) of
                 ParkedCallId ->
                     lager:info("delete parked call ~s in slot ~s", [ParkedCallId, SlotNumber]),
-                    case kz_datamgr:save_doc(AccountDb, kz_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
+                    case kz_datamgr:del_doc(AccountDb, JObj) of
                         {'ok', _}=Ok ->
-                            Slot = kz_json:get_json_value([<<"slots">>, SlotNumber], JObj),
+                            Slot = kz_json:get_json_value(<<"slot">>, JObj),
                             update_presence(<<"terminated">>, Slot),
                             Ok;
-                        {'error', 'conflict'} -> cleanup_slot(SlotNumber, ParkedCallId, AccountDb);
                         {'error', _R}=E ->
-                            lager:info("failed to delete slot: ~p", [_R]),
+                            lager:info("failed to delete slot ~s : ~p", [SlotNumber, _R]),
                             E
                     end;
                 _Else ->
@@ -615,7 +510,7 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
                     {'error', 'unexpected_callid'}
             end;
         {'error', _R}=E ->
-            lager:info("failed to open the parked calls doc: ~p", [_R]),
+            lager:info("failed to open the parked call doc ~s : ~p", [SlotNumber, _R]),
             E
     end.
 
@@ -760,7 +655,7 @@ ringback_parker(EndpointId, SlotNumber, Data, Call0) ->
     Timeout = callback_timeout(Data, SlotNumber),
     case kz_endpoint:build(EndpointId, kz_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
         {'ok', Endpoints} ->
-            lager:info("attempting to ringback endpoint ~s : ~p", [EndpointId, Endpoints]),
+            lager:info("attempting to ringback endpoint ~s", [EndpointId]),
             kapps_call_command:bridge(Endpoints, Call),
             wait_for_ringback(Timeout, Call);
         _ -> 'failed'
@@ -931,3 +826,26 @@ publish_event(Call, SlotNumber, Event) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapi_call:publish_event(Cmd).
+
+-spec slot_doc(ne_binary(), kz_json:object(), kapps_call:call()) -> kz_json:object().
+slot_doc(SlotNumber, Slot, Call) ->
+    AccountDb = kapps_call:account_db(Call),
+    Doc = case kz_json:get_json_value(<<"pvt_fields">>, Slot) of
+              'undefined' -> kz_json:set_value(<<"slot">>, Slot, kz_json:new());
+              Pvt -> kz_json:set_value(<<"slot">>, kz_doc:public_fields(Slot), Pvt)
+          end,
+    Options = [{'type', ?PARKED_CALL_DOC_TYPE}
+              ,{'account_id', kapps_call:account_id(Call)}
+              ,{'id', ?SLOT_DOC_ID(SlotNumber)}
+              ],
+    kz_doc:update_pvt_parameters(Doc, AccountDb, Options).
+
+-spec get_slot(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+get_slot(SlotNumber, AccountDb) ->
+    DocId = ?SLOT_DOC_ID(SlotNumber),
+    case kz_datamgr:open_doc(AccountDb, {?PARKED_CALL_DOC_TYPE, DocId}) of
+        {'ok', JObj} ->
+            Slot = kz_json:get_json_value(<<"slot">>, JObj),
+            {'ok', kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(JObj), Slot)};
+        {'error', _} = E -> E
+    end.

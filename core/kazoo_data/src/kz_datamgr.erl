@@ -74,6 +74,7 @@
         ,get_result_keys/1, get_result_keys/3, get_result_keys/2
         ,get_result_ids/1, get_result_ids/2, get_result_ids/3
         ,get_single_result/3
+        ,get_result_doc/3, get_result_docs/3
         ,design_info/2
         ,design_compact/2
         ]).
@@ -1263,6 +1264,34 @@ get_single_result(DbName, DesignDoc, Options) ->
                 'true' -> {'ok', hd(Results)};
                 'false' -> {'error', 'multiple_results'}
             end;
+        {'error', _}=E -> E
+    end.
+
+-spec get_result_doc(ne_binary(), ne_binary(), ne_binary()) ->
+                            {'ok', kz_json:object()} |
+                            {'error', 'multiple_results'} |
+                            data_error().
+get_result_doc(DbName, DesignDoc, Key) ->
+    Options = ['include_docs'
+              ,{'key', Key}
+              ],
+    case get_results(DbName, DesignDoc, Options) of
+        {'ok', [Result]} -> {'ok', kz_json:get_json_value(<<"doc">>, Result)};
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', _Results} -> {'error', 'multiple_results'};
+        {'error', _}=E -> E
+    end.
+
+-spec get_result_docs(ne_binary(), ne_binary(), ne_binaries()) ->
+                             {'ok', kz_json:object()} |
+                             data_error().
+get_result_docs(DbName, DesignDoc, Keys) ->
+    Options = ['include_docs'
+              ,{'keys', Keys}
+              ],
+    case get_results(DbName, DesignDoc, Options) of
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', Results} -> {'ok', [kz_json:get_json_value(<<"doc">>, Result) || Result <- Results]};
         {'error', _}=E -> E
     end.
 
