@@ -305,6 +305,12 @@ merge_attribute(<<"record_call">> = Key, Account, Endpoint, Owner) ->
     OwnerAttr = get_record_call_properties(Owner),
     Merged = kz_json:merge([AccountAttr, OwnerAttr, EndpointAttr]),
     kz_json:set_value(Key, Merged, Endpoint);
+merge_attribute(<<"call_recording">> = Key, Account, Endpoint, Owner) ->
+    AccountAttr = get_account_record_call_properties(Account),
+    OwnerAttr = get_endpoint_record_call_properties(Owner),
+    EndpointAttr = get_endpoint_record_call_properties(Endpoint),
+    Merged = kz_json:merge([AccountAttr, OwnerAttr, EndpointAttr]),
+    kz_json:set_value(Key, Merged, Endpoint);
 merge_attribute(Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
@@ -323,6 +329,59 @@ merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) -
         end,
     kz_json:merge_recursive(Merging, fun(_, V) -> not kz_term:is_empty(V) end).
 
+-spec merge_call_recording(kz_json:object()) -> kz_json:object().
+merge_call_recording(JObj) ->
+    AnyOrig = kz_json:get_json_value(<<"any">>, JObj, kz_json:new()),
+    kz_json:foldl(fun({K, V}, Acc) ->
+                          AnyDest = kz_json:get_json_value(<<"any">>, V, kz_json:new()),
+                          V2 = kz_json:foldl(fun({K1, V1}, Acc1) ->
+                                                     kz_json:set_value(K1, kz_json:merge(AnyDest, V1), Acc1)
+                                             end
+                                            ,kz_json:new()
+                                            ,kz_json:delete_key(<<"any">>, V)
+                                            ),
+                          kz_json:set_value(K, V2, Acc)
+                  end
+                 ,kz_json:new()
+                 ,kz_json:foldl(fun({K, V}, Acc) ->
+                                        kz_json:set_value(K, kz_json:merge(AnyOrig, V), Acc)
+                                end
+                               ,kz_json:new()
+                               ,kz_json:delete_key(<<"any">>, JObj)
+                               )
+                 ).
+
+-spec get_account_record_call_properties(api_object()) -> kz_json:object().
+get_account_record_call_properties(JObj) ->
+    kz_json:foldl(fun({K, V}, Acc) ->
+                          kz_json:set_value(K, merge_call_recording(V), Acc)
+                  end
+                 ,kz_json:new()
+                 ,kz_json:get_json_value(<<"call_recording">>, JObj, kz_json:new())
+                 ).
+
+-spec get_endpoint_record_call_properties(kz_json:object()) -> kz_json:object().
+get_endpoint_record_call_properties(JObj) ->
+    CallRecording = kz_json:get_json_value(<<"call_recording">>, JObj),
+    case get_endpoint_record_call_properties(CallRecording, JObj) of
+        'undefined' -> kz_json:new();
+        RecordCall -> kz_json:from_list({<<"endpoint">>, merge_call_recording(RecordCall)})
+    end.
+
+-spec get_endpoint_record_call_properties(api_object(), kz_json:object()) -> api_object().
+get_endpoint_record_call_properties('undefined', JObj) ->
+    Legacy = get_record_call_properties(JObj),
+    case kz_json:is_true(<<"record_call">>, Legacy) of
+        'false' -> 'undefined';
+        'true' ->
+            Settings = kz_json:set_value(<<"enabled">>, 'true', Legacy),
+            AnyNet = kz_json:from_list([{<<"any">>, Settings}]),
+            kz_json:from_list([{<<"any">>, AnyNet}])
+    end;
+get_endpoint_record_call_properties(JObj, _) ->
+    JObj.
+
+%% deprecated, to be removed
 -spec get_record_call_properties(kz_json:object()) -> kz_json:object().
 get_record_call_properties(JObj) ->
     RecordCall = kz_json:get_ne_value(<<"record_call">>, JObj),
