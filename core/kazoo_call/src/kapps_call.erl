@@ -1288,8 +1288,9 @@ start_recording(Call) ->
 
 -spec start_recording(api_object(), call()) -> call().
 start_recording('undefined', Call) -> Call;
-start_recording(Data, Call) ->
-    case kzc_recordings_sup:start_recording(clear_helpers(Call), update_recording_id(Data)) of
+start_recording(Data0, Call) ->
+    Data = update_recording_id(Data0),
+    case kzc_recordings_sup:start_recording(clear_helpers(Call), Data) of
         {'ok', RecorderPid} ->
             Routines = [{fun store_recording/3
                         ,kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data)
