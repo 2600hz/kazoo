@@ -360,7 +360,7 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                          ,account_id = get_account_id(AuthDoc)
                          ,account_db = get_account_db(AuthDoc)
                          ,password = kz_json:get_value(<<"password">>, AuthValue, kz_binary:rand_hex(6))
-                         ,authorizing_type = kz_doc:type(AuthDoc, <<"anonymous">>)
+                         ,authorizing_type = get_auth_type(AuthDoc)
                          ,authorizing_id = kz_doc:id(JObj)
                          ,method = kz_term:to_lower_binary(Method)
                          ,owner_id = kz_json:get_value(<<"owner_id">>, AuthDoc)
@@ -370,6 +370,13 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                          ,request=Req
                          },
     maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
+
+-spec get_auth_type(kz_json:object()) -> ne_binary().
+get_auth_type(AuthDoc) ->
+    case kz_json:get_first_defined([<<"endpoint_type">>, <<"device_type">>], AuthDoc) of
+        <<"mobile">> -> <<"mobile">>;
+        _ -> kz_doc:type(AuthDoc, <<"anonymous">>)
+    end.
 
 -spec get_auth_value(kz_json:object()) -> api_object().
 get_auth_value(JObj) ->

@@ -1451,8 +1451,12 @@ maybe_set_endpoint_id({Endpoint, Call, CallFwd, CCVs}) ->
     ,case kz_doc:id(Endpoint) of
          'undefined' -> CCVs;
          EndpointId ->
+             AuthType = case get_endpoint_type(Endpoint) of
+                            <<"mobile">> -> <<"mobile">>;
+                            _ -> kz_doc:type(Endpoint)
+                        end,
              kz_json:set_values([{<<"Authorizing-ID">>, EndpointId}
-                                ,{<<"Authorizing-Type">>, kz_doc:type(Endpoint)}
+                                ,{<<"Authorizing-Type">>, AuthType}
                                 ]
                                ,CCVs
                                )

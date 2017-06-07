@@ -50,6 +50,10 @@
             },
             "type": "array"
         },
+        "mobile_rate": {
+            "description": "Object defining rate for Kazoo mobile",
+            "type": "object"
+        },
         "rate_version": {
             "description": "If defined, use rates with this version",
             "type": "string"

@@ -1021,8 +1021,7 @@ fetch_authn(#registration{username=Username
           ,{<<"Call-ID">>, CallId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    ReqResp = kz_amqp_worker:call(
-                props:filter_undefined(Req)
+    ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
                                  ,fun kapi_authn:publish_req/1
                                  ,fun kapi_authn:resp_v/1
                ),

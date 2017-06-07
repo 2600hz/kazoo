@@ -10,6 +10,7 @@
 -define(INBOUND_ACCOUNT_TYPES,
         [<<"account">>
         ,<<"device">>
+        ,<<"mobile">>
         ,<<"sys_info">>
         ]).
 

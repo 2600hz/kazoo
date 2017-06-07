@@ -108,6 +108,9 @@ maybe_start_metaflows('undefined', _AuthorizingType, _AuthorizingId, _OwnerId, _
 maybe_start_metaflows(AccountId, <<"device">>, DeviceId, OwnerId, CallId) ->
     maybe_start_device_metaflows(AccountId, DeviceId, CallId),
     maybe_start_user_metaflows(AccountId, OwnerId, CallId);
+maybe_start_metaflows(AccountId, <<"mobile">>, DeviceId, OwnerId, CallId) ->
+    maybe_start_device_metaflows(AccountId, DeviceId, CallId),
+    maybe_start_user_metaflows(AccountId, OwnerId, CallId);
 maybe_start_metaflows(AccountId, 'undefined', DeviceId, OwnerId, CallId) ->
     maybe_start_device_metaflows(AccountId, DeviceId, CallId),
     maybe_start_user_metaflows(AccountId, OwnerId, CallId);

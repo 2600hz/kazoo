@@ -81,7 +81,10 @@ build_data({'ok', TargetId, _TargetType}, Call) ->
 -spec build_flow_data(kapps_call:call(), kz_proplist(), api_binary()) -> kz_json:object().
 build_flow_data(Call, Data) ->
     build_flow_data(Call, Data, kapps_call:authorizing_type(Call)).
-build_flow_data(Call, Data, <<"device">>) ->
+
+build_flow_data(Call, Data, AuthorizingType)
+  when AuthorizingType =:= <<"device">>;
+       AuthorizingType =:= <<"mobile">> ->
     kz_json:from_list([{<<"approved_device_id">>, kapps_call:authorizing_id(Call)}
                        | Data
                       ]);
