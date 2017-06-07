@@ -23,9 +23,9 @@
              )
        ).
 
--define(ACCOUNT_INBOUND_RECORDING_KEY(A), [<<"record_call">>, <<"account">>, <<"inbound">>, A]).
--define(ACCOUNT_OUTBOUND_RECORDING_KEY(A), [<<"record_call">>, <<"account">>, <<"outbound">>, A]).
--define(ENDPOINT_OUTBOUND_RECORDING_KEY(A), [<<"record_call">>, <<"endpoint">>, <<"outbound">>, A]).
+-define(ACCOUNT_INBOUND_RECORDING(A), [<<"call_recording">>, <<"account">>, <<"inbound">>, A]).
+-define(ACCOUNT_OUTBOUND_RECORDING(A), [<<"call_recording">>, <<"account">>, <<"outbound">>, A]).
+-define(ENDPOINT_OUTBOUND_RECORDING(A), [<<"call_recording">>, <<"endpoint">>, <<"outbound">>, A]).
 
 -spec execute_callflow(kz_json:object(), kapps_call:call()) ->
                               kapps_call:call().
@@ -317,9 +317,9 @@ maybe_start_recording(Call) ->
 -spec maybe_start_account_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
 maybe_start_account_recording(From, To, Call) ->
     {'ok', Endpoint} = kz_endpoint:get(kapps_call:account_id(Call), Call),
-    case maybe_start_call_recording(?ACCOUNT_INBOUND_RECORDING_KEY(From), Endpoint, Call) of
+    case maybe_start_call_recording(?ACCOUNT_INBOUND_RECORDING(From), Endpoint, Call) of
         Call ->
-            case maybe_start_call_recording(?ACCOUNT_OUTBOUND_RECORDING_KEY(To), Endpoint, Call) of
+            case maybe_start_call_recording(?ACCOUNT_OUTBOUND_RECORDING(To), Endpoint, Call) of
                 Call -> Call;
                 NewCall -> kapps_call:set_is_recording('true', NewCall)
             end;
@@ -329,7 +329,7 @@ maybe_start_account_recording(From, To, Call) ->
 -spec maybe_start_endpoint_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
 maybe_start_endpoint_recording(<<"onnet">>, To, Call) ->
     {'ok', Endpoint} = kz_endpoint:get(Call),
-    maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING_KEY(To), Endpoint, Call);
+    maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING(To), Endpoint, Call);
 maybe_start_endpoint_recording(_, _, Call) ->
     Call.
 
