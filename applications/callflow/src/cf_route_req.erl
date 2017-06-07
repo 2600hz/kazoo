@@ -158,6 +158,7 @@ callflow_should_respond(Call) ->
         <<"device">> -> 'true';
         <<"callforward">> -> 'true';
         <<"clicktocall">> -> 'true';
+        <<"click2call">> -> 'true';
         <<"resource">> -> 'true';
         <<"sys_info">> ->
             timer:sleep(500),
