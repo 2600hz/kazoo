@@ -129,6 +129,8 @@
         ,stop_recording/1
         ]).
 
+-export([is_recording/1, set_is_recording/2]).
+
 -include("kapps_call_command.hrl").
 
 -record(kapps_call, {call_id :: api_binary()                       %% The UUID of the call
@@ -175,6 +177,7 @@
                     ,direction = <<"inbound">> :: ne_binary()
                     ,call_bridged = 'false' :: boolean()                %% Specified during call termination whether the call had been bridged
                     ,message_left = 'false' :: boolean()                %% Specified during call termination whether the caller left a voicemail message
+                    ,is_recording = 'false' :: boolean()                %% Control account level recording
                     }).
 
 -type call() :: #kapps_call{}.
@@ -434,6 +437,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    ,direction = kz_json:get_ne_binary_value(<<"Call-Direction">>, JObj, direction(Call))
                    ,call_bridged = kz_json:is_true(<<"Call-Bridged">>, JObj, call_bridged(Call))
                    ,message_left = kz_json:is_true(<<"Message-Left">>, JObj, message_left(Call))
+                   ,is_recording = kz_json:is_true(<<"Is-Recording">>, JObj, is_recording(Call))
                    }.
 
 %%--------------------------------------------------------------------
@@ -501,6 +505,7 @@ to_proplist(#kapps_call{}=Call) ->
     ,{<<"Call-Direction">>, direction(Call)}
     ,{<<"Call-Bridged">>, call_bridged(Call)}
     ,{<<"Message-Left">>, message_left(Call)}
+    ,{<<"Is-Recording">>, is_recording(Call)}
     ].
 
 -spec is_call(any()) -> boolean().
@@ -1361,6 +1366,14 @@ is_inter_account(#kapps_call{}=Call) ->
 -spec inter_account_id(call()) -> api_binary().
 inter_account_id(#kapps_call{}=Call) ->
     custom_channel_var(<<"Inception-Account-ID">>, Call).
+
+-spec set_is_recording(boolean(), call()) -> call().
+set_is_recording(IsRecording, #kapps_call{}=Call) ->
+    Call#kapps_call{is_recording=IsRecording}.
+
+-spec is_recording(call()) -> boolean().
+is_recording(#kapps_call{is_recording=IsRecording}) ->
+    IsRecording.
 
 %% EUNIT TESTING
 -ifdef(TEST).
