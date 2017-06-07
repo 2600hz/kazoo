@@ -316,7 +316,7 @@ maybe_start_recording(Call) ->
 
 -spec maybe_start_account_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
 maybe_start_account_recording(From, To, Call) ->
-    Endpoint = kz_endpoint:get(kapps_call:account_id(Call), Call),
+    {'ok', Endpoint} = kz_endpoint:get(kapps_call:account_id(Call), Call),
     case maybe_start_call_recording(?ACCOUNT_INBOUND_RECORDING_KEY(From), Endpoint, Call) of
         Call ->
             case maybe_start_call_recording(?ACCOUNT_OUTBOUND_RECORDING_KEY(To), Endpoint, Call) of
@@ -328,7 +328,7 @@ maybe_start_account_recording(From, To, Call) ->
 
 -spec maybe_start_endpoint_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
 maybe_start_endpoint_recording(<<"onnet">>, To, Call) ->
-    Endpoint = kz_endpoint:get(Call),
+    {'ok', Endpoint} = kz_endpoint:get(Call),
     maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING_KEY(To), Endpoint, Call);
 maybe_start_endpoint_recording(_, _, Call) ->
     Call.
