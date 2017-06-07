@@ -267,7 +267,7 @@ refresh_token_flow(#{auth_app := #{name := AppId
                     ,auth_provider := #{auth_url := URL}
                     ,refresh_token := RefreshToken
                     } = Map) ->
-    lager:debug("getting token : refresh ~p",[RefreshToken]),
+    lager:debug("getting token from stored refresh token"),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}],
     Fields = [{"client_id", kz_term:to_list(AppId)}
              ,{"client_secret",kz_term:to_list(Secret)}
