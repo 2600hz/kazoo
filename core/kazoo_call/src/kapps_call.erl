@@ -54,8 +54,7 @@
 -export([set_switch_hostname/2, switch_hostname/1]).
 -export([set_switch_url/2, switch_url/1]).
 -export([set_switch_uri/2, switch_uri/1]).
--export([set_inception/2, inception/1]).
--export([type/1]).
+-export([set_inception/2, inception/1, inception_type/1]).
 -export([is_inter_account/1, inter_account_id/1]).
 
 -export([set_authorizing_id/2, authorizing_id/1]).
@@ -1355,9 +1354,9 @@ get_recordings(Call) ->
         Q -> Q
     end.
 
--spec type(call()) -> api_binary().
-type(#kapps_call{inception='undefined'}) -> <<"onnet">>;
-type(#kapps_call{}) -> <<"offnet">>.
+-spec inception_type(call()) -> api_binary().
+inception_type(#kapps_call{inception='undefined'}) -> <<"onnet">>;
+inception_type(#kapps_call{}) -> <<"offnet">>.
 
 -spec is_inter_account(call()) -> boolean().
 is_inter_account(#kapps_call{}=Call) ->
