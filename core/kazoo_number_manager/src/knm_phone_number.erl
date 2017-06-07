@@ -435,8 +435,6 @@ to_public_json(PN) ->
             ,UsedBy
             ,Features
             ,{<<"features_available">>, knm_providers:available_features(PN)}
-            ,{<<"features_allowed">>, features_allowed(PN)}
-            ,{<<"features_denied">>, features_denied(PN)}
             ,{<<"carrier_module">>, ModuleName}
             ])
          ),
@@ -932,34 +930,10 @@ remove_denied_feature(PN=#knm_phone_number{features_denied = Denied}, Feature=?N
     end.
 
 -spec features_allowed(knm_phone_number()) -> ne_binaries().
--ifdef(TEST).
-features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
-    [?FEATURE_CNAM
-    ,?FEATURE_E911
-    ,?FEATURE_FAILOVER
-    ,?FEATURE_FORCE_OUTBOUND
-    ,?FEATURE_PREPEND
-    ,?FEATURE_RINGBACK
-    ,?FEATURE_RENAME_CARRIER
-    ];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
--else.
-features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
--endif.
 
 -spec features_denied(knm_phone_number()) -> ne_binaries().
--ifdef(TEST).
-features_denied(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
-    [?FEATURE_PORT
-    ,?FEATURE_FAILOVER
-    ];
-features_denied(#knm_phone_number{number = ?BW_EXISTING_DID}) ->
-    [?FEATURE_E911
-    ];
 features_denied(#knm_phone_number{features_denied = Features}) -> Features.
--else.
-features_denied(#knm_phone_number{features_denied = Features}) -> Features.
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
