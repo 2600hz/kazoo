@@ -721,6 +721,8 @@ validation_error(Property, <<"format">>=C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"divisibleBy">>=C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"too_few_properties">>=C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
 
 %% Not unique within the datastore
 validation_error(Property, <<"unique">> = C, Message, Options) ->
