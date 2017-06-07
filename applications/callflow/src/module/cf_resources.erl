@@ -41,22 +41,21 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    UpdatedCall = update_ccvs(Call),
-    'ok' = kapi_offnet_resource:publish_req(build_offnet_request(Data, UpdatedCall)),
-    case wait_for_stepswitch(UpdatedCall) of
+    'ok' = kapi_offnet_resource:publish_req(build_offnet_request(Data, Call)),
+    case wait_for_stepswitch(Call) of
         {<<"SUCCESS">>, _} ->
             lager:info("completed successful offnet request"),
-            cf_exe:stop(UpdatedCall);
+            cf_exe:stop(Call);
         {<<"TRANSFER">>, _} ->
             lager:info("completed successful offnet request"),
-            cf_exe:transfer(UpdatedCall);
+            cf_exe:transfer(Call);
         {<<"NORMAL_CLEARING">>, <<"sip:200">>} ->
             lager:info("completed successful offnet request"),
-            cf_exe:stop(UpdatedCall);
+            cf_exe:stop(Call);
         {<<"NORMAL_CLEARING">>, 'undefined'} ->
             lager:info("completed successful offnet request"),
-            cf_exe:stop(UpdatedCall);
-        {Cause, Code} -> handle_bridge_failure(Cause, Code, UpdatedCall)
+            cf_exe:stop(Call);
+        {Cause, Code} -> handle_bridge_failure(Cause, Code, Call)
     end.
 
 -spec handle_bridge_failure(api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
@@ -115,12 +114,13 @@ get_channel_vars(Call) ->
     GetterFuns = [fun maybe_add_endpoint/2
                  ,fun add_privacy_flags/2
                  ,fun maybe_require_ignore_early_media/2
+                 ,fun maybe_set_bridge_generate_comfort_noise/2
                  ],
     CCVs = lists:foldl(fun(F, Acc) -> F(Call, Acc) end
                       ,[]
                       ,GetterFuns
                       ),
-    kz_json:from_list(props:filter_empty(CCVs)).
+    kz_json:from_list(CCVs).
 
 -spec add_privacy_flags(kapps_call:call(), kz_proplist()) -> kz_proplist().
 add_privacy_flags(Call, Acc) ->
@@ -166,26 +166,22 @@ maybe_get_call_from_realm(Call) ->
         Realm -> Realm
     end.
 
--spec update_ccvs(kapps_call:call()) -> kapps_call:call().
-update_ccvs(Call) ->
-    Props = props:filter_undefined(
-              [{<<"Bridge-Generate-Comfort-Noise">>, maybe_set_bridge_generate_comfort_noise(Call)}]
-             ),
-    kapps_call:set_custom_channel_vars(Props, Call).
-
--spec maybe_set_bridge_generate_comfort_noise(kapps_call:call()) -> api_binary().
-maybe_set_bridge_generate_comfort_noise(Call) ->
+-spec maybe_set_bridge_generate_comfort_noise(kapps_call:call(), kz_proplist()) -> kz_proplist().
+maybe_set_bridge_generate_comfort_noise(Call, Acc) ->
     case kz_endpoint:get(Call) of
         {'ok', Endpoint} ->
-            maybe_has_comfort_noise_option_enabled(Endpoint);
+            maybe_has_comfort_noise_option_enabled(Endpoint, Acc);
         {'error', _E} ->
             lager:debug("error acquiring originating endpoint information"),
-            'undefined'
+            Acc
     end.
 
--spec maybe_has_comfort_noise_option_enabled(kz_json:object()) -> api_binary().
-maybe_has_comfort_noise_option_enabled(Endpoint) ->
-    kz_json:get_ne_binary_value([<<"media">>, <<"bridge_generate_comfort_noise">>], Endpoint).
+-spec maybe_has_comfort_noise_option_enabled(kz_json:object(), kz_proplist()) -> kz_proplist().
+maybe_has_comfort_noise_option_enabled(Endpoint, Acc) ->
+    case kz_json:is_true([<<"media">>, <<"bridge_generate_comfort_noise">>], Endpoint) of
+        'true' -> [{<<"Bridge-Generate-Comfort-Noise">>, 'true'} | Acc];
+        'false' -> Acc
+    end.
 
 -spec get_account_realm(kapps_call:call()) -> api_binary().
 get_account_realm(Call) ->
