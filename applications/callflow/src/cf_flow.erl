@@ -9,7 +9,7 @@
 -module(cf_flow).
 
 -export([lookup/1, lookup/2]).
-
+-export([contains_no_match/1]).
 
 -include("callflow.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
