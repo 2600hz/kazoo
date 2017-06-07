@@ -56,7 +56,7 @@
 -define(FEATURES_DENIED_RESELLER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)).
 
--define(DEFAULT_FEATURES_ALLOWED_SYSTEM, ?ALL_KNM_FEATURES).
+-define(DEFAULT_FEATURES_ALLOWED_SYSTEM, ?KAZOO_NUMBER_FEATURES ++ ?ADMIN_ONLY_FEATURES).
 -define(FEATURES_ALLOWED_SYSTEM(Default),
         kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
 

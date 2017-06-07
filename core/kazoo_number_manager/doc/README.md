@@ -113,7 +113,7 @@ One can set the lists in this hierarchical order (if set, one takes precedence o
 1. On the number's reseller account document (`undefined` by default)
 1. In `system_config/number_manager`:
     * if `system_config/number_manager/providers` is set it will be used as the default list of allowed features
-    * otherwise, allows usage of all features by default
+    * otherwise, the defaults of `"features"."allow"` are used
     * Note: local numbers are the only exception (see note below)
 
 Each of these documents can both have a list of features allowed for use and forbidden from use:
@@ -129,13 +129,8 @@ By default, here is what the `system_config/number_manager` document looks like:
        "features": {
            "allow": [
                "carrier_name",
-               "cnam",
-               "e911",
                "failover",
                "force_outbound",
-               "inbound_cnam",
-               "outbound_cnam",
-               "port",
                "prepend",
                "ringback"
            ]

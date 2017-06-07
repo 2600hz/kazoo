@@ -35,6 +35,7 @@
 -export([purge_deleted/0, purge_deleted/1]).
 -export([update_number_services_view/1]).
 
+-export([all_features/0]).
 -export([feature_permissions_on_number/1]).
 -export([add_allowed_feature_on_number/2
         ,remove_allowed_feature_on_number/2
@@ -670,10 +671,13 @@ is_feature_valid(Thing) ->
 %% @private
 -spec invalid_feature(ne_binary()) -> no_return.
 invalid_feature(Feature) ->
-    io:format("Feature '~s' is not a known feature. Known features:\n"
-              "\t~s\n"
-             ,[Feature, list_features(?ALL_KNM_FEATURES)]
-             ),
+    io:format("Feature '~s' is not a known feature.\n", [Feature]),
+    all_features().
+
+%% @public
+-spec all_features() -> no_return.
+all_features() ->
+    io:format("Known features:\n\t~s\n", [list_features(?ALL_KNM_FEATURES)]),
     no_return.
 
 %% @private
