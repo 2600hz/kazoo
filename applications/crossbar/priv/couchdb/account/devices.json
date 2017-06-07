@@ -94,7 +94,7 @@
                 "        'method': auth.auth_method || 'password',",
                 "        'invite_format': doc.servers[i].options.inbound_format || 'e164',",
                 "        'authorizing_id': doc._id,",
-                "        'authorizing_type' = doc.pvt_type;",
+                "        'authorizing_type': doc.pvt_type",
                 "      });",
                 "    }",
                 "  }",

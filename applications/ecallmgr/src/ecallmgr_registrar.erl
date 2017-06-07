@@ -1024,7 +1024,7 @@ fetch_authn(#registration{username=Username
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
                                  ,fun kapi_authn:publish_req/1
                                  ,fun kapi_authn:resp_v/1
-               ),
+                                 ),
     case ReqResp of
         {'error', _} -> Reg;
         {'ok', JObj} ->
