@@ -247,7 +247,6 @@ maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
 validate(Context) ->
-    lager:debug(">>> ~p", [cb_context:auth_user_id(Context)]),
     validate_phone_numbers(Context, cb_context:req_verb(Context), cb_context:account_id(Context)).
 
 -spec validate_phone_numbers(cb_context:context(), http_method(), api_binary()) ->

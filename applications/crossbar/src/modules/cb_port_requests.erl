@@ -52,9 +52,7 @@
 
 -define(PATH_TOKEN_TIMELINE, <<"timeline">>).
 
--define(REQ_TRANSITION, <<"transition">>).
--define(REQ_TRANSITION_IS_PRIVATE, <<"transition_is_private">>).
--define(REQ_SHOW_PRIVATE_TRANSITIONS, <<"show_private_transitions">>).
+-define(REQ_TRANSITION, <<"reason">>).
 
 %%%===================================================================
 %%% API
@@ -742,33 +740,12 @@ timeline(Context) ->
         true ->
             Doc = cb_context:doc(Context),
             Comments = kz_json:get_value(<<"comments">>, filter_private_comments(Context, Doc)),
-            Transitions = filter_private_transitions(Context, Doc),
-            Indexed = [{kz_json:get_integer_value(?METADATA_TIMESTAMP, JObj)
-                       ,kz_json:set_value(<<"type">>, timeline_event_type(JObj), JObj)
-                       }
+            Transitions = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
+            Indexed = [{kz_json:get_integer_value(?TRANSITION_TIMESTAMP, JObj), JObj}
                        || JObj <- Comments ++ Transitions
                       ],
             {_, NewDoc} = lists:unzip(lists:keysort(1, Indexed)),
             cb_context:set_resp_data(Context, NewDoc)
-    end.
-
-timeline_event_type(JObj) ->
-    case undefined =:= kz_json:get_ne_binary_value(?METADATA_NEW_STATE, JObj) of
-        true -> <<"comment">>;
-        false -> <<"transition">>
-    end.
-
--spec filter_private_transitions(cb_context:context(), kz_json:object()) -> kz_json:objects().
-filter_private_transitions(Context, Doc) ->
-    JObjs = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
-    case cb_context:is_superduper_admin(Context)
-        orelse kz_term:is_true(cb_context:req_value(Context, ?REQ_SHOW_PRIVATE_TRANSITIONS))
-    of
-        true -> JObjs;
-        false ->
-            [JObj || JObj <- JObjs,
-                     not kz_json:is_true(?METADATA_TRANSITION_IS_PRIVATE, JObj)
-            ]
     end.
 
 -spec filter_private_comments(cb_context:context(), kz_json:object()) -> kz_json:object().
@@ -1061,11 +1038,9 @@ load_attachment(AttachmentId, Context) ->
 %%--------------------------------------------------------------------
 -spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_move_state(Context, Id, PortState) ->
-    IsTransitionPrivate = kz_term:is_true(cb_context:req_value(Context, ?REQ_TRANSITION_IS_PRIVATE)),
     Metadata = knm_port_request:transition_metadata(cb_context:auth_account_id(Context)
                                                    ,cb_context:auth_user_id(Context)
                                                    ,cb_context:req_value(Context, ?REQ_TRANSITION)
-                                                   ,IsTransitionPrivate
                                                    ),
     Context1 = load_port_request(Context, Id),
     try cb_context:resp_status(Context1) =:= 'success'

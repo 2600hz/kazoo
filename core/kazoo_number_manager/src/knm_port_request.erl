@@ -25,7 +25,7 @@
         ,migrate/0
         ]).
 
--export([transition_metadata/2, transition_metadata/4]).
+-export([transition_metadata/2, transition_metadata/3]).
 -export_type([transition_metadata/0]).
 
 -compile({'no_auto_import', [get/1]}).
@@ -273,48 +273,53 @@ successful_transition(JObj, FromState, ToState, Metadata) ->
 
 -spec transition_metadata_jobj(api_ne_binary(), ne_binary(), transition_metadata()) -> kz_json:object().
 transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
+                                              ,auth_account_name := AuthAccountName
                                               ,auth_user_id := OptionalUserId
                                               ,user_first_name := OptionalFirstName
                                               ,user_last_name := OptionalLastName
                                               ,optional_reason := OptionalReason
-                                              ,is_private := IsPrivate
                                               }) ->
-    kz_json:from_list(
-      [{?METADATA_TIMESTAMP, kz_time:current_tstamp()}
-      ,{?METADATA_NEW_STATE, ToState}
-      ,{?METADATA_AUTH_ACCOUNT_ID, AuthAccountId}
-       %% Fields below can be undefined
-      ,{?METADATA_OLD_STATE, FromState}
-      ,{?METADATA_USER_ID, OptionalUserId}
-      ,{?METADATA_USER_FIRST_NAME, OptionalFirstName}
-      ,{?METADATA_USER_LAST_NAME, OptionalLastName}
-       | reason_metadata(OptionalReason, IsPrivate)
+    kz_json:from_list_recursive(
+      [{?TRANSITION_TIMESTAMP, kz_time:current_tstamp()}
+      ,{?TRANSITION_TYPE, ?PORT_TRANSITION}
+      ,{?TRANSITION_REASON, OptionalReason}
+      ,{<<"transition">>, [{<<"new">>, ToState}
+                          ,{<<"previous">>, FromState}
+                          ]}
+      ,{<<"authorization">>, [{<<"reason">>, OptionalReason}
+                             ,{<<"account">>, [{<<"id">>, AuthAccountId}
+                                              ,{<<"name">>, AuthAccountName}
+                                              ]}
+                              | maybe_user(OptionalUserId, OptionalFirstName, OptionalLastName)
+                             ]}
       ]).
 
-reason_metadata(undefined, _) -> [];
-reason_metadata(Reason, IsPrivate) ->
-    [{?METADATA_TRANSITION_IS_PRIVATE, IsPrivate}
-    ,{?METADATA_REASON, Reason}
+-spec maybe_user(api_ne_binary(), api_ne_binary(), api_ne_binary()) -> kz_proplist().
+maybe_user(undefined, _, _) -> [];
+maybe_user(UserId, OptionalFirstName, OptionalLastName) ->
+    [{<<"user">>, [{<<"id">>, UserId}
+                  ,{<<"first_name">>, OptionalFirstName}
+                  ,{<<"last_name">>, OptionalLastName}
+                  ]}
     ].
 
 %% @public
 -type transition_metadata() :: #{auth_account_id => ne_binary()
+                                ,auth_account_name => api_ne_binary()
                                 ,auth_user_id => api_ne_binary()
                                 ,user_first_name => api_ne_binary()
                                 ,user_last_name => api_ne_binary()
                                 ,optional_reason => api_ne_binary()
-                                ,is_private => boolean()
                                 }.
 
 %% @public
 -spec transition_metadata(ne_binary(), api_ne_binary()) -> transition_metadata().
 transition_metadata(AuthAccountId, AuthUserId) ->
-    transition_metadata(AuthAccountId, AuthUserId, undefined, true).
+    transition_metadata(AuthAccountId, AuthUserId, undefined).
 
 %% @public
--spec transition_metadata(ne_binary(), api_ne_binary(), api_ne_binary(), boolean()) -> transition_metadata().
-transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason, IsPrivate)
-  when is_boolean(IsPrivate) ->
+-spec transition_metadata(ne_binary(), api_ne_binary(), api_ne_binary()) -> transition_metadata().
+transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
     OptionalUserId = case UserId of
                          ?NE_BINARY -> UserId;
                          _ -> undefined
@@ -325,11 +330,11 @@ transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason, IsPrivate
                          _ -> undefined
                      end,
     #{auth_account_id => AuthAccountId
+     ,auth_account_name => kapps_util:get_account_name(AuthAccountId)
      ,auth_user_id => OptionalUserId
      ,user_first_name => FirstName
      ,user_last_name => LastName
      ,optional_reason => OptionalReason
-     ,is_private => IsPrivate
      }.
 
 get_user_name(AuthAccountId, UserId) ->

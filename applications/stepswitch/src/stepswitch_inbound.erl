@@ -260,7 +260,7 @@ maybe_transition_port_in(NumberProps, JObj) ->
 transition_port_in(Number, JObj) ->
     {ok, MasterAccountId} = kapps_util:get_master_account_id(),
     Comment = <<(?APP_NAME)/binary, "-", (?APP_VERSION)/binary, " automagic">>,
-    Metadata = knm_port_request:transition_metadata(MasterAccountId, undefined, Comment, true),
+    Metadata = knm_port_request:transition_metadata(MasterAccountId, undefined, Comment),
     case knm_port_request:get(Number) of
         {'ok', PortReq} -> knm_port_request:transition_to_complete(PortReq, Metadata);
         _ ->
