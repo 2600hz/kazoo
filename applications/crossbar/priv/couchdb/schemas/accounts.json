@@ -3,6 +3,20 @@
     "_id": "accounts",
     "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
     "properties": {
+        "call_recording": {
+            "additionalProperties": false,
+            "description": "call recording configuration",
+            "properties": {
+                "account": {
+                    "$ref": "call_recording"
+                },
+                "endpoint": {
+                    "$ref": "call_recording"
+                }
+            },
+            "required": [],
+            "type": "object"
+        },
         "call_restriction": {
             "additionalProperties": {
                 "properties": {
