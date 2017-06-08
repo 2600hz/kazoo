@@ -46,7 +46,24 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
-Now, when someone logs into this account (via user\_auth) and who's user\_doc is of type `user` (and not `admin`), they will be unable to create sub-accounts.
+Now, when someone logs into this account (via user\_auth) and who's user\_doc is of type `user` (and not `admin`), they will be unable to create sub-accounts, and will receive an error response like this:
+
+```json
+{
+  "auth_token": "{AUTH_TOKEN}",
+  "data": {
+    "cause": "access denied by token restrictions",
+    "message": "forbidden"
+  },
+  "error": "403",
+  "message": "forbidden",
+  "node": "ghw5cA1GROHLEa43HETSKg",
+  "request_id": "{REQUEST_ID}",
+  "status": "error",
+  "timestamp": "2017-06-07T23:16:25",
+  "version": "4.0.0"
+}
+```
 
 The following sections break down what's happening here.
 
