@@ -24,7 +24,7 @@ handle_req(RateReq, _Props) ->
     'true' = kapi_rate:req_v(RateReq),
     _ = kz_util:put_callid(RateReq),
     lager:debug("valid rating request"),
-    case get_rate_data(RateReq) of
+    case get_rate_data(RateReq, kz_json:get_ne_value(<<"Authorizing-Type">>, RateReq)) of
         {'error', 'no_rate_found'} ->
             maybe_publish_no_rate_found(RateReq);
         {'ok', Resp} ->
@@ -48,13 +48,31 @@ publish_no_rate_found(RateReq) ->
     Resp = [{<<"Msg-ID">>, MsgId}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    lager:debug("publishing empty rate resp for ~s(~s)", [ServerId, MsgId]),
+    lager:debug("publishing empty ~srate resp for ~s(~s)", [maybe_empty_mobile_log(RateReq), ServerId, MsgId]),
     kz_amqp_worker:cast(Resp, fun(P) -> kapi_rate:publish_resp(ServerId, P) end).
 
--spec get_rate_data(kapi_rate:req()) ->
+-spec maybe_empty_mobile_log(kapi_rate:req()) -> string().
+maybe_empty_mobile_log(RateReq) ->
+    case kz_json:get_ne_value(<<"Authorizing-Type">>, RateReq) of
+        <<"mobile">> -> "mobile ";
+        _ -> ""
+    end.
+
+-spec get_rate_data(kapi_rate:req(), api_ne_binary()) ->
                            {'ok', api_terms()} |
                            {'error', 'no_rate_found'}.
-get_rate_data(RateReq) ->
+get_rate_data(RateReq, <<"mobile">>) ->
+    ToDID = kz_json:get_value(<<"To-DID">>, RateReq),
+    FromDID = kz_json:get_value(<<"From-DID">>, RateReq),
+
+    case hotornot_config:mobile_rate() of
+        'undefined' ->
+            maybe_publish_no_rate_found(RateReq);
+        Rate ->
+            lager:debug("using mobile rate for ~s to ~s", [FromDID, ToDID]),
+            {'ok', rate_resp(Rate, RateReq)}
+    end;
+get_rate_data(RateReq, _AuthType) ->
     ToDID = kz_json:get_value(<<"To-DID">>, RateReq),
     FromDID = kz_json:get_value(<<"From-DID">>, RateReq),
     AccountId = kz_json:get_value(<<"Account-ID">>, RateReq),

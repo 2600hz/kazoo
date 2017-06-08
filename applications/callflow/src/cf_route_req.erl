@@ -156,6 +156,7 @@ callflow_should_respond(Call) ->
         <<"account">> -> 'true';
         <<"user">> -> 'true';
         <<"device">> -> 'true';
+        <<"mobile">> -> 'true';
         <<"callforward">> -> 'true';
         <<"clicktocall">> -> 'true';
         <<"resource">> -> 'true';

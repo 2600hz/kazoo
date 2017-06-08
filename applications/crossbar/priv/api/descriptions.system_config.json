@@ -348,6 +348,7 @@
     "hotornot.default_rate_surcharge": "default surcharge amount for rate",
     "hotornot.default_ratedeck": "default ratedeck database to use",
     "hotornot.filter_list": "List of filters for rates",
+    "hotornot.mobile_rate": "Object defining rate for Kazoo mobile",
     "hotornot.rate_version": "If defined, use rates with this version",
     "hotornot.sort_by_weight": "sort rates by weight (true) or cost (false)",
     "hotornot.trie_build_timeout_ms": "build timeout (ms) for trie",

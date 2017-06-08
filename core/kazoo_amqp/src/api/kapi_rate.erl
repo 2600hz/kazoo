@@ -41,6 +41,7 @@
                                    ,<<"Resource-ID">>
                                    ,<<"Resource-Type">>
                                    ,<<"Send-Empty">>
+                                   ,<<"Authorizing-Type">>
                                    ]).
 -define(RATE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                          ,{<<"Event-Name">>, <<"req">>}
