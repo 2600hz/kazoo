@@ -258,12 +258,15 @@ maybe_transition_port_in(NumberProps, JObj) ->
 
 -spec transition_port_in(ne_binary(), api_object()) -> any().
 transition_port_in(Number, JObj) ->
+    {ok, MasterAccountId} = kapps_util:get_master_account_id(),
+    Comment = <<(?APP_NAME)/binary, "-", (?APP_VERSION)/binary, " automagic">>,
+    Metadata = knm_port_request:transition_metadata(MasterAccountId, undefined, Comment),
     case knm_port_request:get(Number) of
-        {'ok', PortReq} -> knm_port_request:transition_to_complete(PortReq);
+        {'ok', PortReq} -> knm_port_request:transition_to_complete(PortReq, Metadata);
         _ ->
             Num = stepswitch_util:get_inbound_destination(JObj),
             {'ok', PortReq} = knm_port_request:get(Num),
-            knm_port_request:transition_to_complete(PortReq)
+            knm_port_request:transition_to_complete(PortReq, Metadata)
     end.
 
 %%--------------------------------------------------------------------
