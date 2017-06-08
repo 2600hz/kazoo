@@ -47,6 +47,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
                ,{<<"method">>, kz_util:to_binary(AuthModule)}
                ,{<<"exp">>, Expiration}
+               ,{<<"restrictions">>, crossbar_util:get_token_restrictions(AuthModule, AccountId, OwnerId)}
                 | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
                ]),
 
@@ -88,4 +89,3 @@ authorize_auth_token(Token) ->
 
 maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
-
