@@ -149,15 +149,21 @@ authorize(Context) ->
 
 -spec maybe_deny_access(cb_context:context()) -> boolean().
 maybe_deny_access(Context) ->
-    AuthDoc = cb_context:auth_doc(Context),
-    case AuthDoc =:= 'undefined'
-        orelse kz_json:get_json_value(<<"restrictions">>, AuthDoc)
-    of
-        'true' -> 'false';
+    case get_auth_restrictions(cb_context:auth_doc(Context)) of
         'undefined' -> 'false';
         Restrictions ->
             maybe_deny_access(Context, Restrictions)
     end.
+
+-spec get_auth_restrictions(api_object()) -> api_object().
+get_auth_restrictions('undefined') -> 'undefined';
+get_auth_restrictions(AuthDoc) ->
+    AuthModule = kz_json:get_atom_value(<<"method">>, AuthDoc),
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc),
+    OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, AuthDoc),
+
+    crossbar_util:get_token_restrictions(AuthModule, AccountId, OwnerId).
+
 
 -spec maybe_deny_access(cb_context:context(), kz_json:object()) -> boolean().
 maybe_deny_access(Context, Restrictions) ->
