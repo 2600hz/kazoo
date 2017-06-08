@@ -948,4 +948,4 @@ rt_options(Options) ->
 
 -spec is_ready() -> boolean().
 is_ready() ->
-    gen_listener:call(?MODULE, 'is_ready').
+    gen_server:call(?SERVER, 'is_ready').
