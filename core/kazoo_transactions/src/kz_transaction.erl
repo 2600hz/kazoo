@@ -651,8 +651,8 @@ prepare_transaction(Transaction=#kz_transaction{pvt_account_id = AccountId
                                                ,pvt_account_db = AccountDb
                                                }) ->
     case {AccountId, AccountDb} of
-        {?MATCH_ACCOUNT_RAW(_), ?MATCH_ACCOUNT_ENCODED(_)} -> Transaction;
-        {_, ?MATCH_ACCOUNT_ENCODED(_)} -> {error, account_id_missing};
+        {?MATCH_ACCOUNT_RAW(_), ?MATCH_MODB_SUFFIX_ENCODED(_,_,_,_,_)} -> Transaction;
+        {_, ?MATCH_MODB_SUFFIX_ENCODED(_,_,_,_,_)} -> {error, account_id_missing};
         {?MATCH_ACCOUNT_RAW(_), _} -> {error, account_db_missing}
     end.
 
