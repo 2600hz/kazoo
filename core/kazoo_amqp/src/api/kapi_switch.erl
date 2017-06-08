@@ -196,24 +196,24 @@ bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
 
 bind_to_q(Q, 'undefined', _Props) ->
-    'ok' = amqp_util:bind_q_to_exchange(?SWITCH_EXCHANGE,Q, <<"switch.*">>);
+    'ok' = amqp_util:bind_q_to_exchange(Q, <<"switch.*">>, ?SWITCH_EXCHANGE);
 bind_to_q(Q, ['reload_acls'|T], Props) ->
-    'ok' = amqp_util:bind_q_to_exchange(?SWITCH_EXCHANGE,Q, ?RELOAD_ACLS_KEY),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?RELOAD_ACLS_KEY, ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['reload_gateways'|T], Props) ->
-    'ok' = amqp_util:bind_q_to_exchange(?SWITCH_EXCHANGE,Q, ?RELOAD_GATEWAYS_KEY),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?RELOAD_GATEWAYS_KEY, ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['fs_xml_flush'|T], Props) ->
-    'ok' = amqp_util:bind_q_to_exchange(?SWITCH_EXCHANGE,Q, ?FS_XML_FLUSH_KEY),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?FS_XML_FLUSH_KEY, ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['check_sync'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
-    'ok' = amqp_util:bind_q_to_exchange(?SWITCH_EXCHANGE,Q, ?CHECK_SYNC_KEY(Realm, Username)),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?CHECK_SYNC_KEY(Realm, Username), ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['command'|T], Props) ->
     Node = props:get_value('node', Props, <<"*">>),
-    'ok' = amqp_util:bind_q_to_exchange(?SWITCH_EXCHANGE,Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node))),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node)), ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(_Q, [], _Props) -> 'ok'.
 
@@ -222,24 +222,24 @@ unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value('restrict_to', Props), Props).
 
 unbind_q_from(Q, 'undefined', _Props) ->
-    'ok' = amqp_util:unbind_q_from_exchange(?SWITCH_EXCHANGE,Q, <<"switch.*">>);
+    'ok' = amqp_util:unbind_q_from_exchange(Q, <<"switch.*">>, ?SWITCH_EXCHANGE);
 unbind_q_from(Q, ['reload_acls'|T], Props) ->
-    'ok' = amqp_util:unbind_q_from_exchange(?SWITCH_EXCHANGE,Q, ?RELOAD_ACLS_KEY),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?RELOAD_ACLS_KEY, ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['reload_gateways'|T], Props) ->
-    'ok' = amqp_util:unbind_q_from_exchange(?SWITCH_EXCHANGE,Q, ?RELOAD_GATEWAYS_KEY),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?RELOAD_GATEWAYS_KEY, ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['fs_xml_flush'|T], Props) ->
-    'ok' = amqp_util:unbind_q_from_exchange(?SWITCH_EXCHANGE,Q, ?FS_XML_FLUSH_KEY),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?FS_XML_FLUSH_KEY, ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['check_sync'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
-    'ok' = amqp_util:unbind_q_from_exchange(?SWITCH_EXCHANGE,Q, ?CHECK_SYNC_KEY(Realm, Username)),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?CHECK_SYNC_KEY(Realm, Username), ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['command'|T], Props) ->
     Node = props:get_value('node', Props, <<"*">>),
-    'ok' = amqp_util:unbind_q_from_exchange(?SWITCH_EXCHANGE,Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node))),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node)), ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(_Q, [], _Props) -> 'ok'.
 
