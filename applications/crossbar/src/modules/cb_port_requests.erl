@@ -1042,7 +1042,7 @@ maybe_move_state(Context, Id, PortState) ->
                                                    ,cb_context:auth_user_id(Context)
                                                    ,cb_context:req_value(Context, ?REQ_TRANSITION)
                                                    ),
-    Context1 = load_port_request(Context, Id),
+    Context1 = remove_transition_reason(load_port_request(Context, Id)),
     try cb_context:resp_status(Context1) =:= 'success'
              andalso knm_port_request:maybe_transition(cb_context:doc(Context1), Metadata, PortState)
     of
@@ -1063,6 +1063,11 @@ maybe_move_state(Context, Id, PortState) ->
         'throw':{'error', 'failed_to_charge'} ->
             cb_context:add_system_error('no_credit', Context)
     end.
+
+-spec remove_transition_reason(cb_context:context()) -> cb_context:context().
+remove_transition_reason(Context) ->
+    NewDoc = kz_json:delete_key(?REQ_TRANSITION, cb_context:doc(Context)),
+    cb_context:set_doc(Context, NewDoc).
 
 %%--------------------------------------------------------------------
 %% @private
