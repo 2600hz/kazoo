@@ -186,6 +186,9 @@
 
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
 
+-define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}]).
+-define(BRIDGE_CHANNEL_VAR_SEPARATOR, "!").
+
 %% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
 %% [{AMQP-Header, FS-var-name}]
 %% so FS-var-name of "foo_var" would become "foo_var=foo_val" in the channel/call string

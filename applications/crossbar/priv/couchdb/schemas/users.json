@@ -49,6 +49,10 @@
             },
             "type": "object"
         },
+        "call_recording": {
+            "$ref": "call_recording",
+            "type": "object"
+        },
         "call_restriction": {
             "additionalProperties": {
                 "properties": {

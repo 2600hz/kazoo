@@ -525,7 +525,12 @@ handler_fields(Url, State) ->
     handler_fields_for_protocol(Protocol, Url, State).
 
 -spec handler_fields_for_protocol(ne_binary(), ne_binary(), state()) -> list().
-handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, _State) -> [];
+handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, #state{format=Ext
+                                                             }) ->
+    [<<"call_recording_">>
+    ,{field, <<"call_id">>}
+    ,<<".", Ext/binary>>
+    ];
 handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=AccountId
                                                              ,format=Ext
                                                              }) ->

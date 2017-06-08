@@ -23,6 +23,10 @@
              )
        ).
 
+-define(ACCOUNT_INBOUND_RECORDING(A), [<<"call_recording">>, <<"account">>, <<"inbound">>, A]).
+-define(ACCOUNT_OUTBOUND_RECORDING(A), [<<"call_recording">>, <<"account">>, <<"outbound">>, A]).
+-define(ENDPOINT_OUTBOUND_RECORDING(A), [<<"call_recording">>, <<"endpoint">>, <<"outbound">>, A]).
+
 -spec execute_callflow(kz_json:object(), kapps_call:call()) ->
                               kapps_call:call().
 execute_callflow(JObj, Call) ->
@@ -300,16 +304,44 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
 
 -spec maybe_start_recording(kapps_call:call()) -> kapps_call:call().
 maybe_start_recording(Call) ->
-    case kz_endpoint:get(Call) of
-        {'ok', Endpoint} ->
-            Data = kz_json:get_value(<<"record_call">>, Endpoint, kz_json:new()),
-            maybe_start_call_recording(Data, Call);
-        {'error', _} -> Call
+    From = kapps_call:inception_type(Call),
+    To = case kapps_call:kvs_fetch('cf_no_match', Call) of
+             'true' -> <<"offnet">>;
+             _ -> <<"onnet">>
+         end,
+    Routines = [{fun maybe_start_account_recording/3, From, To}
+               ,{fun maybe_start_endpoint_recording/3, From, To}
+               ],
+    kapps_call:exec(Routines, Call).
+
+-spec maybe_start_account_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
+maybe_start_account_recording(From, To, Call) ->
+    {'ok', Endpoint} = kz_endpoint:get(kapps_call:account_id(Call), Call),
+    case maybe_start_call_recording(?ACCOUNT_INBOUND_RECORDING(From), Endpoint, Call) of
+        Call ->
+            case maybe_start_call_recording(?ACCOUNT_OUTBOUND_RECORDING(To), Endpoint, Call) of
+                Call -> Call;
+                NewCall -> kapps_call:set_is_recording('true', NewCall)
+            end;
+        NewCall -> kapps_call:set_is_recording('true', NewCall)
     end.
 
--spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
+-spec maybe_start_endpoint_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
+maybe_start_endpoint_recording(<<"onnet">>, To, Call) ->
+    {'ok', Endpoint} = kz_endpoint:get(Call),
+    maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING(To), Endpoint, Call);
+maybe_start_endpoint_recording(_, _, Call) ->
+    Call.
+
+-spec maybe_start_call_recording(ne_binaries(), kz_json:object(), kapps_call:call()) -> kapps_call:call().
+maybe_start_call_recording(Key, Endpoint, Call) ->
+    maybe_start_call_recording(kz_json:get_json_value(Key, Endpoint), Call).
+
+-spec maybe_start_call_recording(api_object(), kapps_call:call()) -> kapps_call:call().
+maybe_start_call_recording('undefined', Call) ->
+    Call;
 maybe_start_call_recording(RecordCall, Call) ->
-    case kz_term:is_empty(RecordCall) of
+    case kz_json:is_false(<<"enabled">>, RecordCall) of
         'true' -> Call;
         'false' -> kapps_call:start_recording(RecordCall, Call)
     end.

@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "call_recording",
+    "additionalProperties": false,
+    "description": "endpoint recording settings",
+    "properties": {
+        "any": {
+            "$ref": "call_recording.source"
+        },
+        "inbound": {
+            "$ref": "call_recording.source"
+        },
+        "outbound": {
+            "$ref": "call_recording.source"
+        }
+    },
+    "type": "object"
+}

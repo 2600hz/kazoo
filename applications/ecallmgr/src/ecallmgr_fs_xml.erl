@@ -453,10 +453,10 @@ check_dtmf_type(Props) ->
 -spec get_leg_vars(kz_json:object() | kz_proplist()) -> iolist().
 get_leg_vars([]) -> [];
 get_leg_vars([_|_]=Prop) ->
-    ["["
+    ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
     ,string:join([kz_term:to_list(V)
                   || V <- lists:foldr(fun get_channel_vars/2, [], Prop)]
-                ,","
+                ,?BRIDGE_CHANNEL_VAR_SEPARATOR
                 )
     ,"]"
     ];
@@ -586,6 +586,8 @@ diversion_header_fold(<<_/binary>> = V, Vars0) ->
 -spec get_channel_vars_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
+get_channel_vars_fold(<<"Channel-Actions">>, Actions, Acc) ->
+    [Actions |Acc];
 get_channel_vars_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
