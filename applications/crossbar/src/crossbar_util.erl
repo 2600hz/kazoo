@@ -57,6 +57,7 @@
         ,get_account_lang/1
         ,get_language/1
         ,get_language/2
+        ,get_token_restrictions/3
         ]).
 -export([get_user_timezone/2
         ,get_account_timezone/1
