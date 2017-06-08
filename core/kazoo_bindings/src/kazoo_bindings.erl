@@ -31,6 +31,7 @@
         ,filter/1
         ,stop/0
         ,modules_loaded/0
+        ,is_ready/0
         ]).
 
 %% Helper Functions for Results of a map/2
@@ -99,7 +100,9 @@
 -type kz_rt_options() :: kz_proplist().
 -type kz_rt_option() :: 'candidates' | 'matches'.
 
--record(state, {bindings = [] :: kz_bindings()}).
+-record(state, {bindings = [] :: kz_bindings()
+               ,has_ets = false :: boolean()
+               }).
 -type state() :: #state{}.
 
 -export_type([kz_responder/0
@@ -404,6 +407,10 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+handle_call('is_ready', _From, #state{has_ets='true'}=State) ->
+    {'reply', 'true', State};
+handle_call('is_ready', _From, State) ->
+    {'reply', 'false', State};
 handle_call('current_bindings', _, #state{bindings=Bs}=State) ->
     {'reply', Bs, State};
 handle_call({'bind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
@@ -591,7 +598,7 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER',_TableId, _From, _Gift}, State) ->
     lager:debug("recv transfer of control for ~s from ~p", [_TableId, _From]),
-    {'noreply', State};
+    {'noreply', State#state{has_ets='true'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -644,7 +651,7 @@ fold_bind_results(Responders, Payload, Route) ->
 -spec fold_bind_results(kz_responders(), any(), ne_binary(), non_neg_integer(), kz_responders()) -> any().
 fold_bind_results([#kz_responder{module=M
                                 ,function=F
-                                ,payload='undefined'
+%%                                ,payload='undefined'
                                 }=Responder
                    | Responders]
                  ,[_|Tokens]=Payload
@@ -657,7 +664,7 @@ fold_bind_results([#kz_responder{module=M
             fold_bind_results(Responders, Payload, Route, RespondersLen, [Responder|ReRunResponders]);
         {'error', _E}=E ->
             lager:debug("error: ~p", [_E]),
-            E;
+            [E];
         {'EXIT', {'undef', [{_M, _F, _A, _}|_]}} ->
             ST = erlang:get_stacktrace(),
             log_undefined(M, F, length(Payload), ST),
@@ -669,6 +676,8 @@ fold_bind_results([#kz_responder{module=M
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         'ok' ->
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
+        {ok, Pay1} ->
+            fold_bind_results(Responders, [Pay1|Tokens], Route, RespondersLen, ReRunResponders);
         Pay1 ->
             fold_bind_results(Responders, [Pay1|Tokens], Route, RespondersLen, ReRunResponders)
     catch
@@ -936,3 +945,7 @@ rt_options() ->
 -spec rt_options(kz_rt_options()) -> kz_rt_options().
 rt_options(Options) ->
     props:insert_values(rt_options(), Options).
+
+-spec is_ready() -> boolean().
+is_ready() ->
+    gen_listener:call(?MODULE, 'is_ready').
