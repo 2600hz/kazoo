@@ -197,8 +197,10 @@ merge_attributes(Endpoint, Type) ->
            ,<<"call_forward">>
            ,<<"dial_plan">>
            ,<<"metaflows">>
+           ,<<"media">>
            ,<<"language">>
            ,<<"record_call">>
+           ,<<"call_recording">>
            ,<<"mobile">>
            ,<<"presence_id">>
            ,<<"call_waiting">>
@@ -332,9 +334,9 @@ merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) -
 -spec merge_call_recording(kz_json:object()) -> kz_json:object().
 merge_call_recording(JObj) ->
     AnyOrig = kz_json:get_json_value(<<"any">>, JObj, kz_json:new()),
-    kz_json:foldl(fun({K, V}, Acc) ->
+    kz_json:foldl(fun(K, V, Acc) ->
                           AnyDest = kz_json:get_json_value(<<"any">>, V, kz_json:new()),
-                          V2 = kz_json:foldl(fun({K1, V1}, Acc1) ->
+                          V2 = kz_json:foldl(fun(K1, V1, Acc1) ->
                                                      kz_json:set_value(K1, kz_json:merge(AnyDest, V1), Acc1)
                                              end
                                             ,kz_json:new()
@@ -343,7 +345,7 @@ merge_call_recording(JObj) ->
                           kz_json:set_value(K, V2, Acc)
                   end
                  ,kz_json:new()
-                 ,kz_json:foldl(fun({K, V}, Acc) ->
+                 ,kz_json:foldl(fun(K, V, Acc) ->
                                         kz_json:set_value(K, kz_json:merge(AnyOrig, V), Acc)
                                 end
                                ,kz_json:new()
@@ -353,7 +355,7 @@ merge_call_recording(JObj) ->
 
 -spec get_account_record_call_properties(api_object()) -> kz_json:object().
 get_account_record_call_properties(JObj) ->
-    kz_json:foldl(fun({K, V}, Acc) ->
+    kz_json:foldl(fun(K, V, Acc) ->
                           kz_json:set_value(K, merge_call_recording(V), Acc)
                   end
                  ,kz_json:new()
@@ -364,8 +366,10 @@ get_account_record_call_properties(JObj) ->
 get_endpoint_record_call_properties(JObj) ->
     CallRecording = kz_json:get_json_value(<<"call_recording">>, JObj),
     case get_endpoint_record_call_properties(CallRecording, JObj) of
-        'undefined' -> kz_json:new();
-        RecordCall -> kz_json:from_list({<<"endpoint">>, merge_call_recording(RecordCall)})
+        'undefined' ->
+            kz_json:new();
+        RecordCall ->
+            kz_json:from_list([{<<"endpoint">>, merge_call_recording(RecordCall)}])
     end.
 
 -spec get_endpoint_record_call_properties(api_object(), kz_json:object()) -> api_object().
@@ -375,8 +379,12 @@ get_endpoint_record_call_properties('undefined', JObj) ->
         'false' -> 'undefined';
         'true' ->
             Settings = kz_json:set_value(<<"enabled">>, 'true', Legacy),
-            AnyNet = kz_json:from_list([{<<"any">>, Settings}]),
-            kz_json:from_list([{<<"any">>, AnyNet}])
+            AnyNet = kz_json:from_list([{<<"onnet">>, Settings}
+                                       ,{<<"offnet">>, Settings}
+                                       ]),
+            kz_json:from_list([{<<"inbound">>, AnyNet}
+                              ,{<<"outbound">>, AnyNet}
+                              ])
     end;
 get_endpoint_record_call_properties(JObj, _) ->
     JObj.
@@ -1042,25 +1050,6 @@ maybe_privacy_cid(#clid{caller_name=CallerName
              ,caller_number=Number
              }.
 
--spec maybe_record_call(kz_json:object(), kapps_call:call()) -> 'ok'.
-maybe_record_call(Endpoint, Call) ->
-    case is_sms(Call)
-        orelse kapps_call:call_id_direct(Call) =:= 'undefined'
-    of
-        'true' -> 'ok';
-        'false' ->
-            Data = kz_json:get_json_value(<<"record_call">>, Endpoint, kz_json:new()),
-            _ = maybe_start_call_recording(Data, Call),
-            'ok'
-    end.
-
--spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-maybe_start_call_recording(RecordCall, Call) ->
-    case kz_term:is_empty(RecordCall) of
-        'true' -> Call;
-        'false' -> kapps_call:start_recording(RecordCall, Call)
-    end.
-
 -spec create_sip_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                  kz_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
@@ -1071,7 +1060,6 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
                                  kz_json:object().
 create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
     SIPJObj = kz_json:get_json_value(<<"sip">>, Endpoint),
-    _ = maybe_record_call(Endpoint, Call),
     SIPEndpoint = kz_json:from_list(
                     props:filter_empty(
                       [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
@@ -1110,6 +1098,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
                       ,{<<"Failover">>, maybe_build_failover(Endpoint, Clid, Call)}
                       ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
+                      ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
                        | maybe_get_t38(Endpoint, Call)
                       ])),
     maybe_format_endpoint(SIPEndpoint, kz_term:is_empty(kz_json:get_json_value(<<"formatters">>, Endpoint))).
@@ -1829,4 +1818,47 @@ get_account_realm(AccountId, Default) ->
     case kz_util:get_account_realm(AccountId) of
         'undefined' -> Default;
         Else -> Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will return the custom channel vars that should be
+%% set for this endpoint depending on its settings, and the current
+%% call.
+%% @end
+%%--------------------------------------------------------------------
+-spec endpoint_actions(kz_json:object(), kapps_call:call()) -> kz_json:object().
+-spec endpoint_actions(kz_json:object(), kapps_call:call(), api_object()) -> kz_json:object().
+
+endpoint_actions(Endpoint, Call) ->
+    endpoint_actions(Endpoint, Call, 'undefined').
+
+endpoint_actions(Endpoint, Call, CallFwd) ->
+    Funs = [fun maybe_record_endpoint/1
+           ],
+    Acc0 = {Endpoint, Call, CallFwd, kz_json:new()},
+    {_Endpoint, _Call, _CallFwd, Actions} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, Funs),
+    Actions.
+
+-type actions_acc() :: {kz_json:object(), kapps_call:call(), api_object(), kz_json:object()}.
+
+-spec maybe_record_endpoint(actions_acc()) -> actions_acc().
+maybe_record_endpoint({Endpoint, Call, CallFwd, Actions} = Acc) ->
+    case is_sms(Call)
+        orelse kapps_call:call_id_direct(Call) =:= 'undefined'
+    of
+        'true' -> Acc;
+        'false' ->
+            Inception = kapps_call:inception_type(Call),
+            Data = kz_json:get_json_value(?ENDPOINT_INBOUND_RECORDING(Inception), Endpoint),
+            case Data /= 'undefined'
+                andalso kz_json:is_true(<<"enabled">>, Data)
+            of
+                'false' -> Acc;
+                'true' ->
+                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
+                    NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, Actions),
+                    {Endpoint, Call, CallFwd, NewActions}
+            end
     end.
