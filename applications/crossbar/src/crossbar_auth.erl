@@ -66,6 +66,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                ,{<<"method">>, Method}
                ,{<<"exp">>, Expiration}
                ,{<<"mfa_resp">>, kz_json:get_ne_value(<<"multi_factor_response">>, Data)}
+               ,{<<"restrictions">>, crossbar_util:get_token_restrictions(AuthModule, AccountId, OwnerId)}
                 | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
                ]),
     case maybe_create_token(Claims, Method) of

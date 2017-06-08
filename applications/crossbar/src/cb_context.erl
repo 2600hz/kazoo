@@ -732,7 +732,7 @@ validate_request_data(SchemaJObj, Context) ->
             lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
                                                                         ,Errors
                                                                         ]),
-            failed(Context, Errors);
+            failed(set_resp_error_msg(Context, <<"validation failed">>), Errors);
         {'error', Errors} ->
             maybe_fix_js_types(Context, SchemaJObj, Errors)
     catch

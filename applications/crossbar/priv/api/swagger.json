@@ -11773,9 +11773,6 @@
             "description": "Schema for token restrictions",
             "properties": {
                 "restrictions": {
-                    "required": [
-                        "^\\w+$"
-                    ],
                     "type": "object"
                 }
             },
