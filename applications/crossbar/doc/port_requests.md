@@ -913,6 +913,8 @@ When PATCHing a port request a reason can be added to the transition with the fo
 
 This information will then be available in the timeline.
 
+Note: request values can be set either in the query string or in the data payload.
+
 #### Indicate a port is ready to be processed
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted
