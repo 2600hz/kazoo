@@ -39,6 +39,8 @@
         ,ringing_seconds/1
         ,switch_nodename/1
         ,timestamp/1
+        ,caller_id/1, caller_id_number/1, caller_id_name/1
+        ,callee_id/1, callee_id_number/1, callee_id_name/1
         ]).
 
 -include("kz_documents.hrl").
@@ -200,3 +202,27 @@ error_message(JObj) ->
 -spec switch_nodename(doc()) -> api_ne_binary().
 switch_nodename(JObj) ->
     kz_json:get_ne_binary_value(<<"Switch-Nodename">>, JObj).
+
+-spec caller_id_name(doc()) -> api_ne_binary().
+caller_id_name(JObj) ->
+    kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj).
+
+-spec caller_id_number(doc()) -> api_ne_binary().
+caller_id_number(JObj) ->
+    kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj).
+
+-spec callee_id_name(doc()) -> api_ne_binary().
+callee_id_name(JObj) ->
+    kz_json:get_ne_binary_value(<<"Callee-ID-Name">>, JObj).
+
+-spec callee_id_number(doc()) -> api_ne_binary().
+callee_id_number(JObj) ->
+    kz_json:get_ne_binary_value(<<"Callee-ID-Number">>, JObj).
+
+-spec caller_id(doc()) -> {api_ne_binary(), api_ne_binary()}.
+caller_id(JObj) ->
+    {caller_id_number(JObj), caller_id_name(JObj)}.
+
+-spec callee_id(doc()) -> {api_ne_binary(), api_ne_binary()}.
+callee_id(JObj) ->
+    {callee_id_number(JObj), callee_id_name(JObj)}.
