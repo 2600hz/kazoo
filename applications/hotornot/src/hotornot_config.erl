@@ -10,6 +10,8 @@
         ,default_ratedeck/0
         ,ratedecks/0
 
+        ,mobile_rate/0
+
         ,filter_list/0
         ,should_sort_by_weight/0
         ,rate_version/0, set_rate_version/1
@@ -59,6 +61,10 @@ filter_list() ->
 -spec default_ratedeck() -> ne_binary().
 default_ratedeck() ->
     kapps_config:get_ne_binary(?APP_NAME, <<"default_ratedeck">>, ?KZ_RATES_DB).
+
+-spec mobile_rate() -> api_object().
+mobile_rate() ->
+    kapps_config:get_json(?APP_NAME, <<"mobile_rate">>).
 
 -spec ratedecks() -> ne_binaries().
 ratedecks() ->

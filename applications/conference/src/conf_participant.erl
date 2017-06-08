@@ -61,7 +61,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -record(participant, {participant_id = 0 :: non_neg_integer()
-                     ,call :: kapps_call:call()
+                     ,call :: kapps_call:call() | 'undefined'
                      ,moderator = 'false' :: boolean()
                      ,muted = 'false' :: boolean()
                      ,deaf = 'false' :: boolean()
@@ -69,7 +69,7 @@
                      ,call_event_consumers = [] :: pids()
                      ,in_conference = 'false' :: boolean()
                      ,join_attempts = 0 :: non_neg_integer()
-                     ,conference :: kapps_conference:conference()
+                     ,conference :: kapps_conference:conference() | 'undefined'
                      ,discovery_event = kz_json:new() :: kz_json:object()
                      ,last_dtmf = <<>> :: binary()
                      ,server = self() :: pid()
@@ -527,12 +527,12 @@ set_enter_exit_sounds({_, AccountId, MediaId}, #participant{conference=Conferenc
                                                            }) ->
     EntrySounds = [play_entry_tone(IsModerator, Conference)
                   ,kz_media_util:media_path(MediaId, AccountId)
-                  ,kz_media_util:get_prompt(<<"conf-has_joined">>, kapps_conference:call(Conference))
+                  ,kapps_call:get_prompt(Call, <<"conf-has_joined">>)
                   ],
 
     ExitSounds = [play_exit_tone(IsModerator, Conference)
                  ,kz_media_util:media_path(MediaId, AccountId)
-                 ,kz_media_util:get_prompt(<<"conf-has_left">>, kapps_conference:call(Conference))
+                 ,kapps_call:get_prompt(Call, <<"conf-has_left">>)
                  ],
 
     Fun = fun('undefined') -> 'false';

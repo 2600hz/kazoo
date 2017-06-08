@@ -65,7 +65,7 @@ handle_topup(JObj) ->
         kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("notification handling not configured for this account");
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> handle_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 

@@ -110,7 +110,7 @@ publish_port_update(Number, Port) ->
              ,{<<"Port">>, Port}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    kapi_notifications:publish_port_request(Notify).
+    kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_port_request/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -129,4 +129,4 @@ publish_ported(Number, Port) ->
              ,{<<"Port">>, Port}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    kapi_notifications:publish_ported(Notify).
+    kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_ported/1).

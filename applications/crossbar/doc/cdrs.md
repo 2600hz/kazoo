@@ -142,6 +142,7 @@ These are properties set by Kazoo for internal purposes. These are the propertie
 * `authorizing_id` - Document ID used to authorize this call leg
 * `authorizing_type` - Type of ducument used to authorize call
   * `device` - the call leg is to/from a known Kazoo device
+  * `mobile` - the call leg is to/from a known Kazoo mobile device
   * `resource` - the call leg is from a known offnet carrier
   * `outbound_fax`
 * `bridge_id` - Typically the A-leg's call-id; helps with tracking transfers

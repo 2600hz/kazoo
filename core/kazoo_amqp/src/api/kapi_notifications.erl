@@ -12,7 +12,7 @@
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 
--export([voicemail/1, voicemail_v/1
+-export([voicemail_new/1, voicemail_new_v/1
         ,voicemail_full/1, voicemail_full_v/1
         ,voicemail_saved/1, voicemail_saved_v/1
         ,fax_inbound/1, fax_inbound_v/1
@@ -53,7 +53,7 @@
         ,account_db/1
         ]).
 
--export([publish_voicemail/1, publish_voicemail/2
+-export([publish_voicemail_new/1, publish_voicemail_new/2
         ,publish_voicemail_full/1, publish_voicemail_full/2
         ,publish_voicemail_saved/1, publish_voicemail_saved/2
         ,publish_fax_inbound/1, publish_fax_inbound/2
@@ -139,26 +139,30 @@
 -define(NOTIFY_MISSED_CALL, <<"notifications.sip.missed_call">>).
 -define(NOTIFY_SKEL, <<"notifications.account.skel">>).
 
-%% Notify New Voicemail or Voicemail Saved
--define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
-                           ,<<"To-User">>, <<"To-Realm">>
-                           ,<<"Account-ID">>
-                           ,<<"Voicemail-Box">>, <<"Voicemail-ID">>
-                           ,<<"Voicemail-Timestamp">>
-                           ]).
--define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
-                                    ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
-                                    ,<<"Voicemail-Transcription">>
-                                         | ?DEFAULT_OPTIONAL_HEADERS
-                                    ]).
--define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                          ,{<<"Event-Name">>, <<"voicemail_new">>}
-                          ]).
--define(VOICEMAIL_TYPES, []).
+%% Notify Voicemail New
+-define(VOICEMAIL_NEW_HEADERS, [<<"From-User">>, <<"From-Realm">>
+                               ,<<"To-User">>, <<"To-Realm">>
+                               ,<<"Account-ID">>
+                               ,<<"Voicemail-Box">>, <<"Voicemail-ID">>
+                               ,<<"Voicemail-Timestamp">>
+                               ]).
+-define(OPTIONAL_VOICEMAIL_NEW_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
+                                        ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
+                                        ,<<"Voicemail-Transcription">>
+                                             | ?DEFAULT_OPTIONAL_HEADERS
+                                        ]).
+-define(VOICEMAIL_NEW_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"voicemail_new">>}
+                              ]).
+-define(VOICEMAIL_NEW_TYPES, []).
 
+%% Notify Voicemail Saved
+-define(VOICEMAIL_SAVED_HEADERS, ?VOICEMAIL_NEW_HEADERS).
+-define(OPTIONAL_VOICEMAIL_SAVED_HEADERS, ?OPTIONAL_VOICEMAIL_NEW_HEADERS).
 -define(VOICEMAIL_SAVED_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                 ,{<<"Event-Name">>, <<"voicemail_saved">>}
                                 ]).
+-define(VOICEMAIL_SAVED_TYPES, []).
 
 %% Notify Voicemail full
 -define(VOICEMAIL_FULL_HEADERS, [<<"Account-ID">>, <<"Voicemail-Box">>
@@ -588,10 +592,12 @@ account_db(JObj) ->
     end.
 
 -spec headers(ne_binary()) -> ne_binaries().
-headers(<<"voicemail">>) ->
-    ?VOICEMAIL_HEADERS ++ ?OPTIONAL_VOICEMAIL_HEADERS;
+headers(<<"voicemail_new">>) ->
+    ?VOICEMAIL_NEW_HEADERS ++ ?OPTIONAL_VOICEMAIL_NEW_HEADERS;
 headers(<<"voicemail_full">>) ->
     ?VOICEMAIL_FULL_HEADERS ++ ?OPTIONAL_VOICEMAIL_FULL_HEADERS;
+headers(<<"voicemail_saved">>) ->
+    ?VOICEMAIL_SAVED_HEADERS ++ ?OPTIONAL_VOICEMAIL_SAVED_HEADERS;
 headers(<<"fax_inbound_to_email">>) ->
     ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
 headers(<<"fax_inbound_error_to_email">>) ->
@@ -661,18 +667,18 @@ headers(_Notification) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec voicemail(api_terms()) -> api_formatter_return().
-voicemail(Prop) when is_list(Prop) ->
-    case voicemail_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?VOICEMAIL_HEADERS, ?OPTIONAL_VOICEMAIL_HEADERS);
-        'false' -> {'error', "Proplist failed validation for voicemail"}
+-spec voicemail_new(api_terms()) -> api_formatter_return().
+voicemail_new(Prop) when is_list(Prop) ->
+    case voicemail_new_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?VOICEMAIL_NEW_HEADERS, ?OPTIONAL_VOICEMAIL_NEW_HEADERS);
+        'false' -> {'error', "Proplist failed validation for voicemail_new"}
     end;
-voicemail(JObj) -> voicemail(kz_json:to_proplist(JObj)).
+voicemail_new(JObj) -> voicemail_new(kz_json:to_proplist(JObj)).
 
--spec voicemail_v(api_terms()) -> boolean().
-voicemail_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_VALUES, ?VOICEMAIL_TYPES);
-voicemail_v(JObj) -> voicemail_v(kz_json:to_proplist(JObj)).
+-spec voicemail_new_v(api_terms()) -> boolean().
+voicemail_new_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?VOICEMAIL_NEW_HEADERS, ?VOICEMAIL_NEW_VALUES, ?VOICEMAIL_NEW_TYPES);
+voicemail_new_v(JObj) -> voicemail_new_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -682,14 +688,14 @@ voicemail_v(JObj) -> voicemail_v(kz_json:to_proplist(JObj)).
 -spec voicemail_saved(api_terms()) -> api_formatter_return().
 voicemail_saved(Prop) when is_list(Prop) ->
     case voicemail_saved_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?VOICEMAIL_HEADERS, ?OPTIONAL_VOICEMAIL_HEADERS);
-        'false' -> {'error', "Proplist failed validation for voicemail"}
+        'true' -> kz_api:build_message(Prop, ?VOICEMAIL_SAVED_HEADERS, ?OPTIONAL_VOICEMAIL_SAVED_HEADERS);
+        'false' -> {'error', "Proplist failed validation for voicemail_saved"}
     end;
 voicemail_saved(JObj) -> voicemail_saved(kz_json:to_proplist(JObj)).
 
 -spec voicemail_saved_v(api_terms()) -> boolean().
 voicemail_saved_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_SAVED_VALUES, ?VOICEMAIL_TYPES);
+    kz_api:validate(Prop, ?VOICEMAIL_SAVED_HEADERS, ?VOICEMAIL_SAVED_VALUES, ?VOICEMAIL_SAVED_TYPES);
 voicemail_saved_v(JObj) -> voicemail_saved_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
@@ -1595,57 +1601,57 @@ declare_exchanges() ->
 -spec publish_voicemail_saved(api_terms()) -> 'ok'.
 -spec publish_voicemail_saved(api_terms(), ne_binary()) -> 'ok'.
 publish_voicemail_saved(JObj) -> publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_voicemail_saved(Voicemail, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_SAVED_VALUES, fun voicemail_saved/1),
+publish_voicemail_saved(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?VOICEMAIL_SAVED_VALUES, fun voicemail_saved/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED, Payload, ContentType).
 
--spec publish_voicemail(api_terms()) -> 'ok'.
--spec publish_voicemail(api_terms(), ne_binary()) -> 'ok'.
-publish_voicemail(JObj) -> publish_voicemail(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_voicemail(Voicemail, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_VALUES, fun voicemail/1),
+-spec publish_voicemail_new(api_terms()) -> 'ok'.
+-spec publish_voicemail_new(api_terms(), ne_binary()) -> 'ok'.
+publish_voicemail_new(JObj) -> publish_voicemail_new(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_voicemail_new(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?VOICEMAIL_NEW_VALUES, fun voicemail_new/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_NEW, Payload, ContentType).
 
 -spec publish_voicemail_full(api_terms()) -> 'ok'.
 -spec publish_voicemail_full(api_terms(), ne_binary()) -> 'ok'.
 publish_voicemail_full(JObj) -> publish_voicemail_full(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_voicemail_full(Voicemail, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_FULL_VALUES, fun voicemail_full/1),
+publish_voicemail_full(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?VOICEMAIL_FULL_VALUES, fun voicemail_full/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_FULL, Payload, ContentType).
 
 -spec publish_fax_inbound(api_terms()) -> 'ok'.
 -spec publish_fax_inbound(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_inbound(JObj) -> publish_fax_inbound(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_fax_inbound(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax,?FAX_INBOUND_VALUES, fun fax_inbound/1),
+publish_fax_inbound(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API,?FAX_INBOUND_VALUES, fun fax_inbound/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_INBOUND, Payload, ContentType).
 
 -spec publish_fax_outbound(api_terms()) -> 'ok'.
 -spec publish_fax_outbound(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_outbound(JObj) -> publish_fax_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_fax_outbound(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_VALUES, fun fax_outbound/1),
+publish_fax_outbound(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_OUTBOUND_VALUES, fun fax_outbound/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND, Payload, ContentType).
 
 -spec publish_fax_inbound_error(api_terms()) -> 'ok'.
 -spec publish_fax_inbound_error(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_inbound_error(JObj) -> publish_fax_inbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_fax_inbound_error(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_INBOUND_ERROR_VALUES, fun fax_inbound_error/1),
+publish_fax_inbound_error(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_INBOUND_ERROR_VALUES, fun fax_inbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_INBOUND_ERROR, Payload, ContentType).
 
 -spec publish_fax_outbound_error(api_terms()) -> 'ok'.
 -spec publish_fax_outbound_error(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_outbound_error(JObj) -> publish_fax_outbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_fax_outbound_error(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_ERROR_VALUES, fun fax_outbound_error/1),
+publish_fax_outbound_error(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_OUTBOUND_ERROR_VALUES, fun fax_outbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_ERROR, Payload, ContentType).
 
 -spec publish_fax_outbound_smtp_error(api_terms()) -> 'ok'.
 -spec publish_fax_outbound_smtp_error(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_outbound_smtp_error(JObj) -> publish_fax_outbound_smtp_error(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_fax_outbound_smtp_error(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_SMTP_ERROR_VALUES, fun fax_outbound_smtp_error/1),
+publish_fax_outbound_smtp_error(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_OUTBOUND_SMTP_ERROR_VALUES, fun fax_outbound_smtp_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_SMTP_ERROR, Payload, ContentType).
 
 -spec publish_register(api_terms()) -> 'ok'.

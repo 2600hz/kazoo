@@ -10,6 +10,9 @@
         "default_to": {
             "default": "",
             "description": "notify.port_request default to",
+            "items": {
+                "type": "string"
+            },
             "type": "string"
         }
     },

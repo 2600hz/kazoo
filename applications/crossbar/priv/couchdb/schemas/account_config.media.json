@@ -5,6 +5,11 @@
     "properties": {
         "call_recording": {
             "properties": {
+                "extension": {
+                    "default": "mp3",
+                    "description": "Default media file format",
+                    "type": "string"
+                },
                 "storage_retry_times": {
                     "default": 5,
                     "description": "media storage retry times",

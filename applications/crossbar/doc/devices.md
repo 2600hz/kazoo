@@ -22,6 +22,7 @@ Key | Description | Type | Default | Required
 `call_forward.number` | The number to forward calls to | `string(0..15)` |   | `false`
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean` | `true` | `false`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean` | `true` | `false`
+`call_recording` |   | `object` |   | `false`
 `call_restriction` | Device level call restrictions for each available number classification | `object` | `{}` | `false`
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
 `caller_id` | The device caller ID parameters | `object` | `{}` | `false`
@@ -59,6 +60,11 @@ Key | Description | Type | Default | Required
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false`
 `presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `provision` | Provision data | `object` |   | `false`
+`provision.combo_keys` | Feature Keys | `object` |   | `false`
+`provision.combo_keys./^[0-9]+$/` |   | `object, null` |   | `false`
+`provision.endpoint_brand` | Brand of the phone | `string` |   | `false`
+`provision.endpoint_family` | Family name of the phone | `string` |   | `false`
+`provision.endpoint_model` | Model name of the phone | `string, integer` |   | `false`
 `provision.feature_keys` | Feature Keys | `object` |   | `false`
 `provision.feature_keys./^[0-9]+$/` |   | `object, null` |   | `false`
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean` | `false` | `false`
@@ -74,12 +80,41 @@ Key | Description | Type | Default | Required
 `sip.method` | Method of authentication | `string('password', 'ip')` | `password` | `false`
 `sip.number` | The number used if the invite format is 1npan, npan, or e164 (if not set the dialed number is used) | `string` |   | `false`
 `sip.password` | SIP authentication password | `string(5..32)` |   | `false`
-`sip.realm` | The realm this device should use, overriding the account realm. Should rarely be necessary. | `string` |   | `false`
+`sip.realm` | The realm this device should use, overriding the account realm. Should rarely be necessary. | `string(4..253)` |   | `false`
 `sip.route` | The SIP URL used if the invite format is 'route' | `string` |   | `false`
 `sip.static_route` | Sends all inbound calls to this string (instead of dialed number or username) | `string` |   | `false`
 `sip.username` | SIP authentication username | `string(2..32)` |   | `false`
 `suppress_unregister_notifications` | When true disables deregister notifications | `boolean` | `false` | `false`
 `timezone` | Device's timezone | `string` |   | `false`
+##### call_recording
+
+endpoint recording settings
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false`
+`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false`
+`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false`
+##### call_recording.parameters
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`enabled` | is recording enabled | `boolean` |   | `false`
+`format` | What format to store the recording on disk | `string('mp3', 'wav')` |   | `false`
+`record_min_sec` | The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted | `integer` |   | `false`
+`record_sample_rate` | What sampling rate to use on the recording | `integer` |   | `false`
+`time_limit` | Time limit, in seconds, for the recording | `integer` |   | `false`
+`url` | The URL to use when sending the recording for storage | `string` |   | `false`
+##### call_recording.source
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`any` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false`
+`offnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false`
+`onnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false`
 ##### call_waiting
 
 Parameters for server-side call waiting

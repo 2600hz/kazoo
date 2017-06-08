@@ -55,9 +55,43 @@
             "description": "notify notification app",
             "type": "string"
         },
+        "notify_presist_enabled": {
+            "default": true,
+            "description": "Enabled presist of failed to publish notifications globally",
+            "type": "boolean"
+        },
+        "notify_presist_exceptions": {
+            "default": [
+                "system_alert"
+            ],
+            "description": "List of notification types have to be ignored to presist if they failed to publish",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "notify_presist_temprorary_force_exceptions": {
+            "default": [],
+            "description": "List of notification types have to be ignored temprorary globally to presist if they failed to publish",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "notify_publisher_timeout_ms": {
+            "default": 10000,
+            "description": "Timeout in milliseconds when publishing notification using notify publisher",
+            "minimum": 1,
+            "type": "integer"
+        },
         "search_rep_email": {
             "default": true,
             "description": "notify search rep email",
+            "type": "boolean"
+        },
+        "should_presist_for_retry": {
+            "default": true,
+            "description": "Enabled presist of failed to publish notifications for account/system",
             "type": "boolean"
         },
         "use_federated_listener": {

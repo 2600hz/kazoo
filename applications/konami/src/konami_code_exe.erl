@@ -17,8 +17,8 @@ handle('undefined', _Call) ->
     lager:debug("no metaflow to execute");
 handle(Metaflow, Call) ->
     kapps_call:put_callid(Call),
-    M = kz_json:get_value(<<"module">>, Metaflow),
-    Data = kz_json:get_value(<<"data">>, Metaflow, kz_json:new()),
+    M = kz_json:get_ne_binary_value(<<"module">>, Metaflow),
+    Data = kz_json:get_json_value(<<"data">>, Metaflow, kz_json:new()),
 
     try (kz_term:to_atom(<<"konami_", M/binary>>)):handle(Data, Call) of
         {'branch', ChildBranch, Call1} ->

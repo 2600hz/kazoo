@@ -533,13 +533,26 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
 
 -spec get_channel_vars(kz_json:object(), ne_binary()) -> iolist().
 get_channel_vars(JObj, FetchId) ->
-    CCVs = [{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
-           ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], kz_term:to_binary(node())}
-           ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], ?CALL_INTERACTION_DEFAULT}
+    CCVs = [{<<"Fetch-ID">>, FetchId}
+           ,{<<"Ecallmgr-Node">>, kz_term:to_binary(node())}
+           ,{<<?CALL_INTERACTION_ID>>, ?CALL_INTERACTION_DEFAULT}
            ],
-    Vars = maybe_add_loopback(JObj, CCVs),
-    J = kz_json:set_values(Vars, JObj),
-    ecallmgr_fs_xml:get_channel_vars(J).
+    J = kz_json:from_list_recursive([{<<"Custom-Channel-Vars">>, add_ccvs(JObj, CCVs)}]),
+    ecallmgr_fs_xml:get_channel_vars(kz_json:merge(JObj, J)).
+
+-spec add_ccvs(kz_json:object(), kz_proplist()) -> kz_proplist().
+add_ccvs(JObj, Props) ->
+    Routines = [fun maybe_add_loopback/2
+               ,fun maybe_add_origination_uuid/2
+               ],
+    lists:foldl(fun(Fun, Acc) -> Fun(JObj, Acc) end, Props, Routines).
+
+-spec maybe_add_origination_uuid(kz_json:object(), kz_proplist()) -> kz_proplist().
+maybe_add_origination_uuid(JObj, Props) ->
+    case kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, JObj) of
+        'undefined' -> Props;
+        CallId -> [{<<"Origination-Call-ID">>, CallId} | Props]
+    end.
 
 -spec maybe_add_loopback(kz_json:object(), kz_proplist()) -> kz_proplist().
 maybe_add_loopback(JObj, Props) ->
@@ -619,16 +632,7 @@ update_uuid(OldUUID, NewUUID) ->
 -spec create_uuid(kz_json:object(), atom()) -> created_uuid().
 -spec create_uuid(kz_json:object(), kz_json:object(), atom()) -> created_uuid().
 
-create_uuid(Node) ->
-    case freeswitch:api(Node, 'create_uuid', " ") of
-        {'ok', UUID} ->
-            kz_util:put_callid(UUID),
-            lager:debug("FS generated our uuid: ~s", [UUID]),
-            {'fs', UUID};
-        {'error', _E} ->
-            lager:debug("unable to get a uuid from ~s: ~p", [Node, _E]),
-            {'fs', kz_binary:rand_hex(18)}
-    end.
+create_uuid(_Node) -> {'fs', kz_binary:rand_hex(18)}.
 
 create_uuid(JObj, Node) ->
     case kz_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
@@ -636,9 +640,9 @@ create_uuid(JObj, Node) ->
         CallId -> {'api', CallId}
     end.
 
-create_uuid(Endpoint, JObj, Node) ->
+create_uuid(Endpoint, _JObj, Node) ->
     case kz_json:get_binary_value(<<"Outbound-Call-ID">>, Endpoint) of
-        'undefined' -> create_uuid(JObj, Node);
+        'undefined' -> create_uuid(Node);
         CallId -> {'api', CallId}
     end.
 
@@ -749,12 +753,11 @@ publish_originate_resp(ServerId, JObj, UUID) ->
 publish_originate_started('undefined', _, _, _) -> 'ok';
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = kz_json:from_list(
-             props:filter_undefined(
-               [{<<"Call-ID">>, CallId}
-               ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-               ,{<<"Control-Queue">>, CtrlQ}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-               ])),
+             [{<<"Call-ID">>, CallId}
+             ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+             ,{<<"Control-Queue">>, CtrlQ}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
     kapi_resource:publish_originate_started(ServerId, Resp).
 
 -spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
@@ -859,7 +862,9 @@ update_endpoint(Endpoint, #state{node=Node
                                                        })
     end,
 
-    fix_hold_media(kz_json:set_value(<<"origination_uuid">>, Id, Endpoint)).
+    EP = kz_json:set_values([{<<"origination_uuid">>, Id}
+                            ], Endpoint),
+    fix_hold_media(EP).
 
 -spec uuid_matches(created_uuid(), created_uuid()) -> boolean().
 uuid_matches({_, UUID}, {_, UUID}) -> 'true';

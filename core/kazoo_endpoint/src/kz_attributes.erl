@@ -397,7 +397,7 @@ moh_attributes(Endpoint, Attribute, Call) ->
 -spec maybe_normalize_moh_attribute(api_binary(), ne_binary(), kapps_call:call()) -> api_binary().
 maybe_normalize_moh_attribute('undefined', _, _) -> 'undefined';
 maybe_normalize_moh_attribute(Value, <<"media_id">>, Call) ->
-    MediaId = kz_media_util:media_path(Value, Call),
+    MediaId = kz_media_util:media_path(Value, kapps_call:account_id(Call)),
     lager:info("found music_on_hold media_id: '~p'", [MediaId]),
     MediaId;
 maybe_normalize_moh_attribute(Value, Attribute, _) ->
@@ -409,14 +409,14 @@ maybe_normalize_moh_attribute(Value, Attribute, _) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec owner_id(kapps_call:call()) -> api_binary().
--spec owner_id(api_binary(), kapps_call:call()) -> api_binary().
+-spec owner_id(kapps_call:call()) -> api_ne_binary().
+-spec owner_id(api_ne_binary(), kapps_call:call()) -> api_ne_binary().
 
 owner_id(Call) ->
     case kz_endpoint:get(Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
-            case kz_json:get_ne_value(<<"owner_id">>, Endpoint) of
+            case kz_json:get_ne_binary_value(<<"owner_id">>, Endpoint) of
                 'undefined' -> 'undefined';
                 OwnerId ->
                     lager:info("initiating endpoint is owned by ~s", [OwnerId]),

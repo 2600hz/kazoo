@@ -219,12 +219,13 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
 
 -spec handle_resp(webhook(), ne_binary(), kz_json:object(), kz_proplist(), kz_http:ret()) -> 'ok'.
 handle_resp(Hook, _EventId, _JObj, Debug, {'ok', 200, _, _} = Resp) ->
-    lager:debug("sent hook call event(~s) successfully", _EventId),
+    lager:debug("sent hook call event(~s) successfully", [_EventId]),
     successful_hook(Hook, Debug, Resp);
 handle_resp(Hook, _EventId, _JObj, Debug, {'ok', RespCode, _, _} = Resp) ->
     _ = failed_hook(Hook, Debug, Resp),
     lager:debug("non-200 response code: ~p on account ~s for event ~s"
-               ,[RespCode, Hook#webhook.account_id, _EventId]);
+               ,[RespCode, Hook#webhook.account_id, _EventId]
+               );
 handle_resp(Hook, EventId, JObj, Debug, {'error', _E} = Resp) ->
     lager:debug("failed to fire hook(~s): ~p", [EventId, _E]),
     _ = failed_hook(Hook, Debug, Resp),
@@ -315,14 +316,13 @@ debug_resp({'ok', RespCode, RespHeaders, RespBody}, Debug, Retries) ->
                       _ -> Retries - 1
                   end,
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"resp_status_code">>, kz_term:to_binary(RespCode)}
-        ,{<<"resp_headers">>, Headers}
-        ,{<<"resp_body">>, RespBody}
-        ,{<<"try">>, Retries}
-        ,{<<"retries_left">>, RetriesLeft}
-         | Result ++ Debug
-        ]));
+      [{<<"resp_status_code">>, kz_term:to_binary(RespCode)}
+      ,{<<"resp_headers">>, Headers}
+      ,{<<"resp_body">>, RespBody}
+      ,{<<"try">>, Retries}
+      ,{<<"retries_left">>, RetriesLeft}
+       | Result ++ Debug
+      ]);
 debug_resp({'error', E}, Debug, Retries) ->
     Error = try fix_error_value(E) of
                 Bin -> Bin
@@ -596,7 +596,7 @@ init_metadata(Id, JObj, MasterAccountDb) ->
 
 -spec metadata_exists(ne_binary(), ne_binary()) ->
                              {'ok', kz_json:object()} |
-                             kz_data:data_error().
+                             kz_datamgr:data_error().
 metadata_exists(MasterAccountDb, Id) ->
     kz_datamgr:open_doc(MasterAccountDb, Id).
 

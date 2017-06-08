@@ -1,5 +1,6 @@
 -ifndef(KZ_DATA_HRL).
--include_lib("kazoo/include/kz_types.hrl"). % get the kazoo types
+
+-include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -76,6 +77,7 @@
                        'inclusive_end' |
                        'reduce' |
                        'override_existing_document' |
+                       {max_bulk_read, pos_integer()} |
                        {'transform',transform_fun()} |
                        {'end_docid', binary()} |
                        {'endkey', key_range()} |
@@ -90,7 +92,7 @@
                        {'start_docid', binary()} |
                        {'startkey', key_range()}.
 
--type view_options() :: list(view_option()).
+-type view_options() :: [view_option()].
 
 -type view_listing() :: {ne_binary(), kz_json:object()}.
 -type views_listing() :: [view_listing()].
@@ -128,8 +130,6 @@
                         ]).
 
 -define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>, <<"pvt_attachments">>]).
-
--define(MAX_BULK_INSERT, 2000).
 
 -define(KZ_DATA_HRL, 'true').
 -endif.

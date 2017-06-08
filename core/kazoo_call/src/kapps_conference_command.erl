@@ -112,7 +112,13 @@ mute_participant(ParticipantId, Conference) ->
 prompt(Media, Conference) ->
     prompt(Media, 'undefined', Conference).
 prompt(Media, ParticipantId, Conference) ->
-    play(kz_media_util:get_prompt(Media, kapps_conference:call(Conference)), ParticipantId, Conference).
+    Prompt = get_media_prompt(Media, Conference),
+    play(Prompt, ParticipantId, Conference).
+
+-spec get_media_prompt(ne_binary(), kapps_conference:conference()) -> ne_binary().
+get_media_prompt(Media, Conference) ->
+    Call = kapps_conference:call(Conference),
+    kapps_call:get_prompt(Call, Media).
 
 -spec play_command(ne_binary()) -> kz_proplist().
 -spec play_command(ne_binary(), non_neg_integer() | 'undefined') -> kz_proplist().

@@ -206,12 +206,13 @@ resource_server_ips(Collector, JObj) ->
 -spec add_trusted_objects(pid(), api_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 add_trusted_objects(_Collector, _AccountId, _AuthorizingId, _AuthorizingType, []) -> 'ok';
 add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, [IP|IPs]) ->
-    Props = [{<<"type">>, <<"allow">>}
-            ,{<<"network-list-name">>, <<"trusted">>}
-            ,{<<"cidr">>, <<IP/binary, "/32">>}
-            ,{<<"account_id">>, AccountId}
-            ,{<<"authorizing_id">>, AuthorizingId}
-            ,{<<"authorizing_type">>, AuthorizingType}
-            ],
-    Collector ! ?ACL_RESULT(IP, kz_json:from_list(props:filter_undefined(Props))),
+    Props = kz_json:from_list(
+              [{<<"type">>, <<"allow">>}
+              ,{<<"network-list-name">>, <<"trusted">>}
+              ,{<<"cidr">>, <<IP/binary, "/32">>}
+              ,{<<"account_id">>, AccountId}
+              ,{<<"authorizing_id">>, AuthorizingId}
+              ,{<<"authorizing_type">>, AuthorizingType}
+              ]),
+    Collector ! ?ACL_RESULT(IP, Props),
     add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, IPs).

@@ -550,8 +550,6 @@ to_public_json(PN) ->
             ,UsedBy
             ,Features
             ,{<<"features_available">>, knm_providers:available_features(PN)}
-            ,{<<"features_allowed">>, features_allowed(PN)}
-            ,{<<"features_denied">>, features_denied(PN)}
             ,{<<"carrier_module">>, ModuleName}
             ])
          ),
@@ -697,17 +695,15 @@ features_fold(Feature=?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
     kz_json:set_value(Feature, Data, Acc);
 features_fold(Feature=?FEATURE_RINGBACK, Acc, JObj) ->
     Data = kz_json:from_list(
-             props:filter_undefined(
-               [{?RINGBACK_EARLY, kz_json:get_ne_value([Feature, ?RINGBACK_EARLY], JObj)}
-               ,{?RINGBACK_TRANSFER, kz_json:get_ne_value([Feature, ?RINGBACK_TRANSFER], JObj)}
-               ])),
+             [{?RINGBACK_EARLY, kz_json:get_ne_value([Feature, ?RINGBACK_EARLY], JObj)}
+             ,{?RINGBACK_TRANSFER, kz_json:get_ne_value([Feature, ?RINGBACK_TRANSFER], JObj)}
+             ]),
     kz_json:set_value(Feature, Data, Acc);
 features_fold(Feature=?FEATURE_FAILOVER, Acc, JObj) ->
     Data = kz_json:from_list(
-             props:filter_undefined(
-               [{?FAILOVER_E164, kz_json:get_ne_value([Feature, ?FAILOVER_E164], JObj)}
-               ,{?FAILOVER_SIP, kz_json:get_ne_value([Feature, ?FAILOVER_SIP], JObj)}
-               ])),
+             [{?FAILOVER_E164, kz_json:get_ne_value([Feature, ?FAILOVER_E164], JObj)}
+             ,{?FAILOVER_SIP, kz_json:get_ne_value([Feature, ?FAILOVER_SIP], JObj)}
+             ]),
     kz_json:set_value(Feature, Data, Acc);
 features_fold(Feature=?FEATURE_PREPEND, Acc, JObj) ->
     IsEnabled = kz_json:is_true([Feature, ?PREPEND_ENABLED], JObj),
@@ -1077,34 +1073,10 @@ remove_denied_feature(PN=#knm_phone_number{features_denied = Denied}, Feature=?N
     end.
 
 -spec features_allowed(knm_phone_number()) -> ne_binaries().
--ifdef(TEST).
-features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
-    [?FEATURE_CNAM
-    ,?FEATURE_E911
-    ,?FEATURE_FAILOVER
-    ,?FEATURE_FORCE_OUTBOUND
-    ,?FEATURE_PREPEND
-    ,?FEATURE_RINGBACK
-    ,?FEATURE_RENAME_CARRIER
-    ];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
--else.
-features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
--endif.
 
 -spec features_denied(knm_phone_number()) -> ne_binaries().
--ifdef(TEST).
-features_denied(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
-    [?FEATURE_PORT
-    ,?FEATURE_FAILOVER
-    ];
-features_denied(#knm_phone_number{number = ?BW_EXISTING_DID}) ->
-    [?FEATURE_E911
-    ];
 features_denied(#knm_phone_number{features_denied = Features}) -> Features.
--else.
-features_denied(#knm_phone_number{features_denied = Features}) -> Features.
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1723,7 +1695,7 @@ try_delete_account_doc(T0) ->
 
 try_delete_from(SplitBy, T0) ->
     F = fun (undefined, PNs, T) ->
-                ?LOG_DEBUG("no db for ~p", [[number(PN) || PN <- PNs]]),
+                ?LOG_DEBUG("skipping: no db for ~s", [[[number(PN),$\s] || PN <- PNs]]),
                 knm_numbers:add_oks(PNs, T);
             (Db, PNs, T) ->
                 ?LOG_DEBUG("deleting from ~s", [Db]),

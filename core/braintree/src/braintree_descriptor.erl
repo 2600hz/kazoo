@@ -70,11 +70,11 @@ record_to_xml(Descriptor, ToString) ->
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_descriptor()) -> kz_json:object().
 record_to_json(#bt_descriptor{name=Name, phone=Phone, url=Url}) ->
-    Props = [{<<"name">>, Name}
-            ,{<<"phone">>, Phone}
-            ,{<<"url">>, Url}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"name">>, Name}
+      ,{<<"phone">>, Phone}
+      ,{<<"url">>, Url}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public

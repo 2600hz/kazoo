@@ -78,25 +78,25 @@ should_handle_termination(Call) ->
 
 -spec send_missed_alert(kapps_call:call(), kz_json:object(), api_ne_binaries()) -> 'ok'.
 send_missed_alert(Call, Notify, Emails) ->
-    kapi_notifications:publish_missed_call(
-      props:filter_undefined(
-        [{<<"From-User">>, kapps_call:from_user(Call)}
-        ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
-        ,{<<"To-User">>, kapps_call:to_user(Call)}
-        ,{<<"To-Realm">>, kapps_call:to_realm(Call)}
-        ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-        ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-        ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-        ,{<<"Timestamp">>, kz_time:current_tstamp()}
-        ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
-        ,{<<"Notify">>, Notify}
-        ,{<<"Call-Bridged">>, kapps_call:call_bridged(Call)}
-        ,{<<"Message-Left">>, kapps_call:message_left(Call)}
-        ,{<<"To">>, Emails}
-         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-        ]
-       )),
-    lager:debug("published missed_call_alert for call-id").
+    lager:debug("trying to publish missed_call_alert for call-id ~s", [kapps_call:call_id_direct(Call)]),
+    Props = props:filter_undefined(
+              [{<<"From-User">>, kapps_call:from_user(Call)}
+              ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
+              ,{<<"To-User">>, kapps_call:to_user(Call)}
+              ,{<<"To-Realm">>, kapps_call:to_realm(Call)}
+              ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+              ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+              ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+              ,{<<"Timestamp">>, kz_time:current_tstamp()}
+              ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
+              ,{<<"Notify">>, Notify}
+              ,{<<"Call-Bridged">>, kapps_call:call_bridged(Call)}
+              ,{<<"Message-Left">>, kapps_call:message_left(Call)}
+              ,{<<"To">>, Emails}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ]
+             ),
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_missed_call/1).
 
 %%--------------------------------------------------------------------
 %% @private

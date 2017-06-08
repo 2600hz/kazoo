@@ -1,0 +1,58 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.tasks.notify_resend",
+    "description": "Schema for tasks.notify_resend system_config",
+    "properties": {
+        "cycle_delay_time_ms": {
+            "default": 300000,
+            "description": "Timeout in milliseconds between each cycle",
+            "type": "integer"
+        },
+        "max_doc_read": {
+            "default": 20,
+            "description": "Max number of notifications to read from database for each cycle",
+            "type": "integer"
+        },
+        "max_retries": {
+            "default": 3,
+            "description": "Default max retries to re-publish",
+            "type": "integer"
+        },
+        "reschedule_rules": {
+            "default": {
+                "voicemail_new": {
+                    "rules": {
+                        "after_15_mins": {
+                            "attempt": 1,
+                            "retries": 4,
+                            "retry_after_s": 900
+                        },
+                        "after_45_mins": {
+                            "attempt": 2,
+                            "retries": 4,
+                            "retry_after_s": 2700
+                        },
+                        "after_one_day": {
+                            "attempt": 4,
+                            "retries": 4,
+                            "retry_after_s": 86400
+                        },
+                        "after_two_hours": {
+                            "attempt": 3,
+                            "retries": 4,
+                            "retry_after_s": 7200
+                        }
+                    }
+                }
+            },
+            "description": "Re-schedule rules for each notification type to apply",
+            "type": "object"
+        },
+        "retry_after_fudge_s": {
+            "default": 600000,
+            "description": "Constant time in seconds which would be multipy with attemtps to set retry time",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

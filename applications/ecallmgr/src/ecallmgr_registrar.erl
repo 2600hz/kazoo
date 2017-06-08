@@ -1021,11 +1021,10 @@ fetch_authn(#registration{username=Username
           ,{<<"Call-ID">>, CallId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    ReqResp = kz_amqp_worker:call(
-                props:filter_undefined(Req)
+    ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
                                  ,fun kapi_authn:publish_req/1
                                  ,fun kapi_authn:resp_v/1
-               ),
+                                 ),
     case ReqResp of
         {'error', _} -> Reg;
         {'ok', JObj} ->
@@ -1107,7 +1106,7 @@ maybe_send_register_notice(#registration{username=Username
 send_register_notice(Reg) ->
     Props = to_props(Reg)
         ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION),
-    kapi_notifications:publish_register(Props).
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_register/1).
 
 -spec maybe_send_deregister_notice(registration()) -> 'ok'.
 maybe_send_deregister_notice(#registration{username=Username

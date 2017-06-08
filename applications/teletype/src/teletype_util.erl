@@ -38,7 +38,7 @@
 
         ,public_proplist/2
 
-        ,stop_processing/2
+        ,notification_disabled/2
 
         ,maybe_get_attachments/1
         ,fetch_attachment_from_url/1
@@ -111,10 +111,10 @@ maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
 -spec log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), ne_binary()) -> 'ok'.
 log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
-    Doc = props:filter_undefined(
+    Doc = kz_json:from_list(
             [{<<"rendered_templates">>, kz_json:from_list(RenderedTemplates)}
             ,{<<"subject">>, Subject}
-            ,{<<"emails">>, kz_json:from_list(props:filter_undefined(Emails))}
+            ,{<<"emails">>, kz_json:from_list(Emails)}
             ,{<<"receipt">>, Receipt}
             ,{<<"error">>, Error}
             ,{<<"pvt_type">>, <<"notify_smtp_log">>}
@@ -127,7 +127,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
             ,{<<"_id">>, make_smtplog_id(AccountDb)}
             ]),
     lager:debug("attempting to save notify smtp log"),
-    _ = kazoo_modb:save_doc(AccountDb, kz_json:from_list(Doc)),
+    _ = kazoo_modb:save_doc(AccountDb, Doc),
     'ok'.
 
 -spec make_smtplog_id(ne_binary()) -> ne_binary().
@@ -470,7 +470,7 @@ send_update(DataJObj, Status) ->
     send_update(DataJObj, Status, 'undefined').
 send_update(DataJObj, Status, Message) ->
     send_update(kz_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], DataJObj)
-               ,kz_json:get_value(<<"msg_id">>, DataJObj)
+               ,kz_json:get_first_defined([<<"msg_id">>, <<"Msg-ID">>], DataJObj)
                ,Status
                ,Message
                ).
@@ -630,11 +630,10 @@ is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
             kz_notification:is_enabled(TemplateJObj, ?NOTICE_ENABLED_BY_DEFAULT);
         _Otherwise when AccountId =/= ResellerAccountId ->
             lager:debug("account ~s is mute, checking parent", [AccountId]),
-            is_account_notice_enabled(
-              get_parent_account_id(AccountId)
+            is_account_notice_enabled(get_parent_account_id(AccountId)
                                      ,TemplateId
                                      ,ResellerAccountId
-             );
+                                     );
         _Otherwise ->
             is_notice_enabled_default(TemplateKey)
     end.
@@ -887,10 +886,11 @@ public_proplist(Key, JObj) ->
        )
      ).
 
--spec stop_processing(string(), list()) -> no_return().
-stop_processing(Format, Args) ->
-    lager:debug(Format, Args),
-    exit('normal').
+-spec notification_disabled(kz_json:object(), ne_binary()) -> 'ok'.
+notification_disabled(DataJObj, TemplateId) ->
+    AccountId = find_account_id(DataJObj),
+    lager:debug("notification ~s handling not configured for account ~s", [TemplateId, AccountId]),
+    send_update(DataJObj, <<"completed">>).
 
 -spec maybe_get_attachments(kz_json:object() | api_binary()) -> attachments().
 maybe_get_attachments('undefined') -> [];

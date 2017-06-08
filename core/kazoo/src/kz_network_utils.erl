@@ -419,10 +419,8 @@ naptrtuple_to_binary({Order, Preference, Flags, Services, Regexp, Domain}) ->
     >>.
 
 -spec mxtuple_to_binary(mxtuple()) -> ne_binary().
-mxtuple_to_binary({Priority, Domain}) ->
-    <<(kz_term:to_binary(Priority))/binary, " "
-      ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
-    >>.
+mxtuple_to_binary({_Priority, Domain}) ->
+    <<(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @public

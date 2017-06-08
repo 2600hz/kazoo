@@ -10,6 +10,8 @@
 
 -export([stream/6
         ,get_shout_header/2
+
+        ,set_resp_headers/2, set_resp_headers/5
         ]).
 
 -include("kazoo_media.hrl").
@@ -73,3 +75,39 @@ get_shout_header(MediaName, Url) ->
     NPad = Nblocks*16 - byte_size(Bin),
     Extra = lists:duplicate(NPad, 0),
     {0, list_to_binary([Nblocks, Bin, Extra])}.
+
+
+
+-spec set_resp_headers(cowboy_req:req(), ne_binary()) -> cowboy_req:req().
+set_resp_headers(Req, ContentType) ->
+    fold_resp_headers(Req
+                     ,[{<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
+                      ,{<<"Content-Type">>, ContentType}
+                      ]
+                     ).
+
+-spec set_resp_headers(cowboy_req:req(), pos_integer(), ne_binary(), binary(), binary()) ->
+                              cowboy_req:req().
+set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
+    fold_resp_headers(Req
+                     ,[{<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
+                      ,{<<"Content-Type">>, ContentType}
+                      ,{<<"icy-notice1">>, <<"MediaMgr">>}
+                      ,{<<"icy-name">>, MediaName}
+                      ,{<<"icy-genre">>, <<"Kazoo Media">>}
+                      ,{<<"icy-url">>, Url}
+                      ,{<<"content-type">>, ContentType}
+                      ,{<<"icy-pub">>, <<"1">>}
+                      ,{<<"icy-metaint">>, kz_term:to_binary(ChunkSize)}
+                      ,{<<"icy-br">>, <<"8">>}
+                      ]
+                     ).
+
+-spec fold_resp_headers(cowboy_req:req(), kz_proplist()) -> cowboy_req:req().
+fold_resp_headers(Req, Headers) when is_list(Headers) ->
+    lists:foldl(fun({K, V}, ReqAcc) ->
+                        cowboy_req:set_resp_header(K, V, ReqAcc)
+                end
+               ,Req
+               ,Headers
+               ).

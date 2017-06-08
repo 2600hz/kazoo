@@ -368,7 +368,7 @@
        ).
 
 %% KZ_NODES types
--record(whapp_info, {startup :: gregorian_seconds()
+-record(whapp_info, {startup :: api_seconds()
                     ,roles = [] :: ne_binaries()
                     }).
 

@@ -6,6 +6,9 @@
         "default_to": {
             "default": "",
             "description": "notify.topup default to",
+            "items": {
+                "type": "string"
+            },
             "type": "string"
         },
         "html_content_transfer_encoding": {

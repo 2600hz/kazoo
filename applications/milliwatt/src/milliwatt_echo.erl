@@ -24,5 +24,5 @@ exec(Call) ->
 
 -spec get_duration() -> integer().
 get_duration() ->
-    JObj = kapps_config:get_non_empty(?CONFIG_CAT, <<"echo">>),
+    JObj = kapps_config:get_json(?CONFIG_CAT, <<"echo">>),
     kz_json:get_integer_value(<<"duration">>, JObj, ?DURATION).

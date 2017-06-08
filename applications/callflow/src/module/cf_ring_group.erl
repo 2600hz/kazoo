@@ -67,7 +67,7 @@ repeat(Data, Call, N) ->
                           'no_endpoints' |
                           'fail'.
 
--spec repeat(kz_json:object(), kapps_call:call(), non_neg_integer(), attempt_result()) -> 'ok'.
+-spec repeat(kz_json:object(), kapps_call:call(), pos_integer(), attempt_result()) -> 'ok'.
 repeat(_Data, Call, _N, 'stop') ->
     cf_exe:stop(Call);
 repeat(Data, Call, N, 'continue') ->
@@ -90,7 +90,7 @@ attempt_endpoints(Endpoints, Data, Call) ->
               ,{<<"Endpoints">>, Endpoints}
               ,{<<"Timeout">>, Timeout}
               ,{<<"Ignore-Early-Media">>, <<"true">>}
-              ,{<<"Ringback">>, kz_media_util:media_path(Ringback, Call)}
+              ,{<<"Ringback">>, kz_media_util:media_path(Ringback, kapps_call:account_id(Call))}
               ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
               ,{<<"Dial-Endpoint-Method">>, Strategy}
               ,{<<"Ignore-Forward">>, IgnoreForward}

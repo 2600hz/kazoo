@@ -81,14 +81,14 @@ send_init_hook(Call) ->
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("================", []),
 
-    Prop = [{<<"Event">>, <<"init">>}
-           ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-           ,{<<"To">>, knm_converters:normalize(kapps_call:to_user(Call))}
-           ,{<<"From">>, knm_converters:normalize(kapps_call:caller_id_number(Call))}
-           ,{<<"Inception">>, get_inception(Call)}
-           ],
+    JObj = kz_json:from_list(
+             [{<<"Event">>, <<"init">>}
+             ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+             ,{<<"To">>, knm_converters:normalize(kapps_call:to_user(Call))}
+             ,{<<"From">>, knm_converters:normalize(kapps_call:caller_id_number(Call))}
+             ,{<<"Inception">>, get_inception(Call)}
+             ]),
 
-    JObj = kz_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
 
     case kz_http:post(URI
@@ -134,17 +134,17 @@ send_end_hook(Call, Event) ->
             _ -> kapps_call:custom_channel_var(<<"Bridge-ID">>, Call)
         end,
 
-    Prop = [{<<"Event">>, <<"destroy">>}
-           ,{<<"Call-ID">>, CallID}
-           ,{<<"To">>, knm_converters:normalize(kapps_call:to_user(Call))}
-           ,{<<"From">>, knm_converters:normalize(kapps_call:caller_id_number(Call))}
-           ,{<<"Inception">>, get_inception(Call)}
-           ,{<<"Duration-Seconds">>, kz_json:get_value(<<"Duration-Seconds">>, Event)}
-           ,{<<"Hangup-Cause">>, kz_json:get_value(<<"Hangup-Cause">>, Event)}
-           ,{<<"Disposition">>, kz_json:get_value(<<"Disposition">>, Event)}
-           ],
+    JObj = kz_json:from_list(
+             [{<<"Event">>, <<"destroy">>}
+             ,{<<"Call-ID">>, CallID}
+             ,{<<"To">>, knm_converters:normalize(kapps_call:to_user(Call))}
+             ,{<<"From">>, knm_converters:normalize(kapps_call:caller_id_number(Call))}
+             ,{<<"Inception">>, get_inception(Call)}
+             ,{<<"Duration-Seconds">>, kz_json:get_value(<<"Duration-Seconds">>, Event)}
+             ,{<<"Hangup-Cause">>, kz_json:get_value(<<"Hangup-Cause">>, Event)}
+             ,{<<"Disposition">>, kz_json:get_value(<<"Disposition">>, Event)}
+             ]),
 
-    JObj = kz_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
 
     case kz_http:post(URI

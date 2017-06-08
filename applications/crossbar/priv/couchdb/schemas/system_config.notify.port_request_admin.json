@@ -4,7 +4,14 @@
     "description": "Schema for notify.port_request_admin system_config",
     "properties": {
         "default_to": {
-            "description": "notify.port_request_admin default to"
+            "description": "notify.port_request_admin default to",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "string",
+                "array"
+            ]
         }
     },
     "type": "object"

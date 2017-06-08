@@ -32,7 +32,9 @@ handle_req(JObj, Props) ->
         andalso callflow_should_respond(Call)
     of
         'true' ->
-            lager:info("received request ~s asking if callflows can route this call", [kapi_route:fetch_id(JObj)]),
+            lager:info("received request ~s asking if callflows can route the call to ~s"
+                      ,[kapi_route:fetch_id(JObj), kapps_call:request_user(Call)]
+                      ),
             AllowNoMatch = allow_no_match(Call),
             case cf_flow:lookup(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
@@ -156,8 +158,10 @@ callflow_should_respond(Call) ->
         <<"account">> -> 'true';
         <<"user">> -> 'true';
         <<"device">> -> 'true';
+        <<"mobile">> -> 'true';
         <<"callforward">> -> 'true';
         <<"clicktocall">> -> 'true';
+        <<"click2call">> -> 'true';
         <<"resource">> -> 'true';
         <<"sys_info">> ->
             timer:sleep(500),

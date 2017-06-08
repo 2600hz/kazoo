@@ -17,7 +17,6 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?SUPER('kz_media_cache_sup')
-                  ,?SUPER('kz_media_recording_sup')
                   ,?WORKER_APP_INIT('kazoo_media_init', 20 * ?SECONDS_IN_MINUTE)
                   ,?WORKER_ARGS('kazoo_etsmgr_srv'
                                ,[

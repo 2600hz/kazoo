@@ -10,6 +10,7 @@
 
                  , kazoo_apps
                  , kazoo_amqp
+                 , kazoo_call
                  , kazoo_data
                  , kazoo_endpoint
                  , kazoo_token_buckets

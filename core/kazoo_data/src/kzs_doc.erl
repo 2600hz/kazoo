@@ -152,12 +152,11 @@ prepare_doc_for_del(Server, DbName, Doc) ->
                  {error, not_found} -> undefined
              end,
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"_id">>, Id}
-        ,{<<"_rev">>, DocRev}
-        ,{<<"_deleted">>, 'true'}
-         | kzs_publish:publish_fields(Doc)
-        ])).
+      [{<<"_id">>, Id}
+      ,{<<"_rev">>, DocRev}
+      ,{<<"_deleted">>, 'true'}
+       | kzs_publish:publish_fields(Doc)
+      ]).
 
 -spec prepare_doc_for_save(ne_binary(), kz_json:object()) -> {kz_json:object(), kz_json:object()}.
 -spec prepare_doc_for_save(ne_binary(), kz_json:object(), boolean()) -> {kz_json:object(), kz_json:object()}.
@@ -182,13 +181,10 @@ maybe_tombstone(JObj) ->
 
 maybe_tombstone(JObj, 'true') ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"_id">>, kz_doc:id(JObj)}
-        ,{<<"_rev">>, kz_doc:revision(JObj)}
-        ,{<<"_deleted">>, 'true'}
-        ]
-       )
-     );
+      [{<<"_id">>, kz_doc:id(JObj)}
+      ,{<<"_rev">>, kz_doc:revision(JObj)}
+      ,{<<"_deleted">>, 'true'}
+      ]);
 maybe_tombstone(JObj, 'false') -> JObj.
 
 -spec maybe_set_docid(kz_json:object()) -> kz_json:object().

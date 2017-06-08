@@ -567,38 +567,38 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
 %%--------------------------------------------------------------------
 -spec record_to_json(subscription()) -> kz_json:object().
 record_to_json(Subscription) ->
-    Props = [{<<"id">>, Subscription#bt_subscription.id}
-            ,{<<"balance">>, Subscription#bt_subscription.balance}
-            ,{<<"billing_dom">>, Subscription#bt_subscription.billing_dom}
-            ,{<<"billing_first_date">>, Subscription#bt_subscription.billing_first_date}
-            ,{<<"billing_end_date">>, Subscription#bt_subscription.billing_end_date}
-            ,{<<"billing_start_date">>, Subscription#bt_subscription.billing_start_date}
-            ,{<<"billing_cycle">>, Subscription#bt_subscription.billing_cycle}
-            ,{<<"number_of_cycles">>, Subscription#bt_subscription.number_of_cycles}
-            ,{<<"days_past_due">>, Subscription#bt_subscription.days_past_due}
-            ,{<<"failure_count">>, Subscription#bt_subscription.failure_count}
-            ,{<<"merchant_account_id">>, Subscription#bt_subscription.merchant_account_id}
-            ,{<<"never_expires">>, Subscription#bt_subscription.never_expires}
-            ,{<<"next_bill_amount">>, Subscription#bt_subscription.next_bill_amount}
-            ,{<<"next_cycle_amount">>, Subscription#bt_subscription.next_cycle_amount}
-            ,{<<"next_bill_date">>, Subscription#bt_subscription.next_bill_date}
-            ,{<<"paid_through_date">>, Subscription#bt_subscription.paid_through_date}
-            ,{<<"payment_token">>, Subscription#bt_subscription.payment_token}
-            ,{<<"plan_id">>, Subscription#bt_subscription.plan_id}
-            ,{<<"price">>, Subscription#bt_subscription.price}
-            ,{<<"status">>, Subscription#bt_subscription.status}
-            ,{<<"trial_duration">>, Subscription#bt_subscription.trial_duration}
-            ,{<<"trial_duration_unit">>, Subscription#bt_subscription.trial_duration_unit}
-            ,{<<"trial_period">>, Subscription#bt_subscription.trial_period}
-            ,{<<"descriptor">>, braintree_descriptor:record_to_json(Subscription#bt_subscription.descriptor)}
-            ,{<<"do_not_inherit">>, Subscription#bt_subscription.do_not_inherit}
-            ,{<<"start_immediately">>, Subscription#bt_subscription.start_immediately}
-            ,{<<"prorate_charges">>, Subscription#bt_subscription.prorate_charges}
-            ,{<<"revert_on_prorate_fail">>, Subscription#bt_subscription.revert_on_prorate_fail}
-            ,{<<"replace_add_ons">>, Subscription#bt_subscription.replace_add_ons}
-            ,{<<"create">>, Subscription#bt_subscription.create}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"id">>, Subscription#bt_subscription.id}
+      ,{<<"balance">>, Subscription#bt_subscription.balance}
+      ,{<<"billing_dom">>, Subscription#bt_subscription.billing_dom}
+      ,{<<"billing_first_date">>, Subscription#bt_subscription.billing_first_date}
+      ,{<<"billing_end_date">>, Subscription#bt_subscription.billing_end_date}
+      ,{<<"billing_start_date">>, Subscription#bt_subscription.billing_start_date}
+      ,{<<"billing_cycle">>, Subscription#bt_subscription.billing_cycle}
+      ,{<<"number_of_cycles">>, Subscription#bt_subscription.number_of_cycles}
+      ,{<<"days_past_due">>, Subscription#bt_subscription.days_past_due}
+      ,{<<"failure_count">>, Subscription#bt_subscription.failure_count}
+      ,{<<"merchant_account_id">>, Subscription#bt_subscription.merchant_account_id}
+      ,{<<"never_expires">>, Subscription#bt_subscription.never_expires}
+      ,{<<"next_bill_amount">>, Subscription#bt_subscription.next_bill_amount}
+      ,{<<"next_cycle_amount">>, Subscription#bt_subscription.next_cycle_amount}
+      ,{<<"next_bill_date">>, Subscription#bt_subscription.next_bill_date}
+      ,{<<"paid_through_date">>, Subscription#bt_subscription.paid_through_date}
+      ,{<<"payment_token">>, Subscription#bt_subscription.payment_token}
+      ,{<<"plan_id">>, Subscription#bt_subscription.plan_id}
+      ,{<<"price">>, Subscription#bt_subscription.price}
+      ,{<<"status">>, Subscription#bt_subscription.status}
+      ,{<<"trial_duration">>, Subscription#bt_subscription.trial_duration}
+      ,{<<"trial_duration_unit">>, Subscription#bt_subscription.trial_duration_unit}
+      ,{<<"trial_period">>, Subscription#bt_subscription.trial_period}
+      ,{<<"descriptor">>, braintree_descriptor:record_to_json(Subscription#bt_subscription.descriptor)}
+      ,{<<"do_not_inherit">>, Subscription#bt_subscription.do_not_inherit}
+      ,{<<"start_immediately">>, Subscription#bt_subscription.start_immediately}
+      ,{<<"prorate_charges">>, Subscription#bt_subscription.prorate_charges}
+      ,{<<"revert_on_prorate_fail">>, Subscription#bt_subscription.revert_on_prorate_fail}
+      ,{<<"replace_add_ons">>, Subscription#bt_subscription.replace_add_ons}
+      ,{<<"create">>, Subscription#bt_subscription.create}
+      ]).
 
 
 %%--------------------------------------------------------------------

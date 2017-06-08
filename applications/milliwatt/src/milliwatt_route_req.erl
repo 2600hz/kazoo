@@ -72,14 +72,12 @@ execute_action('echo', Call) ->
     milliwatt_echo:exec(Call).
 
 
-
 -spec tone_or_echo(kapps_call:call()) -> 'echo' | 'tone' | 'undefined'.
 tone_or_echo(Call) ->
     CallJObj = kapps_call:to_json(Call),
     From = kz_json:get_binary_value(<<"Caller-ID-Number">>, CallJObj, <<>>),
     To = kz_json:get_binary_value(<<"To-User">>, CallJObj, <<>>),
-
-    case {kapps_config:get_non_empty(?CONFIG_CAT, <<"echo">>, ?ECHO)
+    case {kapps_config:get_json(?CONFIG_CAT, <<"echo">>, ?ECHO)
          ,?TONE
          }
     of

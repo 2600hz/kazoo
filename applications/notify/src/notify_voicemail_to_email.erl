@@ -37,10 +37,14 @@ init() ->
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Props) ->
-    'true' = kapi_notifications:voicemail_v(JObj),
+    'true' = kapi_notifications:voicemail_new_v(JObj),
     _ = kz_util:put_callid(JObj),
 
     lager:debug("new voicemail left, sending to email if enabled"),
+
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
     AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
@@ -54,19 +58,17 @@ handle_req(JObj, _Props) ->
 
     %% If the box has emails, continue processing
     %% otherwise stop processing
-    case Emails =/= [] of
-        'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
-        'true' -> continue_processing(JObj, AccountDb, VMBox, Emails)
-    end.
+    SendResult =
+        case Emails =/= [] of
+            'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
+            'true' -> continue_processing(JObj, AccountDb, VMBox, Emails)
+        end,
+    notify_util:maybe_send_update(SendResult, RespQ, MsgId).
 
--spec continue_processing(kz_json:object(), ne_binary(), kz_json:object(), ne_binaries()) -> 'ok'.
+-spec continue_processing(kz_json:object(), ne_binary(), kz_json:object(), ne_binaries()) -> send_email_return().
 continue_processing(JObj, AccountDb, VMBox, Emails) ->
-    RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
     AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
-
-    'ok' = notify_util:send_update(RespQ, MsgId, <<"pending">>),
     lager:debug("VM->Email enabled for user, sending to ~p", [Emails]),
     {'ok', AccountJObj} = kz_account:fetch(AccountDb),
     Timezone = kzd_voicemail_box:timezone(VMBox, <<"UTC">>),
@@ -84,10 +86,7 @@ continue_processing(JObj, AccountDb, VMBox, Emails) ->
     CustomSubjectTemplate = kz_json:get_value(?EMAIL_SUBJECT_TEMPLATE_KEY, AccountJObj),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    build_and_send_email(TxtBody, HTMLBody, Subject, Emails
-                        ,props:filter_undefined(Props)
-                        ,{RespQ, MsgId}
-                        ).
+    build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_undefined(Props)).
 
 -spec maybe_add_user_email(ne_binaries(), api_binary(), boolean()) -> ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined', _) -> BoxEmails;
@@ -168,9 +167,8 @@ magic_hash(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--type respond_to() :: {api_binary(), ne_binary()}.
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binaries(), kz_proplist(), respond_to()) -> 'ok'.
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binaries(), kz_proplist()) -> send_email_return().
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     Service = props:get_value(<<"service">>, Props),
     AccountId = props:get_value(<<"account_id">>, Props),
@@ -230,10 +228,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
               }
               || T <- To
              ],
-    case [notify_util:send_email(From, T, Email) || {T, Email} <- Emails] of
-        ['ok'|_] -> notify_util:send_update(RespQ, MsgId, <<"completed">>);
-        [{'error', Reason}|_] -> notify_util:send_update(RespQ, MsgId, <<"failed">>, Reason)
-    end.
+    [notify_util:send_email(From, T, Email) || {T, Email} <- Emails].
 
 %%--------------------------------------------------------------------
 %% @private

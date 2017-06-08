@@ -11,9 +11,23 @@
 
 command -v jq >/dev/null 2>&1 || { echo >&2 "This script requires 'jq' be installed"; exit 1; }
 
-usage() { echo 'Usage: eval $('"$0"' [-c {CREDENTIALS_HASH}] [-a {ACCOUNT_NAME}] [-p {PHONE_NUMBER}] [-r {ACCOUNT_REALM}])' 1>&2;}
+usage() { echo 'Usage: eval $('"$0"' [-c {CREDENTIALS_HASH}] [-a {ACCOUNT_NAME}] [-p {PHONE_NUMBER}] [-r {ACCOUNT_REALM}] [-k {API_KEY})' 1>&2;}
 
-function authenticate() {
+function api_authenticate() {
+    local C="$1"
+    AUTH_RESP=$(curl -s -X PUT http://localhost:8000/v2/api_auth -d "{\"data\":{\"api_key\":\"$C\"}}")
+
+    STATUS=$(echo $AUTH_RESP | jq -r '.status')
+
+    if [[ "success" == $STATUS ]]; then
+        echo "export ACCOUNT_ID=$(echo $AUTH_RESP | jq -r '.data.account_id')"
+        echo "export AUTH_TOKEN=$(echo $AUTH_RESP | jq -r '.auth_token')"
+    else
+        echo "echo $STATUS: $AUTH_RESP && true"
+    fi
+}
+
+function user_authenticate() {
     local C="$1"
     local TYPE="$2"
     local ID="$3"
@@ -25,11 +39,11 @@ function authenticate() {
         echo "export ACCOUNT_ID=$(echo $AUTH_RESP | jq -r '.data.account_id')"
         echo "export AUTH_TOKEN=$(echo $AUTH_RESP | jq -r '.auth_token')"
     else
-        echo $AUTH_RESP
+        echo "echo $STATUS: $AUTH_RESP && true"
     fi
 }
 
-while getopts ":a:c:p:r" opt; do
+while getopts ":a:c:p:r:k" opt; do
     case $opt in
         c)
             CREDS=${OPTARG}
@@ -46,6 +60,10 @@ while getopts ":a:c:p:r" opt; do
             IDENTIFIER_VALUE=${OPTARG}
             ACCOUNT_IDENTIFIER="account_realm"
             ;;
+        k)
+            IDENTIFIER_VALUE=${OPTARG}
+            ACCOUNT_IDENTIFIER="api_key"
+            ;;
         *)
             usage
             ;;
@@ -58,6 +76,8 @@ fi
 
 if [[ -z "${ACCOUNT_IDENTIFIER}" ]]; then
     usage
+elif [[ "api_key" == ${ACCOUNT_IDENTIFIER} ]]; then
+    api_authenticate $CREDS
 else
-    authenticate $CREDS $ACCOUNT_IDENTIFIER $IDENTIFIER_VALUE
+    user_authenticate $CREDS $ACCOUNT_IDENTIFIER $IDENTIFIER_VALUE
 fi

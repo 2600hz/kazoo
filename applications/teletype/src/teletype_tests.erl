@@ -80,7 +80,7 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kz_amqp_worker:call_collect(Prop
-                               ,fun kapi_notifications:publish_voicemail/1
+                               ,fun kapi_notifications:publish_voicemail_new/1
                                ,5 * ?MILLISECONDS_IN_SECOND
                                ).
 

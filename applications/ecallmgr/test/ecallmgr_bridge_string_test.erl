@@ -27,9 +27,13 @@ sip_headers_test() ->
                                  ]),
     Endpoints = [Endpoint],
     [BS] = ecallmgr_util:build_simple_channels(Endpoints),
-    ?assertEqual(<<"[sip_h_X-Caller-Macro=${caller_id_number}"
-                   ",sip_h_X-Billing-Number=1234"
-                   ",sip_h_X-Account-ID=${ecallmgr_Account-ID}]"
+    ?assertEqual(<<"[^^"
+                   ?BRIDGE_CHANNEL_VAR_SEPARATOR
+                   "sip_h_X-Caller-Macro=${caller_id_number}"
+                   ?BRIDGE_CHANNEL_VAR_SEPARATOR
+                   "sip_h_X-Billing-Number=1234"
+                   ?BRIDGE_CHANNEL_VAR_SEPARATOR
+                   "sip_h_X-Account-ID=${ecallmgr_Account-ID}]"
                    "sofia/", ?SIP_INTERFACE, "/to_user@to_realm"
                  >>
                 ,BS

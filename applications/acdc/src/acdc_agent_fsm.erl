@@ -1857,17 +1857,16 @@ notify(Url, Method, Key, #state{account_id=AccountId
                                }) ->
     kz_util:put_callid(kapps_call:call_id(MemberCall)),
     Data = kz_json:from_list(
-             props:filter_undefined(
-               [{<<"account_id">>, AccountId}
-               ,{<<"agent_id">>, AgentId}
-               ,{<<"agent_call_id">>, AgentCallId}
-               ,{<<"queue_id">>, QueueId}
-               ,{<<"member_call_id">>, kapps_call:call_id(MemberCall)}
-               ,{<<"caller_id_name">>, kapps_call:caller_id_name(MemberCall)}
-               ,{<<"caller_id_number">>, kapps_call:caller_id_number(MemberCall)}
-               ,{<<"call_state">>, Key}
-               ,{<<"now">>, kz_time:current_tstamp()}
-               ])),
+             [{<<"account_id">>, AccountId}
+             ,{<<"agent_id">>, AgentId}
+             ,{<<"agent_call_id">>, AgentCallId}
+             ,{<<"queue_id">>, QueueId}
+             ,{<<"member_call_id">>, kapps_call:call_id(MemberCall)}
+             ,{<<"caller_id_name">>, kapps_call:caller_id_name(MemberCall)}
+             ,{<<"caller_id_number">>, kapps_call:caller_id_number(MemberCall)}
+             ,{<<"call_state">>, Key}
+             ,{<<"now">>, kz_time:current_tstamp()}
+             ]),
     notify(Url, Method, Data).
 
 -spec notify(ne_binary(), 'get' | 'post', kz_json:object()) -> 'ok'.

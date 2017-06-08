@@ -48,9 +48,9 @@
                ,total_account_failed = 0 :: non_neg_integer()
                ,failed_accounts = [] :: ne_binaries()
                ,calling_process = 'undefined' :: api_pid()
-               ,timer_ref :: reference()
-               ,retention_seconds :: gregorian_seconds()
-               ,account_queue :: queue:queue()
+               ,timer_ref :: api_reference()
+               ,retention_seconds = kvm_util:retention_seconds() :: gregorian_seconds()
+               ,account_queue :: queue:queue() | 'undefined'
                }).
 -type state() :: #state{}.
 

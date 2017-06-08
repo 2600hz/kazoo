@@ -237,37 +237,35 @@ get_account_realm(AccountId) ->
         _ -> AccountId
     end.
 
--spec create_loopback_endpoint(knm_number_options:extra_options(), kz_json:object()) -> any().
+-spec create_loopback_endpoint(knm_number_options:extra_options(), kz_json:object()) -> kz_json:object().
 create_loopback_endpoint(Props, JObj) ->
     {CIDNum, CIDName} = local_originate_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = knm_number_options:number(Props),
     AccountId = knm_number_options:account_id(Props),
     Realm = get_account_realm(AccountId),
-    CCVs = props:filter_undefined(
+    CCVs = kz_json:from_list(
              [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, "true"}
              ,{<<"Resource-ID">>, AccountId}
              ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
              ]),
-    Endpoint = kz_json:from_list(
-                 props:filter_undefined(
-                   [{<<"Invite-Format">>, <<"loopback">>}
-                   ,{<<"Route">>, Number}
-                   ,{<<"To-DID">>, Number}
-                   ,{<<"To-Realm">>, Realm}
-                   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-                   ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-                   ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-                   ,{<<"Caller-ID-Name">>, CIDName}
-                   ,{<<"Caller-ID-Number">>, CIDNum}
-                   ,{<<"Ignore-Early-Media">>, 'true'}
-                   ,{<<"Ignore-Early-Media">>, 'true'}
-                   ,{<<"Enable-T38-Fax">>, 'false'}
-                   ,{<<"Enable-T38-Fax-Request">>, 'false'}
-                   ])),
-    Endpoint.
+    kz_json:from_list(
+      [{<<"Invite-Format">>, <<"loopback">>}
+      ,{<<"Route">>, Number}
+      ,{<<"To-DID">>, Number}
+      ,{<<"To-Realm">>, Realm}
+      ,{<<"Custom-Channel-Vars">>, CCVs}
+      ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+      ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+      ,{<<"Caller-ID-Name">>, CIDName}
+      ,{<<"Caller-ID-Number">>, CIDNum}
+      ,{<<"Ignore-Early-Media">>, 'true'}
+      ,{<<"Ignore-Early-Media">>, 'true'}
+      ,{<<"Enable-T38-Fax">>, 'false'}
+      ,{<<"Enable-T38-Fax-Request">>, 'false'}
+      ]).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

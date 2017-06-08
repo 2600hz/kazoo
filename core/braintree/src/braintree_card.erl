@@ -327,26 +327,26 @@ json_to_record(JObj) ->
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_card()) -> kz_json:object().
 record_to_json(#bt_card{}=Card) ->
-    Props =[{<<"id">>, Card#bt_card.token}
-           ,{<<"bin">>, Card#bt_card.bin}
-           ,{<<"cardholder_name">>, Card#bt_card.cardholder_name}
-           ,{<<"card_type">>, Card#bt_card.card_type}
-           ,{<<"created_at">>, Card#bt_card.created_at}
-           ,{<<"updated_at">>, Card#bt_card.updated_at}
-           ,{<<"default">>, Card#bt_card.default}
-           ,{<<"expiration_date">>, Card#bt_card.expiration_date}
-           ,{<<"expiration_month">>, Card#bt_card.expiration_month}
-           ,{<<"expiration_year">>, Card#bt_card.expiration_year}
-           ,{<<"expired">>, Card#bt_card.expired}
-           ,{<<"customer_location">>, Card#bt_card.customer_location}
-           ,{<<"last_four">>, Card#bt_card.last_four}
-           ,{<<"customer_id">>, Card#bt_card.customer_id}
-           ,{<<"created_at">>, Card#bt_card.created_at}
-           ,{<<"updated_at">>, Card#bt_card.updated_at}
-           ,{<<"billing_address">>, braintree_address:record_to_json(Card#bt_card.billing_address)}
-           ,{<<"billing_address_id">>, Card#bt_card.billing_address_id}
-           ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"id">>, Card#bt_card.token}
+      ,{<<"bin">>, Card#bt_card.bin}
+      ,{<<"cardholder_name">>, Card#bt_card.cardholder_name}
+      ,{<<"card_type">>, Card#bt_card.card_type}
+      ,{<<"created_at">>, Card#bt_card.created_at}
+      ,{<<"updated_at">>, Card#bt_card.updated_at}
+      ,{<<"default">>, Card#bt_card.default}
+      ,{<<"expiration_date">>, Card#bt_card.expiration_date}
+      ,{<<"expiration_month">>, Card#bt_card.expiration_month}
+      ,{<<"expiration_year">>, Card#bt_card.expiration_year}
+      ,{<<"expired">>, Card#bt_card.expired}
+      ,{<<"customer_location">>, Card#bt_card.customer_location}
+      ,{<<"last_four">>, Card#bt_card.last_four}
+      ,{<<"customer_id">>, Card#bt_card.customer_id}
+      ,{<<"created_at">>, Card#bt_card.created_at}
+      ,{<<"updated_at">>, Card#bt_card.updated_at}
+      ,{<<"billing_address">>, braintree_address:record_to_json(Card#bt_card.billing_address)}
+      ,{<<"billing_address_id">>, Card#bt_card.billing_address_id}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public

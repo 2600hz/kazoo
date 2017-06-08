@@ -549,10 +549,7 @@ send_transaction_notify(AccountId, Transaction) ->
              | braintree_transaction:record_to_notification_props(Transaction)
              ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    case kz_amqp_worker:cast(Props, fun kapi_notifications:publish_transaction/1) of
-        'ok' -> lager:debug("transaction notification sent for ~s", [AccountId]);
-        {'error', _R} -> lager:error("failed to send transaction notification for ~s : ~p", [AccountId, _R])
-    end.
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_transaction/1).
 
 -spec add_credit_to_account(kz_json:object(), integer(), ne_binary(), ne_binary(), api_binary()) ->
                                    {'ok', kz_transaction:transaction()} |

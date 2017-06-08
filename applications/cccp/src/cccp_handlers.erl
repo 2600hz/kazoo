@@ -90,7 +90,7 @@ maybe_call_back(JObj, Call) ->
     MaxConcurentCallsPerUser = kz_json:get_integer_value(<<"max_concurent_calls_per_user">>, JObj, 1),
     case (cccp_util:count_user_legs(UserId, AccountId) >= MaxConcurentCallsPerUser * 2) of
         'true' ->
-            Media = kz_media_util:get_prompt(<<"cf-move-too_many_channels">>, Call),
+            Media = kapps_call:get_prompt(Call, <<"cf-move-too_many_channels">>),
             kapps_call_command:response(<<"486">>, <<"User busy">>, Media, Call);
         'false' ->
             kapps_call_command:hangup(Call),

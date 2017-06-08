@@ -155,12 +155,38 @@
             "properties": {
                 "call_recording": {
                     "properties": {
+                        "extension": {
+                            "default": "mp3",
+                            "description": "Default media file format",
+                            "type": "string"
+                        },
                         "storage_retry_times": {
                             "default": 5,
                             "description": "media storage retry times",
                             "type": "integer"
                         }
                     }
+                }
+            },
+            "type": "object"
+        },
+        "account_config.notify": {
+            "description": "Schema for notify account_config",
+            "properties": {
+                "notify_presist_exceptions": {
+                    "default": [
+                        "system_alert"
+                    ],
+                    "description": "List of notification types have to be ignored to presist if they failed to publish",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "should_presist_for_retry": {
+                    "default": true,
+                    "description": "Enabled presist of failed to publish notifications for account/system",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -238,6 +264,21 @@
         "accounts": {
             "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
             "properties": {
+                "call_recording": {
+                    "additionalProperties": false,
+                    "description": "call recording configuration",
+                    "properties": {
+                        "account": {
+                            "$ref": "#/definitions/call_recording",
+                            "type": "object"
+                        },
+                        "endpoint": {
+                            "$ref": "#/definitions/call_recording",
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                },
                 "call_restriction": {
                     "additionalProperties": {
                         "properties": {
@@ -329,10 +370,9 @@
                 },
                 "realm": {
                     "description": "The realm of the account, ie: 'account1.2600hz.com'",
-                    "format": "uri",
                     "maxLength": 253,
                     "minLength": 4,
-                    "pattern": "^([.\\w_-]+)$",
+                    "pattern": "^[.\\w_-]+$",
                     "type": "string"
                 },
                 "ringtones": {
@@ -674,6 +714,10 @@
                     "description": "Map of caller id number to block",
                     "properties": {},
                     "type": "object"
+                },
+                "should_block_anonymous": {
+                    "description": "Should block Anonymous call",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -689,6 +733,71 @@
                 },
                 "local": {
                     "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "call_recording": {
+            "description": "endpoint recording settings",
+            "properties": {
+                "any": {
+                    "$ref": "#/definitions/call_recording.source"
+                },
+                "inbound": {
+                    "$ref": "#/definitions/call_recording.source"
+                },
+                "outbound": {
+                    "$ref": "#/definitions/call_recording.source"
+                }
+            },
+            "type": "object"
+        },
+        "call_recording.parameters": {
+            "properties": {
+                "enabled": {
+                    "description": "is recording enabled",
+                    "type": "boolean"
+                },
+                "format": {
+                    "description": "What format to store the recording on disk",
+                    "enum": [
+                        "mp3",
+                        "wav"
+                    ],
+                    "type": "string"
+                },
+                "record_min_sec": {
+                    "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
+                    "type": "integer"
+                },
+                "record_sample_rate": {
+                    "description": "What sampling rate to use on the recording",
+                    "type": "integer"
+                },
+                "time_limit": {
+                    "description": "Time limit, in seconds, for the recording",
+                    "maximum": 10800,
+                    "minimum": 5,
+                    "type": "integer"
+                },
+                "url": {
+                    "description": "The URL to use when sending the recording for storage",
+                    "format": "uri",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "call_recording.source": {
+            "properties": {
+                "any": {
+                    "$ref": "#/definitions/call_recording.parameters"
+                },
+                "offnet": {
+                    "$ref": "#/definitions/call_recording.parameters"
+                },
+                "onnet": {
+                    "$ref": "#/definitions/call_recording.parameters"
                 }
             },
             "type": "object"
@@ -1259,8 +1368,10 @@
                 "action": {
                     "description": "What action to perform",
                     "enum": [
+                        "list",
+                        "lists",
                         "manual",
-                        "list"
+                        "static"
                     ],
                     "type": "string"
                 },
@@ -3229,10 +3340,6 @@
                                                 "type": "string"
                                             }
                                         },
-                                        "required": [
-                                            "cid_name",
-                                            "cid_number"
-                                        ],
                                         "type": "object"
                                     },
                                     "delay": {
@@ -3425,6 +3532,10 @@
                             "type": "boolean"
                         }
                     },
+                    "type": "object"
+                },
+                "call_recording": {
+                    "$ref": "#/definitions/call_recording",
                     "type": "object"
                 },
                 "call_restriction": {
@@ -3662,6 +3773,25 @@
                 "provision": {
                     "description": "Provision data",
                     "properties": {
+                        "combo_keys": {
+                            "description": "Feature Keys",
+                            "type": "object"
+                        },
+                        "endpoint_brand": {
+                            "description": "Brand of the phone",
+                            "type": "string"
+                        },
+                        "endpoint_family": {
+                            "description": "Family name of the phone",
+                            "type": "string"
+                        },
+                        "endpoint_model": {
+                            "description": "Model name of the phone",
+                            "type": [
+                                "string",
+                                "integer"
+                            ]
+                        },
                         "feature_keys": {
                             "description": "Feature Keys",
                             "type": "object"
@@ -3748,7 +3878,9 @@
                         },
                         "realm": {
                             "description": "The realm this device should use, overriding the account realm. Should rarely be necessary.",
-                            "format": "uri",
+                            "maxLength": 253,
+                            "minLength": 4,
+                            "pattern": "^[.\\w_-]+$",
                             "type": "string"
                         },
                         "route": {
@@ -5705,150 +5837,6 @@
             },
             "type": "object"
         },
-        "provisioner_v5": {
-            "description": "Provisioner schema",
-            "properties": {
-                "brand": {
-                    "default": "",
-                    "description": "Brand of the phone",
-                    "type": "string"
-                },
-                "family": {
-                    "default": "",
-                    "description": "Family name of the phone",
-                    "type": "string"
-                },
-                "model": {
-                    "default": "",
-                    "description": "Model name of the phone",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Name of the phone",
-                    "type": "string"
-                },
-                "settings": {
-                    "description": "Phone's settings",
-                    "properties": {
-                        "codecs": {
-                            "description": "Phone's codecs",
-                            "items": {
-                                "properties": {
-                                    "audio": {
-                                        "description": "Audio codecs",
-                                        "properties": {
-                                            "primary_codec": {
-                                                "description": "Primary codec",
-                                                "type": "string"
-                                            },
-                                            "secondary_codec": {
-                                                "description": "Secondary codec",
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "object"
-                        },
-                        "datetime": {
-                            "description": "Date and time settings",
-                            "properties": {
-                                "time": {
-                                    "description": "Time settings",
-                                    "properties": {
-                                        "timezone": {
-                                            "description": "Phone's timezone",
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "lines": {
-                            "description": "Phone lines",
-                            "items": {
-                                "properties": {
-                                    "advanced": {
-                                        "description": "Advanced settings",
-                                        "properties": {
-                                            "expire": {
-                                                "default": 360,
-                                                "type": "integer"
-                                            },
-                                            "srtp": {
-                                                "default": false,
-                                                "type": "boolean"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "basic": {
-                                        "description": "Basic settings",
-                                        "properties": {
-                                            "display_name": {
-                                                "description": "Friendly name for phone",
-                                                "type": "string"
-                                            },
-                                            "enabled": {
-                                                "default": true,
-                                                "description": "Enable line",
-                                                "type": "boolean"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "sip": {
-                                        "description": "Sip settings",
-                                        "properties": {
-                                            "password": {
-                                                "description": "Line's password",
-                                                "type": "string"
-                                            },
-                                            "realm": {
-                                                "description": "Line's Sip realm",
-                                                "type": "string"
-                                            },
-                                            "username": {
-                                                "description": "Line's username",
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "password",
-                                            "username"
-                                        ],
-                                        "type": "object"
-                                    }
-                                },
-                                "required": [
-                                    "basic",
-                                    "sip"
-                                ],
-                                "type": "object"
-                            },
-                            "minItems": 1,
-                            "required": [
-                                "properties"
-                            ],
-                            "type": "object"
-                        }
-                    },
-                    "type": "object"
-                }
-            },
-            "required": [
-                "brand",
-                "family",
-                "model",
-                "settings"
-            ],
-            "type": "object"
-        },
         "queue_update": {
             "description": "Schema for queue update request",
             "properties": {
@@ -7036,17 +7024,17 @@
                                         "attempts": {
                                             "default": 5,
                                             "description": "ananke attempts",
-                                            "type": "string"
+                                            "type": "integer"
                                         },
                                         "interval_s": {
                                             "default": 300,
                                             "description": "ananke interval in seconds",
-                                            "type": "string"
+                                            "type": "integer"
                                         },
                                         "timeout_s": {
                                             "default": 20,
                                             "description": "ananke timeout in seconds",
-                                            "type": "string"
+                                            "type": "integer"
                                         }
                                     }
                                 }
@@ -8024,7 +8012,8 @@
                     "type": "string"
                 },
                 "provisioning_type": {
-                    "description": "crossbar.devices provisioning type"
+                    "description": "crossbar.devices provisioning type",
+                    "type": "string"
                 },
                 "provisioning_url": {
                     "description": "crossbar.devices provisioning url",
@@ -8315,6 +8304,18 @@
                     "description": "datamgr default archive folder",
                     "type": "string"
                 },
+                "max_bulk_insert": {
+                    "default": 2000,
+                    "description": "maximum number of documents that will be inserted in a single request",
+                    "minimum": 1,
+                    "type": "integer"
+                },
+                "max_bulk_read": {
+                    "default": 2000,
+                    "description": "maximum number of documents that will be read in a single request",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "no_caching_doc_types": {
                     "default": [
                         "media",
@@ -8556,8 +8557,9 @@
                     "type": "string"
                 },
                 "default_ringback": {
+                    "default": "%(2000,4000,440,480)",
                     "description": "ecallmgr default ringback",
-                    "type": "object"
+                    "type": "string"
                 },
                 "event_stream_idle_alert": {
                     "default": 0,
@@ -8634,7 +8636,11 @@
                     "type": "object"
                 },
                 "fs_reconnect_cmds": {
-                    "description": "ecallmgr fs reconnect cmds"
+                    "description": "ecallmgr fs reconnect cmds",
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
                 },
                 "gateways": {
                     "default": {},
@@ -8760,7 +8766,8 @@
                     "type": "boolean"
                 },
                 "sofia_conf": {
-                    "description": "ecallmgr sofia conf"
+                    "description": "ecallmgr sofia conf",
+                    "type": "boolean"
                 },
                 "tcp_packet_type": {
                     "default": 2,
@@ -9153,6 +9160,10 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "mobile_rate": {
+                    "description": "Object defining rate for Kazoo mobile",
+                    "type": "object"
                 },
                 "rate_version": {
                     "description": "If defined, use rates with this version",
@@ -9814,9 +9825,43 @@
                     "description": "notify notification app",
                     "type": "string"
                 },
+                "notify_presist_enabled": {
+                    "default": true,
+                    "description": "Enabled presist of failed to publish notifications globally",
+                    "type": "boolean"
+                },
+                "notify_presist_exceptions": {
+                    "default": [
+                        "system_alert"
+                    ],
+                    "description": "List of notification types have to be ignored to presist if they failed to publish",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "notify_presist_temprorary_force_exceptions": {
+                    "default": [],
+                    "description": "List of notification types have to be ignored temprorary globally to presist if they failed to publish",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "notify_publisher_timeout_ms": {
+                    "default": 10000,
+                    "description": "Timeout in milliseconds when publishing notification using notify publisher",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "search_rep_email": {
                     "default": true,
                     "description": "notify search rep email",
+                    "type": "boolean"
+                },
+                "should_presist_for_retry": {
+                    "default": true,
+                    "description": "Enabled presist of failed to publish notifications for account/system",
                     "type": "boolean"
                 },
                 "use_federated_listener": {
@@ -9833,6 +9878,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.cnam_request default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 }
             },
@@ -9844,6 +9892,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.deregister default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
@@ -9914,6 +9965,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.first_occurrence default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
@@ -9946,6 +10000,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.new_account default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
@@ -9967,6 +10024,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.password_recovery default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
@@ -9992,6 +10052,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.port_cancel default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 }
             },
@@ -10007,6 +10070,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.port_request default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 }
             },
@@ -10016,7 +10082,14 @@
             "description": "Schema for notify.port_request_admin system_config",
             "properties": {
                 "default_to": {
-                    "description": "notify.port_request_admin default to"
+                    "description": "notify.port_request_admin default to",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "string",
+                        "array"
+                    ]
                 }
             },
             "type": "object"
@@ -10027,6 +10100,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.ported default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 },
                 "send_from_admin_email": {
@@ -10043,6 +10119,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.system_alert default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 },
                 "enable_email_alerts": {
@@ -10073,6 +10152,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.topup default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
@@ -10094,6 +10176,9 @@
                 "default_to": {
                     "default": "",
                     "description": "notify.transaction default to",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
@@ -10118,7 +10203,14 @@
                     "type": "boolean"
                 },
                 "default_to": {
-                    "description": "notify.voicemail_full default to"
+                    "description": "notify.voicemail_full default to",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "string",
+                        "array"
+                    ]
                 }
             },
             "type": "object"
@@ -10667,15 +10759,96 @@
                     "type": "string"
                 },
                 "combo_keys": {
+                    "default": {
+                        "cisco": {
+                            "_": {
+                                "line": "",
+                                "parking": "",
+                                "personal_parking": "",
+                                "presence": "",
+                                "speed_dial": ""
+                            }
+                        },
+                        "grandstream": {
+                            "_": {
+                                "line": "0",
+                                "parking": "19",
+                                "personal_parking": "11",
+                                "presence": "11",
+                                "speed_dial": "10"
+                            }
+                        },
+                        "obihai": {
+                            "_": {
+                                "line": "Call Appearance",
+                                "parking": "Call Park Monitor",
+                                "personal_parking": "Busy Lamp Field",
+                                "presence": "Busy Lamp Field",
+                                "speed_dial": "Speed Dial"
+                            }
+                        },
+                        "yealink": {
+                            "_": {
+                                "line": "15",
+                                "parking": "10",
+                                "personal_parking": "10",
+                                "presence": "16",
+                                "speed_dial": "13"
+                            }
+                        }
+                    },
                     "description": "provisioner combo keys",
                     "type": "object"
                 },
                 "feature_keys": {
+                    "default": {
+                        "cisco": {
+                            "_": {
+                                "parking": "",
+                                "personal_parking": "",
+                                "presence": "",
+                                "speed_dial": ""
+                            }
+                        },
+                        "grandstream": {
+                            "_": {
+                                "parking": "9",
+                                "personal_parking": "1",
+                                "presence": "1",
+                                "speed_dial": "0"
+                            }
+                        },
+                        "obihai": {
+                            "_": {
+                                "parking": "Call Park Monitor",
+                                "personal_parking": "Busy Lamp Field",
+                                "presence": "Busy Lamp Field",
+                                "speed_dial": "Speed Dial"
+                            }
+                        },
+                        "polycom": {
+                            "_": {
+                                "parking": "automata",
+                                "personal_parking": "automata",
+                                "presence": "normal",
+                                "speed_dial": "normal"
+                            }
+                        },
+                        "yealink": {
+                            "_": {
+                                "parking": "10",
+                                "personal_parking": "10",
+                                "presence": "16",
+                                "speed_dial": "13"
+                            }
+                        }
+                    },
                     "description": "provisioner feature keys",
                     "type": "object"
                 },
                 "provisioning_type": {
-                    "description": "provisioner provisioning type"
+                    "description": "provisioner provisioning type",
+                    "type": "string"
                 },
                 "provisioning_url": {
                     "description": "provisioner provisioning url",
@@ -10741,6 +10914,7 @@
             "description": "Schema for reorder system_config",
             "properties": {
                 "assume_inbound_e164": {
+                    "default": false,
                     "description": "reorder assume inbound e164",
                     "type": "boolean"
                 },
@@ -11125,7 +11299,7 @@
                 "deny_emergency_bridge_code": {
                     "default": 486,
                     "description": "stepswitch deny emergency bridge code",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "deny_emergency_bridge_media": {
                     "default": "prompt://system_media/stepswitch-emergency_not_configured/",
@@ -11336,6 +11510,62 @@
                     "default": 500,
                     "description": "tasks wait after row in milliseconds",
                     "minimum": 0,
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.tasks.notify_resend": {
+            "description": "Schema for tasks.notify_resend system_config",
+            "properties": {
+                "cycle_delay_time_ms": {
+                    "default": 300000,
+                    "description": "Timeout in milliseconds between each cycle",
+                    "type": "integer"
+                },
+                "max_doc_read": {
+                    "default": 20,
+                    "description": "Max number of notifications to read from database for each cycle",
+                    "type": "integer"
+                },
+                "max_retries": {
+                    "default": 3,
+                    "description": "Default max retries to re-publish",
+                    "type": "integer"
+                },
+                "reschedule_rules": {
+                    "default": {
+                        "voicemail_new": {
+                            "rules": {
+                                "after_15_mins": {
+                                    "attempt": 1,
+                                    "retries": 4,
+                                    "retry_after_s": 900
+                                },
+                                "after_45_mins": {
+                                    "attempt": 2,
+                                    "retries": 4,
+                                    "retry_after_s": 2700
+                                },
+                                "after_one_day": {
+                                    "attempt": 4,
+                                    "retries": 4,
+                                    "retry_after_s": 86400
+                                },
+                                "after_two_hours": {
+                                    "attempt": 3,
+                                    "retries": 4,
+                                    "retry_after_s": 7200
+                                }
+                            }
+                        }
+                    },
+                    "description": "Re-schedule rules for each notification type to apply",
+                    "type": "object"
+                },
+                "retry_after_fudge_s": {
+                    "default": 600000,
+                    "description": "Constant time in seconds which would be multipy with attemtps to set retry time",
                     "type": "integer"
                 }
             },
@@ -11631,9 +11861,6 @@
             "description": "Schema for token restrictions",
             "properties": {
                 "restrictions": {
-                    "required": [
-                        "^\\w+$"
-                    ],
                     "type": "object"
                 }
             },
@@ -11920,9 +12147,9 @@
                 },
                 "account_realm": {
                     "description": "The account realm of the user",
-                    "format": "uri",
-                    "maxLength": 64,
-                    "minLength": 1,
+                    "maxLength": 253,
+                    "minLength": 4,
+                    "pattern": "^[.\\w_-]+$",
                     "type": "string"
                 },
                 "credentials": {
@@ -12053,6 +12280,10 @@
                             "type": "boolean"
                         }
                     },
+                    "type": "object"
+                },
+                "call_recording": {
+                    "$ref": "#/definitions/call_recording",
                     "type": "object"
                 },
                 "call_restriction": {
@@ -19517,6 +19748,26 @@
         },
         "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted": {
             "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/PORT_REQUEST_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline": {
+            "get": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"

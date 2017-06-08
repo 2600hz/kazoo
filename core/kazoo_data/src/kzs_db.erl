@@ -114,18 +114,22 @@ db_info(#{server := {App, Conn}}) -> App:db_info(Conn).
 db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
 
 -spec db_exists(map(), ne_binary()) -> boolean().
-db_exists(#{server := {App, Conn}}, DbName) ->
+db_exists(#{server := {App, Conn}}=Server, DbName) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}) of
         {'ok', Exists} -> Exists;
         _ ->
             case App:db_exists(Conn, DbName) of
                 {'error', 'resource_not_available'} -> 'true';
-                Exists ->
-                    Props = [{'origin', {'db', DbName}}],
-                    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}, Exists, Props),
-                    Exists
+                Exists -> maybe_cache_db_exists(Exists, Server, DbName)
             end
     end.
+
+-spec maybe_cache_db_exists(boolean(), map(), ne_binary()) -> boolean().
+maybe_cache_db_exists('false', _, _) -> 'false';
+maybe_cache_db_exists('true', #{server := {App, Conn}}, DbName) ->
+    Props = [{'origin', {'db', DbName}}],
+    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}, 'true', Props),
+    'true'.
 
 -spec db_exists_all(map(), ne_binary()) -> boolean().
 db_exists_all(Map, DbName) ->
@@ -167,34 +171,35 @@ db_list_all_fold({_Tag, Server}, {Options, DBs}) ->
     {'ok', DBList} = db_list(Server, Options),
     {Options, lists:usort(DBs ++ DBList)}.
 
--spec db_view_update(map(), ne_binary(), kz_proplist(), boolean()) -> boolean().
+-spec db_view_update(map(), ne_binary(), views_listing(), boolean()) -> boolean().
 db_view_update(#{}=Map, DbName, Views, Remove) ->
     Others = maps:get('others', Map, []),
     do_db_view_update(Map, DbName, Views, Remove)
         andalso lists:all(fun({_Tag, M1}) ->
                                   do_db_view_update(#{server => M1}, DbName, Views, Remove)
-                          end, Others).
+                          end
+                         ,Others
+                         ).
 
--spec do_db_view_update(map(), ne_binary(), kz_proplist(), boolean()) -> boolean().
+-spec do_db_view_update(map(), ne_binary(), views_listing(), boolean()) -> boolean().
 do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', JObjs} ->
-            CurrentViews = proplistize_current_views(JObjs),
+            CurrentViews = [{kz_doc:id(JObj), kz_json:get_value(<<"doc">>, JObj)}
+                            || JObj <- JObjs
+                           ],
             add_update_remove_views(Server, Db, CurrentViews, NewViews, Remove);
         {'error', _R} ->
             case App:db_exists(Conn, Db) of
                 'true' -> add_update_remove_views(Server, Db, [], NewViews, Remove);
-                'false' -> lager:error("error fetching current views for db ~s", [Db]),
-                           'true'
+                'false' ->
+                    lager:error("error fetching current views for db ~s", [Db]),
+                    'true'
             end
     end.
 
--spec proplistize_current_views(kz_json:objects()) -> kz_proplist().
-proplistize_current_views(JObjs) ->
-    [{kz_doc:id(JObj), kz_json:get_value(<<"doc">>, JObj)} || JObj <- JObjs].
-
--spec add_update_remove_views(map(), ne_binary(), kz_proplist(), kz_proplist(), boolean()) -> 'true'.
-add_update_remove_views(Server, Db, CurrentViews, NewViews, Remove) ->
+-spec add_update_remove_views(map(), ne_binary(), views_listing(), views_listing(), boolean()) -> 'true'.
+add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling) ->
     Current = sets:from_list([Id || {Id, _} <- CurrentViews]),
     New = sets:from_list([Id || {Id, _} <- NewViews]),
     Add = sets:to_list(sets:subtract(New, Current)),
@@ -208,13 +213,11 @@ add_update_remove_views(Server, Db, CurrentViews, NewViews, Remove) ->
     Errors = update_views(Server, Db, Update ++ Conflicts, CurrentViews, NewViews),
     lager:debug("view updates resulted in ~p conflicts", [length(Errors)]),
     correct_view_errors(Server, Db, Errors, NewViews),
-    case Remove of
-        'true' -> delete_views(Server, Db, Delete, CurrentViews);
-        'false' -> 'true'
-    end.
+    _ = ShouldRemoveDangling
+        andalso delete_views(Server, Db, Delete, CurrentViews),
+    true.
 
--spec add_views(map(), ne_binary(), ne_binaries(), kz_proplist()) ->
-                       api_binaries().
+-spec add_views(map(), ne_binary(), ne_binaries(), views_listing()) -> api_ne_binaries().
 add_views(Server, Db, Add, NewViews) ->
     Views = [props:get_value(Id, NewViews) || Id <- Add],
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
@@ -223,35 +226,36 @@ add_views(Server, Db, Add, NewViews) ->
         <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
     ].
 
--spec update_views(map(), ne_binary(), ne_binaries(), kz_proplist(), kz_proplist()) ->
-                          api_binaries().
+-spec update_views(map(), ne_binary(), ne_binaries(), views_listing(), views_listing()) -> api_ne_binaries().
 update_views(Server, Db, Update, CurrentViews, NewViews) ->
-    Views = lists:foldl(fun(Id, Acc) ->
-                                update_views_fold(CurrentViews, NewViews, Id, Acc)
-                        end, [], Update),
+    Views = lists:flatten(
+              [kz_doc:set_revision(NewView, kz_doc:revision(CurrentView))
+               || Id <- Update,
+                  CurrentView <- [props:get_value(Id, CurrentViews)],
+                  NewView <- [props:get_value(Id, NewViews)],
+                  should_update(Id, NewView, CurrentView)
+              ]),
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
-    [kz_json:get_value(<<"id">>, JObj)
+    [kz_doc:id(JObj)
      || JObj <- JObjs,
         <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
     ].
 
--spec update_views_fold(kz_proplist(), kz_proplist(), ne_binary(), kz_json:objects()) ->
-                               kz_json:objects().
-update_views_fold(CurrentViews, NewViews, Id, Acc) ->
-    NewView = props:get_value(Id, NewViews),
-    CurrentView = props:get_value(Id, CurrentViews),
-    Rev = kz_doc:revision(CurrentView),
-    RawView = kz_doc:delete_revision(CurrentView),
-    case NewView =:= RawView of
-        'true' ->
-            lager:debug("view ~s does not require update", [Id]),
-            Acc;
-        'false' ->
-            lager:debug("staging update of view ~s with rev ~s", [Id, Rev]),
-            [kz_doc:set_revision(NewView, Rev) | Acc]
+-spec should_update(ne_binary(), kz_json:object(), kz_json:object()) -> boolean().
+should_update(_Id, _, undefined) ->
+    lager:warning("view ~p does not exist to update", [_Id]),
+    false;
+should_update(_Id, NewView, OldView) ->
+    case kz_json:are_equal(kz_doc:delete_revision(NewView), kz_doc:delete_revision(OldView)) of
+        true ->
+            lager:debug("view ~s does not require update", [_Id]),
+            false;
+        false ->
+            lager:debug("staging update of view ~s with rev ~s", [_Id, kz_doc:revision(OldView)]),
+            true
     end.
 
--spec correct_view_errors(map(), ne_binary(), ne_binaries(), kz_proplist()) -> 'true'.
+-spec correct_view_errors(map(), ne_binary(), ne_binaries(), views_listing()) -> 'true'.
 correct_view_errors(Server, Db, Errors, NewViews) ->
     Views = [props:get_value(Id, NewViews) || Id <- Errors],
     correct_view_errors(Server, Db, Views).
@@ -263,7 +267,7 @@ correct_view_errors(Server, Db, [View|Views]) ->
     _ = kzs_doc:ensure_saved(Server, Db, View, []),
     correct_view_errors(Server, Db, Views).
 
--spec delete_views(map(), ne_binary(), ne_binaries(), kz_proplist()) -> 'true'.
+-spec delete_views(map(), ne_binary(), ne_binaries(), views_listing()) -> 'true'.
 delete_views(Server, Db, Delete, CurrentViews) ->
     Views = [props:get_value(Id, CurrentViews) || Id <- Delete],
     delete_views(Server, Db, Views).

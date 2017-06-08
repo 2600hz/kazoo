@@ -32,14 +32,23 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:fax_outbound_error_v(JObj),
     _ = kz_util:put_callid(JObj),
-    lager:debug("new outbound fax error left, sending to email if enabled"),
-    {'ok', AcctObj} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
-    case is_notice_enabled(AcctObj) of
-        'true' -> send(JObj, AcctObj);
-        'false' -> 'ok'
-    end.
 
--spec send(kz_json:object(), kz_json:object()) -> any().
+    lager:debug("new outbound fax error left, sending to email if enabled"),
+
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
+
+    {'ok', AcctObj} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
+
+    SendResult =
+        case is_notice_enabled(AcctObj) of
+            'true' -> send(JObj, AcctObj);
+            'false' -> lager:debug("fax outbound error notice is disabled")
+        end,
+    notify_util:maybe_send_update(SendResult, RespQ, MsgId).
+
+-spec send(kz_json:object(), kz_json:object()) -> send_email_return().
 send(JObj, AcctObj) ->
     Docs = [JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
@@ -62,13 +71,14 @@ send(JObj, AcctObj) ->
                                ,<<"email">>
                                ,<<"send_to">>
                                ], JObj, []),
-    try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props)) of
-        _ -> lager:debug("built and sent")
+    try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props))
     catch
         C:R ->
-            lager:debug("failed: ~s:~p", [C, R]),
+            Msg = io_lib:format("failed: ~s:~p", [C, R]),
+            lager:debug(Msg),
             ST = erlang:get_stacktrace(),
-            kz_util:log_stacktrace(ST)
+            kz_util:log_stacktrace(ST),
+            {'error', Msg}
     end.
 
 -spec is_notice_enabled(kz_json:object()) -> boolean().
@@ -142,9 +152,9 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),

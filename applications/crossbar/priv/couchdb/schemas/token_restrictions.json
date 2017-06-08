@@ -48,27 +48,15 @@
                                         },
                                         "type": "object"
                                     },
-                                    "required": [
-                                        "properties"
-                                    ],
                                     "type": "array"
                                 }
                             },
-                            "required": [
-                                "^\\w+$"
-                            ],
                             "type": "object"
                         }
                     },
-                    "required": [
-                        "^\\w+$"
-                    ],
                     "type": "object"
                 }
             },
-            "required": [
-                "^\\w+$"
-            ],
             "type": "object"
         }
     },

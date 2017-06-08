@@ -175,7 +175,10 @@ start_queue_call(JObj, Props, Call) ->
     lager:debug("answering call"),
     kapps_call_command:answer_now(Call),
 
-    case kz_media_util:media_path(props:get_value('moh', Props), Call) of
+    case kz_media_util:media_path(props:get_value('moh', Props)
+                                 ,kapps_call:account_id(Call)
+                                 )
+    of
         'undefined' ->
             lager:debug("using default moh"),
             kapps_call_command:hold(Call);

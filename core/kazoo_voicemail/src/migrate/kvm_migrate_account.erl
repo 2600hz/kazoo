@@ -20,7 +20,7 @@
        ,kapps_config:get_ne_binary(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)).
 
 -define(MAX_BULK_INSERT
-       ,kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], 2000)).
+       ,kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], kz_datamgr:max_bulk_insert())).
 
 -define(LEGACY_MSG_LISTING, <<"vmboxes/legacy_msg_by_timestamp">>).
 

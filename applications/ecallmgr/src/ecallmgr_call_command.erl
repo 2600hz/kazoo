@@ -1520,6 +1520,8 @@ record_call_vars(JObj) ->
                 ,{<<"Time-Limit">>, kz_json:get_value(<<"Time-Limit">>, JObj)}
                 ,{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
                 ,{<<"Media-Recording-ID">>, kz_json:get_value(<<"Media-Recording-ID">>, JObj)}
+                ,{<<"Media-Recording-Endpoint-ID">>, kz_json:get_value(<<"Media-Recording-Endpoint-ID">>, JObj)}
+                ,{<<"Media-Recording-Origin">>, kz_json:get_value(<<"Media-Recording-Origin">>, JObj)}
                 ]
                ,Routines
                ).

@@ -103,6 +103,7 @@
 
 -type channel() :: #channel{}.
 -type channels() :: [channel()].
+-type channel_updates() :: [{pos_integer(), any()}].
 
 -record(conference, {name :: api_binary() | '$1' | '_'
                     ,uuid :: api_binary() | '$1' | '_'
@@ -184,6 +185,9 @@
 -define(GET_VAR(Key), <<"variable_", Key/binary>>).
 
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
+
+-define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}]).
+-define(BRIDGE_CHANNEL_VAR_SEPARATOR, "!").
 
 %% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
 %% [{AMQP-Header, FS-var-name}]
@@ -307,6 +311,8 @@
                               ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
                               ,{<<"SIP-Refer-To">>, <<"sip_refer_to">>}
                               ,{<<"SIP-Referred-By">>, <<"sip_h_Referred-By">>}
+                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"RTCP-MUX">>, <<"rtcp_mux">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]

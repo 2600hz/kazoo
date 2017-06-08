@@ -1,0 +1,39 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "call_recording.parameters",
+    "additionalProperties": false,
+    "properties": {
+        "enabled": {
+            "description": "is recording enabled",
+            "type": "boolean"
+        },
+        "format": {
+            "description": "What format to store the recording on disk",
+            "enum": [
+                "mp3",
+                "wav"
+            ],
+            "type": "string"
+        },
+        "record_min_sec": {
+            "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
+            "type": "integer"
+        },
+        "record_sample_rate": {
+            "description": "What sampling rate to use on the recording",
+            "type": "integer"
+        },
+        "time_limit": {
+            "description": "Time limit, in seconds, for the recording",
+            "maximum": 10800,
+            "minimum": 5,
+            "type": "integer"
+        },
+        "url": {
+            "description": "The URL to use when sending the recording for storage",
+            "format": "uri",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

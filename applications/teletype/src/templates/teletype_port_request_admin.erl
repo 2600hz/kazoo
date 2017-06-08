@@ -59,7 +59,7 @@ handle_req(JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("notification handling not configured for this account");
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> process_req(DataJObj)
     end.
 
@@ -160,7 +160,7 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
     case kz_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
             lager:debug("failed to find master account ~s, using system value", [MasterAccountId]),
-            kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>);
+            kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>);
         {'ok', JObj} ->
             lager:debug("getting master account's port authority"),
             kz_whitelabel:port_authority(JObj)

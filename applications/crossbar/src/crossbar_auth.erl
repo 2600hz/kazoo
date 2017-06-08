@@ -179,24 +179,21 @@ log_failed_mfa_attempts(Claims, AuthConfig, Reason) ->
     LogId = ?ATTEMPT_LOG_ID(Year, Month),
 
     Doc = kz_json:from_list(
-            props:filter_undefined(
-              [{<<"_id">>, LogId}
-              ,{<<"auth_type">>, <<"multi_factor">>}
-              ,{<<"debug_type">>, <<"failed">>}
-              ,{<<"message">>, kz_term:to_binary(Reason)}
-              ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfig)}
-              ,{<<"mfa_config_origin">>
-               ,props:get_value([<<"mfa_options">>, <<"account_id">>], Claims, <<"system">>)
-               }
-              ,{<<"timestamp">>, Now}
-              ,{<<"pvt_account_db">>, ModDb}
-              ,{<<"pvt_account_id">>, AccountId}
-              ,{<<"pvt_type">>, <<"login_attempt">>}
-              ,{<<"pvt_created">>, Now}
-              ,{<<"pvt_modified">>, Now}
-              ]
-             )
-           ),
+            [{<<"_id">>, LogId}
+            ,{<<"auth_type">>, <<"multi_factor">>}
+            ,{<<"debug_type">>, <<"failed">>}
+            ,{<<"message">>, kz_term:to_binary(Reason)}
+            ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfig)}
+            ,{<<"mfa_config_origin">>
+             ,props:get_value([<<"mfa_options">>, <<"account_id">>], Claims, <<"system">>)
+             }
+            ,{<<"timestamp">>, Now}
+            ,{<<"pvt_account_db">>, ModDb}
+            ,{<<"pvt_account_id">>, AccountId}
+            ,{<<"pvt_type">>, <<"login_attempt">>}
+            ,{<<"pvt_created">>, Now}
+            ,{<<"pvt_modified">>, Now}
+            ]),
     _ = kazoo_modb:save_doc(ModDb, Doc),
     'ok'.
 

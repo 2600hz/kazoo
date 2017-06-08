@@ -19,7 +19,7 @@
 -export([restart/1]).
 
 %%% API used by workers
--export([worker_finished/4
+-export([worker_finished/5
         ,worker_error/1
         ,worker_pause/0
         ,worker_maybe_send_update/3
@@ -154,30 +154,77 @@ worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_finished(kz_tasks:id(), non_neg_integer(), non_neg_integer(), ne_binary()) -> ok.
-worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINARY)
+-spec worker_finished(kz_tasks:id(), non_neg_integer(), non_neg_integer(), ne_binary(), kz_tasks:columns()) -> ok.
+worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, CSVPath=?NE_BINARY, Columns)
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
     _ = gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}),
-    {'ok', CSVOut} = file:read_file(Output),
+    _ = try_maybe_strip_columns(Columns, CSVPath),
+    {'ok', CSV} = file:read_file(CSVPath),
+    lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
     Max = ?UPLOAD_ATTEMPTS,
-    attempt_upload(TaskId, ?KZ_TASKS_ANAME_OUT, CSVOut, Output, Max, Max).
+    attempt_upload(TaskId, ?KZ_TASKS_ANAME_OUT, CSV, CSVPath, Max, Max).
+
+try_maybe_strip_columns(Columns, CSVPath) ->
+    try maybe_strip_columns(Columns, CSVPath)
+    catch _E:_R ->
+            kz_util:log_stacktrace(),
+            lager:warning("stripping empty columns failed: ~p:~p", [_E, _R])
+    end.
+
+maybe_strip_columns(Columns, CSVPath) ->
+    ColumnsWritten = sets:size(Columns),
+    lager:debug("attempting to strip empty columns, keeping only ~p", [ColumnsWritten]),
+    true = ColumnsWritten > 0,
+    {ok, Bin} = file:read_file(CSVPath),
+    {FullHeader, CSV} = kz_csv:take_row(Bin),
+    lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
+    true = ColumnsWritten < length(FullHeader),
+    OutputPath = <<CSVPath/binary, "_reversed">>,
+    Header = [Column || Column <- FullHeader,
+                        sets:is_element(Column, Columns)
+             ],
+    strip_columns(FullHeader, Header, CSV, OutputPath),
+    lager:debug("mv ~s ~s", [OutputPath, CSVPath]),
+    ok = file:rename(OutputPath, CSVPath).
+
+strip_columns(FullHeader, Header, CSV, OutputPath) ->
+    case kz_csv:take_mapped_row(FullHeader, CSV) of
+        eof ->
+            ok = file:write_file(OutputPath, [kz_csv:row_to_iolist(Header), $\n], [append]),
+            tac(OutputPath);
+        {MappedRow, NewCSV} ->
+            Stripped = maps:with(Header, MappedRow),
+            Data = [kz_csv:mapped_row_to_iolist(Header, Stripped), $\n],
+            ok = file:write_file(OutputPath, Data, [append]),
+            strip_columns(FullHeader, Header, NewCSV, OutputPath)
+    end.
+
+tac(OutputPath) ->
+    Exe = "tac",
+    true = false =/= os:find_executable(Exe),
+    Tmp = binary_to_list(OutputPath) ++ "_" ++ Exe,
+    Cmd = Exe ++ " " ++ binary_to_list(OutputPath) ++ " > " ++ Tmp,
+    lager:debug("executing ~s", [Cmd]),
+    [] = os:cmd(Cmd),
+    lager:debug("mv ~s ~s", [Tmp, OutputPath]),
+    ok = file:rename(Tmp, OutputPath).
 
 attempt_upload(_TaskId, _AName, _, _, 0, _) ->
     lager:error("failed saving ~s/~s: last failing attempt", [_TaskId, _AName]),
     {error, conflict};
-attempt_upload(TaskId, AName, CSVOut, Output, Retries, Max) ->
+attempt_upload(TaskId, AName, CSV, CSVPath, Retries, Max) ->
     lager:debug("attempt #~p to save ~s/~s", [Max-Retries+1, TaskId, AName]),
     Options = [{content_type, <<"text/csv">>}],
-    case kz_datamgr:put_attachment(?KZ_TASKS_DB, TaskId, AName, CSVOut, Options) of
+    case kz_datamgr:put_attachment(?KZ_TASKS_DB, TaskId, AName, CSV, Options) of
         {ok, _TaskJObj} ->
             lager:debug("saved ~s after ~p attempts", [AName, Max-Retries+1]),
-            kz_util:delete_file(Output);
+            kz_util:delete_file(CSVPath);
         {error, _R} ->
             lager:debug("upload of ~s failed (~s), may retry soon", [TaskId, _R]),
             Pause = ?MILLISECONDS_IN_SECOND * ?PAUSE_BETWEEN_UPLOAD_ATTEMPTS,
             lager:debug("waiting ~pms before next upload attempt of ~s", [Pause, TaskId]),
             timer:sleep(Pause),
-            attempt_upload(TaskId, AName, CSVOut, Output, Retries-1, Max)
+            attempt_upload(TaskId, AName, CSV, CSVPath, Retries-1, Max)
     end.
 
 %%--------------------------------------------------------------------

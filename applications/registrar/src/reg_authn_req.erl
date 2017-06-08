@@ -92,22 +92,22 @@ send_auth_error(JObj) ->
 
 -spec create_ccvs(auth_user()) -> kz_json:object().
 create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
-    Props = [{<<"Username">>, AuthUser#auth_user.username}
-            ,{<<"Realm">>, AuthUser#auth_user.realm}
-            ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
-            ,{<<"Authorizing-ID">>, AuthUser#auth_user.authorizing_id}
-            ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
-            ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
-            ,{<<"Account-Realm">>, AuthUser#auth_user.account_normalized_realm}
-            ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
-            ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
-            ,{<<"Suppress-Unregister-Notifications">>, AuthUser#auth_user.suppress_unregister_notifications}
-            ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
-            ,{<<"Pusher-Application">>, kz_json:get_value([<<"push">>, <<"Token-App">>], JObj)}
-             | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
-                ++ generate_security_ccvs(AuthUser))
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"Username">>, AuthUser#auth_user.username}
+      ,{<<"Realm">>, AuthUser#auth_user.realm}
+      ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
+      ,{<<"Authorizing-ID">>, AuthUser#auth_user.authorizing_id}
+      ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
+      ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
+      ,{<<"Account-Realm">>, AuthUser#auth_user.account_normalized_realm}
+      ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
+      ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
+      ,{<<"Suppress-Unregister-Notifications">>, AuthUser#auth_user.suppress_unregister_notifications}
+      ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
+      ,{<<"Pusher-Application">>, kz_json:get_value([<<"push">>, <<"Token-App">>], JObj)}
+       | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
+          ++ generate_security_ccvs(AuthUser))
+      ]).
 
 -spec maybe_get_presence_id(auth_user()) -> api_binary().
 maybe_get_presence_id(#auth_user{account_db=AccountDb
@@ -360,7 +360,7 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                          ,account_id = get_account_id(AuthDoc)
                          ,account_db = get_account_db(AuthDoc)
                          ,password = kz_json:get_value(<<"password">>, AuthValue, kz_binary:rand_hex(6))
-                         ,authorizing_type = kz_doc:type(AuthDoc, <<"anonymous">>)
+                         ,authorizing_type = get_auth_type(AuthDoc)
                          ,authorizing_id = kz_doc:id(JObj)
                          ,method = kz_term:to_lower_binary(Method)
                          ,owner_id = kz_json:get_value(<<"owner_id">>, AuthDoc)
@@ -370,6 +370,13 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                          ,request=Req
                          },
     maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
+
+-spec get_auth_type(kz_json:object()) -> ne_binary().
+get_auth_type(AuthDoc) ->
+    case kz_json:get_first_defined([<<"endpoint_type">>, <<"device_type">>], AuthDoc) of
+        <<"mobile">> -> <<"mobile">>;
+        _ -> kz_doc:type(AuthDoc, <<"anonymous">>)
+    end.
 
 -spec get_auth_value(kz_json:object()) -> api_object().
 get_auth_value(JObj) ->

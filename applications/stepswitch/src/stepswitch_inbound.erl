@@ -258,12 +258,15 @@ maybe_transition_port_in(NumberProps, JObj) ->
 
 -spec transition_port_in(ne_binary(), api_object()) -> any().
 transition_port_in(Number, JObj) ->
+    {ok, MasterAccountId} = kapps_util:get_master_account_id(),
+    Comment = <<(?APP_NAME)/binary, "-", (?APP_VERSION)/binary, " automagic">>,
+    Metadata = knm_port_request:transition_metadata(MasterAccountId, undefined, Comment),
     case knm_port_request:get(Number) of
-        {'ok', PortReq} -> knm_port_request:transition_to_complete(PortReq);
+        {'ok', PortReq} -> knm_port_request:transition_to_complete(PortReq, Metadata);
         _ ->
             Num = stepswitch_util:get_inbound_destination(JObj),
             {'ok', PortReq} = knm_port_request:get(Num),
-            knm_port_request:transition_to_complete(PortReq)
+            knm_port_request:transition_to_complete(PortReq, Metadata)
     end.
 
 %%--------------------------------------------------------------------
@@ -281,15 +284,20 @@ is_blacklisted(JObj) ->
             'false';
         {'ok', Blacklists} ->
             Blacklist = get_blacklist(AccountId, Blacklists),
-            is_number_blacklisted(Blacklist, kz_json:get_value(<<"Caller-ID-Number">>, JObj))
+            is_number_blacklisted(Blacklist, JObj)
     end.
 
--spec is_number_blacklisted(kz_json:object(), ne_binary()) -> boolean().
-is_number_blacklisted(Blacklist, Number) ->
+-spec is_number_blacklisted(kz_json:object(), kz_json:object()) -> boolean().
+is_number_blacklisted(Blacklist, JObj) ->
+    Number = kz_json:get_value(<<"Caller-ID-Number">>, JObj),
     Normalized = knm_converters:normalize(Number),
-    case kz_json:get_value(Normalized, Blacklist) of
-        'undefined' -> false;
-        _Rule ->
+    case kz_json:get_value(Normalized, Blacklist) =/= 'undefined'
+        orelse (kz_privacy:is_anonymous(JObj)
+                andalso kz_json:is_true(<<"should_block_anonymous">>, Blacklist)
+               )
+    of
+        'false' -> false;
+        'true' ->
             lager:info("~s(~s) is blacklisted", [Number, Normalized]),
             'true'
     end.
@@ -321,9 +329,15 @@ get_blacklist(AccountId, Blacklists) ->
                       Acc;
                   {'ok', Doc} ->
                       Numbers = kz_json:get_value(<<"numbers">>, Doc, kz_json:new()),
-                      kz_json:merge_jobjs(Acc, Numbers)
+                      BlackList = maybe_set_block_anonymous(Numbers, kz_json:is_true(<<"should_block_anonymous">>, Doc)),
+                      kz_json:merge_jobjs(Acc, BlackList)
               end
       end
                ,kz_json:new()
                ,Blacklists
      ).
+
+-spec maybe_set_block_anonymous(kz_json:object(), boolean()) -> kz_json:object().
+maybe_set_block_anonymous(JObj, 'false') -> JObj;
+maybe_set_block_anonymous(JObj, 'true') ->
+    kz_json:set_value(<<"should_block_anonymous">>, 'true', JObj).

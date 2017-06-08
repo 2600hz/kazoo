@@ -336,9 +336,7 @@ should_paginate(#cb_context{api_version=?VERSION_1}) ->
     'false';
 should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
     case req_value(Context, <<"paginate">>) of
-        'undefined' ->
-            lager:debug("checking if request has query-string filter"),
-            not crossbar_doc:has_qs_filter(Context);
+        'undefined' -> 'true';
         ShouldPaginate ->
             lager:debug("request has paginate flag: ~s", [ShouldPaginate]),
             kz_term:is_true(ShouldPaginate)
@@ -734,7 +732,7 @@ validate_request_data(SchemaJObj, Context) ->
             lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
                                                                         ,Errors
                                                                         ]),
-            failed(Context, Errors);
+            failed(set_resp_error_msg(Context, <<"validation failed">>), Errors);
         {'error', Errors} ->
             maybe_fix_js_types(Context, SchemaJObj, Errors)
     catch

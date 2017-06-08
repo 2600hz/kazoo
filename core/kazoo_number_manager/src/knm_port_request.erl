@@ -12,17 +12,21 @@
         ,current_state/1
         ,public_fields/1
         ,get/1
+        ,new/3
         ,account_active_ports/1
         ,account_has_active_port/1
         ,normalize_attachments/1
         ,normalize_numbers/1
-        ,transition_to_complete/1
-        ,maybe_transition/2
+        ,transition_to_complete/2
+        ,maybe_transition/3
         ,charge_for_port/1, charge_for_port/2
         ,assign_to_app/3
         ,send_submitted_requests/0
         ,migrate/0
         ]).
+
+-export([transition_metadata/2, transition_metadata/3]).
+-export_type([transition_metadata/0]).
 
 -compile({'no_auto_import', [get/1]}).
 
@@ -39,14 +43,13 @@
 -define(NAME_KEY, <<"name">>).
 -define(NUMBERS_KEY, <<"numbers">>).
 -define(USED_BY_KEY, <<"used_by">>).
--define(PVT_ACCOUNT_DB, <<"pvt_account_db">>).
--define(PVT_ACCOUNT_ID, <<"pvt_account_id">>).
--define(PVT_ID, <<"_id">>).
--define(PVT_REV, <<"_rev">>).
--ifndef(PVT_TREE).
--define(PVT_TREE, <<"pvt_tree">>).
--endif.
--define(PVT_VSN, <<"pvt_vsn">>).
+
+-define(SHOULD_ALLOW_FROM_SUBMITTED
+       ,kapps_config:get_is_true(?KNM_CONFIG_CAT
+                                ,<<"allow_port_transition_from_submitted_to_scheduled">>
+                                ,'false'
+                                )).
+
 
 %%% API
 
@@ -77,13 +80,12 @@ current_state(JObj) ->
 -spec public_fields(kz_json:object()) -> kz_json:object().
 public_fields(JObj) ->
     As = kz_doc:attachments(JObj, kz_json:new()),
-
     kz_json:set_values([{<<"id">>, kz_doc:id(JObj)}
                        ,{<<"created">>, kz_doc:created(JObj)}
                        ,{<<"updated">>, kz_doc:modified(JObj)}
                        ,{<<"uploads">>, normalize_attachments(As)}
-                       ,{<<"port_state">>, kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED)}
-                       ,{<<"sent">>, kz_json:get_value(?PVT_SENT, JObj, 'false')}
+                       ,{<<"port_state">>, kz_json:get_ne_binary_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED)}
+                       ,{<<"sent">>, kz_json:is_true(?PORT_PVT_SENT, JObj)}
                        ]
                       ,kz_doc:public_fields(JObj)
                       ).
@@ -173,82 +175,175 @@ normalize_numbers(PortReq) ->
 normalize_number_map(N, Meta) ->
     {knm_converters:normalize(N), Meta}.
 
+%% @public
+-spec new(kz_json:object(), ne_binary(), api_ne_binary()) -> kz_json:object().
+new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
+    Normalized = normalize_numbers(PortReq),
+    Metadata = transition_metadata(AuthAccountId, AuthUserId),
+    Unconf = [{?PORT_PVT_TYPE, <<"port_request">>}
+             ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
+             ,{?PORT_PVT_TRANSITIONS, [transition_metadata_jobj(undefined, ?PORT_UNCONFIRMED, Metadata)]}
+             ],
+    kz_json:set_values(Unconf, Normalized).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec transition_to_submitted(kz_json:object()) -> transition_response().
--spec transition_to_pending(kz_json:object()) -> transition_response().
--spec transition_to_scheduled(kz_json:object()) -> transition_response().
--spec transition_to_complete(kz_json:object()) -> transition_response().
--spec transition_to_rejected(kz_json:object()) -> transition_response().
--spec transition_to_canceled(kz_json:object()) -> transition_response().
+-spec transition_to_submitted(kz_json:object(), transition_metadata()) -> transition_response().
+-spec transition_to_pending(kz_json:object(), transition_metadata()) -> transition_response().
+-spec transition_to_scheduled(kz_json:object(), transition_metadata()) -> transition_response().
+-spec transition_to_complete(kz_json:object(), transition_metadata()) -> transition_response().
+-spec transition_to_rejected(kz_json:object(), transition_metadata()) -> transition_response().
+-spec transition_to_canceled(kz_json:object(), transition_metadata()) -> transition_response().
 
-transition_to_submitted(JObj) ->
-    transition(JObj, [?PORT_UNCONFIRMED, ?PORT_REJECTED], ?PORT_SUBMITTED).
+transition_to_submitted(JObj, Metadata) ->
+    transition(JObj, Metadata, [?PORT_UNCONFIRMED, ?PORT_REJECTED], ?PORT_SUBMITTED).
 
-transition_to_pending(JObj) ->
-    transition(JObj, [?PORT_SUBMITTED], ?PORT_PENDING).
+transition_to_pending(JObj, Metadata) ->
+    transition(JObj, Metadata, [?PORT_SUBMITTED], ?PORT_PENDING).
 
-transition_to_scheduled(JObj) ->
-    FromSubmitted = kapps_config:get_is_true(?KNM_CONFIG_CAT
-                                            ,<<"allow_port_transition_from_submitted_to_scheduled">>
-                                            ,'false'),
-    transition(JObj, states_to_scheduled(FromSubmitted), ?PORT_SCHEDULED).
+transition_to_scheduled(JObj, Metadata) ->
+    ToScheduled = states_to_scheduled(?SHOULD_ALLOW_FROM_SUBMITTED),
+    transition(JObj, Metadata, ToScheduled, ?PORT_SCHEDULED).
 
 states_to_scheduled(_AllowFromSubmitted='false') ->
     [?PORT_PENDING];
 states_to_scheduled(_AllowFromSubmitted='true') ->
     [?PORT_SUBMITTED | states_to_scheduled('false')].
 
-transition_to_complete(JObj) ->
-    case transition(JObj, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
+transition_to_complete(JObj, Metadata) ->
+    case transition(JObj, Metadata, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
         {'error', _}=E -> E;
         {'ok', Transitioned} -> completed_port(Transitioned)
     end.
 
-transition_to_rejected(JObj) ->
-    transition(JObj, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECTED).
+transition_to_rejected(JObj, Metadata) ->
+    transition(JObj, Metadata, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECTED).
 
-transition_to_canceled(JObj) ->
-    transition(JObj, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
+transition_to_canceled(JObj, Metadata) ->
+    transition(JObj, Metadata, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_transition(kz_json:object(), ne_binary()) -> transition_response().
-maybe_transition(PortReq, ?PORT_SUBMITTED) ->
-    transition_to_submitted(PortReq);
-maybe_transition(PortReq, ?PORT_PENDING) ->
-    transition_to_pending(PortReq);
-maybe_transition(PortReq, ?PORT_SCHEDULED) ->
-    transition_to_scheduled(PortReq);
-maybe_transition(PortReq, ?PORT_COMPLETED) ->
-    transition_to_complete(PortReq);
-maybe_transition(PortReq, ?PORT_REJECTED) ->
-    transition_to_rejected(PortReq);
-maybe_transition(PortReq, ?PORT_CANCELED) ->
-    transition_to_canceled(PortReq).
+-spec maybe_transition(kz_json:object(), transition_metadata(), ne_binary()) -> transition_response().
+maybe_transition(PortReq, Metadata, ?PORT_SUBMITTED) ->
+    transition_to_submitted(PortReq, Metadata);
+maybe_transition(PortReq, Metadata, ?PORT_PENDING) ->
+    transition_to_pending(PortReq, Metadata);
+maybe_transition(PortReq, Metadata, ?PORT_SCHEDULED) ->
+    transition_to_scheduled(PortReq, Metadata);
+maybe_transition(PortReq, Metadata, ?PORT_COMPLETED) ->
+    transition_to_complete(PortReq, Metadata);
+maybe_transition(PortReq, Metadata, ?PORT_REJECTED) ->
+    transition_to_rejected(PortReq, Metadata);
+maybe_transition(PortReq, Metadata, ?PORT_CANCELED) ->
+    transition_to_canceled(PortReq, Metadata).
 
--spec transition(kz_json:object(), ne_binaries(), ne_binary()) ->
+-spec transition(kz_json:object(), transition_metadata(), ne_binaries(), ne_binary()) ->
                         transition_response().
--spec transition(kz_json:object(), ne_binaries(), ne_binary(), ne_binary()) ->
+-spec transition(kz_json:object(), transition_metadata(), ne_binaries(), ne_binary(), ne_binary()) ->
                         transition_response().
-transition(JObj, FromStates, ToState) ->
-    transition(JObj, FromStates, ToState, current_state(JObj)).
+transition(JObj, Metadata, FromStates, ToState) ->
+    transition(JObj, Metadata, FromStates, ToState, current_state(JObj)).
 
-transition(_JObj, [], _ToState, _CurrentState) ->
+transition(_JObj, _Metadata, [], _ToState, _CurrentState) ->
     lager:debug("cant go from ~s to ~s", [_CurrentState, _ToState]),
+    lager:debug("metadata: ~p", [_Metadata]),
     {'error', 'invalid_state_transition'};
-transition(JObj, [CurrentState | _], ToState, CurrentState) ->
+transition(JObj, Metadata, [CurrentState | _], ToState, CurrentState) ->
     lager:debug("going from ~s to ~s", [CurrentState, ToState]),
-    {'ok', kz_json:set_value(?PORT_PVT_STATE, ToState, JObj)};
-transition(JObj, [_FromState | FromStates], ToState, CurrentState) ->
+    {ok, successful_transition(JObj, CurrentState, ToState, Metadata)};
+transition(JObj, Metadata, [_FromState | FromStates], ToState, CurrentState) ->
     lager:debug("skipping from ~s to ~s c ~p", [_FromState, ToState, CurrentState]),
-    transition(JObj, FromStates, ToState, CurrentState).
+    transition(JObj, Metadata, FromStates, ToState, CurrentState).
+
+-spec successful_transition(kz_json:object(), ne_binary(), ne_binary(), transition_metadata()) -> kz_json:object().
+successful_transition(JObj, FromState, ToState, Metadata) ->
+    MetadataJObj = transition_metadata_jobj(FromState, ToState, Metadata),
+    NewTransitions = [MetadataJObj | kz_json:get_list_value(?PORT_PVT_TRANSITIONS, JObj, [])],
+    Values = [{?PORT_PVT_STATE, ToState}
+             ,{?PORT_PVT_TRANSITIONS, NewTransitions}
+             ],
+    kz_json:set_values(Values, JObj).
+
+-spec transition_metadata_jobj(api_ne_binary(), ne_binary(), transition_metadata()) -> kz_json:object().
+transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
+                                              ,auth_account_name := AuthAccountName
+                                              ,auth_user_id := OptionalUserId
+                                              ,user_first_name := OptionalFirstName
+                                              ,user_last_name := OptionalLastName
+                                              ,optional_reason := OptionalReason
+                                              }) ->
+    kz_json:from_list_recursive(
+      [{?TRANSITION_TIMESTAMP, kz_time:current_tstamp()}
+      ,{?TRANSITION_TYPE, ?PORT_TRANSITION}
+      ,{?TRANSITION_REASON, OptionalReason}
+      ,{<<"transition">>, [{<<"new">>, ToState}
+                          ,{<<"previous">>, FromState}
+                          ]}
+      ,{<<"authorization">>, [{<<"reason">>, OptionalReason}
+                             ,{<<"account">>, [{<<"id">>, AuthAccountId}
+                                              ,{<<"name">>, AuthAccountName}
+                                              ]}
+                              | maybe_user(OptionalUserId, OptionalFirstName, OptionalLastName)
+                             ]}
+      ]).
+
+-spec maybe_user(api_ne_binary(), api_ne_binary(), api_ne_binary()) -> kz_proplist().
+maybe_user(undefined, _, _) -> [];
+maybe_user(UserId, OptionalFirstName, OptionalLastName) ->
+    [{<<"user">>, [{<<"id">>, UserId}
+                  ,{<<"first_name">>, OptionalFirstName}
+                  ,{<<"last_name">>, OptionalLastName}
+                  ]}
+    ].
+
+%% @public
+-type transition_metadata() :: #{auth_account_id => ne_binary()
+                                ,auth_account_name => api_ne_binary()
+                                ,auth_user_id => api_ne_binary()
+                                ,user_first_name => api_ne_binary()
+                                ,user_last_name => api_ne_binary()
+                                ,optional_reason => api_ne_binary()
+                                }.
+
+%% @public
+-spec transition_metadata(ne_binary(), api_ne_binary()) -> transition_metadata().
+transition_metadata(AuthAccountId, AuthUserId) ->
+    transition_metadata(AuthAccountId, AuthUserId, undefined).
+
+%% @public
+-spec transition_metadata(ne_binary(), api_ne_binary(), api_ne_binary()) -> transition_metadata().
+transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
+    OptionalUserId = case UserId of
+                         ?NE_BINARY -> UserId;
+                         _ -> undefined
+                     end,
+    {FirstName, LastName} = get_user_name(AuthAccountId, OptionalUserId),
+    OptionalReason = case Reason of
+                         ?NE_BINARY -> Reason;
+                         _ -> undefined
+                     end,
+    #{auth_account_id => AuthAccountId
+     ,auth_account_name => kapps_util:get_account_name(AuthAccountId)
+     ,auth_user_id => OptionalUserId
+     ,user_first_name => FirstName
+     ,user_last_name => LastName
+     ,optional_reason => OptionalReason
+     }.
+
+get_user_name(AuthAccountId, UserId) ->
+    case kzd_user:fetch(AuthAccountId, UserId) of
+        {ok, UserJObj} -> {kzd_user:first_name(UserJObj), kzd_user:last_name(UserJObj)};
+        {error, _R} ->
+            lager:warning("cannot read ~s's username: ~p", [UserId, _R]),
+            {undefined, undefined}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -351,7 +446,7 @@ completed_port(PortReq) ->
 -spec transition_numbers(kz_json:object()) -> transition_response().
 transition_numbers(PortReq) ->
     PortReqId = kz_doc:id(PortReq),
-    AccountId = kz_json:get_value(?PVT_ACCOUNT_ID, PortReq),
+    AccountId = kz_json:get_value(?PORT_PVT_ACCOUNT_ID, PortReq),
     Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
               ,{assign_to, AccountId}
               ,{dry_run, false}
@@ -451,19 +546,19 @@ send_request(JObj, Url) ->
               ,{"User-Agent", kz_term:to_list(node())}
               ],
     Uri = kz_term:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
-    Remove = [?PVT_REV
+    Remove = [?PORT_PVT_REV
              ,<<"ui_metadata">>
              ,<<"_attachments">>
              ,<<"pvt_request_id">>
-             ,?PVT_TYPE
-             ,?PVT_VSN
-             ,?PVT_ACCOUNT_DB
+             ,?PORT_PVT_TYPE
+             ,?PORT_PVT_VSN
+             ,?PORT_PVT_ACCOUNT_DB
              ],
-    Replace = [{?PVT_ID, <<"id">>}
+    Replace = [{?PORT_PVT_ID, <<"id">>}
               ,{?PORT_PVT_STATE, <<"port_state">>}
-              ,{?PVT_ACCOUNT_ID, <<"account_id">>}
-              ,{?PVT_CREATED, <<"created">>}
-              ,{?PVT_MODIFIED, <<"modified">>}
+              ,{?PORT_PVT_ACCOUNT_ID, <<"account_id">>}
+              ,{?PORT_PVT_CREATED, <<"created">>}
+              ,{?PORT_PVT_MODIFIED, <<"modified">>}
               ],
     Data = kz_json:encode(kz_json:normalize_jobj(JObj, Remove, Replace)),
     case kz_http:post(Uri, Headers, Data) of
@@ -535,7 +630,7 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
 %%--------------------------------------------------------------------
 -spec set_flag(kz_json:object()) -> 'ok'.
 set_flag(JObj) ->
-    Doc = kz_json:set_value(?PVT_SENT, 'true', JObj),
+    Doc = kz_json:set_value(?PORT_PVT_SENT, 'true', JObj),
     case save_doc(Doc) of
         {'ok', _} -> lager:debug("flag for submitted_port_request successfully set");
         {'error', _R} ->
@@ -578,7 +673,7 @@ prepare_docs_for_migrate(Docs) ->
 
 -spec migrate_doc(kz_json:object()) -> api_object().
 migrate_doc(PortRequest) ->
-    case kz_json:get_value(?PVT_TREE, PortRequest) of
+    case kz_json:get_value(?PORT_PVT_TREE, PortRequest) of
         'undefined' -> update_doc(PortRequest);
         _Tree -> 'undefined'
     end.
@@ -593,7 +688,7 @@ update_doc(_Doc, 'undefined') ->
     'undefined';
 update_doc(PortRequest, AccountId) ->
     {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    kz_json:set_value(?PVT_TREE, kz_account:tree(AccountDoc), PortRequest).
+    kz_json:set_value(?PORT_PVT_TREE, kz_account:tree(AccountDoc), PortRequest).
 
 -spec fetch_docs(binary(), pos_integer()) -> {'ok', kz_json:objects()}.
 fetch_docs(StartKey, Limit) ->

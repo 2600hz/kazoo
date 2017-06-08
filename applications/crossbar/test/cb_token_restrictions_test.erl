@@ -14,42 +14,39 @@
 
 allow_all_rule_test_() ->
     Context =
-        cb_context:setters(
-          cb_context:new()
+        cb_context:setters(cb_context:new()
                           ,[{fun cb_context:set_auth_account_id/2, ?AUTH_ACCOUNT_ID}
                            ,{fun cb_context:set_account_id/2, ?ACCOUNT_ID}
                            ,{fun cb_context:set_req_verb/2, ?HTTP_GET}
                            ,{fun cb_context:set_auth_doc/2, auth_doc(?ALLOW_ALL_RULE_RESTRICTIONS)}
                            ]
-         ),
+                          ),
     Label = "Verify catch-all authorizes request",
 
     build_assertions(Label, Context, [?ALLOW_REQ, ?ALLOW_REQ, ?ALLOW_REQ, ?ALLOW_REQ]).
 
 deny_api_endpoint_test_() ->
     Context =
-        cb_context:setters(
-          cb_context:new()
+        cb_context:setters(cb_context:new()
                           ,[{fun cb_context:set_auth_account_id/2, ?AUTH_ACCOUNT_ID}
                            ,{fun cb_context:set_account_id/2, ?ACCOUNT_ID}
                            ,{fun cb_context:set_req_verb/2, ?HTTP_GET}
                            ,{fun cb_context:set_auth_doc/2, auth_doc(?DENY_API_ENDPOINT_RESTRICTIONS)}
                            ]
-         ),
+                          ),
     Label = "Verify denied access to non-existant endpoint in restrictions",
 
     build_assertions(Label, Context, [?DENY_REQ, ?DENY_REQ, ?DENY_REQ, ?DENY_REQ]).
 
 allow_api_endpoint_test_() ->
     Context =
-        cb_context:setters(
-          cb_context:new()
+        cb_context:setters(cb_context:new()
                           ,[{fun cb_context:set_auth_account_id/2, ?AUTH_ACCOUNT_ID}
                            ,{fun cb_context:set_account_id/2, ?ACCOUNT_ID}
                            ,{fun cb_context:set_req_verb/2, ?HTTP_GET}
                            ,{fun cb_context:set_auth_doc/2, auth_doc(?ALLOW_API_ENDPOINT_RESTRICTIONS)}
                            ]
-         ),
+                          ),
     Label = "Verify allowed access to api endpoint in restrictions",
 
     build_assertions(Label, Context, [?ALLOW_REQ, ?ALLOW_REQ, ?ALLOW_REQ, ?ALLOW_REQ]).
@@ -65,8 +62,7 @@ allow_accounts_test_() ->
 
 allow_accounts_assertions({Account, Expected}) ->
     Context =
-        cb_context:setters(
-          cb_context:new()
+        cb_context:setters(cb_context:new()
                           ,[{fun cb_context:set_auth_account_id/2, ?AUTH_ACCOUNT_ID}
                            ,{fun cb_context:set_account_id/2, ?ACCOUNT_ID}
                            ,{fun cb_context:set_req_verb/2, ?HTTP_GET}
@@ -74,7 +70,7 @@ allow_accounts_assertions({Account, Expected}) ->
                             ,auth_doc(?ALLOW_ACCOUNTS_RESTRICTIONS(Account))
                             }
                            ]
-         ),
+                          ),
     Label = "Verify allowed access to accounts in endpoint restrictions",
 
     build_assertions(Label, Context, [Expected, Expected, Expected, Expected]).
@@ -93,8 +89,7 @@ argument_test_() ->
 
 argument_assertions({ArgPattern, ExpectedResults}) ->
     Context =
-        cb_context:setters(
-          cb_context:new()
+        cb_context:setters(cb_context:new()
                           ,[{fun cb_context:set_auth_account_id/2, ?AUTH_ACCOUNT_ID}
                            ,{fun cb_context:set_account_id/2, ?ACCOUNT_ID}
                            ,{fun cb_context:set_req_verb/2, ?HTTP_GET}
@@ -102,7 +97,7 @@ argument_assertions({ArgPattern, ExpectedResults}) ->
                             ,auth_doc(?ARGUMENTS_RESTRICTIONS(ArgPattern))
                             }
                            ]
-         ),
+                          ),
 
     Label = "Verify argument pattern matching works",
     build_assertions(Label, Context, ExpectedResults).
@@ -117,8 +112,7 @@ http_method_test_() ->
 
 method_assertions({Verbs, Expected}) ->
     Context =
-        cb_context:setters(
-          cb_context:new()
+        cb_context:setters(cb_context:new()
                           ,[{fun cb_context:set_auth_account_id/2, ?AUTH_ACCOUNT_ID}
                            ,{fun cb_context:set_account_id/2, ?ACCOUNT_ID}
                            ,{fun cb_context:set_req_verb/2, ?HTTP_GET}
@@ -126,7 +120,7 @@ method_assertions({Verbs, Expected}) ->
                             ,auth_doc(?HTTP_VERB_RESTRICTIONS(Verbs))
                             }
                            ]
-         ),
+                          ),
 
     Label = "Verify HTTP Verb matching works",
     build_assertions(Label, Context, [Expected, Expected, Expected, Expected]).
