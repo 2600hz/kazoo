@@ -269,10 +269,12 @@
                     "description": "call recording configuration",
                     "properties": {
                         "account": {
-                            "$ref": "#/definitions/call_recording"
+                            "$ref": "#/definitions/call_recording",
+                            "type": "object"
                         },
                         "endpoint": {
-                            "$ref": "#/definitions/call_recording"
+                            "$ref": "#/definitions/call_recording",
+                            "type": "object"
                         }
                     },
                     "required": [],

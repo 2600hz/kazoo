@@ -19,8 +19,8 @@ Accounts represent tenants or customers on the system. Each account represents a
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `call_recording` | call recording configuration | `object` |   | `false`
-`call_recording.account` |   | [#/definitions/call_recording](#call_recording) |   | `false`
-`call_recording.endpoint` |   | [#/definitions/call_recording](#call_recording) |   | `false`
+`call_recording.account` |   | `object` |   | `false`
+`call_recording.endpoint` |   | `object` |   | `false`
 `call_restriction` | Account level call restrictions for each available number classification | `object` | `{}` | `false`
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
 `caller_id` | The account default caller ID parameters | `object` | `{}` | `false`

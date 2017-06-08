@@ -8,10 +8,12 @@
             "description": "call recording configuration",
             "properties": {
                 "account": {
-                    "$ref": "call_recording"
+                    "$ref": "call_recording",
+                    "type": "object"
                 },
                 "endpoint": {
-                    "$ref": "call_recording"
+                    "$ref": "call_recording",
+                    "type": "object"
                 }
             },
             "required": [],
