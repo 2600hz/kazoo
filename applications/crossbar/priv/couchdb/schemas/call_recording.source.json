@@ -13,6 +13,5 @@
             "$ref": "call_recording.parameters"
         }
     },
-    "required": [],
     "type": "object"
 }

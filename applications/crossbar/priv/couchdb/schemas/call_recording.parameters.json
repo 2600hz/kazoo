@@ -35,6 +35,5 @@
             "type": "string"
         }
     },
-    "required": [],
     "type": "object"
 }

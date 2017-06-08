@@ -277,7 +277,6 @@
                             "type": "object"
                         }
                     },
-                    "required": [],
                     "type": "object"
                 },
                 "call_restriction": {
@@ -751,7 +750,6 @@
                     "$ref": "#/definitions/call_recording.source"
                 }
             },
-            "required": [],
             "type": "object"
         },
         "call_recording.parameters": {
@@ -788,7 +786,6 @@
                     "type": "string"
                 }
             },
-            "required": [],
             "type": "object"
         },
         "call_recording.source": {
@@ -803,7 +800,6 @@
                     "$ref": "#/definitions/call_recording.parameters"
                 }
             },
-            "required": [],
             "type": "object"
         },
         "call_waiting": {

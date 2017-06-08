@@ -16,7 +16,6 @@
                     "type": "object"
                 }
             },
-            "required": [],
             "type": "object"
         },
         "call_restriction": {
