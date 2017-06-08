@@ -236,15 +236,8 @@ originate_quickcall(Endpoints, Exten, Call) ->
     lager:debug("Originate request published").
 
 -spec get_endpoints(kapps_call:call(), ne_binary(), ne_binary()) -> kz_json:objects().
-get_endpoints(Call, EndpointId, <<"device">>) ->
-    Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
-                                   ,{<<"suppress_clid">>, 'true'}
-                                   ]),
-    case kz_endpoint:build(EndpointId, Properties, Call) of
-        {'error', _} -> [];
-        {'ok', Endpoints} -> Endpoints
-    end;
-get_endpoints(Call, EndpointId, <<"mobile">>) ->
+get_endpoints(Call, EndpointId, Type) when Type =:= <<"device">>;
+                                           Type =:= <<"mobile">> ->
     Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                    ,{<<"suppress_clid">>, 'true'}
                                    ]),

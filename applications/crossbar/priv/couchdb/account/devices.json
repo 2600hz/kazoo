@@ -78,12 +78,13 @@
         "sip_credentials": {
             "map": [
                 "function (doc) {",
-                "  if (typeof doc.sip !== 'undefined' && !doc.pvt_deleted) {",
+                "  if (!doc.pvt_deleted) return;",
+                "  if (doc.sip) {",
                 "    var sip = JSON.parse(JSON.stringify(doc.sip));",
                 "    sip.authorizing_id = doc._id;",
                 "    sip.authorizing_type = doc.device_type == 'mobile' ? 'mobile' : doc.pvt_type;",
                 "    emit(sip.username.toLowerCase(), sip);",
-                "  } else if (doc.pvt_type === 'sys_info' && !doc.pvt_deleted) {",
+                "  } else if (doc.pvt_type === 'sys_info') {",
                 "    for (var i in doc.servers) {",
                 "      if (!doc.servers[i].auth || !doc.servers[i].auth.auth_method || doc.servers[i].auth.auth_method.toLowerCase() != \"password\")",
                 "        continue;",

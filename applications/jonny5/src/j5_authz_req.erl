@@ -198,7 +198,7 @@ maybe_authorize(Request, Limits) ->
 maybe_authorize_exception(Request, Limits) ->
     CallDirection = j5_request:call_direction(Request),
     AuthType = kz_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
-    case not_mobile(AuthType)
+    case not is_authorizing_mobile(AuthType)
         andalso j5_request:classification(Request)
     of
         'false' ->
@@ -213,9 +213,9 @@ maybe_authorize_exception(Request, Limits) ->
         _Else -> maybe_hard_limit(Request, Limits)
     end.
 
--spec not_mobile(api_ne_binary()) -> boolean().
-not_mobile(<<"mobile">>) -> 'false';
-not_mobile(_) -> 'true'.
+-spec is_authorizing_mobile(api_ne_binary()) -> boolean().
+is_authorizing_mobile(<<"mobile">>) -> 'true';
+is_authorizing_mobile(_) -> 'false'.
 
 -spec maybe_hard_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_hard_limit(Request, Limits) ->
