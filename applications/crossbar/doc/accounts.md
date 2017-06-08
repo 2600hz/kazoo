@@ -18,6 +18,9 @@ Accounts represent tenants or customers on the system. Each account represents a
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
+`call_recording` | call recording configuration | `object` |   | `false`
+`call_recording.account` |   | [#/definitions/call_recording](#call_recording) |   | `false`
+`call_recording.endpoint` |   | [#/definitions/call_recording](#call_recording) |   | `false`
 `call_restriction` | Account level call restrictions for each available number classification | `object` | `{}` | `false`
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
 `caller_id` | The account default caller ID parameters | `object` | `{}` | `false`
@@ -41,6 +44,35 @@ Key | Description | Type | Default | Required
 `voicemail` |   | `object` |   | `false`
 `voicemail.notify` |   | `object` |   | `false`
 `voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false`
+##### call_recording
+
+endpoint recording settings
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`any` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false`
+`inbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false`
+`outbound` |   | [#/definitions/call_recording.source](#call_recordingsource) |   | `false`
+##### call_recording.parameters
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`enabled` | is recording enabled | `boolean` |   | `false`
+`format` | What format to store the recording on disk | `string('mp3', 'wav')` |   | `false`
+`record_min_sec` | The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted | `integer` |   | `false`
+`record_sample_rate` | What sampling rate to use on the recording | `integer` |   | `false`
+`time_limit` | Time limit, in seconds, for the recording | `integer` |   | `false`
+`url` | The URL to use when sending the recording for storage | `string` |   | `false`
+##### call_recording.source
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`any` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false`
+`offnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false`
+`onnet` |   | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false`
 ##### call_waiting
 
 Parameters for server-side call waiting
