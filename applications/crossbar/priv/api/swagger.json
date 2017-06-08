@@ -3104,7 +3104,6 @@
                     "type": "integer"
                 },
                 "member": {
-                    "default": {},
                     "description": "Defines the discovery (call in) properties for a member",
                     "properties": {
                         "join_deaf": {
@@ -3141,7 +3140,6 @@
                     "type": "object"
                 },
                 "moderator": {
-                    "default": {},
                     "description": "Defines the discovery (call in) properties for a moderator",
                     "properties": {
                         "join_deaf": {
@@ -5110,13 +5108,6 @@
                 "device_id": {
                     "type": "string"
                 },
-                "dial_strategy": {
-                    "enum": [
-                        "single",
-                        "simultaneous"
-                    ],
-                    "type": "string"
-                },
                 "owner_id": {
                     "type": "string"
                 }
@@ -6916,18 +6907,6 @@
                 },
                 "connection": {
                     "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "system_config": {
-            "default": {},
-            "description": "Schema for system_config",
-            "properties": {
-                "default": {
-                    "$ref": "#/definitions/system_config.conferences",
-                    "default": {},
-                    "type": "object"
                 }
             },
             "type": "object"
@@ -9304,7 +9283,6 @@
             "description": "Schema for kazoo_couch system_config",
             "properties": {
                 "admin_port": {
-                    "default": 5986,
                     "description": "The CouchDB API port, typically 5986",
                     "type": "integer"
                 },
