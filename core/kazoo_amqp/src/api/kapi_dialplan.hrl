@@ -141,6 +141,7 @@
         ,<<"To-Username">>
         ,<<"Simplify-Loopback">>
         ,<<"Loopback-Bowout">>
+        ,<<"Endpoint-Actions">>
         ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
@@ -573,6 +574,8 @@
                                           ,<<"Media-Name">>
                                           ,<<"Media-Recorder">>
                                           ,<<"Media-Recording-ID">>
+                                          ,<<"Media-Recording-Endpoint-ID">>
+                                          ,<<"Media-Recording-Origin">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
