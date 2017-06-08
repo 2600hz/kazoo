@@ -155,6 +155,10 @@ maybe_deny_access(Context) ->
             maybe_deny_access(Context, Restrictions)
     end.
 
+-ifdef(TEST).
+get_auth_restrictions(AuthDoc) ->
+    kz_json:get_json_value(<<"restrictions">>, AuthDoc).
+-else.
 -spec get_auth_restrictions(api_object()) -> api_object().
 get_auth_restrictions('undefined') -> 'undefined';
 get_auth_restrictions(AuthDoc) ->
@@ -163,7 +167,7 @@ get_auth_restrictions(AuthDoc) ->
     OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, AuthDoc),
 
     crossbar_util:get_token_restrictions(AuthModule, AccountId, OwnerId).
-
+-endif.
 
 -spec maybe_deny_access(cb_context:context(), kz_json:object()) -> boolean().
 maybe_deny_access(Context, Restrictions) ->
@@ -194,10 +198,8 @@ match_endpoint(Context, Restrictions) ->
 -spec match_request_endpoint(api_object(), ne_binary()) ->
                                     api_objects().
 match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
-    ?LOG_DEBUG("trying to match ~s in ~p", [ReqEndpoint, Restrictions]),
     kz_json:get_list_value(ReqEndpoint, Restrictions);
 match_request_endpoint(Restrictions, ReqEndpoint) ->
-    ?LOG_DEBUG("trying to match ~s in ~p", [ReqEndpoint, Restrictions]),
     case kz_json:get_list_value(ReqEndpoint, Restrictions) of
         'undefined' -> match_request_endpoint(Restrictions, ?CATCH_ALL);
         EndpointRestrictions -> EndpointRestrictions
