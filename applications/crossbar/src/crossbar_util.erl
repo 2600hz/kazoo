@@ -943,7 +943,6 @@ create_auth_token(Context, AuthModule, JObj) ->
               ,{<<"owner_id">>, OwnerId}
               ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
               ,{<<"api_key">>, kz_json:get_value(<<"api_key">>, Data)}
-              ,{<<"restrictions">>, get_token_restrictions(AuthModule, AccountId, OwnerId)}
               ,{<<"method">>, kz_term:to_binary(AuthModule)}
               ]),
     JObjToken = kz_doc:update_pvt_parameters(kz_json:from_list(Token)
