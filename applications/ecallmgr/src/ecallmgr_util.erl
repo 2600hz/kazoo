@@ -47,6 +47,8 @@
 -export([get_dial_separator/2]).
 -export([fix_contact/3]).
 
+-export([dialplan_application/1]).
+
 -include("ecallmgr.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
