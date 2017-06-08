@@ -651,7 +651,7 @@ fold_bind_results(Responders, Payload, Route) ->
 -spec fold_bind_results(kz_responders(), any(), ne_binary(), non_neg_integer(), kz_responders()) -> any().
 fold_bind_results([#kz_responder{module=M
                                 ,function=F
-%%                                ,payload='undefined'
+                                ,payload='undefined'
                                 }=Responder
                    | Responders]
                  ,[_|Tokens]=Payload
@@ -664,7 +664,7 @@ fold_bind_results([#kz_responder{module=M
             fold_bind_results(Responders, Payload, Route, RespondersLen, [Responder|ReRunResponders]);
         {'error', _E}=E ->
             lager:debug("error: ~p", [_E]),
-            [E];
+            E;
         {'EXIT', {'undef', [{_M, _F, _A, _}|_]}} ->
             ST = erlang:get_stacktrace(),
             log_undefined(M, F, length(Payload), ST),
@@ -676,8 +676,6 @@ fold_bind_results([#kz_responder{module=M
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         'ok' ->
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
-        {ok, Pay1} ->
-            fold_bind_results(Responders, [Pay1|Tokens], Route, RespondersLen, ReRunResponders);
         Pay1 ->
             fold_bind_results(Responders, [Pay1|Tokens], Route, RespondersLen, ReRunResponders)
     catch
