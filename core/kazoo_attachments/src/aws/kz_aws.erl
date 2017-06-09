@@ -300,7 +300,7 @@ configure(#aws_config{} = Config) ->
 -spec get_metadata_credentials(aws_config()) -> {'ok', #metadata_credentials{}} | {'error', any()}.
 get_metadata_credentials(Config) ->
     get_credentials_from_metadata(Config).
-    %% See if we have cached credentials
+%% See if we have cached credentials
 
 timestamp_to_gregorian_seconds(Timestamp) ->
     {'ok', [Yr, Mo, Da, H, M, S], []} =
