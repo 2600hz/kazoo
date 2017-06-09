@@ -467,6 +467,7 @@ record_call_command(EndpointId, Inception, Data, Call) ->
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Media = [{<<"Application-Name">>, <<"record_call">>}
             ,{<<"Record-Action">>, <<"start">>}
+            ,{<<"Follow-Transfer">>, false}
             ,{<<"Time-Limit">>, TimeLimit}
             ,{<<"Media-Name">>, MediaName}
             ,{<<"Media-Recording-ID">>, MediaDocId}

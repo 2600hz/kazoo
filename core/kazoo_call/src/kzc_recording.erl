@@ -632,7 +632,9 @@ save_recording(#state{call=Call, media=Media}=State, _) ->
 -spec start_recording(kapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api_integer(), api_integer()) -> 'ok'.
 start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec) ->
     lager:debug("starting recording of ~s", [MediaName]),
+    FollowTransfer = kapps_call:kvs_fetch('recording_follow_transer', 'true', Call),
     Props = [{<<"Media-Name">>, MediaName}
+            ,{<<"Follow-Transfer">>, FollowTransfer}
             ,{<<"Media-Recording-ID">>, MediaDocId}
             ,{<<"Record-Sample-Rate">>, SampleRate}
             ,{<<"Record-Min-Sec">>, kz_term:to_binary(RecordMinSec)}
