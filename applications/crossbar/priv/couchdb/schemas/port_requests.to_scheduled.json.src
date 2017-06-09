@@ -18,7 +18,7 @@
             },
             "required": [
                 "timezone",
-                "date"
+                "date_time"
             ],
             "type": [
                 "integer",
