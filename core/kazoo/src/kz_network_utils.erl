@@ -55,7 +55,7 @@
 -include_lib("kernel/include/inet.hrl").
 -include_lib("kernel/src/inet_dns.hrl").
 
--include("include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -include("include/kz_log.hrl").
 
 -define(LOOKUP_TIMEOUT, 500).
