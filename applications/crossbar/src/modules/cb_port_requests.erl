@@ -336,19 +336,47 @@ patch(Context, Id, ?PORT_CANCELED) ->
 
 -spec maybe_patch_to_scheduled(cb_context:context(), path_token()) -> cb_context:context().
 maybe_patch_to_scheduled(Context, Id) ->
-    JObj = cb_context:req_data(Context),
-    case kz_json:get_value(<<"scheduled_date">>, JObj) of
-        'undefined' ->
-            cb_context:add_validation_error(<<"error">>
-                                           ,<<"type">>
-                                           ,kz_json:from_list([{<<"message">>, <<"Schedule update missing parameters">>}
-                                                              ,{<<"missing">>, <<"scheduled_date">>}
-                                                              ])
-                                           ,Context);
+    OnSuccess = fun (C) -> maybe_update_scheduled_date(C, Id) end,
+    cb_context:validate_request_data(<<"port_requests.to_scheduled">>, Context, OnSuccess).
 
-        _Scheduled ->
-            patch_then_notify(Context, Id, ?PORT_SCHEDULED)
+-spec maybe_update_scheduled_date(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_update_scheduled_date(Context, PortId) ->
+    Key = <<"scheduled_date">>,
+    ReqData = cb_context:req_data(Context),
+    case kz_json:get_ne_value(Key, ReqData) of
+        Timestamp when is_integer(Timestamp) ->
+            patch_then_notify(Context, PortId, ?PORT_SCHEDULED);
+        DateJObj ->
+            ConfiguredTZ = user_timezone(Context),
+            TZ = kz_json:get_ne_binary_value([Key, <<"timezone">>], ReqData),
+            Datetime = kz_json:get_ne_binary_value([Key, <<"date_time">>], ReqData),
+            Scheduled = date_as_configured_timezone(Datetime, TZ, ConfiguredTZ),
+            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, TZ, Scheduled, ConfiguredTZ]),
+            Values = [{Key, Scheduled}
+                     ,{<<"pvt_scheduled_for">>, DateJObj}
+                     ],
+            NewReqData = kz_json:set_values(Values, ReqData),
+            NewContext = cb_context:set_req_data(Context, NewReqData),
+            patch_then_notify(NewContext, PortId, ?PORT_SCHEDULED)
     end.
+
+-spec user_timezone(cb_context:context()) -> ne_binary().
+user_timezone(Context) ->
+    case crossbar_util:get_user_timezone(cb_context:user_id(Context), cb_context:user_id(Context)) of
+        undefined -> kz_account:default_timezone();
+        TZ -> TZ
+    end.
+
+-spec date_as_configured_timezone(ne_binary(), ne_binary(), ne_binary()) -> gregorian_seconds().
+date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $\s,
+                              HH:2/binary, $:, Mm:2/binary>>
+                           ,FromTimezone
+                           ,_ToTimezone
+                           ) ->
+    Date = {kz_term:to_integer(YYYY), kz_term:to_integer(MM), kz_term:to_integer(DD)},
+    Time = {kz_term:to_integer(HH), kz_term:to_integer(Mm), 0},
+    Datetime = localtime:local_to_local({Date, Time}, binary_to_list(FromTimezone), "Etc/UTC"),
+    calendar:datetime_to_gregorian_seconds(Datetime).
 
 %% @private
 -spec patch_then_notify(cb_context:context(), path_token(), path_token()) -> cb_context:context().
