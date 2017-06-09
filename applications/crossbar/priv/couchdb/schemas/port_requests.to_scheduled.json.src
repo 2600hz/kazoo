@@ -11,7 +11,9 @@
                     "type": "string"
                 },
                 "timezone": {
-                    "enum": []
+                    "enum": [
+                        "America/Los_Angeles"
+                    ]
                 }
             },
             "required": [
