@@ -860,7 +860,7 @@ get_account_lang(AccountId) ->
             'error'
     end.
 
--spec get_user_timezone(api_binary(), api_binary()) -> api_binary().
+-spec get_user_timezone(api_ne_binary(), api_ne_binary()) -> api_ne_binary().
 get_user_timezone(AccountId, 'undefined') ->
     get_account_timezone(AccountId);
 get_user_timezone(AccountId, UserId) ->
@@ -870,7 +870,7 @@ get_user_timezone(AccountId, UserId) ->
         {'error', _E} -> get_account_timezone(AccountId)
     end.
 
--spec get_account_timezone(api_binary()) -> api_binary().
+-spec get_account_timezone(api_ne_binary()) -> api_ne_binary().
 get_account_timezone('undefined') ->
     'undefined';
 get_account_timezone(AccountId) ->

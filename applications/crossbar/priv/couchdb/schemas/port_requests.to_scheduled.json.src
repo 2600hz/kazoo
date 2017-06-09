@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "port_requests.to_scheduled",
+    "description": "Schema for a port request to be transitioned to the 'scheduled' state",
+    "properties": {
+        "scheduled_date": {
+            "description": "Time at which to perform the porting, either as a gregorian timestamp or as datetime",
+            "properties": {
+                "date_time": {
+                    "pattern": "^2\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d$",
+                    "type": "string"
+                },
+                "timezone": {
+                    "enum": [
+                        "America/Los_Angeles"
+                    ]
+                }
+            },
+            "required": [
+                "timezone",
+                "date_time"
+            ],
+            "type": [
+                "integer",
+                "object"
+            ]
+        }
+    },
+    "required": [
+        "scheduled_date"
+    ],
+    "type": "object"
+}

@@ -28,8 +28,6 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
@@ -345,19 +343,37 @@ patch(Context, Id, ?PORT_CANCELED) ->
 
 -spec maybe_patch_to_scheduled(cb_context:context(), path_token()) -> cb_context:context().
 maybe_patch_to_scheduled(Context, Id) ->
-    JObj = cb_context:req_data(Context),
-    case kz_json:get_value(<<"scheduled_date">>, JObj) of
-        'undefined' ->
-            cb_context:add_validation_error(<<"error">>
-                                           ,<<"type">>
-                                           ,kz_json:from_list([{<<"message">>, <<"Schedule update missing parameters">>}
-                                                              ,{<<"missing">>, <<"scheduled_date">>}
-                                                              ])
-                                           ,Context);
+    OnSuccess = fun (C) -> maybe_update_scheduled_date(C, Id) end,
+    cb_context:validate_request_data(<<"port_requests.to_scheduled">>, Context, OnSuccess).
 
-        _Scheduled ->
-            patch_then_notify(Context, Id, ?PORT_SCHEDULED)
+-spec maybe_update_scheduled_date(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_update_scheduled_date(Context, PortId) ->
+    Key = <<"scheduled_date">>,
+    ReqData = cb_context:req_data(Context),
+    case kz_json:get_ne_value(Key, ReqData) of
+        Timestamp when is_integer(Timestamp) ->
+            patch_then_notify(Context, PortId, ?PORT_SCHEDULED);
+        DateJObj ->
+            TZ = kz_json:get_ne_binary_value([Key, <<"timezone">>], ReqData),
+            Datetime = kz_json:get_ne_binary_value([Key, <<"date_time">>], ReqData),
+            Scheduled = date_as_configured_timezone(Datetime, TZ),
+            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, TZ, Scheduled]),
+            Values = [{Key, Scheduled}
+                     ,{<<"schedule_at">>, DateJObj}
+                     ],
+            NewReqData = kz_json:set_values(Values, ReqData),
+            NewContext = cb_context:set_req_data(Context, NewReqData),
+            patch_then_notify(NewContext, PortId, ?PORT_SCHEDULED)
     end.
+
+-spec date_as_configured_timezone(ne_binary(), ne_binary()) -> gregorian_seconds().
+date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $\s,
+                              HH:2/binary, $:, Mm:2/binary>>
+                           ,FromTimezone
+                           ) ->
+    Date = {kz_term:to_integer(YYYY), kz_term:to_integer(MM), kz_term:to_integer(DD)},
+    Time = {kz_term:to_integer(HH), kz_term:to_integer(Mm), 0},
+    kz_time:to_gregorian_seconds({Date, Time}, FromTimezone).
 
 %% @private
 -spec patch_then_notify(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -858,7 +874,6 @@ on_successful_validation(Context, Id) ->
 on_successful_validation(Context, Id, 'true') ->
     JObj = cb_context:doc(Context),
     Numbers = kz_json:get_keys(kz_json:get_value(<<"numbers">>, JObj)),
-
     Context1 = lists:foldl(fun(Number, ContextAcc) ->
                                    check_number_portability(Id, Number, ContextAcc)
                            end
@@ -1090,7 +1105,7 @@ generate_loa(Context, _RespStatus) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_template(ne_binary(), api_binary()) -> ne_binary().
+-spec find_template(ne_binary(), api_ne_binary()) -> ne_binary().
 find_template(ResellerId, 'undefined') ->
     {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
     Template;
@@ -1330,11 +1345,12 @@ generate_loa_from_port(Context, PortRequest) ->
           ,{<<"qr_code">>, create_QR_code(AccountId, kz_doc:id(PortRequest))}
           ,{<<"type">>, <<"loa">>}
           ]),
-    Carrier = kz_json:get_value(<<"carrier">>, PortRequest),
-
+    Carrier = kz_json:get_ne_binary_value(<<"carrier">>, PortRequest),
     Template = find_template(ResellerId, Carrier),
     case kz_pdf:generate(ResellerId, TemplateData, Template) of
-        {'error', _R} -> cb_context:set_resp_status(Context, 'error');
+        {'error', _R} ->
+            lager:error("generating LOA failed: ~p", [_R]),
+            cb_context:set_resp_status(Context, 'error');
         {'ok', PDF} ->
             cb_context:set_resp_status(cb_context:set_resp_data(Context, PDF), 'success')
     end.
@@ -1346,7 +1362,6 @@ create_QR_code(AccountId, PortRequestId) ->
     lager:debug("create qr code for ~s - ~s", [AccountId, PortRequestId]),
     CHL = [binary_to_list(AccountId), "-", binary_to_list(PortRequestId)],
     Url = ["https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL, "&choe=UTF-8"],
-
     case kz_http:get(lists:flatten(Url)) of
         {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s", [Url]),
