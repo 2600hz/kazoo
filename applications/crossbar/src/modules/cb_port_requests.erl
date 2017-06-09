@@ -345,11 +345,10 @@ maybe_update_scheduled_date(Context, PortId) ->
         Timestamp when is_integer(Timestamp) ->
             patch_then_notify(Context, PortId, ?PORT_SCHEDULED);
         DateJObj ->
-            ConfiguredTZ = user_timezone(Context),
             TZ = kz_json:get_ne_binary_value([Key, <<"timezone">>], ReqData),
             Datetime = kz_json:get_ne_binary_value([Key, <<"date_time">>], ReqData),
-            Scheduled = date_as_configured_timezone(Datetime, TZ, ConfiguredTZ),
-            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, TZ, Scheduled, ConfiguredTZ]),
+            Scheduled = date_as_configured_timezone(Datetime, TZ),
+            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, TZ, Scheduled]),
             Values = [{Key, Scheduled}
                      ,{<<"pvt_scheduled_for">>, DateJObj}
                      ],
@@ -358,23 +357,14 @@ maybe_update_scheduled_date(Context, PortId) ->
             patch_then_notify(NewContext, PortId, ?PORT_SCHEDULED)
     end.
 
--spec user_timezone(cb_context:context()) -> ne_binary().
-user_timezone(Context) ->
-    case crossbar_util:get_user_timezone(cb_context:user_id(Context), cb_context:user_id(Context)) of
-        undefined -> kz_account:default_timezone();
-        TZ -> TZ
-    end.
-
--spec date_as_configured_timezone(ne_binary(), ne_binary(), ne_binary()) -> gregorian_seconds().
+-spec date_as_configured_timezone(ne_binary(), ne_binary()) -> gregorian_seconds().
 date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $\s,
                               HH:2/binary, $:, Mm:2/binary>>
                            ,FromTimezone
-                           ,_ToTimezone
                            ) ->
     Date = {kz_term:to_integer(YYYY), kz_term:to_integer(MM), kz_term:to_integer(DD)},
     Time = {kz_term:to_integer(HH), kz_term:to_integer(Mm), 0},
-    Datetime = localtime:local_to_local({Date, Time}, binary_to_list(FromTimezone), "Etc/UTC"),
-    calendar:datetime_to_gregorian_seconds(Datetime).
+    kz_time:to_gregorian_seconds({Date, Time}, FromTimezone).
 
 %% @private
 -spec patch_then_notify(cb_context:context(), path_token(), path_token()) -> cb_context:context().
