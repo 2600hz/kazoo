@@ -15,10 +15,13 @@
 
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 
+-type aws_url_parts() :: {ne_binary(), ne_binary(), pos_integer()}.
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
 
+-spec aws_config(ne_binary(), ne_binary(), aws_url_parts() | ne_binary(), boolean()) -> any().
 aws_config(Key, Secret, {Scheme, Host, Port}, BucketAfterHost) ->
     kz_aws_s3:new(kz_term:to_list(Key)
                  ,kz_term:to_list(Secret)
@@ -28,7 +31,7 @@ aws_config(Key, Secret, {Scheme, Host, Port}, BucketAfterHost) ->
                  ,BucketAfterHost
                  );
 aws_config(Key, Secret, Host, BucketAfterHost) ->
-    aws_config(Key, Secret, {"https://", Host, 443}, BucketAfterHost).
+    aws_config(Key, Secret, {<<"https://">>, Host, 443}, BucketAfterHost).
 
 -spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
@@ -82,7 +85,7 @@ convert_kv({<<"etag">> = K, V}) ->
 convert_kv(KV) -> KV.
 
 -spec get_map_values(kz_data:connection()) ->
-                            {ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()}.
+                            {ne_binary(), ne_binary(), ne_binary(), api_binary(), aws_url_parts()}.
 get_map_values(#{'bucket' := Bucket
                 ,'key' := Key
                 ,'secret' := Secret
@@ -96,7 +99,7 @@ get_map_values(#{'bucket' := Bucket
                       <<"http://">> -> 80;
                       _ -> 80
                   end,
-    Port = maps:get('port', Map,  DefaultPort),
+    Port = kz_term:to_integer(maps:get('port', Map,  DefaultPort)),
     {Bucket, Key, Secret, combined_path(BasePath, OtherPath), {Scheme, Host, Port}}.
 
 -spec combined_path(api_binary(), api_binary()) -> api_binary().
@@ -113,7 +116,7 @@ get_file_path(Path, DbName, DocId, AName) ->
     kz_term:to_list(list_to_binary([Path, "/", DbName, "/", DocId, "_", AName])).
 
 -spec get_s3_values(ne_binary(), kz_data:connection()) ->
-                           {ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary()}.
+                           {ne_binary(), ne_binary(), ne_binary() | aws_url_parts(), ne_binary(), api_binary()}.
 get_s3_values(S3, 'undefined') ->
     case binary_to_term(base64:decode(S3)) of
         {Key, Secret, Bucket, Path} ->
