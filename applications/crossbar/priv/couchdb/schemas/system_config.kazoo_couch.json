@@ -4,6 +4,7 @@
     "description": "Schema for kazoo_couch system_config",
     "properties": {
         "admin_port": {
+            "default": 5986,
             "description": "The CouchDB API port, typically 5986",
             "type": "integer"
         },
