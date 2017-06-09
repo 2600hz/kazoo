@@ -7,7 +7,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_types/include/kz_databases.hrl").
 
 -behaviour(proper_statem).
 

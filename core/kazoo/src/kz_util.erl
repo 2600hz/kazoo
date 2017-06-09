@@ -85,7 +85,7 @@
 
 -include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_types/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_api_literals.hrl").
 
 -define(KAZOO_VERSION_CACHE_KEY, {?MODULE, 'kazoo_version'}).

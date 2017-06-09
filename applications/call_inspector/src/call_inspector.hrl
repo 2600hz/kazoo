@@ -2,7 +2,7 @@
 
 -include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_types/include/kz_databases.hrl").
 
 -define(APP, call_inspector).
 -define(APP_NAME, atom_to_binary(?APP, utf8)).

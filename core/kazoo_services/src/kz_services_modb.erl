@@ -12,7 +12,7 @@
         ]).
 
 -include_lib("kazoo_types/include/kz_types.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_types/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 -include_lib("kazoo_services/include/kz_service.hrl").

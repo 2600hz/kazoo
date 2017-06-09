@@ -26,7 +26,7 @@
 -export_type([validation_error/0, validation_errors/0]).
 
 -include_lib("kazoo_types/include/kz_types.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_types/include/kz_databases.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
