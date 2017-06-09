@@ -65,23 +65,23 @@
         {
           %% Provided by requesting service
           service :: 's3',
-          uri :: string() | binary(),
-          method :: atom(),
-          request_headers :: [{string(), string()}],
-          request_body :: binary(),
+          uri = <<>> :: string() | binary(),
+          method = 'put' :: atom(),
+          request_headers = [] :: [{string(), string()}],
+          request_body = <<>> :: binary(),
 
           %% Read from response
           attempt = 0 :: integer(),
-          response_type :: 'ok' | 'error',
-          error_type :: 'aws' | 'httpc',
+          response_type = 'ok' :: 'ok' | 'error',
+          error_type = 'other' :: 'aws' | 'httpc' | 'other',
           httpc_error_reason :: term(),
-          response_status :: pos_integer(),
-          response_status_line :: string(),
-          response_headers :: [{string(), string()}],
-          response_body :: binary(),
+          response_status = 200 :: pos_integer(),
+          response_status_line = "" :: string(),
+          response_headers = [] :: [{string(), string()}],
+          response_body = <<>> :: binary(),
 
           %% Service specific error information
-          should_retry :: boolean()
+          should_retry = true :: boolean()
         }).
 -type aws_request() :: #aws_request{}.
 

@@ -9,19 +9,20 @@
 -module(kz_att_s3).
 
 -include("kz_att.hrl").
+-include("aws/kz_aws.hrl").
 
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 
--type aws_url_parts() :: {ne_binary(), ne_binary(), pos_integer()}.
+-type aws_url_parts() :: {ne_binary(), ne_binary(), non_neg_integer()}.
 
 %% ====================================================================
 %% API functions
 %% ====================================================================
 
--spec aws_config(ne_binary(), ne_binary(), aws_url_parts() | ne_binary(), boolean()) -> any().
+-spec aws_config(ne_binary(), ne_binary(), aws_url_parts() | ne_binary(), boolean()) -> aws_config().
 aws_config(Key, Secret, {Scheme, Host, Port}, BucketAfterHost) ->
     kz_aws_s3:new(kz_term:to_list(Key)
                  ,kz_term:to_list(Secret)
