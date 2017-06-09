@@ -28,8 +28,6 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
@@ -872,13 +870,13 @@ on_successful_validation(Context, 'undefined') ->
 on_successful_validation(Context, Id) ->
     Context1 = crossbar_doc:load_merge(Id
                                       ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                                      ,?TYPE_CHECK_OPTION(<<"port_request">>)),
+                                      ,?TYPE_CHECK_OPTION(<<"port_request">>)
+                                      ),
     on_successful_validation(Context1, Id, can_update_port_request(Context1)).
 
 on_successful_validation(Context, Id, 'true') ->
     JObj = cb_context:doc(Context),
     Numbers = kz_json:get_keys(kz_json:get_value(<<"numbers">>, JObj)),
-
     Context1 = lists:foldl(fun(Number, ContextAcc) ->
                                    check_number_portability(Id, Number, ContextAcc)
                            end
@@ -894,8 +892,7 @@ on_successful_validation(Context, Id, 'true') ->
     end;
 on_successful_validation(Context, _Id, 'false') ->
     PortState = kz_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
-    lager:debug("port state ~s is not valid for updating a port request"
-               ,[PortState]),
+    lager:debug("port state ~s is not valid for updating a port request", [PortState]),
     Msg = kz_json:from_list(
             [{<<"message">>, <<"Updating port requests not allowed in current port state">>}
             ,{<<"cause">>, PortState}
@@ -1106,7 +1103,7 @@ generate_loa(Context, _RespStatus) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_template(ne_binary(), api_binary()) -> ne_binary().
+-spec find_template(ne_binary(), api_ne_binary()) -> ne_binary().
 find_template(ResellerId, 'undefined') ->
     {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
     Template;
@@ -1187,13 +1184,13 @@ send_port_notification(Context, Id, State, Fun) ->
         Context
     catch
         _E:_R ->
+            kz_util:log_stacktrace(),
             lager:debug("failed to send the  port ~s notification: ~s:~p", [State, _E, _R]),
             _ = revert_patch(Context),
-            Msg = <<"failed to send port ", State/binary, " email">>,
-            cb_context:add_system_error('bad_gateway'
-                                       ,kz_json:from_list([{<<"message">>, Msg}])
-                                       ,Context
-                                       )
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"failed to send port ", State/binary, " email">>}
+                    ]),
+            cb_context:add_system_error('bad_gateway', Msg, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -1346,11 +1343,12 @@ generate_loa_from_port(Context, PortRequest) ->
           ,{<<"qr_code">>, create_QR_code(AccountId, kz_doc:id(PortRequest))}
           ,{<<"type">>, <<"loa">>}
           ]),
-    Carrier = kz_json:get_value(<<"carrier">>, PortRequest),
-
+    Carrier = kz_json:get_ne_binary_value(<<"carrier">>, PortRequest),
     Template = find_template(ResellerId, Carrier),
     case kz_pdf:generate(ResellerId, TemplateData, Template) of
-        {'error', _R} -> cb_context:set_resp_status(Context, 'error');
+        {'error', _R} ->
+            lager:error("generating LOA failed: ~p", [_R]),
+            cb_context:set_resp_status(Context, 'error');
         {'ok', PDF} ->
             cb_context:set_resp_status(cb_context:set_resp_data(Context, PDF), 'success')
     end.
@@ -1362,7 +1360,6 @@ create_QR_code(AccountId, PortRequestId) ->
     lager:debug("create qr code for ~s - ~s", [AccountId, PortRequestId]),
     CHL = [binary_to_list(AccountId), "-", binary_to_list(PortRequestId)],
     Url = ["https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL, "&choe=UTF-8"],
-
     case kz_http:get(lists:flatten(Url)) of
         {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s", [Url]),
