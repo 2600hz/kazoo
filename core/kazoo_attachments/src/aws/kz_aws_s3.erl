@@ -2,7 +2,7 @@
 %% @doc @todo Add description to kz_s3.
 -module(kz_aws_s3).
 
--export([new/2, new/3, new/4, new/5,
+-export([new/2, new/3, new/4, new/5, new/6,
          configure/2, configure/3, configure/4, configure/5,
          create_bucket/1, create_bucket/2, create_bucket/3, create_bucket/4,
          delete_bucket/1, delete_bucket/2,
@@ -70,6 +70,16 @@ new(AccessKeyID, SecretAccessKey, Host, Port, Scheme) ->
                ,s3_host=Host
                ,s3_port=Port
                ,s3_scheme=Scheme
+               }.
+
+-spec new(string(), string(), string(), non_neg_integer(), string(), boolean()) -> aws_config().
+new(AccessKeyID, SecretAccessKey, Host, Port, Scheme, BucketAfterHost) ->
+    #aws_config{access_key_id=AccessKeyID
+               ,secret_access_key=SecretAccessKey
+               ,s3_host=Host
+               ,s3_port=Port
+               ,s3_scheme=Scheme
+               ,s3_bucket_after_host=BucketAfterHost
                }.
 
 -spec configure(string(), string()) -> 'ok'.
@@ -1154,6 +1164,7 @@ s3_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) -
         {'ok', Config1} ->
             s3_request2_no_update(Config1, Method, Host, Path, Subresource, Params, POSTData, Headers);
         {'error', _Reason}=Error ->
+            lager:error("error in aws configuration: ~p", [_Reason]),
             Error
     end.
 
@@ -1308,7 +1319,11 @@ string_from_params_QS(ParamsQueryString, _SubResource) ->
 default_config() -> kz_aws:default_config().
 
 -spec port_spec(aws_config()) -> iolist().
+port_spec(#aws_config{s3_port=0}) ->
+    "";
 port_spec(#aws_config{s3_port=80}) ->
+    "";
+port_spec(#aws_config{s3_port=443}) ->
     "";
 port_spec(#aws_config{s3_port=Port}) ->
     [":", kz_term:to_list(Port)].

@@ -19,20 +19,36 @@
 %% API functions
 %% ====================================================================
 
+aws_config(Key, Secret, {Scheme, Host, Port}, BucketAfterHost) ->
+    kz_aws_s3:new(kz_term:to_list(Key)
+                 ,kz_term:to_list(Secret)
+                 ,kz_term:to_list(Host)
+                 ,Port
+                 ,kz_term:to_list(Scheme)
+                 ,BucketAfterHost
+                 );
+aws_config(Key, Secret, Host, BucketAfterHost) ->
+    aws_config(Key, Secret, {"https://", Host, 443}, BucketAfterHost).
+
 -spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
     {Bucket, Key, Secret, Path, Host} = get_map_values(Params),
+    BucketAfterHost = kz_term:is_true(maps:get('bucket_after_host', Params, 'false')),
     FilePath = get_file_path(Path, DbName, DocId, AName),
-    Config = kz_aws_s3:new(kz_term:to_list(Key), kz_term:to_list(Secret), kz_term:to_list(Host)),
+    lager:debug("saving attachment to s3://~p", [Host]),
+    Config = aws_config(Key, Secret, Host, BucketAfterHost),
     case kz_aws_s3:put_object(kz_term:to_list(Bucket), FilePath, Contents, Config) of
         {'ok', Props} ->
             Metadata = [ convert_kv(KV) || KV <- Props, filter_kv(KV)],
             S3Key = base64:encode(term_to_binary({Key, Secret, Host, Bucket, Path})),
             {'ok', [{'attachment', [{<<"S3">>, S3Key}
+                                   ,{<<"S3-01">>, BucketAfterHost}
                                    ,{<<"metadata">>, kz_json:from_list(Metadata)}
                                    ]}
                    ]};
-        _E -> _E
+        _E ->
+            lager:debug("error saving attachment to ", [_E]),
+            _E
     end.
 
 -spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
@@ -43,7 +59,8 @@ fetch_attachment(Conn, DbName, DocId, AName) ->
         S3 ->
             {Key, Secret, Host, Bucket, Path} = get_s3_values(S3, HandlerProps),
             FilePath = get_file_path(Path, DbName, DocId, AName),
-            Config = kz_aws_s3:new(kz_term:to_list(Key), kz_term:to_list(Secret), kz_term:to_list(Host)),
+            BucketAfterHost = kz_json:is_true(<<"S3-01">>, Conn, 'false'),
+            Config = aws_config(Key, Secret, Host, BucketAfterHost),
             case kz_aws_s3:get_object(kz_term:to_list(Bucket), FilePath, Config) of
                 {'ok', Props} -> {'ok', props:get_value('content', Props)};
                 _E -> _E
@@ -70,9 +87,24 @@ get_map_values(#{'bucket' := Bucket
                 ,'key' := Key
                 ,'secret' := Secret
                 }=Map) ->
-    Path = maps:get('path', Map, 'undefined'),
+    BasePath = maps:get('base_path', Map, 'undefined'),
+    OtherPath = maps:get('path', Map, 'undefined'),
     Host = maps:get('host', Map,  ?AMAZON_S3_HOST),
-    {Bucket, Key, Secret, Path, Host}.
+    Scheme = maps:get('scheme', Map,  <<"https://">>),
+    DefaultPort = case Scheme of
+                      <<"https://">> -> 443;
+                      <<"http://">> -> 80;
+                      _ -> 80
+                  end,
+    Port = maps:get('port', Map,  DefaultPort),
+    {Bucket, Key, Secret, combined_path(BasePath, OtherPath), {Scheme, Host, Port}}.
+
+-spec combined_path(api_binary(), api_binary()) -> api_binary().
+combined_path('undefined', 'undefined') -> 'undefined';
+combined_path('undefined', Path) -> Path;
+combined_path(Path, 'undefined') -> Path;
+combined_path(BasePath, OtherPath) ->
+    filename:join(BasePath, OtherPath).
 
 -spec get_file_path(api_binary(), ne_binary(), ne_binary(), ne_binary()) -> list().
 get_file_path('undefined', DbName, DocId, AName) ->
