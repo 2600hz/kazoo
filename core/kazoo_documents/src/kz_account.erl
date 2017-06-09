@@ -19,7 +19,7 @@
         ,name/1, name/2, set_name/2
         ,realm/1, realm/2, set_realm/2
         ,language/1, set_language/2
-        ,timezone/1, timezone/2, set_timezone/2
+        ,timezone/1, timezone/2, set_timezone/2, default_timezone/0
         ,parent_account_id/1
         ,tree/1, tree/2 ,set_tree/2
         ,notification_preference/1, set_notification_preference/2
@@ -238,7 +238,7 @@ set_language(JObj, Language) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec timezone(ne_binary() | doc()) -> api_binary().
+-spec timezone(ne_binary() | doc()) -> api_ne_binary().
 -spec timezone(ne_binary() | doc(), Default) -> ne_binary() | Default.
 timezone(AccountId)
   when is_binary(AccountId) ->
@@ -257,10 +257,13 @@ timezone(JObj, Default) ->
         TZ -> TZ
     end.
 
--spec parent_timezone(ne_binary(), api_binary()) -> ne_binary().
+-spec parent_timezone(ne_binary(), api_ne_binary()) -> ne_binary().
 parent_timezone(AccountId, AccountId) -> ?DEFAULT_TIMEZONE;
 parent_timezone(_AccountId, 'undefined') -> ?DEFAULT_TIMEZONE;
 parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
+
+-spec default_timezone() -> ne_binary().
+default_timezone() -> ?DEFAULT_TIMEZONE.
 
 %%--------------------------------------------------------------------
 %% @public
