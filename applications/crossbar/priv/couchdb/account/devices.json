@@ -78,7 +78,7 @@
         "sip_credentials": {
             "map": [
                 "function (doc) {",
-                "  if (!doc.pvt_deleted) return;",
+                "  if (doc.pvt_deleted) return;",
                 "  if (doc.sip) {",
                 "    var sip = JSON.parse(JSON.stringify(doc.sip));",
                 "    sip.authorizing_id = doc._id;",
