@@ -350,7 +350,7 @@ maybe_update_scheduled_date(Context, PortId) ->
             Scheduled = date_as_configured_timezone(Datetime, TZ),
             lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, TZ, Scheduled]),
             Values = [{Key, Scheduled}
-                     ,{<<"pvt_scheduled_for">>, DateJObj}
+                     ,{<<"schedule_at">>, DateJObj}
                      ],
             NewReqData = kz_json:set_values(Values, ReqData),
             NewContext = cb_context:set_req_data(Context, NewReqData),
