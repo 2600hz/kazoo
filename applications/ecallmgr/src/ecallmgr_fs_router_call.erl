@@ -145,7 +145,7 @@ interaction_props(Node, CallId, FSData) ->
     case props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), FSData) of
         'undefined' ->
             InterActionId = props:get_value(?GET_CUSTOM_HEADER(<<"Call-Interaction-ID">>), FSData, ?CALL_INTERACTION_DEFAULT),
-            ecallmgr_fs_command:set(Node, CallId, [{<<?CALL_INTERACTION_ID>>, InterActionId}]),
+            kz_util:spawn(fun ecallmgr_fs_command:set/3, [Node, CallId, [{<<?CALL_INTERACTION_ID>>, InterActionId}]]),
             [{?GET_CCV(<<?CALL_INTERACTION_ID>>), InterActionId}];
         _InterActionId -> []
     end.
