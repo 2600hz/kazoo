@@ -6,7 +6,7 @@
         "scheduled_date": {
             "description": "Time at which to perform the porting",
             "properties": {
-                "date": {
+                "date_time": {
                     "pattern": "^2\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d$",
                     "type": "string"
                 },

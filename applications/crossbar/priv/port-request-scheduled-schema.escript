@@ -15,6 +15,7 @@ main(_) ->
     {ok, SchemaBin} = file:read_file(?IN),
     SchemaJObj = kz_json:decode(SchemaBin),
     TZEnumPath = [<<"properties">>, <<"scheduled_date">>, <<"properties">>, <<"timezone">>, <<"enum">>],
+    [] = kz_json:get_list_value(TZEnumPath, SchemaJObj),
     Enum = unique_values(?tz_index),
     NewSchemaJObj = kz_json:set_value(TZEnumPath, sets:to_list(Enum), SchemaJObj),
     ok = file:write_file(?OUT, kz_json:encode(NewSchemaJObj)).
