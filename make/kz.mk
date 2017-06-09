@@ -51,7 +51,7 @@ PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
 ## SOURCES provides a way to specify compilation order (left to right)
-SOURCES     ?= src/*.erl $(if $(wildcard src/*/*.erl), src/*/*.erl)
+SOURCES     ?= $(wildcard src/*.erl) $(if $(wildcard src/*/*.erl), src/*/*.erl)
 TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
