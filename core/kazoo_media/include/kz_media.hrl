@@ -2,8 +2,7 @@
 
 -define(CHUNKSIZE, 24576).
 
--record(media_file, {
-          stream_url = <<>> :: binary()
+-record(media_file, {stream_url = <<>> :: binary()
                     ,contents = <<>> :: binary()
                     ,content_type = <<>> :: binary()
                     ,media_name = <<>> :: binary()
@@ -12,7 +11,7 @@
                     ,shout_header = {0, <<>>} :: {integer(), binary()} | 'undefined'
                     ,continuous = false :: boolean()
                     ,pad_response = true :: boolean()
-         }).
+                    }).
 
 -define(KZ_MEDIA_HRL, 'true').
 -endif.

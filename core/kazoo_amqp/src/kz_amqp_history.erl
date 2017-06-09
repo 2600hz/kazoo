@@ -34,9 +34,9 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {consumers = sets:new()
-               ,exchanges = dict:new()
-               ,connections = sets:new()
+-record(state, {consumers = sets:new() :: sets:set(pid())
+               ,exchanges = dict:new() :: dict:dict(ne_binary(), kz_amqp_exchange())
+               ,connections = sets:new() :: sets:set(pid())
                }).
 -type state() :: #state{}.
 

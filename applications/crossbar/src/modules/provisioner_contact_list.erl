@@ -14,12 +14,12 @@
 
 -include("crossbar.hrl").
 
--record(contact, {id
-                 ,callflow
-                 ,name
-                 ,first_module
-                 ,external_numbers = []
-                 ,internal_numbers = []
+-record(contact, {id :: api_ne_binary()
+                 ,callflow :: api_ne_binary()
+                 ,name :: api_ne_binary()
+                 ,first_module :: api_ne_binary()
+                 ,external_numbers = [] :: ne_binaries()
+                 ,internal_numbers = [] :: ne_binaries()
                  }).
 
 -spec build(ne_binary()) -> kz_json:objects().

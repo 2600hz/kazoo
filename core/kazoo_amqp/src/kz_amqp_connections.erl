@@ -49,7 +49,7 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {watchers = sets:new()
+-record(state, {watchers = sets:new() :: sets:set(pid())
                }).
 -type state() :: #state{}.
 

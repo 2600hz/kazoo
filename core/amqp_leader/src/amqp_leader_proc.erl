@@ -49,7 +49,9 @@
               ,sync                    :: any()
               }).
 
--record(?MODULE, {from, msg}).
+-record(?MODULE, {from :: sign()
+                 ,msg :: join | {leader, sign()} | {sync} | {from_leader, any()}
+                 }).
 
 -type role() :: 'candidate' | 'leader'.
 -type state() :: #state{}.

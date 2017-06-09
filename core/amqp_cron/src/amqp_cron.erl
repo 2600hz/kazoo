@@ -80,8 +80,8 @@
                  amqp_cron_task:execargs()}.
 %% Task definition.
 
--record(state, {tasks = []
-               ,is_leader = 'false'
+-record(state, {tasks = [] :: [task()]
+               ,is_leader = 'false' :: boolean()
                }).
 -type state() :: #state{}.
 

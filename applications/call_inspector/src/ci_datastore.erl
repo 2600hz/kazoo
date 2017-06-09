@@ -37,10 +37,10 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--record(object, {call_id
-                ,timestamp
-                ,type
-                ,value
+-record(object, {call_id :: ne_binary()
+                ,timestamp = kz_time:current_tstamp() :: gregorian_seconds()
+                ,type :: chunk | analysis
+                ,value :: ci_chunk:chunk() | ci_analysis:analysis()
                 }).
 -type object() :: #object{}.
 
@@ -156,7 +156,6 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'store_chunk', CallId, Chunk}, State) ->
     Object = #object{call_id=CallId
-                    ,timestamp=kz_time:current_tstamp()
                     ,type='chunk'
                     ,value=Chunk
                     },
@@ -165,7 +164,6 @@ handle_cast({'store_chunk', CallId, Chunk}, State) ->
     {'noreply', State};
 handle_cast({'store_analysis', CallId, Analysis}, State) ->
     Object = #object{call_id=CallId
-                    ,timestamp=kz_time:current_tstamp()
                     ,type='analysis'
                     ,value=Analysis
                     },
