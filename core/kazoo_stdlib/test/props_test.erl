@@ -12,7 +12,7 @@
 
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -endif.
 
 -include_lib("eunit/include/eunit.hrl").

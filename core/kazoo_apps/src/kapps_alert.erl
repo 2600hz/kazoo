@@ -15,7 +15,7 @@
 
 -define(CONFIG_CAT, <<"alerts">>).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 
 %%--------------------------------------------------------------------

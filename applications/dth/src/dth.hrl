@@ -1,7 +1,7 @@
 -ifndef(DTH_HRL).
 
 -include_lib("detergent/include/detergent.hrl").
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
 -include("include/dthsoap.hrl").

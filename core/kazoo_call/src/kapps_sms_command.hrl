@@ -1,6 +1,6 @@
 -ifndef(KAPPS_SMS_COMMAND_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include("kapps_call_command_types.hrl").
 

@@ -49,7 +49,7 @@
 
 -export_type([request_acc/0]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
 -define(SERVER, ?MODULE).

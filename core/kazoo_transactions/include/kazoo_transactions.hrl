@@ -1,6 +1,6 @@
 -ifndef(TRANSACTIONS_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
 -type units() :: non_neg_integer().
