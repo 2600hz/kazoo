@@ -94,8 +94,12 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('bind_to_record', #state{node=Node, event=Event}=State) ->
-    gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, Event)}),
-    {'noreply', State};
+    case gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, Event)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_OPTION_MSG(Node)}) =:= 'true'
+    of
+        'true' -> {'noreply', State};
+        'false' -> {'stop', 'gproc_badarg', State}
+    end;
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -174,9 +178,7 @@ handle_presence_event(BindingEvent, UUID, FSProps, Node, Options) ->
 
 -spec process_specific_event(ne_binary(), ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
 process_specific_event(Event, Event, UUID, Props, Node) ->
-    maybe_build_presence_event(Node, UUID, Props);
-process_specific_event(_BindingEvent, _Event, _UUID, _Props, _Node) ->
-    lager:debug("event ~s not binded (~s) in presence (~s)", [_Event, _BindingEvent, _Node]).
+    maybe_build_presence_event(Node, UUID, Props).
 
 -spec maybe_build_presence_event(atom(), api_binary(), kz_proplist()) -> any().
 maybe_build_presence_event(Node, UUID, Props) ->

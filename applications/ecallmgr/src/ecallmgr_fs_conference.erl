@@ -117,7 +117,9 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('bind_to_events', #state{node=Node}=State) ->
-    case gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"conference::maintenance">>)}) of
+    case gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"conference::maintenance">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_OPTION_MSG(Node)}) =:= 'true'
+    of
         'true' -> {'noreply', State};
         'false' -> {'stop', 'gproc_badarg', State}
     end;

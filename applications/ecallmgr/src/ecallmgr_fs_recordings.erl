@@ -92,9 +92,13 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('bind_to_record', #state{node=Node}=State) ->
-    gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"RECORD_START">>)}),
-    gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"RECORD_STOP">>)}),
-    {'noreply', State};
+    case gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"RECORD_START">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"RECORD_STOP">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_OPTION_MSG(Node)}) =:= 'true'
+    of
+        'true' -> {'noreply', State};
+        'false' -> {'stop', 'gproc_badarg', State}
+    end;
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -110,13 +114,17 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
-    _ = kz_util:spawn(fun process_event/3, [UUID, Props, Node]),
+handle_info({'event', Props}, #state{node=Node
+                                    ,options=Options
+                                    }=State) ->
+    _ = kz_util:spawn(fun handle_record_event/3, [Node, Props, Options]),
     {'noreply', State};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
     {stop, {'shutdown', 'noconnection'}, State};
 handle_info({'EXIT', _, Reason}, State) ->
     {stop, Reason, State};
+handle_info({'option', K, V}, #state{options=Options}=State) ->
+    {'noreply', State#state{options=props:set_value(K, V, Options)}};
 handle_info(_Other, State) ->
     lager:debug("unhandled msg: ~p", [_Other]),
     {'noreply', State}.
@@ -151,30 +159,62 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec init_props(kz_proplist(), kz_proplist()) -> kz_proplist().
+init_props(Props, Options) ->
+    case props:get_is_true(<<"Publish-Channel-State">>, Props) of
+        'undefined' ->
+            case props:is_false(<<"Publish-Channel-State">>, Options, 'false') of
+                'true' -> props:set_value(<<"Publish-Channel-State">>, 'false', Props);
+                _ -> Props
+            end;
+        _Value -> Props
+    end.
+
+-spec handle_record_event(atom(), kz_proplist(), kz_proplist()) -> 'ok'.
+handle_record_event(Node, [UUID | FSProps], Options) ->
+    kz_util:put_callid(UUID),
+    Props = init_props(FSProps, Options),
+    process_event(UUID, Props, Node),
+    maybe_publish_record_event(Props).
 
 -spec process_event(api_binary(), kz_proplist(), atom()) -> any().
 process_event(UUID, Props, Node) ->
     kz_util:put_callid(UUID),
-    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+    EventName = kzd_freeswitch:event_name(Props),
     process_specific_event(EventName, UUID, Props, Node).
 
 -spec process_specific_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
-process_specific_event(<<"RECORD_START">>, _UUID, Props, _Node) ->
-    ecallmgr_call_events:process_channel_event(Props);
 process_specific_event(<<"RECORD_STOP">>, UUID, Props, Node) ->
-    Args = [kzd_freeswitch:media_recorder(Props), Props, UUID, Node],
-    kz_util:spawn(fun maybe_store_recording/4, Args),
-    ecallmgr_call_events:process_channel_event(Props);
+    IsLocal = props:is_true(<<"Force-Publish-Event-State">>, Props, 'true')
+        orelse (props:is_true(<<"Publish-Channel-State">>, Props, 'true')
+                andalso handling_locally(Props)
+               ),
+    Args = [IsLocal, kzd_freeswitch:media_recorder(Props), Props, UUID, Node],
+    kz_util:spawn(fun maybe_store_recording/5, Args);
+process_specific_event(<<"RECORD_START">>, _UUID, _Props, _Node) -> 'ok';
 process_specific_event(_Event, _UUID, _Props, _Node) ->
     lager:debug("event ~s for callid ~s not handled in recordings (~s)", [_Event, _UUID, _Node]).
 
--spec maybe_store_recording(api_binary(), kz_proplist(), ne_binary(), atom()) ->
+
+-spec maybe_publish_record_event(kz_proplist()) -> 'ok'.
+maybe_publish_record_event(Props) ->
+    case props:is_true(<<"Force-Publish-Event-State">>, Props, 'true')
+        orelse (props:is_true(<<"Publish-Channel-State">>, Props, 'true')
+                andalso handling_locally(Props)
+               )
+    of
+        'true' -> ecallmgr_call_events:process_channel_event(Props);
+        'false' -> lager:debug("not publishing record event ~s", [kzd_freeswitch:event_name(Props)])
+    end.
+
+-spec maybe_store_recording(boolean(), api_binary(), kz_proplist(), ne_binary(), atom()) ->
                                    'ok' |
                                    'error' |
                                    ecallmgr_util:send_cmd_ret() |
                                    [ecallmgr_util:send_cmd_ret(),...].
-maybe_store_recording(<<"kz_media_recording">>, _Props, _CallId, _Node) -> 'ok';
-maybe_store_recording(_, Props, CallId, Node) ->
+maybe_store_recording('false', _, _Props, _CallId, _Node) -> 'ok';
+maybe_store_recording('true', <<"kz_media_recording">>, _Props, _CallId, _Node) -> 'ok';
+maybe_store_recording('true', _, Props, CallId, Node) ->
     case kzd_freeswitch:ccv(Props, <<"Media-Transfer-Destination">>) of
         'undefined' -> 'ok';
         <<>> -> 'ok';
@@ -208,3 +248,25 @@ maybe_store_recording(_, Props, CallId, Node) ->
 -spec media_transfer_method(kz_proplist()) -> ne_binary().
 media_transfer_method(Props) ->
     kzd_freeswitch:ccv(Props, <<"Media-Transfer-Method">>, <<"put">>).
+
+-spec handling_locally(kz_proplist()) -> boolean().
+handling_locally(Props) ->
+    handling_locally(Props, kzd_freeswitch:other_leg_call_id(Props)).
+
+-spec handling_locally(kz_proplist(), api_binary()) -> boolean().
+handling_locally(Props, 'undefined') ->
+    props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
+        =:= kz_term:to_binary(node());
+handling_locally(Props, OtherLeg) ->
+    Node = kz_term:to_binary(node()),
+    case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
+        Node -> 'true';
+        _ -> other_leg_handling_locally(OtherLeg)
+    end.
+
+-spec other_leg_handling_locally(ne_binary()) -> boolean().
+other_leg_handling_locally(OtherLeg) ->
+    case ecallmgr_fs_channel:fetch(OtherLeg, 'record') of
+        {'ok', #channel{handling_locally=HandleLocally}} -> HandleLocally;
+        _ -> 'false'
+    end.

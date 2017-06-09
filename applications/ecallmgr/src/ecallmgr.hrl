@@ -488,6 +488,8 @@
 
 -define(FS_ROUTE_MSG(Node, Section, Context), {'route', Node, Section, Context}).
 
+-define(FS_OPTION_MSG(Node), {'option', Node}).
+
 -define(FS_CARRIER_ACL_LIST, <<"trusted">>).
 -define(FS_SBC_ACL_LIST, <<"authoritative">>).
 
