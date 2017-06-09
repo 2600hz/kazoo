@@ -329,7 +329,8 @@ maybe_start_account_recording(From, To, Call) ->
 -spec maybe_start_endpoint_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
 maybe_start_endpoint_recording(<<"onnet">>, To, Call) ->
     {'ok', Endpoint} = kz_endpoint:get(Call),
-    maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING(To), Endpoint, Call);
+    Call1 = kapps_call:kvs_store('recording_follow_transer', 'false', Call),
+    maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING(To), Endpoint, Call1);
 maybe_start_endpoint_recording(_, _, Call) ->
     Call.
 
