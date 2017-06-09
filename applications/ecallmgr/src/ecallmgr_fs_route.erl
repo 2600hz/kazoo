@@ -145,7 +145,7 @@ handle_info({'fetch', Section, Tag, Key, Value, FSId, FSData}
     catch
         _E:_R ->
             lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
-            {'noreply', State, 'hibernate'}
+            {'noreply', State}
     end;
 handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}
            ,#state{node=Node
@@ -160,8 +160,8 @@ handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}
                                    ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
                                    ])
         ++ FSData,
-    handle_fetch(Section, FSId, CallId, Props, Node),
-    {'noreply', State, 'hibernate'};
+    kz_util:spawn(fun handle_fetch/5, [Section, FSId, CallId, Props, Node]),
+    {'noreply', State};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
     {stop, {'shutdown', 'noconnection'}, State};
 handle_info({'EXIT', _, Reason}, State) ->
