@@ -59,6 +59,7 @@
         ,get_account_lang/1
         ,get_language/1
         ,get_language/2
+        ,get_token_restrictions/3
         ]).
 -export([get_user_timezone/2
         ,get_account_timezone/1
@@ -766,15 +767,12 @@ format_app(Lang, AppJObj) ->
     I18N = kzd_app:i18n(AppJObj),
     DefaultLabel = kz_json:get_value([?DEFAULT_LANGUAGE, <<"label">>], I18N),
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"id">>, kzd_app:id(AppJObj)}
-        ,{<<"name">>, kzd_app:name(AppJObj)}
-        ,{<<"api_url">>, kzd_app:api_url(AppJObj)}
-        ,{<<"source_url">>, kzd_app:source_url(AppJObj)}
-        ,{<<"label">>, kz_json:get_value([Lang, <<"label">>], I18N, DefaultLabel)}
-        ]
-       )
-     ).
+      [{<<"id">>, kzd_app:id(AppJObj)}
+      ,{<<"name">>, kzd_app:name(AppJObj)}
+      ,{<<"api_url">>, kzd_app:api_url(AppJObj)}
+      ,{<<"source_url">>, kzd_app:source_url(AppJObj)}
+      ,{<<"label">>, kz_json:get_value([Lang, <<"label">>], I18N, DefaultLabel)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -862,7 +860,7 @@ get_account_lang(AccountId) ->
             'error'
     end.
 
--spec get_user_timezone(api_binary(), api_binary()) -> api_binary().
+-spec get_user_timezone(api_ne_binary(), api_ne_binary()) -> api_ne_binary().
 get_user_timezone(AccountId, 'undefined') ->
     get_account_timezone(AccountId);
 get_user_timezone(AccountId, UserId) ->
@@ -872,7 +870,7 @@ get_user_timezone(AccountId, UserId) ->
         {'error', _E} -> get_account_timezone(AccountId)
     end.
 
--spec get_account_timezone(api_binary()) -> api_binary().
+-spec get_account_timezone(api_ne_binary()) -> api_ne_binary().
 get_account_timezone('undefined') ->
     'undefined';
 get_account_timezone(AccountId) ->
@@ -945,7 +943,6 @@ create_auth_token(Context, AuthModule, JObj) ->
               ,{<<"owner_id">>, OwnerId}
               ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
               ,{<<"api_key">>, kz_json:get_value(<<"api_key">>, Data)}
-              ,{<<"restrictions">>, get_token_restrictions(AuthModule, AccountId, OwnerId)}
               ,{<<"method">>, kz_term:to_binary(AuthModule)}
               ]),
     JObjToken = kz_doc:update_pvt_parameters(kz_json:from_list(Token)

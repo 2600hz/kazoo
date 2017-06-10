@@ -280,6 +280,7 @@ update_config(#aws_config{} = Config) ->
     %% AccessKey is not set. Try to read from role metadata.
     case get_metadata_credentials(Config) of
         {'error', _Reason}=Error ->
+            lager:error("failed getting aws metadata credentials : ~p", [_Reason]),
             Error;
         {'ok', Credentials} ->
             NewConfig =
@@ -298,16 +299,8 @@ configure(#aws_config{} = Config) ->
 
 -spec get_metadata_credentials(aws_config()) -> {'ok', #metadata_credentials{}} | {'error', any()}.
 get_metadata_credentials(Config) ->
-    %% See if we have cached credentials
-    case application:get_env('kazoo_attachments', 'metadata_credentials') of
-        'undefined' -> get_credentials_from_metadata(Config);
-        {'ok', #metadata_credentials{expiration_gregorian_seconds = Expiration} = Credentials} ->
-            %% Get new credentials if these will expire in less than 5 minutes
-            case Expiration - kz_time:current_tstamp() < 300 of
-                'true' -> get_credentials_from_metadata(Config);
-                'false' -> {'ok', Credentials}
-            end
-    end.
+    get_credentials_from_metadata(Config).
+%% See if we have cached credentials
 
 timestamp_to_gregorian_seconds(Timestamp) ->
     {'ok', [Yr, Mo, Da, H, M, S], []} =

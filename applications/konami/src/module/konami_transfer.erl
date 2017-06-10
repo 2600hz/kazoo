@@ -61,13 +61,13 @@
                ,target_a_leg :: api_ne_binary() %% loopback-a
                ,target_b_leg :: api_ne_binary() %% loopback-b
                ,target_legs = [] :: ne_binaries()
-               ,call :: kapps_call:call()
+               ,call :: kapps_call:call() | 'undefined'
                ,target_call = kapps_call:new() :: kapps_call:call()
                ,takeback_dtmf :: api_ne_binary()
                ,transferor_dtmf = <<>> :: binary()
-               ,ringback :: api_binary()
-               ,moh :: api_binary()
-               ,extension :: api_binary()
+               ,ringback :: api_ne_binary()
+               ,moh :: api_ne_binary()
+               ,extension :: api_ne_binary()
                ,purgatory_ref :: api_reference()
                ,event_node :: api_ne_binary()
                }).
@@ -79,7 +79,7 @@
 -define(DEFAULT_TARGET_TIMEOUT,
         kapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20 * ?MILLISECONDS_IN_SECOND)).
 
--define(DEFAULT_RINGBACK, kapps_config:get_json(<<"ecallmgr">>, <<"default_ringback">>)).
+-define(DEFAULT_RINGBACK, kapps_config:get_ne_binary(<<"ecallmgr">>, <<"default_ringback">>, <<"%(2000,4000,440,480)">>)).
 
 -define(TRANSFEROR_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
                                 ,<<"DTMF">>
@@ -121,13 +121,13 @@ handle(Data, Call) ->
     unbridge(Call),
 
     try gen_fsm:enter_loop(?MODULE, [], 'pre_originate'
-                          ,#state{transferor=Transferor
-                                 ,transferee=Transferee
-                                 ,call=kapps_call:set_controller_queue(konami_event_listener:queue_name(), Call)
-                                 ,takeback_dtmf=kz_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
-                                 ,ringback=to_tonestream(kz_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
-                                 ,moh=find_moh(Data, Call)
-                                 ,extension=get_extension(kz_json:get_first_defined([<<"captures">>, <<"target">>], Data))
+                          ,#state{transferor = Transferor
+                                 ,transferee = Transferee
+                                 ,call = kapps_call:set_controller_queue(konami_event_listener:queue_name(), Call)
+                                 ,takeback_dtmf = kz_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
+                                 ,ringback = to_tonestream(kz_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
+                                 ,moh = find_moh(Data, Call)
+                                 ,extension = get_extension(kz_json:get_first_defined([<<"captures">>, <<"target">>], Data))
                                  }
                           )
     of
@@ -156,7 +156,7 @@ pre_originate(?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
              )
   when UUID =:= Transferee;
        UUID =:= Transferor ->
-    MOHToPlay = kz_media_util:media_path(MOH, Call),
+    MOHToPlay = kz_media_util:media_path(MOH, kapps_call:account_id(Call)),
     lager:info("putting transferee ~s on hold with MOH ~s", [Transferee, MOHToPlay]),
     HoldCommand = kapps_call_command:hold_command(MOHToPlay, Transferee),
     kapps_call_command:send_command(HoldCommand, Call),
@@ -1028,7 +1028,7 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
--spec init(any()) -> {ok, atom(), state()}.
+-spec init(any()) -> {'ok', 'attended_wait', state()}.
 init(_) -> {'ok', 'attended_wait', #state{}}.
 
 -spec add_transferor_bindings(ne_binary()) -> 'ok'.
@@ -1042,10 +1042,9 @@ add_transferee_bindings(CallId) ->
 -spec originate_to_extension(ne_binary(), ne_binary(), kapps_call:call()) -> ne_binary().
 originate_to_extension(Extension, TransferorLeg, Call) ->
     MsgId = kz_binary:rand_hex(4),
-
     CallerIdNumber = caller_id_number(Call, TransferorLeg),
 
-    CCVs = props:filter_undefined(
+    CCVs = kz_json:from_list(
              [{<<"Account-ID">>, kapps_call:account_id(Call)}
              ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
              ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
@@ -1058,19 +1057,18 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
     TargetCallId = create_call_id(),
 
     Endpoint = kz_json:from_list(
-                 props:filter_undefined(
-                   [{<<"Invite-Format">>, <<"loopback">>}
-                   ,{<<"Route">>,  Extension}
-                   ,{<<"To-DID">>, Extension}
-                   ,{<<"To-Realm">>, kapps_call:account_realm(Call)}
-                   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-                   ,{<<"Outbound-Call-ID">>, TargetCallId}
-                   ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
-                   ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
-                   ,{<<"Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
-                   ,{<<"Caller-ID-Number">>, CallerIdNumber}
-                   ,{<<"Ignore-Early-Media">>, 'true'}
-                   ])),
+                 [{<<"Invite-Format">>, <<"loopback">>}
+                 ,{<<"Route">>,  Extension}
+                 ,{<<"To-DID">>, Extension}
+                 ,{<<"To-Realm">>, kapps_call:account_realm(Call)}
+                 ,{<<"Custom-Channel-Vars">>, CCVs}
+                 ,{<<"Outbound-Call-ID">>, TargetCallId}
+                 ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
+                 ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
+                 ,{<<"Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
+                 ,{<<"Caller-ID-Number">>, CallerIdNumber}
+                 ,{<<"Ignore-Early-Media">>, 'true'}
+                 ]),
 
     Request = props:filter_undefined(
                 [{<<"Endpoints">>, [Endpoint]}
@@ -1078,7 +1076,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                 ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                 ,{<<"Msg-ID">>, MsgId}
                 ,{<<"Continue-On-Fail">>, 'true'}
-                ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+                ,{<<"Custom-Channel-Vars">>, CCVs}
                 ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>
                                                     ,<<"Authorizing-Type">>, <<"Authorizing-ID">>
                                                     ,<<"Channel-Authorized">>, <<"Metaflow-App">>
@@ -1332,11 +1330,10 @@ transfer_data(Target, <<"n">>, MOH) ->
     transfer_data(Target, 'undefined', MOH);
 transfer_data(Target, Takeback, MOH) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"target">>, Target}
-        ,{<<"takeback_dtmf">>, Takeback}
-        ,{<<"moh">>, MOH}
-        ])).
+      [{<<"target">>, Target}
+      ,{<<"takeback_dtmf">>, Takeback}
+      ,{<<"moh">>, MOH}
+      ]).
 
 -spec find_moh(kz_json:object(), kapps_call:call()) -> api_binary().
 -spec find_moh(kapps_call:call()) -> api_binary().
@@ -1351,22 +1348,21 @@ find_moh(Call) ->
 
 -spec issue_transferee_event(ne_binary(), kapps_call:call()) -> 'ok'.
 issue_transferee_event(Target, Call) ->
-    API =
-        [{<<"Event-Name">>, <<"CHANNEL_TRANSFEREE">>}
-        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-        ,{<<"DISPOSITION">>, <<"SUCCESS">>}
-        ,{<<"Raw-Application-Name">>,<<"sofia::transferee">>}
-         %%,{<<"Direction">>, kapps_call:direction(Call)}
-        ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-        ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-        ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
-        ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
-        ,{<<"Other-Leg-Call-ID">>, kapps_call:other_leg_call_id(Call)}
-        ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
-        ,{<<"Target-Call-ID">>, Target}
-         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-        ],
-    kapi_call:publish_event(API).
+    kapi_call:publish_event(
+      [{<<"Event-Name">>, <<"CHANNEL_TRANSFEREE">>}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+      ,{<<"DISPOSITION">>, <<"SUCCESS">>}
+      ,{<<"Raw-Application-Name">>,<<"sofia::transferee">>}
+       %%,{<<"Direction">>, kapps_call:direction(Call)}
+      ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+      ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+      ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
+      ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
+      ,{<<"Other-Leg-Call-ID">>, kapps_call:other_leg_call_id(Call)}
+      ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+      ,{<<"Target-Call-ID">>, Target}
+       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).
 
 %% We need to figure out which kapps call to issue the connect_leg against
 %% When the A-leg is the transferor, its ecallmgr control will be down at this

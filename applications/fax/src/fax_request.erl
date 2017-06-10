@@ -424,6 +424,8 @@ build_fax_settings(Call, JObj) ->
       ,{<<"Callee-ID-Name">>, callee_name(JObj)}
       ,{<<"Fax-Doc-ID">>, kapps_call:kvs_fetch(<<"Fax-Doc-ID">>, Call) }
       ,{<<"Fax-Doc-DB">>, kapps_call:kvs_fetch(<<"Fax-Doc-DB">>, Call) }
+      ,{<<"RTCP-MUX">>, false}
+      ,{<<"Origination-Call-ID">>, kapps_call:call_id(Call)}
       ]).
 
 -spec callee_name(kz_json:object()) -> ne_binary().
@@ -615,7 +617,7 @@ notify_failure(JObj, Reason, #state{call=Call
                 ,{<<"Fax-Notifications">>,  Notify}
                  | notify_fields(Call, JObj)
                 ]),
-    kapi_notifications:publish_fax_inbound_error(Message).
+    kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_inbound_error/1).
 
 -spec notify_success(state()) -> 'ok'.
 notify_success(#state{call=Call
@@ -639,7 +641,7 @@ notify_success(#state{call=Call
                 ,{<<"Fax-Notifications">>, Notify}
                  | notify_fields(Call, JObj)
                 ]),
-    kapi_notifications:publish_fax_inbound(Message).
+    kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_inbound/1).
 
 -spec send_error_status(state(), ne_binary(), api_object()) -> 'ok'.
 send_error_status(State, Status, FaxInfo) ->

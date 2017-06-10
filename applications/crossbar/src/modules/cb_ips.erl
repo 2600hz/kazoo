@@ -380,13 +380,11 @@ release_ip(Context, Id) ->
 -spec clean_ip(kz_json:object()) -> kz_json:object().
 clean_ip(JObj) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"id">>, kz_doc:id(JObj)}
-        ,{<<"ip">>, kz_doc:id(JObj)}
-        ,{<<"zone">>, kz_json:get_value(<<"pvt_zone">>, JObj)}
-        ,{<<"host">>, kz_json:get_value(<<"pvt_host">>, JObj)}
-        ,{<<"status">>, kz_json:get_value(<<"pvt_status">>, JObj)}
-        ,{<<"type">>, kz_doc:type(JObj)}
-        ,{<<"assigned_to">>, kz_json:get_value(<<"pvt_assigned_to">>, JObj)}
-        ])
-     ).
+      [{<<"id">>, kz_doc:id(JObj)}
+      ,{<<"ip">>, kz_doc:id(JObj)}
+      ,{<<"zone">>, kz_json:get_value(<<"pvt_zone">>, JObj)}
+      ,{<<"host">>, kz_json:get_value(<<"pvt_host">>, JObj)}
+      ,{<<"status">>, kz_json:get_value(<<"pvt_status">>, JObj)}
+      ,{<<"type">>, kz_doc:type(JObj)}
+      ,{<<"assigned_to">>, kz_json:get_value(<<"pvt_assigned_to">>, JObj)}
+      ]).

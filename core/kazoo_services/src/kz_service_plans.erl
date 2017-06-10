@@ -100,10 +100,9 @@ add_service_plan(PlanId, ResellerId, ServicesJObj) ->
         {'ok', ServicePlan} ->
             Plan =
                 kz_json:from_list(
-                  props:filter_undefined([{<<"account_id">>, ResellerId}
-                                         ,{<<"category">>, kzd_service_plan:grouping_category(ServicePlan)}
-                                         ])
-                 ),
+                  [{<<"account_id">>, ResellerId}
+                  ,{<<"category">>, kzd_service_plan:grouping_category(ServicePlan)}
+                  ]),
             kzd_services:set_plan(ServicesJObj, PlanId, Plan)
     end.
 

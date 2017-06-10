@@ -278,7 +278,11 @@ handle_initial_registration(AccountId) ->
 notify_initial_registration(AccountJObj) ->
     UpdatedAccountJObj = kz_account:set_initial_registration_sent(AccountJObj, 'true'),
     _ = kz_util:account_update(UpdatedAccountJObj),
-    kz_notify:first_registration(kz_doc:id(AccountJObj)).
+    Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
+          ,{<<"Occurrence">>, <<"registration">>}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
 
 %% First Call
 -spec maybe_test_for_initial_call(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
@@ -313,7 +317,11 @@ handle_initial_call(AccountId) ->
 notify_initial_call(AccountJObj) ->
     UpdatedAccountJObj = kz_account:set_initial_call_sent(AccountJObj, 'true'),
     _ = kz_util:account_update(UpdatedAccountJObj),
-    kz_notify:first_call(kz_doc:id(AccountJObj)).
+    Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
+          ,{<<"Occurrence">>, <<"call">>}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
 
 %%% Low balance check
 
@@ -423,7 +431,13 @@ notify_of_low_balance(AccountJObj, CurrentBalance) ->
     AccountId = kz_account:id(AccountJObj),
     lager:debug("sending low balance alert for account ~s with balance ~w"
                ,[AccountId, CurrentBalance]),
-    'ok' = kz_notify:low_balance(AccountId, CurrentBalance),
+
+    Req = [{<<"Account-ID">>, AccountId}
+          ,{<<"Current-Balance">>, CurrentBalance}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_low_balance/1),
+
     update_account_low_balance_sent(AccountJObj).
 
 -spec update_account_low_balance_sent(kz_account:doc()) -> 'ok'.

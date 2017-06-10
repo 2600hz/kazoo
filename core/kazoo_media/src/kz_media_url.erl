@@ -16,7 +16,7 @@
 -define(STREAM_TYPE_STORE, kz_json:from_list([{<<"Stream-Type">>, <<"store">>}])).
 
 -type build_media_url() :: api_binary() | binaries() | kz_json:object().
--type build_media_url_ret() :: ne_binary() | {'error', any()}.
+-type build_media_url_ret() :: ne_binary() | {'error', atom()}.
 
 -spec playback(build_media_url()) -> build_media_url_ret().
 -spec playback(build_media_url(), kz_json:object()) -> build_media_url_ret().
@@ -50,8 +50,8 @@ playback(Path, JObj)
 playback(Doc, JObj) ->
     lager:debug("building media url from doc"),
     case kz_media_util:store_path_from_doc(Doc) of
-        {'error', _} = Error -> Error;
-        Media -> kz_media_file:get_uri(Media, JObj)
+        #media_store_path{}=Media -> kz_media_file:get_uri(Media, JObj);
+        Error -> Error
     end.
 
 -spec store(kz_json:object(), ne_binary()) ->
@@ -61,10 +61,8 @@ playback(Doc, JObj) ->
 -spec store(ne_binary(), kazoo_data:docid(), ne_binary(), kz_proplist()) ->
                    build_media_url_ret().
 store(JObj, AName) ->
-    case kz_media_util:store_path_from_doc(JObj, AName) of
-        {'error', _} = Error -> Error;
-        Media -> kz_media_file:get_uri(Media, ?STREAM_TYPE_STORE)
-    end.
+    Media = kz_media_util:store_path_from_doc(JObj, AName),
+    kz_media_file:get_uri(Media, ?STREAM_TYPE_STORE).
 
 store(Db, Id, Attachment) ->
     store(Db, Id, Attachment, []).

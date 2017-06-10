@@ -398,6 +398,7 @@ handle_cast('bind_to_events', #state{node=Node}=State) ->
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_BRIDGE">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_UNBRIDGE">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CALL_UPDATE">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_OPTION_MSG(Node)}) =:= 'true'
     of
         'true' -> {'noreply', State};
         'false' -> {'stop', 'gproc_badarg', State}
@@ -770,7 +771,7 @@ get_realm(Props) ->
         Realm -> kz_term:to_lower_binary(Realm)
     end.
 
--spec props_to_update(kz_proplist()) -> [{integer(), ne_binary()}].
+-spec props_to_update(kz_proplist()) -> channel_updates().
 props_to_update(Props) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
@@ -807,7 +808,7 @@ props_to_update(Props) ->
                             | update_callee(UUID, Props)
                            ]).
 
--spec update_callee(binary(), kz_proplist()) -> kz_proplist().
+-spec update_callee(binary(), channel_updates()) -> channel_updates().
 update_callee(UUID, Props) ->
     case fetch(UUID, 'record') of
         {'ok', #channel{callee_number = Num2

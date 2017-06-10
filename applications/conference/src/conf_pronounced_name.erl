@@ -27,6 +27,7 @@ get_user_id(Call) ->
     case kapps_call:authorizing_type(Call) of
         <<"user">> -> kapps_call:authorizing_id(Call);
         <<"device">> -> get_user_id_from_device(Call);
+        <<"mobile">> -> get_user_id_from_device(Call);
         _Type -> 'undefined'
     end.
 

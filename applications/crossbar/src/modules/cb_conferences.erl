@@ -406,7 +406,7 @@ add_duration_to_participants(Participants) ->
 
 -spec partition_participants_count(kz_json:objects()) -> {integer(), integer()}.
 partition_participants_count(Participants) ->
-    partition_participants_count(Participants, fun(P) -> kz_json:is_true(<<"Is-Moderator">>, P) end).
+    partition_participants_count(Participants, fun(P) -> kz_json:is_true([<<"Conference-Channel-Vars">>, <<"Is-Moderator">>], P) end).
 
 -spec partition_participants_count(kz_json:objects(), fun((kz_json:object()) -> boolean())) -> {integer(), integer()}.
 partition_participants_count(Participants, Fun) ->

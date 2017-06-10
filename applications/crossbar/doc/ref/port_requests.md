@@ -25,7 +25,6 @@ Key | Description | Type | Default | Required
 `numbers` | The numbers to port in | `object` |   | `true`
 `numbers./\+?[0-9]+/` |   | `object` |   | `false`
 `port_state` | What state the port request is currently in | `string('unconfirmed', 'pending', 'submitted', 'scheduled', 'completed', 'rejected', 'canceled')` | `unconfirmed` | `false`
-`scheduled_date` | Requested scheduled date in gregorain timestamp | `integer` |   | `false`
 `transfer_date` | Requested transfer date in gregorain timestamp | `integer` |   | `false`
 
 
@@ -147,6 +146,16 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/submitted
+```
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline
 ```
 
 #### Fetch

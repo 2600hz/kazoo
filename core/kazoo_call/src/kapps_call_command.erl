@@ -440,9 +440,19 @@ audio_macro([{'play', MediaName}|T], Call, Queue) ->
 audio_macro([{'play', MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
 audio_macro([{'prompt', PromptName}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(kz_media_util:get_prompt(PromptName, Call), ?ANY_DIGIT, Call) | Queue]);
+    audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName)
+                                      ,?ANY_DIGIT
+                                      ,Call
+                                      )
+                          | Queue
+                         ]);
 audio_macro([{'prompt', PromptName, Lang}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(kz_media_util:get_prompt(PromptName, Lang, Call), ?ANY_DIGIT, Call) | Queue]);
+    audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName, Lang)
+                                      ,?ANY_DIGIT
+                                      ,Call
+                                      )
+                          | Queue
+                         ]);
 audio_macro([{'say', Say}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, kapps_call:language(Call), Call) | Queue]);
 audio_macro([{'say', Say, Type}|T], Call, Queue) ->
@@ -1039,7 +1049,7 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
     ,{<<"Endpoints">>, Endpoints}
     ,{<<"Timeout">>, Timeout}
     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-    ,{<<"Ringback">>, kz_media_util:media_path(Ringback, Call)}
+    ,{<<"Ringback">>, kz_media_util:media_path(Ringback, kapps_call:account_id(Call))}
     ,{<<"Dial-Endpoint-Method">>, Strategy}
     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
     ,{<<"Ignore-Forward">>, IgnoreFoward}
@@ -1186,14 +1196,15 @@ hold_command(Call) ->
     hold_command('undefined', Call).
 hold_command(MOH, CallId=?NE_BINARY) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"hold">>}
-        ,{<<"Insert-At">>, <<"now">>}
-        ,{<<"Hold-Media">>, MOH}
-        ,{<<"Call-ID">>, CallId}
-        ]));
+      [{<<"Application-Name">>, <<"hold">>}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Hold-Media">>, MOH}
+      ,{<<"Call-ID">>, CallId}
+      ]);
 hold_command(MOH, Call) ->
-    hold_command(kz_media_util:media_path(MOH, Call), kapps_call:call_id_direct(Call)).
+    hold_command(kz_media_util:media_path(MOH, kapps_call:account_id(Call))
+                ,kapps_call:call_id_direct(Call)
+                ).
 
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 
@@ -1223,12 +1234,11 @@ hold_control_command(Call) ->
     hold_control_command(<<"toggle">>, Call).
 hold_control_command(Action, CallId=?NE_BINARY) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"hold_control">>}
-        ,{<<"Insert-At">>, <<"now">>}
-        ,{<<"Action">>, Action}
-        ,{<<"Call-ID">>, CallId}
-        ]));
+      [{<<"Application-Name">>, <<"hold_control">>}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Action">>, Action}
+      ,{<<"Call-ID">>, CallId}
+      ]);
 hold_control_command(Action, Call) ->
     hold_control_command(Action, kapps_call:call_id_direct(Call)).
 
@@ -1261,14 +1271,14 @@ park_command(Call) ->
 -spec b_prompt(ne_binary(), ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 
 prompt(Prompt, Call) ->
-    play(kz_media_util:get_prompt(Prompt, Call), Call).
+    play(kapps_call:get_prompt(Call, Prompt), Call).
 prompt(Prompt, Lang, Call) ->
-    play(kz_media_util:get_prompt(Prompt, Lang, Call), Call).
+    play(kapps_call:get_prompt(Call, Prompt, Lang), Call).
 
 b_prompt(Prompt, Call) ->
-    b_play(kz_media_util:get_prompt(Prompt, Call), Call).
+    b_play(kapps_call:get_prompt(Call, Prompt), Call).
 b_prompt(Prompt, Lang, Call) ->
-    b_play(kz_media_util:get_prompt(Prompt, Lang, Call), Call).
+    b_play(kapps_call:get_prompt(Call, Prompt, Lang), Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1305,13 +1315,12 @@ play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
 play_command(Media, Terminators, Leg, CallId=?NE_BINARY) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"play">>}
-        ,{<<"Media-Name">>, Media}
-        ,{<<"Terminators">>, play_terminators(Terminators)}
-        ,{<<"Leg">>, play_leg(Leg)}
-        ,{<<"Call-ID">>, CallId}
-        ]));
+      [{<<"Application-Name">>, <<"play">>}
+      ,{<<"Media-Name">>, Media}
+      ,{<<"Terminators">>, play_terminators(Terminators)}
+      ,{<<"Leg">>, play_leg(Leg)}
+      ,{<<"Call-ID">>, CallId}
+      ]);
 play_command(Media, Terminators, Leg, Call) ->
     play_command(Media, Terminators, Leg, kapps_call:call_id(Call)).
 
@@ -1396,15 +1405,14 @@ tts_command(SayMe, Voice, Language, Terminators, Call) ->
     tts_command(SayMe, Voice, Language, Terminators, kazoo_tts:default_provider(Call), Call).
 tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"tts">>}
-        ,{<<"Text">>, SayMe}
-        ,{<<"Terminators">>, tts_terminators(Terminators)}
-        ,{<<"Voice">>, tts_voice(Voice)}
-        ,{<<"Language">>, tts_language(Language, Call)}
-        ,{<<"Engine">>, tts_engine(Engine, Call)}
-        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-        ])).
+      [{<<"Application-Name">>, <<"tts">>}
+      ,{<<"Text">>, SayMe}
+      ,{<<"Terminators">>, tts_terminators(Terminators)}
+      ,{<<"Voice">>, tts_voice(Voice)}
+      ,{<<"Language">>, tts_language(Language, Call)}
+      ,{<<"Engine">>, tts_engine(Engine, Call)}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+      ]).
 
 tts_terminators('undefined') -> ?ANY_DIGIT;
 tts_terminators(Terminators) -> Terminators.
@@ -1492,7 +1500,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -spec verify_media_name(kz_json:object(), ne_binary()) -> boolean().
 verify_media_name(JObj, MediaName) ->
-    case kz_media_recording:get_response_media(JObj) of
+    case kzc_recording:get_response_media(JObj) of
         {_, MediaName} -> 'true';
         _ -> 'false'
     end.
@@ -1743,7 +1751,7 @@ prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidP
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, [<<"#">>], Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, kz_media_util:get_prompt(Prompt, Call), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+    play_and_collect_digits(MinDigits, MaxDigits, kapps_call:get_prompt(Call, Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
 
 b_prompt_and_collect_digit(Prompt, Call) ->
     b_prompt_and_collect_digits(1, 1, Prompt, Call).
@@ -1766,7 +1774,7 @@ b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, 0, _Timeout, Invali
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
     b_play_and_collect_digits(MinDigits
                              ,MaxDigits
-                             ,kz_media_util:get_prompt(Prompt, Call)
+                             ,kapps_call:get_prompt(Call, Prompt)
                              ,Tries
                              ,Timeout
                              ,InvalidPrompt
@@ -1942,15 +1950,14 @@ say_command(Say, Type, Method, Language, Call) ->
 
 say_command(Say, Type, Method, Language, Gender, Call) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"say">>}
-        ,{<<"Say-Text">>, Say}
-        ,{<<"Type">>, say_type(Type)}
-        ,{<<"Method">>, say_method(Method)}
-        ,{<<"Language">>, say_language(Language, Call)}
-        ,{<<"Gender">>, say_gender(Gender)}
-        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-        ])).
+      [{<<"Application-Name">>, <<"say">>}
+      ,{<<"Say-Text">>, Say}
+      ,{<<"Type">>, say_type(Type)}
+      ,{<<"Method">>, say_method(Method)}
+      ,{<<"Language">>, say_language(Language, Call)}
+      ,{<<"Gender">>, say_gender(Gender)}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+      ]).
 
 say_type('undefined') -> <<"name_spelled">>;
 say_type(T) -> T.
@@ -3134,27 +3141,25 @@ transfer_command(TransferType, TransferTo, Call) ->
     transfer_command(TransferType, TransferTo, 'undefined', Call).
 transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"transfer">>}
-        ,{<<"Transfer-Type">>, TransferType}
-        ,{<<"Transfer-To">>, TransferTo}
-        ,{<<"Transfer-Leg">>, TransferLeg}
-        ,{<<"Caller-ID-Number">>, kapps_call:callee_id_number(Call)}
-        ,{<<"Caller-ID-Name">>, kapps_call:callee_id_name(Call)}
-        ,{<<"Insert-At">>, <<"now">>}
-        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-        ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
-        ])).
+      [{<<"Application-Name">>, <<"transfer">>}
+      ,{<<"Transfer-Type">>, TransferType}
+      ,{<<"Transfer-To">>, TransferTo}
+      ,{<<"Transfer-Leg">>, TransferLeg}
+      ,{<<"Caller-ID-Number">>, kapps_call:callee_id_number(Call)}
+      ,{<<"Caller-ID-Name">>, kapps_call:callee_id_name(Call)}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+      ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+      ]).
 
 -spec play_macro_command(ne_binaries(), kapps_call:call()) -> api_terms().
 play_macro_command(Media, Call) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"play_macro">>}
-        ,{<<"Media-Macro">>, Media}
-        ,{<<"Insert-At">>, <<"now">>}
-        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-        ])).
+      [{<<"Application-Name">>, <<"play_macro">>}
+      ,{<<"Media-Macro">>, Media}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+      ]).
 
 -spec b_play_macro(ne_binaries(), kapps_call:call()) -> kapps_api_std_return().
 b_play_macro(Media, Call) ->
@@ -3180,12 +3185,11 @@ play_macro(Media, Call) ->
 -spec media_macro_command(media_macros(), kapps_call:call()) ->api_terms().
 media_macro_command(Media, Call) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"media_macro">>}
-        ,{<<"Media-Macros">>, kz_json:from_list(Media)}
-        ,{<<"Insert-At">>, <<"now">>}
-        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-        ])).
+      [{<<"Application-Name">>, <<"media_macro">>}
+      ,{<<"Media-Macros">>, kz_json:from_list(Media)}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+      ]).
 
 -spec media_macro(media_macros(), kapps_call:call()) -> 'ok'.
 media_macro(Media, Call) ->
@@ -3195,12 +3199,11 @@ media_macro(Media, Call) ->
 -spec sound_touch_command(kz_proplist(), kapps_call:call()) ->api_terms().
 sound_touch_command(Options, Call) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Application-Name">>, <<"sound_touch">>}
-        ,{<<"Insert-At">>, <<"now">>}
-        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-         | Options
-        ])).
+      [{<<"Application-Name">>, <<"sound_touch">>}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+       | Options
+      ]).
 
 -spec start_sound_touch(kz_proplist(), kapps_call:call()) -> 'ok'.
 start_sound_touch(Options, Call) ->

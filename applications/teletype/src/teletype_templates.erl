@@ -303,7 +303,7 @@ maybe_decode_html(HTML) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), init_params()) ->
                     {'ok', kz_json:object()} |
-                    kz_data:data_error().
+                    kz_datamgr:data_error().
 create(DocId, Params) ->
     lager:debug("attempting to create template ~s", [DocId]),
     TemplateJObj =

@@ -934,4 +934,4 @@ send_outbound_smtp_fax_error(#state{account_id=AccountId
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     %% Do not crash if fields were undefined
-    kz_amqp_worker:cast(Message, fun kapi_notifications:publish_fax_outbound_smtp_error/1).
+    kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound_smtp_error/1).

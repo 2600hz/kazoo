@@ -88,14 +88,28 @@ process_module(Module, Config0) ->
             Routines = [{fun process_functions/2, Fs}
                        ,{fun process_records/2, Rs}
                        ],
-            Config1 = lists:foldl(fun(_, {'skip', Config}) -> Config;
-                                     ({Fun, Arg}, Config) ->
-                                          erlang:apply(Fun, [Arg, Config])
-                                  end
-                                 ,callback_module(M, Config0)
-                                 ,Routines
-                                 ),
+            Config1 = fold_over_module(Module, Config0, Routines),
             callback_after_module(M, Config1)
+    end.
+
+-spec fold_over_module(atom(), config(), [{fun((ast_functions(), config()) -> config()), ast_functions()} |
+                                          {fun((ast_records(), config()) -> config()), ast_records()}
+                                         ]) ->
+                              config().
+fold_over_module(Module, Config0, Routines) ->
+    try lists:foldl(fun(_, {'skip', ConfigAcc}) -> ConfigAcc;
+                       ({Fun, Arg}, ConfigAcc) ->
+                            erlang:apply(Fun, [Arg, ConfigAcc])
+                    end
+                   ,callback_module(Module, Config0)
+                   ,Routines
+                   )
+    catch
+        _E:R ->
+            ST = erlang:get_stacktrace(),
+            io:format("error processing ~s: '~s': ~p~n", [Module, _E, R]),
+            [io:format("~p~n", [S]) || S <- ST],
+            throw({'error', Module, R})
     end.
 
 process_records(Records, Config0) ->

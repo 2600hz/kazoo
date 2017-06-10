@@ -38,8 +38,6 @@
 -define(SERVER, ?MODULE).
 
 -define(ACCOUNTS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".accounts">>).
--define(DEFAULT_TIMEZONE
-       ,kapps_config:get_ne_binary(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)).
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
@@ -503,7 +501,7 @@ ensure_account_has_timezone(_AccountId, Context) ->
 get_timezone_from_parent(Context) ->
     case create_new_tree(Context) of
         [_|_]=Tree -> kz_account:timezone(lists:last(Tree));
-        [] -> ?DEFAULT_TIMEZONE
+        [] -> kz_account:default_timezone()
     end.
 
 -spec random_realm() -> ne_binary().
@@ -1520,7 +1518,7 @@ notify_new_account(Context, _AuthDoc) ->
              ,{<<"Account-DB">>, cb_context:account_db(Context)}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_new_account/1).
+    kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
 
 %%--------------------------------------------------------------------
 %% @private

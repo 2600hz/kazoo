@@ -25,7 +25,8 @@
             "type": "string"
         },
         "provisioning_type": {
-            "description": "crossbar.devices provisioning type"
+            "description": "crossbar.devices provisioning type",
+            "type": "string"
         },
         "provisioning_url": {
             "description": "crossbar.devices provisioning url",

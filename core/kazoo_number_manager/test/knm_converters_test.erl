@@ -76,16 +76,29 @@ proper_test_() ->
 %%
 
 normalize_test_() ->
-    Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
-    Ans = <<"+12234567890">>,
-    [?_assertEqual(?MODULE_TESTED:normalize(N), Ans) || N <- Ns].
+    [?_assertEqual(<<"+12234567890">>, ?MODULE_TESTED:normalize(N))
+     || N <- [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>]
+    ].
 
 to_npan_test_() ->
-    Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
-    Ans = <<"2234567890">>,
-    [?_assertEqual(?MODULE_TESTED:to_npan(N), Ans) || N <- Ns].
+    [?_assertEqual(<<"2234567890">>, ?MODULE_TESTED:to_npan(N))
+     || N <- [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>]
+    ].
 
 to_1npan_test_() ->
-    Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
-    Ans = <<"12234567890">>,
-    [?_assertEqual(?MODULE_TESTED:to_1npan(N), Ans) || N <- Ns].
+    [?_assertEqual(<<"12234567890">>, ?MODULE_TESTED:to_1npan(N))
+     || N <- [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>]
+    ].
+
+converters_fields_in_order_test_() ->
+    Props = kz_json:to_proplist(knm_converter_regex:get_e164_converters()),
+    [?_assertEqual(lists:nth(3, Props)
+                  ,{<<"^[2-9]\\d{7,}\$">>, kz_json:from_list([{<<"prefix">>, <<"+">>}])}
+                  )
+    ,?_assertEqual(lists:nth(2, Props)
+                  ,{<<"^011(\\d*)$|^00(\\d*)\$">>, kz_json:from_list([{<<"prefix">>, <<"+">>}])}
+                  )
+    ,?_assertEqual(lists:nth(1, Props)
+                  ,{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, kz_json:from_list([{<<"prefix">>, <<"+1">>}])}
+                  )
+    ].

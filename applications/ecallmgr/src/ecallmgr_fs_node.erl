@@ -75,6 +75,7 @@
 -define(DEFAULT_FS_COMMANDS, [kz_json:from_list([{<<"load">>, <<"mod_sofia">>}])
                              ,kz_json:from_list([{<<"reloadacl">>, <<>>}])
                              ]).
+-define(FS_CMDS(Node), ecallmgr_config:get_jsons(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node)).
 
 -define(DEFAULT_CAPABILITIES, [kz_json:from_list([{<<"module">>, <<"mod_conference">>}
                                                  ,{<<"is_loaded">>, 'false'}
@@ -155,13 +156,6 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--define(YR_TO_MICRO(Y), kz_term:to_integer(Y)*365*24*3600*1000000).
--define(DAY_TO_MICRO(D), kz_term:to_integer(D)*24*3600*1000000).
--define(HR_TO_MICRO(Hr), kz_term:to_integer(Hr)*3600*1000000).
--define(MIN_TO_MICRO(Min), kz_term:to_integer(Min)*60*1000000).
--define(SEC_TO_MICRO(Sec), kz_term:to_integer(Sec)*1000000).
--define(MILLI_TO_MICRO(Mil), kz_term:to_integer(Mil)*1000).
-
 -define(FS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -define(REPLAY_REG_MAP,
@@ -175,8 +169,8 @@
         ,{<<"From-Host">>, <<"realm">>}
         ,{<<"From-User">>, <<"reg_user">>}
         ,{<<"Call-ID">>, <<"token">>}
-        ,{<<"Profile-Name">>, {fun replay_profile/1, <<"url">> } }
-        ,{<<"Contact">>, {fun replay_contact/1, <<"url">> } }
+        ,{<<"Profile-Name">>, {fun replay_profile/1, <<"url">>}}
+        ,{<<"Contact">>, {fun replay_contact/1, <<"url">>}}
         ,{<<"Expires">>, {fun replay_expires/1, <<"expires">>}}
         ]).
 
@@ -493,13 +487,11 @@ is_restarting_status(UP) ->
 -spec run_start_cmds(atom(), kz_proplist(), pid(), boolean() | kz_json:objects()) -> 'ok'.
 run_start_cmds(Node, Options, Parent, 'true') ->
     lager:debug("node ~s is considered restarting", [Node]),
-    run_start_cmds(Node, Options, Parent
-                  ,ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node)
-                  );
+    run_start_cmds(Node, Options, Parent, ?FS_CMDS(Node));
 run_start_cmds(Node, Options, Parent, 'false') ->
     lager:debug("node ~s is not considered restarting, trying reconnect cmds first", [Node]),
-    Cmds = case ecallmgr_config:get(<<"fs_reconnect_cmds">>) of
-               'undefined' -> ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node);
+    Cmds = case ecallmgr_config:get_jsons(<<"fs_reconnect_cmds">>) of
+               'undefined' -> ?FS_CMDS(Node);
                ReconCmds -> ReconCmds
            end,
     run_start_cmds(Node, Options, Parent, Cmds);
@@ -677,12 +669,11 @@ split_codes(Key, Props) ->
 -spec probe_capabilities(atom()) -> 'ok'.
 -spec probe_capabilities(atom(), kz_json:objects()) -> 'ok'.
 probe_capabilities(Node) ->
-    probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)).
+    probe_capabilities(Node, ecallmgr_config:get_jsons(<<"capabilities">>, ?DEFAULT_CAPABILITIES)).
 probe_capabilities(Node, PossibleCapabilities) ->
     kz_util:put_callid(Node),
-    lists:foreach(fun(Capability) ->
-                          maybe_add_capability(Node, Capability)
-                  end, PossibleCapabilities),
+    F = fun(Capability) -> maybe_add_capability(Node, Capability) end,
+    lists:foreach(F, PossibleCapabilities),
     lager:notice("fs sync complete"),
     ok.
 

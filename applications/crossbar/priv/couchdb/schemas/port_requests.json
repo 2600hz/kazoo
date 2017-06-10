@@ -94,10 +94,6 @@
             ],
             "type": "string"
         },
-        "scheduled_date": {
-            "description": "Requested scheduled date in gregorain timestamp",
-            "type": "integer"
-        },
         "transfer_date": {
             "description": "Requested transfer date in gregorain timestamp",
             "type": "integer"

@@ -84,13 +84,15 @@ handle_transaction(JObj) ->
     ReqData =
         kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
 
-    case teletype_util:is_notice_enabled(AccountId, JObj, transaction_template_id(DataJObj)) of
-        'false' -> lager:debug("notification handling not configured for this account");
+    TemplateId = transaction_template_id(DataJObj),
+    case teletype_util:is_notice_enabled(AccountId, JObj, TemplateId) of
+        'false' -> teletype_util:notification_disabled(DataJObj, TemplateId);
         'true' -> handle_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
+    TemplateId = transaction_template_id(DataJObj),
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
              ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
@@ -99,10 +101,10 @@ handle_req(DataJObj) ->
              ],
 
     %% Load templates
-    RenderedTemplates = teletype_templates:render(transaction_template_id(DataJObj), Macros, DataJObj),
+    RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(transaction_template_id(DataJObj), AccountId),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(TemplateId, AccountId),
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])

@@ -8,15 +8,96 @@
             "type": "string"
         },
         "combo_keys": {
+            "default": {
+                "cisco": {
+                    "_": {
+                        "line": "",
+                        "parking": "",
+                        "personal_parking": "",
+                        "presence": "",
+                        "speed_dial": ""
+                    }
+                },
+                "grandstream": {
+                    "_": {
+                        "line": "0",
+                        "parking": "19",
+                        "personal_parking": "11",
+                        "presence": "11",
+                        "speed_dial": "10"
+                    }
+                },
+                "obihai": {
+                    "_": {
+                        "line": "Call Appearance",
+                        "parking": "Call Park Monitor",
+                        "personal_parking": "Busy Lamp Field",
+                        "presence": "Busy Lamp Field",
+                        "speed_dial": "Speed Dial"
+                    }
+                },
+                "yealink": {
+                    "_": {
+                        "line": "15",
+                        "parking": "10",
+                        "personal_parking": "10",
+                        "presence": "16",
+                        "speed_dial": "13"
+                    }
+                }
+            },
             "description": "provisioner combo keys",
             "type": "object"
         },
         "feature_keys": {
+            "default": {
+                "cisco": {
+                    "_": {
+                        "parking": "",
+                        "personal_parking": "",
+                        "presence": "",
+                        "speed_dial": ""
+                    }
+                },
+                "grandstream": {
+                    "_": {
+                        "parking": "9",
+                        "personal_parking": "1",
+                        "presence": "1",
+                        "speed_dial": "0"
+                    }
+                },
+                "obihai": {
+                    "_": {
+                        "parking": "Call Park Monitor",
+                        "personal_parking": "Busy Lamp Field",
+                        "presence": "Busy Lamp Field",
+                        "speed_dial": "Speed Dial"
+                    }
+                },
+                "polycom": {
+                    "_": {
+                        "parking": "automata",
+                        "personal_parking": "automata",
+                        "presence": "normal",
+                        "speed_dial": "normal"
+                    }
+                },
+                "yealink": {
+                    "_": {
+                        "parking": "10",
+                        "personal_parking": "10",
+                        "presence": "16",
+                        "speed_dial": "13"
+                    }
+                }
+            },
             "description": "provisioner feature keys",
             "type": "object"
         },
         "provisioning_type": {
-            "description": "provisioner provisioning type"
+            "description": "provisioner provisioning type",
+            "type": "string"
         },
         "provisioning_url": {
             "description": "provisioner provisioning url",

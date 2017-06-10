@@ -9,6 +9,7 @@
 
 -export([send_email/3
         ,send_update/3, send_update/4
+        ,maybe_send_update/3
         ,render_template/3
         ,normalize_proplist/1
         ,json_to_template_props/1
@@ -22,7 +23,6 @@
         ,get_account_doc/1
         ,qr_code_image/1
         ,get_charset_params/1
-        ,post_json/3
         ]).
 
 -include("notify.hrl").
@@ -84,7 +84,25 @@ send_update(RespQ, MsgId, Status, Msg) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
-    kapi_notifications:publish_notify_update(RespQ, Prop).
+    kz_amqp_worker:cast(Prop, fun(P) -> kapi_notifications:publish_notify_update(RespQ, P) end).
+
+-spec maybe_send_update(send_email_return(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_send_update('ok', RespQ, MsgId) -> send_update(RespQ, MsgId, <<"completed">>);
+maybe_send_update({'error', Reason}, RespQ, MsgId) -> send_update(RespQ, MsgId, <<"failed">>, Reason);
+maybe_send_update([LastResp|_]=Responses, RespQ, MsgId) ->
+    case lists:any(fun('ok') -> 'true';
+                      ({'error', _}) -> 'false';
+                      ('disabled') -> 'true'
+                   end
+                  ,Responses
+                  )
+    of
+        'true' -> send_update(RespQ, MsgId, <<"completed">>);
+        'false' ->
+            {'error', Reason} = LastResp,
+            send_update(RespQ, MsgId, <<"failed">>, Reason)
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -433,18 +451,4 @@ get_charset_params(Service) ->
             ,iolist_to_binary([<<";charset=">>, Charset])
             };
         _ -> {[], <<>>}
-    end.
-
--spec post_json(ne_binary(), kz_json:object(), fun((kz_json:object()) -> 'ok')) -> 'ok'.
-post_json(Url, JObj, OnErrorCallback) ->
-    Headers = [{"Content-Type", "application/json"}],
-    Encoded = kz_json:encode(JObj),
-
-    case kz_http:post(kz_term:to_list(Url), Headers, Encoded) of
-        {'ok', _2xx, _ResponseHeaders, _ResponseBody}
-          when (_2xx - 200) < 100 -> %% ie: match "2"++_
-            lager:debug("JSON data successfully POSTed to '~s'", [Url]);
-        _Error ->
-            lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),
-            OnErrorCallback(JObj)
     end.

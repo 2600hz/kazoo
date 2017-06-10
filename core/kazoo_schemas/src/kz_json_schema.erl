@@ -42,7 +42,7 @@
 -spec load(ne_binary() | string()) -> {'ok', kz_json:object()} |
                                       {'error', any()}.
 load(<<"./", Schema/binary>>) -> load(Schema);
-load(<<"file://", Schema/binary>>) -> load(Schema);
+load(<<"file://", Schema/binary>>) -> fload(Schema);
 load(<<_/binary>> = Schema) ->
     case kz_datamgr:open_cache_doc(?KZ_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
@@ -538,12 +538,12 @@ error_to_jobj({'data_invalid'
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,'missing_required_property'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
              ) ->
-    validation_error(FailedKeyPath
+    validation_error(FailedKeyPath ++ [FailedValue]
                     ,<<"required">>
                     ,kz_json:from_list(
                        [{<<"message">>, <<"Field is required but missing">>}]
@@ -720,6 +720,8 @@ validation_error(Property, <<"enum">>=C, Message, Options) ->
 validation_error(Property, <<"format">>=C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"divisibleBy">>=C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"too_few_properties">>=C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 
 %% Not unique within the datastore

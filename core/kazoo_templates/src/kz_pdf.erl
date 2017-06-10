@@ -64,7 +64,6 @@ find_template(AccountId, Props, AttachmentId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec generate(ne_binary(), kz_proplist()) -> ret().
--spec generate(ne_binary(), kz_proplist(), ne_binary()) -> ret().
 generate(AccountId, Props) ->
     case find_template(AccountId, Props) of
         {'error', _R}=Error -> Error;
@@ -72,6 +71,7 @@ generate(AccountId, Props) ->
             generate(AccountId, Props, Template)
     end.
 
+-spec generate(ne_binary(), kz_proplist(), ne_binary()) -> ret().
 generate(Account, Props, Template) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Props),
@@ -92,12 +92,10 @@ generate(Account, Props, Template) ->
     'ok' = file:write_file(HTMLFile, Rendered),
 
     RawCmd = kapps_config:get_ne_binary(?PDF_CONFIG_CAT, <<"html2pdf">>, ?HTML_TO_PDF),
-    Cmd = lists:foldl(fun cmd_fold/2
-                     ,RawCmd
-                     ,[{<<"\$pdf\$">>, PDFFile}
-                      ,{<<"\$html\$">>, HTMLFile}
-                      ]
-                     ),
+    Targets = [{<<"\$pdf\$">>, PDFFile}
+              ,{<<"\$html\$">>, HTMLFile}
+              ],
+    Cmd = lists:foldl(fun cmd_fold/2, RawCmd, Targets),
     lager:debug("exec ~s", [Cmd]),
     case os:cmd(kz_term:to_list(Cmd)) of
         [] -> file:read_file(PDFFile);

@@ -404,24 +404,23 @@ location_xml_to_json_address([Xml]) ->
 location_xml_to_json_address(Xml) when is_list(Xml) ->
     [location_xml_to_json_address(X) || X <- Xml];
 location_xml_to_json_address(Xml) ->
-    Props =
-        [{?E911_STREET1, kz_xml:get_value("address1/text()", Xml)}
-        ,{?E911_STREET2, kz_xml:get_value("address2/text()", Xml)}
-        ,{<<"activated_time">>, kz_xml:get_value("activated_time/text()", Xml)}
-        ,{?E911_NAME, kz_xml:get_value("callername/text()", Xml)}
-        ,{<<"comments">>, kz_xml:get_value("comments/text()", Xml)}
-        ,{?E911_CITY, kz_xml:get_value("community/text()", Xml)}
-        ,{<<"order_id">>, kz_xml:get_value("customerorderid/text()", Xml)}
-        ,{<<"latitude">>, kz_xml:get_value("latitude/text()", Xml)}
-        ,{<<"longitude">>, kz_xml:get_value("longitude/text()", Xml)}
-        ,{<<"location_id">>, kz_xml:get_value("locationid/text()", Xml)}
-        ,{<<"plus_four">>, kz_xml:get_value("plusfour/text()", Xml)}
-        ,{?E911_ZIP, kz_xml:get_value("postalcode/text()", Xml)}
-        ,{?E911_STATE, kz_xml:get_value("state/text()", Xml)}
-        ,{<<"status">>, kz_xml:get_value("status/code/text()", Xml)}
-        ,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
-        ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{?E911_STREET1, kz_xml:get_value("address1/text()", Xml)}
+      ,{?E911_STREET2, kz_xml:get_value("address2/text()", Xml)}
+      ,{<<"activated_time">>, kz_xml:get_value("activated_time/text()", Xml)}
+      ,{?E911_NAME, kz_xml:get_value("callername/text()", Xml)}
+      ,{<<"comments">>, kz_xml:get_value("comments/text()", Xml)}
+      ,{?E911_CITY, kz_xml:get_value("community/text()", Xml)}
+      ,{<<"order_id">>, kz_xml:get_value("customerorderid/text()", Xml)}
+      ,{<<"latitude">>, kz_xml:get_value("latitude/text()", Xml)}
+      ,{<<"longitude">>, kz_xml:get_value("longitude/text()", Xml)}
+      ,{<<"location_id">>, kz_xml:get_value("locationid/text()", Xml)}
+      ,{<<"plus_four">>, kz_xml:get_value("plusfour/text()", Xml)}
+      ,{?E911_ZIP, kz_xml:get_value("postalcode/text()", Xml)}
+      ,{?E911_STATE, kz_xml:get_value("state/text()", Xml)}
+      ,{<<"status">>, kz_xml:get_value("status/code/text()", Xml)}
+      ,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -437,9 +436,9 @@ legacy_data_xml_to_json([Xml]) ->
 legacy_data_xml_to_json(Xml) when is_list(Xml) ->
     [legacy_data_xml_to_json(X) || X <- Xml];
 legacy_data_xml_to_json(Xml) ->
-    Props = [{<<"house_number">>, kz_xml:get_value("housenumber/text()", Xml)}
-            ,{<<"predirectional">>, kz_xml:get_value("predirectional/text()", Xml)}
-            ,{<<"streetname">>, kz_xml:get_value("streetname/text()", Xml)}
-            ,{<<"suite">>, kz_xml:get_value("suite/text()", Xml)}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
+    kz_json:from_list(
+      [{<<"house_number">>, kz_xml:get_value("housenumber/text()", Xml)}
+      ,{<<"predirectional">>, kz_xml:get_value("predirectional/text()", Xml)}
+      ,{<<"streetname">>, kz_xml:get_value("streetname/text()", Xml)}
+      ,{<<"suite">>, kz_xml:get_value("suite/text()", Xml)}
+      ]).

@@ -68,9 +68,11 @@ find_child_in_scope(<<"account">>, Variable, Call) ->
 find_child_in_scope(Scope, Variable, Call) when Scope =:= <<"user">>;
                                                 Scope =:= <<"device">> ->
     case kapps_call:authorizing_type(Call) of
-        <<"device">> when Scope =:= <<"user">>->
+        <<"device">> when Scope =:= <<"user">> ->
             find_child_in_doc(device_owner(Call), Variable, Call);
-        <<"device">> when Scope =:= <<"device">>->
+        <<"device">> when Scope =:= <<"device">> ->
+            find_child_in_doc(kapps_call:authorizing_id(Call), Variable, Call);
+        <<"mobile">> when Scope =:= <<"device">> ->
             find_child_in_doc(kapps_call:authorizing_id(Call), Variable, Call);
         _AuthType ->
             lager:debug("unsupported authorizing type: ~s", [_AuthType]),

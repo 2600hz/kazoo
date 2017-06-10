@@ -117,16 +117,12 @@ route_req(CallId, FetchId, Props, OffnetReq) ->
     {FromNumber, FromName} = request_caller_id(OffnetReq),
     From = <<FromNumber/binary, "@", OffnetReqAccountRealm/binary>>,
 
-    CCVs =
-        kz_json:from_list(
-          props:filter_undefined(
-            [{<<"Fetch-ID">>, FetchId}
-            ,{<<"Account-ID">>, TargetAccountId}
-            ,{<<"Account-Realm">>, TargetAccountRealm}
-            ,{<<"Inception">>, From}
-            ]
-           )
-         ),
+    CCVs = kz_json:from_list(
+             [{<<"Fetch-ID">>, FetchId}
+             ,{<<"Account-ID">>, TargetAccountId}
+             ,{<<"Account-Realm">>, TargetAccountRealm}
+             ,{<<"Inception">>, From}
+             ]),
 
     [{<<"Msg-ID">>, FetchId}
     ,{<<"Call-ID">>, CallId}

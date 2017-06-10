@@ -82,7 +82,7 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
 
 -spec update_queues(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
                            {'ok', kz_json:object()}
-                               | kz_data:data_error().
+                               | kz_datamgr:data_error().
 update_queues(Call, AgentId, QueueId, <<"login">>) ->
     kz_datamgr:update_cache_doc(kapps_call:account_db(Call)
                                ,AgentId

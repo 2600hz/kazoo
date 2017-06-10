@@ -32,7 +32,7 @@
 -spec authorize(kz_proplist(), ne_binary(), atom()) -> authz_reply().
 authorize(Props, CallId, Node) ->
     kz_util:put_callid(CallId),
-    AuthorizeReply = maybe_authorize_channel(Props, Node),
+    AuthorizeReply = is_mobile_device(Props, Node),
     lager:info("channel is~s authorized", [authorized_log(AuthorizeReply)]),
     _ = ecallmgr_fs_channel:set_authorized(CallId, was_authorized(AuthorizeReply)),
     AuthorizeReply.
@@ -67,8 +67,13 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
     _ = freeswitch:api(Node, 'uuid_kill', kz_term:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     'ok'.
 
--spec maybe_authorize_channel(kzd_freeswitch:data(), atom()) -> authz_reply().
-maybe_authorize_channel(Props, Node) ->
+-spec is_mobile_device(kzd_freeswitch:data(), atom()) -> authz_reply().
+is_mobile_device(Props, Node) ->
+    kzd_freeswitch:authorizing_type(Props) =:= <<"mobile">>
+        orelse maybe_authorized_channel(Props, Node).
+
+-spec maybe_authorized_channel(kzd_freeswitch:data(), atom()) -> authz_reply().
+maybe_authorized_channel(Props, Node) ->
     case kzd_freeswitch:channel_authorized(Props) of
         <<"true">> ->
             lager:debug("channel is already authorized"),
@@ -389,5 +394,6 @@ rating_req(CallId, Props) ->
     ,{<<"Send-Empty">>, 'true'}
     ,{<<"Outbound-Flags">>, props:get_value(<<"Outbound-Flags">>, Props)}
     ,{<<"Resource-ID">>, props:get_value(<<"variable_ecallmgr_Resource-ID">>, Props)}
+    ,{<<"Authorizing-Type">>, kzd_freeswitch:authorizing_type(Props)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].

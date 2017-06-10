@@ -9,7 +9,14 @@
             "type": "boolean"
         },
         "default_to": {
-            "description": "notify.voicemail_full default to"
+            "description": "notify.voicemail_full default to",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "string",
+                "array"
+            ]
         }
     },
     "type": "object"

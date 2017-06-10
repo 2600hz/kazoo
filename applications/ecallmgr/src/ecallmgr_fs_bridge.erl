@@ -17,6 +17,7 @@
 -include("ecallmgr.hrl").
 
 -define(BYPASS_MEDIA_AFTER_BRIDGE, ecallmgr_config:get_boolean(<<"use_bypass_media_after_bridge">>, 'false')).
+-define(CHANNEL_ACTIONS_KEY, [<<"Custom-Channel-Vars">>, <<"Channel-Actions">>]).
 
 -spec call_command(atom(), ne_binary(), kz_json:object()) -> {'error', binary()} | {binary(), kz_proplist()}.
 call_command(Node, UUID, JObj) ->
@@ -37,6 +38,7 @@ call_command(Node, UUID, JObj) ->
             _ = handle_ringback(Node, UUID, JObj),
             _ = maybe_early_media(Node, UUID, JObj, Endpoints),
             _ = maybe_b_leg_events(Node, UUID, JObj),
+            BridgeJObj = add_endpoints_channel_actions(Node, UUID, JObj),
 
             Routines = [fun handle_hold_media/5
                        ,fun handle_secure_rtp/5
@@ -49,7 +51,7 @@ call_command(Node, UUID, JObj) ->
                        ],
             lager:debug("creating bridge dialplan"),
             XferExt = lists:foldr(fun(F, DP) ->
-                                          F(DP, Node, UUID, Channel, JObj)
+                                          F(DP, Node, UUID, Channel, BridgeJObj)
                                   end
                                  ,[], Routines),
             {<<"xferext">>, XferExt}
@@ -273,3 +275,68 @@ post_exec(DP, _Node, _UUID, _Channel, _JObj) ->
 maybe_b_leg_events(Node, UUID, JObj) ->
     Events = kz_json:get_value(<<"B-Leg-Events">>, JObj, []),
     ecallmgr_call_events:listen_for_other_leg(Node, UUID, Events).
+
+-spec add_endpoints_channel_actions(atom(), ne_binary(), kz_json:object()) -> kz_json:object().
+add_endpoints_channel_actions(Node, UUID, JObj) ->
+    Endpoints = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
+    kz_json:set_value(<<"Endpoints">>, build_endpoints_actions(Node, UUID, Endpoints), JObj).
+
+-spec build_endpoints_actions(atom(), ne_binary(), kz_json:objects()) -> kz_json:objects().
+build_endpoints_actions(Node, UUID, Endpoints) ->
+    Fun = fun(Endpoint) -> build_endpoint_actions(Node, UUID, Endpoint) end,
+    lists:map(Fun, Endpoints).
+
+-spec build_endpoint_actions(atom(), ne_binary(), kz_json:object()) -> kz_json:object().
+build_endpoint_actions(Node, UUID, Endpoint) ->
+    JObj = kz_json:get_json_value(<<"Endpoint-Actions">>, Endpoint, kz_json:new()),
+    Fun = fun(K, V, Acc)-> build_endpoint_actions(Node, UUID, K, V, Acc) end,
+    case kz_json:foldl(Fun, [], JObj) of
+        [] -> Endpoint;
+        Actions ->
+            Var = kz_binary:join(Actions,<<?BRIDGE_CHANNEL_VAR_SEPARATOR>>),
+            kz_json:set_value(?CHANNEL_ACTIONS_KEY, Var, Endpoint)
+    end.
+
+-spec build_endpoint_actions(atom(), ne_binary(), ne_binary(), kz_json:object(), ne_binaries()) -> ne_binaries().
+build_endpoint_actions(Node, UUID, K, V, Acc) ->
+    Fun = fun(K1, V1, Acc1)-> build_endpoint_action(Node, UUID, K1, V1, Acc1) end,
+    DP = kz_json:foldr(Fun, [], V),
+    Acc ++ build_endpoint_action_dp(K, DP).
+
+-spec build_endpoint_action(atom(), ne_binary(), ne_binary(), kz_json:object(), ne_binaries()) -> fs_apps().
+build_endpoint_action(Node, UUID, _K, V, Acc) ->
+    lager:debug("building dialplan action for ~s", [_K]),
+    DP = ecallmgr_call_command:fetch_dialplan(Node, UUID, V, self()),
+    Acc ++ DP.
+
+-spec build_endpoint_action_dp(ne_binary(), fs_apps()) -> ne_binaries().
+build_endpoint_action_dp(K, DP) ->
+    build_endpoint_action_dp(endpoint_action_cmd(K), DP, 1, []).
+
+-spec build_endpoint_action_dp(ne_binary(), fs_apps(), pos_integer(), ne_binaries()) -> ne_binaries().
+build_endpoint_action_dp(_K, [], _N, Acc) ->
+    lists:reverse(Acc);
+build_endpoint_action_dp(K, [{App, Args} | DP], N, Acc) ->
+    DPApp = ecallmgr_util:dialplan_application(App),
+    DPArgs = kz_term:to_list(Args),
+    Seq = kz_term:to_list(N),
+    Var = list_to_binary([K, "_", Seq, "=", DPApp, " ", DPArgs, ""]),
+    build_endpoint_action_dp(K, DP, N + 1, [Var | Acc]).
+
+-spec endpoint_action_cmd(ne_binary()) -> ne_binary().
+endpoint_action_cmd(Event) ->
+    case lists:keyfind(Event, 1, ?DP_EVENT_VARS) of
+        'false' -> normalize_event_action_key(Event);
+        {_, Prefix} -> Prefix
+    end.
+
+-spec normalize_event_action_key(ne_binary()) -> ne_binary().
+normalize_event_action_key(Key) when is_binary(Key) ->
+    << <<(normalize_event_action_char(B))>> || <<B>> <= Key>>.
+
+-spec normalize_event_action_char(char()) -> char().
+normalize_event_action_char($-) -> $_;
+normalize_event_action_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
+normalize_event_action_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
+normalize_event_action_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
+normalize_event_action_char(C) -> C.

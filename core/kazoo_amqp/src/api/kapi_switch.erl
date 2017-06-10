@@ -29,6 +29,9 @@
 
 -include_lib("amqp_util.hrl").
 
+-define(SWITCH_EXCHANGE, <<"switch">>).
+-define(SWITCH_EXCHANGE_TYPE, <<"topic">>).
+
 %% request to reload acl
 -define(RELOAD_ACLS_HEADERS, []).
 -define(OPTIONAL_RELOAD_ACLS_HEADERS, []).
@@ -193,24 +196,24 @@ bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
 
 bind_to_q(Q, 'undefined', _Props) ->
-    'ok' = amqp_util:bind_q_to_configuration(Q, <<"switch.*">>);
+    'ok' = amqp_util:bind_q_to_exchange(Q, <<"switch.*">>, ?SWITCH_EXCHANGE);
 bind_to_q(Q, ['reload_acls'|T], Props) ->
-    'ok' = amqp_util:bind_q_to_configuration(Q, ?RELOAD_ACLS_KEY),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?RELOAD_ACLS_KEY, ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['reload_gateways'|T], Props) ->
-    'ok' = amqp_util:bind_q_to_configuration(Q, ?RELOAD_GATEWAYS_KEY),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?RELOAD_GATEWAYS_KEY, ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['fs_xml_flush'|T], Props) ->
-    'ok' = amqp_util:bind_q_to_configuration(Q, ?FS_XML_FLUSH_KEY),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?FS_XML_FLUSH_KEY, ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['check_sync'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
-    'ok' = amqp_util:bind_q_to_configuration(Q, ?CHECK_SYNC_KEY(Realm, Username)),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?CHECK_SYNC_KEY(Realm, Username), ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['command'|T], Props) ->
     Node = props:get_value('node', Props, <<"*">>),
-    'ok' = amqp_util:bind_q_to_configuration(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node))),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node)), ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(_Q, [], _Props) -> 'ok'.
 
@@ -219,24 +222,24 @@ unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value('restrict_to', Props), Props).
 
 unbind_q_from(Q, 'undefined', _Props) ->
-    'ok' = amqp_util:unbind_q_from_configuration(Q, <<"switch.*">>);
+    'ok' = amqp_util:unbind_q_from_exchange(Q, <<"switch.*">>, ?SWITCH_EXCHANGE);
 unbind_q_from(Q, ['reload_acls'|T], Props) ->
-    'ok' = amqp_util:unbind_q_from_configuration(Q, ?RELOAD_ACLS_KEY),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?RELOAD_ACLS_KEY, ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['reload_gateways'|T], Props) ->
-    'ok' = amqp_util:unbind_q_from_configuration(Q, ?RELOAD_GATEWAYS_KEY),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?RELOAD_GATEWAYS_KEY, ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['fs_xml_flush'|T], Props) ->
-    'ok' = amqp_util:unbind_q_from_configuration(Q, ?FS_XML_FLUSH_KEY),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?FS_XML_FLUSH_KEY, ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['check_sync'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
-    'ok' = amqp_util:unbind_q_from_configuration(Q, ?CHECK_SYNC_KEY(Realm, Username)),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?CHECK_SYNC_KEY(Realm, Username), ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['command'|T], Props) ->
     Node = props:get_value('node', Props, <<"*">>),
-    'ok' = amqp_util:unbind_q_from_configuration(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node))),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node)), ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(_Q, [], _Props) -> 'ok'.
 
@@ -247,19 +250,19 @@ unbind_q_from(_Q, [], _Props) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:configuration_exchange().
+    amqp_util:new_exchange(?SWITCH_EXCHANGE, ?SWITCH_EXCHANGE_TYPE).
 
 -spec publish_reload_acls() -> 'ok'.
 publish_reload_acls() ->
     Defaults = kz_api:default_headers(<<"switch_event">>, kz_term:to_binary(?MODULE)),
     {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_ACLS_VALUES, fun reload_acls/1),
-    amqp_util:configuration_publish(?RELOAD_ACLS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
+    amqp_util:basic_publish(?SWITCH_EXCHANGE, ?RELOAD_ACLS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_reload_gateways() -> 'ok'.
 publish_reload_gateways() ->
     Defaults = kz_api:default_headers(<<"switch_event">>, kz_term:to_binary(?MODULE)),
     {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_GATEWAYS_VALUES, fun reload_gateways/1),
-    amqp_util:configuration_publish(?RELOAD_GATEWAYS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
+    amqp_util:basic_publish(?SWITCH_EXCHANGE, ?RELOAD_GATEWAYS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_fs_xml_flush(api_terms()) -> 'ok'.
 -spec publish_fs_xml_flush(api_terms(), binary()) -> 'ok'.
@@ -267,7 +270,7 @@ publish_fs_xml_flush(JObj) ->
     publish_fs_xml_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fs_xml_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_XML_FLUSH_VALUES, fun fs_xml_flush/1),
-    amqp_util:configuration_publish(?FS_XML_FLUSH_KEY, Payload, ContentType).
+    amqp_util:basic_publish(?SWITCH_EXCHANGE, ?FS_XML_FLUSH_KEY, Payload, ContentType).
 
 -spec publish_check_sync(api_terms()) -> 'ok'.
 -spec publish_check_sync(api_terms(), binary()) -> 'ok'.
@@ -279,10 +282,11 @@ publish_check_sync(Req, ContentType) ->
     Realm = check_sync_realm(Req),
     Username = check_sync_username(Req),
 
-    amqp_util:configuration_publish(?CHECK_SYNC_KEY(Realm, Username)
-                                   ,Payload
-                                   ,ContentType
-                                   ).
+    amqp_util:basic_publish(?SWITCH_EXCHANGE
+                           ,?CHECK_SYNC_KEY(Realm, Username)
+                           ,Payload
+                           ,ContentType
+                           ).
 
 -spec check_sync_realm(api_terms()) -> api_binary().
 check_sync_realm(Props) when is_list(Props) ->
@@ -307,7 +311,7 @@ publish_command(JObj) ->
 publish_command(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_COMMAND_VALUES, fun fs_command/1),
     N = check_fs_node(Req),
-    amqp_util:configuration_publish(?FS_COMMAND_KEY(N), Payload, ContentType).
+    amqp_util:basic_publish(?SWITCH_EXCHANGE, ?FS_COMMAND_KEY(N), Payload, ContentType).
 
 -spec publish_reply(binary(), api_terms()) -> 'ok'.
 publish_reply(Queue, Req) ->

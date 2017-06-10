@@ -7,7 +7,6 @@
 %%%-------------------------------------------------------------------
 -module(kz_media_util).
 
-
 -export([recording_url/2]).
 -export([base_url/2, base_url/3]).
 -export([convert_stream_type/1
@@ -431,7 +430,7 @@ convert_stream_type(<<"store">>) -> <<"store">>;
 convert_stream_type(_) -> <<"single">>.
 
 -spec media_path(api_binary()) -> api_binary().
--spec media_path(api_binary(), api_binary() | kapps_call:call()) -> api_binary().
+-spec media_path(api_binary(), api_ne_binary()) -> api_binary().
 media_path(Path) -> media_path(Path, 'undefined').
 
 media_path('undefined', _AccountId) -> 'undefined';
@@ -445,9 +444,7 @@ media_path(Path, AccountId) when is_binary(AccountId) ->
     case binary:match(Path, <<"/">>) of
         'nomatch' -> <<$/, AccountId/binary, $/, Path/binary>>;
         _Else -> Path
-    end;
-media_path(Path, Call) ->
-    media_path(Path, kapps_call:account_id(Call)).
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -476,14 +473,14 @@ prompt_id(<<"/system_media/", PromptId/binary>>, Lang) ->
 prompt_id(PromptId, 'undefined') -> PromptId;
 prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
-    <<Lang/binary, "/", PromptId/binary>>.
+    filename:join([Lang, PromptId]).
 
 -spec get_prompt(ne_binary()) -> api_binary().
--spec get_prompt(ne_binary(), api_binary() | kapps_call:call()) ->
-                        api_binary().
--spec get_prompt(ne_binary(), api_binary(), api_binary() | kapps_call:call()) ->
-                        api_binary().
--spec get_prompt(ne_binary(), api_binary(), api_binary(), boolean()) -> api_binary().
+-spec get_prompt(ne_binary(), api_ne_binary()) ->
+                        api_ne_binary().
+-spec get_prompt(ne_binary(), api_ne_binary(), api_ne_binary()) ->
+                        api_ne_binary().
+-spec get_prompt(ne_binary(), api_ne_binary(), api_ne_binary(), boolean()) -> api_ne_binary().
 
 get_prompt(Name) ->
     get_prompt(Name, 'undefined').
@@ -491,22 +488,17 @@ get_prompt(Name) ->
 get_prompt(Name, 'undefined') ->
     get_prompt(Name, default_prompt_language(), 'undefined');
 get_prompt(Name, <<_/binary>> = Lang) ->
-    get_prompt(Name, Lang, 'undefined');
-get_prompt(Name, Call) ->
-    Lang = kapps_call:language(Call),
-    get_prompt(Name, Lang, Call).
+    get_prompt(Name, Lang, 'undefined').
 
-get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _Call) ->
+get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId) ->
     lager:debug("prompt is already encoded: ~s", [PromptId]),
     PromptId;
-get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
-    get_prompt(Name, Lang, Call);
+get_prompt(<<"/system_media/", Name/binary>>, Lang, AccountId) ->
+    get_prompt(Name, Lang, AccountId);
 get_prompt(PromptId, Lang, 'undefined') ->
     kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>);
 get_prompt(PromptId, Lang, <<_/binary>> = AccountId) ->
-    get_prompt(PromptId, Lang, AccountId, ?USE_ACCOUNT_OVERRIDES);
-get_prompt(PromptId, Lang, Call) ->
-    get_prompt(PromptId, Lang, kapps_call:account_id(Call)).
+    get_prompt(PromptId, Lang, AccountId, ?USE_ACCOUNT_OVERRIDES).
 
 get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId, _UseOverride) ->
     lager:debug("prompt is already encoded: ~s", [PromptId]),
@@ -518,80 +510,82 @@ get_prompt(PromptId, Lang, _AccountId, 'false') ->
     lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
     kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>).
 
--spec get_account_prompt(ne_binary(), api_binary(), kapps_call:call()) -> api_binary().
--spec get_account_prompt(ne_binary(), api_binary(), kapps_call:call(), ne_binary()) -> api_binary().
+-spec get_account_prompt(ne_binary(), api_ne_binary(), ne_binary()) ->
+                                api_ne_binary().
+-spec get_account_prompt(ne_binary(), api_ne_binary(), ne_binary(), ne_binary()) ->
+                                api_ne_binary().
 %% tries account default, then system
-get_account_prompt(Name, 'undefined', Call) ->
+get_account_prompt(Name, 'undefined', AccountId) ->
     PromptId = prompt_id(Name),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_prompt(Name, prompt_language(kapps_call:account_id(Call)), 'undefined');
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+        {'error', 'not_found'} -> get_prompt(Name, prompt_language(AccountId), 'undefined');
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
 %% Tries "en", "fr", etc, then fails to default account/system prompt
-get_account_prompt(Name, <<_Primary:2/binary>> = Lang, Call) ->
+get_account_prompt(Name, <<_Primary:2/binary>> = Lang, AccountId) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call, Lang);
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', AccountId, Lang);
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
 %% First tries "en-US" or "fr-CA", etc, then tries "en", "fr", etc.
-get_account_prompt(Name, <<Primary:2/binary, "-", _SubTag:2/binary>> = Lang, Call) ->
+get_account_prompt(Name, <<Primary:2/binary, "-", _SubTag:2/binary>> = Lang, AccountId) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call, Lang);
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, Primary, AccountId, Lang);
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
 %% First tries "en-us_fr-fr", then "en-us"
-get_account_prompt(Name, <<Primary:5/binary, "_", _Secondary:5/binary>> = Lang, Call) ->
+get_account_prompt(Name, <<Primary:5/binary, "_", _Secondary:5/binary>> = Lang, AccountId) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call, Lang);
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, Primary, AccountId, Lang);
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
 %% Matches anything else, then tries account default
-get_account_prompt(Name, Lang, Call) ->
+get_account_prompt(Name, Lang, AccountId) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call);
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', AccountId);
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end.
 
-get_account_prompt(Name, 'undefined', Call, OriginalLang) ->
+get_account_prompt(Name, 'undefined', AccountId, OriginalLang) ->
     PromptId = prompt_id(Name),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_prompt(Name, OriginalLang, 'undefined');
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
-get_account_prompt(Name, <<_:2/binary>> = Primary, Call, Original) ->
+get_account_prompt(Name, <<_:2/binary>> = Primary, AccountId, Original) ->
     PromptId = prompt_id(Name, Primary),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call, Original);
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', AccountId, Original);
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
-get_account_prompt(Name, <<Primary:2/binary, "-", _Secondary:2/binary>> = Lang, Call, Original) ->
+get_account_prompt(Name, <<Primary:2/binary, "-", _Secondary:2/binary>> = Lang, AccountId, Original) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call, Original);
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, Primary, AccountId, Original);
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
-get_account_prompt(Name, Lang, Call, OriginalLang) ->
+get_account_prompt(Name, Lang, AccountId, OriginalLang) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case lookup_prompt(kapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call, OriginalLang);
-        {'ok', _} -> prompt_path(kapps_call:account_id(Call), PromptId)
+    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', AccountId, OriginalLang);
+        {'ok', _} -> prompt_path(AccountId, PromptId)
     end.
 
 -spec lookup_prompt(ne_binary(), ne_binary()) ->

@@ -462,13 +462,14 @@ check_mdn_registered(DeviceId, Context) ->
 
 -spec get_mac_address(cb_context:context()) -> api_binary().
 get_mac_address(Context) ->
-    kz_term:to_lower_binary(cb_context:req_value(Context, ?KEY_MAC_ADDRESS)).
+    provisioner_util:cleanse_mac_address(
+      cb_context:req_value(Context, ?KEY_MAC_ADDRESS)).
 
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->
     NewAddress = get_mac_address(Context),
     OldAddress = kz_json:get_ne_value(?KEY_MAC_ADDRESS, cb_context:fetch(Context, 'db_doc')),
-    NewAddress =:= kz_term:to_lower_binary(OldAddress)
+    NewAddress =:= provisioner_util:cleanse_mac_address(OldAddress)
         orelse unique_mac_address(NewAddress, Context).
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
@@ -502,7 +503,7 @@ get_mac_addresses(DbName) ->
                {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
                _ -> []
            end,
-    lists:map(fun kz_term:to_lower_binary/1, MACs).
+    [provisioner_util:cleanse_mac_address(MAC) || MAC <- MACs].
 
 -spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_outbound_flags(DeviceId, Context) ->

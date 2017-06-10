@@ -635,20 +635,19 @@ create_new_ring_group_callflow(JObj) ->
 base_group_ring_group(JObj) ->
     io:format("migrating callflow ~s: ~s~n", [kz_doc:id(JObj), kz_json:encode(JObj)]),
     BaseGroup = kz_json:from_list(
-                  props:filter_undefined(
-                    [{<<"pvt_vsn">>, <<"1">>}
-                    ,{<<"pvt_type">>, <<"callflow">>}
-                    ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                    ,{<<"pvt_created">>, kz_time:current_tstamp()}
-                    ,{<<"pvt_account_db">>, kz_doc:account_db(JObj)}
-                    ,{<<"pvt_account_id">>, kz_doc:account_id(JObj)}
-                    ,{<<"flow">>, kz_json:from_list([{<<"children">>, kz_json:new()}
-                                                    ,{<<"module">>, <<"ring_group">>}
-                                                    ])
-                     }
-                    ,{<<"group_id">>, kz_json:get_value(<<"group_id">>, JObj)}
-                    ,{<<"type">>, <<"baseGroup">>}
-                    ])),
+                  [{<<"pvt_vsn">>, <<"1">>}
+                  ,{<<"pvt_type">>, <<"callflow">>}
+                  ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+                  ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                  ,{<<"pvt_account_db">>, kz_doc:account_db(JObj)}
+                  ,{<<"pvt_account_id">>, kz_doc:account_id(JObj)}
+                  ,{<<"flow">>, kz_json:from_list([{<<"children">>, kz_json:new()}
+                                                  ,{<<"module">>, <<"ring_group">>}
+                                                  ])
+                   }
+                  ,{<<"group_id">>, kz_json:get_value(<<"group_id">>, JObj)}
+                  ,{<<"type">>, <<"baseGroup">>}
+                  ]),
     set_data_for_callflow(JObj, BaseGroup).
 
 -spec set_data_for_callflow(kz_json:object(), kz_json:object()) -> kz_json:object().

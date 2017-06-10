@@ -262,11 +262,7 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
                  ],
 
     lager:debug("notifying of voicemail saved"),
-    kz_amqp_worker:call_collect(NotifyProp
-                               ,fun kapi_notifications:publish_voicemail/1
-                               ,fun collecting/1
-                               ,30 * ?MILLISECONDS_IN_SECOND
-                               ).
+    kapps_notify_publisher:call_collect(NotifyProp, fun kapi_notifications:publish_voicemail_new/1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -290,7 +286,7 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    kapi_notifications:publish_voicemail_saved(Prop),
+    kapps_notify_publisher:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1),
     lager:debug("published voicemail_saved for ~s", [BoxId]).
 
 %%--------------------------------------------------------------------
@@ -313,21 +309,6 @@ get_notify_completed_message([JObj|JObjs], Acc) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec collecting(kz_json:objects()) -> boolean().
-collecting([JObj|_]) ->
-    case kapi_notifications:notify_update_v(JObj)
-        andalso kz_json:get_value(<<"Status">>, JObj)
-    of
-        <<"completed">> -> 'true';
-        <<"failed">> -> 'true';
-        _ -> 'false'
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

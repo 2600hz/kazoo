@@ -55,6 +55,8 @@
 
 -type output_header() :: kz_csv:header() | {replace, kz_csv:header()}.
 
+-type columns() :: sets:set(ne_binary()).
+
 -type help_error() :: {'error', 'unknown_category_action'}.
 
 -type return() :: 'ok' | api_ne_binary() |
@@ -72,6 +74,7 @@
 -export_type([id/0
              ,input/0
              ,output_header/0
+             ,columns/0
              ,help_error/0
              ,return/0
              ,iterator/0
@@ -347,47 +350,46 @@ to_json(#{id := TaskId
          ,total_rows_succeeded := TotalSucceeded
          } = Task) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"_id">>, TaskId}
-        ,{?PVT_TYPE, kzd_task:type()}
-        ,{?PVT_WORKER_NODE, Node}
-        ,{?PVT_ACCOUNT_ID, AccountId}
-        ,{?PVT_AUTH_ACCOUNT_ID, AuthAccountId}
-        ,{?PVT_CATEGORY, Category}
-        ,{?PVT_ACTION, Action}
-        ,{?PVT_FILENAME, InputName}
-        ,{?PVT_CREATED, Created}
-        ,{?PVT_MODIFIED, kz_time:current_tstamp()}
-        ,{?PVT_STARTED_AT, Started}
-        ,{?PVT_FINISHED_AT, Finished}
-        ,{?PVT_TOTAL_ROWS, TotalRows}
-        ,{?PVT_TOTAL_ROWS_FAILED, TotalFailed}
-        ,{?PVT_TOTAL_ROWS_SUCCEEDED, TotalSucceeded}
-        ,{?PVT_STATUS, status(Task)}
-        ])).
+      [{<<"_id">>, TaskId}
+      ,{?PVT_TYPE, kzd_task:type()}
+      ,{?PVT_WORKER_NODE, Node}
+      ,{?PVT_ACCOUNT_ID, AccountId}
+      ,{?PVT_AUTH_ACCOUNT_ID, AuthAccountId}
+      ,{?PVT_CATEGORY, Category}
+      ,{?PVT_ACTION, Action}
+      ,{?PVT_FILENAME, InputName}
+      ,{?PVT_CREATED, Created}
+      ,{?PVT_MODIFIED, kz_time:current_tstamp()}
+      ,{?PVT_STARTED_AT, Started}
+      ,{?PVT_FINISHED_AT, Finished}
+      ,{?PVT_TOTAL_ROWS, TotalRows}
+      ,{?PVT_TOTAL_ROWS_FAILED, TotalFailed}
+      ,{?PVT_TOTAL_ROWS_SUCCEEDED, TotalSucceeded}
+      ,{?PVT_STATUS, status(Task)}
+      ]).
 
 -spec to_public_json(task()) -> kz_json:object().
 to_public_json(Task) ->
     Doc = to_json(Task),
-    JObj =
-        kz_json:from_list(
-          props:filter_undefined(
-            [{<<"id">>, kzd_task:id(Doc)}
-            ,{<<"node">>, kzd_task:node(Doc)}
-            ,{<<"account_id">>, kzd_task:account_id(Doc)}
-            ,{<<"auth_account_id">>, kzd_task:auth_account_id(Doc)}
-            ,{<<"category">>, kzd_task:category(Doc)}
-            ,{<<"action">>, kzd_task:action(Doc)}
-            ,{<<"file_name">>, kzd_task:file_name(Doc)}
-            ,{<<"created">>, kz_doc:created(Doc)}
-            ,{<<"start_timestamp">>, kzd_task:start_timestamp(Doc)}
-            ,{<<"end_timestamp">>, kzd_task:end_timestamp(Doc)}
-            ,{<<"total_count">>, kzd_task:total_count(Doc)}
-            ,{<<"failure_count">>, kzd_task:failure_count(Doc)}
-            ,{<<"success_count">>, kzd_task:success_count(Doc)}
-            ,{<<"status">>, kzd_task:status(Doc)}
-            ])),
-    kz_json:set_value(<<"_read_only">>, JObj, kz_json:new()).
+    kz_json:from_list_recursive(
+      [{<<"_read_only">>
+       ,[{<<"id">>, kzd_task:id(Doc)}
+        ,{<<"node">>, kzd_task:node(Doc)}
+        ,{<<"account_id">>, kzd_task:account_id(Doc)}
+        ,{<<"auth_account_id">>, kzd_task:auth_account_id(Doc)}
+        ,{<<"category">>, kzd_task:category(Doc)}
+        ,{<<"action">>, kzd_task:action(Doc)}
+        ,{<<"file_name">>, kzd_task:file_name(Doc)}
+        ,{<<"created">>, kz_doc:created(Doc)}
+        ,{<<"start_timestamp">>, kzd_task:start_timestamp(Doc)}
+        ,{<<"end_timestamp">>, kzd_task:end_timestamp(Doc)}
+        ,{<<"total_count">>, kzd_task:total_count(Doc)}
+        ,{<<"failure_count">>, kzd_task:failure_count(Doc)}
+        ,{<<"success_count">>, kzd_task:success_count(Doc)}
+        ,{<<"status">>, kzd_task:status(Doc)}
+        ]
+       }
+      ]).
 
 
 %%--------------------------------------------------------------------

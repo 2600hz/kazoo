@@ -96,14 +96,4 @@ send_topup_notification(BillingId, Transaction) ->
             ,{<<"Timestamp">>, kz_time:current_tstamp()}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    case kz_amqp_worker:cast(Props
-                            ,fun kapi_notifications:publish_topup/1
-                            )
-    of
-        'ok' ->
-            lager:debug("topup notification sent for ~s", [BillingId]);
-        {'error', _R} ->
-            lager:error("failed to send topup notification for ~s : ~p"
-                       ,[BillingId, _R]
-                       )
-    end.
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_topup/1).

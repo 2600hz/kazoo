@@ -29,10 +29,9 @@
 -include("include/kz_types.hrl").
 -include("include/kz_databases.hrl").
 
--spec crash() -> 'ok'.
+-spec crash() -> no_return().
 crash() ->
-    _ = erlang:halt("crash requested"),
-    'ok'.
+    erlang:halt("crash requested").
 
 -spec debug_dump() -> 'ok'.
 debug_dump() ->

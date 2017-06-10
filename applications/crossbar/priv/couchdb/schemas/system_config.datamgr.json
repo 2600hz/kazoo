@@ -22,6 +22,18 @@
             "description": "datamgr default archive folder",
             "type": "string"
         },
+        "max_bulk_insert": {
+            "default": 2000,
+            "description": "maximum number of documents that will be inserted in a single request",
+            "minimum": 1,
+            "type": "integer"
+        },
+        "max_bulk_read": {
+            "default": 2000,
+            "description": "maximum number of documents that will be read in a single request",
+            "minimum": 1,
+            "type": "integer"
+        },
         "no_caching_doc_types": {
             "default": [
                 "media",

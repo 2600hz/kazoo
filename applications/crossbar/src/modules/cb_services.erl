@@ -305,10 +305,10 @@ create_status_payload(Context) ->
 
 -spec create_status_payload(boolean(), kz_json:object()) -> kz_json:object().
 create_status_payload('true', _JObj) ->
-    kz_json:from_list([{<<"in_good_standing">>, 'true'}]);
+    kz_json:from_list([{<<"in_good_standing">>, 'true'}
+                      ]);
 create_status_payload('false', JObj) ->
-    kz_json:from_list(props:filter_undefined([{<<"in_good_standing">>, 'false'}
-                                             ,{<<"reason">>, kzd_services:reason(JObj)}
-                                             ,{<<"reason_code">>, kzd_services:reason_code(JObj)}
-                                             ])
-                     ).
+    kz_json:from_list([{<<"in_good_standing">>, 'false'}
+                      ,{<<"reason">>, kzd_services:reason(JObj)}
+                      ,{<<"reason_code">>, kzd_services:reason_code(JObj)}
+                      ]).

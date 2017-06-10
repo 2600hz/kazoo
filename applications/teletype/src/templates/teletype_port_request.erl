@@ -17,12 +17,7 @@
 -define(TEMPLATE_ID, <<"port_request">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
--define(TEMPLATE_MACROS
-       ,kz_json:from_list(
-          ?PORT_REQUEST_MACROS
-          ++ ?ACCOUNT_MACROS
-         )
-       ).
+-define(TEMPLATE_MACROS, kz_json:from_list(?PORT_REQUEST_MACROS ++ ?ACCOUNT_MACROS)).
 
 -define(TEMPLATE_SUBJECT, <<"Number port request for account '{{account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
@@ -59,7 +54,7 @@ handle_req(JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("notification handling not configured for this account");
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> process_req(DataJObj)
     end.
 
@@ -88,15 +83,10 @@ handle_port_request(DataJObj) ->
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_notification(?TEMPLATE_ID
-                                             ,teletype_util:find_account_id(DataJObj)
-                                             ),
+        teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
-    Subject =
-        teletype_util:render_subject(
-          kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-                                    ,Macros
-         ),
+    Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT),
+    Subject = teletype_util:render_subject(Subject0, Macros),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 

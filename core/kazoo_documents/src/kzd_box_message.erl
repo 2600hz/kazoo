@@ -169,20 +169,18 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
                                    doc().
 build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{?KEY_META_TIMESTAMP, Timestamp}
-        ,{?KEY_META_FROM, kapps_call:from(Call)}
-        ,{?KEY_META_TO, kapps_call:to(Call)}
-        ,{?KEY_META_CID_NUMBER, CIDNumber}
-        ,{?KEY_META_CID_NAME, CIDName}
-        ,{?KEY_META_CALL_ID, kapps_call:call_id(Call)}
-        ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
-        ,{?KEY_META_LENGTH, Length}
-        ,{?KEY_MEDIA_ID, MediaId}
-        ])
-     ).
+      [{?KEY_META_TIMESTAMP, Timestamp}
+      ,{?KEY_META_FROM, kapps_call:from(Call)}
+      ,{?KEY_META_TO, kapps_call:to(Call)}
+      ,{?KEY_META_CID_NUMBER, CIDNumber}
+      ,{?KEY_META_CID_NAME, CIDName}
+      ,{?KEY_META_CALL_ID, kapps_call:call_id(Call)}
+      ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
+      ,{?KEY_META_LENGTH, Length}
+      ,{?KEY_MEDIA_ID, MediaId}
+      ]).
 
--spec get_msg_id(kz_json:object()) -> ne_binary().
+-spec get_msg_id(kz_json:object()) -> api_ne_binary().
 get_msg_id(JObj) ->
     Paths = [<<"_id">>
             ,<<"media_id">>
@@ -304,11 +302,11 @@ set_to_sip(To, Metadata) ->
 utc_seconds(JObj) ->
     kz_json:get_integer_value(?KEY_UTC_SEC, JObj, 0).
 
--spec source_id(doc()) -> ne_binary().
+-spec source_id(doc()) -> api_ne_binary().
 source_id(JObj) ->
-    kz_json:get_value(?KEY_SOURCE_ID, JObj).
+    kz_json:get_ne_binary_value(?KEY_SOURCE_ID, JObj).
 
--spec set_source_id(api_binary(), doc()) -> doc().
+-spec set_source_id(api_ne_binary(), doc()) -> doc().
 set_source_id(SourceId, JObj) ->
     kz_json:set_value(?KEY_SOURCE_ID, SourceId, JObj).
 

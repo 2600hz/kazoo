@@ -136,13 +136,11 @@ bindings() ->
 -spec format_event(kz_json:object(), ne_binary()) -> kz_json:object().
 format_event(JObj, AccountId) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"id">>, kapi_conf:get_id(JObj)}
-        ,{<<"account_id">>, AccountId}
-        ,{<<"action">>, kz_api:event_name(JObj)}
-        ,{<<"type">>, kapi_conf:get_type(JObj)}
-        ])
-     ).
+      [{<<"id">>, kapi_conf:get_id(JObj)}
+      ,{<<"account_id">>, AccountId}
+      ,{<<"action">>, kz_api:event_name(JObj)}
+      ,{<<"type">>, kapi_conf:get_type(JObj)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private

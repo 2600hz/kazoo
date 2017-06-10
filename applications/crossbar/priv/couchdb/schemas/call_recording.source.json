@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "call_recording.source",
+    "additionalProperties": false,
+    "properties": {
+        "any": {
+            "$ref": "call_recording.parameters"
+        },
+        "offnet": {
+            "$ref": "call_recording.parameters"
+        },
+        "onnet": {
+            "$ref": "call_recording.parameters"
+        }
+    },
+    "type": "object"
+}

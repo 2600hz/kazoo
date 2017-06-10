@@ -88,11 +88,11 @@ alter_endpoints(Module, Call, DisableUntil) ->
     Media = case {Found, DisableUntil} of
                 {'false', _} ->
                     %% User not found
-                    kz_media_util:get_prompt(<<"agent-invalid_choice">>, Call);
+                    kapps_call:get_prompt(Call, <<"agent-invalid_choice">>);
                 {'true', ?ON_VAL} ->
-                    kz_media_util:get_prompt(<<"agent-logged_in">>, Call);
+                    kapps_call:get_prompt(Call, <<"agent-logged_in">>);
                 {'true', _} ->
-                    kz_media_util:get_prompt(<<"agent-logged_out">>, Call)
+                    kapps_call:get_prompt(Call, <<"agent-logged_out">>)
             end,
     kapps_call_command:play(Media, Call),
     kz_json:set_value(EndpointsPath, EndPoints, Module).
@@ -100,12 +100,13 @@ alter_endpoints(Module, Call, DisableUntil) ->
 -spec maybe_alter_disable_until(ne_binary(), kz_json:object(), kapps_call:call(), integer()) -> {boolean(), kz_json:object()}.
 maybe_alter_disable_until(<<"user">>, Endpoint, Call, DisableUntil) ->
     lager:debug("comparing owner ~p, to endpoint ~p", [kapps_call:owner_id(Call), Endpoint]),
-    case kapps_call:owner_id(Call) =:= kz_json:get_binary_value(<<"id">>, Endpoint) of
+    case kapps_call:owner_id(Call)
+        =:= kz_json:get_ne_binary_value(<<"id">>, Endpoint)
+    of
         'true' ->
             {'true', kz_json:set_value([<<"disable_until">>], DisableUntil, Endpoint)};
         'false' ->
             {'false', Endpoint}
     end;
-
 maybe_alter_disable_until(_EndpointType, Endpoint, _Call, _DisableUntil) ->
     {'false', Endpoint}.

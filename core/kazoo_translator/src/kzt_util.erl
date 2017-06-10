@@ -319,18 +319,15 @@ get_chat_permissions(Call) ->
 -spec get_request_vars(kapps_call:call()) -> kz_json:object().
 get_request_vars(Call) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Digits">>, get_digits_collected(Call)}
-        ,{<<"RecordingUrl">>, get_recording_url(Call)}
-        ,{<<"RecordingDuration">>, get_recording_duration(Call)}
-        ,{<<"DialCallStatus">>, get_dial_call_status(Call)}
-        ,{<<"DialCallSid">>, get_dial_call_sid(Call)}
-        ,{<<"DialCallDuration">>, get_dial_call_duration(Call)}
-        ,{<<"QueueSid">>, get_queue_sid(Call)}
-        ,{<<"CallStatus">>, get_call_status(Call)}
-        ]
-       )
-     ).
+      [{<<"Digits">>, get_digits_collected(Call)}
+      ,{<<"RecordingUrl">>, get_recording_url(Call)}
+      ,{<<"RecordingDuration">>, get_recording_duration(Call)}
+      ,{<<"DialCallStatus">>, get_dial_call_status(Call)}
+      ,{<<"DialCallSid">>, get_dial_call_sid(Call)}
+      ,{<<"DialCallDuration">>, get_dial_call_duration(Call)}
+      ,{<<"QueueSid">>, get_queue_sid(Call)}
+      ,{<<"CallStatus">>, get_call_status(Call)}
+      ]).
 
 -spec iteration(kapps_call:call()) -> kapps_call:call().
 iteration(Call) ->

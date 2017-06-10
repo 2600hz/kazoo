@@ -6,6 +6,9 @@
         "default_to": {
             "default": "",
             "description": "notify.ported default to",
+            "items": {
+                "type": "string"
+            },
             "type": "string"
         },
         "send_from_admin_email": {

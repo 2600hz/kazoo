@@ -692,31 +692,30 @@ call_stat_to_doc(#call_stat{id=Id
                            ,caller_id_number=CallerIdNumber
                            ,caller_priority=CallerPriority
                            }) ->
-    kz_doc:update_pvt_parameters(
-      kz_json:from_list(
-        props:filter_undefined(
-          [{<<"_id">>, Id}
-          ,{<<"call_id">>, CallId}
-          ,{<<"queue_id">>, QueueId}
-          ,{<<"agent_id">>, AgentId}
-          ,{<<"entered_timestamp">>, EnteredT}
-          ,{<<"abandoned_timestamp">>, AbandonedT}
-          ,{<<"handled_timestamp">>, HandledT}
-          ,{<<"processed_timestamp">>, ProcessedT}
-          ,{<<"hung_up_by">>, HungUpBy}
-          ,{<<"abandoned_reason">>, AbandonedR}
-          ,{<<"misses">>, misses_to_docs(Misses)}
-          ,{<<"status">>, Status}
-          ,{<<"caller_id_name">>, CallerIdName}
-          ,{<<"caller_id_number">>, CallerIdNumber}
-          ,{<<"caller_priority">>, CallerPriority}
-          ,{<<"wait_time">>, wait_time(EnteredT, AbandonedT, HandledT)}
-          ,{<<"talk_time">>, talk_time(HandledT, ProcessedT)}
-          ]))
+    kz_doc:update_pvt_parameters(kz_json:from_list(
+                                   [{<<"_id">>, Id}
+                                   ,{<<"call_id">>, CallId}
+                                   ,{<<"queue_id">>, QueueId}
+                                   ,{<<"agent_id">>, AgentId}
+                                   ,{<<"entered_timestamp">>, EnteredT}
+                                   ,{<<"abandoned_timestamp">>, AbandonedT}
+                                   ,{<<"handled_timestamp">>, HandledT}
+                                   ,{<<"processed_timestamp">>, ProcessedT}
+                                   ,{<<"hung_up_by">>, HungUpBy}
+                                   ,{<<"abandoned_reason">>, AbandonedR}
+                                   ,{<<"misses">>, misses_to_docs(Misses)}
+                                   ,{<<"status">>, Status}
+                                   ,{<<"caller_id_name">>, CallerIdName}
+                                   ,{<<"caller_id_number">>, CallerIdNumber}
+                                   ,{<<"caller_priority">>, CallerPriority}
+                                   ,{<<"wait_time">>, wait_time(EnteredT, AbandonedT, HandledT)}
+                                   ,{<<"talk_time">>, talk_time(HandledT, ProcessedT)}
+                                   ])
                                 ,acdc_stats_util:db_name(AccountId)
                                 ,[{'account_id', AccountId}
                                  ,{'type', <<"call_stat">>}
-                                 ]).
+                                 ]
+                                ).
 
 -spec call_stat_to_json(call_stat()) -> kz_json:object().
 call_stat_to_json(#call_stat{id=Id
@@ -736,25 +735,24 @@ call_stat_to_json(#call_stat{id=Id
                             ,caller_id_number=CallerIdNumber
                             }) ->
     kz_json:from_list(
-      props:filter_undefined(
-        [{<<"Id">>, Id}
-        ,{<<"Call-ID">>, CallId}
-        ,{<<"Queue-ID">>, QueueId}
-        ,{<<"Agent-ID">>, AgentId}
-        ,{<<"Account-ID">>, AccountId}
-        ,{<<"Entered-Timestamp">>, EnteredT}
-        ,{<<"Abandoned-Timestamp">>, AbandonedT}
-        ,{<<"Handled-Timestamp">>, HandledT}
-        ,{<<"Processed-Timestamp">>, ProcessedT}
-        ,{<<"Hung-Up-By">>, HungUpBy}
-        ,{<<"Abandoned-Reason">>, AbandonedR}
-        ,{<<"Misses">>, misses_to_docs(Misses)}
-        ,{<<"Status">>, Status}
-        ,{<<"Caller-ID-Name">>, CallerIdName}
-        ,{<<"Caller-ID-Number">>, CallerIdNumber}
-        ,{<<"Wait-Time">>, wait_time(EnteredT, AbandonedT, HandledT)}
-        ,{<<"Talk-Time">>, talk_time(HandledT, ProcessedT)}
-        ])).
+      [{<<"Id">>, Id}
+      ,{<<"Call-ID">>, CallId}
+      ,{<<"Queue-ID">>, QueueId}
+      ,{<<"Agent-ID">>, AgentId}
+      ,{<<"Account-ID">>, AccountId}
+      ,{<<"Entered-Timestamp">>, EnteredT}
+      ,{<<"Abandoned-Timestamp">>, AbandonedT}
+      ,{<<"Handled-Timestamp">>, HandledT}
+      ,{<<"Processed-Timestamp">>, ProcessedT}
+      ,{<<"Hung-Up-By">>, HungUpBy}
+      ,{<<"Abandoned-Reason">>, AbandonedR}
+      ,{<<"Misses">>, misses_to_docs(Misses)}
+      ,{<<"Status">>, Status}
+      ,{<<"Caller-ID-Name">>, CallerIdName}
+      ,{<<"Caller-ID-Number">>, CallerIdNumber}
+      ,{<<"Wait-Time">>, wait_time(EnteredT, AbandonedT, HandledT)}
+      ,{<<"Talk-Time">>, talk_time(HandledT, ProcessedT)}
+      ]).
 
 wait_time(E, _, H) when is_integer(E), is_integer(H) -> H - E;
 wait_time(E, A, _) when is_integer(E), is_integer(A) -> A - E;
@@ -830,11 +828,10 @@ handle_missed_stat(JObj, Props) ->
 
 -spec create_miss(kz_json:object()) -> agent_miss().
 create_miss(JObj) ->
-    #agent_miss{
-       agent_id = kz_json:get_value(<<"Agent-ID">>, JObj)
+    #agent_miss{agent_id = kz_json:get_value(<<"Agent-ID">>, JObj)
                ,miss_reason = kz_json:get_value(<<"Miss-Reason">>, JObj)
                ,miss_timestamp = kz_json:get_value(<<"Miss-Timestamp">>, JObj)
-      }.
+               }.
 
 -spec handle_abandoned_stat(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_abandoned_stat(JObj, Props) ->
@@ -909,8 +906,7 @@ create_call_stat(Id, JObj, Props) ->
                                         }
                       }).
 
--spec update_call_stat(ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
+-type updates() :: [{pos_integer(), any()}].
+-spec update_call_stat(ne_binary(), updates(), kz_proplist()) -> 'ok'.
 update_call_stat(Id, Updates, Props) ->
-    gen_listener:cast(props:get_value('server', Props)
-                     ,{'update_call', Id, Updates}
-                     ).
+    gen_listener:cast(props:get_value('server', Props), {'update_call', Id, Updates}).

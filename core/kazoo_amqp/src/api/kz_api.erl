@@ -513,9 +513,7 @@ values_check_all(Prop, {Key, V}) ->
         'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd
         V -> 'true';
         _Val ->
-            lager:debug("API key '~s' value '~p' is not '~p'"
-                       ,[Key, _Val, V]
-                       ),
+            lager:debug("API key '~s' value '~p' is not '~p'", [Key, _Val, V]),
             'false'
     end.
 

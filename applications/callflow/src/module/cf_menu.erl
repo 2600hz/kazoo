@@ -29,8 +29,7 @@
 -type menu_keys() :: #menu_keys{}.
 -define(MENU_KEY_LENGTH, 1).
 
--record(cf_menu_data, {
-          menu_id :: api_binary()
+-record(cf_menu_data, {menu_id :: api_ne_binary()
                       ,name = <<>> :: binary()
                       ,retries = 3 :: pos_integer()
                       ,timeout = 10000 :: pos_integer()
@@ -40,13 +39,13 @@
                       ,hunt_allow = <<>> :: binary()
                       ,record_pin = <<>> :: binary()
                       ,record_from_offnet = 'false' :: boolean()
-                      ,greeting_id :: api_binary()
+                      ,greeting_id :: api_ne_binary()
                       ,exit_media = 'true' :: boolean() | ne_binary()
                       ,transfer_media = 'true' :: boolean() | ne_binary()
                       ,invalid_media = 'true' :: boolean() | ne_binary()
                       ,keys = #menu_keys{} :: menu_keys()
                       ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
-         }).
+                      }).
 -type menu() :: #cf_menu_data{}.
 
 %%--------------------------------------------------------------------
@@ -361,7 +360,7 @@ play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
 %%--------------------------------------------------------------------
 -spec get_prompt(menu(), kapps_call:call()) -> ne_binary().
 get_prompt(#cf_menu_data{greeting_id='undefined'}, Call) ->
-    kz_media_util:get_prompt(<<"menu-no_prompt">>, Call);
+    kapps_call:get_prompt(Call, <<"menu-no_prompt">>);
 get_prompt(#cf_menu_data{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
     ID;
 get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->

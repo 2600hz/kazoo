@@ -86,6 +86,11 @@ prompt_path(AccountId, PromptId, L) ->
     Language = kz_term:to_lower_binary(L),
     #media_map{languages=Langs} = get_map(AccountId, PromptId),
     case kz_json:get_first_defined(language_keys(Language), Langs) of
+        'undefined' when ?KZ_MEDIA_DB =:= AccountId ->
+            lager:debug("failed to find prompt ~s in ~p, using default"
+                       ,[PromptId, language_keys(Language)]
+                       ),
+            default_prompt_path(PromptId, Language);
         'undefined' ->
             lager:debug("failed to find prompt ~s in ~p", [PromptId, language_keys(Language)]),
             case kz_services:find_reseller_id(AccountId) of
@@ -384,14 +389,15 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
     #media_map{languages=Langs}=Map = get_map(AccountId, PromptId),
 
     lager:debug("adding language ~s for prompt ~s to map for ~s", [Lang, PromptId, AccountId]),
+    Languages = kz_json:set_value(Lang
+                                 ,kz_media_util:prompt_path(kz_doc:account_id(JObj, ?KZ_MEDIA_DB)
+                                                           ,kz_doc:id(JObj)
+                                                           )
+                                 ,Langs
+                                 ),
     UpdatedMap = Map#media_map{account_id=AccountId
                               ,prompt_id=PromptId
-                              ,languages=kz_json:set_value(Lang
-                                                          ,kz_media_util:prompt_path(kz_doc:account_id(JObj, ?KZ_MEDIA_DB)
-                                                                                    ,kz_doc:id(JObj)
-                                                                                    )
-                                                          ,Langs
-                                                          )
+                              ,languages=Languages
                               },
 
     insert_map(UpdatedMap).

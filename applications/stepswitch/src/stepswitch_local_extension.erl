@@ -28,7 +28,7 @@
                ,control_queue :: api_binary()
                ,response_queue :: api_binary()
                ,queue :: api_binary()
-               ,timeout :: reference()
+               ,timeout :: api_reference()
                ,call_id :: api_binary()
                }).
 -type state() :: #state{}.
@@ -287,7 +287,7 @@ build_local_extension(#state{number_props=Props
              ],
              CCVsOrig),
 
-    CCVUpdates = props:filter_undefined(
+    CCVUpdates = kz_json:from_list(
                    [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, kz_json:get_value(<<"Retain-CID">>, CCVsOrig)}
@@ -297,22 +297,21 @@ build_local_extension(#state{number_props=Props
                    ]),
 
     Endpoint = kz_json:from_list(
-                 props:filter_undefined(
-                   [{<<"Invite-Format">>, <<"loopback">>}
-                   ,{<<"Route">>, Number}
-                   ,{<<"To-DID">>, Number}
-                   ,{<<"To-Realm">>, Realm}
-                   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVUpdates)}
-                   ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-                   ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-                   ,{<<"Outbound-Callee-ID-Name">>, CEDName}
-                   ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
-                   ,{<<"Caller-ID-Name">>, CIDName}
-                   ,{<<"Caller-ID-Number">>, CIDNum}
-                   ,{<<"Ignore-Early-Media">>, 'true'}
-                   ,{<<"Enable-T38-Fax">>, 'false'}
-                   ,{<<"Enable-T38-Fax-Request">>, 'false'}
-                   ])),
+                 [{<<"Invite-Format">>, <<"loopback">>}
+                 ,{<<"Route">>, Number}
+                 ,{<<"To-DID">>, Number}
+                 ,{<<"To-Realm">>, Realm}
+                 ,{<<"Custom-Channel-Vars">>, CCVUpdates}
+                 ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                 ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+                 ,{<<"Outbound-Callee-ID-Name">>, CEDName}
+                 ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
+                 ,{<<"Caller-ID-Name">>, CIDName}
+                 ,{<<"Caller-ID-Number">>, CIDNum}
+                 ,{<<"Ignore-Early-Media">>, 'true'}
+                 ,{<<"Enable-T38-Fax">>, 'false'}
+                 ,{<<"Enable-T38-Fax-Request">>, 'false'}
+                 ]),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}

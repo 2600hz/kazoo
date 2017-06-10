@@ -33,7 +33,7 @@ fetch_profile_config(JObj, ConfigName) ->
     [AccountId, ConferenceId] = binary:split(ConfigName, <<"_">>),
     fetch_profile_config(JObj, AccountId, ConferenceId).
 
--spec fetch_profile_config(kz_json:object(), api_binary(), ne_binary()) -> 'ok'.
+-spec fetch_profile_config(kz_json:object(), api_ne_binary(), ne_binary()) -> 'ok'.
 fetch_profile_config(JObj, AccountId, ?DEFAULT_PROFILE_NAME = ConfigName) ->
     fetch_profile_config(JObj, AccountId, ConfigName, default_profile());
 fetch_profile_config(JObj, AccountId, ?PAGE_PROFILE_NAME = ConfigName) ->
@@ -44,15 +44,15 @@ fetch_profile_config(JObj, AccountId, ConferenceId) ->
     Config = kapps_account_config:get_global(AccountId, ?CONFIG_CAT, [<<"profiles">>, Profile], default_profile()),
     fetch_profile_config(JObj, Conference, ConferenceId, Config).
 
--spec fetch_profile_config(kz_json:object(), kapps_conference:conference(), ne_binary(), api_object()) -> 'ok'.
-fetch_profile_config(JObj, _Conference, ConfigName, 'undefined') ->
+-spec fetch_profile_config(kz_json:object(), kapps_conference:conference(), api_ne_binary(), api_object()) -> 'ok'.
+fetch_profile_config(JObj, Conference, ConfigName, 'undefined') ->
     lager:debug("no profile defined for '~s', using default", [ConfigName]),
-    fetch_profile_config(JObj, ConfigName, default_profile());
+    fetch_profile_config(JObj, Conference, ConfigName, default_profile());
 fetch_profile_config(JObj, _Conference, ?PAGE_PROFILE_NAME = ConfigName, Profile) ->
     ServerId = kz_api:server_id(JObj),
     lager:debug("profile '~s' found", [ConfigName]),
     Resp = [{<<"Profiles">>, kz_json:from_list([{ConfigName, Profile}])}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp));
@@ -66,7 +66,7 @@ fetch_profile_config(JObj, Conference, ConfigName, Profile) ->
     Resp = [{<<"Profiles">>, profiles(Conference, FullProfile, Profile)}
            ,{<<"Advertise">>, advertise(ConfigName)}
            ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
@@ -78,7 +78,7 @@ fetch_controls_config(JObj, <<"page_", _/binary>>, ConfigName) ->
     Config = caller_controls(ControlsName),
     CallerControls = kz_json:from_list([{ConfigName, Config}]),
     Resp = [{<<"Caller-Controls">>, CallerControls}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_conference:publish_config_resp(ServerId, Resp);
@@ -90,7 +90,7 @@ fetch_controls_config(JObj, ConferenceId, ConfigName) ->
     Config = caller_controls(AccountId, ControlCfg),
     CallerControls = kz_json:from_list([{ConfigName, Config}]),
     Resp = [{<<"Caller-Controls">>, CallerControls}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_conference:publish_config_resp(ServerId, Resp).
@@ -141,7 +141,11 @@ max_participants(Conference) ->
 -spec max_members_sound(kapps_conference:conference()) -> api_binary().
 max_members_sound(Conference) ->
     case kapps_conference:max_members_media(Conference) of
-        'undefined' -> kz_media_util:get_prompt(?DEFAULT_MAX_MEMBERS_MEDIA);
+        'undefined' ->
+            kz_media_util:get_account_prompt(?DEFAULT_MAX_MEMBERS_MEDIA
+                                            ,'undefined'
+                                            ,kapps_conference:account_id(Conference)
+                                            );
         Media -> Media
     end.
 

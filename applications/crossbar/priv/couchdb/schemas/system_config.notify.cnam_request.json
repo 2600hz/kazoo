@@ -6,6 +6,9 @@
         "default_to": {
             "default": "",
             "description": "notify.cnam_request default to",
+            "items": {
+                "type": "string"
+            },
             "type": "string"
         }
     },

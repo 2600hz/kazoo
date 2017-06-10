@@ -252,7 +252,7 @@ to_email_addresses(DataJObj, ModConfigCat, _) ->
 
 -spec default_to_addresses(ne_binary()) -> api_binaries().
 default_to_addresses(ModConfigCat) ->
-    case kapps_config:get(ModConfigCat, <<"default_to">>) of
+    case kapps_config:get_ne_binary_or_ne_binaries(ModConfigCat, <<"default_to">>) of
         'undefined' -> 'undefined';
         <<_/binary>> = Email -> [Email];
         [_|_]=Emails -> Emails

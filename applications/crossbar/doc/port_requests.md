@@ -25,6 +25,8 @@
     - [Get](#get-port-request-details)
     - [Update](#edit-a-port-request)
     - [Delete](#delete-a-port-request)
+* Timeline
+    - [Listing transitions and comments](#listing-transitions-and-comments)
 * Update Status
     - [`submitted`](#indicate-a-port-is-ready-to-be-processed)
         + [Success](#success_1)
@@ -82,7 +84,6 @@ Key | Description | Type | Default | Required
 `numbers` | The numbers to port in | `object` |   | `true`
 `numbers./\+?[0-9]+/` |   | `object` |   | `false`
 `port_state` | What state the port request is currently in | `string('unconfirmed', 'pending', 'submitted', 'scheduled', 'completed', 'rejected', 'canceled')` | `unconfirmed` | `false`
-`scheduled_date` | Requested scheduled date in gregorain timestamp | `integer` |   | `false`
 `transfer_date` | Requested transfer date in gregorain timestamp | `integer` |   | `false`
 
 
@@ -327,6 +328,11 @@ curl -v -X GET \
                         "+12025559042": {}
                     },
                     "port_state": "scheduled",
+                    "schedule_at": {
+                        "date_time": "2017-06-24 12:00",
+                        "timezone": "America/New_York"
+                    },
+                    "scheduled_date": 63665539200,
                     "sent": false,
                     "updated": 63630130490,
                     "uploads": {}
@@ -824,6 +830,94 @@ curl -v -X DELETE \
 }
 ```
 
+#### Listing transitions and comments
+
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline
+
+This shows the port request's timeline as a sorted list of transitions and comments.
+
+Admins are able to list every transitions and comments regardless of their privacy setting.
+Non admins only see transitions and public comments.
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "authorization": {
+                "account": {
+                    "id": "{AUTH_ACCOUNT_ID}",
+                    "name": "{AUTH_ACCOUNT_NAME}"
+                },
+                "user": {
+                    "id": "0d46906ff1eb36bff4d09b5b32fc14be",
+                    "first_name": "John",
+                    "last_name": "Doe"
+                }
+            },
+            "timestamp": 63663993575,
+            "transition": {
+                "new": "unconfirmed"
+            },
+            "type": "transition"
+        },
+        {
+            "content": "the previous comment was private, this one is not",
+            "superduper_comment": false,
+            "timestamp": 63664000760,
+            "user_id": "0d46906ff1eb36bff4d09b5b32fc14be"
+        },
+        {
+            "content": "this is not private",
+            "superduper_comment": false,
+            "timestamp": 63664000768,
+            "user_id": "0d46906ff1eb36bff4d09b5b32fc14be"
+        },
+        {
+            "authorization": {
+                "account": {
+                    "id": "{AUTH_ACCOUNT_ID}",
+                    "name": "{AUTH_ACCOUNT_NAME}"
+                },
+                "user": {
+                    "id": "0d46906ff1eb36bff4d09b5b32fc14be",
+                    "first_name": "John",
+                    "last_name": "Doe"
+                }
+            },
+            "reason": "this was approved by Jane Doe",
+            "timestamp": 63664096014,
+            "transition": {
+                "new": "submitted",
+                "previous": "unconfirmed"
+            },
+            "type": "transition"
+        }
+    ],
+    "node": "{NODE}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "2017-06-07T23:07:09",
+    "version": "4.1.12"
+}
+```
+
+
+### Updating a port request's status
+
+When PATCHing a port request a reason can be added to the transition with the following request value:
+* `reason`: an optional string that can be used to describe the reason for the transition
+
+This information will then be available in the timeline.
+
+Note: request values can be set either in the query string or in the data payload.
 
 #### Indicate a port is ready to be processed
 
@@ -832,7 +926,7 @@ curl -v -X DELETE \
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted?reason=this+was+approved+by+Jane+Doe
 ```
 
 ##### Success
@@ -950,6 +1044,7 @@ curl -v -X PATCH \
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"scheduled_date": {"timezone":"America/Los_Angeles", "date_time":"2017-06-24 12:00"}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
 ```
 
@@ -964,6 +1059,11 @@ curl -v -X PATCH \
             "+12025559000": {}
         },
         "port_state": "scheduled",
+        "schedule_at": {
+            "date_time": "2017-06-24 12:00",
+            "timezone": "America/Los_Angeles"
+        },
+        "scheduled_date": 63658292400,
         "sent": false,
         "updated": 63630120528,
         "uploads": {

@@ -30,8 +30,6 @@
 -define(RECORDED_NAME_KEY, [<<"media">>, <<"name">>]).
 -define(CF_RECORDING_ID_KEY, <<"Recording-ID">>).
 
--define(CONFIRM_FILE(Call), kz_media_util:get_prompt(<<"ivr-group_confirm">>, Call)).
-
 -define(DIALPLAN_MAP, [{<<"tone">>, <<"tones">>}]).
 
 -define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
@@ -44,10 +42,6 @@
 -define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).
 
 -define(CACHE_NAME, 'callflow_cache').
-
--define(DEFAULT_TIMEZONE
-       ,kapps_config:get_ne_binary(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
-       ).
 
 -define(RESTRICTED_ENDPOINT_KEY, <<"Restricted-Endpoint-ID">>).
 

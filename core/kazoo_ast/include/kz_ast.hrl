@@ -1,7 +1,11 @@
 -ifndef(KZ_AST_HRL).
 
--record(module_ast, {functions = []
-                    ,records = []
+-type clauses() :: [erl_parse:abstract_clause()].
+-type ast_functions() :: [{module(), function(), non_neg_integer(), clauses()}].
+-type ast_records() :: [{atom(), [atom()]}].
+
+-record(module_ast, {functions = [] :: ast_functions()
+                    ,records = [] :: ast_records()
                     }).
 
 -type module_ast() :: #module_ast{}.
@@ -123,6 +127,9 @@
 -define(FA(F, A), {'fun', _, {'function', F, A}}).
 
 -define(ANON(Clauses), {'fun', _, {'clauses', Clauses}}).
+-define(NAMED_ANON(Name, Clauses)
+       ,{'named_fun', _, Name, Clauses}
+       ).
 
 -define(MOD_FUN_ARGS(Module, Function, Args)
        ,{'call',_

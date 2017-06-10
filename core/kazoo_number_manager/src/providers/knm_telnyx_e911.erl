@@ -218,10 +218,9 @@ reason(RepJObj) ->
     Message = <<"message">>,
     Reasons = <<"reasons">>,
     Error = kz_json:from_list(
-              props:filter_undefined(
-                [{Message, kz_json:get_ne_binary_value(Message, RepJObj)}
-                ,{Reasons, kz_json:get_value(Reasons, RepJObj)}
-                ])),
+              [{Message, kz_json:get_ne_binary_value(Message, RepJObj)}
+              ,{Reasons, kz_json:get_value(Reasons, RepJObj)}
+              ]),
     Reason = kz_json:encode(Error),
     lager:error("~s", [Reason]),
     Reason.

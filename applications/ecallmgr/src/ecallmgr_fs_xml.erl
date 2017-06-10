@@ -394,7 +394,7 @@ route_resp_set_winning_node() ->
 route_resp_ringback(JObj) ->
     case kz_json:get_value(<<"Ringback-Media">>, JObj) of
         'undefined' ->
-            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>),
             action_el(<<"set">>, <<"ringback=", (kz_term:to_binary(RBSetting))/binary>>);
         Media ->
             MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
@@ -420,7 +420,7 @@ route_ccvs_list(CCVs) ->
 route_resp_transfer_ringback(JObj) ->
     case kz_json:get_value(<<"Transfer-Media">>, JObj) of
         'undefined' ->
-            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>),
             action_el(<<"set">>, <<"transfer_ringback=", (kz_term:to_binary(RBSetting))/binary>>);
         Media ->
             MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
@@ -453,10 +453,10 @@ check_dtmf_type(Props) ->
 -spec get_leg_vars(kz_json:object() | kz_proplist()) -> iolist().
 get_leg_vars([]) -> [];
 get_leg_vars([_|_]=Prop) ->
-    ["["
+    ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
     ,string:join([kz_term:to_list(V)
                   || V <- lists:foldr(fun get_channel_vars/2, [], Prop)]
-                ,","
+                ,?BRIDGE_CHANNEL_VAR_SEPARATOR
                 )
     ,"]"
     ];
@@ -586,6 +586,8 @@ diversion_header_fold(<<_/binary>> = V, Vars0) ->
 -spec get_channel_vars_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
+get_channel_vars_fold(<<"Channel-Actions">>, Actions, Acc) ->
+    [Actions |Acc];
 get_channel_vars_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->

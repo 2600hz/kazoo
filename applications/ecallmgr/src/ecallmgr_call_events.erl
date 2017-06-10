@@ -652,6 +652,7 @@ generic_call_event_props(Props) ->
 
     [{<<"Timestamp">>, NormalizedFSTimestamp}
     ,{<<"Msg-ID">>, kz_term:to_binary(FSTimestamp)}
+    ,{<<"Origination-Call-ID">>, kzd_freeswitch:origination_call_id(Props)}
     ,{<<"Call-ID">>, get_call_id(Props)}
     ,{<<"Transfer-History">>, get_transfer_history(Props)}
     ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}

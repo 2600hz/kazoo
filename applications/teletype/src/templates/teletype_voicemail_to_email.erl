@@ -58,7 +58,7 @@ init() ->
 
 -spec handle_new_voicemail(kz_json:object()) -> 'ok'.
 handle_new_voicemail(JObj) ->
-    'true' = kapi_notifications:voicemail_v(JObj),
+    'true' = kapi_notifications:voicemail_new_v(JObj),
     kz_util:put_callid(JObj),
 
     %% Gather data for template
@@ -66,9 +66,13 @@ handle_new_voicemail(JObj) ->
 
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-        orelse teletype_util:stop_processing("template ~s not enabled for account ~s", [?TEMPLATE_ID, AccountId]),
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+        'true' -> handle_req(DataJObj, AccountId)
+    end.
 
+-spec handle_req(kz_json:object(), ne_binary()) -> 'ok'.
+handle_req(DataJObj, AccountId) ->
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     VMBoxId = kz_json:get_value(<<"voicemail_box">>, DataJObj),
@@ -78,11 +82,6 @@ handle_new_voicemail(JObj) ->
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
     Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
-
-    %% If the box has emails, continue processing
-    %% otherwise stop processing
-    Emails =/= []
-        orelse teletype_util:stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
 
     ReqData =
         kz_json:set_values([{<<"voicemail">>, VMBox}
@@ -94,9 +93,9 @@ handle_new_voicemail(JObj) ->
                           ),
 
     case teletype_util:is_preview(DataJObj) of
-        'false' -> process_req(ReqData);
+        'false' -> maybe_process_req(ReqData, Emails);
         'true' ->
-            process_req(kz_json:merge_jobjs(DataJObj, ReqData))
+            maybe_process_req(kz_json:merge_jobjs(DataJObj, ReqData), Emails)
     end.
 
 -spec maybe_add_user_email(ne_binaries(), api_binary(), boolean()) -> ne_binaries().
@@ -111,6 +110,16 @@ get_owner(VMBox, DataJObj) ->
         {'ok', _}=OK -> OK;
         {'error', 'empty_doc_id'} -> {'ok', kz_json:new()}
     end.
+
+%% If the box has emails, continue processing
+%% otherwise stop processing
+-spec maybe_process_req(kz_json:object(), ne_binaries()) -> 'ok'.
+maybe_process_req(DataJObj, []) ->
+    _VMBoxId = kz_json:get_value(<<"voicemail_box">>, DataJObj),
+    lager:debug("box ~s has no emails or owner doesn't want emails", [_VMBoxId]),
+    teletype_util:send_update(DataJObj, <<"completed">>);
+maybe_process_req(DataJObj, _Emails) ->
+    process_req(DataJObj).
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->

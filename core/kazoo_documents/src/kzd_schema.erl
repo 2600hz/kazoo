@@ -41,7 +41,7 @@ properties(Key, Schema) ->
 %%% Keywords
 %%% ==================================
 %% String
--spec max_length(kz_json:path(), ne_binary()) -> api_object().
+-spec max_length(kz_json:path(), ne_binary()) -> api_integer().
 max_length(Key, Schema) ->
     Properties = properties(Key, Schema),
-    kz_json:get_value(?SCHEMA_KEYWORDS_MAXLENGTH, Properties).
+    kz_json:get_integer_value(?SCHEMA_KEYWORDS_MAXLENGTH, Properties).

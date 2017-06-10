@@ -54,6 +54,8 @@
 
 -export([bind/3, unbind/3]).
 
+-export([flush_account_views/0]).
+
 binding('migrate') -> <<"maintenance.migrate">>;
 binding('refresh') -> <<"maintenance.refresh">>;
 binding('refresh_account') -> <<"maintenance.refresh.account">>;
@@ -77,6 +79,8 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
+
+-define(VIEW_NUMBERS_ACCOUNT, <<"_design/numbers">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -343,6 +347,10 @@ refresh(?KZ_TASKS_DB) ->
     _ = kz_datamgr:db_create(?KZ_TASKS_DB),
     _ = kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, 'tasks'),
     'ok';
+refresh(?KZ_PENDING_NOTIFY_DB) ->
+    _ = kz_datamgr:db_create(?KZ_PENDING_NOTIFY_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, 'crossbar', "views/pending_notify.json"),
+    'ok';
 refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of
         'account' -> refresh_account_db(Database);
@@ -458,7 +466,16 @@ refresh_account_db(Database) ->
     AccountId = kz_util:format_account_id(Database, 'raw'),
     _ = remove_depreciated_account_views(AccountDb),
     _ = ensure_account_definition(AccountDb, AccountId),
-    _ = kapps_util:update_views(AccountDb, get_all_account_views(), 'true'),
+    %% ?VIEW_NUMBERS_ACCOUNT gets updated/created in KNM maintenance
+    AccountViews =
+        case kz_datamgr:open_doc(AccountDb, ?VIEW_NUMBERS_ACCOUNT) of
+            {error,_} ->
+                lists:keydelete(?VIEW_NUMBERS_ACCOUNT, 1, get_all_account_views());
+            {ok, ViewJObj} ->
+                ViewListing = {?VIEW_NUMBERS_ACCOUNT, ViewJObj},
+                lists:keyreplace(?VIEW_NUMBERS_ACCOUNT, 1, get_all_account_views(), ViewListing)
+        end,
+    _ = kapps_util:update_views(AccountDb, AccountViews, 'true'),
     _ = kazoo_number_manager_maintenance:update_number_services_view(AccountDb),
     kapps_account_config:migrate(AccountDb),
     _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
@@ -492,7 +509,7 @@ get_definition_from_accounts(AccountDb, AccountId) ->
 flush_account_views() ->
     put('account_views', 'undefined').
 
--spec get_all_account_views() -> kz_proplist().
+-spec get_all_account_views() -> kz_datamgr:views_listing().
 get_all_account_views() ->
     case get('account_views') of
         'undefined' ->
@@ -502,7 +519,7 @@ get_all_account_views() ->
         Views -> Views
     end.
 
--spec fetch_all_account_views() -> kz_proplist().
+-spec fetch_all_account_views() -> kz_datamgr:views_listing().
 fetch_all_account_views() ->
     [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
     ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
@@ -725,18 +742,16 @@ migrate_limits(Account) ->
                 end,
     {TT, IT} = clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks),
     JObj = kz_json:from_list(
-             props:filter_undefined(
-               [{<<"_id">>, <<"limits">>}
-               ,{<<"twoway_trunks">>, TT}
-               ,{<<"inbound_trunks">>, IT}
-               ,{<<"pvt_account_db">>, AccountDb}
-               ,{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
-               ,{<<"pvt_type">>, <<"limits">>}
-               ,{<<"pvt_created">>, TStamp}
-               ,{<<"pvt_modified">>, TStamp}
-               ,{<<"pvt_vsn">>, 1}
-               ]
-              )),
+             [{<<"_id">>, <<"limits">>}
+             ,{<<"twoway_trunks">>, TT}
+             ,{<<"inbound_trunks">>, IT}
+             ,{<<"pvt_account_db">>, AccountDb}
+             ,{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
+             ,{<<"pvt_type">>, <<"limits">>}
+             ,{<<"pvt_created">>, TStamp}
+             ,{<<"pvt_modified">>, TStamp}
+             ,{<<"pvt_vsn">>, 1}
+             ]),
     _ = kz_datamgr:save_doc(AccountDb, JObj),
     'ok'.
 

@@ -59,9 +59,8 @@ handle_missed_call(JObj) ->
 
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("notification handling not configured for this account");
-        'true' ->
-            process_req(DataJObj)
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+        'true' -> process_req(DataJObj)
     end.
 
 -spec process_req(kz_json:object()) -> 'ok'.
