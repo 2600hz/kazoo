@@ -518,12 +518,19 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         'false' -> {'error', <<"set failed to execute as JObj did not validate">>};
         'true' ->
             ChannelVars = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
-            _ = ecallmgr_fs_command:set(Node, UUID, ChannelVars),
-
             CallVars = kz_json:to_proplist(kz_json:get_value(<<"Custom-Call-Vars">>, JObj, kz_json:new())),
-            _ = ecallmgr_fs_command:export(Node, UUID, CallVars),
-
-            {<<"set">>, 'noop'}
+            props:filter_undefined(
+              [{<<"kz_multiset">>, case ChannelVars of
+                                       [] -> 'undefined';
+                                       _ -> ecallmgr_util:multi_set_args(Node, UUID, ChannelVars)
+                                   end
+               }
+              ,{<<"kz_export">>, case CallVars of
+                                     [] -> 'undefined';
+                                     _ -> ecallmgr_util:multi_set_args(Node, UUID, CallVars)
+                                 end
+               }
+              ])
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
