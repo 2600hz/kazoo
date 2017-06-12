@@ -655,9 +655,9 @@ ringback_parker(EndpointId, SlotNumber, Slot, Data, Call0) ->
     TmpCID = <<"Parking slot ", SlotNumber/binary, " - ", CalleeName/binary>>,
 
     Routines = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {'undefined', TmpCID}}
-                ,{fun kapps_call:kvs_store/3, 'force_dynamic_cid', 'true'}
-                ,{fun kapps_call:set_callee_id_number/2, CalleeNumber}
-                ,{fun kapps_call:set_callee_id_name/2, CalleeName}
+               ,{fun kapps_call:kvs_store/3, 'force_dynamic_cid', 'true'}
+               ,{fun kapps_call:set_callee_id_number/2, CalleeNumber}
+               ,{fun kapps_call:set_callee_id_name/2, CalleeName}
                ],
     Call = kapps_call:exec(Routines, Call0),
     Timeout = callback_timeout(Data, SlotNumber),
@@ -684,7 +684,7 @@ set_command(ChannelVars) ->
               ,{<<"Custom-Call-Vars">>, kz_json:new()}
               ,{<<"Call-ID">>, kz_binary:rand_hex(16)}
               ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-                | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     kz_json:from_list(Command).
 
