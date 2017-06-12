@@ -653,7 +653,7 @@ ringback_parker(EndpointId, SlotNumber, Slot, Data, Call0) ->
     CalleeNumber = kz_json:get_value(<<"CID-Number">>, Slot),
     CalleeName = kz_json:get_value(<<"CID-Name">>, Slot),
     TmpCID = <<"Parking slot ", SlotNumber/binary, " - ", CalleeName/binary>>,
-    
+
     Routines = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {'undefined', TmpCID}}
                 ,{fun kapps_call:kvs_store/3, 'force_dynamic_cid', 'true'}
                 ,{fun kapps_call:set_callee_id_number/2, CalleeNumber}
