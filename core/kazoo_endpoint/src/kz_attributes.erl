@@ -80,7 +80,7 @@ caller_id(Attribute, Call) ->
            andalso not kz_json:is_true(<<"Call-Forward">>, CCVs)
           )
           orelse kz_json:is_true(<<"Retain-CID">>, CCVs))
-        andalso kz_term:is_false(kapps_call:kvs_fetch('force_dynamic_cid', 'false', Call))
+        andalso kz_util:is_false(kapps_call:kvs_fetch('force_dynamic_cid', 'false', Call))
     of
         'true' ->
             Number = kapps_call:caller_id_number(Call),
