@@ -234,6 +234,10 @@ save_fun('true') -> fun kz_datamgr:ensure_saved/3.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Move a document from source to destination with attachments,
+%% optionally applies a transform function on the document
+%% Note: Caller is responsible to format both source and destination
+%% databases!
 %% @end
 %%--------------------------------------------------------------------
 -spec move_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid()) ->
@@ -279,6 +283,10 @@ move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Copy a document from source to destination with attachments,
+%% optionally applies a transform function on the document
+%% Note: Caller is responsible to format both source and destination
+%% databases!
 %% @end
 %%--------------------------------------------------------------------
 -spec copy_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid()) ->
@@ -328,7 +336,7 @@ maybe_create_destination_db(FromDb, FromId, ToDb, Options) ->
     lager:info("destination modb ~p not found, maybe creating...", [ToDb]),
     case ShouldCreate
         andalso (kz_datamgr:db_exists(FromDb)
-                 andalso open_doc(FromDb, FromId)
+                 andalso kz_datamgr:open_doc(FromDb, FromId)
                 )
     of
         'false' when ShouldCreate ->

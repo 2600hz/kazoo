@@ -8,6 +8,9 @@
 
 -export([migrate/0
         ,migrate_account/1
+
+        ,migrate_voicemails/1
+        ,migrate_cdrs/1
         ]).
 
 -include("kazoo_modb.hrl").
@@ -26,12 +29,12 @@ migrate() ->
 migrate_account_fold(AccountId, Current, Total) ->
     io:format("(~p/~p) migrating items within account '~s'~n", [Current, Total, AccountId]),
     _ = migrate_account(AccountId),
+    io:format("[~s] finished migrating items~n~n", [AccountId]),
     Current + 1.
 
 -spec migrate_account(ne_binary()) -> 'ok'.
 migrate_account(Account) ->
-    AccountId = get_account_id(Account),
-    lists:foreach(fun(Fun) -> Fun(AccountId) end
+    lists:foreach(fun(Fun) -> Fun(Account) end
                  ,[fun migrate_voicemails/1
                   ,fun migrate_cdrs/1
                   ]
@@ -68,11 +71,20 @@ get_view_count(AccountId, View, Retry) ->
             get_view_count(AccountDb, View, Retry-1)
     end.
 
+-spec next_skip(non_neg_integer(), non_neg_integer(), kz_proplist()) -> kz_proplist().
+next_skip(0, Skip, ViewOptions) -> props:set_value('skip', Skip, ViewOptions);
+next_skip(Remaining, Skip, ViewOptions) ->
+    case Remaining < props:get_value(limit, ViewOptions) of
+        true -> props:set_value('skip', Skip, props:delete(limit, ViewOptions));
+        false -> props:set_value('skip', Skip, ViewOptions)
+    end.
+
 %%%===================================================================
 %%% Voicemail Migration
 %%%===================================================================
 -spec migrate_voicemails(ne_binary()) -> 'ok'.
-migrate_voicemails(AccountId) ->
+migrate_voicemails(Account) ->
+    AccountId = get_account_id(Account),
     Total = get_view_count(AccountId, <<"vmboxes/legacy_msg_by_timestamp">>),
     migrate_voicemails(AccountId, Total).
 
@@ -86,12 +98,14 @@ migrate_voicemails(AccountId, Total) ->
              ,processed => 0
              ,moved => 0
              ,result => #{}
+             ,skip => 0
              },
     migrate_voicemails(AccountId, Stats, [{'limit', 5}]).
 
 -spec migrate_voicemails(ne_binary(), map(), kz_proplist()) -> 'ok'.
-migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved := Moved}=Stats, ViewOptions) ->
+migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved := Moved, skip := Skip}=Stats, ViewOptions) ->
     AccountDb = kz_util:format_account_db(AccountId),
+    io:format("~nStats ~p~n ViewOptions ~p~n~n", [Stats, ViewOptions]),
     case kz_datamgr:get_results(AccountDb, <<"vmboxes/legacy_msg_by_timestamp">>, ViewOptions) of
         {'ok', []} ->
             io:format("[~s] voicemail message migration finished, (~b/~b) messages has been moved~n"
@@ -107,29 +121,29 @@ migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved :=
             update_mailboxes(AccountId, maps:get(result, ProcessMap)),
 
             NewProcessed = Processed + Length,
-            Remaining = Total - NewProcessed,
-            io:format("[~s] finished processing ~b messages, ~b remain~n", [AccountId, Length, Remaining]),
+            io:format("[~s] finished processing ~b messages, ~b remain~n", [AccountId, Length, Total - NewProcessed]),
             timer:sleep(1000),
-            NewSkip = case Remaining of
-                          0 -> Total;
-                          Remaining when Remaining < NewProcessed -> Remaining;
-                          _ -> NewProcessed
-                      end,
+
+            NewMoved = maps:get(moved, ProcessMap),
+            NewSkip = Skip + maps:get(skip, ProcessMap),
+            Remaining = Total - NewMoved,
             migrate_voicemails(AccountId
                               ,Stats#{processed := NewProcessed
-                                     ,moved := maps:get(moved, ProcessMap)
+                                     ,moved := NewMoved
+                                     ,skip := NewSkip
                                      ,result := #{}
                                      }
-                              ,props:set_value('skip', NewSkip, ViewOptions)
+                              ,next_skip(Remaining, NewSkip, ViewOptions)
                               );
         {'error', _R} ->
-            io:format("[~s] failed to fetch voicemail messages: ~p~n", [AccountId, _R])
+            io:format("[~s] failed to fetch voicemail messages: ~p~n~n", [AccountId, _R])
     end.
 
 -spec move_vm_to_modb(ne_binary(), kz_json:object(), map()) -> map().
 move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
                                           ,processed := Processed
                                           ,moved := Moved
+                                          ,skip := Skip
                                           ,result := Result
                                           }=Map) ->
     AccountDb = kz_util:format_account_db(AccountId),
@@ -138,7 +152,7 @@ move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
 
     FromId = kz_json:get_value([<<"metadata">>, <<"media_id">>], LegacyVMJObj),
 
-    io:format("[~s] (~b/~b) moving voicemail ~s to ~s := "
+    io:format("[~s] (~b/~b) moving voicemail ~s to ~s => "
              ,[AccountId, Processed + 1, Total, FromId, ToId]
              ),
 
@@ -148,20 +162,32 @@ move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
            ,{'max_retries', 3}
            ],
 
-    case kazoo_modb:move_doc(AccountDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
+    case kazoo_modb:move_doc(AccountDb, FromId, ToDb, ToId, Opts) of
         {'ok', _} ->
             io:format("done~n"),
             Map#{result := maps:update_with(BoxId
                                            ,fun(Old) -> sets:add_element(FromId, Old) end
-                                           ,sets:new()
+                                           ,sets:from_list([FromId])
+                                           ,Result
+                                           )
+                ,moved := Moved + 1
+                ,processed := Processed + 1
+                };
+        {'error', 'conflict'} ->
+            io:format("done~n"),
+            Map#{result := maps:update_with(BoxId
+                                           ,fun(Old) -> sets:add_element(FromId, Old) end
+                                           ,sets:from_list([FromId])
                                            ,Result
                                            )
                 ,moved := Moved + 1
                 ,processed := Processed + 1
                 };
         {'error', _Reason} ->
-            io:format("failed ~p~n", [_Reason]),
-            Map#{processed := Processed + 1}
+            io:format("failed: ~p~n", [_Reason]),
+            Map#{processed := Processed + 1
+                ,skip := Skip + 1
+                }
     end.
 
 -spec transform_vm_doc_funs(ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary(), update_funs()}.
@@ -192,7 +218,6 @@ transform_vm_doc_funs(AccountDb, LegacyVMJObj) ->
 -spec update_mailboxes(ne_binary(), map()) -> 'ok'.
 update_mailboxes(AccountId, Map) ->
     BoxIds = maps:keys(Map),
-    io:format("BoxIds ~p~n", [BoxIds]),
 
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_term:is_not_empty(BoxIds)
@@ -217,7 +242,6 @@ update_mailbox_jobjs(BoxJObjs, Map) ->
 
 -spec update_message_array(kz_json:object(), sets:set()) -> kz_json:object().
 update_message_array(BoxJObj, ResultSet) ->
-    io:format("Moved ~p~n", [sets:to_list(ResultSet)]),
     Messages = kz_json:get_value(<<"messages">>, BoxJObj),
     Fun = fun(Msg, Acc) ->
                   case sets:is_element(kz_json:get_value(<<"media_id">>, Msg), ResultSet) of
@@ -233,7 +257,8 @@ update_message_array(BoxJObj, ResultSet) ->
 %%%===================================================================
 
 -spec migrate_cdrs(ne_binary()) -> 'ok'.
-migrate_cdrs(AccountId) ->
+migrate_cdrs(Account) ->
+    AccountId = get_account_id(Account),
     Total = get_view_count(AccountId, <<"cdrs/crossbar_listing">>),
     migrate_cdrs(AccountId, Total).
 
@@ -242,15 +267,16 @@ migrate_cdrs(_AccountId, 0) ->
     io:format("[~s] no cdrs found~n", [_AccountId]);
 migrate_cdrs(AccountId, Total) ->
     Limit = kz_datamgr:max_bulk_read(),
-    io:format("[~s] start migrating total ~b cdrs with batch size ~b~n", [AccountId, Total, Limit]),
+    io:format("[~s] Start migrating total ~b cdrs with batch size ~b~n", [AccountId, Total, Limit]),
     Stats = #{total => Total
              ,processed => 0
              ,moved => 0
+             ,skip => 0
              },
     migrate_cdrs(AccountId, Stats, [{'limit', 5}, include_docs]).
 
 -spec migrate_cdrs(ne_binary(), map(), kz_proplist()) -> 'ok'.
-migrate_cdrs(AccountId, #{total := Total, processed := Processed, moved := Moved}=Stats, ViewOptions) ->
+migrate_cdrs(AccountId, #{total := Total, processed := Processed, moved := Moved, skip := Skip}=Stats, ViewOptions) ->
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
         {'ok', []} ->
@@ -271,22 +297,20 @@ migrate_cdrs(AccountId, #{total := Total, processed := Processed, moved := Moved
             end,
 
             NewProcessed = Processed + Length,
-            Remaining = Total - NewProcessed,
-            io:format("[~s] finished processing ~b cdrs, ~b remain~n", [AccountId, Length, Remaining]),
+            io:format("[~s] finished processing ~b cdrs, ~b remain~n", [AccountId, Length, Total - NewProcessed]),
 
             timer:sleep(1000),
-            NewSkip = case Remaining of
-                          0 -> Total;
-                          Remaining when Remaining < NewProcessed -> Remaining;
-                          _ -> NewProcessed
-                      end,
+
+            MovedLength = length(MovedIds),
+            NewSkip = Skip + Length - MovedLength,
+            Remaining = Total - MovedLength,
             migrate_cdrs(AccountId
                         ,Stats#{processed := NewProcessed
-                               ,moved := Moved + length(MovedIds)
+                               ,moved := Moved + MovedLength
+                               ,skip := NewSkip
                                }
-                        ,props:set_value('skip', NewSkip, ViewOptions)
+                        ,next_skip(Remaining, NewSkip, ViewOptions)
                         );
-
         {'error', _R} ->
             io:format("[~s] failed to fetch cdrs: ~p~n", [AccountId, _R])
     end.
@@ -315,7 +339,7 @@ map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
                     ],
     NewDoc = lists:foldl(fun(F, J) -> F(J) end, Doc, TransformFuns),
 
-    NewMap = maps:update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [], Map),
+    NewMap = maps:update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [NewDoc], Map),
     map_tranform_cdrs(AccountId, VRs, NewMap).
 
 -spec do_move_cdrs(ne_binary(), kz_json:object(), ne_binaries()) -> ne_binaries().
@@ -330,14 +354,16 @@ do_move_cdrs(MODB, Docs, MovedAcc) ->
 
 -spec check_for_failure(kz_json:objects(), ne_binaries()) -> ne_binaries().
 check_for_failure(JObjs, MovedAcc) ->
-    lists:map(
-      fun(J) ->
-          case kz_json:get_value(<<"error">>, J) of
-              'undefined' ->
-                  ?MATCH_MODB_PREFIX(_Year, _Month, OldId) = kz_doc:id(J),
-                  [OldId|MovedAcc];
-              _ -> MovedAcc
-          end
-      end
-      ,JObjs
-    ).
+    Fun = fun(J, Acc) ->
+                  case kz_json:get_value(<<"error">>, J) of
+                      'undefined' ->
+                          ?MATCH_MODB_PREFIX(_Year, _Month, OldId) = kz_doc:id(J),
+                          [OldId|Acc];
+                      <<"conflict">> ->
+                          ?MATCH_MODB_PREFIX(_Year, _Month, OldId) = kz_doc:id(J),
+                          [OldId|Acc];
+                      _ ->
+                          Acc
+                  end
+          end,
+    lists:foldl(Fun, MovedAcc, JObjs).
