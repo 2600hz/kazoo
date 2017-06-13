@@ -313,7 +313,7 @@ map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
                     ,fun(J) -> kz_doc:delete_revision(J) end
                     ,fun(J) -> kz_doc:set_account_db(J, NewDb) end
                     ],
-    NewDoc = lists:foldl(TransformFuns, Doc, TransformFuns),
+    NewDoc = lists:foldl(fun(F, J) -> F(J) end, Doc, TransformFuns),
 
     NewMap = maps:update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [], Map),
     map_tranform_cdrs(AccountId, VRs, NewMap).
