@@ -13,6 +13,7 @@
 -export([prev_year_month/1, prev_year_month/2
         ,prev_year_month_mod/1
         ,split_account_mod/1
+        ,modb_id/0, modb_id/2, modb_id/3
         ]).
 
 -spec prev_year_month(ne_binary()) -> {kz_year(), kz_month()}.
@@ -63,3 +64,26 @@ split_account_mod(?MATCH_MODB_SUFFIX_ENCODED(Account,Year,Month)) ->
     ,kz_term:to_integer(Year)
     ,kz_term:to_integer(Month)
     }.
+
+%% @doc
+%% Equivalent to `modb_id/3`
+-spec modb_id() -> ne_binary().
+modb_id() ->
+    {Year, Month, _} = erlang:date(),
+    modb_id(Year, Month, kz_binary:rand_hex(16)).
+
+%% @doc
+%% Equivalent to `modb_id/3`
+-spec modb_id(ne_binary() | kz_year(), ne_binary() | kz_month()) -> ne_binary().
+modb_id(Year, Month) ->
+    modb_id(Year, Month, kz_binary:rand_hex(16)).
+
+%% @doc
+%% Format a document id prefix with year and month
+-spec modb_id(ne_binary() | kz_year(), ne_binary() | kz_month(), ne_binary()) -> ne_binary().
+modb_id(Year, Month, Id) ->
+    <<(kz_term:to_binary(Year))/binary
+      ,(kz_time:pad_month(Month))/binary
+      ,"-"
+      ,(Id)/binary
+    >>.

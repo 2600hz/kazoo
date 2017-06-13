@@ -29,12 +29,5 @@
 
 -type next_account() :: {ne_binary(), gregorian_seconds(), gregorian_seconds()}.
 
--define(MODB_MSG_ID(Year, Month, Id),
-        <<(kz_term:to_binary(Year))/binary
-          ,(kz_time:pad_month(Month))/binary
-          ,"-"
-          ,(Id)/binary
-        >>).
-
 -define(KZ_VOICEMAIL_HRL, 'true').
 -endif.
