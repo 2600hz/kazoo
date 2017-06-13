@@ -17,6 +17,7 @@
                              ,[<<"username">>, <<"e164">>
                               ,<<"npan">>, <<"1npan">>
                               ,<<"route">>, <<"loopback">>
+                              ,<<"contact">>
                               ]
                              }).
 
