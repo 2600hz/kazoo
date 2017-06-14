@@ -100,12 +100,11 @@ migrate_voicemails(AccountId, Total) ->
              ,result => #{}
              ,skip => 0
              },
-    migrate_voicemails(AccountId, Stats, [{'limit', 5}]).
+    migrate_voicemails(AccountId, Stats, [{'limit', Limit}]).
 
 -spec migrate_voicemails(ne_binary(), map(), kz_proplist()) -> 'ok'.
 migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved := Moved, skip := Skip}=Stats, ViewOptions) ->
     AccountDb = kz_util:format_account_db(AccountId),
-    io:format("~nStats ~p~n ViewOptions ~p~n~n", [Stats, ViewOptions]),
     case kz_datamgr:get_results(AccountDb, <<"vmboxes/legacy_msg_by_timestamp">>, ViewOptions) of
         {'ok', []} ->
             io:format("[~s] voicemail message migration finished, (~b/~b) messages has been moved~n"
@@ -273,7 +272,7 @@ migrate_cdrs(AccountId, Total) ->
              ,moved => 0
              ,skip => 0
              },
-    migrate_cdrs(AccountId, Stats, [{'limit', 5}, include_docs]).
+    migrate_cdrs(AccountId, Stats, [{'limit', Limit}, include_docs]).
 
 -spec migrate_cdrs(ne_binary(), map(), kz_proplist()) -> 'ok'.
 migrate_cdrs(AccountId, #{total := Total, processed := Processed, moved := Moved, skip := Skip}=Stats, ViewOptions) ->
