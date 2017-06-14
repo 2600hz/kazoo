@@ -1427,8 +1427,14 @@ maybe_add_alert_info(JObj, Endpoint, _Inception) ->
     end.
 
 -spec maybe_add_invite_format(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
-maybe_add_invite_format(JObj, Endpoint, _Call) ->
-    Format = kz_device:sip_invite_format(Endpoint, <<"contact">>),
+maybe_add_invite_format(JObj, Endpoint, Call) ->
+    maybe_add_invite_format(JObj, Endpoint, Call, kz_device:sip_invite_format(Endpoint)).
+
+-spec maybe_add_invite_format(kz_json:object(), kz_json:object(), kapps_call:call(), binary()) -> kz_json:object().
+maybe_add_invite_format(JObj, _Endpoint, _Call, 'undefined') ->
+    JObj;
+
+maybe_add_invite_format(JObj, _Endpoint, _Call, Format) ->
     kz_json:set_value(<<"X-KAZOO-INVITE-FORMAT">>, Format, JObj).
 
 -spec maybe_add_aor(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().

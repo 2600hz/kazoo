@@ -423,7 +423,7 @@
                     "type": "boolean"
                 },
                 "invite_format": {
-                    "default": "username",
+                    "default": "contact",
                     "description": "The SIP request URI invite format",
                     "enum": [
                         "username",
