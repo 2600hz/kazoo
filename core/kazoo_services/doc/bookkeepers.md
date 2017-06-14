@@ -44,6 +44,7 @@ Here is some sample PHP code for testing the collection of data on the bookkeepe
 ```php
 <?php
 
+/* This is environment specific.  May not be required or may need to be something else depending on the environment. */
 require ('init.php');
 
 $auth = "123abc";
@@ -62,7 +63,13 @@ if ($_SERVER['HTTP_AUTHORIZATION'] != $auth || $_SERVER['REMOTE_ADDR'] != $conne
 // Authorized.  Now collect POST data
 file_put_contents('post_body.txt', file_get_contents('php://input'));
 
-/* Do something */
+/* Do something with the data*/
+...
+...
+...
+/* Tell Kazoo that data update was successful */
+http_response_code(200);
+
 ```
 
 
