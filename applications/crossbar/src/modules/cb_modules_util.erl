@@ -296,12 +296,12 @@ build_number_uri(Context, Number) ->
 get_endpoints(Call, Context) ->
     get_endpoints(Call, Context, cb_context:req_nouns(Context)).
 
-get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
+get_endpoints(Call, _Context, ?DEVICES_QCALL_NOUNS(DeviceId, Number)) ->
     Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                    ,{<<"suppress_clid">>, 'true'}
                                    ,{<<"source">>, <<"cb_devices">>}
                                    ]),
-    case kz_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(Number, Call)) of
+    case kz_endpoint:build(DeviceId, Properties, aleg_cid(Number, Call)) of
         {'error', _} -> [];
         {'ok', Endpoints} -> Endpoints
     end;
@@ -345,7 +345,14 @@ originate_quickcall(Endpoints, Call, Context) ->
                 'false' -> cb_context:req_id(Context)
             end,
 
-    {DefaultCIDNumber, DefaultCIDName} = kz_attributes:caller_id(<<"external">>, Call),
+    Number = kapps_call:request_user(Call),
+    AccountId = cb_context:account_id(Context),
+    CIDType = case knm_converters:is_reconcilable(Number, AccountId) of
+                  'true' -> <<"external">>;
+                  'false' -> <<"internal">>
+              end,
+    {DefaultCIDNumber, DefaultCIDName} = kz_attributes:caller_id(CIDType, Call),
+    lager:debug("quickcall default cid ~s : ~s : ~s", [CIDType, DefaultCIDNumber, DefaultCIDName]),
 
     Request =
         kz_json:from_list(
