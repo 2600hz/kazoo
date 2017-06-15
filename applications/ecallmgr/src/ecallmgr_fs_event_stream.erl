@@ -458,14 +458,11 @@ maybe_send_event(<<"loopback::bowout">> = EventName, _UUID, Props, Node) ->
 maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
     kz_util:put_callid(UUID),
     case ecallmgr_fs_channel:node(UUID) of
-        {'ok', Node} ->
+        {'ok', OtherNode} when Node =/= OtherNode  ->
+            lager:info("dropping channel destroy from ~s (expected node: ~s)", [Node, OtherNode]);
+        _Else ->
             gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
-            maybe_send_call_event(UUID, Props, Node);
-        {'ok', _OtherNode} ->
-            lager:info("dropping channel destroy from ~s (expected node: ~s)", [Node, _OtherNode]);
-        {'error', 'not_found'} ->
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
-            lager:info("channel not found in cache, not sending to call event listeners")
+            maybe_send_call_event(UUID, Props, Node)
     end;
 maybe_send_event(EventName, UUID, Props, Node) ->
     kz_util:put_callid(UUID),
