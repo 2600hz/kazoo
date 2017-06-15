@@ -365,8 +365,8 @@ get_label(Doc) ->
         {First, 'undefined'} ->
             First;
 
-        {'undefined', _Last} ->
-            kz_json:get_value(<<"name">>, Doc);
+        {'undefined', Last} ->
+            Last;
 
         {First, Last} ->
             <<First/binary, " ", Last/binary>>
