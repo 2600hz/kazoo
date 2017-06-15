@@ -388,6 +388,7 @@ process_stream(EventName, UUID, EventProps, Node) ->
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     kz_util:put_callid(UUID),
     _ = ecallmgr_fs_channel:new(Props, Node),
+    lager:debug("channel added to cache"),
     _ = ecallmgr_fs_channel:maybe_update_interaction_id(Props, Node),
     maybe_start_event_listener(Node, UUID);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
@@ -461,9 +462,10 @@ maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
             gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node);
         {'ok', _OtherNode} ->
-            lager:debug("dropping channel destroy from ~s (expected ~s)", [Node, _OtherNode]);
+            lager:info("dropping channel destroy from ~s (expected node: ~s)", [Node, _OtherNode]);
         {'error', 'not_found'} ->
-            lager:debug("dropping channel destroy from ~s (no such channel)", [Node])
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
+            lager:info("channel not found in cache, not sending to call event listeners")
     end;
 maybe_send_event(EventName, UUID, Props, Node) ->
     kz_util:put_callid(UUID),
