@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/3
+-export([start_link/2
         ,single/1
         ,continuous/1
         ,stop/1
@@ -55,9 +55,9 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(ne_binary(), kz_json:object(), ne_binary()) -> startlink_ret().
-start_link(Text, JObj, MediaName) ->
-    gen_server:start_link(?SERVER, [Text, JObj, MediaName], []).
+-spec start_link(ne_binary(), kz_json:object()) -> startlink_ret().
+start_link(Id, JObj) ->
+    gen_server:start_link(?SERVER, [Id, JObj], []).
 
 -spec single(pid()) -> {kz_json:object(), ne_binary()}.
 single(Srv) -> gen_server:call(Srv, 'single').
@@ -85,22 +85,23 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
-init([Text, JObj, MediaName]) ->
-    kz_util:put_callid(MediaName),
+init([Id, JObj]) ->
+    kz_util:put_callid(Id),
 
     Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
                            ,get_language(kz_json:get_value(<<"Language">>, JObj, <<"en-us">>))
                            ]),
 
+    Text = kz_json:get_value(<<"Text">>, JObj),
     Format = kz_json:get_value(<<"Format">>, JObj, <<"wav">>),
     Engine = kz_json:get_value(<<"Engine">>, JObj),
 
     {'ok', ReqID} = kapps_speech:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
 
-    lager:debug("text '~s' has id '~s'", [Text, MediaName]),
+    lager:debug("text '~s' has id '~s'", [Text, Id]),
 
     Meta = kz_json:from_list([{<<"content_type">>, kz_mime:from_extension(Format)}
-                             ,{<<"media_name">>, MediaName}
+                             ,{<<"media_name">>, Id}
                              ]),
 
     {'ok', #state{kz_http_req_id = ReqID
@@ -109,7 +110,7 @@ init([Text, JObj, MediaName]) ->
                  ,contents = <<>>
                  ,reqs = []
                  ,timer_ref = start_timer()
-                 ,id = MediaName
+                 ,id = Id
                  }}.
 
 -spec get_language(ne_binary()) -> ne_binary().

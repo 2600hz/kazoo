@@ -1354,9 +1354,14 @@ tts(Node, UUID, JObj) ->
         <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
         _Engine ->
             SayMe = kz_json:get_value(<<"Text">>, JObj),
-            lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
 
-            TTS = <<"tts://", SayMe/binary>>,
+            Voice = kz_json:get_value(<<"Voice">>, JObj, <<"female">>),
+            Language = kz_json:get_value(<<"Language">>, JObj, kz_media_util:default_prompt_language()),
+            TTSId = kz_util:binary_md5(<<SayMe/binary, "/", Voice/binary, "/", Language/binary>>),
+
+            lager:debug("using engine ~s to say: ~s (tts_id: ~s)", [_Engine, SayMe, TTSId]),
+
+            TTS = <<"tts://", TTSId/binary>>,
             case ecallmgr_util:media_path(TTS, UUID, JObj) of
                 TTS ->
                     lager:debug("failed to fetch a playable media, reverting to flite"),
