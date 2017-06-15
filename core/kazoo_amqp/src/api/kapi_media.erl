@@ -28,7 +28,7 @@
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
 -define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>
                                          %% TTS-related flags
-                                    ,<<"Voice">>, <<"Language">>, <<"Format">>
+                                    ,<<"Text">>, <<"Voice">>, <<"Language">>, <<"Format">>
                                     ,<<"Account-ID">>, <<"Protocol">>, <<"Engine">>
                                     ]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
