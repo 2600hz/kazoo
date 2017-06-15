@@ -29,7 +29,6 @@ playback(Arg) ->
 playback('undefined', _) ->
     {'error', 'invalid_media_name'};
 playback(<<"tts://", _/binary>> = TTS, Options) ->
-    lager:debug("lookup tts media url for ~s", [TTS]),
     kz_media_tts:get_uri(TTS, Options);
 playback(<<"prompt://", PromptPath/binary>>, Options) ->
     lager:debug("looking up prompt path ~s", [PromptPath]),

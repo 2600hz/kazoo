@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2
+-export([start_link/3
         ,single/1
         ,continuous/1
         ,stop/1
@@ -55,9 +55,9 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(ne_binary(), kz_json:object()) -> startlink_ret().
-start_link(Text, JObj) ->
-    gen_server:start_link(?SERVER, [Text, JObj], []).
+-spec start_link(ne_binary(), kz_json:object(), ne_binary()) -> startlink_ret().
+start_link(Text, JObj, MediaName) ->
+    gen_server:start_link(?SERVER, [Text, JObj, MediaName], []).
 
 -spec single(pid()) -> {kz_json:object(), ne_binary()}.
 single(Srv) -> gen_server:call(Srv, 'single').
@@ -85,8 +85,8 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
-init([Text, JObj]) ->
-    kz_util:put_callid(kz_util:binary_md5(Text)),
+init([Text, JObj, MediaName]) ->
+    kz_util:put_callid(MediaName),
 
     Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
                            ,get_language(kz_json:get_value(<<"Language">>, JObj, <<"en-us">>))
@@ -97,7 +97,6 @@ init([Text, JObj]) ->
 
     {'ok', ReqID} = kapps_speech:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
 
-    MediaName = kz_util:binary_md5(Text),
     lager:debug("text '~s' has id '~s'", [Text, MediaName]),
 
     Meta = kz_json:from_list([{<<"content_type">>, kz_mime:from_extension(Format)}
