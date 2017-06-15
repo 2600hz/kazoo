@@ -1171,8 +1171,9 @@ convert_kazoo_app_name(App) ->
                           {'ok', ne_binary()} |
                           {'error', any()}.
 lookup_media(MediaName, Type, CallId, JObj) ->
+    CacheKey = playback_cache_media_key(MediaName, JObj),
     case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE
-                             ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+                             ,?ECALLMGR_PLAYBACK_MEDIA_KEY(CacheKey)
                              )
     of
         {'ok', _Path}=Ok ->
@@ -1181,6 +1182,14 @@ lookup_media(MediaName, Type, CallId, JObj) ->
         {'error', 'not_found'} ->
             request_media_url(MediaName, Type, CallId, JObj)
     end.
+
+-spec playback_cache_media_key(ne_binary(), kz_json:object()) -> ne_binary().
+playback_cache_media_key(<<"tts://", Text/binary>>, JObj) ->
+    Voice = kz_json:get_value(<<"Voice">>, JObj, kazoo_tts:default_voice()),
+    Language = kz_json:get_value(<<"Language">>, JObj, kazoo_tts:default_language()),
+    <<"tts://", (kz_binary:md5(Text))/binary, "/", Voice/binary, "/", Language/binary>>;
+playback_cache_media_key(MediaName, _JObj) ->
+    MediaName.
 
 -spec request_media_url(ne_binary(), media_types(), ne_binary(), kz_json:object()) ->
                                {'ok', ne_binary()} |
@@ -1200,9 +1209,10 @@ request_media_url(MediaName, Type, CallId, JObj) ->
     of
         {'ok', MediaResp} ->
             MediaUrl = kz_json:find(<<"Stream-URL">>, MediaResp, <<>>),
+            CacheKey = playback_cache_media_key(MediaName, JObj),
             CacheProps = media_url_cache_props(MediaName),
             _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                    ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+                                    ,?ECALLMGR_PLAYBACK_MEDIA_KEY(CacheKey)
                                     ,MediaUrl
                                     ,CacheProps
                                     ),

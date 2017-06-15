@@ -15,7 +15,7 @@
 -export([find_file_server/3]).
 -export([start_file_server/3]).
 -export([find_tts_server/1]).
--export([find_tts_server/2]).
+-export([find_tts_server/3]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -72,18 +72,11 @@ find_tts_server(Id) ->
         [P] -> {'ok', P}
     end.
 
--spec find_tts_server(ne_binary(), kz_json:object()) ->
-                             {'ok', pid()} |
-                             {'error', any()}.
 -spec find_tts_server(ne_binary(), kz_json:object(), ne_binary()) ->
                              {'ok', pid()} |
                              {'error', any()}.
-find_tts_server(Text, JObj) ->
-    Id = kz_binary:md5(Text),
-    find_tts_server(Text, JObj, Id).
-
 find_tts_server(Text, JObj, Id) ->
-    ChildSpec = ?WORKER_NAME_ARGS_TYPE(Id, 'kz_media_tts_cache', [Text, JObj], 'temporary'),
+    ChildSpec = ?WORKER_NAME_ARGS_TYPE(Id, 'kz_media_tts_cache', [Text, JObj, Id], 'temporary'),
     case supervisor:start_child(?SERVER, ChildSpec) of
         {'ok', _Pid}=OK -> OK;
         {'error', {'already_started', Pid}} -> {'ok', Pid};
