@@ -846,7 +846,7 @@ to_csv(Req, Context) ->
 -spec csv_body(ne_binary() | kz_json:object()| kz_json:objects()) -> iolist().
 csv_body(Body=?NE_BINARY) -> Body;
 csv_body(JObjs) when is_list(JObjs) ->
-    FlattenJObjs = [kz_json:flatten(JObj, 'binary_join') || JObj <- JObjs],
+    FlattenJObjs = [kz_json:flatten(JObj) || JObj <- JObjs],
     CsvOptions = [{'transform_fun', fun map_empty_json_value_to_binary/2}
                  ,{'header_map', ?CSV_HEADER_MAP}
                  ],
