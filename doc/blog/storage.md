@@ -67,20 +67,19 @@ curl -v -H "X-Auth-Token: $AUTH_TOKEN" \ "http://localhost:8000/v2/accounts/$ACC
 ```json
 {
   "data": {
-    "cause": "{ACCOUNT_ID}",
-    "message": "bad identifier"
+    "id": "{ACCOUNT_ID}",
+    "attachments": {}
   },
-  "error": "404",
-  "message": "bad_identifier",
-  "status": "error",
+  "revision": "1-f0b539057db194c04f76cd1e0a2144cd",
   "request_id": "{REQUEST_ID}",
-  "auth_token": "{AUTH_TOKEN}"
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}
 }
 ```
 
 What happened?
 
-Well, the storage hasn't been configured yet, so of course it wasn't found.
+WThe storage hasn't been configured yet, the server returns an empty response. So the first step is that we have to create the initial storage document.
 
 
 <a id="org8386c70"></a>
@@ -99,7 +98,8 @@ curl -v -X PUT \
 ```json
 {
   "data": {
-    "id": "{ACCOUNT_ID}"
+    "id": "{ACCOUNT_ID}",
+    "attachments": {}
   },
   "revision": "1-f0b539057db194c04f76cd1e0a2144cd",
   "request_id": "{REQUEST_ID}",
