@@ -241,31 +241,35 @@ sip_external_ip(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_external_ip').
 
 -spec handle_reload_acls(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_reload_acls(JObj, Props) ->
+handle_reload_acls(JObj, _Props) ->
     'true' = kapi_switch:reload_acls_v(JObj),
-
-    Node = props:get_value('node', Props),
-    case freeswitch:bgapi(Node, 'reloadacl', "") of
-        {'ok', Job} -> lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
-        {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E])
-    end.
+    send_bgapi(ecallmgr_fs_nodes:connected(), 'reloadacl', "").
 
 -spec handle_reload_gateways(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_reload_gateways(JObj, Props) ->
+handle_reload_gateways(JObj, _Props) ->
     'true' = kapi_switch:reload_gateways_v(JObj),
 
-    Node = props:get_value('node', Props),
     Args = ["profile "
            ,?DEFAULT_FS_PROFILE
            ," rescan"
            ],
-    case ecallmgr_config:get_boolean(<<"process_gateways">>, 'false')
-        andalso freeswitch:bgapi(Node, 'sofia', lists:flatten(Args))
-    of
+    case ecallmgr_config:get_boolean(<<"process_gateways">>, 'false') of
         'false' -> 'ok';
-        {'ok', Job} -> lager:debug("sofia ~s command sent to ~s: JobID: ~s", [Args, Node, Job]);
-        {'error', _E} -> lager:debug("sofia ~s failed with error: ~p", [Args, _E])
+        'true' ->
+            send_bgapi(ecallmgr_fs_nodes:connected(), 'sofia', lists:flatten(Args))
     end.
+
+-spec send_bgapi(atoms(), 'reloadacl' | 'sofia', string()) -> 'ok'.
+send_bgapi(Nodes, Cmd, Args) ->
+    SendFun = fun(Node) ->
+                      case freeswitch:bgapi(Node, Cmd, Args) of
+                          {'ok', Job} ->
+                              lager:debug("~s command sent to ~s: JobID: ~s", [Cmd, Node, Job]);
+                          {'error', _E} ->
+                              lager:debug("~s failed with error: ~p", [Cmd, _E])
+                      end
+              end,
+    lists:foreach(SendFun, Nodes).
 
 -spec fs_node(fs_node()) -> atom().
 fs_node(Srv) ->
