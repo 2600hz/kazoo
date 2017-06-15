@@ -237,7 +237,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
         %% blind transfer and but the provided slot number is occupied
         {_, {'error', 'occupied'}} ->
             lager:info("blind transfer to a occupied slot, call the parker back.."),
-            case ringback_parker(kz_json:get_value(<<"Ringback-ID">>, Slot), SlotNumber, Data, Call) of
+            case ringback_parker(kz_json:get_ne_binary_value(<<"Ringback-ID">>, Slot), SlotNumber, Slot, Data, Call) of
                 'answered' -> cf_exe:transfer(Call);
                 'intercepted' -> cf_exe:transfer(Call);
                 'channel_hungup' -> cf_exe:stop(Call);
@@ -647,7 +647,7 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                             {'error', _} -> 'false'
                         end,
             case ChannelUp
-                andalso ringback_parker(RingbackId, SlotNumber, Data, Call)
+                andalso ringback_parker(RingbackId, SlotNumber, Slot, Data, Call)
             of
                 'intercepted' ->
                     lager:info("parked caller ringback was intercepted"),
@@ -757,11 +757,17 @@ get_endpoint_id(Username, Call) ->
 %%--------------------------------------------------------------------
 -type ringback_parker_result() :: 'answered' | 'intercepted' | 'failed' | 'channel_hungup'.
 
--spec ringback_parker(api_binary(), ne_binary(), kz_json:object(), kapps_call:call()) -> ringback_parker_result().
-ringback_parker('undefined', _, _, _) -> 'failed';
-ringback_parker(EndpointId, SlotNumber, Data, Call0) ->
-    TmpCID = <<"Parking slot ", SlotNumber/binary>>,
-    Call = kapps_call:kvs_store('dynamic_cid', {'undefined', TmpCID}, Call0),
+-spec ringback_parker(api_binary(), ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) -> ringback_parker_result().
+ringback_parker('undefined', _, _, _, _) -> 'failed';
+ringback_parker(EndpointId, SlotNumber, Slot, Data, Call0) ->
+    CalleeNumber = kz_json:get_value(<<"CID-Number">>, Slot),
+    CalleeName = kz_json:get_value(<<"CID-Name">>, Slot),
+    TmpCID = <<"Parking slot ", SlotNumber/binary, " - ", CalleeName/binary>>,
+
+    Routines = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {'undefined', TmpCID}}
+               ,{fun kapps_call:kvs_store/3, 'force_dynamic_cid', 'true'}
+               ],
+    Call = kapps_call:exec(Routines, Call0),
     Timeout = callback_timeout(Data, SlotNumber),
     case kz_endpoint:build(EndpointId, kz_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
         {'ok', Endpoints} ->
