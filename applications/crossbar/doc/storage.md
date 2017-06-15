@@ -169,7 +169,7 @@ curl -v -X GET \
 
 ```json
 {
-    "auth_token": "{AUTH_TOKEN}"
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "attachments": {
             "{UUID}": {

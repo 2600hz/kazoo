@@ -271,7 +271,30 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
-    crossbar_doc:load(doc_id(Context), Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
+    case doc_id(Context) of
+        'undefined' -> send_empty_storage(Context);
+        DocId ->
+            C1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"storage">>)),
+            case cb_context:resp_status(C1) of
+                'success' -> C1;
+                _ -> maybe_send_empty_storage(C1, cb_context:resp_error_msg(C1))
+            end
+    end.
+
+-spec maybe_send_empty_storage(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_send_empty_storage(Context, <<"bad_identifier">>) ->
+    send_empty_storage(Context);
+maybe_send_empty_storage(Context, _) ->
+    Context.
+
+-spec send_empty_storage(cb_context:context()) -> cb_context:context().
+send_empty_storage(Context) ->
+    Resp = kz_json:from_list(
+             [{<<"id">>, cb_context:account_id(Context)}
+             ,{<<"attachments">>, kz_json:new()}
+             ]
+            ),
+    crossbar_util:response(Resp, Context).
 
 -spec read(cb_context:context(), path_token()) -> cb_context:context().
 read(Context, PlanId) ->
@@ -347,6 +370,7 @@ on_successful_validation('undefined', ?HTTP_PUT, Context) ->
 on_successful_validation(Id, ?HTTP_PUT, Context) ->
     JObj = cb_context:doc(Context),
     Routines = [fun(Doc) -> kz_doc:set_type(Doc, <<"storage">>) end
+               ,fun(Doc) -> kz_json:insert_value(<<"attachments">>, kz_json:new(), Doc) end
                ,fun(Doc) -> kz_doc:set_id(Doc, Id) end
                ],
     cb_context:set_doc(Context, kz_json:exec(Routines, JObj));
