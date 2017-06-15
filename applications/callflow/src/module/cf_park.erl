@@ -223,7 +223,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
         %% blind transfer and but the provided slot number is occupied
         {_, {'error', 'occupied'}} ->
             lager:info("blind transfer to a occupied slot, call the parker back.."),
-            case ringback_parker(kz_json:get_ne_binary_value(<<"Ringback-ID">>, Slot), SlotNumber, Data, Call) of
+            case ringback_parker(kz_json:get_ne_binary_value(<<"Ringback-ID">>, Slot), SlotNumber, Slot, Data, Call) of
                 'answered' -> cf_exe:transfer(Call);
                 'intercepted' -> cf_exe:transfer(Call);
                 'channel_hungup' -> cf_exe:stop(Call);
@@ -537,7 +537,7 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                             {'error', _} -> 'false'
                         end,
             case ChannelUp
-                andalso ringback_parker(RingbackId, SlotNumber, Data, Call)
+                andalso ringback_parker(RingbackId, SlotNumber, Slot, Data, Call)
             of
                 'intercepted' ->
                     lager:info("parked caller ringback was intercepted"),
@@ -647,19 +647,46 @@ get_endpoint_id(Username, Call) ->
 %%--------------------------------------------------------------------
 -type ringback_parker_result() :: 'answered' | 'intercepted' | 'failed' | 'channel_hungup'.
 
--spec ringback_parker(api_binary(), ne_binary(), kz_json:object(), kapps_call:call()) -> ringback_parker_result().
-ringback_parker('undefined', _, _, _) -> 'failed';
-ringback_parker(EndpointId, SlotNumber, Data, Call0) ->
-    TmpCID = <<"Parking slot ", SlotNumber/binary>>,
-    Call = kapps_call:kvs_store('dynamic_cid', {'undefined', TmpCID}, Call0),
+-spec ringback_parker(api_binary(), ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) -> ringback_parker_result().
+ringback_parker('undefined', _, _, _, _) -> 'failed';
+ringback_parker(EndpointId, SlotNumber, Slot, Data, Call0) ->
+    CalleeNumber = kz_json:get_value(<<"CID-Number">>, Slot),
+    CalleeName = kz_json:get_value(<<"CID-Name">>, Slot),
+    TmpCID = <<"Parking slot ", SlotNumber/binary, " - ", CalleeName/binary>>,
+
+    Routines = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {'undefined', TmpCID}}
+               ,{fun kapps_call:kvs_store/3, 'force_dynamic_cid', 'true'}
+               ,{fun kapps_call:set_callee_id_number/2, CalleeNumber}
+               ,{fun kapps_call:set_callee_id_name/2, CalleeName}
+               ],
+    Call = kapps_call:exec(Routines, Call0),
     Timeout = callback_timeout(Data, SlotNumber),
+    CVars = kz_json:from_list([{<<"Caller-ID-Name">>, CalleeName}]),
     case kz_endpoint:build(EndpointId, kz_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
-        {'ok', Endpoints} ->
+        {'ok', [Endpoint]} ->
             lager:info("attempting to ringback endpoint ~s", [EndpointId]),
-            kapps_call_command:bridge(Endpoints, Call),
+            EP = kz_json:set_value([<<"Endpoint-Actions">>
+                                   ,<<"Execute-On-Answer">>
+                                   ,<<"Set-Caller-ID">>
+                                   ]
+                                  ,set_command(CVars)
+                                  ,Endpoint
+                                  ),
+            kapps_call_command:bridge([EP], Call),
             wait_for_ringback(Timeout, Call);
         _ -> 'failed'
     end.
+
+-spec set_command(kz_json:object()) -> kz_json:object().
+set_command(ChannelVars) ->
+    Command = [{<<"Application-Name">>, <<"set">>}
+              ,{<<"Custom-Channel-Vars">>, ChannelVars}
+              ,{<<"Custom-Call-Vars">>, kz_json:new()}
+              ,{<<"Call-ID">>, kz_binary:rand_hex(16)}
+              ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
+               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    kz_json:from_list(Command).
 
 -spec wait_for_ringback(kz_timeout(), kapps_call:call()) -> ringback_parker_result().
 wait_for_ringback(Timeout, Call) ->
