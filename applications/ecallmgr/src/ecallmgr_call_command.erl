@@ -518,12 +518,19 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         'false' -> {'error', <<"set failed to execute as JObj did not validate">>};
         'true' ->
             ChannelVars = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
-            _ = ecallmgr_fs_command:set(Node, UUID, ChannelVars),
-
             CallVars = kz_json:to_proplist(kz_json:get_value(<<"Custom-Call-Vars">>, JObj, kz_json:new())),
-            _ = ecallmgr_fs_command:export(Node, UUID, CallVars),
-
-            {<<"set">>, 'noop'}
+            props:filter_undefined(
+              [{<<"kz_multiset">>, case ChannelVars of
+                                       [] -> 'undefined';
+                                       _ -> ecallmgr_util:multi_set_args(Node, UUID, ChannelVars)
+                                   end
+               }
+              ,{<<"kz_export">>, case CallVars of
+                                     [] -> 'undefined';
+                                     _ -> ecallmgr_util:multi_set_args(Node, UUID, CallVars)
+                                 end
+               }
+              ])
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
@@ -1351,9 +1358,14 @@ tts(Node, UUID, JObj) ->
         <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
         _Engine ->
             SayMe = kz_json:get_value(<<"Text">>, JObj),
-            lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
 
-            TTS = <<"tts://", SayMe/binary>>,
+            Voice = kz_json:get_value(<<"Voice">>, JObj, kazoo_tts:default_voice()),
+            Language = kz_json:get_value(<<"Language">>, JObj, kazoo_tts:default_language()),
+            TTSId = kz_binary:md5(<<SayMe/binary, "/", Voice/binary, "/", Language/binary>>),
+
+            lager:debug("using engine ~s to say: ~s (tts_id: ~s)", [_Engine, SayMe, TTSId]),
+
+            TTS = <<"tts://", TTSId/binary>>,
             case ecallmgr_util:media_path(TTS, UUID, JObj) of
                 TTS ->
                     lager:debug("failed to fetch a playable media, reverting to flite"),

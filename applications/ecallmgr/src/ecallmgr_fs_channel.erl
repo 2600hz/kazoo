@@ -398,6 +398,7 @@ handle_cast('bind_to_events', #state{node=Node}=State) ->
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_BRIDGE">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_UNBRIDGE">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CALL_UPDATE">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_OPTION_MSG(Node)}) =:= 'true'
     of
         'true' -> {'noreply', State};
         'false' -> {'stop', 'gproc_badarg', State}

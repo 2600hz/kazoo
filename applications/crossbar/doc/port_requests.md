@@ -84,7 +84,6 @@ Key | Description | Type | Default | Required
 `numbers` | The numbers to port in | `object` |   | `true`
 `numbers./\+?[0-9]+/` |   | `object` |   | `false`
 `port_state` | What state the port request is currently in | `string('unconfirmed', 'pending', 'submitted', 'scheduled', 'completed', 'rejected', 'canceled')` | `unconfirmed` | `false`
-`scheduled_date` | Requested scheduled date in gregorain timestamp | `integer` |   | `false`
 `transfer_date` | Requested transfer date in gregorain timestamp | `integer` |   | `false`
 
 
@@ -329,6 +328,11 @@ curl -v -X GET \
                         "+12025559042": {}
                     },
                     "port_state": "scheduled",
+                    "schedule_at": {
+                        "date_time": "2017-06-24 12:00",
+                        "timezone": "America/New_York"
+                    },
+                    "scheduled_date": 63665539200,
                     "sent": false,
                     "updated": 63630130490,
                     "uploads": {}
@@ -1040,6 +1044,7 @@ curl -v -X PATCH \
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"scheduled_date": {"timezone":"America/Los_Angeles", "date_time":"2017-06-24 12:00"}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
 ```
 
@@ -1054,6 +1059,11 @@ curl -v -X PATCH \
             "+12025559000": {}
         },
         "port_state": "scheduled",
+        "schedule_at": {
+            "date_time": "2017-06-24 12:00",
+            "timezone": "America/Los_Angeles"
+        },
+        "scheduled_date": 63658292400,
         "sent": false,
         "updated": 63630120528,
         "uploads": {

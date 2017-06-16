@@ -841,11 +841,23 @@ to_csv(Req, Context) ->
             }
     end.
 
--spec csv_body(ne_binary() | kz_json:object()) -> iolist().
+-spec csv_body(ne_binary() | kz_json:object()| kz_json:objects()) -> iolist().
 csv_body(Body=?NE_BINARY) -> Body;
+csv_body(JObjs) when is_list(JObjs) ->
+    FlattenJObjs = [kz_json:flatten(JObj, 'binary_join') || JObj <- JObjs],
+    CsvOptions = [{'transform_fun', fun map_empty_json_value_to_binary/2}
+                 ,{'header_map', ?CSV_HEADER_MAP}
+                 ],
+    kz_csv:from_jobjs(FlattenJObjs, CsvOptions);
 csv_body(JObj) ->
-    JObjs = kz_json:flatten(JObj),
-    kz_csv:from_jobjs(JObjs, [{'header_map', ?CSV_HEADER_MAP}]).
+    csv_body([JObj]).
+
+-spec map_empty_json_value_to_binary(kz_json:key(), kz_json:term()) -> {kz_json:key(), kz_json:term()}.
+map_empty_json_value_to_binary(Key, Value) ->
+    case kz_json:is_json_object(Value) of
+        'true' -> {Key, <<>>};
+        'false' -> {Key, Value}
+    end.
 
 -spec to_pdf(cowboy_req:req(), cb_context:context()) ->
                     {binary(), cowboy_req:req(), cb_context:context()}.

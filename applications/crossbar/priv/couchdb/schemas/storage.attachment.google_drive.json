@@ -17,8 +17,16 @@
         "settings": {
             "description": "Settings for the Google Drive account",
             "properties": {
+                "folder_base_path": {
+                    "description": "base folder path",
+                    "type": "string"
+                },
                 "folder_id": {
                     "description": "Folder ID in which to store the file, if any",
+                    "type": "string"
+                },
+                "folder_path": {
+                    "description": "folder path",
                     "type": "string"
                 },
                 "oauth_doc_id": {

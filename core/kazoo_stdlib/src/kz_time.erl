@@ -10,6 +10,7 @@
 -export([current_tstamp/0, current_unix_tstamp/0
         ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
         ,unix_timestamp_to_gregorian_seconds/1
+        ,to_gregorian_seconds/2
         ,pretty_print_datetime/1
         ,rfc1036/1, rfc1036/2
         ,iso8601/1, iso8601_date/1, iso8601_time/1
@@ -52,6 +53,22 @@ unix_seconds_to_gregorian_seconds(UnixSeconds) ->
 -spec unix_timestamp_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_timestamp_to_gregorian_seconds(UnixTimestamp) ->
     ?UNIX_EPOCH_IN_GREGORIAN + (kz_term:to_integer(UnixTimestamp) div 1000).
+
+-spec to_gregorian_seconds(kz_datetime(), ne_binary()) -> gregorian_seconds().
+-ifdef(TEST).
+to_gregorian_seconds(Datetime, 'undefined') ->
+    to_gregorian_seconds(Datetime, <<"America/Los_Angeles">>);
+to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
+    calendar:datetime_to_gregorian_seconds(
+      localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC")).
+-else.
+to_gregorian_seconds(Datetime, 'undefined') ->
+    to_gregorian_seconds(Datetime, kz_account:default_timezone());
+to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
+    calendar:datetime_to_gregorian_seconds(
+      localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC")
+     ).
+-endif.
 
 -spec pretty_print_datetime(kz_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->

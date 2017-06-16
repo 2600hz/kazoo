@@ -113,14 +113,11 @@ fix_port_request_data(JObj) ->
 
 -spec fix_numbers(kz_json:object()) -> kz_json:object().
 fix_numbers(JObj) ->
-    Numbers =
-        kz_json:foldl(fun fix_number_fold/3
-                     ,[]
-                     ,kz_json:get_value(<<"numbers">>, JObj, kz_json:new())
-                     ),
+    NumbersJObj = kz_json:get_value(<<"numbers">>, JObj, kz_json:new()),
+    Numbers = kz_json:foldl(fun fix_number_fold/3, [], NumbersJObj),
     kz_json:set_value(<<"numbers">>, Numbers, JObj).
 
--spec fix_number_fold(kz_json:object(), any(), kz_json:path()) -> kz_json:path().
+-spec fix_number_fold(kz_json:key(), kz_json:json_term(), ne_binaries()) -> ne_binaries().
 fix_number_fold(Number, _Value, Acc) ->
     [Number|Acc].
 
@@ -196,8 +193,13 @@ fix_transfer_date(JObj) ->
 
 -spec fix_scheduled_date(kz_json:path()) -> kz_json:object().
 fix_scheduled_date(JObj) ->
+    ScheduledDate = case kz_json:get_integer_value([<<"scheduled_date">>, <<"local">>], JObj) of
+                        %% backward compatibility
+                        undefined -> kz_json:get_integer_value(<<"scheduled_date">>, JObj);
+                        Timestamp -> Timestamp
+                    end,
     kz_json:set_values([{<<"port_scheduled_date">>, kz_json:get_value(<<"scheduled_date">>, JObj)}
-                       ,{<<"scheduled_date">>, kz_json:get_value([<<"scheduled_date">>, <<"local">>], JObj)} %% backward compatibility
+                       ,{<<"scheduled_date">>, ScheduledDate}
                        ], JObj).
 
 -spec fix_ui_metadata(kz_json:path()) -> kz_json:object().

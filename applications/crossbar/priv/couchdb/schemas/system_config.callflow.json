@@ -89,6 +89,11 @@
                     "description": "Default media file format for Callflow modules",
                     "type": "string"
                 },
+                "force_require_pin": {
+                    "default": false,
+                    "description": "If true, ignore the setting on the vmbox and require all users to enter a pin",
+                    "type": "boolean"
+                },
                 "max_box_number_length": {
                     "default": 15,
                     "description": "callflow maximum box number length",

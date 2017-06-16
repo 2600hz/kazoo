@@ -26,6 +26,7 @@ def missing_default_or_type(json_file, current_key, JSON):
     if 'type' not in keys:
         print(MissingTypeKeyError.__doc__)
         # raise MissingTypeKeyError ## FIXME: uncomment this and fix the errors
+
 def is_root(keys):
     return '$schema' in keys and '_id' in keys
 def is_a_special_key(key):
@@ -33,6 +34,7 @@ def is_a_special_key(key):
 def has_a_special_key(keys):
     special_in = ['$ref', 'oneOf']
     return set() != set(keys).intersection(set(special_in))
+
 class BadDefaultType(Exception):
     """default does not match type"""
 def bad_default_type(json_file, current_key, Type, Default):
@@ -42,6 +44,15 @@ def bad_default_type(json_file, current_key, Type, Default):
     print('type:', Type)
     print('default:', Default)
     raise BadDefaultType
+
+class UnknownRequiredFieldError(Exception):
+    """A 'required' list contains an undefined field"""
+def undefined_required_field(json_file, current_key, required):
+    print(json_file)
+    print(UnknownRequiredFieldError.__doc__)
+    print('at:', current_key)
+    print('field:', required)
+    raise UnknownRequiredFieldError
 
 def default_matches_type(Default, Type):
     if Type == 'object' and isinstance(Default, dict):
@@ -63,15 +74,19 @@ def default_matches_type(Default, Type):
 
 def check_defaults(json_file, current_key, JSON):
     keys = JSON.keys()
-    if 'description' in keys and not is_root(keys):
-        if 'default' not in keys or 'type' not in keys:
-            if not is_a_special_key(current_key) and not has_a_special_key(keys):
-                missing_default_or_type(json_file, current_key, JSON)
-        else:
-            Type = JSON['type']
-            Default = JSON['default']
-            if not default_matches_type(Default, Type):
-                bad_default_type(json_file, current_key, Type, Default)
+    if 'description' in keys:
+        for required in JSON.get('required', []):
+            if not JSON.get('properties', {}).get(required):
+                undefined_required_field(json_file, current_key, required)
+        if not is_root(keys):
+            if 'default' not in keys or 'type' not in keys:
+                if not is_a_special_key(current_key) and not has_a_special_key(keys):
+                    missing_default_or_type(json_file, current_key, JSON)
+            else:
+                Type = JSON['type']
+                Default = JSON['default']
+                if not default_matches_type(Default, Type):
+                    bad_default_type(json_file, current_key, Type, Default)
     for key in keys:
         value = JSON[key]
         if isinstance(value, dict):

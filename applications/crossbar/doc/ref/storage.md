@@ -12,6 +12,7 @@ Key | Description | Type | Default | Required
 `connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false`
 `id` | ID of the storage document | `string` |   | `false`
 `plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false`
+`ui_metadata` |   | `object` |   | `false`
 ##### storage.attachment.aws
 
 schema for AWS attachment entry
@@ -23,9 +24,13 @@ Key | Description | Type | Default | Required
 `name` | Friendly name for this configuration | `string` |   | `false`
 `settings` | AWS API settings | `object` |   | `true`
 `settings.bucket` | Bucket name to store data to | `string` |   | `true`
-`settings.host` | Region-specific hostname to use, if applicable | `string` |   | `false`
+`settings.bucket_after_host` | use bucket after host as part of url | `boolean` |   | `false`
+`settings.folder_base_path` | Base path to use as a prefix when saving files | `string` |   | `false`
+`settings.folder_path` | Custom path to use as a prefix when saving files | `string` |   | `false`
+`settings.host` | the s3 host | `string` |   | `false`
 `settings.key` | AWS Key to use | `string` |   | `true`
-`settings.path` | Custom path to use as a prefix when saving files | `string` |   | `false`
+`settings.port` | port to use | `integer` |   | `false`
+`settings.scheme` | scheme to use to access host | `string('http', 'https')` |   | `false`
 `settings.secret` | AWS Secret to use | `string` |   | `true`
 ##### storage.attachment.google_drive
 
@@ -37,7 +42,9 @@ Key | Description | Type | Default | Required
 `handler` | What handler module to use | `string('google_drive')` |   | `true`
 `name` | Friendly name for this configuration | `string` |   | `false`
 `settings` | Settings for the Google Drive account | `object` |   | `true`
+`settings.folder_base_path` | base folder path | `string` |   | `false`
 `settings.folder_id` | Folder ID in which to store the file, if any | `string` |   | `false`
+`settings.folder_path` | folder path | `string` |   | `false`
 `settings.oauth_doc_id` | Doc ID in the system 'oauth' database | `string` |   | `true`
 ##### storage.attachments
 

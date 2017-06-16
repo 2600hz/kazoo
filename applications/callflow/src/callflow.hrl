@@ -43,10 +43,6 @@
 
 -define(CACHE_NAME, 'callflow_cache').
 
--define(DEFAULT_TIMEZONE
-       ,kapps_config:get_ne_binary(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
-       ).
-
 -define(RESTRICTED_ENDPOINT_KEY, <<"Restricted-Endpoint-ID">>).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).

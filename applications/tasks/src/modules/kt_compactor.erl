@@ -92,8 +92,8 @@ set_node_api_port(Node) ->
 set_node_admin_port(Node) ->
     case kapps_config:get_integer(?SYSCONFIG_COUCH, <<"admin_port">>, 'undefined', Node) of
         'undefined' ->
-            kapps_config:set_node(?SYSCONFIG_COUCH, <<"admin_port">>, ?API_PORT, Node),
-            lager:debug("admin port for ~s set to default: ~p", [Node, ?API_PORT]);
+            kapps_config:set_node(?SYSCONFIG_COUCH, <<"admin_port">>, ?ADMIN_PORT, Node),
+            lager:debug("admin port for ~s set to default: ~p", [Node, ?ADMIN_PORT]);
         _Port ->
             lager:debug("admin port for ~s already set: ~p", [Node, _Port])
     end.

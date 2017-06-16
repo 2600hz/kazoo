@@ -25,7 +25,6 @@ Key | Description | Type | Default | Required
 `numbers` | The numbers to port in | `object` |   | `true`
 `numbers./\+?[0-9]+/` |   | `object` |   | `false`
 `port_state` | What state the port request is currently in | `string('unconfirmed', 'pending', 'submitted', 'scheduled', 'completed', 'rejected', 'canceled')` | `unconfirmed` | `false`
-`scheduled_date` | Requested scheduled date in gregorain timestamp | `integer` |   | `false`
 `transfer_date` | Requested transfer date in gregorain timestamp | `integer` |   | `false`
 
 

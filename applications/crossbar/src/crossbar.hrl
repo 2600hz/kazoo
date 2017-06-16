@@ -227,7 +227,8 @@
                         ,{<<"source_service">>, <<"Source Service">>}
                         ,{<<"usage_quantity">>, <<"Usage Quantity">>}
                         ,{<<"usage_type">>, <<"Usage Type">>}
-                        ,{<<"usage_unit">>, <<"Usage Unit">>}]).
+                        ,{<<"usage_unit">>, <<"Usage Unit">>}
+                        ]).
 
 -define(CROSSBAR_HRL, 'true').
 -endif.

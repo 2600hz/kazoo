@@ -466,8 +466,6 @@ fs_args_to_binary(Args, Sep) ->
     fs_args_to_binary(Args, Sep, ?FS_MULTI_VAR_SEP_PREFIX).
 
 -spec fs_args_to_binary(list(), ne_binary(), binary() | string()) -> binary().
-fs_args_to_binary([_]=Args, _Sep, _Prefix) ->
-    list_to_binary(Args);
 fs_args_to_binary(Args, Sep, Prefix) ->
     Bins = [list_to_binary([Sep, Arg]) || Arg <- Args],
     list_to_binary([Prefix, Bins]).
