@@ -7285,10 +7285,6 @@
                 "settings": {
                     "description": "AWS API settings",
                     "properties": {
-                        "base_path": {
-                            "description": "Base path to use as a prefix when saving files",
-                            "type": "string"
-                        },
                         "bucket": {
                             "description": "Bucket name to store data to",
                             "type": "string"
@@ -7297,16 +7293,20 @@
                             "description": "use bucket after host as part of url",
                             "type": "boolean"
                         },
+                        "folder_base_path": {
+                            "description": "Base path to use as a prefix when saving files",
+                            "type": "string"
+                        },
+                        "folder_path": {
+                            "description": "Custom path to use as a prefix when saving files",
+                            "type": "string"
+                        },
                         "host": {
                             "description": "the s3 host",
                             "type": "string"
                         },
                         "key": {
                             "description": "AWS Key to use",
-                            "type": "string"
-                        },
-                        "path": {
-                            "description": "Custom path to use as a prefix when saving files",
                             "type": "string"
                         },
                         "port": {
@@ -7357,7 +7357,7 @@
                 "settings": {
                     "description": "Settings for the Google Drive account",
                     "properties": {
-                        "base_folder": {
+                        "folder_base_path": {
                             "description": "base folder path",
                             "type": "string"
                         },

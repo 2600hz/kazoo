@@ -23,12 +23,12 @@ Key | Description | Type | Default | Required
 `handler` | What AWS service to use | `string('s3')` |   | `true`
 `name` | Friendly name for this configuration | `string` |   | `false`
 `settings` | AWS API settings | `object` |   | `true`
-`settings.base_path` | Base path to use as a prefix when saving files | `string` |   | `false`
 `settings.bucket` | Bucket name to store data to | `string` |   | `true`
 `settings.bucket_after_host` | use bucket after host as part of url | `boolean` |   | `false`
+`settings.folder_base_path` | Base path to use as a prefix when saving files | `string` |   | `false`
+`settings.folder_path` | Custom path to use as a prefix when saving files | `string` |   | `false`
 `settings.host` | the s3 host | `string` |   | `false`
 `settings.key` | AWS Key to use | `string` |   | `true`
-`settings.path` | Custom path to use as a prefix when saving files | `string` |   | `false`
 `settings.port` | port to use | `integer` |   | `false`
 `settings.scheme` | scheme to use to access host | `string('http', 'https')` |   | `false`
 `settings.secret` | AWS Secret to use | `string` |   | `true`
@@ -42,7 +42,7 @@ Key | Description | Type | Default | Required
 `handler` | What handler module to use | `string('google_drive')` |   | `true`
 `name` | Friendly name for this configuration | `string` |   | `false`
 `settings` | Settings for the Google Drive account | `object` |   | `true`
-`settings.base_folder` | base folder path | `string` |   | `false`
+`settings.folder_base_path` | base folder path | `string` |   | `false`
 `settings.folder_id` | Folder ID in which to store the file, if any | `string` |   | `false`
 `settings.folder_path` | folder path | `string` |   | `false`
 `settings.oauth_doc_id` | Doc ID in the system 'oauth' database | `string` |   | `true`

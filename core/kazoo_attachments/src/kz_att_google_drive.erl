@@ -135,7 +135,7 @@ combined_path(BasePath, OtherPath) ->
 
 -spec get_path(map()) -> api_binary().
 get_path(Settings) ->
-    BasePath = maps:get(base_folder, Settings, undefined),
+    BasePath = maps:get(folder_base_path, Settings, undefined),
     OtherPath = maps:get(folder_path, Settings, undefined),
     combined_path(BasePath, OtherPath).
 
