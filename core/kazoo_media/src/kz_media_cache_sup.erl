@@ -75,21 +75,14 @@ find_tts_server(Id) ->
 -spec find_tts_server(ne_binary(), kz_json:object()) ->
                              {'ok', pid()} |
                              {'error', any()}.
--spec find_tts_server(ne_binary(), kz_json:object(), ne_binary()) ->
-                             {'ok', pid()} |
-                             {'error', any()}.
-find_tts_server(Text, JObj) ->
-    Id = kz_util:binary_md5(Text),
-    find_tts_server(Text, JObj, Id).
-
-find_tts_server(Text, JObj, Id) ->
-    ChildSpec = ?WORKER_NAME_ARGS_TYPE(Id, 'kz_media_tts_cache', [Text, JObj], 'temporary'),
+find_tts_server(Id, JObj) ->
+    ChildSpec = ?WORKER_NAME_ARGS_TYPE(Id, 'kz_media_tts_cache', [Id, JObj], 'temporary'),
     case supervisor:start_child(?SERVER, ChildSpec) of
         {'ok', _Pid}=OK -> OK;
         {'error', {'already_started', Pid}} -> {'ok', Pid};
         {'error', 'already_present'} ->
             _ = supervisor:delete_child(?SERVER, Id),
-            find_tts_server(Text, JObj, Id);
+            find_tts_server(Id, JObj);
         {'error', _}=E -> E
     end.
 
