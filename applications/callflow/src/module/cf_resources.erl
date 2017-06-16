@@ -111,8 +111,7 @@ build_offnet_request(Data, Call) ->
 
 -spec get_channel_vars(kapps_call:call()) -> kz_json:object().
 get_channel_vars(Call) ->
-    GetterFuns = [fun maybe_add_endpoint/2
-                 ,fun add_privacy_flags/2
+    GetterFuns = [fun add_privacy_flags/2
                  ,fun maybe_require_ignore_early_media/2
                  ,fun maybe_set_bridge_generate_comfort_noise/2
                  ],
@@ -126,22 +125,6 @@ get_channel_vars(Call) ->
 add_privacy_flags(Call, Acc) ->
     CCVs = kapps_call:custom_channel_vars(Call),
     kz_privacy:flags(CCVs) ++ Acc.
-
--spec maybe_add_endpoint(kapps_call:call(), kz_proplist()) -> kz_proplist().
-maybe_add_endpoint(Call, Acc) ->
-    AuthId = kapps_call:authorizing_id(Call),
-    EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, AuthId, Call),
-    case EndpointId =/= 'undefined'
-        andalso kz_endpoint:get(EndpointId, kapps_call:account_db(Call))
-    of
-        'false' -> Acc;
-        {'ok', Endpoint} ->
-            [{<<"Authorizing-ID">>, EndpointId}
-            ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Endpoint)}
-             | Acc
-            ];
-        {'error', _} -> Acc
-    end.
 
 -spec maybe_require_ignore_early_media(kapps_call:call(), kz_proplist()) -> kz_proplist().
 maybe_require_ignore_early_media(Call, Acc) ->
