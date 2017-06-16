@@ -131,7 +131,7 @@ handle_info({'route', Section, <<"REQUEST_PARAMS">>, _SubClass, _Context, FSId, 
 
     Props = interaction_props(Node, CallId, FSData),
     _ = kz_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, FSData ++ Props]),
-    {'noreply', State, 'hibernate'};
+    {'noreply', State};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
     {stop, {'shutdown', 'noconnection'}, State};
 handle_info({'EXIT', _, Reason}, State) ->
