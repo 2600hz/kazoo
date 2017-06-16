@@ -277,11 +277,10 @@ build_local_extension(#state{number_props=Props
     {CEDNum, CEDName} = local_extension_callee_id(JObj, Number),
     Realm = get_account_realm(AccountId),
     FromRealm = get_account_realm(OriginalAccountId),
-    FromURI = <<"sip:", CIDNum/binary, "@", FromRealm/binary>>,
+    FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
     CCVsOrig = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     CCVs = kz_json:set_values(
              [{<<"Ignore-Display-Updates">>, <<"true">>}
-             ,{<<"From-URI">>, FromURI}
              ,{<<"Account-ID">>, OriginalAccountId}
              ,{<<"Reseller-ID">>, kz_services:find_reseller_id(OriginalAccountId)}
              ],
@@ -291,6 +290,7 @@ build_local_extension(#state{number_props=Props
                    [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, kz_json:get_value(<<"Retain-CID">>, CCVsOrig)}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, FromURI}
                    ,{<<"Resource-ID">>, AccountId}
                    ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
@@ -300,7 +300,7 @@ build_local_extension(#state{number_props=Props
                  [{<<"Invite-Format">>, <<"loopback">>}
                  ,{<<"Route">>, Number}
                  ,{<<"To-DID">>, Number}
-                 ,{<<"To-Realm">>, Realm}
+                 ,{<<"To-Realm">>, FromRealm}
                  ,{<<"Custom-Channel-Vars">>, CCVUpdates}
                  ,{<<"Outbound-Caller-ID-Name">>, CIDName}
                  ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
