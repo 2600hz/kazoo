@@ -45,8 +45,9 @@ filter('true', Node, UUID, Props, Update) ->
     end.
 
 -spec updated_props(kz_proplist(), kz_proplist()) -> kz_proplist().
-updated_props(Filtered, New) ->
-    Filtered ++ New ++ [ {<<"variable_", K/binary>>, V} || {K, V} <- New].
+updated_props(Filtered, New0) ->
+    New = [{ecallmgr_util:get_fs_key(K), V} || {K, V} <- New0],
+    New ++ [ {<<"variable_", K/binary>>, V} || {K, V} <- New] ++ Filtered.
 
 -spec maybe_update_ccvs(boolean(), fun(), kz_proplist()) -> kz_proplist().
 maybe_update_ccvs('false', _Fun, Filtered) -> Filtered;
