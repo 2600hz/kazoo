@@ -38,6 +38,7 @@
             "type": "integer"
         },
         "member": {
+            "default": {},
             "description": "Defines the discovery (call in) properties for a member",
             "properties": {
                 "join_deaf": {
@@ -74,6 +75,7 @@
             "type": "object"
         },
         "moderator": {
+            "default": {},
             "description": "Defines the discovery (call in) properties for a moderator",
             "properties": {
                 "join_deaf": {

@@ -10,6 +10,13 @@
         "device_id": {
             "type": "string"
         },
+        "dial_strategy": {
+            "enum": [
+                "single",
+                "simultaneous"
+            ],
+            "type": "string"
+        },
         "owner_id": {
             "type": "string"
         }

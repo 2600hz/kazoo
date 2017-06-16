@@ -48,6 +48,7 @@ Key | Description | Type | Default | Required
 `connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false`
 `id` | ID of the storage document | `string` |   | `false`
 `plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false`
+`ui_metadata` |   | `object` |   | `false`
 ##### storage.attachment.aws
 
 schema for AWS attachment entry

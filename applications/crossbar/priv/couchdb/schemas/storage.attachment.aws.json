@@ -17,12 +17,20 @@
         "settings": {
             "description": "AWS API settings",
             "properties": {
+                "base_path": {
+                    "description": "Base path to use as a prefix when saving files",
+                    "type": "string"
+                },
                 "bucket": {
                     "description": "Bucket name to store data to",
                     "type": "string"
                 },
+                "bucket_after_host": {
+                    "description": "use bucket after host as part of url",
+                    "type": "boolean"
+                },
                 "host": {
-                    "description": "Region-specific hostname to use, if applicable",
+                    "description": "the s3 host",
                     "type": "string"
                 },
                 "key": {
@@ -31,6 +39,18 @@
                 },
                 "path": {
                     "description": "Custom path to use as a prefix when saving files",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "port to use",
+                    "type": "integer"
+                },
+                "scheme": {
+                    "description": "scheme to use to access host",
+                    "enum": [
+                        "http",
+                        "https"
+                    ],
                     "type": "string"
                 },
                 "secret": {
