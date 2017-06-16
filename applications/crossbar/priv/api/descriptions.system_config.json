@@ -51,6 +51,7 @@
     "callflow.ensure_valid_caller_id": "callflow ensure valid caller id",
     "callflow.extension": "callflow extension",
     "callflow.fax_detect_duration_s": "callflow fax detect duration in seconds",
+    "callflow.force_require_pin": "If true, ignore the setting on the vmbox and require all users to enter a pin",
     "callflow.hotdesk.max_hotdesk_id_length": "callflow.hotdesk maximum hotdesk id length",
     "callflow.hotdesk.max_login_attempts": "callflow.hotdesk maximum login attempts",
     "callflow.hotdesk.max_pin_length": "callflow.hotdesk maximum pin length",
