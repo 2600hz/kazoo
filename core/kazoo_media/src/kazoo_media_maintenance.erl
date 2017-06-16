@@ -322,13 +322,15 @@ remove_empty_media_docs() ->
 remove_empty_system_media([]) -> 'no_return';
 remove_empty_system_media([JObj|JObjs]) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    case kz_json:get_ne_value(<<"_attachments">>, Doc) of
-        'undefined' ->
-            Id = kz_json:get_value(<<"id">>, JObj),
-            _ = io:format("media document ~s has no attachments, removing", [Id]),
+    Id = kz_json:get_value(<<"id">>, JObj),
+    case kz_json:get_ne_value(<<"_attachments">>, Doc) =:= 'undefined'
+        andalso binary:match(Id, <<"_design">>) =:= 'nomatch'
+    of
+        'true' ->
+            _ = io:format("media document ~s has no attachments, removing~n", [Id]),
             _ = kz_datamgr:del_doc(?KZ_MEDIA_DB, Doc),
             remove_empty_system_media(JObjs);
-        _Else -> remove_empty_system_media(JObjs)
+        'false' -> remove_empty_system_media(JObjs)
     end.
 
 -spec remove_empty_media_docs(ne_binary()) -> 'ok'.
