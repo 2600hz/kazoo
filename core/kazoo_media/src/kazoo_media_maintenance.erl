@@ -7,7 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_media_maintenance).
 
--export([remove_empty_media_docs/1
+-export([remove_empty_media_docs/0
+        ,remove_empty_media_docs/1
         ,migrate/0, migrate_prompts/0
         ,import_prompts/1, import_prompts/2
         ,import_prompt/1, import_prompt/2
@@ -335,6 +336,24 @@ maybe_update_media_config(Node, K, V, MediaJObj) ->
         _V ->
             io:format("    media config has existing value '~p' for ~p~n", [_V, Key]),
             MediaJObj
+    end.
+
+-spec remove_empty_media_docs() -> 'no_return'.
+remove_empty_media_docs() ->
+    {'ok', JObjs} = kz_datamgr:all_docs(?KZ_MEDIA_DB, ['include_docs']),
+    remove_empty_system_media(JObjs).
+
+-spec remove_empty_system_media(kz_json:objects()) -> 'no_return'.
+remove_empty_system_media([]) -> 'no_return';
+remove_empty_system_media([JObj|JObjs]) ->
+    Doc = kz_json:get_value(<<"doc">>, JObj),
+    case kz_json:get_ne_value(<<"_attachments">>, Doc) of
+        'undefined' ->
+            Id = kz_json:get_value(<<"id">>, JObj),
+            _ = io:format("media document ~s has no attachments, removing", [Id]),
+            _ = kz_datamgr:del_doc(?KZ_MEDIA_DB, Doc),
+            remove_empty_system_media(JObjs);
+        _Else -> remove_empty_system_media(JObjs)
     end.
 
 -spec remove_empty_media_docs(ne_binary()) -> 'ok'.
