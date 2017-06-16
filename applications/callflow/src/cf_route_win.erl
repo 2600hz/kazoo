@@ -314,7 +314,7 @@ maybe_start_recording(Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
--spec maybe_start_account_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
+-spec maybe_start_account_recording(ne_binary(), ne_binary(), kapps_call:call()) -> kapps_call:call().
 maybe_start_account_recording(From, To, Call) ->
     {'ok', Endpoint} = kz_endpoint:get(kapps_call:account_id(Call), Call),
     case maybe_start_call_recording(?ACCOUNT_INBOUND_RECORDING(From), Endpoint, Call) of
@@ -326,13 +326,23 @@ maybe_start_account_recording(From, To, Call) ->
         NewCall -> kapps_call:set_is_recording('true', NewCall)
     end.
 
--spec maybe_start_endpoint_recording(ne_binary(), api_boolean(), kapps_call:call()) -> kapps_call:call().
+-spec maybe_start_endpoint_recording(ne_binary(), ne_binary, kapps_call:call()) -> kapps_call:call().
 maybe_start_endpoint_recording(<<"onnet">>, To, Call) ->
-    {'ok', Endpoint} = kz_endpoint:get(Call),
-    Call1 = kapps_call:kvs_store('recording_follow_transer', 'false', Call),
-    maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING(To), Endpoint, Call1);
+    DefaultEndpointId = kapps_call:authorizing_id(Call),
+    EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
+    maybe_start_onnet_endpoint_recording(EndpointId, To, Call);
 maybe_start_endpoint_recording(_, _, Call) ->
     Call.
+
+-spec maybe_start_onnet_endpoint_recording(api_binary(), ne_binary(), kapps_call:call()) -> kapps_call:call().
+maybe_start_onnet_endpoint_recording('undefined', _To, Call) -> Call;
+maybe_start_onnet_endpoint_recording(EndpointId, To, Call) ->
+    case kz_endpoint:get(EndpointId, Call) of
+        {'ok', Endpoint} ->
+            Call1 = kapps_call:kvs_store('recording_follow_transer', 'false', Call),
+            maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING(To), Endpoint, Call1);
+        _ -> Call
+    end.
 
 -spec maybe_start_call_recording(ne_binaries(), kz_json:object(), kapps_call:call()) -> kapps_call:call().
 maybe_start_call_recording(Key, Endpoint, Call) ->
