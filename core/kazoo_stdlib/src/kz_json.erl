@@ -324,6 +324,8 @@ merge_left(_K, {'right', ?JSON_WRAPPER(_)=Right}) ->
     {'ok', merge(fun merge_left/2, Right, new())};
 merge_left(_K, {'right', V}) -> {'ok', V};
 
+merge_left(_K, {'both', ?EMPTY_JSON_OBJECT=Left, ?JSON_WRAPPER(_)=_Right}) ->
+    {'ok', Left};
 merge_left(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
     {'ok', merge(fun merge_left/2, Left, Right)};
 merge_left(_K, {'both', Left, _Right}) -> {'ok', Left}.
@@ -342,6 +344,8 @@ merge_right(_K, {'right', ?JSON_WRAPPER(_)=Right}) ->
     {'ok', merge(fun merge_right/2, new(), Right)};
 merge_right(_K, {'right', V}) -> {'ok', V};
 
+merge_right(_K, {'both', ?JSON_WRAPPER(_)=_Left, ?EMPTY_JSON_OBJECT=Right}) ->
+    {'ok', Right};
 merge_right(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
     {'ok', merge(fun merge_right/2, Left, Right)};
 merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
