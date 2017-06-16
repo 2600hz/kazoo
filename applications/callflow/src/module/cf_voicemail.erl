@@ -33,6 +33,7 @@
 -define(KEY_MAX_PIN_LENGTH, <<"max_pin_length">>).
 -define(KEY_DELETE_AFTER_NOTIFY, <<"delete_after_notify">>).
 -define(KEY_SAVE_AFTER_NOTIFY, <<"save_after_notify">>).
+-define(KEY_FORCE_REQUIRE_PIN, <<"force_require_pin">>).
 
 -define(MAILBOX_DEFAULT_SIZE
        ,kapps_config:get_integer(?CF_CONFIG_CAT
@@ -84,6 +85,13 @@
                                   ,[?KEY_VOICEMAIL, <<"vm_message_foraward_type">>]
                                   ,<<"only_forward">>
                                   )).
+
+-define(FORCE_REQUIRE_PIN
+       ,kapps_config:get_is_true(?CF_CONFIG_CAT
+                                ,[?KEY_VOICEMAIL, ?KEY_FORCE_REQUIRE_PIN]
+                                ,'false'
+                                )
+       ).
 
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
 
@@ -1547,8 +1555,7 @@ get_mailbox_profile(Data, Call) ->
                          kzd_voicemail_box:timezone(MailboxJObj, kz_account:default_timezone())
                     ,mailbox_number =
                          kzd_voicemail_box:mailbox_number(MailboxJObj, kapps_call:request_user(Call))
-                    ,require_pin =
-                         kzd_voicemail_box:pin_required(MailboxJObj)
+                    ,require_pin = should_require_pin(MailboxJObj)
                     ,check_if_owner =
                          kzd_voicemail_box:check_if_owner(MailboxJObj, CheckIfOwner)
                     ,unavailable_media_id =
@@ -1587,6 +1594,13 @@ get_mailbox_profile(Data, Call) ->
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
             #mailbox{}
+    end.
+
+-spec should_require_pin(kz_json:object()) -> boolean().
+should_require_pin(MailboxJObj) ->
+    case ?FORCE_REQUIRE_PIN of
+        'true' -> 'true';
+        'false' -> kzd_voicemail_box:pin_required(MailboxJObj)
     end.
 
 -spec after_notify_action(kz_json:object()) -> atom().
