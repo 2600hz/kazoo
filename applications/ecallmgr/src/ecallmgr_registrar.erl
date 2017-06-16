@@ -547,7 +547,8 @@ insert_registration(#registration{}=Registration) ->
                ,[Registration#registration.username
                 ,Registration#registration.realm
                 ,Registration#registration.contact
-                ]).
+                ]),
+    maybe_registration_notify(Registration).
 
 -spec fetch_registration(ne_binary(), ne_binary()) ->
                                 {'ok', kz_json:object()} |
