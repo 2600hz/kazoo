@@ -91,17 +91,17 @@ get_map_values(#{'bucket' := Bucket
                 ,'key' := Key
                 ,'secret' := Secret
                 }=Map) ->
-    BasePath = maps:get('base_path', Map, 'undefined'),
-    OtherPath = maps:get('path', Map, 'undefined'),
+    BasePath = maps:get('folder_base_path', Map, 'undefined'),
+    OtherPath = maps:get('folder_path', Map, 'undefined'),
     Host = maps:get('host', Map,  ?AMAZON_S3_HOST),
-    Scheme = maps:get('scheme', Map,  <<"https://">>),
+    Scheme = maps:get('scheme', Map,  <<"https">>),
     DefaultPort = case Scheme of
-                      <<"https://">> -> 443;
-                      <<"http://">> -> 80;
+                      <<"https">> -> 443;
+                      <<"http">> -> 80;
                       _ -> 80
                   end,
     Port = kz_term:to_integer(maps:get('port', Map,  DefaultPort)),
-    {Bucket, Key, Secret, combined_path(BasePath, OtherPath), {Scheme, Host, Port}}.
+    {Bucket, Key, Secret, combined_path(BasePath, OtherPath), {<<Scheme/binary, "://">> , Host, Port}}.
 
 -spec combined_path(api_binary(), api_binary()) -> api_binary().
 combined_path('undefined', 'undefined') -> 'undefined';

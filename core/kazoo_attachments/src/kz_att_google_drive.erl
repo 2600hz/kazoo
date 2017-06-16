@@ -126,9 +126,22 @@ resolve_ids(Path, Authorization) ->
     Ids = binary:split(Path, <<"/">>, [global ,trim_all]),
     resolve_ids(Ids, [<<"root">>], Authorization).
 
+-spec combined_path(api_binary(), api_binary()) -> api_binary().
+combined_path('undefined', 'undefined') -> 'undefined';
+combined_path('undefined', Path) -> Path;
+combined_path(Path, 'undefined') -> Path;
+combined_path(BasePath, OtherPath) ->
+    filename:join(BasePath, OtherPath).
+
+-spec get_path(map()) -> api_binary().
+get_path(Settings) ->
+    BasePath = maps:get(folder_base_path, Settings, undefined),
+    OtherPath = maps:get(folder_path, Settings, undefined),
+    combined_path(BasePath, OtherPath).
+
 -spec resolve_path(map(), binary()) -> binaries().
 resolve_path(Settings, Authorization) ->
-    case maps:get(folder_path, Settings, undefined) of
+    case get_path(Settings) of
         undefined ->
             lager:debug("no folder_path, saving to root"),
             [<<"root">>];

@@ -1,7 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage",
-    "additionalProperties": false,
     "patternProperties": {
         "^_": {
             "description": "Ignores CouchDB fields prefixed by underscores",
@@ -37,6 +36,9 @@
         "plan": {
             "$ref": "storage.plan",
             "description": "Describes how to store documents depending on the database or document type"
+        },
+        "ui_metadata": {
+            "type": "object"
         }
     },
     "type": "object"
