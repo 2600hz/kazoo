@@ -379,7 +379,7 @@ authz_req(Props) ->
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec outbound_flags(kzd_freeswitch:data()) -> kz_proplist() | 'undefined'.
+-spec outbound_flags(kzd_freeswitch:data()) -> [binary()] | 'undefined'.
 outbound_flags(Props) ->
     case kzd_freeswitch:ccv(Props, <<"Outbound-Flags">>) of
         'undefined' -> 'undefined';
