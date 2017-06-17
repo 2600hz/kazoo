@@ -22,8 +22,8 @@
 
 %% Id, Description, Callback Module
 -define(MIGRATIONS_LIST, [
-    {<<"notify_to_teletype">>, <<"Migrate account and all sub accounts to Teletype">>, 'cb_migration_disable_notify'}
-]).
+                          {<<"notify_to_teletype">>, <<"Migrate account and all sub accounts to Teletype">>, 'cb_migration_disable_notify'}
+                         ]).
 
 -spec init() -> ok.
 init() ->
@@ -66,8 +66,8 @@ validate(Context, DocId, ?HTTP_POST) ->
 -spec load_migration_list(cb_context:context()) -> cb_context:context().
 load_migration_list(Context) ->
     Format = fun({I, D, _C}, Acc) ->
-        kz_json:set_value(I, D, Acc)
-    end,
+                     kz_json:set_value(I, D, Acc)
+             end,
 
     Resp     = lists:foldl(Format, kz_json:new(), ?MIGRATIONS_LIST),
     Context1 = cb_context:set_resp_data(Context, Resp),
@@ -88,9 +88,9 @@ load_migration_summary(MigId, Context) ->
 -spec render_migration_summary(binary(), cb_context:context()) -> cb_context:context().
 render_migration_summary({Id, Desc, _Callback}, Context) ->
     Base = [
-        {<<"id">>, Id}
-       ,{<<"description">>, Desc}
-    ],
+            {<<"id">>, Id}
+           ,{<<"description">>, Desc}
+           ],
 
     Perf = get_migration_performed(Id, Context),
     Resp = kz_json:from_list(Base ++ Perf),
@@ -126,8 +126,8 @@ maybe_perform_migration(MigId, Context) ->
 
         _Other ->
             Resp = kz_json:from_list([
-                {<<"error">>, <<"invalid action time">>}
-            ]),
+                                      {<<"error">>, <<"invalid action time">>}
+                                     ]),
             Context1 = cb_context:set_resp_data(Context, Resp),
             cb_context:set_resp_status(Context1, 'failed')
     end.
@@ -137,8 +137,8 @@ check_migration_valid(MigId, Context) ->
     case lists:keyfind(MigId, 1, ?MIGRATIONS_LIST) of
         'false' ->
             Resp = kz_json:from_list([
-                {<<"error">>, <<"invalid migration">>}
-            ]),
+                                      {<<"error">>, <<"invalid migration">>}
+                                     ]),
             Context1 = cb_context:set_resp_data(Context, Resp),
             cb_context:set_resp_status(Context1, 'failed');
 
@@ -153,20 +153,20 @@ perform_migration(MigId, Module, Context) ->
     Account     = cb_context:account_id(Context),
 
     Result = case kz_json:get_binary_boolean(<<"include_descendants">>, cb_context:req_data(Context), <<"false">>) of
-        <<"true">> ->
-            Descendants = filter_account_descendants(Account, All, []),
-            Filtered    = maybe_filter_resellers(Descendants, Context),
-            List = [migrate_on_account(kz_json:get_value(<<"id">>, X), MigId, Module, Context) || X <- Filtered],
-            kz_json:from_list([
-                {<<"performed_on">>, List}
-            ]);
+                 <<"true">> ->
+                     Descendants = filter_account_descendants(Account, All, []),
+                     Filtered    = maybe_filter_resellers(Descendants, Context),
+                     List = [migrate_on_account(kz_json:get_value(<<"id">>, X), MigId, Module, Context) || X <- Filtered],
+                     kz_json:from_list([
+                                        {<<"performed_on">>, List}
+                                       ]);
 
-        <<"false">> ->
-            migrate_on_account(cb_context:account_id(Context), MigId, Module, Context),
-            kz_json:from_list([
-                {<<"performed_on">>, [cb_context:account_id(Context)]}
-            ])
-    end,
+                 <<"false">> ->
+                     migrate_on_account(cb_context:account_id(Context), MigId, Module, Context),
+                     kz_json:from_list([
+                                        {<<"performed_on">>, [cb_context:account_id(Context)]}
+                                       ])
+             end,
     cb_context:set_resp_data(Context, Result).
 
 -spec maybe_filter_resellers(list(), cb_context:context()) -> list(kz_json:object()).
@@ -244,9 +244,9 @@ mark_migration_complete(MigId, AccountId, Context) ->
     Migrations  = kz_json:get_value(<<"migrations_performed">>, Doc),
 
     Args = kz_json:from_list([
-        {<<"authorizing_id">>, cb_context:auth_user_id(Context)}
-       ,{<<"performed_time">>, kz_time:current_tstamp()}
-    ]),
+                              {<<"authorizing_id">>, cb_context:auth_user_id(Context)}
+                             ,{<<"performed_time">>, kz_time:current_tstamp()}
+                             ]),
 
     NewMigs = kz_json:set_value(MigId, Args, Migrations),
     kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"migrations_performed">>, NewMigs, Doc)).
@@ -265,9 +265,9 @@ maybe_create_migration_doc(Account) ->
 -spec create_migration_doc(binary()) -> kz_json:object().
 create_migration_doc(Account) ->
     Doc = kz_json:from_list([
-        {<<"_id">>, ?MIGRATIONS_DOC}
-       ,{<<"pvt_created">>, kz_time:current_tstamp()}
-       ,{<<"migrations_performed">>, []}
-    ]),
+                             {<<"_id">>, ?MIGRATIONS_DOC}
+                            ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                            ,{<<"migrations_performed">>, []}
+                            ]),
     kz_datamgr:ensure_saved(Account, Doc).
 

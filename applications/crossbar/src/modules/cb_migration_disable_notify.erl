@@ -21,9 +21,9 @@ perform_migration(Account, Context) ->
 
     {'ok', BaseDoc} = kz_datamgr:open_cache_doc(AccountDb, Account),
     NewDoc = lists:foldl(fun(X, A) -> X(A) end, BaseDoc, [
-        fun remove_vm_to_email/1
-       ,fun remove_fax_to_email/1
-    ]),
+                                                          fun remove_vm_to_email/1
+                                                         ,fun remove_fax_to_email/1
+                                                         ]),
 
     kz_datamgr:ensure_saved(AccountDb, NewDoc),
     cb_context:set_resp_status(Context, 'success').
