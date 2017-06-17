@@ -356,6 +356,13 @@ update_endpoint_emergency_cid(Endpoint, Number, Name) ->
             kz_json:set_values(Props, Endpoint)
     end.
 
+-spec outbound_flags(kz_json:object()) -> api_binary().
+outbound_flags(JObj) ->
+    case kapi_offnet_resource:flags(JObj) of
+        [] -> 'undefined';
+        Flags -> kz_util:join_binary(Flags, <<"|">>)
+    end.
+
 -spec build_bridge(state(), api_binary(), api_binary()) -> kz_proplist().
 build_bridge(#state{endpoints=Endpoints
                    ,resource_req=OffnetReq
@@ -372,6 +379,7 @@ build_bridge(#state{endpoints=Endpoints
                                                   ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
                                                   ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
                                                   ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
+                                                  ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
                                                   ])
                           ,kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new())
                           ),
