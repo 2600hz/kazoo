@@ -85,7 +85,7 @@ load_migration_summary(MigId, Context) ->
             render_migration_summary(Migration, Context)
     end.
 
--spec render_migration_summary(binary(), cb_context:context()) -> cb_context:context().
+-spec render_migration_summary({binary(), binary(), atom()}, cb_context:context()) -> cb_context:context().
 render_migration_summary({Id, Desc, _Callback}, Context) ->
     Base = [
             {<<"id">>, Id}
@@ -162,7 +162,7 @@ perform_migration(MigId, Module, Context) ->
                                        ]);
 
                  <<"false">> ->
-                     migrate_on_account(cb_context:account_id(Context), MigId, Module, Context),
+                     _ = migrate_on_account(cb_context:account_id(Context), MigId, Module, Context),
                      kz_json:from_list([
                                         {<<"performed_on">>, [cb_context:account_id(Context)]}
                                        ])
