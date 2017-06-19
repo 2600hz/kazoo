@@ -67,6 +67,14 @@
             "minLength": 3,
             "type": "string"
         },
+        "phase": {
+            "description": "Application test phase",
+            "enum": [
+                "alpha",
+                "beta"
+            ],
+            "type": "string"
+        },
         "price": {
             "description": "Application price",
             "minimum": 0,
