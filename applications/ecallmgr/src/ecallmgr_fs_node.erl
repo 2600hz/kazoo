@@ -614,13 +614,6 @@ channels_as_json(Node) ->
         {'error', _} -> []
     end.
 
-%% -spec split_codes(ne_binary(), kz_proplist()) -> ne_binaries().
-%% split_codes(Key, Props) ->
-%%     [Codec
-%%      || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, ['global'])
-%%             ,not kz_term:is_empty(Codec)
-%%     ].
-
 -spec probe_capabilities(atom()) -> 'ok'.
 -spec probe_capabilities(atom(), kz_json:objects()) -> 'ok'.
 probe_capabilities(Node) ->
