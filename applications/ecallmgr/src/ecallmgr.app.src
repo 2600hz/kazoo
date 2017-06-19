@@ -29,7 +29,6 @@
          ,{event_stream_custom, [['kazoo::noop', 'kazoo::masquerade']
                                 ,['sofia::transferor', 'sofia::transferee'
                                  ,'sofia::replaced','sofia::intercepted'
-                                 ,'sofia::register'
                                  ]
                                 ,'conference::maintenance'
                                 ,['spandsp::txfaxresult'

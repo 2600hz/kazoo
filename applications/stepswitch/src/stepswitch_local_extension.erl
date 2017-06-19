@@ -263,6 +263,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec outbound_flags(kz_json:object()) -> api_binary().
+outbound_flags(JObj) ->
+    case kapi_offnet_resource:flags(JObj) of
+        [] -> 'undefined';
+        Flags -> kz_binary:join(Flags, <<"|">>)
+    end.
 
 -spec build_local_extension(state()) -> kz_proplist().
 build_local_extension(#state{number_props=Props
@@ -274,17 +280,19 @@ build_local_extension(#state{number_props=Props
     Number = knm_number_options:number(Props),
     AccountId = knm_number_options:account_id(Props),
     OriginalAccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    ResellerId = kz_services:find_reseller_id(OriginalAccountId),
     {CEDNum, CEDName} = local_extension_callee_id(JObj, Number),
     Realm = get_account_realm(AccountId),
     FromRealm = get_account_realm(OriginalAccountId),
     FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
     CCVsOrig = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
-    CCVs = kz_json:set_values(
-             [{<<"Ignore-Display-Updates">>, <<"true">>}
-             ,{<<"Account-ID">>, OriginalAccountId}
-             ,{<<"Reseller-ID">>, kz_services:find_reseller_id(OriginalAccountId)}
-             ],
-             CCVsOrig),
+    CCVs = kz_json:set_values(props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
+                                                     ,{<<"Account-ID">>, OriginalAccountId}
+                                                     ,{<<"Reseller-ID">>, ResellerId}
+                                                     ,{<<"Outbound-Flags">>, outbound_flags(JObj)}
+                                                     ])
+                             ,CCVsOrig
+                             ),
 
     CCVUpdates = kz_json:from_list(
                    [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
