@@ -21,7 +21,7 @@
 -export([multi_set_args/5, multi_unset_args/5]).
 
 -export([get_expires/1]).
--export([get_interface_properties/1, get_interface_properties/2]).
+-export([get_interface_list/1, get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
 -export([custom_channel_vars/1]).
 -export([conference_channel_vars/1]).
@@ -159,11 +159,28 @@ get_expires(Props) ->
     Expiry = kz_term:to_integer(props:get_first_defined([<<"Expires">>, <<"expires">>], Props, 300)),
     round(Expiry * 1.25).
 
+
+-spec get_interface_list(atom()) -> ne_binaries().
+get_interface_list(Node) ->
+    case freeswitch:api(Node, 'sofia', "status") of
+        {'ok', Response} ->
+            R = binary:replace(Response, <<" ">>, <<>>, ['global']),
+            Lines = binary:split(R, <<"\n">>, ['global']),
+            [KV || Line <- Lines,
+                   (KV = case binary:split(Line, <<"\t">>, ['global']) of
+                             [<<"Name">>, _T, _A, _S] -> 'false';
+                             [I, <<"profile">>, _A, <<"RUNNING", _/binary>>] -> I;
+                             _Other -> 'false'
+                         end) =/= 'false'
+            ];
+        _Else -> []
+    end.
+
 -spec get_interface_properties(atom()) -> kz_proplist().
--spec get_interface_properties(atom(), text()) -> kz_proplist().
+-spec get_interface_properties(atom(), ne_binary()) -> kz_proplist().
 
 get_interface_properties(Node) ->
-    get_interface_properties(Node, ?DEFAULT_FS_PROFILE).
+    [{Interface, get_interface_properties(Node, Interface)} || Interface <- get_interface_list(Node)].
 
 get_interface_properties(Node, Interface) ->
     case freeswitch:api(Node, 'sofia', kz_term:to_list(list_to_binary(["status profile ", Interface]))) of

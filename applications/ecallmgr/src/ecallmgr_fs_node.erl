@@ -14,15 +14,16 @@
 -export([handle_reload_acls/2]).
 -export([handle_reload_gateways/2]).
 -export([sync_channels/1
-        ,sync_interface/1
+        ,sync_interfaces/1
+        ,sync_interface/1, sync_interface/2
         ,sync_capabilities/1
-        ,sync_registrations/1
         ]).
--export([sip_url/1]).
--export([sip_external_ip/1]).
+-export([sip_url/1, sip_url/2]).
+-export([sip_external_ip/1, sip_external_ip/2]).
 -export([fs_node/1]).
 -export([hostname/1]).
--export([interface/1]).
+-export([interface/1, interface/2]).
+-export([interfaces/1]).
 -export([fetch_timeout/0, fetch_timeout/1]).
 -export([init/1
         ,handle_call/3
@@ -39,38 +40,8 @@
 
 -define(UPTIME_S, ecallmgr_config:get_integer(<<"fs_node_uptime_s">>, 600)).
 
--record(interface, {name
-                   ,domain_name
-                   ,auto_nat
-                   ,presence_hosts
-                   ,dialplan
-                   ,context
-                   ,challenge_realm
-                   ,rtp_ip
-                   ,ext_rtp_ip
-                   ,sip_ip
-                   ,ext_sip_ip
-                   ,url
-                   ,bind_url
-                   ,hold_music
-                   ,outbound_proxy
-                   ,codecs_in
-                   ,codecs_out
-                   ,tel_event
-                   ,dtmf_mode
-                   ,cng
-                   ,session_to
-                   ,max_dialog
-                   ,no_media
-                   ,late_neg
-                   ,proxy_media
-                   ,zrtp_passthru
-                   ,aggressive_nat
-                   ,stun_enabled
-                   ,stun_auto_disabled
-                   ,interface_props = []
-                   }).
--type interface() :: #interface{}.
+-type interface() :: {ne_binary(), kz_proplist()}.
+-type interfaces() :: [interface()].
 
 -define(DEFAULT_FS_COMMANDS, [kz_json:from_list([{<<"load">>, <<"mod_sofia">>}])
                              ,kz_json:from_list([{<<"reloadacl">>, <<>>}])
@@ -129,7 +100,7 @@
 
 -record(state, {node :: atom()
                ,options = []             :: kz_proplist()
-               ,interface = #interface{} :: interface()
+               ,interfaces = []          :: interfaces()
                ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
                }).
 -type state() :: #state{}.
@@ -205,17 +176,21 @@ start_link(Node, Options) when is_atom(Node) ->
 sync_channels(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_channels').
 
+-spec sync_interfaces(fs_node()) -> 'ok'.
+sync_interfaces(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_interfaces').
+
 -spec sync_interface(fs_node()) -> 'ok'.
 sync_interface(Srv) ->
-    gen_server:cast(find_srv(Srv), 'sync_interface').
+    sync_interface(Srv, <<?DEFAULT_FS_PROFILE>>).
+
+-spec sync_interface(fs_node(), ne_binary()) -> 'ok'.
+sync_interface(Srv, Profile) ->
+    gen_server:cast(find_srv(Srv), {'sync_interface', Profile}).
 
 -spec sync_capabilities(fs_node()) -> 'ok'.
 sync_capabilities(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_capabilities').
-
--spec sync_registrations(fs_node()) -> 'ok'.
-sync_registrations(Srv) ->
-    gen_server:cast(find_srv(Srv), 'sync_registrations').
 
 -spec hostname(fs_node()) -> api_binary().
 hostname(Srv) ->
@@ -228,11 +203,19 @@ hostname(Srv) ->
 
 -spec sip_url(fs_node()) -> api_binary().
 sip_url(Srv) ->
-    gen_server:call(find_srv(Srv), 'sip_url').
+    sip_url(Srv, <<?DEFAULT_FS_PROFILE>>).
+
+-spec sip_url(fs_node(), ne_binary()) -> api_binary().
+sip_url(Srv, Profile) ->
+    gen_server:call(find_srv(Srv), {'sip_url', Profile}).
 
 -spec sip_external_ip(fs_node()) -> api_binary().
 sip_external_ip(Srv) ->
-    gen_server:call(find_srv(Srv), 'sip_external_ip').
+    sip_external_ip(Srv, <<?DEFAULT_FS_PROFILE>>).
+
+-spec sip_external_ip(fs_node(), ne_binary()) -> api_binary().
+sip_external_ip(Srv, Profile) ->
+    gen_server:call(find_srv(Srv), {'sip_external_ip', Profile}).
 
 -spec handle_reload_acls(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_reload_acls(JObj, Props) ->
@@ -322,12 +305,23 @@ init([Node, Options]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
-handle_call('sip_external_ip', _, #state{interface=Interface}=State) ->
-    {'reply', Interface#interface.ext_sip_ip, State};
-handle_call('sip_url', _, #state{interface=Interface}=State) ->
-    {'reply', Interface#interface.url, State};
-handle_call('interface_props', _, #state{interface=Interface}=State) ->
-    {'reply', Interface#interface.interface_props, State};
+handle_call({'sip_external_ip', Profile}, _, #state{interfaces=Interfaces}=State) ->
+    ExternalIP = case props:get_value(Profile, Interfaces) of
+                     'undefined' -> 'undefined';
+                     Interface -> props:get_value(<<"Ext-SIP-IP">>, Interface)
+                 end,
+    {'reply', ExternalIP, State};
+handle_call({'sip_url', Profile}, _, #state{interfaces=Interfaces}=State) ->
+    SIPUrl = case props:get_value(Profile, Interfaces) of
+                 'undefined' -> 'undefined';
+                 Interface -> props:get_value(<<"URL">>, Interface)
+             end,
+    {'reply', SIPUrl, State};
+handle_call('interfaces', _, #state{interfaces=[]}=State) ->
+    {'reply', 'undefined', State};
+handle_call('interfaces', _, #state{interfaces=Interfaces}=State) ->
+    Resp = kz_json:from_list_recursive(Interfaces),
+    {'reply', Resp, State};
 handle_call('node', _, #state{node=Node}=State) ->
     {'reply', Node, State}.
 
@@ -342,10 +336,10 @@ handle_call('node', _, #state{node=Node}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast('sync_interface', #state{node=Node
-                                    ,interface=Interface
-                                    }=State) ->
-    {'noreply', State#state{interface=node_interface(Node, Interface)}};
+handle_cast('sync_interfaces', #state{node=Node
+                                     ,interfaces=Interfaces
+                                     }=State) ->
+    {'noreply', State#state{interfaces=node_interfaces(Node, Interfaces)}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
     _Pid = kz_util:spawn(fun probe_capabilities/1, [Node]),
     lager:debug("syncing capabilities in ~p", [_Pid]),
@@ -355,10 +349,6 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
                 || J <- channels_as_json(Node)
                ],
     _ = ecallmgr_fs_channels:sync(Node, Channels),
-    {'noreply', State};
-handle_cast('sync_registrations', #state{node=Node}=State) ->
-    _Pid = kz_util:spawn(fun maybe_replay_registrations/1, [Node]),
-    lager:debug("syncing registrations in ~p", [_Pid]),
     {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
@@ -375,10 +365,10 @@ handle_cast(_Req, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info('sync_interface', #state{node=Node
-                                    ,interface=Interface
-                                    }=State) ->
-    {'noreply', State#state{interface=node_interface(Node, Interface)}};
+handle_info('sync_interfaces', #state{node=Node
+                                     ,interfaces=Interfaces
+                                     }=State) ->
+    {'noreply', State#state{interfaces=node_interfaces(Node, Interfaces)}};
 handle_info({'bgok', _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
     {'noreply', State};
@@ -512,8 +502,7 @@ run_start_cmds(Node, Options, Parent, Cmds) ->
 
 -spec sync(pid()) -> any().
 sync(Parent) ->
-    sync_interface(Parent),
-    sync_registrations(Parent),
+    sync_interfaces(Parent),
     sync_capabilities(Parent).
 
 -spec process_cmds(atom(), kz_proplist(), kz_json:object() | ne_binaries()) -> cmd_results().
@@ -625,46 +614,12 @@ channels_as_json(Node) ->
         {'error', _} -> []
     end.
 
--spec interface_from_props(kz_proplist()) -> interface().
-interface_from_props(Props) ->
-    #interface{name=props:get_value(<<"Name">>, Props, ?DEFAULT_FS_PROFILE)
-              ,domain_name=props:get_value(<<"DomainName">>, Props)
-              ,auto_nat=props:get_is_true(<<"Auto-NAT">>, Props)
-              ,presence_hosts=props:get_value(<<"PresHosts">>, Props)
-              ,dialplan=props:get_value(<<"Dialplan">>, Props)
-              ,context=props:get_value(<<"Context">>, Props)
-              ,challenge_realm=props:get_value(<<"ChallengeRealm">>, Props)
-              ,rtp_ip=props:get_value(<<"RTP-IP">>, Props)
-              ,ext_rtp_ip=props:get_value(<<"Ext-RTP-IP">>, Props)
-              ,sip_ip=props:get_value(<<"SIP-IP">>, Props)
-              ,ext_sip_ip=props:get_value(<<"Ext-SIP-IP">>, Props)
-              ,url=props:get_value(<<"URL">>, Props)
-              ,bind_url=props:get_value(<<"BIND-URL">>, Props)
-              ,hold_music=props:get_value(<<"HOLD_MUSIC">>, Props)
-              ,outbound_proxy=props:get_value(<<"OUTBOUND-PROXY">>, Props)
-              ,codecs_in=split_codes(<<"CODECSIN">>, Props)
-              ,codecs_out=split_codes(<<"CODECSOUT">>, Props)
-              ,tel_event=props:get_value(<<"TEL-EVENT">>, Props)
-              ,dtmf_mode=props:get_value(<<"DTMF-MODE">>, Props)
-              ,cng=props:get_value(<<"CNG">>, Props)
-              ,session_to=props:get_value(<<"SESSION-TO">>, Props)
-              ,max_dialog=props:get_value(<<"MAX-DIALOG">>, Props)
-              ,no_media=props:get_is_true(<<"NOMEDIA">>, Props)
-              ,late_neg=props:get_is_true(<<"LATE-NEG">>, Props)
-              ,proxy_media=props:get_is_true(<<"PROXY-MEDIA">>, Props)
-              ,zrtp_passthru=props:get_is_true(<<"ZRTP-PASSTHRU">>, Props)
-              ,aggressive_nat=props:get_is_true(<<"AGGRESSIVENAT">>, Props)
-              ,stun_enabled=props:get_is_true(<<"STUN-ENABLED">>, Props)
-              ,stun_auto_disabled=props:get_is_true(<<"STUN-AUTO-DISABLE">>, Props)
-              ,interface_props=Props
-              }.
-
--spec split_codes(ne_binary(), kz_proplist()) -> ne_binaries().
-split_codes(Key, Props) ->
-    [Codec
-     || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, ['global'])
-            ,not kz_term:is_empty(Codec)
-    ].
+%% -spec split_codes(ne_binary(), kz_proplist()) -> ne_binaries().
+%% split_codes(Key, Props) ->
+%%     [Codec
+%%      || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, ['global'])
+%%             ,not kz_term:is_empty(Codec)
+%%     ].
 
 -spec probe_capabilities(atom()) -> 'ok'.
 -spec probe_capabilities(atom(), kz_json:objects()) -> 'ok'.
@@ -694,79 +649,26 @@ maybe_add_capability(Node, Capability) ->
             lager:debug("failed to probe node ~s: ~p", [Node, _E])
     end.
 
--spec maybe_replay_registrations(atom()) -> 'ok'.
-maybe_replay_registrations(Node) ->
-    kz_util:put_callid(Node),
-    replay_registration(Node, get_registrations(Node)).
-
--spec replay_registration(atom(), [kz_proplist()]) -> 'ok'.
-replay_registration(_Node, [[]]) -> 'ok';
-replay_registration(_Node, []) -> 'ok';
-replay_registration(Node, [Reg | Regs]) ->
-    Payload = [{<<"FreeSWITCH-Nodename">>, kz_term:to_binary(Node)}
-              ,{<<"Event-Timestamp">>, round(kz_time:current_tstamp())}
-               | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
-                                   {K, F(props:get_value(V, Reg))};
-                              ({K,V}) ->
-                                   {K, props:get_value(V, Reg)}
-                           end, ?REPLAY_REG_MAP)
-               ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("replaying registration: ~p",[Payload]),
-    kz_amqp_worker:cast(Payload
-                       ,fun kapi_registration:publish_success/1
-                       ),
-    replay_registration(Node, Regs).
-
--spec replay_profile(ne_binary()) -> ne_binary().
-replay_profile(V) ->
-    lists:nth(2, binary:split(V, <<"/">>, ['global'] ) ).
-
--spec replay_expires(ne_binary()) -> pos_integer().
-replay_expires(V) ->
-    kz_time:unix_seconds_to_gregorian_seconds(kz_term:to_integer(V))
-        - (kz_time:current_tstamp() + ?EXPIRES_DEVIATION_TIME).
-
--spec replay_contact(ne_binary()) -> ne_binary().
-replay_contact(V) ->
-    <<"<", (lists:nth(3, binary:split(V, <<"/">>, ['global'] ) ))/binary, ">">>.
-
--spec get_registrations(atom()) -> [kz_proplist()].
-get_registrations(Node) ->
-    case freeswitch:api(Node, 'show', "registrations") of
-        {'ok', Response} ->
-            R = binary:replace(Response, <<" ">>, <<>>, ['global']),
-            Lines = [binary:split(Line, <<",">>, ['global'])
-                     || Line <- binary:split(R, <<"\n">>, ['global'])
-                    ],
-            get_registration_details(Lines);
-        _Else -> [[]]
-    end.
-
--spec get_registration_details(list()) -> [kz_proplist()].
-get_registration_details([Header, _, _, _| _] = Lines) ->
-    [begin
-         {Res, _Total} = lists:mapfoldl(
-                           fun(E, Acc) ->
-                                   {{lists:nth(Acc, Header),E}, Acc+1}
-                           end, 1, Row),
-         Res
-     end
-     || Row <- lists:sublist(Lines, 2, length(Lines)-4)
-    ];
-get_registration_details(_List) -> [].
-
--spec node_interface(atom(), interface()) -> interface().
-node_interface(Node, CurrInterface) ->
+-spec node_interfaces(atom(), interfaces()) -> interfaces().
+node_interfaces(Node, CurrInterfaces) ->
     case ecallmgr_util:get_interface_properties(Node) of
         [] ->
             lager:debug("no interface properties available at the moment, will sync again"),
-            _ = erlang:send_after(?MILLISECONDS_IN_SECOND, self(), 'sync_interface'),
-            CurrInterface;
-        Props ->
-            interface_from_props(Props)
+            _ = erlang:send_after(?MILLISECONDS_IN_SECOND, self(), 'sync_interfaces'),
+            CurrInterfaces;
+        Interfaces ->
+            _ = erlang:send_after(?MILLISECONDS_IN_SECOND * 60, self(), 'sync_interfaces'),
+            Interfaces
     end.
 
--spec interface(atom() | binary()) -> kz_proplist().
+-spec interfaces(atom() | binary()) -> api_object().
+interfaces(Node) ->
+    gen_server:call(find_srv(Node), 'interfaces').
+
+-spec interface(atom() | binary()) -> api_object().
 interface(Node) ->
-    gen_server:call(find_srv(Node), 'interface_props').
+    interface(Node, <<?DEFAULT_FS_PROFILE>>).
+
+-spec interface(atom() | binary(), ne_binary()) -> api_object().
+interface(Node, Profile) ->
+    gen_server:call(find_srv(Node), {'interface', Profile}).
