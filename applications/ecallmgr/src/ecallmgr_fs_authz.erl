@@ -194,9 +194,21 @@ authorize_account(JObj, Props, CallId, Node) ->
     ChanVars  = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
 
     lager:debug("channel is authorized by account ~s as ~s", [AccountId, Type]),
-    P = kz_json:foldl(fun(K, V, Acc) -> props:set_value(?GET_CCV(K), V, Acc) end, Props, ChanVars),
+    P = props:set_values([{?GET_CCV(<<"Account-ID">>), AccountId}
+                         ,{?GET_CCV(<<"Account-Billing">>), Type}
+                          | maybe_add_outbound_flags(ChanVars)
+                         ]
+                        ,Props
+                        ),
 
     authorize_reseller(JObj, P, CallId, Node).
+
+-spec maybe_add_outbound_flags(kz_json:object()) -> kz_proplist().
+maybe_add_outbound_flags(JObj) ->
+    case kz_json:get_value(<<"Outbound-Flags">>, JObj) of
+        'undefined' -> [];
+        Flags -> [{?GET_CCV(<<"Outbound-Flags">>), Flags}]
+    end.
 
 -spec authorize_reseller(kz_json:object(), kzd_freeswitch:data(), ne_binary(), atom()) ->
                                 authz_reply().
