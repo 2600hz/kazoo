@@ -191,17 +191,24 @@ authz_response(JObj, Props, CallId, Node) ->
 authorize_account(JObj, Props, CallId, Node) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     Type      = kz_json:get_value(<<"Account-Billing">>, JObj),
-    ChanVars  = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    ChanVars  = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
 
     lager:debug("channel is authorized by account ~s as ~s", [AccountId, Type]),
     P = props:set_values([{?GET_CCV(<<"Account-ID">>), AccountId}
                          ,{?GET_CCV(<<"Account-Billing">>), Type}
-                         ,{<<"Outbound-Flags">>, kz_json:get_value(<<"Outbound-Flags">>, ChanVars)}
+                          | maybe_add_outbound_flags(ChanVars)
                          ]
                         ,Props
                         ),
 
     authorize_reseller(JObj, P, CallId, Node).
+
+-spec maybe_add_outbound_flags(kz_json:object()) -> kz_proplist().
+maybe_add_outbound_flags(JObj) ->
+    case kz_json:get_value(<<"Outbound-Flags">>, JObj) of
+        'undefined' -> [];
+        Flags -> [{?GET_CCV(<<"Outbound-Flags">>), Flags}]
+    end.
 
 -spec authorize_reseller(kz_json:object(), kzd_freeswitch:data(), ne_binary(), atom()) ->
                                 authz_reply().
@@ -384,16 +391,24 @@ authz_req(Props) ->
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
+-spec outbound_flags(kzd_freeswitch:data()) -> [binary()] | 'undefined'.
+outbound_flags(Props) ->
+    case kzd_freeswitch:ccv(Props, <<"Outbound-Flags">>) of
+        'undefined' -> 'undefined';
+        Flags when is_binary(Flags) -> binary:split(Flags, <<"|">>);
+        Flags -> Flags
+    end.
+
 -spec rating_req(ne_binary(), kzd_freeswitch:data()) -> kz_proplist().
 rating_req(CallId, Props) ->
-    [{<<"To-DID">>, kzd_freeswitch:to_did(Props)}
-    ,{<<"From-DID">>, kzd_freeswitch:caller_id_number(Props)}
-    ,{<<"Call-ID">>, CallId}
-    ,{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
-    ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
-    ,{<<"Send-Empty">>, 'true'}
-    ,{<<"Outbound-Flags">>, props:get_value(<<"Outbound-Flags">>, Props)}
-    ,{<<"Resource-ID">>, props:get_value(<<"variable_ecallmgr_Resource-ID">>, Props)}
-    ,{<<"Authorizing-Type">>, kzd_freeswitch:authorizing_type(Props)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].
+    props:filter_undefined([{<<"To-DID">>, kzd_freeswitch:to_did(Props)}
+                           ,{<<"From-DID">>, kzd_freeswitch:caller_id_number(Props)}
+                           ,{<<"Call-ID">>, CallId}
+                           ,{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
+                           ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
+                           ,{<<"Send-Empty">>, 'true'}
+                           ,{<<"Outbound-Flags">>, outbound_flags(Props)}
+                           ,{<<"Resource-ID">>, kzd_freeswitch:ccv(Props, <<"Resource-ID">>)}
+                           ,{<<"Authorizing-Type">>, kzd_freeswitch:authorizing_type(Props)}
+                            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                           ]).

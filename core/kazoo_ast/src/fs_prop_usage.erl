@@ -499,7 +499,8 @@ list_of_keys_to_binary(Head, Tail) ->
 list_of_keys_to_binary(Arg, ?EMPTY_LIST, Path) ->
     lists:reverse([arg_to_key(Arg) | Path]);
 list_of_keys_to_binary(Arg, ?LIST(Head, Tail), Path) ->
-    list_of_keys_to_binary(Head, Tail, [arg_to_key(Arg) | Path]).
+    list_of_keys_to_binary(Head, Tail, [arg_to_key(Arg) | Path]);
+list_of_keys_to_binary(_Head, _Tail, Path) -> Path.
 
 maybe_add_usage(Usages, Call) ->
     case lists:member(Call, Usages) of
