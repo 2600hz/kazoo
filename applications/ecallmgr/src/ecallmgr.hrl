@@ -382,7 +382,6 @@
                            ,'sofia::transferee'
                            ,'sofia::replaced'
                            ,'sofia::intercepted'
-                           ,'sofia::register'
                            ]
                           ,'conference::maintenance'
                           ,['spandsp::txfaxresult'

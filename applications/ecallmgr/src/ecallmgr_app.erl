@@ -32,9 +32,9 @@ start(_StartType, _StartArgs) ->
 -spec request(kz_nodes:request_acc()) -> kz_nodes:request_acc().
 request(Acc) ->
     Servers = [{kz_term:to_binary(Server)
-               ,kz_json:from_list_recursive(
+               ,kz_json:from_list(
                   [{<<"Startup">>, Started}
-                  ,{<<"Interface">>, [ecallmgr_fs_node:interface(Server)]}
+                  ,{<<"Interfaces">>, ecallmgr_fs_node:interfaces(Server)}
                   ])
                }
                || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
