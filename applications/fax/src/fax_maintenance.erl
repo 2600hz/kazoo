@@ -408,10 +408,7 @@ migrate_outbound_fax(JObj) ->
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month),FromId),
 
-    Options = [{'allow_old_modb_creation', 'true'}
-              ,'override_existing_document'
-              ],
-    case kazoo_modb:move_doc(FromDB, FromId, ToDB, ToId, Options) of
+    case kazoo_modb:move_doc(FromDB, FromId, ToDB, ToId, ?OVERRIDE_DOCS) of
         {'ok', _} -> io:format("document ~s/~s moved to ~s/~s~n", [FromDB, FromId, ToDB, ToId]);
         {'error', _E} -> io:format("error ~p moving document ~s/~s to ~s/~s~n", [_E, FromDB, FromId, ToDB, ToId])
     end.
