@@ -1378,6 +1378,7 @@ generate_sip_headers(Endpoint, Acc, Call) ->
     HeaderFuns = [fun(J) -> maybe_add_sip_headers(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_alert_info(J, Endpoint, Inception) end
                  ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
+                 ,fun(J) -> maybe_add_invite_format(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_diversion(J, Endpoint, Inception, Call) end
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
@@ -1424,6 +1425,17 @@ maybe_add_alert_info(JObj, Endpoint, _Inception) ->
         'undefined' -> JObj;
         Ringtone -> kz_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
     end.
+
+-spec maybe_add_invite_format(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
+maybe_add_invite_format(JObj, Endpoint, Call) ->
+    maybe_add_invite_format(JObj, Endpoint, Call, kz_device:sip_invite_format(Endpoint)).
+
+-spec maybe_add_invite_format(kz_json:object(), kz_json:object(), kapps_call:call(), binary()) -> kz_json:object().
+maybe_add_invite_format(JObj, _Endpoint, _Call, 'undefined') ->
+    JObj;
+
+maybe_add_invite_format(JObj, _Endpoint, _Call, Format) ->
+    kz_json:set_value(<<"X-KAZOO-INVITE-FORMAT">>, Format, JObj).
 
 -spec maybe_add_aor(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
 -spec maybe_add_aor(kz_json:object(), kz_json:object(), api_binary(), ne_binary()) -> kz_json:object().
