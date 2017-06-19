@@ -649,9 +649,7 @@ node_interfaces(Node, CurrInterfaces) ->
             lager:debug("no interface properties available at the moment, will sync again"),
             _ = erlang:send_after(?MILLISECONDS_IN_SECOND, self(), 'sync_interfaces'),
             CurrInterfaces;
-        Interfaces ->
-            _ = erlang:send_after(?MILLISECONDS_IN_SECOND * 60, self(), 'sync_interfaces'),
-            Interfaces
+        Interfaces -> Interfaces
     end.
 
 -spec interfaces(atom() | binary()) -> api_object().
