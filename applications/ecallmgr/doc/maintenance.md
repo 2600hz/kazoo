@@ -5,7 +5,7 @@ All commands should be prefixed by `sup -necallmgr ecallmgr_maintenance`. So if 
 
 ## Managing FreeSWITCH servers
 
-* `add_fs_node freeswitch@some.host.com [AsDefault]`: Instructs ecallmgr to connect to the provided FreeSWITCH server. Set `AsDefault` to `true` (`false` if not specified) to only add the FreeSWITCH node to the local ecallmgr's `system_config` entry. This command is will update the list of FreeSWITCH servers to connect to on ecallmgr startup.
+* `add_fs_node freeswitch@some.host.com [AsDefault]`: Instructs ecallmgr to connect to the provided FreeSWITCH server. Set `AsDefault` to `false` (`true` if not specified) to only add the FreeSWITCH node to the local ecallmgr's `system_config` entry. This command is will update the list of FreeSWITCH servers to connect to on ecallmgr startup.
 * `remove_fs_node freeswitch@some.host.com [AsDefault]`: disconnect ecallmgr from the provided FreeSWITCH server. Set `AsDefault` to `true` to persist the change to the default list of FreeSWITCH servers; otherwise only the local ecallmgr's config is updated.
 * `list_fs_nodes`: Lists the FreeSWITCH servers ecallmgr is currently connected to and interacting with.
 * `get_fs_nodes`: Fetches the configured list of FreeSWITCH servers from the AMQP bus.
