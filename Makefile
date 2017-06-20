@@ -74,7 +74,7 @@ kazoo: core apps
 
 
 $(RELX):
-	wget 'https://github.com/erlware/relx/releases/download/v3.19.0/relx' -O $@
+	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
 	chmod +x $@
 
 clean-release:
