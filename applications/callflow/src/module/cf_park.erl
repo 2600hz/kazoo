@@ -85,7 +85,7 @@ handle_replaces(Data, Call, Replaces) ->
 -spec handle_nomatch(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), ne_binary()) -> 'ok'.
 handle_nomatch(Data, Call, PresenceType, ParkedCalls, SlotNumber, ReferredTo) ->
     lager:info("call was the result of a blind transfer, assuming intention was to park"),
-    Slot = create_slot('undefined', PresenceType, Call),
+    Slot = create_slot('undefined', PresenceType, SlotNumber, Data, Call),
     park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call).
 
 -spec handle_nomatch_with_empty_referred_to(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
@@ -94,7 +94,7 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
     case kz_json:get_ne_binary_value(<<"action">>, Data, <<"park">>) of
         <<"park">> ->
             lager:info("action is to park the call"),
-            Slot = create_slot(<<>>, PresenceType, Call),
+            Slot = create_slot(<<>>, PresenceType, SlotNumber, Data, Call),
             park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
         <<"retrieve">> ->
             lager:info("action is to retrieve a parked call"),
@@ -110,7 +110,7 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
             lager:info("action is to automatically determine if we should retrieve or park"),
             case retrieve(SlotNumber, Call) of
                 {'error', _} ->
-                    Slot = create_slot(cf_exe:callid(Call), PresenceType, Call),
+                    Slot = create_slot(cf_exe:callid(Call), PresenceType, SlotNumber, Data, Call),
                     park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
                 {'ok', _} ->
                     cf_exe:transfer(Call)
@@ -247,12 +247,12 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot(api_binary(), ne_binary(), kapps_call:call()) -> kz_json:object().
-create_slot(ParkerCallId, PresenceType, Call) ->
+-spec create_slot(api_binary(), ne_binary(), ne_binary(), kz_json:object(), kapps_call:call()) -> kz_json:object().
+create_slot(ParkerCallId, PresenceType, SlotNumber, Data, Call) ->
     CallId = cf_exe:callid(Call),
     RingbackId = maybe_get_ringback_id(Call),
     SlotCallId = kz_binary:rand_hex(16),
-    User = kapps_call:request_user(Call),
+    User = slot_presence_id(SlotNumber, Data, Call),
     Realm = kapps_call:account_realm(Call),
     kz_json:from_list(
       [{<<"Call-ID">>, CallId}
@@ -272,6 +272,35 @@ create_slot(ParkerCallId, PresenceType, Call) ->
       ,{<<"Hold-Media">>, kz_attributes:moh_attributes(RingbackId, <<"media_id">>, Call)}
       ,{?PRESENCE_TYPE_KEY, PresenceType}
       ]).
+
+-spec slot_presence_id(ne_binary(), kz_json:object(), kapps_call:call()) -> ne_binary().
+slot_presence_id(SlotNumber, Data, Call) ->
+    case kz_json:is_true(<<"custom_presence_id">>, Data, 'false') of
+        'true' -> maybe_custom_slot_presence_id(SlotNumber, Data, Call);
+        'false' -> slot_presence_id(SlotNumber, Call)
+    end.
+
+-spec slot_presence_id(ne_binary(), kapps_call:call()) -> ne_binary().
+slot_presence_id(SlotNumber, Call) ->
+    User = kapps_call:request_user(Call),
+    case kapps_call:kvs_fetch('cf_capture_group', <<>>, Call) of
+        CaptureGroup when byte_size(CaptureGroup) > 0 -> User;
+        _Other -> <<User/binary, SlotNumber/binary>>
+    end.
+
+-spec maybe_custom_slot_presence_id(ne_binary(), kz_json:object(), kapps_call:call()) -> ne_binary().
+maybe_custom_slot_presence_id(SlotNumber, Data, Call) ->
+    case kz_json:get_ne_binary_value(<<"presence_id">>, slot_configuration(Data, SlotNumber)) of
+        'undefined' -> maybe_custom_presence_id(Data, Call);
+        PresenceId -> PresenceId
+    end.
+
+-spec maybe_custom_presence_id(kz_json:object(), kapps_call:call()) -> ne_binary().
+maybe_custom_presence_id(Data, Call) ->
+    case kz_json:get_ne_binary_value(<<"presence_id">>, Data) of
+        'undefined' -> kapps_call:request_user(Call);
+        PresenceId -> PresenceId
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
