@@ -49,8 +49,9 @@
             "type": "integer"
         },
         "time_limit": {
+            "default": 3600,
             "description": "Time limit, in seconds, for the recording",
-            "maximum": 3600,
+            "maximum": 7200,
             "minimum": 5,
             "required": false,
             "type": "integer"
