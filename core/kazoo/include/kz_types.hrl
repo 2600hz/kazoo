@@ -394,6 +394,7 @@
                  ,registrations = 0 :: non_neg_integer() | '_'
                  ,globals = [] :: kz_proplist() | '$1' | '_'
                  ,node_info :: api_object() | '_'
+                 ,roles = [] :: kz_proplist() | '$1' | '_'
                  }).
 
 -type kz_node() :: #kz_node{}.
