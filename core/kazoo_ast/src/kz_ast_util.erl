@@ -172,9 +172,13 @@ schema_to_table(SchemaJObj) ->
 
 schema_to_table(SchemaJObj, BaseRefs) ->
     Description = kz_json:get_binary_value(<<"description">>, SchemaJObj, <<>>),
-    Properties = kz_json:get_value(<<"properties">>, SchemaJObj, kz_json:new()),
+    Properties = kz_json:get_json_value(<<"properties">>, SchemaJObj, kz_json:new()),
+    PlusPatternProperties =
+        kz_json:merge(Properties
+                     ,kz_json:get_json_value(<<"patternProperties">>, SchemaJObj, kz_json:new())
+                     ),
     F = fun (K, V, Acc) -> property_to_row(SchemaJObj, K, V, Acc) end,
-    {Reversed, RefSchemas} = kz_json:foldl(F, {[?TABLE_HEADER], BaseRefs}, Properties),
+    {Reversed, RefSchemas} = kz_json:foldl(F, {[?TABLE_HEADER], BaseRefs}, PlusPatternProperties),
 
     OneOfs = kz_json:get_value(<<"oneOf">>, SchemaJObj, []),
     OneOfRefs = lists:foldl(fun one_of_to_row/2, RefSchemas, OneOfs),
