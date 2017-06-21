@@ -18,7 +18,7 @@
 
         ,name/1, name/2, set_name/2
         ,realm/1, realm/2, set_realm/2
-        ,language/1, set_language/2
+        ,language/1, language/2, set_language/2
         ,timezone/1, timezone/2, set_timezone/2
         ,parent_account_id/1
         ,tree/1, tree/2 ,set_tree/2
@@ -218,9 +218,12 @@ set_realm(JObj, Realm) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec language(doc()) -> api_binary().
+-spec language(doc()) -> api_ne_binary().
+-spec language(doc(), Default) -> ne_binary() | Default.
 language(JObj) ->
-    kz_json:get_value(?LANGUAGE, JObj).
+    language(JObj, 'undefined').
+language(JObj, Default) ->
+    kz_json:get_ne_binary_value(?LANGUAGE, JObj, Default).
 
 %%--------------------------------------------------------------------
 %% @public
