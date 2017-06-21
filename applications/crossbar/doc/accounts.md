@@ -28,7 +28,7 @@ Key | Description | Type | Default | Required
 `do_not_disturb` |   | `object` |   | `false`
 `do_not_disturb.enabled` | The default value for do-not-disturb | `boolean` |   | `false`
 `enabled` | Determines if the account is currently enabled | `boolean` | `true` | `false`
-`language` | The language for this account | `string` | `en-us` | `false`
+`language` | The language for this account | `string` |   | `false`
 `metaflows` |   | [#/definitions/metaflows](#metaflows) |   | `false`
 `music_on_hold` | The default music on hold parameters | `object` | `{}` | `false`
 `music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..128)` |   | `false`
