@@ -647,12 +647,18 @@ prompt_language('undefined', Default) ->
     default_prompt_language(Default);
 prompt_language(<<_/binary>> = AccountId, 'undefined') ->
     prompt_language(AccountId);
-prompt_language(<<_/binary>> = AccountId, Default) ->
+prompt_language(<<_/binary>> = AccountId, SystemDefault) ->
     case ?USE_ACCOUNT_OVERRIDES of
         'false' -> default_prompt_language();
         'true' ->
+            {'ok', AccountJObj} = kz_account:fetch(AccountId),
+            Default = kz_account:language(AccountJObj, SystemDefault),
             kz_util:to_lower_binary(
-              kapps_account_config:get(AccountId, ?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, kz_util:to_lower_binary(Default))
+              kapps_account_config:get(AccountId
+                                      ,?CONFIG_CAT
+                                      ,?PROMPT_LANGUAGE_KEY
+                                      ,kz_util:to_lower_binary(Default)
+                                      )
              )
     end.
 
