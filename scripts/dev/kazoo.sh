@@ -1,7 +1,6 @@
 #!/bin/bash
 
-if [ "$KAZOO_CONFIG" = "" ]
-then
+if [ "$KAZOO_CONFIG" = "" ]; then
 	export KAZOO_CONFIG=$HOME/config.ini
 	echo Using default config: $KAZOO_CONFIG
 fi
@@ -11,18 +10,16 @@ if [ ! -f $KAZOO_CONFIG ]; then
 	exit
 fi
 
-if [ "$KAZOO_NODE" = "" ]
-then
+if [ "$KAZOO_NODE" = "" ]; then
 	KAZOO_NODE=kazoo_apps@$(hostname)
 	echo Using default node name: $KAZOO_NODE
 fi
 
 CMD=$1
-if [ "$CMD" = "" ]
-then
+if [ "$CMD" = "" ]; then
 	CMD=console
 else
 	shift
 fi
 
-RELX_REPLACE_OS_VARS=true KZname="-name $KAZOO_NODE" _rel/kazoo/bin/kazoo $CMD "$*"
+RELX_REPLACE_OS_VARS=true RELX_MULTI_NODE=true KZname="$KAZOO_NODE" _rel/kazoo/bin/kazoo $CMD "$*"
