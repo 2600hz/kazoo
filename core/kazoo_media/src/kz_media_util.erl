@@ -657,7 +657,7 @@ prompt_language(<<_/binary>> = AccountId, SystemDefault) ->
               kapps_account_config:get(AccountId
                                       ,?CONFIG_CAT
                                       ,?PROMPT_LANGUAGE_KEY
-                                      ,kz_term:to_lower_binary(Default)
+                                      ,kz_util:to_lower_binary(Default)
                                       )
              )
     end.
