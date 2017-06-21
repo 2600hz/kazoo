@@ -653,12 +653,12 @@ prompt_language(<<_/binary>> = AccountId, SystemDefault) ->
         'true' ->
             {'ok', AccountJObj} = kz_account:fetch(AccountId),
             Default = kz_account:language(AccountJObj, SystemDefault),
-            kz_term:to_lower_binary(
-              kapps_account_config:get_ne_binary(AccountId
-                                                ,?CONFIG_CAT
-                                                ,?PROMPT_LANGUAGE_KEY
-                                                ,kz_term:to_lower_binary(Default)
-                                                )
+            kz_util:to_lower_binary(
+              kapps_account_config:get(AccountId
+                                      ,?CONFIG_CAT
+                                      ,?PROMPT_LANGUAGE_KEY
+                                      ,kz_term:to_lower_binary(Default)
+                                      )
              )
     end.
 
