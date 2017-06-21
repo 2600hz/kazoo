@@ -2022,6 +2022,11 @@
                     ],
                     "type": "string"
                 },
+                "custom_presence_id": {
+                    "default": false,
+                    "description": "use configured presence_id and fallback to request",
+                    "type": "boolean"
+                },
                 "default_callback_timeout": {
                     "description": "How long, in seconds, to wait before calling back the parker",
                     "type": "integer"
@@ -2038,6 +2043,10 @@
                 "default_ringback_timeout": {
                     "description": "How long, in milliseconds, before ringing back",
                     "type": "integer"
+                },
+                "presence_id": {
+                    "description": "use this presence_id",
+                    "type": "string"
                 },
                 "slot": {
                     "description": "Static slot number to use",
