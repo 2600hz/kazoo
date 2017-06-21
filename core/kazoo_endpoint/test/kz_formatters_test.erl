@@ -30,6 +30,12 @@
                                      ])
        ).
 
+from_test_() ->
+    FromValue = <<"6666666666">>,
+    Formatter = kz_json:from_list([{<<"From">>, kz_json:from_list([{<<"value">>, FromValue}])}]),
+    Route = kz_formatters:apply(?ROUTE_REQ, Formatter, 'outbound'),
+    [?_assertEqual(<<FromValue/binary, "@2600hz.com">>, kz_json:get_value(<<"From">>, Route))].
+
 regex_inbound_test_() ->
     Formatter = kz_json:from_list([{<<"to">>
                                    ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})\$">>}
