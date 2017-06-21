@@ -8,6 +8,11 @@
             "description": "",
             "type": "string"
         },
+        "custom_presence_id": {
+            "default": false,
+            "description": "use configured presence_id and fallback to request",
+            "type": "boolean"
+        },
         "default_callback_timeout": {
             "description": "",
             "type": "integer"
@@ -19,6 +24,10 @@
         "default_ringback_timeout": {
             "description": "",
             "type": "integer"
+        },
+        "presence_id": {
+            "description": "use this presence_id",
+            "type": "string"
         },
         "slot": {
             "description": ""
