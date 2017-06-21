@@ -327,7 +327,6 @@
                     "type": "boolean"
                 },
                 "language": {
-                    "default": "en-us",
                     "description": "The language for this account",
                     "type": "string"
                 },
