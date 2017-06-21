@@ -8,6 +8,7 @@
             "$ref": "storage.plan.database.attachment"
         },
         "connection": {
+            "kazoo-validation": true,
             "type": "string"
         },
         "database": {
