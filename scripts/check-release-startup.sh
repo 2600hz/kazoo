@@ -9,7 +9,7 @@ rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
 echo "Checking release startup with node $rel..."
 
 sup_() {
-    RELX_REPLACE_OS_VARS=true KZname="-name $rel" $PWD/_rel/kazoo/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
+    RELX_REPLACE_OS_VARS=true RELX_MULTI_NODE=true KZname="$rel" $PWD/_rel/kazoo/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
 }
 
 script() {
