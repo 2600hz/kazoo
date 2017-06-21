@@ -96,7 +96,7 @@ COVERDATA=$(PROJECT).coverdata
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
-eunit:
+eunit: compile-test
 	@mkdir -p $(COVER_REPORT_DIR)
 	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
 
