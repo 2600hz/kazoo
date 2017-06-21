@@ -65,6 +65,10 @@
             "description": "Determines if the account is currently enabled",
             "type": "boolean"
         },
+        "formatters": {
+            "$ref": "formatters",
+            "type": "object"
+        },
         "language": {
             "description": "The language for this account",
             "type": "string"

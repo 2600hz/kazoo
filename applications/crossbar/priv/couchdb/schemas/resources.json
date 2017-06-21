@@ -25,6 +25,10 @@
             "description": "When set to true requests to this resource will have a re-formated SIP From Header",
             "type": "boolean"
         },
+        "formatters": {
+            "$ref": "formatters",
+            "type": "object"
+        },
         "from_uri_realm": {
             "description": "When formating SIP From on outbound requests this can be used to override the realm",
             "type": "string"
