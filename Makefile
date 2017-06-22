@@ -219,7 +219,7 @@ docs-build:
 docs-clean:
 	@rm -rf $(DOCS_ROOT)/site $(DOCS_ROOT)/docs $(DOCS_ROOT)/mkdocs.local.yml
 
-docs-serve: docs-build
+docs-serve: docs-setup docs-build
 	@mkdocs serve --dev-addr=0.0.0.0:9876 -f $(DOCS_ROOT)/mkdocs.local.yml
 
 fs-headers:
