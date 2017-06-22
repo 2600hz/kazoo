@@ -233,7 +233,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch summary of users in account
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/users
 

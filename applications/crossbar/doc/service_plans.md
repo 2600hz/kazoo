@@ -77,7 +77,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Retrieving your service plans.
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans
 

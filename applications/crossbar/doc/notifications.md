@@ -68,14 +68,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### API Notes
-
-To modify an account notification, the requester must be a reseller of that account or the master account.
-
-* `/v2/accounts/{ACCOUNT_ID}/notifications`: modify an account's template(s)
-* `/v2/notifications`: Modify the system default templates
-
-#### Fetch available notification templates from the system
+#### Fetch
 
 > GET /v2/notifications
 

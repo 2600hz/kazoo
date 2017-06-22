@@ -30,7 +30,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### List queues
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/queues
 

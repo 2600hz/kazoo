@@ -48,7 +48,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch available rates
+#### Fetch
 
 > GET /v2/rates
 

@@ -15,16 +15,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Operations
-
-Ensure the endpoint and backend are started:
-
-```shell
-sup kapps_controller start_app tasks
-sup crossbar_maintenance start_module cb_tasks
-```
-
-#### List available tasks
+#### Fetch
 
 > GET /v2/tasks
 

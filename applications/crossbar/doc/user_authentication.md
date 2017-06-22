@@ -20,26 +20,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Create a new auth token
-
-Easy as 1, 2, 3:
-
-1. First, select the hashing method and create your credentials hash:
-    * MD5: `echo -n "{USERNAME}:{PASSWORD}" | md5sum`
-    * SHA1: `echo -n "{USERNAME}:{PASSWORD}" | sha1sum`
-2. Select an account identifier (any one of the three will suffice):
-    * Account Name (`"account_name"`)
-    * SIP Realm (`"realm"`)
-    * A Phone Number assigned to the account (`"phone_number"`)
-3. Send the HTTP PUT
-
-The response will contain, among other things:
-
-* `{AUTH_TOKEN}`: this is your authentication token to include in future requests
-* `{ACCOUNT_ID}`: your account's ID, useful for constructing URIs
-* `{OWNER_ID}`: The user's ID of the owner of the credentials used to generate this token
-* `{RESELLER_ID}`: The account's reseller account ID, if any
-* `{REQUEST_ID}`: Useful for debugging requests on your installation
+#### Create
 
 > PUT /v2/user_auth
 

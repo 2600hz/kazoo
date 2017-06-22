@@ -16,6 +16,3 @@ Key | Description | Type | Default | Required
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`action` | What action to perform on the caller's call forwarding | `string('activate' | 'deactivate' | 'update' | 'toggle' | 'menu')` |   | `false`

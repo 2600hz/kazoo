@@ -31,7 +31,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Domains
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 

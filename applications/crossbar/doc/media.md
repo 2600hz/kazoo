@@ -95,7 +95,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Get a listing of media files
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/media
 

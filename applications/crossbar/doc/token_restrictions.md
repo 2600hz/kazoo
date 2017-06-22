@@ -412,7 +412,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Remove account's token restrictions
+#### Fetch
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions
 

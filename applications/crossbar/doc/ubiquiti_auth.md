@@ -17,7 +17,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Create an auth token
+#### Create
 
 > PUT /v2/ubiquiti_auth
 

@@ -18,24 +18,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Structure
-
-The structure is really simple:
-
-* `name`: A freindly name for your rule set.
-* `temporal_rules`: A list of temporal rule IDs
-
-Ex:
-
-```json
-    "name": "July",
-    "temporal_rules": [
-        "{RULE_ID}",
-        "{RULE_ID}"
-   ]
-```
-
-#### Fetch Rule Sets
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 

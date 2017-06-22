@@ -49,26 +49,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Processing States
-
-State | Description
------ | -----------
-`attaching_files` | A fax job was submitted via the api (with a multipart/related content type) or smtp and we are in the process of attaching the files to the fax job.
-`pending` | Fax waiting to be picked up by the fax sending job
-`failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response XXX"
-`processing` | Faxes that are actively picked up by the fax worker and are being processed
-`completed` | Faxes that are finished sending
-`failed` | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.
-
-### Sending Outbound Faxes
-
-This section details APIs for manipulating job processing of outgoing faxes.
-
-#### Create an outgoing fax
-
-There are two methods for creating an outgoing fax - they differ in how you attach the fax file for processing.
-
-In the first method, you can create a fax document that includes a URL which contains the fax document to send. The fax document is fetched by the `fax_jobs` worker and distributed to `fax_worker` processes. You can fetch the status of the created job using the `faxes/outgoing/{FAX_ID}` API.
+#### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes
 

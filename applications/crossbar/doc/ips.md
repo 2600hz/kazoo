@@ -36,7 +36,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch a list of IPs available to the account
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips
 

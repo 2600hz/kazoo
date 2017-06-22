@@ -15,5 +15,3 @@ Key | Description | Type | Default | Required
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------

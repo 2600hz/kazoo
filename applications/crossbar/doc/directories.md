@@ -22,7 +22,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### List directories
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/directories
 

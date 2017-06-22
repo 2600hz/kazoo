@@ -16,6 +16,3 @@ Key | Description | Type | Default | Required
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`id` | CallerID List ID | `string()` |   | `false`

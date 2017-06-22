@@ -208,7 +208,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch summary of devices in account
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices
 

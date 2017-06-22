@@ -60,7 +60,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### List items
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/connectivity
 

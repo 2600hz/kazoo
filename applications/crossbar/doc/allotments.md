@@ -21,7 +21,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Get allotments configuration for a given account
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments
 

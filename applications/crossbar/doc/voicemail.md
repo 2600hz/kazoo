@@ -58,24 +58,7 @@ Key | Description | Type | Default | Required
 
 
 
-##### Voicemail Message Metadata
-
-Schema for a voicemail message metadata
-
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`call_id` | Schema for a voicemail message metadata | `string` |   | `false`
-`caller_id_name` | The caller id name | `string` |   | `false`
-`caller_id_number` | The caller id number | `string` |   | `false`
-`folder` | The folder the message belongs to | `string` |   | `false`
-`from` | The SIP from header | `string` |   | `false`
-`length` | Length | `integer` |   | `false`
-`timestamp` | The UTC timestamp, in gregorian seconds, that the voicemail was left on | `integer` |   | `false`
-`to` | The SIP to header | `string` |   | `false`
-
-#### List all account's voicemail boxes
-
-List a summary of voicemail boxes in an account.
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes
 

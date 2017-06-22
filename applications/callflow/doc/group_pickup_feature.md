@@ -16,6 +16,3 @@ Key | Description | Type | Default | Required
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`type` | The type of collection to pickup | `string('group' | 'user' | 'device' | 'extension')` |   | `false`

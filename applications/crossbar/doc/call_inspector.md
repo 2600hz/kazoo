@@ -26,7 +26,7 @@ Use the *sup* command above to start the endpoint at runtime.
 
 
 
-#### List SIP dialogues recorded
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/call_inspector
 

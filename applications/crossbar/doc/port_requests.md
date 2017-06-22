@@ -88,7 +88,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### List port requests
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests
 

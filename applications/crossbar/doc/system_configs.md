@@ -94,7 +94,7 @@ You must be `super_duper_admin` to access this resource.
 
 #### Schema
 
-The document schema is syntetic, see above.
+
 
 #### Fetch
 

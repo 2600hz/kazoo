@@ -48,7 +48,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Perform an action on conference
+#### Fetch
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 

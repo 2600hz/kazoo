@@ -63,7 +63,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch an account's callflows
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/callflows
 

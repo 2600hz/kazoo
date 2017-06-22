@@ -14,7 +14,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Get all lists (doesn't return entries)
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/lists
 

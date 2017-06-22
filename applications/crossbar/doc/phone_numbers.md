@@ -53,14 +53,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Search for numbers
-
-Looks for numbers using the carrier module set up for your account.
-
-- `PREFIX`: a 3-digit number prefix such as an area code (e.g. `415`)
-- `QUANTITY`: maximum amount of numbers to be returned (e.g. `2`)
-- `OFFSET`: page number (e.g. `0`)
-- `COUNTRY`: ISO3166 alpha-2 country code (e.g. `US`)
+#### Fetch
 
 > GET /v2/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}&country={COUNTRY}
 

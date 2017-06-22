@@ -17,7 +17,3 @@ Key | Description | Type | Default | Required
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`action` | What action to perform | `string('activate' | 'deactivate' | 'toggle')` | `toggle` | `false`
-`scope` | Apply the action to the calling device or user | `string('device' | 'user')` | `device` | `false`

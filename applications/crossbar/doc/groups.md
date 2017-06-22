@@ -17,7 +17,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Get groups for a given account
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/groups
 

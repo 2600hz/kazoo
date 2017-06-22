@@ -31,7 +31,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Remove account-level access lists
+#### Fetch
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/access_lists
 

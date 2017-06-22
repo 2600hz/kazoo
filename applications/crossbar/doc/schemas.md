@@ -11,7 +11,7 @@ This excludes Kazoo-managed private fields (top-level keys prefixed with `"_"` o
 
 
 
-#### Fetch a listing of available schemas
+#### Fetch
 
 > GET /v2/schemas
 

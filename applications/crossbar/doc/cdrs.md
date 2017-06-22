@@ -57,7 +57,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch a summary of CDRs
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs
 

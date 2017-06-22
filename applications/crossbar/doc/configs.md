@@ -22,7 +22,7 @@ will be deleted.
 
 #### Schema
 
-Please check applications/crossbar/priv/couchdb/schemas/account_config.*.json files.
+
 
 #### Fetch
 

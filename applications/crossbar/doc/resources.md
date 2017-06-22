@@ -103,7 +103,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch an account's resources
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources
 

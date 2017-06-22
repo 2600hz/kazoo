@@ -20,7 +20,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Get limits for a given account
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/limits
 

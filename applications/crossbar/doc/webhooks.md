@@ -23,11 +23,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### List Installed Webhooks
-
-Webhooks are installed by the system administrator. You can query Crossbar to see which are installed.
-
-Some webhooks will also include a `modifiers` object; these are parameters specific to that webhook that can be used to modify the behaviour of the webhook.
+#### Fetch
 
 > GET /v2/webhooks
 

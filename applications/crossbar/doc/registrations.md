@@ -8,7 +8,7 @@ The Registrations API provides an easy way to see and manage current registratio
 
 
 
-#### Flush all registrations
+#### Fetch
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/registrations
 

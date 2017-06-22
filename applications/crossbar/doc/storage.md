@@ -179,7 +179,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### List storage settings
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/storage
 

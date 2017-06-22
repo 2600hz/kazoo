@@ -29,9 +29,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### List current Ledgers
-
-List current ledgers and value for an account.
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers
 

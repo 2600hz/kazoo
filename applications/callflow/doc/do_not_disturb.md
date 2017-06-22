@@ -15,7 +15,3 @@ Key | Description | Type | Default | Required
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`action` | What action to perform | `string('activate' | 'deactivate' | 'toggle')` |   | `false`
-`id` | Document ID on which to update DND settings | `string()` |   | `false`
