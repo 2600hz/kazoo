@@ -22,7 +22,7 @@ def public_doc(ref_path):
     if os.path.basename(os.path.dirname(ref_path)) == "ref":
         doc_root = os.path.dirname(os.path.dirname(ref_path))
     else:
-        doc_root = os.path.dirname(ref_path)
+        return "skip"
 
     ref_name = os.path.basename(ref_path)
 
@@ -33,6 +33,7 @@ def public_doc(ref_path):
         'vmboxes.md': 'voicemail.md',
         'whitelabel.md': 'whitelabeling.md',
     }
+
     return os.path.join(doc_root, ref_to_doc.get(ref_name, ref_name))
 
 errors = 0
