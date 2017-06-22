@@ -10,10 +10,11 @@ Validator for the group
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`endpoints` | Endpoints included into group | `object` | `{}` | `true`
-`music_on_hold` | The music on hold parameters | `object` | `{}` | `false`
+`endpoints` | Endpoints included into group | `object()` | `{}` | `true`
 `music_on_hold.media_id` | The ID of a media object that should be used as music on hold | `string(0..128)` |   | `false`
+`music_on_hold` | The music on hold parameters | `object()` | `{}` | `false`
 `name` | A friendly name for the group | `string(1..128)` |   | `true`
+
 
 
 #### Fetch

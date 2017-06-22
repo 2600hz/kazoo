@@ -6,13 +6,9 @@ The transactions endpoint allows you to list debits and credits made to a specif
 
 #### Schema
 
-#### Get a summary of transactions
 
-Options:
 
-- `created_from` {TIMESTAMP}
-- `created_to` {TIMESTAMP}
-- `reason` `only_calls`
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions
 

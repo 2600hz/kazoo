@@ -12,17 +12,9 @@ Test out braintree using sandbox account before deploying it in production as th
 
 #### Schema
 
-Schemas for Braintree requests can be viewed [here](https://developers.braintreepayments.com/).
 
-#### Client Token
 
-Client Token is a new way of adding payment method where the credit card information is not sent to kazoo servers and is directly handled by braintree for compliance issues
-
-See how it works - https://developers.braintreepayments.com/start/hello-server/ruby
-
-![alt tag](https://developers.braintreepayments.com/img/developers/diagram-server-perspective.png)
-
-#### Show client token
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/client_token
 

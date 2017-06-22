@@ -6,7 +6,7 @@
 
 
 
-#### Fetch bindings
+#### Fetch
 
 > GET /v2/websockets
 

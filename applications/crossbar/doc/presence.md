@@ -15,7 +15,7 @@ There are three main ways to access presence information:
 
 
 
-#### Search
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/presence
 

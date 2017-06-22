@@ -118,14 +118,13 @@ handle(Data, Call) ->
                               )
     of
         {'ok', Users} ->
-            State = #directory{
-                       sort_by = get_sort_by(kz_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>))
+            State = #directory{sort_by = get_sort_by(kz_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>))
                               ,min_dtmf = kz_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3)
                               ,max_dtmf = kz_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0)
                               ,confirm_match = kz_json:is_true(<<"confirm_match">>, DirJObj, 'false')
                               ,digits_collected = <<>>
                               ,users = Users
-                      },
+                              },
             _ = log(Users),
             directory_start(Call, State, Users);
         {'error', 'no_users_in_directory'} ->

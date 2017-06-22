@@ -13,28 +13,12 @@ Schema for a temporal rules sets
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true`
-`temporal_rules` | Temporal Rules | `array(string)` |   | `false`
-`temporal_rules.[]` |   | `string` |   | `false`
+`temporal_rules.[]` |   | `string()` |   | `false`
+`temporal_rules` | Temporal Rules | `array(string())` |   | `false`
 
 
-#### Structure
 
-The structure is really simple:
-
-* `name`: A freindly name for your rule set.
-* `temporal_rules`: A list of temporal rule IDs
-
-Ex:
-
-```json
-    "name": "July",
-    "temporal_rules": [
-        "{RULE_ID}",
-        "{RULE_ID}"
-   ]
-```
-
-#### Fetch Rule Sets
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 

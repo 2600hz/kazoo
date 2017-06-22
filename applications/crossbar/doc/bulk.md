@@ -6,7 +6,7 @@
 
 
 
-#### Fetch documents in bulk
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/bulk
 

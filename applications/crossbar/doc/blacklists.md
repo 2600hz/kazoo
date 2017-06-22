@@ -13,69 +13,10 @@ Schema for a blacklists
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true`
-`numbers` | Map of caller id number to block | `object` | `{}` | `false`
-`should_block_anonymous` | Should block Anonymous call | `boolean` |   | `false`
+`numbers` | Map of caller id number to block | `object()` | `{}` | `false`
+`should_block_anonymous` | Should block Anonymous call | `boolean()` |   | `false`
 
 
-#### Structure
 
-The structure is really simple:
+#### Fetch
 
-* `name`: A freindly name for your blacklist.
-* `numbers`: A map of caller id to block
-
-Ex:
-
-```json
-{
-    "name": "Main Blacklist",
-    "numbers": {
-        "+14151234567": {
-        }
-    }
-}
-```
-
-When you upload numbers they will be converted to e164 format.
-
-#### Usage
-
-Once you created your blacklists using the api you can apply them to the account by adding the blacklist ids to the account, like the following:
-
-```json
-"blacklists": [
-    "dbfc14854a06bab3014898b6b4e1ffa0", // Main blacklist
-    "davb14854a06bab3542132b6b4e1ffa0"  // Secondary blacklist
-]
-```
-
-#### Crossbar
-
-Using Crossbar to modify Blacklist is very simple:
-
-* GET - Gets the current set(s).
-* PUT - Add a set.
-* POST - Updates a set.
-* DELETE - Removes a set.
-
-##### Account Blacklist URI
-
-`/v2/accounts/{ACCOUNT_ID}/blacklists`
-
-###### GET - Fetch account blacklists:
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
-
-###### PUT - Add account blacklists:
-
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists -d '{"data": {"name": "Main Blacklist","numbers": {"+14151234567": {}}}}'
-
-###### POST - Update account blacklists:
-
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID} -d '{"data": {"name": "Main Blacklist","numbers": {"+14151234567": {}}}}'
-
-###### DELETE - Remove account blacklists:
-
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}

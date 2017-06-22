@@ -6,7 +6,7 @@
 
 
 
-#### List this account's registered contacts
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/contact_list
 
