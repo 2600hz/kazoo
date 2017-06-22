@@ -71,6 +71,7 @@
                ,retries = 0               :: non_neg_integer()
                ,verb = 'put'              :: atom()
                ,account_id                :: api_ne_binary()
+               ,event = 'undefined'       :: api_object()
                }).
 -type state() :: #state{}.
 
@@ -147,7 +148,7 @@ handle_call_event(JObj, Props) ->
         {<<"call_event">>, <<"RECORD_STOP">>} ->
             Media = get_response_media(JObj),
             FreeSWITCHNode = kz_call_event:switch_nodename(JObj),
-            gen_listener:cast(Pid, {'record_stop', Media, FreeSWITCHNode});
+            gen_listener:cast(Pid, {'record_stop', Media, FreeSWITCHNode, JObj});
         {_Cat, _Evt} -> 'ok'
     end.
 
@@ -245,7 +246,7 @@ handle_cast('stop_recording', #state{media={_, MediaName}
 handle_cast('stop_recording', #state{is_recording='false'}=State) ->
     lager:debug("received stop recording and we're not recording, exiting"),
     {'stop', 'normal', State};
-handle_cast({'record_stop', {_, MediaName}=Media, FS},
+handle_cast({'record_stop', {_, MediaName}=Media, FS, JObj},
             #state{media={_, MediaName}
                   ,is_recording='true'
                   ,stop_received='false'
@@ -254,7 +255,11 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS},
     lager:debug("received record_stop, storing recording"),
     Call1 = kapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
     gen_server:cast(self(), 'store_recording'),
-    {'noreply', State#state{media=Media, call=Call1, stop_received='true'}};
+    {'noreply', State#state{media=Media
+                           ,call=Call1
+                           ,stop_received='true'
+                           ,event=JObj
+                           }};
 handle_cast({'record_stop', {_, MediaName}, _FS}, #state{media={_, MediaName}
                                                         ,is_recording='false'
                                                         ,stop_received='false'
@@ -445,8 +450,13 @@ store_recording_meta(#state{call=Call
                            ,cdr_id=CdrId
                            ,interaction_id=InteractionId
                            ,url=Url
+                           ,event=JObj
                            }) ->
     CallId = kapps_call:call_id(Call),
+    Timestamp = kz_call_event:timestamp(JObj),
+    Length = kz_call_event:recording_length(JObj),
+    Seconds = Length * ?MILLISECONDS_IN_SECOND,
+    Start = Timestamp - Seconds,
 
     BaseMediaDoc = kz_json:from_list(
                      props:filter_empty(
@@ -458,8 +468,14 @@ store_recording_meta(#state{call=Call
                        ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
                        ,{<<"from">>, kapps_call:from(Call)}
                        ,{<<"to">>, kapps_call:to(Call)}
+                       ,{<<"request">>, kapps_call:request(Call)}
+                       ,{<<"start">>, Start}
+                       ,{<<"duration">>, Seconds}
+                       ,{<<"duration_ms">>, Length}
                        ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
                        ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
+                       ,{<<"callee_id_number">>, kapps_call:callee_id_number(Call)}
+                       ,{<<"callee_id_name">>, kapps_call:callee_id_name(Call)}
                        ,{<<"call_id">>, CallId}
                        ,{<<"owner_id">>, kapps_call:owner_id(Call)}
                        ,{<<"url">>, Url}

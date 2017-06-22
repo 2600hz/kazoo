@@ -805,8 +805,11 @@ specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
                                                           ], Props)
      }
     ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
-    ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props)}
+    ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props, 0)}
     ,{<<"Silence-Terminated">>, silence_terminated(Props)}
+    ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+    ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+    ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
     ];
 specific_call_event_props(<<"DETECTED_TONE">>, _, Props) ->
     [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Props)}];

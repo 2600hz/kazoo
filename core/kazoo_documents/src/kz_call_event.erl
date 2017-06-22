@@ -41,6 +41,7 @@
         ,timestamp/1
         ,caller_id/1, caller_id_number/1, caller_id_name/1
         ,callee_id/1, callee_id_number/1, callee_id_name/1
+        ,recording_length/1
         ]).
 
 -include("kz_documents.hrl").
@@ -226,3 +227,7 @@ caller_id(JObj) ->
 -spec callee_id(doc()) -> {api_ne_binary(), api_ne_binary()}.
 callee_id(JObj) ->
     {callee_id_number(JObj), callee_id_name(JObj)}.
+
+-spec recording_length(doc()) -> api_integer().
+recording_length(JObj) ->
+    kz_json:get_integer_value(<<"Length">>, JObj).
