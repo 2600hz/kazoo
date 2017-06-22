@@ -14,7 +14,11 @@ def find_schema(txt):
     return found[0]
 
 def public_doc(ref_path):
-    doc_root = os.path.dirname(os.path.dirname(ref_path))
+    if os.path.basename(os.path.dirname(ref_path)) == "ref":
+        doc_root = os.path.dirname(os.path.dirname(ref_path))
+    else:
+        doc_root = os.path.dirname(ref_path)
+
     ref_name = os.path.basename(ref_path)
     ref_to_doc = {
         'api_auth.md': 'api_authentication.md',
