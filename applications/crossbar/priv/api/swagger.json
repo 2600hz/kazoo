@@ -326,6 +326,10 @@
                     "description": "Determines if the account is currently enabled",
                     "type": "boolean"
                 },
+                "formatters": {
+                    "$ref": "#/definitions/formatters",
+                    "type": "object"
+                },
                 "language": {
                     "description": "The language for this account",
                     "type": "string"
@@ -3625,6 +3629,10 @@
                     "description": "Do not ring this device when calling user/agent in queue",
                     "type": "boolean"
                 },
+                "formatters": {
+                    "$ref": "#/definitions/formatters",
+                    "type": "object"
+                },
                 "language": {
                     "description": "The language for the device",
                     "type": "string"
@@ -4432,6 +4440,10 @@
             "required": [
                 "prefix"
             ]
+        },
+        "formatters": {
+            "description": "Schema for formatters",
+            "type": "object"
         },
         "groups": {
             "description": "Validator for the group",
@@ -6793,6 +6805,10 @@
                 "format_from_uri": {
                     "description": "When set to true requests to this resource will have a re-formated SIP From Header",
                     "type": "boolean"
+                },
+                "formatters": {
+                    "$ref": "#/definitions/formatters",
+                    "type": "object"
                 },
                 "from_uri_realm": {
                     "description": "When formating SIP From on outbound requests this can be used to override the realm",
@@ -13033,6 +13049,10 @@
                     "minLength": 1,
                     "type": "string"
                 },
+                "formatters": {
+                    "$ref": "#/definitions/formatters",
+                    "type": "object"
+                },
                 "hotdesk": {
                     "default": {},
                     "description": "The user hotdesk parameters",
@@ -14188,15 +14208,6 @@
         "TEMPLATE_NAME": {
             "in": "path",
             "name": "TEMPLATE_NAME",
-            "required": true,
-            "type": "string"
-        },
-        "TEMPORAL_RULE_ID": {
-            "in": "path",
-            "maxLength": 32,
-            "minLength": 32,
-            "name": "TEMPORAL_RULE_ID",
-            "pattern": "^[0-9a-f]+$",
             "required": true,
             "type": "string"
         },
@@ -22511,128 +22522,6 @@
                     },
                     {
                         "$ref": "#/parameters/TASK_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/temporal_rules": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "temporal_rules",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/temporal_rules"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/TEMPORAL_RULE_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/TEMPORAL_RULE_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "patch": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/TEMPORAL_RULE_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "temporal_rules",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/temporal_rules"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/TEMPORAL_RULE_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
