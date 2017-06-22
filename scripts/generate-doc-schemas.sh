@@ -20,6 +20,7 @@ def public_doc(ref_path):
         doc_root = os.path.dirname(ref_path)
 
     ref_name = os.path.basename(ref_path)
+
     ref_to_doc = {
         'api_auth.md': 'api_authentication.md',
         'conferences.md': 'conference.md',
@@ -46,7 +47,11 @@ for refname in sys.argv[1::]:
 
     with open(docname, 'r') as f:
         whole_doc = f.read()
-    outdated = find_schema(whole_doc)
+    try:
+        outdated = find_schema(whole_doc)
+    except IndexError:
+        continue
+
     updated = whole_doc.replace(outdated, schemas)
     try:
         with open(docname, 'w') as f:
