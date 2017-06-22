@@ -144,14 +144,14 @@ replace_value_test_() ->
 
 
 -define(FROM_ONE
-       ,kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+       ,kz_json:from_list([{<<"direction">>, <<"inbound">>}
                           ,{<<"prefix">>, <<"+1">>}
-                          ,{<<"direction">>, <<"inbound">>}
+                          ,{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
                           ])
        ).
 -define(FROM_TWO
-       ,kz_json:from_list([{<<"regex">>, <<"\\+?1?(\\d{10})$">>}
-                          ,{<<"direction">>, <<"outbound">>}
+       ,kz_json:from_list([{<<"direction">>, <<"outbound">>}
+                          ,{<<"regex">>, <<"\\+?1?(\\d{10})$">>}
                           ])
        ).
 
