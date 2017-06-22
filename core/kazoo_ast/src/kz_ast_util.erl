@@ -346,7 +346,6 @@ maybe_schema_type_from_oneof(Settings) ->
             SchemaTypes = [schema_type(OneOfJObj, kz_json:get_ne_value(<<"type">>, OneOfJObj))
                            || OneOfJObj <- OneOf
                           ],
-            io:format("Schema types: ~p~n~p~n", [SchemaTypes, OneOf]),
             kz_binary:join(SchemaTypes, <<" | ">>)
     end.
 
