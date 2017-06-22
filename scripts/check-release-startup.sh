@@ -8,18 +8,14 @@ rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
 
 echo "Checking release startup with node $rel..."
 
-sup_() {
-    RELX_REPLACE_OS_VARS=true RELX_MULTI_NODE=true KZname="$rel" $PWD/_rel/kazoo/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
-}
-
 script() {
-    sup_ crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!'
+    $PWD/core/sup/priv/sup crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!'
     sleep 3
-    sup_ kapps_maintenance migrate
+    $PWD/core/sup/priv/sup kapps_maintenance migrate
     sleep 3
-    sup_ kapps_maintenance migrate_to_4_0
+    $PWD/core/sup/priv/sup kapps_maintenance migrate_to_4_0
     sleep 9
-    sup_ init stop
+    $PWD/core/sup/priv/sup init stop
 }
 
 sleep 240 && script &

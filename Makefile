@@ -102,7 +102,7 @@ rel/relx.config-dev: rel/relx.config.src
 rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
 	cp $^ $@
 rel/vm.args: rel/args rel/dev-vm.args
-	( cat $<; echo '-name $${KZname}' ) > $@
+	( echo '-setcookie $${COOKIE}'; cat $<; echo '-name $${NODE_NAME}' ) > $@
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
@@ -111,14 +111,14 @@ ifneq ($(findstring kazoo_apps,$(REL)),kazoo_apps)
 release: export KAZOO_APPS = 'ecallmgr'
 endif
 release:
-	@RELX_REPLACE_OS_VARS=true RELX_MULTI_NODE=true KZname='$(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
+	@NODE_NAME='$(REL)' COOKIE='change_me' $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
 
 install: compile build-release
 	cp -a _rel/kazoo /opt
 
 read-release-cookie: REL ?= kazoo_apps
 read-release-cookie:
-	@RELX_REPLACE_OS_VARS=true RELX_MULTI_NODE=true KZname='$(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
+	@NODE_NAME='$(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
