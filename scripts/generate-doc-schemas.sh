@@ -31,7 +31,7 @@ def public_doc(ref_path):
         'conferences.md': 'conference.md',
         'user_auth.md': 'user_authentication.md',
         'vmboxes.md': 'voicemail.md',
-        'whitelabel.md': 'whitelabeling.md',
+        'whitelabel.md': 'whitelabeling.md'
     }
 
     return os.path.join(doc_root, ref_to_doc.get(ref_name, ref_name))
