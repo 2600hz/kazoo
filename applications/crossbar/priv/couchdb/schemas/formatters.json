@@ -4,17 +4,16 @@
     "description": "Schema for formatters",
     "patternProperties": {
         "^[[:alnum:]_]+$": {
+            "description": "Key to match in the route request JSON",
             "oneOf": [
                 {
                     "items": {
-                        "$ref": "formatters.format_options",
-                        "type": "object"
+                        "$ref": "formatters.format_options"
                     },
                     "type": "array"
                 },
                 {
-                    "$ref": "formatters.format_options",
-                    "type": "object"
+                    "$ref": "formatters.format_options"
                 }
             ]
         }
