@@ -318,15 +318,10 @@ schema_type(Settings, 'undefined') ->
         'undefined' ->
             maybe_schema_type_from_enum(Settings);
         Def ->
-            <<"[#/definitions/", Def/binary, "](#", (to_anchor_link(Def))/binary, ")">>
+            schema_ref_type(Def)
     end;
 schema_type(Settings, <<"array">>) ->
-    case kz_json:get_ne_value([<<"items">>, <<"type">>], Settings) of
-        'undefined' -> <<"array()">>;
-        Type ->
-            ItemType = schema_type(kz_json:get_value(<<"items">>, Settings), Type),
-            <<"array(", ItemType/binary, ")">>
-    end;
+    schema_array_type(Settings);
 schema_type(Settings, <<"string">>) ->
     case kz_json:get_value(<<"enum">>, Settings) of
         L when is_list(L) -> schema_enum_type(L);
@@ -348,7 +343,28 @@ maybe_schema_type_from_oneof(Settings) ->
         'undefined' ->
             throw('no_type');
         OneOf ->
-            [schema_type(OneOfJObj) || OneOfJObj <- OneOf]
+            SchemaTypes = [schema_type(OneOfJObj, kz_json:get_ne_value(<<"type">>, OneOfJObj))
+                           || OneOfJObj <- OneOf
+                          ],
+            io:format("Schema types: ~p~n~p~n", [SchemaTypes, OneOf]),
+            kz_binary:join(SchemaTypes, <<" | ">>)
+    end.
+
+schema_ref_type(Def) ->
+    <<"[#/definitions/", Def/binary, "](#", (to_anchor_link(Def))/binary, ")">>.
+
+schema_array_type(Settings) ->
+    case kz_json:get_ne_value([<<"items">>, <<"type">>], Settings) of
+        'undefined' -> schema_array_type_from_ref(Settings);
+        Type ->
+            ItemType = schema_type(kz_json:get_value(<<"items">>, Settings), Type),
+            <<"array(", ItemType/binary, ")">>
+    end.
+
+schema_array_type_from_ref(Settings) ->
+    case kz_json:get_ne_binary_value([<<"items">>, <<"$ref">>], Settings) of
+        'undefined' -> <<"array()">>;
+        Ref -> ["array(", schema_ref_type(Ref), ")"]
     end.
 
 schema_enum_type(L) ->
