@@ -94,7 +94,7 @@ Keys are 32-character identifiers to be used in storage plans
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`^[a-z,0-9]{32}$` | Configuration for the supported storage backends | `["[#/definitions/storage.attachment.aws](#storageattachment.aws)", "[#/definitions/storage.attachment.google_drive](#storageattachment.google_drive)"]` |   | `false`
+`^[a-z,0-9]{32}$` | Configuration for the supported storage backends | [#/definitions/storage.attachment.aws](#storageattachment.aws) | [#/definitions/storage.attachment.google_drive](#storageattachment.google_drive) |   | `false`
 
 ##### storage.connection.couchdb
 
@@ -125,7 +125,7 @@ Key | Description | Type | Default | Required
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`^([a-z,0-9]){32}$` |   | `["[#/definitions/storage.connection.couchdb](#storageconnection.couchdb)"]` |   | `false`
+`^([a-z,0-9]){32}$` |   | [#/definitions/storage.connection.couchdb](#storageconnection.couchdb) |   | `false`
 `local` |   | `object()` |   | `false`
 
 ##### storage.plan

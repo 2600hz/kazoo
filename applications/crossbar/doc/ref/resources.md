@@ -68,14 +68,22 @@ Schema for formatters
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`^[[:alnum:]_]+$.direction` | Only apply the formatter on the relevant request direction | `string('inbound' | 'outbound' | 'both')` |   | `false`
-`^[[:alnum:]_]+$.match_invite_format` | Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request. | `boolean()` |   | `false`
-`^[[:alnum:]_]+$.prefix` | Prepends value against the result of a successful regex match | `string()` |   | `false`
-`^[[:alnum:]_]+$.regex` | Matches against the value, with optional capture group | `string()` |   | `false`
-`^[[:alnum:]_]+$.strip` | If set to true, the field will be stripped from the payload | `boolean()` |   | `false`
-`^[[:alnum:]_]+$.suffix` | Appends value against the result of a successful regex match | `string()` |   | `false`
-`^[[:alnum:]_]+$.value` | Replaces the current value with the static value defined | `string()` |   | `false`
-`^[[:alnum:]_]+$` |   | `object()` |   | `false`
+`^[[:alnum:]_]+$` | Key to match in the route request JSON | `array([#/definitions/formatters.format_options](#formattersformat_options)) | [#/definitions/formatters.format_options](#formattersformat_options)` |   | `false`
+
+##### formatters.format_options
+
+Schema for formatter options
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`direction` | Only apply the formatter on the relevant request direction | `string('inbound' | 'outbound' | 'both')` |   | `false`
+`match_invite_format` | Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request. | `boolean()` |   | `false`
+`prefix` | Prepends value against the result of a successful regex match | `string()` |   | `false`
+`regex` | Matches against the value, with optional capture group | `string()` |   | `false`
+`strip` | If set to true, the field will be stripped from the payload | `boolean()` |   | `false`
+`suffix` | Appends value against the result of a successful regex match | `string()` |   | `false`
+`value` | Replaces the current value with the static value defined | `string()` |   | `false`
 
 
 
