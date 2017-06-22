@@ -248,13 +248,22 @@ one_of_to_row(Option, Refs) ->
 property_to_row(SchemaJObj, Name=?NE_BINARY, Settings, {_, _}=Acc) ->
     property_to_row(SchemaJObj, [Name], Settings, Acc);
 property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
+    SchemaType =
+        try schema_type(Settings)
+        catch 'throw':'no_type' ->
+                io:format("no schema type in ~s for path ~p: ~p~n"
+                         ,[kz_doc:id(SchemaJObj), Names, Settings]
+                         ),
+                cell_wrap('undefined')
+        end,
+
     maybe_sub_properties_to_row(SchemaJObj
-                               ,kz_json:get_value(<<"type">>, Settings)
+                               ,kz_json:get_ne_binary_value(<<"type">>, Settings)
                                ,Names
                                ,Settings
                                ,{[?TABLE_ROW(cell_wrap(kz_binary:join(Names, <<".">>))
-                                            ,kz_json:get_value(<<"description">>, Settings, <<" ">>)
-                                            ,schema_type(Settings)
+                                            ,kz_json:get_ne_binary_value(<<"description">>, Settings, <<" ">>)
+                                            ,SchemaType
                                             ,cell_wrap(kz_json:get_value(<<"default">>, Settings))
                                             ,cell_wrap(is_row_required(Names, SchemaJObj))
                                             )
@@ -299,13 +308,13 @@ is_row_required(Names=[_|_], SchemaJObj) ->
     end.
 
 schema_type(Settings) ->
-    case schema_type(Settings, kz_json:get_value(<<"type">>, Settings)) of
+    case schema_type(Settings, kz_json:get_ne_binary_value(<<"type">>, Settings)) of
         <<"[", _/binary>>=Type -> Type;
         Type -> cell_wrap(Type)
     end.
 
 schema_type(Settings, 'undefined') ->
-    case kz_json:get_value(<<"$ref">>, Settings) of
+    case kz_json:get_ne_binary_value(<<"$ref">>, Settings) of
         'undefined' ->
             maybe_schema_type_from_enum(Settings);
         Def ->
@@ -328,11 +337,18 @@ schema_type(Settings, Types) when is_list(Types) ->
 schema_type(_Settings, Type) -> Type.
 
 maybe_schema_type_from_enum(Settings) ->
-    case kz_json:get_value(<<"enum">>, Settings) of
+    case kz_json:get_list_value(<<"enum">>, Settings) of
         L when is_list(L) -> schema_enum_type(L);
         'undefined' ->
-            io:format("no type or ref in ~p~n", [Settings]),
-            'undefined'
+            maybe_schema_type_from_oneof(Settings)
+    end.
+
+maybe_schema_type_from_oneof(Settings) ->
+    case kz_json:get_list_value(<<"oneOf">>, Settings) of
+        'undefined' ->
+            throw('no_type');
+        OneOf ->
+            [schema_type(OneOfJObj) || OneOfJObj <- OneOf]
     end.
 
 schema_enum_type(L) ->
