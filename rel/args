@@ -1,5 +1,3 @@
--setcookie change_me
-
 # Tell SASL not to log progress reports, and log SASL errors to a file
 -sasl errlog_type error
 -sasl sasl_error_logger '{file, "log/error_log.sasl"}'
