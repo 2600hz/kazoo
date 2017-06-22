@@ -31,7 +31,7 @@
        ).
 
 from_test_() ->
-    FromValue = <<"6666666666">>,
+    FromValue = <<"1234567890">>,
     Formatter = kz_json:from_list([{<<"From">>, kz_json:from_list([{<<"value">>, FromValue}])}]),
     Route = kz_formatters:apply(?ROUTE_REQ, Formatter, 'outbound'),
     [?_assertEqual(<<FromValue/binary, "@2600hz.com">>, kz_json:get_value(<<"From">>, Route))].
