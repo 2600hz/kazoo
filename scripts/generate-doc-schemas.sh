@@ -14,6 +14,11 @@ def find_schema(txt):
     return found[0]
 
 def public_doc(ref_path):
+    ref_name = os.path.basename(ref_path)
+
+    if ref_name == "skel.md":
+        return "skip"
+
     if os.path.basename(os.path.dirname(ref_path)) == "ref":
         doc_root = os.path.dirname(os.path.dirname(ref_path))
     else:
@@ -33,6 +38,9 @@ def public_doc(ref_path):
 errors = 0
 for refname in sys.argv[1::]:
     docname = public_doc(refname)
+    if docname == "skip":
+        continue
+
     if not os.path.isfile(docname):
         print('Doc does not exist, please create', docname, '(from', refname, ')', file=sys.stderr)
         errors += 1
