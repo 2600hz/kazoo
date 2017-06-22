@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "formatters.format_options",
+    "description": "Schema for formatter options",
+    "properties": {
+        "direction": {
+            "description": "Only apply the formatter on the relevant request direction",
+            "enum": [
+                "inbound",
+                "outbound",
+                "both"
+            ],
+            "type": "string"
+        },
+        "match_invite_format": {
+            "description": "Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request.",
+            "type": "boolean"
+        },
+        "prefix": {
+            "description": "Prepends value against the result of a successful regex match",
+            "type": "string"
+        },
+        "regex": {
+            "description": "Matches against the value, with optional capture group",
+            "format": "regex",
+            "type": "string"
+        },
+        "strip": {
+            "description": "If set to true, the field will be stripped from the payload",
+            "type": "boolean"
+        },
+        "suffix": {
+            "description": "Appends value against the result of a successful regex match",
+            "type": "string"
+        },
+        "value": {
+            "description": "Replaces the current value with the static value defined",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
