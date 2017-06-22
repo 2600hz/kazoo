@@ -30,7 +30,6 @@
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
 -define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
 
-
 -spec module_ast(atom()) -> {atom(), abstract_code()} | 'undefined'.
 module_ast(M) ->
     case code:which(M) of
@@ -185,7 +184,7 @@ schema_to_table(SchemaJObj, BaseRefs) ->
     OneOfRefs = lists:foldl(fun one_of_to_row/2, RefSchemas, OneOfs),
     WithSubRefs = include_sub_refs(OneOfRefs),
 
-    [schema_description(Description), [?TABLE_HEADER, Reversed]]
+    [schema_description(Description), [?TABLE_HEADER, Reversed], "\n"]
         ++ [{RefSchemaName, RefTable}
             || RefSchemaName <- WithSubRefs,
                BaseRefs =:= [],
