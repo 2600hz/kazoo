@@ -4442,7 +4442,7 @@
             ]
         },
         "formatters": {
-            "description": "Schema for formatters",
+            "description": "Schema for request formatters",
             "type": "object"
         },
         "formatters.format_options": {

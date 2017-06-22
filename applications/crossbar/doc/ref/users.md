@@ -147,7 +147,7 @@ Key | Description | Type | Default | Required
 
 ##### formatters
 
-Schema for formatters
+Schema for request formatters
 
 
 Key | Description | Type | Default | Required
