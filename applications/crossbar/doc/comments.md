@@ -8,7 +8,7 @@ Allows you to add comments to "any" documents in Kazoo.
 
 
 
-#### Delete all comments
+#### Fetch
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/comments
 

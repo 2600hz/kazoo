@@ -10,9 +10,18 @@ Create buckets of minutes per time-period
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
+`^\w+$.amount` |   | `integer()` |   | `false`
+`^\w+$.cycle` |   | `string('minutely' | 'hourly' | 'daily' | 'weekly' | 'monthly')` |   | `false`
+`^\w+$.group_consume.[]` |   | `string()` |   | `false`
+`^\w+$.group_consume` |   | `array(string())` |   | `false`
+`^\w+$.increment` |   | `integer()` |   | `false`
+`^\w+$.minimum` |   | `integer()` |   | `false`
+`^\w+$.no_consume_time` |   | `integer()` |   | `false`
+`^\w+$` |   | `object()` |   | `false`
 
 
-#### Get allotments configuration for a given account
+
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments
 

@@ -133,6 +133,10 @@
             "minLength": 1,
             "type": "string"
         },
+        "formatters": {
+            "$ref": "formatters",
+            "type": "object"
+        },
         "hotdesk": {
             "default": {},
             "description": "The user hotdesk parameters",

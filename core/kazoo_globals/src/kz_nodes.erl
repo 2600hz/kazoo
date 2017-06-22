@@ -263,6 +263,7 @@ print_node_status(#kz_node{zone=NodeZone
                           ,kapps=Whapps
                           ,globals=Globals
                           ,node_info=NodeInfo
+                          ,roles=Roles
                           }=Node
                  ,Zone
                  ) ->
@@ -271,8 +272,14 @@ print_node_status(#kz_node{zone=NodeZone
     _ = maybe_print_md5(MD5),
     io:format(?SIMPLE_ROW_STR, [<<"Version">>, Version]),
     io:format(?SIMPLE_ROW_STR, [<<"Memory Usage">>, MemoryUsage]),
-    io:format(?SIMPLE_ROW_NUM, [<<"Processes">>, Processes]),
-    io:format(?SIMPLE_ROW_NUM, [<<"Ports">>, Ports]),
+    if Processes > 0 ->
+            io:format(?SIMPLE_ROW_NUM, [<<"Processes">>, Processes]);
+       true -> true
+    end,
+    if Ports > 0 ->
+            io:format(?SIMPLE_ROW_NUM, [<<"Ports">>, Ports]);
+       true -> true
+    end,
 
     _ = maybe_print_zone(kz_term:to_binary(NodeZone)
                         ,kz_term:to_binary(Zone)
@@ -285,6 +292,7 @@ print_node_status(#kz_node{zone=NodeZone
 
     _ = maybe_print_kapps(Whapps),
     _ = maybe_print_media_servers(Node),
+    _ = maybe_print_roles(Roles),
 
     io:format("~n").
 
@@ -317,6 +325,46 @@ maybe_print_kapps(Whapps) ->
 
 -spec compare_apps({binary(), any()}, {binary(), any()}) -> boolean().
 compare_apps({K1,_}, {K2,_}) -> K1 < K2.
+
+-spec maybe_print_roles(kz_proplist()) -> 'ok'.
+maybe_print_roles(Roles) ->
+    case lists:sort(fun compare_apps/2, Roles) of
+        []-> 'ok';
+        SortedRoles ->
+            io:format(?HEADER_COL ": ", [<<"Roles">>]),
+            simple_list(props:get_keys(SortedRoles)),
+            lists:foreach(fun print_role/1, SortedRoles)
+    end.
+
+-spec print_role({ne_binary(), kz_json:object()}) -> 'ok'.
+print_role({<<"Dispatcher">>, Data}) ->
+    Groups = kz_json:get_json_value(<<"Groups">>, Data, kz_json:new()),
+    kz_json:foreach(fun print_dispatcher/1, Groups);
+print_role({<<"Presence">>, Data}) ->
+    kz_json:foreach(fun print_presence/1, Data);
+print_role({<<"Registrar">>, Data}) ->
+    io:format(?SIMPLE_ROW_NUM, [<<"Registrations">>, kz_json:get_integer_value(<<"Registrations">>, Data, 0)]);
+print_role(_) -> 'ok'.
+
+-spec print_dispatcher({ne_binary(), kz_json:object()}) -> 'ok'.
+print_dispatcher({Group, Data})->
+    io:format(?HEADER_COL ": ", [<<"Dispatcher ", Group/binary>>]),
+    Sets = kz_json:get_keys(Data),
+    M = lists:map(fun(S) -> kz_json:get_ne_binary_value([S, <<"destination">>], Data) end, Sets),
+    simple_list(M, 0).
+
+-spec print_presence({ne_binary(), kz_json:object()}) -> 'ok'.
+print_presence({Group, Data}) ->
+    io:format(?HEADER_COL ": ", [Group]),
+    simple_list(format_presence_data(Data)).
+
+-spec format_presence_data(kz_json:object()) -> ne_binaries().
+format_presence_data(Data) ->
+    kz_json:foldl(fun format_presence_data/3, [], Data).
+
+-spec format_presence_data(ne_binary(), term(), ne_binaries()) -> ne_binaries().
+format_presence_data(K, V, Acc) ->
+    [<<K/binary, " (", (kz_term:to_binary(V))/binary, ") ">> | Acc].
 
 -spec maybe_print_media_servers(kz_node()) -> 'ok'.
 maybe_print_media_servers(#kz_node{media_servers=MediaServers
@@ -385,6 +433,19 @@ status_list([{Whapp, #whapp_info{startup=Started,roles=Roles}}|Whapps], _Column)
     io:format("~-25s", [Print]),
     io:format("~s", [kz_binary:join(Roles, <<" , ">>)]),
     status_list(Whapps, 4).
+
+-spec simple_list(ne_binaries()) -> 'ok'.
+-spec simple_list(ne_binaries(), 0..4) -> 'ok'.
+
+simple_list(List) -> simple_list(List, 0).
+
+simple_list([], _) -> io:format("~n", []);
+simple_list(List, Column) when Column > 3 ->
+    io:format("~n" ++ ?HEADER_COL ++ "  ", [""]),
+    simple_list(List, 0);
+simple_list([Item|Items], Column) ->
+    io:format("~s ", [Item]),
+    simple_list(Items, Column + 1).
 
 -spec flush() -> 'ok'.
 flush() ->
@@ -784,6 +845,7 @@ from_json(JObj, State) ->
             ,zone=get_zone(JObj, State)
             ,globals=kz_json:to_proplist(kz_json:get_value(<<"Globals">>, JObj, kz_json:new()))
             ,node_info=kz_json:get_json_value(<<"Node-Info">>, JObj)
+            ,roles=kz_json:to_proplist(kz_json:get_json_value(<<"Roles">>, JObj, kz_json:new()))
             }.
 
 -spec kapps_from_json(api_terms()) -> kapps_info().

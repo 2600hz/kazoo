@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "formatters",
+    "description": "Schema for request formatters",
+    "patternProperties": {
+        "^[[:alnum:]_]+$": {
+            "description": "Key to match in the route request JSON",
+            "oneOf": [
+                {
+                    "items": {
+                        "$ref": "formatters.format_options"
+                    },
+                    "type": "array"
+                },
+                {
+                    "$ref": "formatters.format_options"
+                }
+            ]
+        }
+    },
+    "type": "object"
+}

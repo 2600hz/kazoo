@@ -326,8 +326,11 @@
                     "description": "Determines if the account is currently enabled",
                     "type": "boolean"
                 },
+                "formatters": {
+                    "$ref": "#/definitions/formatters",
+                    "type": "object"
+                },
                 "language": {
-                    "default": "en-us",
                     "description": "The language for this account",
                     "type": "string"
                 },
@@ -2022,6 +2025,11 @@
                     ],
                     "type": "string"
                 },
+                "custom_presence_id": {
+                    "default": false,
+                    "description": "use configured presence_id and fallback to request",
+                    "type": "boolean"
+                },
                 "default_callback_timeout": {
                     "description": "How long, in seconds, to wait before calling back the parker",
                     "type": "integer"
@@ -2038,6 +2046,10 @@
                 "default_ringback_timeout": {
                     "description": "How long, in milliseconds, before ringing back",
                     "type": "integer"
+                },
+                "presence_id": {
+                    "description": "use this presence_id",
+                    "type": "string"
                 },
                 "slot": {
                     "description": "Static slot number to use",
@@ -2230,6 +2242,7 @@
                     "type": "integer"
                 },
                 "time_limit": {
+                    "default": 3600,
                     "description": "Time limit, in seconds, for the recording",
                     "maximum": 10800,
                     "minimum": 5,
@@ -3616,6 +3629,10 @@
                     "description": "Do not ring this device when calling user/agent in queue",
                     "type": "boolean"
                 },
+                "formatters": {
+                    "$ref": "#/definitions/formatters",
+                    "type": "object"
+                },
                 "language": {
                     "description": "The language for the device",
                     "type": "string"
@@ -3932,7 +3949,7 @@
                 "system": {
                     "description": "List of system dial plans",
                     "items": {
-                        "type": "object"
+                        "type": "string"
                     },
                     "type": "array"
                 }
@@ -4423,6 +4440,50 @@
             "required": [
                 "prefix"
             ]
+        },
+        "formatters": {
+            "description": "Schema for request formatters",
+            "type": "object"
+        },
+        "formatters.format_options": {
+            "description": "Schema for formatter options",
+            "properties": {
+                "direction": {
+                    "description": "Only apply the formatter on the relevant request direction",
+                    "enum": [
+                        "inbound",
+                        "outbound",
+                        "both"
+                    ],
+                    "type": "string"
+                },
+                "match_invite_format": {
+                    "description": "Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request.",
+                    "type": "boolean"
+                },
+                "prefix": {
+                    "description": "Prepends value against the result of a successful regex match",
+                    "type": "string"
+                },
+                "regex": {
+                    "description": "Matches against the value, with optional capture group",
+                    "format": "regex",
+                    "type": "string"
+                },
+                "strip": {
+                    "description": "If set to true, the field will be stripped from the payload",
+                    "type": "boolean"
+                },
+                "suffix": {
+                    "description": "Appends value against the result of a successful regex match",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "Replaces the current value with the static value defined",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         },
         "groups": {
             "description": "Validator for the group",
@@ -6784,6 +6845,10 @@
                 "format_from_uri": {
                     "description": "When set to true requests to this resource will have a re-formated SIP From Header",
                     "type": "boolean"
+                },
+                "formatters": {
+                    "$ref": "#/definitions/formatters",
+                    "type": "object"
                 },
                 "from_uri_realm": {
                     "description": "When formating SIP From on outbound requests this can be used to override the realm",
@@ -13023,6 +13088,10 @@
                     "maxLength": 128,
                     "minLength": 1,
                     "type": "string"
+                },
+                "formatters": {
+                    "$ref": "#/definitions/formatters",
+                    "type": "object"
                 },
                 "hotdesk": {
                     "default": {},

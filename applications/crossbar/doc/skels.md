@@ -24,17 +24,9 @@ Description of the skel module goes here.
 
 #### Schema
 
-Property  | Description | Type | Validation
-------------- | ------------- | ------------- | -------------
-name   | your name obviously | String | required
-email  | email, we won't spam | String | required, email
-sutff | this is some good stuff | Array | none
-age   | your age obviously | Integer | none
-city  | where you live | String | none
-zipcode  | also where you live | Integer | none
 
 
-#### Get all resources
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/skels
 

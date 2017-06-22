@@ -14,7 +14,7 @@ You can search for accounts by:
 
 
 
-#### Fetch search results
+#### Fetch
 
 > GET /v2/search
 

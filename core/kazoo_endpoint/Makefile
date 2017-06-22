@@ -3,6 +3,8 @@ PROJECT = kazoo_endpoint
 
 all: compile
 
+eunit: kze-test
+
 test: kze-test
 
 kze-test:

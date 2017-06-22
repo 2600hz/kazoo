@@ -4,6 +4,7 @@
     "description": "schema for attachment ref type storage plan",
     "properties": {
         "handler": {
+            "kazoo-validation": true,
             "type": "string"
         },
         "params": {

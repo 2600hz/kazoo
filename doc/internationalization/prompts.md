@@ -55,11 +55,33 @@ It is possible to create per-account prompts to be used in place of the system p
 
 To do so, use the standard `PUT /media` but include `prompt_id` in the data payload with the name of the prompt.
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"streamable":true,"name":"File","description":"Enter Pin prompt","prompt_id":"vm-enter_pin", "language":"x-pig-latin"}}'
+```bash
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media \
+    -d '{"data":{"streamable":true,"name":"File","description":"Enter Pin prompt","prompt_id":"vm-enter_pin", "language":"x-pig-latin"}}'
+```
+
+##### Configure system to allow account overrides
+
+Make sure the system is allowing accounts to override prompts
+
+```bash
+sup kapps_config set_default "media" "support_account_overrides" true
+```
 
 ###### Set the account's language
 
 Currently, a SUP command is required to set the account's language: `sup kapps_account_config set {ACCOUNT_ID} media default_language fr-ca`
+
+You can also set it on the account doc with something like:
+
+```bash
+curl -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"langauge":"es-es"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+```
 
 You can test what language will be selected for an account (barring a callflow language action changing it) thusly: `sup kz_media_util prompt_language {ACCOUNT_ID}`
 

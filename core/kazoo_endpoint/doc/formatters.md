@@ -31,7 +31,6 @@ In the above partial example, the resource has defined formatters for the `reque
 
 It can be desirable to control the format of fields going to registered devices. You can place the `formatters` object on a device, user, or account, to have it be used when processing calls to endpoints. The `formatter` object(s) will be merged before being applied to the endpoint.
 
-
 ## Formatter format
 
 Okay, so what goes in the `{...}` portions of the example above? The generic formatter looks like this:
@@ -42,19 +41,29 @@ Okay, so what goes in the `{...}` portions of the example above? The generic for
      ,"strip":boolean()
      ,"match_invite_format":boolean()
      ,"direction":direction()
+     ,"value":"static_value"
     }
 
-### Properties
+#### Schema
 
-* `direction`: Can be "inbound", "outbound", "both", or unset. If unset, the default is "both"; otherwise the formatter will only be applied on the relevant request direction
-* `strip`: If set to true, the field will be stripped from the request. Typically used to strip headers from a request before sending to the carrier (for instance, if the carrier doesn't support the Diversion header).
-* `match_invite_format`: Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request.
-* `regex`: Matches against the value, with optional capture group
-* `prefix`: Prepends value against the result of a successful regex match
-* `suffix`: Appends value against the result of a successful regex match
-* `value`: Replaces the current value with the static value defined
+Schema for formatters
 
-So the regex will be run against the value of the header and if it matches, will take the capture group (or the whole value if no capture group is defined) and prepend the prefix and append the suffix (if applicable).
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`^[[:alnum:]_]+$` |   | `object` |   | `false`
+`^[[:alnum:]_]+$.value` | Replaces the current value with the static value defined | `string` |   | `false`
+`^[[:alnum:]_]+$.suffix` | Appends value against the result of a successful regex match | `string` |   | `false`
+`^[[:alnum:]_]+$.strip` | If set to true, the field will be stripped from the payload | `boolean` |   | `false`
+`^[[:alnum:]_]+$.regex` | Matches against the value, with optional capture group | `string` |   | `false`
+`^[[:alnum:]_]+$.prefix` | Prepends value against the result of a successful regex match | `string` |   | `false`
+`^[[:alnum:]_]+$.match_invite_format` | Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request. | `boolean` |   | `false`
+`^[[:alnum:]_]+$.direction` | Only apply the formatter on the relevant request direction | `string('inbound', 'outbound', 'both')` |   | `false`
+
+
+
+#### Running Formatters
+
+The regex will be run against the value of the header and if it matches, will take the capture group (or the whole value if no capture group is defined) and prepend the prefix and append the suffix (if applicable).
 
 There is one caveat to that: when processing a regex for the `request`, `to`, or `from` fields, the value applied to the regex is the username portion, not the full `user@hostname` value. The prefix and suffix will be applied to the captured portion of the username, and the `@hostname` is appended as the last step.
 
@@ -113,11 +122,11 @@ By default the From header will be set to the outbound caller id as the username
 sip:+14158867900@10.26.0.38
 ```
 
-There are three levels that the From header can be changed, in order of precedence (most prefered first):
+There are three levels that the From header can be changed, in order of precedence (most preferred first):
 
 * Gateway reformatting
 * Resource reformatting
-* System reformating
+* System reformatting
 
 These preferences are applied per-gateway.  For example, if an outbound request utilized three resources all three could modify the From realm utilizing each level of configuration.
 
@@ -135,7 +144,7 @@ sip:4158867900@my.carrier.com
 
 ### Resource Reformatting
 
-When the resource is configured at the root level with `format_from_uri` set as `true`, the From header of the INVITE will be manipulated.  The realm will be determined based on the following parameters, in order of precedence (most prefered first):
+When the resource is configured at the root level with `format_from_uri` set as `true`, the From header of the INVITE will be manipulated.  The realm will be determined based on the following parameters, in order of precedence (most preferred first):
 
 * The string property `from_uri_realm` indicates that the value should be used directly as the domain in the From header.  For example,
 ```
@@ -151,7 +160,7 @@ The username component of the From header will utilize the outbound caller id nu
 
 ### System Reformatting
 
-The system configuration document `stepswitch` containes the property `format_from_uri` which when set to `true` will set the the From header to the E.164 number and accounts SIP realm.
+The system configuration document `stepswitch` contains the property `format_from_uri` which when set to `true` will set the the From header to the E.164 number and accounts SIP realm.
 
 ```
 sip:+14158867900@kazoo.account.realm

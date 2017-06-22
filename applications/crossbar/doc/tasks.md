@@ -10,20 +10,12 @@ Input data to go through as part of a background task
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`file_name` | Human-readable name of a task's input file | `string` |   | `false`
-`records` | List the rows of input data | `array(object)` |   | `false`
+`file_name` | Human-readable name of a task's input file | `string()` |   | `false`
+`records` | List the rows of input data | `array(object())` |   | `false`
 
 
-#### Operations
 
-Ensure the endpoint and backend are started:
-
-```shell
-sup kapps_controller start_app tasks
-sup crossbar_maintenance start_module cb_tasks
-```
-
-#### List available tasks
+#### Fetch
 
 > GET /v2/tasks
 

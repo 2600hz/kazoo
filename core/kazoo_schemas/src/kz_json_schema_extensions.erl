@@ -12,6 +12,8 @@
 
 -include_lib("kazoo/include/kz_types.hrl").
 
+-define(INVALID_STORAGE_ATTACHMENT_REFERENCE(R), <<"invalid reference '", R/binary, "' to attachments">>).
+-define(INVALID_STORAGE_CONNECTION_REFERENCE(R), <<"invalid reference '", R/binary, "' to connections">>).
 
 -spec extra_validator(jesse:json_term(), jesse_state:state()) -> jesse_state:state().
 extra_validator(Value, State) ->
@@ -63,6 +65,26 @@ extra_validation(<<"callflows.action.module">>, Value, State) ->
                  _OtherSchema -> jesse_error:handle_data_invalid(external_error, <<"unable to find callflow schema for module ", Value/binary>>, State)
              end,
     jesse_state:undo_resolve_ref(State2, State);
+extra_validation(<<"storage.plan.database.document.connection">>, Value, State) ->
+    JObj = jesse_state:get_current_value(State),
+    Keys = kz_json:get_keys(<<"connections">>, JObj),
+    case lists:member(Value, Keys) of
+        'true' -> State;
+        'false' -> jesse_error:handle_data_invalid('external_error'
+                                                  ,?INVALID_STORAGE_CONNECTION_REFERENCE(Value)
+                                                  ,State
+                                                  )
+    end;
+extra_validation(<<"storage.plan.database.attachment.handler">>, Value, State) ->
+    JObj = jesse_state:get_current_value(State),
+    Keys = kz_json:get_keys(<<"attachments">>, JObj),
+    case lists:member(Value, Keys) of
+        'true' -> State;
+        'false' -> jesse_error:handle_data_invalid('external_error'
+                                                  ,?INVALID_STORAGE_ATTACHMENT_REFERENCE(Value)
+                                                  ,State
+                                                  )
+    end;
 extra_validation(_Key, _Value, State) ->
     lager:debug("extra validation of ~s not handled for value ~p", [_Key, _Value]),
     State.

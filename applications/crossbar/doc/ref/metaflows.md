@@ -10,13 +10,14 @@ Actions applied to a call outside of the normal callflow, initiated by the calle
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#')` | `*` | `false`
-`digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer` |   | `false`
-`listen_on` | Which leg(s) of the call to listen for DTMF | `string('both', 'self', 'peer')` |   | `false`
-`numbers` | A list of static numbers with their flows | `object` |   | `false`
+`binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' | '*' | '#')` | `*` | `false`
+`digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer()` |   | `false`
+`listen_on` | Which leg(s) of the call to listen for DTMF | `string('both' | 'self' | 'peer')` |   | `false`
 `numbers./^[0-9]+$/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
-`patterns` | A list of patterns with their flows | `object` |   | `false`
+`numbers` | A list of static numbers with their flows | `object()` |   | `false`
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
+`patterns` | A list of patterns with their flows | `object()` |   | `false`
+
 ##### metaflow
 
 A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
@@ -24,10 +25,11 @@ A metaflow node defines a module to execute, data to provide to that module, and
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`children` | Children metaflows | `object` |   | `false`
 `children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
-`data` | The data/arguments of the metaflow module | `object` |   | `false`
+`children` | Children metaflows | `object()` |   | `false`
+`data` | The data/arguments of the metaflow module | `object()` |   | `false`
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true`
+
 
 
 #### Fetch

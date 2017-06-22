@@ -23,7 +23,7 @@
         "system": {
             "description": "List of system dial plans",
             "items": {
-                "type": "object"
+                "type": "string"
             },
             "type": "array"
         }

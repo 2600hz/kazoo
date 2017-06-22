@@ -41,7 +41,8 @@
             "required": [
                 "amount",
                 "cycle"
-            ]
+            ],
+            "type": "object"
         }
     },
     "type": "object"

@@ -7,6 +7,7 @@ You can configure whether you receive the data as a querystring in a GET or as a
 Some of the fields may not be included in every request.
 
 | Field   | Description                |
+| ------- | -------------------------- |
 | Call-ID | The unique call identifier |
 | Account-ID | The account id receiving the call |
 | From | The SIP From username |

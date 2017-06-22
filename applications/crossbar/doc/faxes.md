@@ -19,55 +19,37 @@ Faxes API allows you to update and access fax jobs for both sending and receivin
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer` | `0` | `false`
-`document` | Parameters related to the storage of a fax document | `object` |   | `false`
+`attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer()` | `0` | `false`
 `document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false`
-`document.content_type` | The content type header to be used when fetching for transmission as a post | `string` |   | `false`
-`document.host` | The host header to be used when fetching for transmission | `string` |   | `false`
-`document.method` | The method that should be used to reteive the document | `string('get', 'post')` | `get` | `false`
-`document.referer` | The referer header to be used when fetching for transmission | `string` |   | `false`
-`document.url` | The url of the fax document | `string` |   | `true`
-`from_name` | The sender name for the fax | `string` |   | `false`
-`from_number` | The sender number for the fax | `string` |   | `true`
-`notifications` | Status notifications | `object` |   | `false`
-`notifications.email` | Email notifications | `object` |   | `false`
-`notifications.email.send_to` | A list or string of email recipent(s) | `string, array(string)` |   | `false`
-`notifications.sms` | SMS notifications | `object` |   | `false`
-`notifications.sms.send_to` | A list or string of sms recipent(s) | `string, array(string)` |   | `false`
-`retries` | The number of times to retry | `integer` | `1` | `false`
-`to_name` | The recipient name for the fax | `string` |   | `false`
-`to_number` | The recipient number for the fax | `string` |   | `true`
-`tx_result` | The result of a transmission attempt | `object` |   | `false`
-`tx_result.error_message` | A description of any error that occured | `string` | "" | `false`
-`tx_result.fax_bad_rows` | The number of bad rows | `integer` | `0` | `false`
-`tx_result.fax_error_correction` | True if fax error correction was used | `boolean` | `false` | `false`
-`tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string` | "" | `false`
-`tx_result.fax_speed` | The speed (Baud-Rate) achieved during transmission | `integer` | `0` | `false`
-`tx_result.pages_sent` | The number of pages transmitted | `integer` | `0` | `false`
-`tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
-`tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
+`document.content_type` | The content type header to be used when fetching for transmission as a post | `string()` |   | `false`
+`document.host` | The host header to be used when fetching for transmission | `string()` |   | `false`
+`document.method` | The method that should be used to reteive the document | `string('get' | 'post')` | `get` | `false`
+`document.referer` | The referer header to be used when fetching for transmission | `string()` |   | `false`
+`document.url` | The url of the fax document | `string()` |   | `true`
+`document` | Parameters related to the storage of a fax document | `object()` |   | `false`
+`from_name` | The sender name for the fax | `string()` |   | `false`
+`from_number` | The sender number for the fax | `string()` |   | `true`
+`notifications.email.send_to` | A list or string of email recipent(s) | `string() | array(string())` |   | `false`
+`notifications.email` | Email notifications | `object()` |   | `false`
+`notifications.sms.send_to` | A list or string of sms recipent(s) | `string() | array(string())` |   | `false`
+`notifications.sms` | SMS notifications | `object()` |   | `false`
+`notifications` | Status notifications | `object()` |   | `false`
+`retries` | The number of times to retry | `integer()` | `1` | `false`
+`to_name` | The recipient name for the fax | `string()` |   | `false`
+`to_number` | The recipient number for the fax | `string()` |   | `true`
+`tx_result.error_message` | A description of any error that occured | `string()` | "" | `false`
+`tx_result.fax_bad_rows` | The number of bad rows | `integer()` | `0` | `false`
+`tx_result.fax_error_correction` | True if fax error correction was used | `boolean()` | `false` | `false`
+`tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string()` | "" | `false`
+`tx_result.fax_speed` | The speed (Baud-Rate) achieved during transmission | `integer()` | `0` | `false`
+`tx_result.pages_sent` | The number of pages transmitted | `integer()` | `0` | `false`
+`tx_result.success` | True if the fax transmission was successful | `boolean()` | `false` | `false`
+`tx_result.time_elapsed` | The amount of time from submition to completion | `integer()` | `0` | `false`
+`tx_result` | The result of a transmission attempt | `object()` |   | `false`
 
 
-#### Processing States
 
-State | Description
------ | -----------
-`attaching_files` | A fax job was submitted via the api (with a multipart/related content type) or smtp and we are in the process of attaching the files to the fax job.
-`pending` | Fax waiting to be picked up by the fax sending job
-`failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response XXX"
-`processing` | Faxes that are actively picked up by the fax worker and are being processed
-`completed` | Faxes that are finished sending
-`failed` | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.
-
-### Sending Outbound Faxes
-
-This section details APIs for manipulating job processing of outgoing faxes.
-
-#### Create an outgoing fax
-
-There are two methods for creating an outgoing fax - they differ in how you attach the fax file for processing.
-
-In the first method, you can create a fax document that includes a URL which contains the fax document to send. The fax document is fetched by the `fax_jobs` worker and distributed to `fax_worker` processes. You can fetch the status of the created job using the `faxes/outgoing/{FAX_ID}` API.
+#### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes
 

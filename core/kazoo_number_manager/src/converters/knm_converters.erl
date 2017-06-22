@@ -24,8 +24,13 @@
 -define(DEFAULT_CONVERTER_B, <<"regex">>).
 -define(DEFAULT_CONVERTERS, [?DEFAULT_CONVERTER_B]).
 
--define(DEFAULT_CONVERTER,
-        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
+-ifdef(TEST).
+-define(DEFAULT_CONVERTER, ?DEFAULT_CONVERTER_B).
+-else.
+-define(DEFAULT_CONVERTER
+       ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)
+       ).
+-endif.
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*\$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).

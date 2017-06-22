@@ -12,21 +12,18 @@ Web Hooks are subscriptions to allowed events that, when the event occurs, the e
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`custom_data` | These properties will be added to the event and will overwrite existing values. | `object` |   | `false`
-`enabled` | Is the webhook enabled and running | `boolean` | `true` | `false`
-`hook` | The trigger event for a request being made to 'callback_uri'. | `string` |   | `true`
-`http_verb` | What HTTP method to use when contacting the server | `string('get', 'post')` | `post` | `false`
-`include_subaccounts` | Should the webhook be fired for subaccount events. | `boolean` |   | `false`
-`name` | A friendly name for the webhook | `string` |   | `true`
-`retries` | Retry the request this many times (if it fails) | `integer` | `2` | `false`
-`uri` | The 3rd party URI to call out to an event | `string` |   | `true`
+`custom_data` | These properties will be added to the event and will overwrite existing values. | `object()` |   | `false`
+`enabled` | Is the webhook enabled and running | `boolean()` | `true` | `false`
+`hook` | The trigger event for a request being made to 'callback_uri'. | `string()` |   | `true`
+`http_verb` | What HTTP method to use when contacting the server | `string('get' | 'post')` | `post` | `false`
+`include_subaccounts` | Should the webhook be fired for subaccount events. | `boolean()` |   | `false`
+`name` | A friendly name for the webhook | `string()` |   | `true`
+`retries` | Retry the request this many times (if it fails) | `integer()` | `2` | `false`
+`uri` | The 3rd party URI to call out to an event | `string()` |   | `true`
 
 
-#### List Installed Webhooks
 
-Webhooks are installed by the system administrator. You can query Crossbar to see which are installed.
-
-Some webhooks will also include a `modifiers` object; these are parameters specific to that webhook that can be used to modify the behaviour of the webhook.
+#### Fetch
 
 > GET /v2/webhooks
 

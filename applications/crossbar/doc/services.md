@@ -6,7 +6,7 @@
 
 
 
-#### Fetch the current services
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/services
 

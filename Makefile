@@ -190,7 +190,7 @@ apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/couchdb/schemas/*.json
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-api-endpoints.escript
-	@$(ROOT)/scripts/generate-doc-schemas.sh applications/crossbar/doc/ref/*.md
+	@$(ROOT)/scripts/generate-doc-schemas.sh `grep -rl '#### Schema' core/ applications/ | grep -v '.erl'`
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/*.json
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
@@ -219,7 +219,7 @@ docs-build:
 docs-clean:
 	@rm -rf $(DOCS_ROOT)/site $(DOCS_ROOT)/docs $(DOCS_ROOT)/mkdocs.local.yml
 
-docs-serve: docs-build
+docs-serve: docs-setup docs-build
 	@mkdocs serve --dev-addr=0.0.0.0:9876 -f $(DOCS_ROOT)/mkdocs.local.yml
 
 fs-headers:

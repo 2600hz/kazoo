@@ -6,7 +6,7 @@
 
 
 
-#### Check the cluster's version of Kazoo
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/about
 

@@ -11,17 +11,8 @@ See [Kazoo Auth multi factor documentation](../../../core/kazoo_auth/doc/multi_f
 #### Schema
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`enabled` | whether or not this authentication provider is enabled | `boolean` | `true` | `false`
-`provider_name` | authentication provider name | `string` |   | `true`
-`provider_type` | the type of authentication provider | `multi_factor` |   | `true`
-`settings` | provider configuration | `object` |   | `false`
 
-
-#### Get a summary of configured providers
-
-Lists configured authentication providers for `{ACCOUNT_ID}`. Also provides all of the available providers which you can configure.
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor
 

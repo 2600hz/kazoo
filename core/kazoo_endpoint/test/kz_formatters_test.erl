@@ -19,9 +19,9 @@
                                       ,{<<"Invite-Format">>, <<"npan">>}
                                       ])).
 
--define(ROUTE_REQ, kz_json:from_list([{<<"To">>, <<"12345556789@2600hz.com">>}
-                                     ,{<<"From">>, <<"4158867900@2600hz.com">>}
-                                     ,{<<"Request">>, <<"+12345556789@2600hz.com">>}
+-define(ROUTE_REQ, kz_json:from_list([{<<"To">>, <<"12345556789@2600Hz.com">>}
+                                     ,{<<"From">>, <<"4158867900@2600Hz.com">>}
+                                     ,{<<"Request">>, <<"+12345556789@2600Hz.com">>}
                                      ,{<<"Call-ID">>,<<"352401574@10.26.0.158">>}
                                      ,{<<"Caller-ID-Number">>, <<"+14158867900">>}
                                      ,{<<"Custom-SIP-Headers">>
@@ -29,6 +29,12 @@
                                       }
                                      ])
        ).
+
+from_test_() ->
+    FromValue = <<"1234567890">>,
+    Formatter = kz_json:from_list([{<<"From">>, kz_json:from_list([{<<"value">>, FromValue}])}]),
+    Route = kz_formatters:apply(?ROUTE_REQ, Formatter, 'outbound'),
+    [?_assertEqual(<<FromValue/binary, "@2600Hz.com">>, kz_json:get_value(<<"From">>, Route))].
 
 regex_inbound_test_() ->
     Formatter = kz_json:from_list([{<<"to">>
@@ -62,9 +68,9 @@ regex_inbound_test_() ->
 
     Route = kz_formatters:apply(?ROUTE_REQ, Formatter, 'inbound'),
 
-    [?_assertEqual(<<"+12345556789@2600hz.com">>, kz_json:get_value(<<"To">>, Route))
-    ,?_assertEqual(<<"+12345556789@2600hz.com">>, kz_json:get_value(<<"Request">>, Route))
-    ,?_assertEqual(<<"+14158867900@2600hz.com">>, kz_json:get_value(<<"From">>, Route))
+    [?_assertEqual(<<"+12345556789@2600Hz.com">>, kz_json:get_value(<<"To">>, Route))
+    ,?_assertEqual(<<"+12345556789@2600Hz.com">>, kz_json:get_value(<<"Request">>, Route))
+    ,?_assertEqual(<<"+14158867900@2600Hz.com">>, kz_json:get_value(<<"From">>, Route))
     ,?_assertEqual(<<"4158867900">>, kz_json:get_value(<<"Caller-ID-Number">>, Route))
     ].
 
@@ -130,8 +136,57 @@ replace_value_test_() ->
                                   ]),
 
     Bridge = kz_formatters:apply(?ROUTE_REQ, Formatter, 'outbound'),
-    [?_assertEqual(<<Replace/binary, "@2600hz.com">>
+    [?_assertEqual(<<Replace/binary, "@2600Hz.com">>
                   ,kz_json:get_value(<<"From">>, Bridge)
                   )
     ,?_assertEqual(Replace, kz_json:get_value(<<"Caller-ID-Number">>, Bridge))
+    ].
+
+
+-define(FROM_ONE
+       ,kz_json:from_list([{<<"direction">>, <<"inbound">>}
+                          ,{<<"prefix">>, <<"+1">>}
+                          ,{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                          ])
+       ).
+-define(FROM_TWO
+       ,kz_json:from_list([{<<"direction">>, <<"outbound">>}
+                          ,{<<"regex">>, <<"\\+?1?(\\d{10})$">>}
+                          ])
+       ).
+
+-define(FROM, kz_json:from_list([{<<"from">>, [?FROM_ONE, ?FROM_TWO]}])).
+
+-define(DIVERSION_ONE
+       ,kz_json:from_list([{<<"match_invite_format">>, 'true'}
+                          ,{<<"direction">>, <<"outbound">>}
+                          ])
+       ).
+-define(DIVERSION, kz_json:from_list([{<<"diversion">>, [?DIVERSION_ONE]}])).
+
+-define(CALLER_ID_NAME, kz_json:from_list([{<<"caller_id_number">>, kz_json:from_list([{<<"value">>, <<"0099887766">>}])}])).
+
+formatter_validation_test_() ->
+    {'ok', Schema} = kz_json_schema:fload(<<"formatters">>),
+
+    [?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?FROM))
+    ,?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?DIVERSION))
+    ,?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?CALLER_ID_NAME))
+    ].
+
+formatters_test_() ->
+    FromInboundRoute = kz_formatters:apply(?ROUTE_REQ, ?FROM, 'inbound'),
+    FromOutboundRoute = kz_formatters:apply(?ROUTE_REQ, ?FROM, 'outbound'),
+
+    CIDRoute = kz_formatters:apply(?ROUTE_REQ, ?CALLER_ID_NAME, 'outbound'),
+
+    MergedFormatters = kz_json:merge(?FROM, ?CALLER_ID_NAME),
+    MergedRoute = kz_formatters:apply(?ROUTE_REQ, MergedFormatters, 'inbound'),
+
+    [?_assertEqual(<<"+14158867900@2600Hz.com">>, kz_json:get_ne_binary_value(<<"From">>, FromInboundRoute))
+    ,?_assertEqual(<<"4158867900@2600Hz.com">>, kz_json:get_ne_binary_value(<<"From">>, FromOutboundRoute))
+    ,?_assertEqual(<<"0099887766">>, kz_json:get_value(<<"Caller-ID-Number">>, CIDRoute))
+
+    ,?_assertEqual(<<"+14158867900@2600Hz.com">>, kz_json:get_ne_binary_value(<<"From">>, MergedRoute))
+    ,?_assertEqual(<<"0099887766">>, kz_json:get_value(<<"Caller-ID-Number">>, MergedRoute))
     ].

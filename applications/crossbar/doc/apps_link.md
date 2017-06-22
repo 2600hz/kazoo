@@ -6,7 +6,7 @@
 
 
 
-#### List UI apps this account is authorized to handle
+#### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/apps_link/authorize
 
