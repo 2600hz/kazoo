@@ -150,7 +150,8 @@ Permit local dialing by converting the dialed number to a routable form
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`system` | List of system dial plans | `array(object())` |   | `false`
+`system.[]` |   | `string()` |   | `false`
+`system` | List of system dial plans | `array(string())` |   | `false`
 
 ##### formatters
 
