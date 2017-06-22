@@ -59,6 +59,8 @@ Key | Description | Type | Default | Required
 `^[[:alnum:]_]+$.match_invite_format` | Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request. | `boolean` |   | `false`
 `^[[:alnum:]_]+$.direction` | Only apply the formatter on the relevant request direction | `string('inbound', 'outbound', 'both')` |   | `false`
 
+
+
 #### Running Formatters
 
 The regex will be run against the value of the header and if it matches, will take the capture group (or the whole value if no capture group is defined) and prepend the prefix and append the suffix (if applicable).
