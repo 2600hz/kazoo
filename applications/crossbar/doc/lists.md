@@ -10,7 +10,8 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `description` | A friendly list description | `string(1..128)` |   | `false`
 `name` | A friendly match list name | `string(1..128)` |   | `true`
-`org` | Full legal name of the organization | `string` |   | `false`
+`org` | Full legal name of the organization | `string()` |   | `false`
+
 
 
 #### Get all lists (doesn't return entries)

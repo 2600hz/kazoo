@@ -31,8 +31,9 @@ IP addresses assigned to the account
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`ips` | List of IP addresses | `array(string)` |   | `false`
-`ips.[]` |   | `string` |   | `false`
+`ips.[]` |   | `string()` |   | `false`
+`ips` | List of IP addresses | `array(string())` |   | `false`
+
 
 
 #### Fetch a list of IPs available to the account

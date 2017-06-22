@@ -13,6 +13,7 @@ Key | Description | Type | Default | Required
 `shared_auth` | The shared token | `string(64)` |   | `true`
 
 
+
 #### Fetch
 
 > GET /v2/shared_auth

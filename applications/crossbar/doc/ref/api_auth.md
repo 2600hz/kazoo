@@ -13,6 +13,7 @@ Key | Description | Type | Default | Required
 `api_key` | The Accounts API key | `string(64)` |   | `true`
 
 
+
 #### Create
 
 > PUT /v2/api_auth
