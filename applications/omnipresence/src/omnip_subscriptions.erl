@@ -368,15 +368,14 @@ distribute_subscribe(_Count, _JObj) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec subscribe_to_record(kz_json:object()) -> subscription().
 subscribe_to_record(JObj) ->
-    {P, U, [Username, Realm]} = omnip_util:extract_user(kz_json:get_value(<<"User">>, JObj)),
-    {P, F, _} = omnip_util:extract_user(kz_json:get_value(<<"From">>, JObj, <<>>)),
+    {_, U, [Username, Realm]} = omnip_util:extract_user(kz_json:get_value(<<"User">>, JObj)),
+    {_, F, _} = omnip_util:extract_user(kz_json:get_value(<<"From">>, JObj, <<>>)),
     Version = case kz_json:get_value(<<"Subscription-ID">>, JObj) of
                   'undefined' -> 1;
                   _Else -> 2
               end,
     #omnip_subscription{user=U
                        ,from=F
-                       ,protocol=P
                        ,expires=expires(JObj)
                        ,normalized_user=kz_util:to_lower_binary(U)
                        ,normalized_from=kz_util:to_lower_binary(F)
@@ -411,7 +410,6 @@ subscription_to_json(#omnip_subscription{user=User
                                         ,stalker=Stalker
                                         ,expires=Expires
                                         ,timestamp=Timestamp
-                                        ,protocol=Protocol
                                         ,username=Username
                                         ,realm=Realm
                                         ,event=Event
@@ -432,7 +430,6 @@ subscription_to_json(#omnip_subscription{user=User
         ,{<<"stalker">>, Stalker}
         ,{<<"expires">>, Expires}
         ,{<<"timestamp">>, Timestamp}
-        ,{<<"protocol">>, Protocol}
         ,{<<"username">>, Username}
         ,{<<"realm">>, Realm}
         ,{<<"event">>, Event}
