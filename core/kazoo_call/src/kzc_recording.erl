@@ -469,6 +469,7 @@ store_recording_meta(#state{call=Call
                        ,{<<"from">>, kapps_call:from(Call)}
                        ,{<<"to">>, kapps_call:to(Call)}
                        ,{<<"request">>, kapps_call:request(Call)}
+                       ,{<<"direction">>, kapps_call:direction(Call)}
                        ,{<<"start">>, Start}
                        ,{<<"duration">>, Seconds}
                        ,{<<"duration_ms">>, Length}

@@ -278,6 +278,7 @@ store_recording_meta(#{media := {_, MediaName}
                      ,{<<"from">>, kz_json:get_ne_binary_value(<<"From">>, JObj)}
                      ,{<<"to">>, kz_json:get_ne_binary_value(<<"To">>, JObj)}
                      ,{<<"request">>, kz_json:get_ne_binary_value(<<"Request">>, JObj)}
+                     ,{<<"direction">>, kz_call_event:call_direction(JObj)}
                      ,{<<"start">>, Start}
                      ,{<<"duration">>, Seconds}
                      ,{<<"duration_ms">>, Length}
