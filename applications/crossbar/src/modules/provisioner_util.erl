@@ -32,8 +32,8 @@
           ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
           ,{"User-Agent", kz_term:to_list(erlang:node())}
           ])).
--define(JSON_HEADERS, [{"Content-Type", "application/json"} | BASE_HEADERS]).
--define(FORM_HEADERS, [{"Content-Type", "application/x-www-form-urlencoded"} | BASE_HEADERS]).
+-define(JSON_HEADERS, [{"Content-Type", "application/json"} | ?BASE_HEADERS]).
+-define(FORM_HEADERS, [{"Content-Type", "application/x-www-form-urlencoded"} | ?BASE_HEADERS]).
 
 
 -spec get_mac_address(cb_context:context()) -> api_binary().
