@@ -1715,7 +1715,7 @@ get_bypass_media(JObj) ->
         'false' -> 'undefined'
     end.
 
--spec get_rtcp_mux(kz_json:object()) -> api_binary().
+-spec get_rtcp_mux(kz_json:object()) -> boolean().
 get_rtcp_mux(JObj) ->
     Default = kapps_config:get_is_true(?CONFIG_CAT, <<"default_rtcp_mux">>, 'true'),
     kz_json:is_true([<<"rtcp_mux">>], JObj, Default).
