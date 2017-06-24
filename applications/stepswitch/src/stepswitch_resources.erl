@@ -623,26 +623,26 @@ gateway_to_endpoint(DestinationNumber
               | gateway_from_uri_settings(Gateway)
              ]),
     PropList = props:filter_empty(
-        [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
-        ,{<<"Callee-ID-Name">>, kz_term:to_binary(DestinationNumber)}
-        ,{<<"Callee-ID-Number">>, kz_term:to_binary(DestinationNumber)}
-        ,{<<"To-DID">>, kz_term:to_binary(DestinationNumber)}
-        ,{<<"Invite-Format">>, InviteFormat}
-        ,{<<"Caller-ID-Type">>, CallerIdType}
-        ,{<<"Bypass-Media">>, BypassMedia}
-        ,{<<"Codecs">>, Codecs}
-        ,{<<"Auth-User">>, Username}
-        ,{<<"Auth-Password">>, Password}
-        ,{<<"Custom-SIP-Headers">>, SipHeaders}
-        ,{<<"SIP-Interface">>, SipInterface}
-        ,{<<"Endpoint-Type">>, EndpointType}
-        ,{<<"Endpoint-Options">>, EndpointOptions}
-        ,{<<"Endpoint-Progress-Timeout">>, kz_term:to_binary(ProgressTimeout)}
-        ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-        ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-         | maybe_get_t38(Gateway, OffnetJObj)
-        ]) ++ maybe_rtcp_mux(RTCP_MUX),
+                 [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
+                 ,{<<"Callee-ID-Name">>, kz_term:to_binary(DestinationNumber)}
+                 ,{<<"Callee-ID-Number">>, kz_term:to_binary(DestinationNumber)}
+                 ,{<<"To-DID">>, kz_term:to_binary(DestinationNumber)}
+                 ,{<<"Invite-Format">>, InviteFormat}
+                 ,{<<"Caller-ID-Type">>, CallerIdType}
+                 ,{<<"Bypass-Media">>, BypassMedia}
+                 ,{<<"Codecs">>, Codecs}
+                 ,{<<"Auth-User">>, Username}
+                 ,{<<"Auth-Password">>, Password}
+                 ,{<<"Custom-SIP-Headers">>, SipHeaders}
+                 ,{<<"SIP-Interface">>, SipInterface}
+                 ,{<<"Endpoint-Type">>, EndpointType}
+                 ,{<<"Endpoint-Options">>, EndpointOptions}
+                 ,{<<"Endpoint-Progress-Timeout">>, kz_term:to_binary(ProgressTimeout)}
+                 ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+                 ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
+                 ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                  | maybe_get_t38(Gateway, OffnetJObj)
+                 ]) ++ maybe_rtcp_mux(RTCP_MUX),
     kz_json:from_list(PropList).
 
 -spec maybe_rtcp_mux(binary()) -> kz_json:object().
