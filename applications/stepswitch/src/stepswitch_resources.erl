@@ -92,6 +92,7 @@
                  ,suffix = <<>> :: binary()
                  ,codecs = [] :: ne_binaries()
                  ,bypass_media = 'false' :: boolean()
+                 ,rtcp_mux = 'true' :: boolean()
                  ,caller_id_type = <<"external">> :: ne_binary()
                  ,fax_option :: ne_binary() | boolean()
                  ,sip_headers :: api_object()
@@ -599,6 +600,7 @@ gateway_to_endpoint(DestinationNumber
                    ,#gateway{invite_format=InviteFormat
                             ,caller_id_type=CallerIdType
                             ,bypass_media=BypassMedia
+                            ,rtcp_mux=RTCP_MUX
                             ,codecs=Codecs
                             ,username=Username
                             ,password=Password
@@ -620,8 +622,7 @@ gateway_to_endpoint(DestinationNumber
              ,{<<"Matched-Number">>, DestinationNumber}
               | gateway_from_uri_settings(Gateway)
              ]),
-    kz_json:from_list(
-      props:filter_empty(
+    PropList = props:filter_empty(
         [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
         ,{<<"Callee-ID-Name">>, kz_term:to_binary(DestinationNumber)}
         ,{<<"Callee-ID-Number">>, kz_term:to_binary(DestinationNumber)}
@@ -641,7 +642,14 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
         ,{<<"Outbound-Caller-ID-Name">>, CIDName}
          | maybe_get_t38(Gateway, OffnetJObj)
-        ])).
+        ]) ++ maybe_rtcp_mux(RTCP_MUX),
+    kz_json:from_list(PropList).
+
+-spec maybe_rtcp_mux(binary()) -> kz_json:object().
+maybe_rtcp_mux('false') ->
+    [{<<"RTCP-MUX">>, false}];
+maybe_rtcp_mux(_) ->
+    [].
 
 -spec gateway_cid(kapi_offnet_resource:req(), api_binary(), api_binary()) -> {ne_binary(), ne_binary()}.
 gateway_cid(OffnetJObj, IsEmergency, PrivacyMode) ->
@@ -1074,6 +1082,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,fax_option = kz_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
             ,codecs = kz_json:get_value(<<"codecs">>, JObj, Codecs)
             ,bypass_media = kz_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
+            ,rtcp_mux = gateway_rtcp_mux(JObj)
             ,force_port = kz_json:is_true(<<"force_port">>, JObj)
             ,route = kz_json:get_ne_value(<<"route">>, JObj, ?DEFAULT_ROUTE)
             ,prefix = kz_json:get_binary_value(<<"prefix">>, JObj, ?DEFAULT_PREFIX)
@@ -1083,6 +1092,11 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,endpoint_options = endpoint_options(JObj, EndpointType)
             ,privacy_mode=kz_json:get_value(<<"privacy_mode">>, JObj, PrivacyMode)
             }.
+
+-spec gateway_rtcp_mux(kz_json:object()) -> api_binary().
+gateway_rtcp_mux(JObj) ->
+    Default = kapps_config:get_is_true(?SS_CONFIG_CAT, <<"default_rtcp_mux">>, 'true'),
+    kz_json:is_true([<<"media">>, <<"rtcp_mux">>], JObj, Default).
 
 -spec gateway_is_emergency(kz_json:object(), boolean()) -> boolean().
 gateway_is_emergency(_, 'true') -> 'true';
