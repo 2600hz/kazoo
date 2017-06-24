@@ -645,7 +645,7 @@ gateway_to_endpoint(DestinationNumber
                  ]) ++ maybe_rtcp_mux(RTCP_MUX),
     kz_json:from_list(PropList).
 
--spec maybe_rtcp_mux(binary()) -> kz_json:object().
+-spec maybe_rtcp_mux(boolean()) -> kz_json:object().
 maybe_rtcp_mux('false') ->
     [{<<"RTCP-MUX">>, false}];
 maybe_rtcp_mux(_) ->
@@ -1093,7 +1093,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,privacy_mode=kz_json:get_value(<<"privacy_mode">>, JObj, PrivacyMode)
             }.
 
--spec gateway_rtcp_mux(kz_json:object()) -> api_binary().
+-spec gateway_rtcp_mux(kz_json:object()) -> boolean().
 gateway_rtcp_mux(JObj) ->
     Default = kapps_config:get_is_true(?SS_CONFIG_CAT, <<"default_rtcp_mux">>, 'true'),
     kz_json:is_true([<<"media">>, <<"rtcp_mux">>], JObj, Default).
