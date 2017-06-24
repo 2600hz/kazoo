@@ -70,6 +70,7 @@ Key | Description | Type | Default | Required
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false`
+`rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` | `true` | `false`
 `sip.custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
 `sip.custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
 `sip.custom_sip_headers.^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`

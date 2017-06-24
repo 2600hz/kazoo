@@ -4001,6 +4001,11 @@
                     },
                     "type": "object"
                 },
+                "rtcp_mux": {
+                    "default": true,
+                    "description": "RTCP protocol messages mixed with RTP data",
+                    "type": "boolean"
+                },
                 "sip": {
                     "default": {},
                     "description": "SIP Parameters",
@@ -26550,6 +26555,11 @@
                 "default_ignore_completed_elsewhere": {
                     "default": true,
                     "description": "kazoo_endpoint default ignore completed elsewhere",
+                    "type": "boolean"
+                },
+                "default_rtcp_mux": {
+                    "default": true,
+                    "description": "RTCP protocol messages mixed with RTP data",
                     "type": "boolean"
                 },
                 "restrict_to_known_types": {
