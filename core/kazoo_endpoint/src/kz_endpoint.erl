@@ -1060,8 +1060,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
                                  kz_json:object().
 create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
     SIPJObj = kz_json:get_json_value(<<"sip">>, Endpoint),
-    SIPEndpoint = kz_json:from_list(
-                    props:filter_empty(
+    PropList = props:filter_empty(
                       [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
                       ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
                       ,{<<"To-Username">>, get_to_username(SIPJObj)}
@@ -1100,7 +1099,8 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
                       ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
                        | maybe_get_t38(Endpoint, Call)
-                      ])),
+                      ]) ++ maybe_rtcp_mux(get_rtcp_mux(Endpoint)),
+    SIPEndpoint = kz_json:from_list(PropList),
     maybe_format_endpoint(SIPEndpoint, kz_term:is_empty(kz_json:get_json_value(<<"formatters">>, Endpoint))).
 
 -spec maybe_get_t38(kz_json:object(), kapps_call:call()) -> kz_proplist().
@@ -1118,6 +1118,12 @@ maybe_get_t38(Endpoint, Call) ->
                                                        ,kz_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
                                                        )
     end.
+
+-spec maybe_rtcp_mux(boolean()) -> kz_json:object().
+maybe_rtcp_mux('false') ->
+    [{<<"RTCP-MUX">>, false}];
+maybe_rtcp_mux(_) ->
+    [].
 
 -spec maybe_build_failover(kz_json:object(), clid(), kapps_call:call()) -> api_object().
 maybe_build_failover(Endpoint, Clid, Call) ->
@@ -1708,6 +1714,11 @@ get_bypass_media(JObj) ->
         'true' -> <<"true">>;
         'false' -> 'undefined'
     end.
+
+-spec get_rtcp_mux(kz_json:object()) -> api_binary().
+get_rtcp_mux(JObj) ->
+    Default = kapps_config:get_is_true(?CONFIG_CAT, <<"default_rtcp_mux">>, 'true'),
+    kz_json:is_true([<<"rtcp_mux">>], JObj, Default).
 
 -spec get_codecs(kz_json:object()) -> 'undefined' | ne_binaries().
 get_codecs(JObj) ->
