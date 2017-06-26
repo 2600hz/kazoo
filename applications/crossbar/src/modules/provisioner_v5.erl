@@ -349,6 +349,29 @@ settings_keys(Assoc, KeyKind, JObj) ->
         LineKey -> kz_json:set_value(<<"account">>, LineKey, Keys)
     end.
 
+-spec get_label(binary(), binary()) -> binary().
+get_label(AccountId, DocId) ->
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    Doc = kz_datamgr:open_cache_doc(AccountDb, DocId),
+
+    get_label(Doc).
+
+-spec get_label(kz_json:object()) -> binary().
+get_label(Doc) ->
+    case {kz_json:get_value(<<"first_name">>, Doc), kz_json:get_value(<<"last_name">>, Doc)} of
+        {'undefined', 'undefined'} ->
+            kz_json:get_value(<<"name">>, Doc);
+
+        {First, 'undefined'} ->
+            First;
+
+        {'undefined', Last} ->
+            Last;
+
+        {First, Last} ->
+            <<First/binary, " ", Last/binary>>
+    end.
+
 -spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary(), kz_json:object()) -> api_object().
 get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
@@ -356,7 +379,7 @@ get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
         'undefined' -> 'undefined';
         Presence ->
             kz_json:from_list(
-              [{<<"label">>, Presence}
+              [{<<"label">>, get_label(AccountId, Presence)}
               ,{<<"value">>, Presence}
               ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
               ,{<<"account">>, get_line_key(Brand, Family)}
@@ -374,8 +397,9 @@ get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, As
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
+            Label = <<"Park ", (get_label(AccountId, Presence))/binary>>,
             kz_json:from_list(
-              [{<<"label">>, <<>>}
+              [{<<"label">>, Label}
               ,{<<"value">>, <<"*3", Presence/binary>>}
               ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
               ,{<<"account">>, get_line_key(Brand, Family)}
@@ -383,7 +407,7 @@ get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, As
     end;
 get_feature_key(<<"parking">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
-      [{<<"label">>, <<>>}
+      [{<<"label">>, <<"Park ", Value/binary>>}
       ,{<<"value">>, <<"*3", Value/binary>>}
       ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
       ,{<<"account">>, get_line_key(Brand, Family)}
