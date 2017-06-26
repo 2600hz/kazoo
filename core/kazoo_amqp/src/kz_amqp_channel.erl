@@ -107,12 +107,14 @@ close(_, []) -> 'ok';
 close(Channel, [#'basic.consume'{consumer_tag=CTag}|Commands]) when is_pid(Channel) ->
     lager:debug("ensuring ~s is removed", [CTag]),
     Command = #'basic.cancel'{consumer_tag=CTag, nowait='true'},
-    _ = (catch amqp_channel:cast(Channel, Command)),
+    assert_valid_amqp_method(Command),
+    amqp_channel:cast(Channel, Command),
     close(Channel, Commands);
 close(Channel, [#'queue.declare'{queue=Queue}|Commands]) when is_pid(Channel) ->
     lager:debug("ensuring queue ~s is removed", [Queue]),
     Command = #'queue.delete'{queue=Queue, if_unused='true', nowait='true'},
-    _ = (catch amqp_channel:cast(Channel, Command)),
+    assert_valid_amqp_method(Command),
+    amqp_channel:cast(Channel, Command),
     close(Channel, Commands);
 close(Channel, [_|Commands]) ->
     close(Channel, Commands).
@@ -155,7 +157,8 @@ basic_publish(#kz_amqp_assignment{channel=Channel
                               }=BasicPub
              ,AmqpMsg)
   when is_pid(Channel) ->
-    _ = (catch amqp_channel:call(Channel, BasicPub, AmqpMsg)),
+    assert_valid_amqp_method(BasicPub),
+    _ = amqp_channel:call(Channel, BasicPub, AmqpMsg),
     lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
                ,[_Exchange, _Broker, _RK, Channel]
                );
@@ -186,6 +189,7 @@ maybe_split_routing_key(RoutingKey) ->
     {'undefined', RoutingKey}.
 
 -spec command(kz_amqp_command()) -> command_ret().
+-spec command(kz_amqp_assignment(), kz_amqp_command()) -> command_ret().
 command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
     kz_amqp_history:add_exchange(Exchange);
 command(Command) ->
@@ -193,21 +197,25 @@ command(Command) ->
     %% all commands need to block till completion...
     command(kz_amqp_assignments:get_channel(), Command).
 
--spec command(kz_amqp_assignment(), kz_amqp_command()) -> command_ret().
-command(#kz_amqp_assignment{channel=Pid}, #'channel.flow_ok'{}=FlowCtl) ->
+command(Assignment, Command) ->
+    assert_valid_amqp_method(Command),
+    exec_command(Assignment, Command).
+
+-spec exec_command(kz_amqp_assignment(), kz_amqp_command()) -> command_ret().
+exec_command(#kz_amqp_assignment{channel=Pid}, #'channel.flow_ok'{}=FlowCtl) ->
     amqp_channel:cast(Pid, FlowCtl);
-command(#kz_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
+exec_command(#kz_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
     amqp_channel:cast(Pid, BasicAck);
-command(#kz_amqp_assignment{channel=Channel}=Assignment, #'confirm.select'{}=Command) ->
+exec_command(#kz_amqp_assignment{channel=Channel}=Assignment, #'confirm.select'{}=Command) ->
     Result = amqp_channel:call(Channel, Command),
     handle_command_result(Result, Command, Assignment);
-command(#kz_amqp_assignment{channel=Pid}, #'basic.nack'{}=BasicNack) ->
+exec_command(#kz_amqp_assignment{channel=Pid}, #'basic.nack'{}=BasicNack) ->
     amqp_channel:cast(Pid, BasicNack);
-command(#kz_amqp_assignment{consumer=Consumer
-                           ,channel=Channel
-                           ,reconnect='true'
-                           }
-       ,#'basic.consume'{consumer_tag=OldTag}=Command) ->
+exec_command(#kz_amqp_assignment{consumer=Consumer
+                                ,channel=Channel
+                                ,reconnect='true'
+                                }
+            ,#'basic.consume'{consumer_tag=OldTag}=Command) ->
     C = Command#'basic.consume'{consumer_tag = <<>>},
     case amqp_channel:subscribe(Channel, C, Consumer) of
         #'basic.consume_ok'{consumer_tag=NewTag} ->
@@ -217,10 +225,10 @@ command(#kz_amqp_assignment{consumer=Consumer
                          ,[Consumer, _Else]
                          )
     end;
-command(#kz_amqp_assignment{consumer=Consumer
-                           ,channel=Channel
-                           }=Assignment
-       ,#'basic.consume'{queue=Queue}=Command) ->
+exec_command(#kz_amqp_assignment{consumer=Consumer
+                                ,channel=Channel
+                                }=Assignment
+            ,#'basic.consume'{queue=Queue}=Command) ->
     case kz_amqp_history:is_consuming(Consumer, Queue) of
         'true' ->
             lager:debug("skipping existing basic consume for queue ~s", [Queue]);
@@ -228,10 +236,10 @@ command(#kz_amqp_assignment{consumer=Consumer
             Result = amqp_channel:subscribe(Channel, Command, Consumer),
             handle_command_result(Result, Command, Assignment)
     end;
-command(#kz_amqp_assignment{channel=Channel
-                           ,consumer=Consumer
-                           }=Assignment
-       ,#'basic.cancel'{nowait=NoWait}) ->
+exec_command(#kz_amqp_assignment{channel=Channel
+                                ,consumer=Consumer
+                                }=Assignment
+            ,#'basic.cancel'{nowait=NoWait}) ->
     lists:foreach(fun(#'basic.consume'{consumer_tag=CTag}) ->
                           Command = #'basic.cancel'{consumer_tag=CTag, nowait=NoWait},
                           lager:debug("sending cancel for consumer ~s to ~p", [CTag, Channel]),
@@ -241,13 +249,13 @@ command(#kz_amqp_assignment{channel=Channel
                   end
                  ,kz_amqp_history:list_consume(Consumer)
                  );
-command(#kz_amqp_assignment{channel=Channel
-                           ,consumer=Consumer
-                           }=Assignment
-       ,#'queue.unbind'{queue=QueueName
-                       ,exchange=Exchange
-                       ,routing_key=RoutingKey
-                       }=Command) ->
+exec_command(#kz_amqp_assignment{channel=Channel
+                                ,consumer=Consumer
+                                }=Assignment
+            ,#'queue.unbind'{queue=QueueName
+                            ,exchange=Exchange
+                            ,routing_key=RoutingKey
+                            }=Command) ->
     case kz_amqp_history:is_bound(Consumer, Exchange, QueueName, RoutingKey) of
         'true' ->
             lager:debug("unbinding ~s from ~s(~s)", [QueueName, Exchange, RoutingKey]),
@@ -255,7 +263,7 @@ command(#kz_amqp_assignment{channel=Channel
         'false' ->
             lager:debug("queue ~s is not bound to ~s(~s)", [QueueName, Exchange, RoutingKey])
     end;
-command(#kz_amqp_assignment{channel=Channel}=Assignment, Command) ->
+exec_command(#kz_amqp_assignment{channel=Channel}=Assignment, Command) ->
     Result = try amqp_channel:call(Channel, Command)
              catch
                  E:R ->
@@ -361,3 +369,13 @@ handle_command_result(_Else, _R, _) ->
     lager:warning("unexpected AMQP command result: ~p"
                  ,[lager:pr(_Else, ?MODULE)]),
     {'error', 'unexpected_result'}.
+
+-spec assert_valid_amqp_method(kz_amqp_command()) -> 'ok'.
+assert_valid_amqp_method(Command) ->
+    try rabbit_framing_amqp_0_9_1:encode_method_fields(Command)
+    catch
+        E:R ->
+            lager:warning("~s when encoding method ~p: ~p", [E, Command, R]),
+            E(R)
+    end,
+    'ok'.
