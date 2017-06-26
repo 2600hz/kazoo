@@ -10,7 +10,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(SCHEMA_TEST_OPTIONS, [{'schema_loader_fun', fun fload/1}
+-define(SCHEMA_TEST_OPTIONS, [{'schema_loader_fun', fun kz_json_schema:fload/1}
                              ,{'allowed_errors', 'infinity'}
                              ,{'extra_validator', fun kz_json_schema_extensions:extra_validator/2}
                              ,{'setter_fun', fun kz_json:set_value/3}
