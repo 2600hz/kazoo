@@ -63,9 +63,9 @@
                ,shared_pid :: api_pid()
 
                               %% AMQP-related
-               ,my_id :: api_binary()
+               ,my_id :: ne_binary()
                ,my_q :: api_binary()
-               ,member_call_queue :: ne_binary()
+               ,member_call_queue :: api_binary()
 
                                      %% While processing a call
                ,call :: kapps_call:call()
