@@ -36,7 +36,7 @@
 -export([attempt/2
         ,ensure_can_create/1
         ,ensure_can_load_to_create/1
-        ,state_for_create/1, allowed_creation_states/2
+        ,state_for_create/1, allowed_creation_states/1, allowed_creation_states/2
         ]).
 
 -ifdef(TEST).
@@ -158,6 +158,10 @@ state_for_create(Options) ->
             ?LOG_DEBUG("allowing picking state ~s for ~s", [State, AuthBy]),
             State
     end.
+
+-spec allowed_creation_states(api_ne_binary()) -> ne_binaries().
+allowed_creation_states(AuthBy) ->
+    allowed_creation_states([], AuthBy).
 
 -spec allowed_creation_states(knm_number_options:options(), api_ne_binary()) -> ne_binaries().
 allowed_creation_states(_, undefined) -> [];

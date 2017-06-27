@@ -190,10 +190,11 @@ info(AuthAccountId, AccountId, ResellerId) ->
     Map = lists:foldl(fun info_fold/2, Acc0, AvailableCarriers),
     kz_json:from_map(
       Map#{?CARRIER_INFO_USABLE_CARRIERS => usable_carriers()
-          ,?CARRIER_INFO_USABLE_CREATION_STATES => knm_number:allowed_creation_states(AuthAccountId)
+          ,?CARRIER_INFO_USABLE_CREATION_STATES => allowed_creation_states(AuthAccountId)
           }
      ).
 
+-spec info_fold(module(), map()) -> map().
 info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
     try apply(Module, info, []) of
         #{?CARRIER_INFO_MAX_PREFIX := Lower}
@@ -207,11 +208,25 @@ info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
             Info
     end.
 
+-spec usable_carriers() -> ne_binaries().
 usable_carriers() ->
     Modules = all_modules() -- [?CARRIER_RESERVED
                                ,?CARRIER_RESERVED_RESELLER
                                ],
     [CarrierName || <<"knm_",CarrierName/binary>> <- Modules].
+
+-spec allowed_creation_states(api_ne_binary()) -> ne_binaries().
+-ifdef(TEST).
+allowed_creation_states(AccountId=?RESELLER_ACCOUNT_ID) ->
+    AccountJObj = kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, true),
+    Options = [{<<"auth_by_account">>, AccountJObj}],
+    knm_number:allowed_creation_states(Options, AccountId);
+allowed_creation_states(AccountId) ->
+    knm_number:allowed_creation_states(AccountId).
+-else.
+allowed_creation_states(AccountId) ->
+    knm_number:allowed_creation_states(AccountId).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
