@@ -59,17 +59,17 @@
                               %% PIDs of the gang
                ,worker_sup :: pid()
                ,mgr_pid :: pid()
-               ,fsm_pid :: pid()
-               ,shared_pid :: pid()
+               ,fsm_pid :: api_pid()
+               ,shared_pid :: api_pid()
 
                               %% AMQP-related
-               ,my_id :: ne_binary()
-               ,my_q :: ne_binary()
+               ,my_id :: api_binary()
+               ,my_q :: api_binary()
                ,member_call_queue :: ne_binary()
 
                                      %% While processing a call
                ,call :: kapps_call:call()
-               ,agent_id :: ne_binary()
+               ,agent_id :: api_binary()
                ,delivery :: gen_listener:basic_deliver()
                }).
 -type state() :: #state{}.
