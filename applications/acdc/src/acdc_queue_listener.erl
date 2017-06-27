@@ -64,12 +64,12 @@
 
                               %% AMQP-related
                ,my_id :: ne_binary()
-               ,my_q :: api_binary()
-               ,member_call_queue :: api_binary()
+               ,my_q :: api_ne_binary()
+               ,member_call_queue :: api_ne_binary()
 
                                      %% While processing a call
                ,call :: kapps_call:call()
-               ,agent_id :: api_binary()
+               ,agent_id :: api_ne_binary()
                ,delivery :: gen_listener:basic_deliver()
                }).
 -type state() :: #state{}.
