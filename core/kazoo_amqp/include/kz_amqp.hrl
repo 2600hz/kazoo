@@ -154,6 +154,7 @@
                            #'exchange.declare'{} |
                            #'confirm.select'{} |
                            #'channel.flow'{} | #'channel.flow_ok'{} |
+                           basic_publish() |
                            '_' | 'undefined'.
 -type kz_amqp_commands() :: [kz_amqp_command()].
 
