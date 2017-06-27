@@ -154,7 +154,8 @@ state_for_create(Options) ->
         {_, _, ?CARRIER_MDN} -> ?NUMBER_STATE_IN_SERVICE;
         {State, _, _} ->
             AuthBy = knm_number_options:auth_by(Options),
-            true = lists:member(State, allowed_creation_states(Options, AuthBy)),
+            lists:member(State, allowed_creation_states(Options, AuthBy))
+                orelse knm_errors:unauthorized(),
             ?LOG_DEBUG("allowing picking state ~s for ~s", [State, AuthBy]),
             State
     end.
