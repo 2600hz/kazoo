@@ -489,7 +489,7 @@ store_recording_meta(#state{call=Call
 
     MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, Db, [{'type', <<"call_recording">>}]),
     case kazoo_modb:save_doc(Db, MediaDoc, [{ensure_saved, true}]) of
-        {'ok', JObj} -> kz_doc:revision(JObj);
+        {'ok', Doc} -> kz_doc:revision(Doc);
         {'error', _}= Err -> Err
     end.
 
