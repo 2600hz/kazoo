@@ -455,7 +455,7 @@ store_recording_meta(#state{call=Call
     CallId = kapps_call:call_id(Call),
     Timestamp = kz_call_event:timestamp(JObj),
     Length = kz_call_event:recording_length(JObj),
-    Seconds = Length * ?MILLISECONDS_IN_SECOND,
+    Seconds = Length div ?MILLISECONDS_IN_SECOND,
     Start = Timestamp - Seconds,
 
     BaseMediaDoc = kz_json:from_list(
