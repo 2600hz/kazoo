@@ -5,8 +5,8 @@ System administrators can create multiple ratedecks and assign them to accounts 
 
 ## High level overview
 
-1.  Admins can create ratedecks by uploading CSVs to the [Tasks API](file:///home/james/local/git/2600hz/kazoo/applications/crossbar/doc/tasks.md) and defining the \`ratedeck\_name\`. See the [Rate Task](file:///home/james/local/git/2600hz/kazoo/applications/tasks/doc/rates.md) docs for how to upload the CSV. This will be covered further down too.
-2.  Admins can then create [Service Plans](file:///home/james/local/git/2600hz/kazoo/applications/crossbar/doc/service_plans.md) that incorporate the ratedeck(s) available. You can optionally charge for access to these ratedecks as part of the service plan.
+1.  Admins can create ratedecks by uploading CSVs to the [Tasks API](/applications/crossbar/doc/tasks.md) and defining the \`ratedeck\_name\`. See the [Rate Task](/applications/tasks/doc/rates.md) docs for how to upload the CSV. This will be covered further down too.
+2.  Admins can then create [Service Plans](/applications/crossbar/doc/service_plans.md) that incorporate the ratedeck(s) available. You can optionally charge for access to these ratedecks as part of the service plan.
 3.  Now admins can assign these service plans to an account or reseller. When rating a call, the system will look at the account, then the reseller, and finally the default system ratedeck looking for what ratedeck(s) to use.
 
 The rest of this article will demonstrate the API commands necessary to configure the ratedecks, service plans, and accounts to have this all work appropriately. Hopefully someone will be inspired to create an appropriate [MonsterUI](https://docs.2600hz.com/ui) application to manage this from the browser!
@@ -34,7 +34,7 @@ echo $AUTH_TOKEN
 {ADMIN_AUTH_TOKEN}
 ```
 
-Also, be sure you've handled the [Tasks Operations](file:///home/james/local/git/2600hz/kazoo/applications/crossbar/doc/tasks.md) steps to start the tasks application and the tasks crossbar endpoint.
+Also, be sure you've handled the [Tasks Operations](/applications/crossbar/doc/tasks.md) steps to start the tasks application and the tasks crossbar endpoint.
 
 
 ## Creating Ratedecks
@@ -42,7 +42,7 @@ Also, be sure you've handled the [Tasks Operations](file:///home/james/local/git
 
 ### CSV Format
 
-Looking at the [Rates Task](file:///home/james/local/git/2600hz/kazoo/applications/tasks/doc/rates.md) we see the following fields that can be defined:
+Looking at the [Rates Task](/applications/tasks/doc/rates.md) we see the following fields that can be defined:
 
     |Name|Description|Required|
     |`account_id`|reseller's account (see **Note 1** below)| |
@@ -383,7 +383,7 @@ Now that we have our ratedecks, let's create service plans that can be applied t
 
 ### Service Plan format
 
-Take a look at the [Service Plan lifecycle](file:///home/james/local/git/2600hz/kazoo/core/kazoo_services/doc/lifecycle.md) for details on how service plans work. Basically, we have a category of `ratedeck` and an item with the `ratedeck_id` as the key. You can also optionally include surcharges, activation fees, etc.
+Take a look at the [Service Plan lifecycle](/core/kazoo_services/doc/lifecycle.md) for details on how service plans work. Basically, we have a category of `ratedeck` and an item with the `ratedeck_id` as the key. You can also optionally include surcharges, activation fees, etc.
 
 
 ### Sample Service plan
