@@ -33,8 +33,8 @@
 
 -record(state, {callflow :: kz_json:object()
                ,is_no_match :: boolean()
-               ,id :: ne_binary()
-               ,type :: ne_binary()
+               ,id :: api_ne_binary()
+               ,type :: api_ne_binary()
                ,number :: ne_binary()
                ,channels :: kz_json:objects()
                ,config :: kz_json:object()

@@ -25,9 +25,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {table_id :: ets:tid()
-               ,etssrv :: pid()
-               ,give_away_ref :: reference()
+-record(state, {table_id :: ets:tid() | 'undefined'
+               ,etssrv :: api_pid()
+               ,give_away_ref :: api_reference()
                }).
 -type state() :: #state{}.
 
