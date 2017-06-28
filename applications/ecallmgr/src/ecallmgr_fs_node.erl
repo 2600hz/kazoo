@@ -121,6 +121,7 @@
                                                      ,'command'
                                                      ]
                                      }
+                                    ,'federate'
                                     ]
                          }
                         ]).
