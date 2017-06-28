@@ -63,13 +63,13 @@ status(Supervisor) ->
             {AcctId, AgentId, Q} = acdc_agent_listener:config(LPid),
             Status = acdc_agent_fsm:status(FSM),
 
-            lager:info("Agent ~s (Account ~s)", [AgentId, AcctId]),
-            lager:info("  Supervisor: ~p", [Supervisor]),
-            lager:info("  Listener: ~p (~s)", [LPid, Q]),
-            lager:info("  FSM: ~p", [FSM]),
+            ?PRINT("Agent ~s (Account ~s)", [AgentId, AcctId]),
+            ?PRINT("  Supervisor: ~p", [Supervisor]),
+            ?PRINT("  Listener: ~p (~s)", [LPid, Q]),
+            ?PRINT("  FSM: ~p", [FSM]),
             print_status(augment_status(Status, LPid));
         _ ->
-            lager:info("Agent Supervisor ~p is dead, stopping", [Supervisor]),
+            ?PRINT("Agent Supervisor ~p is dead, stopping", [Supervisor]),
             stop(Supervisor)
     end.
 
@@ -84,10 +84,10 @@ augment_status(Status, LPid) ->
 print_status([]) -> 'ok';
 print_status([{_, 'undefined'}|T]) -> print_status(T);
 print_status([{K, V}|T]) when is_binary(V) ->
-    lager:info("  ~s: ~s", [K, V]),
+    ?PRINT("  ~s: ~s", [K, V]),
     print_status(T);
 print_status([{K, V}|T]) ->
-    lager:info("  ~s: ~p", [K, V]),
+    ?PRINT("  ~s: ~p", [K, V]),
     print_status(T).
 
 -spec listener(pid()) -> api_pid().

@@ -78,26 +78,26 @@ child_of_type(WSup, T) ->
 
 -spec status(pid()) -> 'ok'.
 status(Supervisor) ->
-    lager:info("    Worker Supervisor: ~p", [Supervisor]),
+    ?PRINT("    Worker Supervisor: ~p", [Supervisor]),
     FSM = fsm(Supervisor),
     LPid = listener(Supervisor),
     Shared = shared_queue(Supervisor),
 
     Status = acdc_queue_fsm:status(FSM),
 
-    lager:info("      Listener: ~p", [LPid]),
-    lager:info("      Shared: ~p", [Shared]),
-    lager:info("      FSM: ~p", [FSM]),
+    ?PRINT("      Listener: ~p", [LPid]),
+    ?PRINT("      Shared: ~p", [Shared]),
+    ?PRINT("      FSM: ~p", [FSM]),
 
     print_status(Status).
 
 print_status([]) -> 'ok';
 print_status([{_, 'undefined'}|T]) -> print_status(T);
 print_status([{K, V}|T]) when is_binary(V) ->
-    lager:info("        ~s: ~s", [K, V]),
+    ?PRINT("        ~s: ~s", [K, V]),
     print_status(T);
 print_status([{K, V}|T]) ->
-    lager:info("        ~s: ~p", [K, V]),
+    ?PRINT("        ~s: ~p", [K, V]),
     print_status(T).
 
 %%%===================================================================

@@ -35,7 +35,7 @@
 
 -spec logout_agents(ne_binary()) -> 'ok'.
 logout_agents(AccountId) ->
-    io:format("Sending notices to logout agents for ~s~n", [AccountId]),
+    ?PRINT("Sending notices to logout agents for ~s", [AccountId]),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', AgentView} = kz_datamgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
     _ = [logout_agent(AccountId, kz_doc:id(Agent)) || Agent <- AgentView],
@@ -325,7 +325,7 @@ queue_summary(AcctId, QueueId) ->
 -spec show_queues_summary([{pid(), {ne_binary(), ne_binary()}}]) -> 'ok'.
 show_queues_summary([]) -> 'ok';
 show_queues_summary([{P, {AcctId, QueueId}}|Qs]) ->
-    lager:info("  Supervisor: ~p Acct: ~s Queue: ~s~n", [P, AcctId, QueueId]),
+    ?PRINT("  Supervisor: ~p Acct: ~s Queue: ~s~n", [P, AcctId, QueueId]),
     show_queues_summary(Qs).
 
 -spec queues_detail() -> 'ok'.
