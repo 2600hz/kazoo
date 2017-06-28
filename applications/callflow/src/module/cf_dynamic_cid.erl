@@ -158,7 +158,7 @@ update_call(Call, CIDNumber, CaptureGroup) ->
 %%--------------------------------------------------------------------
 -spec update_call(kapps_call:call(), ne_binary(), ne_binary(), api_ne_binary()) -> kapps_call:call().
 update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
-    Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CIDNumber}
+    Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {CIDNumber, CIDName}}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
               ,{fun kapps_call:set_caller_id_name/2, CIDName}
               ],
