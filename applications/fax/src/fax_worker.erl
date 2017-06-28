@@ -1043,7 +1043,7 @@ maybe_hunt_account_id(JObj, AccountId) ->
 resource_ccvs(JobId) ->
     kz_json:from_list([{<<"Authorizing-ID">>, JobId}
                       ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
-                      ,{<<"RTCP-MUX">>, false}
+                      ,{<<"RTCP-Mux">>, false}
                       ]).
 
 -spec get_did(kz_json:object()) -> api_binary().
