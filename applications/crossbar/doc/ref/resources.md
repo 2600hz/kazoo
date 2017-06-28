@@ -31,6 +31,7 @@ Key | Description | Type | Default | Required
 `gateways.[].from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string()` |   | `false`
 `gateways.[].invite_format` | The format of the DID needed by the underlying hardware/gateway | `string('route' | 'username' | 'e164' | 'npan' | '1npan')` | `route` | `false`
 `gateways.[].media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
+`gateways.[].media.rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` |   | `false`
 `gateways.[].media` | The media parameters for the resource gateway | `object()` |   | `false`
 `gateways.[].password` | SIP authentication password | `string(0..32)` |   | `false`
 `gateways.[].port` | This resource gateway port | `integer()` | `5060` | `false`

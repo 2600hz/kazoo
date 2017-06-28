@@ -6960,6 +6960,10 @@
                                     "fax_option": {
                                         "description": "Is T.38 Supported?",
                                         "type": "boolean"
+                                    },
+                                    "rtcp_mux": {
+                                        "description": "RTCP protocol messages mixed with RTP data",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -11994,6 +11998,10 @@
                 },
                 "default_route": {
                     "description": "stepswitch default route",
+                    "type": "string"
+                },
+                "default_rtcp_mux": {
+                    "description": "RTCP protocol messages mixed with RTP data",
                     "type": "string"
                 },
                 "default_suffix": {
