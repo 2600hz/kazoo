@@ -316,7 +316,8 @@ read_ledger(Context, Ledger) ->
                           ,'include_docs'
                           ,{'databases', Databases}
                           ],
-            crossbar_doc:load_view(?LEDGER_VIEW, ViewOptions, Context, fun normalize_view_results/3);
+            C1 = crossbar_doc:load_view(?LEDGER_VIEW, ViewOptions, Context, fun normalize_view_results/3),
+            fix_start_keys(C1, cb_context:resp_status(C1));
         Context1 ->
             Context1
     end.
@@ -326,6 +327,23 @@ pagination_page_size(Context) ->
     case crossbar_doc:pagination_page_size(Context) of
         'undefined' -> 'undefined';
         PageSize -> PageSize + 1
+    end.
+
+-spec fix_start_keys(cb_context:context(), crossbar_status()) -> cb_context:context().
+fix_start_keys(Context, 'success') ->
+    cb_context:set_resp_envelope(Context
+                                ,lists:foldl(fun fix_start_keys_fold/2
+                                            ,cb_context:resp_envelope(Context)
+                                            ,[<<"start_key">>, <<"next_start_key">>]
+                                            )
+                                );
+fix_start_keys(Context, _) -> Context.
+
+-spec fix_start_keys_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
+fix_start_keys_fold(Key, JObj) ->
+    case kz_json:get_value(Key, JObj) of
+        'undefined' -> JObj;
+        [_Ledger, Timestamp] -> kz_json:set_value(Key, Timestamp, JObj)
     end.
 
 -spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) ->
