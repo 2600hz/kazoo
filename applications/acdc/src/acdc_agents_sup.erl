@@ -46,7 +46,7 @@ start_link() ->
 
 -spec status() -> 'ok'.
 status() ->
-    lager:info("ACDc Agents Status"),
+    ?PRINT("ACDc Agents Status"),
     Ws = workers(),
     _ = kz_util:spawn(fun() -> lists:foreach(fun acdc_agent_sup:status/1, Ws) end),
     'ok'.
