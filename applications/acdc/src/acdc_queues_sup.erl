@@ -78,7 +78,7 @@ find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
 
 -spec status() -> 'ok'.
 status() ->
-    lager:info("ACDc Queues Status"),
+    ?PRINT("ACDc Queues Status"),
     Ws = workers(),
     _ = kz_util:spawn(fun() -> lists:foreach(fun acdc_queue_sup:status/1, Ws) end),
     'ok'.

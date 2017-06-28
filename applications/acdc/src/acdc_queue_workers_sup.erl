@@ -56,7 +56,7 @@ worker_count(Super) -> length(supervisor:which_children(Super)).
 
 -spec status(pid()) -> 'ok'.
 status(Super) ->
-    lager:info("  Workers Supervisor: ~p", [Super]),
+    ?PRINT("  Workers Supervisor: ~p", [Super]),
     lists:foreach(fun acdc_queue_worker_sup:status/1, workers(Super)).
 
 %%%===================================================================

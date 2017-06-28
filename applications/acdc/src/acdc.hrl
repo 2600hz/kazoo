@@ -53,5 +53,11 @@
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
+-define(PRINT(Str), ?PRINT(Str, [])).
+-define(PRINT(Fmt, Args), begin
+                              lager:info(Fmt, Args),
+                              io:format(Fmt++"\n", Args)
+                          end).
+
 -define(ACDC_HRL, 'true').
 -endif.
