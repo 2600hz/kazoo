@@ -601,7 +601,7 @@ gateway_to_endpoint(DestinationNumber
                    ,#gateway{invite_format=InviteFormat
                             ,caller_id_type=CallerIdType
                             ,bypass_media=BypassMedia
-                            ,rtcp_mux=RTCP_MUX
+                            ,rtcp_mux=RtcpMux
                             ,codecs=Codecs
                             ,username=Username
                             ,password=Password
@@ -618,10 +618,9 @@ gateway_to_endpoint(DestinationNumber
     IsEmergency = gateway_emergency_resource(Gateway),
     {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency, PrivacyMode),
 
-    CCVs = props:filter_undefined(
+    CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, IsEmergency}
              ,{<<"Matched-Number">>, DestinationNumber}
-             ,{<<"RTCP-MUX">>, RTCP_MUX}
               | gateway_from_uri_settings(Gateway)
              ]),
     kz_json:from_list(
@@ -644,6 +643,7 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
         ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
         ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+        ,{<<"RTCP-Mux">>, RtcpMux}
          | maybe_get_t38(Gateway, OffnetJObj)
         ])).
 

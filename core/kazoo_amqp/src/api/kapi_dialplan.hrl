@@ -76,6 +76,7 @@
         ,<<"Timeout">>
         ,<<"Simplify-Loopback">>
         ,<<"Loopback-Bowout">>
+        ,<<"RTCP-Mux">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
