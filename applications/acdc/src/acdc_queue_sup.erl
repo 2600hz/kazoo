@@ -63,10 +63,10 @@ status(Supervisor) ->
     ?PRINT("  Manager: ~p", [Manager]),
 
     ?PRINT("    Known Agents:"),
-    case acdc_queue_manager:status(Manager) of
-        [] -> ?PRINT("      NONE");
-        As -> [?PRINT("      ~s", [A]) || A <- As]
-    end,
+    _ = case acdc_queue_manager:status(Manager) of
+            [] -> ?PRINT("      NONE");
+            As -> [?PRINT("      ~s", [A]) || A <- As]
+        end,
 
     _ = acdc_queue_workers_sup:status(WorkersSup),
     'ok'.
