@@ -167,17 +167,22 @@ allowed_creation_states(AuthBy) ->
 -spec allowed_creation_states(knm_number_options:options(), api_ne_binary()) -> ne_binaries().
 allowed_creation_states(_, undefined) -> [];
 allowed_creation_states(Options, AuthBy) ->
-    case knm_phone_number:is_admin(AuthBy)
-        orelse allow_number_additions(Options, AuthBy)
+    case {knm_phone_number:is_admin(AuthBy)
+         ,allow_number_additions(Options, AuthBy)
+         }
     of
-        false -> [];
-        true ->
+        {true, _} ->
             [?NUMBER_STATE_AGING
             ,?NUMBER_STATE_AVAILABLE
             ,?NUMBER_STATE_IN_SERVICE
             ,?NUMBER_STATE_PORT_IN
             ,?NUMBER_STATE_RESERVED
-            ]
+            ];
+        {false, true} ->
+            [?NUMBER_STATE_IN_SERVICE
+            ,?NUMBER_STATE_RESERVED
+            ];
+        _ -> []
     end.
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
