@@ -446,12 +446,12 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
 -spec resources_to_endpoints(resources(), ne_binary(), kapi_offnet_resource:req()) ->
                                     kz_json:objects().
 resources_to_endpoints(Resources, Number, OffnetJObj) ->
-    RsrcMap = lists:foldl(fun resoruce_classifier_map/2, maps:new(), Resources),
+    ResourceMap = lists:foldl(fun resource_classifier_map/2, maps:new(), Resources),
     ConfigClassifiers = kz_json:to_proplist(knm_converters:available_classifiers()),
-    classifier_resources_to_endpoints(ConfigClassifiers, RsrcMap, Number, OffnetJObj).
+    classifier_resources_to_endpoints(ConfigClassifiers, ResourceMap, Number, OffnetJObj).
 
--spec resoruce_classifier_map(resource(), map()) -> map().
-resoruce_classifier_map(Resource, Map) ->
+-spec resource_classifier_map(resource(), map()) -> map().
+resource_classifier_map(Resource, Map) ->
     Classification = case get_resrc_classifier(Resource) of
                          'undefined' -> 'no_classification';
                          C -> C
@@ -461,25 +461,25 @@ resoruce_classifier_map(Resource, Map) ->
 
 -spec classifier_resources_to_endpoints(kz_proplist(), map(), ne_binary(), kapi_offnet_resource:req()) ->
                                                kz_json:objects().
-classifier_resources_to_endpoints([], RsrcMap, Number, OffnetJObj) ->
+classifier_resources_to_endpoints([], ResourceMap, Number, OffnetJObj) ->
     %% No endpoints found based on resrouces with classifiers, look up by
     %% resources that doesn't have classifier
     lager:debug("no classifiers satisfy resource look up, matching against resource rules..."),
-    Resources = maps:get('no_classification', RsrcMap, []),
+    Resources = maps:get('no_classification', ResourceMap, []),
     Fun = fun(Resource, Endpoints) ->
                   maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints)
           end,
     lists:foldr(Fun, [], Resources);
-classifier_resources_to_endpoints([{Class, _}|Classes], RsrcMap, Number, OffnetJObj) ->
-    case maps:get(Class, RsrcMap, 'undefined') of
+classifier_resources_to_endpoints([{Class, _}|Classes], ResourceMap, Number, OffnetJObj) ->
+    case maps:get(Class, ResourceMap, 'undefined') of
         'undefined' ->
-            classifier_resources_to_endpoints(Classes, RsrcMap, Number, OffnetJObj);
+            classifier_resources_to_endpoints(Classes, ResourceMap, Number, OffnetJObj);
         ClassRsrcs ->
             case resources_to_endpoints(ClassRsrcs, Number, OffnetJObj, []) of
                 'classifier_disabled' -> [];
                 [] ->
                     lager:debug("no resources with classifier ~s matched to route number ~s", [Class, Number]),
-                    classifier_resources_to_endpoints(Classes, RsrcMap, Number, OffnetJObj);
+                    classifier_resources_to_endpoints(Classes, ResourceMap, Number, OffnetJObj);
                 Endpoints ->
                     lager:debug("classifier ~s satisfies resource look up to route number ~s", [Class, Number]),
                     Endpoints
