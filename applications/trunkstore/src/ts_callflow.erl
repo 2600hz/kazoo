@@ -219,7 +219,7 @@ process_event_for_bridge(_State, _JObj, {<<"call_event">>, <<"CHANNEL_EXECUTE_CO
     'ignore';
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg}=State
                         ,JObj
-                        ,{<<"call_event">>, <<"CHANNEL_BRIDGE">>, _}
+                        ,{<<"call_event">>, <<"CHANNEL_ANSWER">>, _}
                         ) ->
     BLeg = kz_call_event:other_leg_call_id(JObj),
     lager:debug("channel ~s bridged to ~s", [ALeg, BLeg]),
