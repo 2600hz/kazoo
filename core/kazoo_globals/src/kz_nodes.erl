@@ -339,7 +339,11 @@ maybe_print_roles(Roles) ->
 -spec print_role({ne_binary(), kz_json:object()}) -> 'ok'.
 print_role({<<"Dispatcher">>, Data}) ->
     Groups = kz_json:get_json_value(<<"Groups">>, Data, kz_json:new()),
-    kz_json:foreach(fun print_dispatcher/1, Groups);
+    Keys = lists:sort(kz_json:get_keys(Groups)),
+    lists:foreach(fun(Group) ->
+                          GData = kz_json:get_json_value(Group, Groups),
+                          print_dispatcher({Group, GData})
+                  end, Keys);
 print_role({<<"Presence">>, Data}) ->
     kz_json:foreach(fun print_presence/1, Data);
 print_role({<<"Registrar">>, Data}) ->
@@ -350,7 +354,11 @@ print_role(_) -> 'ok'.
 print_dispatcher({Group, Data})->
     io:format(?HEADER_COL ": ", [<<"Dispatcher ", Group/binary>>]),
     Sets = kz_json:get_keys(Data),
-    M = lists:map(fun(S) -> kz_json:get_ne_binary_value([S, <<"destination">>], Data) end, Sets),
+    M = lists:map(fun(S) ->
+                          URI = kz_json:get_ne_binary_value([S, <<"destination">>], Data),
+                          Flags = kz_json:get_ne_binary_value([S, <<"flags">>], Data),
+                          <<URI/binary," (", Flags/binary, ")  ">>
+                  end, Sets),
     simple_list(M, 0).
 
 -spec print_presence({ne_binary(), kz_json:object()}) -> 'ok'.
@@ -435,12 +443,12 @@ status_list([{Whapp, #whapp_info{startup=Started,roles=Roles}}|Whapps], _Column)
     status_list(Whapps, 4).
 
 -spec simple_list(ne_binaries()) -> 'ok'.
--spec simple_list(ne_binaries(), 0..4) -> 'ok'.
+-spec simple_list(ne_binaries(), 0..5) -> 'ok'.
 
 simple_list(List) -> simple_list(List, 0).
 
 simple_list([], _) -> io:format("~n", []);
-simple_list(List, Column) when Column > 3 ->
+simple_list(List, Column) when Column > 4 ->
     io:format("~n" ++ ?HEADER_COL ++ "  ", [""]),
     simple_list(List, 0);
 simple_list([Item|Items], Column) ->
