@@ -81,26 +81,6 @@ transition_port_from_port_in_with_different_module_configured_test_() ->
      }
     ].
 
-transition_port_in_not_specifying1_test_() ->
-    Options1 = [{auth_by,?MASTER_ACCOUNT_ID} | base()],
-    Options2 = [{auth_by,?KNM_DEFAULT_AUTH_BY} | base()],
-    Num = ?TEST_PORT_IN_NUM,
-    Error = kz_json:from_list(
-              %% Was not instructed Num is being ported_in,
-              %% thus the wrong target state is picked and fails.
-              [{<<"code">>, 400},
-               {<<"error">>, <<"invalid_state_transition">>},
-               {<<"cause">>, <<"from port_in to reserved">>},
-               {<<"message">>, <<"invalid state transition">>}
-              ]),
-    [{"Verify cannot create in_service number if not specified as ported_in"
-     ,?_assertEqual({error, Error}, knm_number:create(Num, Options1))
-     }
-    ,{"Verify cannot create in_service number if not specified as ported_in even as sudo"
-     ,?_assertEqual({error, Error}, knm_number:create(Num, Options2))
-     }
-    ].
-
 transition_port_from_available_test_() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ,{ported_in, true}
@@ -132,7 +112,7 @@ transition_port_from_available_test_() ->
      }
     ].
 
-transition_port_from_available_not_specifying2_test_() ->
+transition_port_from_available_not_specifying_test_() ->
     Options1 = [{auth_by,?MASTER_ACCOUNT_ID} | base()],
     Options2 = [{auth_by,?KNM_DEFAULT_AUTH_BY} | base()],
     Num = ?TEST_AVAILABLE_NUM,
@@ -141,18 +121,12 @@ transition_port_from_available_not_specifying2_test_() ->
     {ok, N2} = knm_number:create(Num, Options2),
     PN2 = knm_number:phone_number(N2),
     [?_assert(knm_phone_number:is_dirty(PN1))
-    ,{"Verify number create has nothing to do with ports"
-     ,?_assertNotEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
-     }
-    ,?_assertNotEqual(?NUMBER_STATE_PORT_IN, knm_phone_number:state(PN1))
+    ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
     ,{"Verify number create has nothing to do with ports and is not ported_in"
      ,?_assertEqual(false, knm_phone_number:ported_in(PN1))
      }
     ,?_assert(knm_phone_number:is_dirty(PN2))
-    ,{"Verify number create has nothing to do with ports"
-     ,?_assertNotEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN2))
-     }
-    ,?_assertNotEqual(?NUMBER_STATE_PORT_IN, knm_phone_number:state(PN2))
+    ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN2))
     ,{"Verify number create has nothing to do with ports and is not ported_in"
      ,?_assertEqual(false, knm_phone_number:ported_in(PN2))
      }
