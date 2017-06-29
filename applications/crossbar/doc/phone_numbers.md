@@ -171,8 +171,11 @@ curl -v -X GET \
             "voip_innovations"
         ],
         "usable_creation_states": [
-            "reserved",
-            "in_service"
+            "aging",
+            "available",
+            "in_service",
+            "port_in",
+            "reserved"
         ]
     },
     "node": "{NODE}",

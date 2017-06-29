@@ -112,8 +112,8 @@ create_new_test_() ->
     ,?_assert(knm_phone_number:is_dirty(pn_x(2, Ret)))
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret)))
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(2, Ret)))
-    ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret)))
-    ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(2, Ret)))
+    ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret)))
+    ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(2, Ret)))
     ].
 
 
