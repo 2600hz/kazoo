@@ -456,8 +456,8 @@ resource_classifier_map(Resource, Map) ->
                          'undefined' -> 'no_classification';
                          C -> C
                      end,
-    UpdateFun = fun(Rsrcs) -> [Resource|Rsrcs] end,
-    maps:update_with(Classification, UpdateFun, [Resource], Map).
+    Resources = maps:get(Classification, Map, []),
+    maps:put(Classification, [Resource|Resources], Map).
 
 -spec classifier_resources_to_endpoints(kz_proplist(), map(), ne_binary(), kapi_offnet_resource:req()) ->
                                                kz_json:objects().
@@ -492,7 +492,7 @@ classifier_resources_to_endpoints([{Class, _}|Classes], ResourceMap, Number, Off
 resources_to_endpoints(_Resources, _Number, _OffnetJObj, 'classifier_disabled') ->
     'classifier_disabled';
 resources_to_endpoints([], _Number, _OffnetJObj, Endpoints) ->
-    lists:reverse(Endpoints);
+    Endpoints;
 resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
     MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints),
     resources_to_endpoints(Resources, Number, OffnetJObj, MoreEndpoints).
