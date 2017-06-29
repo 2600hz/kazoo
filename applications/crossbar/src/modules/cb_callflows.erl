@@ -485,9 +485,11 @@ ids_in_data({[], []}, IDs) -> IDs;
 ids_in_data({[V|Vs], [<<"id">>|Ks]}, IDs) ->
     ids_in_data({Vs, Ks}, [V | IDs]);
 ids_in_data({[V|Vs], [K|Ks]}, IDs) ->
-    case binary:matches(K, <<"_id">>) of
-        [] -> ids_in_data({Vs, Ks}, IDs);
-        _Match -> ids_in_data({Vs, Ks}, [V | IDs])
+    case binary:matches(K, <<"_id">>) =/= []
+        andalso kz_term:is_ne_binary(V)
+    of
+        'false' -> ids_in_data({Vs, Ks}, IDs);
+        'true' -> ids_in_data({Vs, Ks}, [V | IDs])
     end.
 
 -spec get_metadata(api_object(), ne_binary()) -> kz_json:object().

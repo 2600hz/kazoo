@@ -196,7 +196,7 @@ maybe_apply_limit(JObj) ->
                      ).
 
 maybe_apply_limit(JObj, ResultField) ->
-    Limit = kz_json:get_integer_value(<<"limit">>, JObj, 0),
+    Limit = kz_json:get_integer_value(<<"limit">>, JObj, 100),
     Result = take(Limit, kz_json:get_value(ResultField, JObj, [])),
     kz_json:set_value(ResultField, Result, JObj).
 

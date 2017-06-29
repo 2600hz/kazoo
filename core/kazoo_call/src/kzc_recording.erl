@@ -455,7 +455,7 @@ store_recording_meta(#state{call=Call
     CallId = kapps_call:call_id(Call),
     Timestamp = kz_call_event:timestamp(JObj),
     Length = kz_call_event:recording_length(JObj),
-    Seconds = Length * ?MILLISECONDS_IN_SECOND,
+    Seconds = Length div ?MILLISECONDS_IN_SECOND,
     Start = Timestamp - Seconds,
 
     BaseMediaDoc = kz_json:from_list(
@@ -469,6 +469,7 @@ store_recording_meta(#state{call=Call
                        ,{<<"from">>, kapps_call:from(Call)}
                        ,{<<"to">>, kapps_call:to(Call)}
                        ,{<<"request">>, kapps_call:request(Call)}
+                       ,{<<"direction">>, kapps_call:direction(Call)}
                        ,{<<"start">>, Start}
                        ,{<<"duration">>, Seconds}
                        ,{<<"duration_ms">>, Length}
@@ -488,7 +489,7 @@ store_recording_meta(#state{call=Call
 
     MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, Db, [{'type', <<"call_recording">>}]),
     case kazoo_modb:save_doc(Db, MediaDoc, [{ensure_saved, true}]) of
-        {'ok', JObj} -> kz_doc:revision(JObj);
+        {'ok', Doc} -> kz_doc:revision(Doc);
         {'error', _}= Err -> Err
     end.
 

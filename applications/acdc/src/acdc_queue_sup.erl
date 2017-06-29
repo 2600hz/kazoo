@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_queue_sup).
-
 -behaviour(supervisor).
 
 -include("acdc.hrl").
@@ -59,15 +58,15 @@ status(Supervisor) ->
 
     {AcctId, QueueId} = acdc_queue_manager:config(Manager),
 
-    lager:info("Queue ~s (Account ~s)", [QueueId, AcctId]),
-    lager:info("  Supervisor: ~p", [Supervisor]),
-    lager:info("  Manager: ~p", [Manager]),
+    ?PRINT("Queue ~s (Account ~s)", [QueueId, AcctId]),
+    ?PRINT("  Supervisor: ~p", [Supervisor]),
+    ?PRINT("  Manager: ~p", [Manager]),
 
-    lager:info("    Known Agents:"),
-    case acdc_queue_manager:status(Manager) of
-        [] -> lager:info("      NONE");
-        As -> [lager:info("      ~s", [A]) || A <- As]
-    end,
+    ?PRINT("    Known Agents:"),
+    _ = case acdc_queue_manager:status(Manager) of
+            [] -> ?PRINT("      NONE");
+            As -> [?PRINT("      ~s", [A]) || A <- As]
+        end,
 
     _ = acdc_queue_workers_sup:status(WorkersSup),
     'ok'.

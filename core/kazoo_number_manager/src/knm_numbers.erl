@@ -304,14 +304,22 @@ create(Nums, Options) ->
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
-            ToState = knm_number:state_for_create(Options),
-            lager:debug("picked state ~s for ~s for ~p", [ToState, knm_number_options:assign_to(Options), Nums]),
-            NewOptions = [{'state', ToState} | Options],
-            ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
-                    ,[fun knm_number:new/1
-                     ,fun knm_number_states:to_options_state/1
-                     ,fun save_numbers/1
-                     ]))
+            try knm_number:state_for_create(Options) of
+                ToState ->
+                    lager:debug("picked state ~s for ~s for ~p", [ToState, knm_number_options:assign_to(Options), Nums]),
+                    NewOptions = [{'state', ToState} | Options],
+                    ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
+                            ,[fun knm_number:new/1
+                             ,fun knm_number_states:to_options_state/1
+                             ,fun save_numbers/1
+                             ]))
+            catch throw:{error,unauthorized} ->
+                    Reason = knm_errors:to_json(unauthorized, undefined, state_for_create),
+                    F = fun (T=#{todo := PNs}) ->
+                                ko([knm_phone_number:number(PN) || PN <- PNs], Reason, T)
+                        end,
+                    ret(do(F, ko(NotFounds, Reason, T1)))
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -613,15 +621,21 @@ id(T=#{todo := Todo}) -> ok(Todo, T).
 -spec ret(t()) -> ret().
 ret(#{ok := OKs
      ,ko := KOs
-     ,services := Services
      ,charges := Charges
      ,options := Options
+     ,services := Services0
      }) ->
     #{ok => OKs
      ,ko => KOs %%FIXME Convert to error format
-     ,services => Services
      ,charges => Charges
      ,options => Options
+     ,services =>
+          case Services0 =:= undefined
+              andalso knm_number_options:dry_run(Options)
+          of
+              false -> Services0;
+              true -> kz_services:new()
+          end
      }.
 
 %% @public
@@ -666,7 +680,7 @@ take_not_founds(T=#{ko := KOs}) ->
     Nums = [Num || {Num,not_found} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
 
--spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
+-spec maybe_create(nums(), t_pn()) -> t_pn().
 maybe_create(NotFounds, T) ->
     Ta = do(fun knm_number:ensure_can_create/1, new(options(T), NotFounds)),
     Tb = pipe(T, [fun knm_number:ensure_can_load_to_create/1

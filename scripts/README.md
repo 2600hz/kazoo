@@ -309,7 +309,7 @@ Init.d script for rabbitmq
 
 ## `reconcile_docs_to_index.bash`
 
-Finds all docs in the repo and checks which are included in the [mkdocs.yml](file:///home/james/local/git/2600hz/kazoo/doc/mkdocs/mkdocs.yml) index
+Finds all docs in the repo and checks which are included in the [mkdocs.yml](/doc/mkdocs/mkdocs.yml) index
 
 
 ## setup-dev.sh

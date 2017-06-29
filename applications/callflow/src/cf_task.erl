@@ -28,8 +28,8 @@
 -record(state, {call :: kapps_call:call()
                ,callback :: fun()
                ,args :: list()
-               ,pid :: pid()
-               ,ref ::reference()
+               ,pid :: api_pid()
+               ,ref :: api_reference()
                ,queue :: api_binary()
                }).
 -type state() :: #state{}.

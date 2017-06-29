@@ -266,7 +266,7 @@ store_recording_meta(#{media := {_, MediaName}
     Ext = filename:extension(MediaName),
     Timestamp = kz_call_event:timestamp(JObj),
     Length = kz_call_event:recording_length(JObj),
-    Seconds = Length * ?MILLISECONDS_IN_SECOND,
+    Seconds = Length div ?MILLISECONDS_IN_SECOND,
     Start = Timestamp - Seconds,
     BaseMediaDoc = kz_json:from_list(
                      [{<<"name">>, MediaName}
@@ -278,6 +278,7 @@ store_recording_meta(#{media := {_, MediaName}
                      ,{<<"from">>, kz_json:get_ne_binary_value(<<"From">>, JObj)}
                      ,{<<"to">>, kz_json:get_ne_binary_value(<<"To">>, JObj)}
                      ,{<<"request">>, kz_json:get_ne_binary_value(<<"Request">>, JObj)}
+                     ,{<<"direction">>, kz_call_event:call_direction(JObj)}
                      ,{<<"start">>, Start}
                      ,{<<"duration">>, Seconds}
                      ,{<<"duration_ms">>, Length}

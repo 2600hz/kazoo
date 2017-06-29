@@ -16,6 +16,7 @@ info_test_() ->
     InfoJObj3 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, undefined),
     InfoJObj4 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, ?CHILD_ACCOUNT_ID),
     InfoJObj5 = knm_carriers:info(?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
+    InfoJObj6 = knm_carriers:info(?CHILD_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, ?CHILD_ACCOUNT_ID),
     [?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj1))
     ,?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj2))
     ,?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj3))
@@ -31,6 +32,7 @@ info_test_() ->
     ,?_assertEqual([?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RESERVED]
                   ,lists:usort(kz_json:get_value(<<"usable_creation_states">>, InfoJObj5))
                   )
+    ,?_assertEqual([], kz_json:get_value(<<"usable_creation_states">>, InfoJObj6))
     ].
 
 is_number_billable_test_() ->

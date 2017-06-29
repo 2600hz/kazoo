@@ -31,8 +31,9 @@
           [{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
           ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
           ,{"User-Agent", kz_term:to_list(erlang:node())}
-          ,{"Content-Type", "application/x-www-form-urlencoded"}
           ])).
+-define(JSON_HEADERS, [{"Content-Type", "application/json"} | ?BASE_HEADERS]).
+-define(FORM_HEADERS, [{"Content-Type", "application/x-www-form-urlencoded"} | ?BASE_HEADERS]).
 
 
 -spec get_mac_address(cb_context:context()) -> api_binary().
@@ -341,7 +342,7 @@ do_simple_provision(MACAddress, Context) ->
                   ]),
             Encoded = kz_http_util:json_to_querystring(Body),
             lager:debug("posting to ~s with: ~-300s", [Url, Encoded]),
-            Res = kz_http:post(Url, ?BASE_HEADERS, Encoded),
+            Res = kz_http:post(Url, ?FORM_HEADERS, Encoded),
             lager:debug("response from server: ~p", [Res]),
             'true'
     end.
@@ -396,7 +397,7 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
         'undefined' -> 'false';
         Url ->
             FullUrl = kz_term:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
-            {'ok', _, _, RawJObj} = kz_http:get(FullUrl, ?BASE_HEADERS, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+            {'ok', _, _, RawJObj} = kz_http:get(FullUrl, ?JSON_HEADERS, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
             case kz_json:get_integer_value([<<"error">>, <<"code">>], kz_json:decode(RawJObj)) of
                 'undefined' -> send_to_full_provisioner('post', FullUrl, JObj);
                 404 -> send_to_full_provisioner('put', FullUrl, JObj);
@@ -407,7 +408,7 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
 -spec send_to_full_provisioner(string()) -> boolean().
 send_to_full_provisioner(FullUrl) ->
     lager:debug("making ~s request to ~s", ['delete', FullUrl]),
-    Res = kz_http:delete(FullUrl, ?BASE_HEADERS, [], [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+    Res = kz_http:delete(FullUrl, ?JSON_HEADERS, [], [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
@@ -415,7 +416,7 @@ send_to_full_provisioner(FullUrl) ->
 send_to_full_provisioner('put', FullUrl, JObj) ->
     Body = kz_term:to_list(kz_json:encode(JObj)),
     lager:debug("making put request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = kz_http:put(FullUrl, ?BASE_HEADERS, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+    Res = kz_http:put(FullUrl, ?JSON_HEADERS, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true';
 send_to_full_provisioner('post', FullUrl, JObj) ->
@@ -426,7 +427,7 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
           ]),
     Body = kz_term:to_list(kz_json:encode(J)),
     lager:debug("making post request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = kz_http:post(FullUrl, ?BASE_HEADERS, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+    Res = kz_http:post(FullUrl, ?JSON_HEADERS, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
@@ -714,14 +715,8 @@ send_provisioning_request(Template, MACAddress) ->
     ProvisionRequest = kz_json:encode(Template),
     UrlTmpl = kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>),
     UrlString = re:replace(UrlTmpl, "{{mac_address}}", MACAddress, ['global', {'return', 'list'}]),
-    Headers = props:filter_undefined(
-                [{"Content-Type", "application/json"}
-                ,{"Host", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_host">>)}
-                ,{"Referer", kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_referer">>)}
-                ,{"User-Agent", kz_term:to_list(erlang:node())}
-                ]),
     lager:debug("provisioning via ~s", [UrlString]),
-    case kz_http:post(UrlString, Headers, ProvisionRequest) of
+    case kz_http:post(UrlString, ?JSON_HEADERS, ProvisionRequest) of
         {'ok', 200, _, Response} ->
             lager:debug("SUCCESS! BOOM! ~s", [Response]);
         {'ok', Code, _, Response} ->

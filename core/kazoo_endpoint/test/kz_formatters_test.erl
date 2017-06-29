@@ -10,6 +10,15 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(SCHEMA_TEST_OPTIONS, [{'schema_loader_fun', fun kz_json_schema:fload/1}
+                             ,{'allowed_errors', 'infinity'}
+                             ,{'extra_validator', fun kz_json_schema_extensions:extra_validator/2}
+                             ,{'setter_fun', fun kz_json:set_value/3}
+                             ,{'validator_options', ['use_defaults'
+                                                    ,'apply_defaults_to_empty_objects'
+                                                    ]}
+                             ]).
+
 -define(OFFNET_REQ, kz_json:from_list([{<<"Custom-SIP-Headers">>
                                        ,kz_json:from_list([{<<"Diversions">>
                                                            ,[<<"sip:14158867900@1.2.3.4;counter=1">>]
@@ -169,9 +178,9 @@ replace_value_test_() ->
 formatter_validation_test_() ->
     {'ok', Schema} = kz_json_schema:fload(<<"formatters">>),
 
-    [?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?FROM))
-    ,?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?DIVERSION))
-    ,?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?CALLER_ID_NAME))
+    [?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?FROM, ?SCHEMA_TEST_OPTIONS))
+    ,?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?DIVERSION, ?SCHEMA_TEST_OPTIONS))
+    ,?_assertMatch({'ok', _}, kz_json_schema:validate(Schema, ?CALLER_ID_NAME, ?SCHEMA_TEST_OPTIONS))
     ].
 
 formatters_test_() ->

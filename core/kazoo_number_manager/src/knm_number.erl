@@ -36,7 +36,7 @@
 -export([attempt/2
         ,ensure_can_create/1
         ,ensure_can_load_to_create/1
-        ,state_for_create/1, allowed_creation_states/1
+        ,state_for_create/1, allowed_creation_states/1, allowed_creation_states/2
         ]).
 
 -ifdef(TEST).
@@ -144,7 +144,7 @@ create(Num, Options) ->
 
 -spec state_for_create(knm_number_options:options()) -> ne_binary().
 state_for_create(Options) ->
-    case {knm_number_options:state(Options, ?NUMBER_STATE_RESERVED)
+    case {knm_number_options:state(Options, ?NUMBER_STATE_IN_SERVICE)
          ,knm_number_options:ported_in(Options)
          ,knm_number_options:module_name(Options)
          }
@@ -154,41 +154,36 @@ state_for_create(Options) ->
         {_, _, ?CARRIER_MDN} -> ?NUMBER_STATE_IN_SERVICE;
         {State, _, _} ->
             AuthBy = knm_number_options:auth_by(Options),
-            true = lists:member(State, allowed_creation_states(AuthBy)),
+            lists:member(State, allowed_creation_states(Options, AuthBy))
+                orelse knm_errors:unauthorized(),
             ?LOG_DEBUG("allowing picking state ~s for ~s", [State, AuthBy]),
             State
     end.
 
 -spec allowed_creation_states(api_ne_binary()) -> ne_binaries().
-allowed_creation_states(undefined) -> [];
 allowed_creation_states(AuthBy) ->
-    %% Note: AuthBy can be ?KNM_DEFAULT_AUTH_BY
-    case knm_phone_number:is_admin(AuthBy) of
-        true ->
+    allowed_creation_states([], AuthBy).
+
+-spec allowed_creation_states(knm_number_options:options(), api_ne_binary()) -> ne_binaries().
+allowed_creation_states(_, undefined) -> [];
+allowed_creation_states(Options, AuthBy) ->
+    case {knm_phone_number:is_admin(AuthBy)
+         ,allow_number_additions(Options, AuthBy)
+         }
+    of
+        {true, _} ->
             [?NUMBER_STATE_AGING
             ,?NUMBER_STATE_AVAILABLE
             ,?NUMBER_STATE_IN_SERVICE
             ,?NUMBER_STATE_PORT_IN
             ,?NUMBER_STATE_RESERVED
             ];
-        false ->
-            case is_reseller(AuthBy) of
-                false -> [?NUMBER_STATE_RESERVED];
-                true ->
-                    [?NUMBER_STATE_RESERVED
-                    ,?NUMBER_STATE_IN_SERVICE
-                    ]
-            end
+        {false, true} ->
+            [?NUMBER_STATE_IN_SERVICE
+            ,?NUMBER_STATE_RESERVED
+            ];
+        _ -> []
     end.
-
--ifdef(TEST).
-is_reseller(?MASTER_ACCOUNT_ID) -> true;
-is_reseller(?RESELLER_ACCOUNT_ID) -> true;
-is_reseller(?MATCH_ACCOUNT_RAW(_)) -> false.
--else.
-is_reseller(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    kz_services:is_reseller(AccountId).
--endif.
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
                                (knm_numbers:collection()) -> knm_numbers:collection().
@@ -253,16 +248,18 @@ ensure_can_create(Num, Options) ->
         kz_account:fetch(AccountId)).
 -endif.
 
+-spec allow_number_additions(knm_number_options:options(), ne_binary()) -> boolean().
+allow_number_additions(_Options, _AccountId) ->
+    {'ok', JObj} = ?LOAD_ACCOUNT(_Options, _AccountId),
+    kz_account:allow_number_additions(JObj).
+
 ensure_account_can_create(_, ?KNM_DEFAULT_AUTH_BY) ->
     lager:info("bypassing auth"),
     'true';
 ensure_account_can_create(Options, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     knm_number_options:ported_in(Options)
         orelse knm_number_options:state(Options) =:= ?NUMBER_STATE_PORT_IN
-        orelse begin
-                   {'ok', JObj} = ?LOAD_ACCOUNT(Options, AccountId),
-                   kz_account:allow_number_additions(JObj)
-               end
+        orelse allow_number_additions(Options, AccountId)
         orelse knm_phone_number:is_admin(AccountId)
         orelse knm_errors:unauthorized();
 ensure_account_can_create(_, _NotAnAccountId) ->
