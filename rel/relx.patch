@@ -34,3 +34,21 @@
  # Extract the target node name from node.args
  NAME_ARG=$(egrep '^-s?name' "$VMARGS_PATH" || true)
  # Perform replacement of variables in ${NAME_ARG}
+@@ -515,7 +524,7 @@
+                 else
+                   BOOTFILE="$REL_DIR/start"
+                 fi
+-                FOREGROUNDOPTIONS="-noshell -noinput +Bd"
++                FOREGROUNDOPTIONS="-noshell -noinput"
+                 ;;
+             console_clean)
+                 __code_paths=$(relx_get_code_paths)
+@@ -552,7 +561,7 @@
+
+         # Log the startup
+         echo "$RELEASE_ROOT_DIR"
+-        logger -t "$REL_NAME[$$]" "Starting up"
++        logger -t "$REL_NAME[$$]" "Starting up $NAME ($REL_NAME-$REL_VSN - Erts $ERTS_VSN)"
+
+         # Start the VM
+         exec "$@" -- ${1+$ARGS}
