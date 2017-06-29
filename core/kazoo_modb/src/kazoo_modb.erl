@@ -335,9 +335,8 @@ maybe_create_destination_db(FromDb, FromId, ToDb, Options) ->
     ShouldCreate = props:get_is_true('create_db', Options, 'true'),
     lager:info("destination modb ~p not found, maybe creating...", [ToDb]),
     case ShouldCreate
-        andalso (kz_datamgr:db_exists(FromDb)
-                 andalso kz_datamgr:open_doc(FromDb, FromId)
-                )
+        andalso kz_datamgr:db_exists(FromDb)
+        andalso kz_datamgr:open_doc(FromDb, FromId)
     of
         'false' when ShouldCreate ->
             lager:info("source modb ~s does not exist, not creating destination modb ~s", [FromDb, ToDb]),

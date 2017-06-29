@@ -43,15 +43,6 @@ migrate_account(Account) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec get_account_id(ne_binary()) -> ne_binary().
-get_account_id(?MATCH_ACCOUNT_RAW(AccountId)) -> AccountId;
-get_account_id(?MATCH_ACCOUNT_UNENCODED(A, B, Rest)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
-get_account_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
-get_account_id(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _)) -> AccountId;
-get_account_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
-get_account_id(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest).
-
 -spec get_view_count(ne_binary(), ne_binary()) -> non_neg_integer().
 get_view_count(AccountId, View) ->
     get_view_count(AccountId, View, 2).
@@ -79,12 +70,20 @@ next_skip(Remaining, Skip, ViewOptions) ->
         false -> props:set_value('skip', Skip, ViewOptions)
     end.
 
+-spec maps_update_with(ne_binary(), fun((any()) -> any()), any(), map()) -> map().
+maps_update_with(Key, UpdateFun, Init, Map) ->
+    try maps:get(Key, Map) of
+        OldValue -> maps:put(Key, UpdateFun(OldValue), Map)
+    catch
+        error:{badkey, _} -> maps:put(Key, Init, Map)
+    end.
+
 %%%===================================================================
 %%% Voicemail Migration
 %%%===================================================================
 -spec migrate_voicemails(ne_binary()) -> 'ok'.
 migrate_voicemails(Account) ->
-    AccountId = get_account_id(Account),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     Total = get_view_count(AccountId, <<"vmboxes/legacy_msg_by_timestamp">>),
     migrate_voicemails(AccountId, Total).
 
@@ -164,7 +163,7 @@ move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
     case kazoo_modb:move_doc(AccountDb, FromId, ToDb, ToId, Opts) of
         {'ok', _} ->
             io:format("done~n"),
-            Map#{result := maps:update_with(BoxId
+            Map#{result := maps_update_with(BoxId
                                            ,fun(Old) -> sets:add_element(FromId, Old) end
                                            ,sets:from_list([FromId])
                                            ,Result
@@ -174,7 +173,7 @@ move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
                 };
         {'error', 'conflict'} ->
             io:format("done~n"),
-            Map#{result := maps:update_with(BoxId
+            Map#{result := maps_update_with(BoxId
                                            ,fun(Old) -> sets:add_element(FromId, Old) end
                                            ,sets:from_list([FromId])
                                            ,Result
@@ -257,7 +256,7 @@ update_message_array(BoxJObj, ResultSet) ->
 
 -spec migrate_cdrs(ne_binary()) -> 'ok'.
 migrate_cdrs(Account) ->
-    AccountId = get_account_id(Account),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     Total = get_view_count(AccountId, <<"cdrs/crossbar_listing">>),
     migrate_cdrs(AccountId, Total).
 
@@ -338,7 +337,7 @@ map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
                     ],
     NewDoc = lists:foldl(fun(F, J) -> F(J) end, Doc, TransformFuns),
 
-    NewMap = maps:update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [NewDoc], Map),
+    NewMap = maps_update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [NewDoc], Map),
     map_tranform_cdrs(AccountId, VRs, NewMap).
 
 -spec do_move_cdrs(ne_binary(), kz_json:object(), ne_binaries()) -> ne_binaries().
