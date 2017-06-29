@@ -336,7 +336,7 @@ maybe_bind(Node, Bindings, Attempts) ->
             maybe_bind(Node, Bindings, Attempts+1)
     end.
 
--spec process_stream(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+-spec process_stream(ne_binary(), api_binary(), kzd_freeswitch:data(), atom()) -> any().
 process_stream(<<"CHANNEL_CREATE">> = EventName, UUID, EventProps, Node) ->
     Props = ecallmgr_fs_loopback:filter(Node, UUID, EventProps, 'true'),
     process_event(EventName, UUID, Props, Node),
@@ -381,26 +381,22 @@ process_stream(<<"CHANNEL_HOLD">> = EventName, UUID, Props, Node) ->
 process_stream(<<"CHANNEL_UNHOLD">> = EventName, UUID, Props, Node) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]});
 process_stream(EventName, UUID, EventProps, Node) ->
-    kz_util:put_callid(UUID),
     maybe_send_event(EventName, UUID, EventProps, Node),
     process_event(EventName, UUID, EventProps, Node).
 
--spec process_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+-spec process_event(ne_binary(), api_binary(), kzd_freeswitch:data(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
-    kz_util:put_callid(UUID),
     _ = ecallmgr_fs_channel:new(Props, Node),
     lager:debug("channel added to cache"),
     _ = ecallmgr_fs_channel:maybe_update_interaction_id(Props, Node),
     maybe_start_event_listener(Node, UUID);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-    kz_util:put_callid(UUID),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
               ,?CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Props)
               );
 process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-    kz_util:put_callid(UUID),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
               ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
               );
@@ -415,10 +411,9 @@ process_event(<<"loopback::bowout">>, _UUID, Props, Node) ->
     gproc:send({'p', 'l', ?LOOPBACK_BOWOUT_REG(ResigningUUID)}, ?LOOPBACK_BOWOUT_MSG(Node, Props));
 process_event(_, _, _, _) -> 'ok'.
 
--spec maybe_send_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+-spec maybe_send_event(ne_binary(), api_binary(), kzd_freeswitch:data(), atom()) -> any().
 maybe_send_event(<<"HEARTBEAT">>, _UUID, _Props, _Node) -> 'ok';
 maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
-    kz_util:put_callid(UUID),
     BridgeID = props:get_value(<<"variable_bridge_uuid">>, Props),
     DialPlan = props:get_value(<<"Caller-Dialplan">>, Props),
     Direction = props:get_value(?GET_CCV(<<"Application-Logical-Direction">>), Props),
@@ -426,24 +421,24 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     Destination = props:get_value(<<"Caller-Destination-Number">>, Props),
 
     _ = case {BridgeID, Direction, DialPlan, App, Destination} of
-        {'undefined', _, _, _, _} -> 'ok';
-        {BridgeID, <<"outbound">>, <<"inline">>, <<"intercept">>, 'undefined'} ->
-            ALeg = props:get_value(<<"Bridge-A-Unique-ID">>, Props),
-            BLeg = props:get_value(<<"Bridge-B-Unique-ID">>, Props),
-            lager:debug("channel bridge intercept: UUID: ~s, A : ~s, B : ~s", [UUID, ALeg, BLeg]),
-            case ecallmgr_fs_channel:channel_data(Node, BLeg) of
-                {'ok', CData} ->
-                    Data = props:filter_undefined(
-                             [{<<"Event-Subclass">>, props:get_value(<<"Event-Subclass">>, Props)}
-                             ,{<<"Event-Name">>, props:get_value(<<"Event-Name">>, Props)}
-                             ]) ++ CData,
-                    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BLeg | Data]}),
-                    gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, BLeg)}, {'event', [BLeg | Data]});
-                _ ->
-                    lager:debug("channel bridge intercept: failed to get channel data for ~s", [BLeg])
-            end;
-        _Else -> 'ok'
-    end,
+            {'undefined', _, _, _, _} -> 'ok';
+            {BridgeID, <<"outbound">>, <<"inline">>, <<"intercept">>, 'undefined'} ->
+                ALeg = props:get_value(<<"Bridge-A-Unique-ID">>, Props),
+                BLeg = props:get_value(<<"Bridge-B-Unique-ID">>, Props),
+                lager:debug("channel bridge intercept: UUID: ~s, A : ~s, B : ~s", [UUID, ALeg, BLeg]),
+                case ecallmgr_fs_channel:channel_data(Node, BLeg) of
+                    {'ok', CData} ->
+                        Data = props:filter_undefined(
+                                 [{<<"Event-Subclass">>, props:get_value(<<"Event-Subclass">>, Props)}
+                                 ,{<<"Event-Name">>, props:get_value(<<"Event-Name">>, Props)}
+                                 ]) ++ CData,
+                        gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BLeg | Data]}),
+                        gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, BLeg)}, {'event', [BLeg | Data]});
+                    _ ->
+                        lager:debug("channel bridge intercept: failed to get channel data for ~s", [BLeg])
+                end;
+            _Else -> 'ok'
+        end,
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
     maybe_send_call_event(UUID, EventName, Props, Node);
 maybe_send_event(<<"loopback::bowout">> = EventName, _UUID, Props, Node) ->
@@ -455,7 +450,6 @@ maybe_send_event(<<"loopback::bowout">> = EventName, _UUID, Props, Node) ->
 
     send_event(EventName, ResigningUUID, Props, Node);
 maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
-    kz_util:put_callid(UUID),
     case ecallmgr_fs_channel:node(UUID) of
         {'ok', OtherNode} when Node =/= OtherNode  ->
             lager:info("dropping channel destroy from ~s (expected node: ~s)", [Node, OtherNode]);
@@ -464,7 +458,6 @@ maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
             maybe_send_call_event(UUID, EventName, Props, Node)
     end;
 maybe_send_event(EventName, UUID, Props, Node) ->
-    kz_util:put_callid(UUID),
     case kz_term:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         'true' -> 'ok';
         'false' ->
