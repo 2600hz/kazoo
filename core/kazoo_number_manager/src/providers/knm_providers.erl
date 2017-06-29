@@ -114,7 +114,7 @@ e911_caller_name(Number, 'undefined') ->
     case kz_account:fetch(AccountId) of
         {'ok', JObj} -> kz_account:name(JObj, ?E911_NAME_DEFAULT);
         {'error', _Error} ->
-            lager:error('error opening account doc ~p', [AccountId]),
+            lager:error("error opening account doc ~p", [AccountId]),
             ?E911_NAME_DEFAULT
     end.
 -endif.

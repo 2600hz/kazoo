@@ -24,16 +24,16 @@
 handle(_Data, Call) ->
     case kapps_call:owner_id(Call) of
         'undefined' ->
-            lager:warning('call has no owner_id'),
+            lager:warning("call has no owner_id"),
             kapps_call_command:b_prompt(<<"cf-move-no_owner">>, Call);
         OwnerId ->
             Channels = get_channels(OwnerId, Call),
             case filter_channels(Channels, Call) of
                 {'error', 'no_channel'} ->
-                    lager:warning('cannot move call no channel up'),
+                    lager:warning("cannot move call no channel up"),
                     kapps_call_command:b_prompt(<<"cf-move-no_channel">>, Call);
                 {'error', 'too_many_channels'} ->
-                    lager:warning('cannot decide which channel to move to, too many channels'),
+                    lager:warning("cannot decide which channel to move to, too many channels"),
                     kapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call);
                 {'ok', Channel} ->
                     OtherLegId = kz_json:get_ne_binary_value(<<"other_leg">>, Channel),
