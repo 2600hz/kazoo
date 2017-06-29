@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz
+%%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%% FreeSWITCH proplists
 %%% @end
@@ -14,6 +14,7 @@
         ,callee_id_number/1, callee_id_number/2
         ,dialed_number/1
         ,call_id/1
+        ,origination_call_id/1
         ,other_leg_call_id/1
         ,call_direction/1, original_call_direction/1
         ,resource_type/1, resource_type/2
@@ -43,11 +44,14 @@
         ,application_name/1, raw_application_name/1
         ,event_name/1
 
-        ,ccv/2, ccv/3
+        ,ccvs/1, ccv/2, ccv/3
 
         ,is_loopback/1, loopback_other_leg/1, loopback_leg_name/1
 
         ,media_recorder/1
+
+        ,presence_id/1, presence_direction/1
+        ,from_tag/1, to_tag/1
         ]).
 
 -include("kz_documents.hrl").
@@ -177,7 +181,7 @@ is_consuming_global_resource(Props) ->
     is_consuming_global_resource(Props, 'undefined').
 
 is_consuming_global_resource(Props, Default) ->
-    kz_util:is_true(ccv(Props, <<"Global-Resource">>, Default)).
+    kz_term:is_true(ccv(Props, <<"Global-Resource">>, Default)).
 
 -spec resource_id(data()) -> api_binary().
 resource_id(Props) ->
@@ -230,7 +234,7 @@ ccv(Props, Key) ->
 
 -spec ccv(data(), ne_binary(), Default) -> ne_binary() | Default.
 ccv(Props, Key, Default) ->
-    props:get_value(?CCV(Key), Props, Default).
+    props:get_value(Key, ccvs(Props), Default).
 
 -spec hangup_code(data()) -> api_binary().
 hangup_code(Props) ->
@@ -325,3 +329,88 @@ loopback_other_leg(Props) ->
 
 -spec media_recorder(data()) -> api_binary().
 media_recorder(Props) -> ccv(Props, <<"Media-Recorder">>).
+
+-spec presence_id(data()) -> api_binary().
+presence_id(Props) ->
+    props:get_first_defined([<<"Channel-Presence-ID">>
+                            ,<<"variable_presence_id">>
+                            ], Props).
+
+-spec presence_direction(data()) -> api_binary().
+presence_direction(Props) ->
+    props:get_value(<<"Presence-Call-Direction">>, Props).
+
+-spec channel_var_map({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary() | ne_binaries()}.
+channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
+    {Key, binary:split(Serialized, <<"|:">>, ['global'])};
+channel_var_map({Key, Other}) -> {Key, Other}.
+
+%% Extract custom channel variables to include in the event
+-spec ccvs(kz_proplist()) -> kz_proplist().
+-spec custom_channel_vars(kz_proplist(), kz_proplist()) -> kz_proplist().
+-spec custom_channel_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
+ccvs(Props) ->
+    lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
+
+custom_channel_vars(Props, Initial) ->
+    CCVs = lists:foldl(fun custom_channel_vars_fold/2, Initial, Props),
+    maybe_update_referred_ccv(Props, channel_vars_sort(CCVs)).
+
+-spec channel_vars_sort(kz_proplist()) -> kz_proplist().
+channel_vars_sort(ChannelVars) ->
+    lists:usort(fun channel_var_sort/2, ChannelVars).
+
+-spec channel_var_sort(tuple(), tuple()) -> boolean().
+channel_var_sort({A, _}, {B, _}) -> A =< B.
+
+custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    [{Key, V} | Acc];
+custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    [{Key, V} | Acc];
+custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    case props:is_defined(Key, Acc) of
+        'true' -> Acc;
+        'false' -> [{Key, V} | Acc]
+    end;
+custom_channel_vars_fold({<<"X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    case props:is_defined(Key, Acc) of
+        'true' -> Acc;
+        'false' -> [{Key, V} | Acc]
+    end;
+custom_channel_vars_fold(_, Acc) -> Acc.
+
+-spec maybe_update_referred_ccv(kz_proplist(), kz_proplist()) -> kz_proplist().
+maybe_update_referred_ccv(Props, CCVs) ->
+    ReferredBy = props:get_value(<<"variable_sip_h_Referred-By">>, Props),
+    ReferTo = props:get_value(<<"variable_sip_refer_to">>, Props),
+    update_referred_by_ccv(ReferredBy
+                          ,update_referred_to_ccv(ReferTo, CCVs)
+                          ).
+
+-spec update_referred_by_ccv(api_binary(), kz_proplist()) -> kz_proplist().
+update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
+update_referred_by_ccv(ReferredBy, CCVs) ->
+    props:set_value(<<"Referred-By">>
+                   ,kz_http_util:urldecode(ReferredBy)
+                   ,CCVs
+                   ).
+
+-spec update_referred_to_ccv(api_binary(), kz_proplist()) -> kz_proplist().
+update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
+update_referred_to_ccv(ReferredTo, CCVs) ->
+    props:set_value(<<"Referred-To">>
+                   ,kz_http_util:urldecode(ReferredTo)
+                   ,CCVs
+                   ).
+
+-spec from_tag(data()) -> api_binary().
+from_tag(Props) ->
+    props:get_value(<<"variable_sip_from_tag">>, Props).
+
+-spec to_tag(data()) -> api_binary().
+to_tag(Props) ->
+    props:get_value(<<"variable_sip_to_tag">>, Props).
+
+-spec origination_call_id(data()) -> api_binary().
+origination_call_id(Props) ->
+    props:get_value(<<"variable_sip_origination_call_id">>, Props).
