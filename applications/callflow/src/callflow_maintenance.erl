@@ -321,7 +321,7 @@ all_accounts_set_classifier(Action, Classifier) ->
 get_account_name_by_db(AccountDb) ->
     case kz_account:fetch(AccountDb) of
         {'error', _Error} ->
-            lager:error('error opening account doc ~p', [AccountDb]),
+            lager:error("error opening account doc ~p", [AccountDb]),
             'undefined';
         {'ok', JObj} -> kz_account:name(JObj)
     end.
