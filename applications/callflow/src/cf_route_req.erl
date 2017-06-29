@@ -75,9 +75,10 @@ maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
 -spec maybe_reply_to_req(kz_json:object(), kz_proplist()
                         ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
-    lager:info("callflow ~s in ~s satisfies request", [kz_doc:id(Flow)
-                                                      ,kapps_call:account_id(Call)
-                                                      ]),
+    lager:info("callflow ~s in ~s satisfies request for ~s", [kz_doc:id(Flow)
+                                                             ,kapps_call:account_id(Call)
+                                                             ,kapps_call:request_user(Call)
+                                                             ]),
     case has_tokens(Call, Flow) of
         'false' -> 'ok';
         'true' ->
@@ -252,6 +253,7 @@ pre_park_action(Call) ->
                          kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call) ->
     Props = [{'cf_flow_id', kz_doc:id(Flow)}
+            ,{'cf_flow_name', kz_json:get_ne_binary_value(<<"name">>, Flow, kapps_call:request_user(Call))}
             ,{'cf_flow', kz_json:get_value(<<"flow">>, Flow)}
             ,{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
             ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
