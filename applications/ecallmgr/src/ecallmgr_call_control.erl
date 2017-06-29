@@ -73,7 +73,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(KEEP_ALIVE, 2 * ?MILLISECONDS_IN_MINUTE). %% after hangup, keep alive for 2 minutes
+-define(KEEP_ALIVE, 2 * ?MILLISECONDS_IN_SECOND). %% after hangup, keep alive for 2 minutes
 
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
 
