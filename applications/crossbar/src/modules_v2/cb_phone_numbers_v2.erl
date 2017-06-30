@@ -92,6 +92,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.validate.phone_numbers">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.phone_numbers">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete'),
     ok.
 
@@ -288,7 +289,6 @@ validate(Context, ?LOCALITY) ->
 validate(Context, ?CHECK) ->
     validate_collection_request(Context);
 validate(Context, Number) ->
-    lager:debug(">>>"),
     validate_number(Context, Number, cb_context:req_verb(Context)).
 
 -spec validate_number(cb_context:context(), path_token(), http_method()) -> cb_context:context().
@@ -297,7 +297,6 @@ validate_number(Context, Number, ?HTTP_GET) ->
 validate_number(Context, _Number, ?HTTP_POST) ->
     validate_request(Context);
 validate_number(Context, _Number, ?HTTP_PATCH) ->
-    lager:debug(">>>"),
     validate_request(Context);
 validate_number(Context, _Number, ?HTTP_PUT) ->
     validate_request(Context);
@@ -440,12 +439,10 @@ put(Context, Number, ?PORT) ->
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, ?COLLECTION) ->
-    lager:debug(">>>"),
     Results = collection_process(Context, ?HTTP_PATCH),
     CB = fun() -> ?MODULE:patch(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 patch(Context, Number) ->
-    lager:debug(">>>"),
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ,{'assign_to', cb_context:account_id(Context)}
               ],
