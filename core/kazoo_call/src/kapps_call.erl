@@ -893,7 +893,7 @@ inception(#kapps_call{inception=Inception}) ->
 set_resource_type('undefined', #kapps_call{}=Call) ->
     Call#kapps_call{resource_type='undefined'};
 set_resource_type(ResourceType, #kapps_call{}=Call) ->
-    set_custom_channel_var(<<"Resource-Type">>, ResourceType, Call#kapps_call{resource_type=ResourceType}).
+    insert_custom_channel_var(<<"Resource-Type">>, ResourceType, Call#kapps_call{resource_type=ResourceType}).
 
 -spec resource_type(call()) -> api_ne_binary().
 resource_type(#kapps_call{resource_type=ResourceType}) ->

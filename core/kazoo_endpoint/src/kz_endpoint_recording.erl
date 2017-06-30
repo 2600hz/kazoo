@@ -262,6 +262,7 @@ store_recording_meta(#{media := {_, MediaName}
                       ,call_id := CallId
                       ,event := JObj
                       ,account_id := AccountId
+                      ,origin := Origin
                       }) ->
     Ext = filename:extension(MediaName),
     Timestamp = kz_call_event:timestamp(JObj),
@@ -292,6 +293,8 @@ store_recording_meta(#{media := {_, MediaName}
                      ,{<<"cdr_id">>, CdrId}
                      ,{<<"interaction_id">>, InteractionId}
                      ,{<<"_id">>, DocId}
+                     ,{<<"origin">>, Origin}
+                     ,{<<"custom_channel_vars">>, kz_call_event:custom_channel_vars(JObj)}
                      ]
                     ),
 
@@ -539,5 +542,6 @@ maybe_save_recording(_Pid, EndpointId, JObj) ->
              ,account_id => AccountId
              ,call_id => CallId
              ,event => JObj
+             ,origin => <<"inbound from ", Inception/binary, " to endpoint">>
              },
     save_recording(Store).
