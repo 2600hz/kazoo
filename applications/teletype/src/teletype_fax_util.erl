@@ -62,14 +62,8 @@ convert(FromFormat0, ToFormat0, Bin) ->
     lager:debug("running conversion command: ~s", [Cmd]),
     Response = case os:cmd(Cmd) of
                    "success" ->
-                       case file:read_file(ToFile) of
-                           {'ok', PDF} ->
-                               lager:debug("convert file ~s to ~s succeeded", [FromFile, ToFile]),
-                               {'ok', PDF};
-                           {'error', _R}=E ->
-                               lager:debug("unable to read converted file ~s : ~p", [ToFile, _R]),
-                               E
-                       end;
+                       lager:debug("convert file ~s to ~s succeeded", [FromFile, ToFile]),
+                       read_file(ToFile);
                    Else ->
                        lager:debug("could not convert file ~s : ~p", [FromFile, Else]),
                        {'error', Else}
@@ -77,6 +71,28 @@ convert(FromFormat0, ToFormat0, Bin) ->
     _ = kz_util:delete_file(FromFile),
     _ = kz_util:delete_file(ToFile),
     Response.
+
+-spec read_file(ne_binary()) -> {ok, binary()} |
+                                {error, atom() | string()}.
+-spec read_file(ne_binary(), integer()) -> {ok, binary()} |
+                                           {error, atom() | string()}.
+read_file(File) ->
+    read_file(File, 0).
+read_file(File, Counter) when Counter < 3 ->
+    case file:read_file(File) of
+        {'ok', PDF} ->
+            lager:debug("reading file ~s succeeded", [File]),
+            {'ok', PDF};
+        {'error', 'enoent'} ->
+            timer:sleep(1 * ?MILLISECONDS_IN_SECOND),
+            read_file(File, Counter + 1);
+        {'error', _R}=E ->
+            lager:error("unable to read converted file ~s : ~p", [File, _R]),
+            E
+    end;
+read_file(File, _Counter) ->
+    lager:error("unable to read converted file ~s", [File]),
+    {'error', 'enoent'}.
 
 valid_format(<<"tiff">>) -> <<"tif">>;
 valid_format(Format) -> Format.
