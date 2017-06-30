@@ -1435,7 +1435,7 @@ set_doc(PN, JObj0) ->
 -spec update_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 update_doc(PN=#knm_phone_number{doc = Doc}, JObj0) ->
     true = kz_json:is_json_object(JObj0),
-    JObj1 = kz_json:merge(kz_doc:public_fields(JObj0), Doc),
+    JObj1 = kz_json:merge(Doc, kz_doc:public_fields(JObj0)),
     JObj = doc_from_public_fields(JObj1),
     case kz_json:are_equal(JObj, PN#knm_phone_number.doc) of
         true -> PN;
