@@ -220,6 +220,7 @@
                              ,timestamp=os:timestamp() :: kz_now() | '_'
                              ,zone='local' :: atom() | '$1' | '_'
                              ,manager=self() :: pid() | '_'
+                             ,started = os:timestamp() :: kz_now() | '$2' | '_'
                              ,tags = [] :: list() | '_'
                              ,hidden = 'false' :: boolean() | '$3' | '_'
                              }).

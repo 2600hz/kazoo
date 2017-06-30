@@ -201,14 +201,15 @@ primary_broker() ->
                                   ,zone='local'
                                   ,hidden='false'
                                   ,broker='$1'
+                                  ,started='$2'
                                   ,_='_'
                                   },
-    case lists:sort([Broker
-                     || [Broker] <- ets:match(?TAB, Pattern)
-                    ])
+    case lists:keysort(2, [{Broker, Started}
+                           || [Broker, Started] <- ets:match(?TAB, Pattern)
+                          ])
     of
         [] -> 'undefined';
-        [Broker|_] -> Broker
+        [{Broker, _}|_] -> Broker
     end.
 
 -spec federated_brokers() -> ne_binaries().
