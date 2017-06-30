@@ -357,13 +357,12 @@ maybe_update_scheduled_date(Context, PortId) ->
             TZ = kz_json:get_ne_binary_value([Key, <<"timezone">>], ReqData),
             Datetime = kz_json:get_ne_binary_value([Key, <<"date_time">>], ReqData),
             Scheduled = date_as_configured_timezone(Datetime, TZ),
-            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, TZ, Scheduled]),
+            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, Scheduled, TZ]),
             Values = [{Key, Scheduled}
                      ,{<<"schedule_at">>, DateJObj}
                      ],
             NewReqData = kz_json:set_values(Values, ReqData),
-            NewContext = cb_context:set_req_data(Context, NewReqData),
-            patch_then_notify(NewContext, PortId, ?PORT_SCHEDULED)
+            maybe_update_scheduled_date(cb_context:set_req_data(Context, NewReqData), PortId)
     end.
 
 -spec date_as_configured_timezone(ne_binary(), ne_binary()) -> gregorian_seconds().
