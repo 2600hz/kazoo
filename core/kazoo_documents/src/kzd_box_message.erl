@@ -63,13 +63,6 @@
 -define(PVT_TYPE, <<"mailbox_message">>).
 -define(PVT_LEGACY_TYPE, <<"private_media">>).
 
--define(MSG_ID(Year, Month, Id),
-        <<(kz_term:to_binary(Year))/binary
-          ,(kz_time:pad_month(Month))/binary
-          ,"-"
-          ,(Id)/binary
-        >>).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Generate a mailbox message doc with the given properties
@@ -105,7 +98,7 @@ new(AccountId, Props) ->
     MediaId = props:get_value(<<"Media-ID">>, Props, kz_binary:rand_hex(16)),
 
     Db = kazoo_modb:get_modb(AccountId, Year, Month),
-    MsgId = ?MSG_ID(Year, Month, MediaId),
+    MsgId = kazoo_modb_util:modb_id(Year, Month, MediaId),
 
     Name = create_message_name(props:get_value(<<"Box-Num">>, Props)
                               ,props:get_value(<<"Timezone">>, Props)

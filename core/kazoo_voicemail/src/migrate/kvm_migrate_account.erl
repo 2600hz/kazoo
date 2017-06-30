@@ -249,7 +249,7 @@ update_message_array(BoxJObj, MODbFailed, Failed) ->
     Fun = fun(Msg, Acc) ->
                   Timestamp = kz_json:get_integer_value(<<"timestamp">>, Msg),
                   {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-                  MsgId = ?MODB_MSG_ID(Year, Month, kz_json:get_value(<<"media_id">>, Msg)),
+                  MsgId = kazoo_modb_util:modb_id(Year, Month, kz_json:get_value(<<"media_id">>, Msg)),
                   M = dict:is_key(MsgId, MODbFailed),
                   F = dict:is_key(MsgId, Failed),
 

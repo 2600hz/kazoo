@@ -29,6 +29,7 @@
 -type view_option() :: {'year', kz_year()} |
                        {'month', kz_month()} |
                        {'create_db', boolean()} |
+                       {'allow_old_modb_creation', boolean()} |
                        kz_datamgr:view_option().
 -type view_options() :: [view_option()].
 
@@ -77,6 +78,7 @@ strip_modb_options(ViewOptions) ->
 is_modb_option({'year', _}) -> 'true';
 is_modb_option({'month', _}) -> 'true';
 is_modb_option({'create_db', _}) -> 'true';
+is_modb_option({'allow_old_modb_creation', _}) -> 'true';
 is_modb_option({'ensure_saved', _}) -> 'true';
 is_modb_option({'max_retries', _}) -> 'true';
 is_modb_option(_) -> 'false'.
@@ -88,7 +90,7 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
     ShouldCreate = props:get_is_true('create_db', ViewOptions, 'true'),
     lager:info("modb ~p not found, maybe creating...", [AccountMODb]),
     case ShouldCreate
-        andalso maybe_create_current_modb(AccountMODb)
+        andalso maybe_create_current_modb(AccountMODb, ViewOptions)
     of
         'true' -> get_results(Account, View, ViewOptions, 'not_found', Retry-1);
         'too_old' ->
@@ -207,7 +209,7 @@ couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
             ShouldCreate = props:get_is_true('create_db', Options, 'true'),
             lager:info("modb ~p not found, maybe creating...", [AccountMODb]),
             case ShouldCreate
-                andalso maybe_create_current_modb(AccountMODb)
+                andalso maybe_create_current_modb(AccountMODb, Options)
             of
                 'true' ->
                     couch_save(AccountMODb, Doc, Options, 'not_found', Retry-1);
@@ -232,6 +234,10 @@ save_fun('true') -> fun kz_datamgr:ensure_saved/3.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Move a document from source to destination with attachments,
+%% optionally applies a transform function on the document
+%% Note: Caller is responsible to format both source and destination
+%% databases!
 %% @end
 %%--------------------------------------------------------------------
 -spec move_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid()) ->
@@ -250,16 +256,18 @@ move_doc(FromDb, FromId, ToDb, ToId, Options) ->
 -spec move_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid(), kz_proplist(), atom(), integer()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
+move_doc(FromDb, {_, FromId}, ToDb, ToId, Options, Reason, Retry) when Retry =< 0 ->
+    move_doc(FromDb, FromId, ToDb, ToId, Options, Reason, Retry);
 move_doc(_FromDb, _FromId, _ToDb, _ToId, _Options, Reason, Retry) when Retry =< 0 ->
     lager:error("max retries to move doc from ~s/~s to ~s/~s : ~p"
-               ,[_FromDb, _FromId, _ToDb, _ToId]
+               ,[_FromDb, _FromId, _ToDb, _ToId, Reason]
                ),
     {'error', Reason};
 move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
-    case kz_datamgr:move_doc(FromDb, {<<"fax">>, FromId}, ToDb, ToId, strip_modb_options(Options)) of
+    case kz_datamgr:move_doc(FromDb, FromId, ToDb, ToId, strip_modb_options(Options)) of
         {'ok', _}=OK -> OK;
         {'error', 'not_found'} ->
-            case maybe_create_destination_db(FromDb, ToDb, Options) of
+            case maybe_create_destination_db(FromDb, FromId, ToDb, Options) of
                 'true' -> move_doc(FromDb, FromId, ToDb, ToId, Options, 'not_found', Retry-1);
                 'source_not_exists' -> {'error', 'not_found'};
                 'too_old' -> {'error', 'not_found'};
@@ -275,6 +283,10 @@ move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Copy a document from source to destination with attachments,
+%% optionally applies a transform function on the document
+%% Note: Caller is responsible to format both source and destination
+%% databases!
 %% @end
 %%--------------------------------------------------------------------
 -spec copy_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid()) ->
@@ -299,10 +311,10 @@ copy_doc(_FromDb, _FromId, _ToDb, _ToId, _Options, Reason, Retry) when Retry =< 
                ),
     {'error', Reason};
 copy_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
-    case kz_datamgr:copy_doc(FromDb, {<<"fax">>, FromId}, ToDb, ToId, strip_modb_options(Options)) of
+    case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, strip_modb_options(Options)) of
         {'ok', _}=OK -> OK;
         {'error', 'not_found'} ->
-            case maybe_create_destination_db(FromDb, ToDb, Options) of
+            case maybe_create_destination_db(FromDb, FromId, ToDb, Options) of
                 'true' -> copy_doc(FromDb, FromId, ToDb, ToId, Options, 'not_found', Retry-1);
                 'source_not_exists' -> {'error', 'not_found'};
                 'too_old' -> {'error', 'not_found'};
@@ -315,15 +327,16 @@ copy_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
         {'error', _}=Error -> Error
     end.
 
--spec maybe_create_destination_db(ne_binary(), ne_binary(), kz_proplist()) ->
+-spec maybe_create_destination_db(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
                                          'source_not_exists' |
                                          'too_old'|
                                          boolean().
-maybe_create_destination_db(FromDb, ToDb, Options) ->
+maybe_create_destination_db(FromDb, FromId, ToDb, Options) ->
     ShouldCreate = props:get_is_true('create_db', Options, 'true'),
     lager:info("destination modb ~p not found, maybe creating...", [ToDb]),
     case ShouldCreate
         andalso kz_datamgr:db_exists(FromDb)
+        andalso kz_datamgr:open_doc(FromDb, FromId)
     of
         'false' when ShouldCreate ->
             lager:info("source modb ~s does not exist, not creating destination modb ~s", [FromDb, ToDb]),
@@ -331,8 +344,11 @@ maybe_create_destination_db(FromDb, ToDb, Options) ->
         'false' ->
             lager:info("create_db is false, not creating modb ~s ...", [ToDb]),
             'source_not_exists';
-        'true' ->
-            maybe_create_current_modb(ToDb)
+        {'ok', _} ->
+            maybe_create_current_modb(ToDb, Options);
+        {'error', _} ->
+            lager:info("source document ~s/~p does not exist, not creating destination modb ~s", [FromDb, FromId, ToDb]),
+            'source_not_exists'
     end.
 
 %%--------------------------------------------------------------------
@@ -390,20 +406,23 @@ get_modb(Account, Year, Month) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_create_current_modb(ne_binary()) -> 'too_old' | boolean().
-maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb) ->
+-spec maybe_create_current_modb(ne_binary(), kz_proplist()) -> 'too_old' | boolean().
+maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb, Options) ->
     {Y, M, _} = erlang:date(),
+    ShouldCreateOld = props:get_is_true('allow_old_modb_creation', Options, 'false'),
     case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
         {Year, Month} ->
+            maybe_create(AccountMODb);
+        {_Year, _Month} when ShouldCreateOld ->
             maybe_create(AccountMODb);
         {_Year, _Month} ->
             lager:info("modb ~p is not for the current month, skip creating", [AccountMODb]),
             'too_old'
     end;
-maybe_create_current_modb(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
-    maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw'));
-maybe_create_current_modb(?MATCH_MODB_SUFFIX_UNENCODED(_, _, _) = AccountMODb) ->
-    maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw')).
+maybe_create_current_modb(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb, Options) ->
+    maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw'), Options);
+maybe_create_current_modb(?MATCH_MODB_SUFFIX_UNENCODED(_, _, _) = AccountMODb, Options) ->
+    maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw'), Options).
 
 -spec maybe_create(ne_binary()) -> boolean().
 maybe_create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb) ->
