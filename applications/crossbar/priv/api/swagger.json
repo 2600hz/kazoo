@@ -20089,7 +20089,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/last_transitions": {
+        "/accounts/{ACCOUNT_ID}/port_requests/last_submitted": {
             "get": {
                 "parameters": [
                     {

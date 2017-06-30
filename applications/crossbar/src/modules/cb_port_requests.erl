@@ -49,7 +49,7 @@
 -define(PATH_TOKEN_LOA, <<"loa">>).
 
 -define(PATH_TOKEN_TIMELINE, <<"timeline">>).
--define(PATH_TOKEN_LAST_TRANSITIONS, <<"last_transitions">>).
+-define(PATH_TOKEN_LAST_SUBMITTED, <<"last_submitted">>).
 
 -define(REQ_TRANSITION, <<"reason">>).
 
@@ -91,7 +91,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?PATH_TOKEN_LAST_TRANSITIONS) ->
+allowed_methods(?PATH_TOKEN_LAST_SUBMITTED) ->
     [?HTTP_GET];
 allowed_methods(?PORT_SUBMITTED) ->
     [?HTTP_GET];
@@ -241,8 +241,8 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 validate(Context) ->
     validate_port_request(Context, cb_context:req_verb(Context)).
 
-validate(Context, ?PATH_TOKEN_LAST_TRANSITIONS) ->
-    last_transitions(summary(Context));
+validate(Context, ?PATH_TOKEN_LAST_SUBMITTED) ->
+    last_submitted(summary(Context));
 validate(Context, ?PORT_UNCONFIRMED = Type) ->
     validate_load_summary(Context, Type);
 validate(Context, ?PORT_SUBMITTED = Type) ->
@@ -754,24 +754,24 @@ maybe_normalize_summary_results(Context, 'true') ->
         _Else -> Context
     end.
 
--spec last_transitions(cb_context:context()) -> cb_context:context().
-last_transitions(Context) ->
+-spec last_submitted(cb_context:context()) -> cb_context:context().
+last_submitted(Context) ->
     case success =:= cb_context:resp_status(Context) of
         false -> Context;
         true ->
             [RespData] = cb_context:resp_data(Context),
-            Timelines = [{kz_doc:id(Doc), LastTransition}
+            Timelines = [{kz_doc:id(Doc), LastSubmitted}
                          || Doc <- kz_json:get_list_value(<<"port_requests">>, RespData),
                             Timeline <- [prepare_timeline(Context, Doc)],
-                            [LastTransition|_] <- [lists:reverse(transitions(Timeline))]
+                            [LastSubmitted|_] <- [lists:reverse(transitions_to_submitted(Timeline))]
                         ],
             cb_context:set_resp_data(Context, kz_json:from_list(Timelines))
     end.
 
--spec transitions(kz_json:objects()) -> kz_json:objects().
-transitions(Timeline) ->
+-spec transitions_to_submitted(kz_json:objects()) -> kz_json:objects().
+transitions_to_submitted(Timeline) ->
     [JObj || JObj <- Timeline,
-             kz_json:get_ne_binary_value(?PORT_TRANSITION, JObj) =/= undefined
+             kz_json:get_ne_binary_value([?PORT_TRANSITION, <<"new">>], JObj) =:= ?PORT_SUBMITTED
     ].
 
 -spec prepare_timeline(cb_context:context(), kz_json:object()) -> kz_json:object().

@@ -831,14 +831,14 @@ curl -v -X DELETE \
 }
 ```
 
-#### Listing all port requests by their last transition
+#### Listing all port requests by their last transition to the `submitted` state
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/last_transitions
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/last_submitted
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/last_transitions
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/last_submitted
 ```
 
 ```json
