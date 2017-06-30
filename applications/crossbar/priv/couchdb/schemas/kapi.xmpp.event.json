@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.xmpp.event",
+    "description": "AMQP API for xmpp.event",
+    "properties": {
+        "Application-Data": {
+            "type": "string"
+        },
+        "Application-Event": {
+            "type": "string"
+        },
+        "Application-Name": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "xmpp_event"
+            ],
+            "type": "string"
+        },
+        "JID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "JID"
+    ],
+    "type": "object"
+}

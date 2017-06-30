@@ -29,132 +29,12 @@
 
 -include_lib("amqp_util.hrl").
 -include("kapi_dialplan.hrl").
+-include("kapi_route.hrl").
 
 -type req() :: kz_json:object().
 -type resp() :: kz_json:object().
 
 -export_type([req/0, resp/0]).
-
--define(KEY_CALL_ID, <<"Call-ID">>).
--define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
--define(KEY_FETCH_ID, [<<"Custom-Channel-Vars">>, <<"Fetch-ID">>]).
-
-%% routing keys to use in the callmgr exchange
--define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
-
--define(EVENT_CATEGORY, <<"dialplan">>).
--define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
-
-%% Route Requests
--define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, ?KEY_CALL_ID
-                           ]).
--define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
-                                    ,<<"Max-Call-Length">>, <<"Media">>
-                                    ,<<"Transcode">>, <<"Codecs">>
-                                    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-                                    ,<<"Resource-Type">>, <<"Cost-Parameters">>
-                                    ,<<"From-Network-Addr">>, <<"From-Network-Port">>
-                                    ,<<"User-Agent">>
-                                    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                    ,<<"Switch-URL">>, <<"Switch-URI">>
-                                    ,<<"Ringback-Media">>, <<"Transfer-Media">>
-                                    ,<<"SIP-Request-Host">>, <<"Message-ID">>
-                                    ,<<"Body">>
-                                    ,<<"From-Tag">>, <<"To-Tag">>
-                                    ,<<"Prepend-CID-Name">>
-                                    ,<<"Call-Direction">>
-                                    ,<<"Custom-Routing-Headers">>
-                                    ,<<"Caller-ID-Name">>
-                                    ,<<"Caller-ID-Number">>
-                                    ]).
--define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                          ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
-                          ,{<<"Resource-Type">>, [<<"mms">>, <<"sms">>
-                                                 ,<<"audio">>, <<"video">>
-                                                 ,<<"chat">>, <<"metaflow">>
-                                                 ]}
-                          ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
-                          ]).
--define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
-                               ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
-                               ]).
--define(ROUTE_REQ_TYPES, [{<<"To">>, fun is_binary/1}
-                         ,{<<"From">>, fun is_binary/1}
-                         ,{<<"Request">>, fun is_binary/1}
-                         ,{?KEY_CALL_ID, fun is_binary/1}
-                         ,{<<"Event-Queue">>, fun is_binary/1}
-                         ,{<<"Caller-ID-Name">>, fun is_binary/1}
-                         ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                         ,{<<"Cost-Parameters">>, fun has_cost_parameters/1}
-                         ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                         ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-                         ]).
-
--spec has_cost_parameters(kz_json:object()) -> boolean().
-has_cost_parameters(JObj) ->
-    kz_json:is_json_object(JObj)
-        andalso kz_json:all(fun({K, _V}) ->
-                                    lists:member(K, ?ROUTE_REQ_COST_PARAMS)
-                            end
-                           ,JObj
-                           ).
-
-%% Route Responses
--define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
--define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
-                                           ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
-                                           ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
-                                           ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-                                           ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>
-                                           ,<<"Surcharge">>, <<"Rate-NoCharge-Time">>
-                                           ,<<"Custom-SIP-Headers">>, <<"Custom-Channel-Vars">>
-                                           ,<<"Weight-Cost">>, <<"Weight-Location">>
-                                           ]).
--define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
-                                 ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
-                                 ,?INVITE_FORMAT_TUPLE
-                                 ]).
--define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}
-                                ,{<<"Route">>, fun is_binary/1}
-                                ,{<<"To-User">>, fun is_binary/1}
-                                ,{<<"To-Realm">>, fun is_binary/1}
-                                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-                                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                                ]).
-
-%% Route Responses
--define(ROUTE_RESP_HEADERS, [<<"Method">>]).
--define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
-                                     ,<<"Route-Error-Code">>, <<"Route-Error-Message">>
-                                     ,<<"Ringback-Media">>, <<"Transfer-Media">>
-                                     ,<<"Pre-Park">>, <<"From-User">>, <<"From-Realm">>
-                                     ,<<"From-URI">>
-                                     ,<<"Plan-Data">>, <<"Application-Data">>
-                                     ]).
--define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                           ,{<<"Event-Name">>, <<"route_resp">>}
-                           ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>, <<"sms">>
-                                           ,<<"plan">>, <<"application">>
-                                           ]
-                            }
-                           ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
-                           ]).
--define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
-                          ,{<<"Route-Error-Message">>, fun is_binary/1}
-                          ,{<<"Routes">>, fun is_list/1}
-                          ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                          ]).
-
-%% Route Winner
--define(ROUTE_WIN_HEADERS, [?KEY_CALL_ID, ?KEY_CONTROL_QUEUE]).
--define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
--define(ROUTE_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                          ,{<<"Event-Name">>, <<"route_win">>}
-                          ]).
--define(ROUTE_WIN_TYPES, [{?KEY_CALL_ID, fun is_binary/1}
-                         ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
-                         ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                         ]).
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Request - see wiki
@@ -436,3 +316,12 @@ fetch_id(JObj) ->
 -spec control_queue(kz_json:object()) -> api_binary().
 control_queue(JObj) ->
     kz_json:get_value(?KEY_CONTROL_QUEUE, JObj).
+
+-spec has_cost_parameters(kz_json:object()) -> boolean().
+has_cost_parameters(JObj) ->
+    kz_json:is_json_object(JObj)
+        andalso kz_json:all(fun({K, _V}) ->
+                                    lists:member(K, ?ROUTE_REQ_COST_PARAMS)
+                            end
+                           ,JObj
+                           ).

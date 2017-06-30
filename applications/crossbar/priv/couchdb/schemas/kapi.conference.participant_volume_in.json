@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.participant_volume_in",
+    "description": "AMQP API for conference.participant_volume_in",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "participant_volume_in"
+            ],
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Participant-ID": {
+            "type": "string"
+        },
+        "Volume-In-Level": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Conference-ID",
+        "Participant-ID",
+        "Volume-In-Level"
+    ],
+    "type": "object"
+}

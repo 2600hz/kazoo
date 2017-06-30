@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.blackhole.module_resp",
+    "description": "AMQP API for blackhole.module_resp",
+    "properties": {
+        "Error": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "blackhole"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "module_resp"
+            ],
+            "type": "string"
+        },
+        "Persisted": {
+            "type": "boolean"
+        },
+        "Started": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "Persisted",
+        "Started"
+    ],
+    "type": "object"
+}

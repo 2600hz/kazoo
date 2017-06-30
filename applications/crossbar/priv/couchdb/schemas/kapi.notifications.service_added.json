@@ -1,0 +1,63 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.service_added",
+    "description": "AMQP API for notifications.service_added",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Audit-Log": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "service_added"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Audit-Log"
+    ],
+    "type": "object"
+}

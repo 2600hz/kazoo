@@ -146,14 +146,14 @@
                      ]}
         ]).
 -define(OFFNET_RESOURCE_REQ_TYPES
-       ,[{?KEY_ACCOUNT_ID, fun is_binary/1}
+       ,[{?KEY_ACCOUNT_ID, fun erlang:is_binary/1}
         ,{?KEY_B_LEG_EVENTS, fun kapi_dialplan:b_leg_events_v/1}
-        ,{?KEY_CALL_ID, fun is_binary/1}
-        ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
+        ,{?KEY_CALL_ID, fun erlang:is_binary/1}
+        ,{?KEY_CONTROL_QUEUE, fun erlang:is_binary/1}
         ,{?KEY_CCVS, fun kz_json:is_json_object/1}
         ,{?KEY_CSHS, fun kz_json:is_json_object/1}
-        ,{?KEY_ENABLE_T38_GATEWAY, fun is_binary/1}
-        ,{?KEY_FLAGS, fun is_list/1}
+        ,{?KEY_ENABLE_T38_GATEWAY, fun erlang:is_binary/1}
+        ,{?KEY_FLAGS, fun erlang:is_list/1}
         ,{?KEY_FORCE_FAX, fun kz_term:is_boolean/1}
         ,{?KEY_FORCE_OUTBOUND, fun kz_term:is_boolean/1}
         ,{?KEY_TO_DID, fun kz_term:is_ne_binary/1}

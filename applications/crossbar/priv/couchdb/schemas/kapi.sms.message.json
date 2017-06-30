@@ -1,0 +1,193 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.sms.message",
+    "description": "AMQP API for sms.message",
+    "properties": {
+        "Application-Data": {
+            "type": "string"
+        },
+        "Application-Name": {
+            "enum": [
+                "send"
+            ],
+            "type": "string"
+        },
+        "B-Leg-Events": {
+            "type": "string"
+        },
+        "Body": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Confirm-Cancel-Timeout": {
+            "type": "integer"
+        },
+        "Confirm-File": {
+            "type": "string"
+        },
+        "Confirm-Key": {
+            "type": "string"
+        },
+        "Continue-On-Fail": {
+            "type": "boolean"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Dial-Endpoint-Method": {
+            "enum": [
+                "single",
+                "simultaneous"
+            ],
+            "type": "string"
+        },
+        "Enable-T38-Fax": {
+            "type": "string"
+        },
+        "Enable-T38-Fax-Request": {
+            "type": "string"
+        },
+        "Enable-T38-Gateway": {
+            "type": "string"
+        },
+        "Enable-T38-Passthrough": {
+            "type": "string"
+        },
+        "Endpoints": {
+            "items": {
+                "$ref": "kapi.dialplan.bridge_endpoint",
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Event-Category": {
+            "enum": [
+                "message"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "route"
+            ],
+            "type": "string"
+        },
+        "Fail-On-Single-Reject": {
+            "type": "string"
+        },
+        "Force-Fax": {
+            "type": "string"
+        },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-URI": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "Hold-Media": {
+            "type": "string"
+        },
+        "Ignore-Completed-Elsewhere": {
+            "type": "string"
+        },
+        "Ignore-Early-Media": {
+            "type": "string"
+        },
+        "Ignore-Forward": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "type": "string"
+        },
+        "Loopback-Bowout": {
+            "type": "string"
+        },
+        "Media": {
+            "type": "string"
+        },
+        "Message-ID": {
+            "type": "string"
+        },
+        "Outbound-Callee-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Callee-ID-Number": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Ringback": {
+            "type": "string"
+        },
+        "Route-ID": {
+            "type": "string"
+        },
+        "Route-Type": {
+            "enum": [
+                "on-net",
+                "off-net"
+            ],
+            "type": "string"
+        },
+        "SIP-Headers": {
+            "type": "object"
+        },
+        "SIP-Transport": {
+            "enum": [
+                "udp",
+                "tcp",
+                "tls"
+            ],
+            "type": "string"
+        },
+        "Secure-RTP": {
+            "type": "string"
+        },
+        "Simplify-Loopback": {
+            "type": "string"
+        },
+        "Timeout": {
+            "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-URI": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Body",
+        "Call-ID",
+        "Endpoints"
+    ],
+    "type": "object"
+}

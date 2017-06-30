@@ -1,0 +1,112 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.register",
+    "description": "AMQP API for notifications.register",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Authorizing-ID": {
+            "type": "string"
+        },
+        "Authorizing-Type": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Contact": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "register"
+            ],
+            "type": "string"
+        },
+        "Event-Timestamp": {
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Host": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Network-IP": {
+            "type": "string"
+        },
+        "Network-Port": {
+            "type": "string"
+        },
+        "Owner-ID": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Suppress-Unregister-Notify": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "To-Host": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        },
+        "User-Agent": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Realm",
+        "Username"
+    ],
+    "type": "object"
+}

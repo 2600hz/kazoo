@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.callflow.resume",
+    "description": "AMQP API for callflow.resume",
+    "properties": {
+        "Call": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "callflow"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "resume"
+            ],
+            "type": "string"
+        },
+        "Flow": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call",
+        "Flow"
+    ],
+    "type": "object"
+}

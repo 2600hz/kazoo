@@ -1,0 +1,79 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.cnam_request",
+    "description": "AMQP API for notifications.cnam_request",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Acquired-For": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Cnam": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "cnam_request"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Local-Number": {
+            "type": "string"
+        },
+        "Number": {
+            "type": "string"
+        },
+        "Number-State": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Cnam",
+        "Number"
+    ],
+    "type": "object"
+}

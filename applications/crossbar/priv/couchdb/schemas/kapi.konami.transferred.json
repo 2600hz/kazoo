@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.konami.transferred",
+    "description": "AMQP API for konami.transferred",
+    "properties": {
+        "Call": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "konami"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "transferred"
+            ],
+            "type": "string"
+        },
+        "Target": {
+            "type": "string"
+        },
+        "Transferee": {
+            "type": "string"
+        },
+        "Transferor": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call",
+        "Target",
+        "Transferee"
+    ],
+    "type": "object"
+}

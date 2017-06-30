@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.call.usurp_publisher",
+    "description": "AMQP API for call.usurp_publisher",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call_event"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "usurp_publisher"
+            ],
+            "type": "string"
+        },
+        "Media-Node": {
+            "type": "string"
+        },
+        "Reason": {
+            "type": "string"
+        },
+        "Reference": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Reference"
+    ],
+    "type": "object"
+}

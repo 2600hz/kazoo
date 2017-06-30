@@ -1,0 +1,86 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.play",
+    "description": "AMQP API for dialplan.play",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "play"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Format": {
+            "type": "string"
+        },
+        "Group-ID": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Language": {
+            "type": "string"
+        },
+        "Leg": {
+            "enum": [
+                "A",
+                "B",
+                "Both"
+            ],
+            "type": "string"
+        },
+        "Media-Name": {
+            "type": "string"
+        },
+        "Terminators": {
+            "items": {
+                "enum": [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "*",
+                    "0",
+                    "#"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Voice": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Media-Name"
+    ],
+    "type": "object"
+}

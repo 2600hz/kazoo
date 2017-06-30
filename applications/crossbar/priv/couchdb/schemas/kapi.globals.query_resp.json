@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.globals.query_resp",
+    "description": "AMQP API for globals.query_resp",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "globals"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "query_resp"
+            ],
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "State": {
+            "type": "string"
+        },
+        "Timestamp": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "Name"
+    ],
+    "type": "object"
+}

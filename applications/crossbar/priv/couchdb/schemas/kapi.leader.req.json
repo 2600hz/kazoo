@@ -1,0 +1,11 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.leader.req",
+    "description": "AMQP API for leader.req",
+    "properties": {
+        "Message": {
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

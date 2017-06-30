@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.unlock",
+    "description": "AMQP API for conference.unlock",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "unlock"
+            ],
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Conference-ID"
+    ],
+    "type": "object"
+}

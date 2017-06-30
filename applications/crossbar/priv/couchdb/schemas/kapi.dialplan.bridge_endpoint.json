@@ -1,0 +1,59 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.bridge_endpoint",
+    "description": "AMQP API for dialplan.bridge_endpoint",
+    "properties": {
+        "Bypass-Media": {
+            "type": "boolean"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Enable-T38-Gateway": {
+            "enum": [
+                "self",
+                "peer"
+            ],
+            "type": "string"
+        },
+        "Endpoint-Options": {
+            "type": "object"
+        },
+        "Endpoint-Type": {
+            "enum": [
+                "sip",
+                "freetdm",
+                "skype"
+            ],
+            "type": "string"
+        },
+        "Ignore-Early-Media": {
+            "type": "boolean"
+        },
+        "Invite-Format": {
+            "enum": [
+                "username",
+                "e164",
+                "npan",
+                "1npan",
+                "route",
+                "loopback",
+                "contact"
+            ],
+            "type": "string"
+        },
+        "SIP-Transport": {
+            "enum": [
+                "udp",
+                "tcp",
+                "tls",
+                "sctp"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

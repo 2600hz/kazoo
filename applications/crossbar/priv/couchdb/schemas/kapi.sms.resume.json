@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.sms.resume",
+    "description": "AMQP API for sms.resume",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "message"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "resume"
+            ],
+            "type": "string"
+        },
+        "SMS-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "SMS-ID"
+    ],
+    "type": "object"
+}

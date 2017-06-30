@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.participants_resp",
+    "description": "AMQP API for conference.participants_resp",
+    "properties": {
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "participants_resp"
+            ],
+            "type": "string"
+        },
+        "Participants": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Participants"
+    ],
+    "type": "object"
+}

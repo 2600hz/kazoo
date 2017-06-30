@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.metaflow.bind_req",
+    "description": "AMQP API for metaflow.bind_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Authorizing-ID": {
+            "type": "string"
+        },
+        "Authorizing-Type": {
+            "type": "string"
+        },
+        "Binding-Leg": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "CallFlow-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "metaflow"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "bind_req"
+            ],
+            "type": "string"
+        },
+        "Resource-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Binding-Leg"
+    ],
+    "type": "object"
+}

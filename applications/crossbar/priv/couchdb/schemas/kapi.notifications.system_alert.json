@@ -1,0 +1,84 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.system_alert",
+    "description": "AMQP API for notifications.system_alert",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Details": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "system_alert"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Line": {
+            "type": "string"
+        },
+        "Message": {
+            "type": "string"
+        },
+        "Module": {
+            "type": "string"
+        },
+        "Node": {
+            "type": "string"
+        },
+        "Pid": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Request-ID": {
+            "type": "string"
+        },
+        "Section": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Message",
+        "Subject"
+    ],
+    "type": "object"
+}

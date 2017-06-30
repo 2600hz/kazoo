@@ -1,0 +1,158 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.route.req",
+    "description": "AMQP API for route.req",
+    "properties": {
+        "Body": {
+            "type": "string"
+        },
+        "Call-Direction": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Codecs": {
+            "type": "string"
+        },
+        "Cost-Parameters": {
+            "properties": {
+                "Max-Incremental-Cost": {
+                    "type": "integer"
+                },
+                "Max-Setup-Cost": {
+                    "type": "integer"
+                },
+                "Min-Increment-Cost": {
+                    "type": "integer"
+                },
+                "Min-Setup-Cost": {
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-Routing-Headers": {
+            "type": "string"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "dialplan"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "route_req"
+            ],
+            "type": "string"
+        },
+        "Event-Queue": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Network-Addr": {
+            "type": "string"
+        },
+        "From-Network-Port": {
+            "type": "string"
+        },
+        "From-Tag": {
+            "type": "string"
+        },
+        "Geo-Location": {
+            "type": "string"
+        },
+        "Max-Call-Length": {
+            "type": "string"
+        },
+        "Media": {
+            "enum": [
+                "process",
+                "proxy",
+                "bypass"
+            ],
+            "type": "string"
+        },
+        "Message-ID": {
+            "type": "string"
+        },
+        "Orig-IP": {
+            "type": "string"
+        },
+        "Orig-Port": {
+            "type": "string"
+        },
+        "Prepend-CID-Name": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Resource-Type": {
+            "enum": [
+                "mms",
+                "sms",
+                "audio",
+                "video",
+                "chat",
+                "metaflow"
+            ],
+            "type": "string"
+        },
+        "Ringback-Media": {
+            "type": "string"
+        },
+        "SIP-Request-Host": {
+            "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        },
+        "Switch-Nodename": {
+            "type": "string"
+        },
+        "Switch-URI": {
+            "type": "string"
+        },
+        "Switch-URL": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "To-Tag": {
+            "type": "string"
+        },
+        "Transcode": {
+            "type": "string"
+        },
+        "Transfer-Media": {
+            "type": "string"
+        },
+        "User-Agent": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "From",
+        "Request",
+        "To"
+    ],
+    "type": "object"
+}

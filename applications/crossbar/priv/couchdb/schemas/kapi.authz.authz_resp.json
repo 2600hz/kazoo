@@ -1,0 +1,65 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.authz.authz_resp",
+    "description": "AMQP API for authz.authz_resp",
+    "properties": {
+        "Account-Billing": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Call-Direction": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "authz"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "authz_resp"
+            ],
+            "type": "string"
+        },
+        "Global-Resource": {
+            "enum": [
+                "true",
+                "false"
+            ],
+            "type": "string"
+        },
+        "Is-Authorized": {
+            "enum": [
+                "true",
+                "false"
+            ],
+            "type": "string"
+        },
+        "Other-Leg-Call-ID": {
+            "type": "string"
+        },
+        "Reseller-Billing": {
+            "type": "string"
+        },
+        "Reseller-ID": {
+            "type": "string"
+        },
+        "Soft-Limit": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Is-Authorized"
+    ],
+    "type": "object"
+}

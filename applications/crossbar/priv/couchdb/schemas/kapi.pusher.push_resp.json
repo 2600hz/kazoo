@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.pusher.push_resp",
+    "description": "AMQP API for pusher.push_resp",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "push_resp"
+            ],
+            "type": "string"
+        },
+        "Token-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Token-ID"
+    ],
+    "type": "object"
+}

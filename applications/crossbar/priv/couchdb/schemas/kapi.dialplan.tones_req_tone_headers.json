@@ -1,0 +1,28 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.tones_req_tone_headers",
+    "description": "AMQP API for dialplan.tones_req_tone_headers",
+    "properties": {
+        "Duration-OFF": {
+            "type": "string"
+        },
+        "Duration-ON": {
+            "type": "string"
+        },
+        "Frequencies": {
+            "type": "string"
+        },
+        "Repeat": {
+            "type": "string"
+        },
+        "Volume": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Duration-OFF",
+        "Duration-ON",
+        "Frequencies"
+    ],
+    "type": "object"
+}

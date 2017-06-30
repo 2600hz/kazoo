@@ -1,0 +1,71 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.authz.authz_req",
+    "description": "AMQP API for authz.authz_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Call-Direction": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "authz"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "authz_req"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Network-Addr": {
+            "type": "string"
+        },
+        "From-Network-Port": {
+            "type": "string"
+        },
+        "Other-Leg-Call-ID": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "Usage": {
+            "type": "object"
+        }
+    },
+    "required": [
+        "Call-Direction",
+        "Call-ID",
+        "Caller-ID-Name",
+        "Caller-ID-Number",
+        "From",
+        "Request",
+        "To"
+    ],
+    "type": "object"
+}

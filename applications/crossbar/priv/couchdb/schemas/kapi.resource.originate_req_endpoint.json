@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.resource.originate_req_endpoint",
+    "description": "AMQP API for resource.originate_req_endpoint",
+    "properties": {
+        "Bypass-Media": {
+            "type": "boolean"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Endpoint-Options": {
+            "type": "object"
+        },
+        "Endpoint-Type": {
+            "enum": [
+                "sip",
+                "freetdm"
+            ],
+            "type": "string"
+        },
+        "Ignore-Early-Media": {
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

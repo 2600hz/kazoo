@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.execute_extension",
+    "description": "AMQP API for dialplan.execute_extension",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "execute_extension"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Extension": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Reset": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Extension"
+    ],
+    "type": "object"
+}

@@ -1,0 +1,111 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.sms.delivery",
+    "description": "AMQP API for sms.delivery",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Body": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Contact": {
+            "type": "string"
+        },
+        "Contact-IP": {
+            "type": "string"
+        },
+        "Contact-Port": {
+            "type": "string"
+        },
+        "Contact-Username": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Delivery-Failure": {
+            "type": "string"
+        },
+        "Delivery-Result-Code": {
+            "type": "string"
+        },
+        "Delivery-Result-Text": {
+            "type": "string"
+        },
+        "Error-Code": {
+            "type": "string"
+        },
+        "Error-Message": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "message"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "delivery"
+            ],
+            "type": "string"
+        },
+        "Event-Queue": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Network-Addr": {
+            "type": "string"
+        },
+        "Geo-Location": {
+            "type": "string"
+        },
+        "Message-ID": {
+            "type": "string"
+        },
+        "Orig-IP": {
+            "type": "string"
+        },
+        "Orig-Port": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        },
+        "Switch-Nodename": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "User-Agent": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Message-ID"
+    ],
+    "type": "object"
+}

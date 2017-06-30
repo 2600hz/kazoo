@@ -1,0 +1,99 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.topup",
+    "description": "AMQP API for notifications.topup",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Add-Ons": {
+            "type": "string"
+        },
+        "Amount": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Billing-Address": {
+            "type": "string"
+        },
+        "Card-Last-Four": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Currency-Code": {
+            "type": "string"
+        },
+        "Discounts": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "topup"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "ID": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Purchase-Order": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Response": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Success": {
+            "type": "string"
+        },
+        "Tax-Amount": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "Timestamp": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Amount",
+        "Response",
+        "Success",
+        "Timestamp"
+    ],
+    "type": "object"
+}

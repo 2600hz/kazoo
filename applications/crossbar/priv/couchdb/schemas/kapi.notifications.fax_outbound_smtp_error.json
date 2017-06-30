@@ -1,0 +1,70 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.fax_outbound_smtp_error",
+    "description": "AMQP API for notifications.fax_outbound_smtp_error",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Errors": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "outbound_smtp_fax_error"
+            ],
+            "type": "string"
+        },
+        "Fax-From-Email": {
+            "type": "string"
+        },
+        "Fax-To-Email": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Errors",
+        "Fax-From-Email"
+    ],
+    "type": "object"
+}

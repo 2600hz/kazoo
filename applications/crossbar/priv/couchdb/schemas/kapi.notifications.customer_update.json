@@ -1,0 +1,71 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.customer_update",
+    "description": "AMQP API for notifications.customer_update",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "DataBag": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "customer_update"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Recipient-ID": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Template-ID": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "User-Type": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID"
+    ],
+    "type": "object"
+}

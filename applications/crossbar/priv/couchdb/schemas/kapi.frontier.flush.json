@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.frontier.flush",
+    "description": "AMQP API for frontier.flush",
+    "properties": {
+        "Device": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "acl"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "acl_flush"
+            ],
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Realm"
+    ],
+    "type": "object"
+}

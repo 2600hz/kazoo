@@ -1,0 +1,6 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.self.build",
+    "description": "AMQP API for self.build",
+    "type": "object"
+}

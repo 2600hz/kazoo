@@ -20,7 +20,9 @@
 -define(FS_REQ_VALUES, [{<<"Event-Category">>, <<"fs">>}
                        ,{<<"Event-Name">>, <<"command">>}
                        ]).
--define(FS_REQ_TYPES, [{<<"Application-Name">>, fun(<<"uuid_", _/binary>>) -> true; (App) -> lists:member(App, ?FS_COMMAND_WHITELIST) end}]).
+-define(FS_REQ_TYPES, [{<<"Application-Name">>, fun(<<"uuid_", _/binary>>) -> 'true';
+                                                   (App) -> lists:member(App, ?FS_COMMAND_WHITELIST)
+                                                end}]).
 
 %%--------------------------------------------------------------------
 %% @doc FS Request

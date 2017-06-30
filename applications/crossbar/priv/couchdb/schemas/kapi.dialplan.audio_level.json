@@ -1,0 +1,55 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.audio_level",
+    "description": "AMQP API for dialplan.audio_level",
+    "properties": {
+        "Action": {
+            "type": "string"
+        },
+        "Application-Name": {
+            "enum": [
+                "audio_level"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Level": {
+            "type": "string"
+        },
+        "Mode": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Action",
+        "Application-Name",
+        "Call-ID",
+        "Insert-At",
+        "Level",
+        "Mode"
+    ],
+    "type": "object"
+}

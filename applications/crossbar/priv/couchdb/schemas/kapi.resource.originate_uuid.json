@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.resource.originate_uuid",
+    "description": "AMQP API for resource.originate_uuid",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "resource"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "originate_uuid"
+            ],
+            "type": "string"
+        },
+        "Outbound-Call-Control-Queue": {
+            "type": "string"
+        },
+        "Outbound-Call-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Outbound-Call-ID"
+    ],
+    "type": "object"
+}

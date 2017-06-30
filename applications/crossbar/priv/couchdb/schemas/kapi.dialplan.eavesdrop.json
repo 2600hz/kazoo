@@ -1,0 +1,61 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.eavesdrop",
+    "description": "AMQP API for dialplan.eavesdrop",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "eavesdrop"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Continue-On-Cancel": {
+            "type": "string"
+        },
+        "Continue-On-Fail": {
+            "type": "string"
+        },
+        "Enable-DTMF": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Move-Channel-If-Necessary": {
+            "type": "boolean"
+        },
+        "Other-Leg": {
+            "type": "string"
+        },
+        "Target-Call-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Target-Call-ID"
+    ],
+    "type": "object"
+}

@@ -1,0 +1,73 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.transfer",
+    "description": "AMQP API for dialplan.transfer",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "transfer"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Transfer-Context": {
+            "type": "string"
+        },
+        "Transfer-Leg": {
+            "enum": [
+                "bleg",
+                "both"
+            ],
+            "type": "string"
+        },
+        "Transfer-To": {
+            "type": "string"
+        },
+        "Transfer-Type": {
+            "enum": [
+                "blind",
+                "attended"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Transfer-To",
+        "Transfer-Type"
+    ],
+    "type": "object"
+}

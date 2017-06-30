@@ -1,0 +1,94 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.participant_event",
+    "description": "AMQP API for conference.participant_event",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Channel-Presence-ID": {
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Current-Energy": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "string"
+        },
+        "Energy-Level": {
+            "type": "string"
+        },
+        "Event": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "participant_event"
+            ],
+            "type": "string"
+        },
+        "Floor": {
+            "type": "string"
+        },
+        "Focus": {
+            "type": "string"
+        },
+        "Hear": {
+            "type": "string"
+        },
+        "Instance-ID": {
+            "type": "string"
+        },
+        "Mute-Detect": {
+            "type": "string"
+        },
+        "Participant-ID": {
+            "type": "string"
+        },
+        "Speak": {
+            "type": "string"
+        },
+        "Talking": {
+            "type": "string"
+        },
+        "Video": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Caller-ID-Name",
+        "Caller-ID-Number",
+        "Channel-Presence-ID",
+        "Conference-ID",
+        "Current-Energy",
+        "Custom-Channel-Vars",
+        "Energy-Level",
+        "Event",
+        "Floor",
+        "Focus",
+        "Hear",
+        "Instance-ID",
+        "Mute-Detect",
+        "Participant-ID",
+        "Speak",
+        "Talking",
+        "Video"
+    ],
+    "type": "object"
+}

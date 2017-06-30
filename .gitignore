@@ -66,3 +66,4 @@ compile_commands.json
 /applications/*/cover/*.html
 
 /applications/crossbar/priv/couchdb/schemas/port_requests.to_scheduled.json
+/out/

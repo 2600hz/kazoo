@@ -1,0 +1,68 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.pusher.push_req",
+    "description": "AMQP API for pusher.push_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Alert-Body": {
+            "type": "string"
+        },
+        "Alert-Key": {
+            "type": "string"
+        },
+        "Alert-Params": {
+            "type": "string"
+        },
+        "Badge": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Endpoint-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "push_req"
+            ],
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "Queue": {
+            "type": "string"
+        },
+        "Sound": {
+            "type": "string"
+        },
+        "Token-App": {
+            "type": "string"
+        },
+        "Token-ID": {
+            "type": "string"
+        },
+        "Token-Reg": {
+            "type": "string"
+        },
+        "Token-Type": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Alert-Body",
+        "Token-App",
+        "Token-ID",
+        "Token-Type"
+    ],
+    "type": "object"
+}

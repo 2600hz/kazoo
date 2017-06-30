@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.money.debit",
+    "description": "AMQP API for money.debit",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Amount": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "transaction"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "debit"
+            ],
+            "type": "string"
+        },
+        "Transaction-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Amount",
+        "Transaction-ID"
+    ],
+    "type": "object"
+}

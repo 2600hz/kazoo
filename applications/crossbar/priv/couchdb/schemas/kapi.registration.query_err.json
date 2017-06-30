@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.registration.query_err",
+    "description": "AMQP API for registration.query_err",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "directory"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "reg_query_error"
+            ],
+            "type": "string"
+        },
+        "Registrar-Age": {
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

@@ -1,0 +1,48 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.park",
+    "description": "AMQP API for dialplan.park",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "park"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Hangup-Cause": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Timeout": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID"
+    ],
+    "type": "object"
+}

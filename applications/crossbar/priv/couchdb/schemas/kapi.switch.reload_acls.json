@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.switch.reload_acls",
+    "description": "AMQP API for switch.reload_acls",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "switch_event"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "reload_acls"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

@@ -1,0 +1,39 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.break",
+    "description": "AMQP API for dialplan.break",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "break"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "now"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID"
+    ],
+    "type": "object"
+}

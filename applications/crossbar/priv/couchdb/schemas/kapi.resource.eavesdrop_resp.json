@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.resource.eavesdrop_resp",
+    "description": "AMQP API for resource.eavesdrop_resp",
+    "properties": {
+        "Eavesdropper-Call-ID": {
+            "type": "string"
+        },
+        "Error-Msg": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "resource"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "eavesdrop_resp"
+            ],
+            "type": "string"
+        },
+        "Status": {
+            "enum": [
+                "started",
+                "error"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Status"
+    ],
+    "type": "object"
+}
