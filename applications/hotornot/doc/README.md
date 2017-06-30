@@ -21,7 +21,9 @@ Each rate is a separate document:
     "ratedeck_name": "ratedeck_1",
     "iso_country_code": "US",
     "description": "USA prefix 1",
-    "direction": "outbound",
+    "direction": [
+       "outbound"
+    ],
     "rate_increment": "60",
     "rate_minimum": "60",
     "rate_nocharge_time": "0",
