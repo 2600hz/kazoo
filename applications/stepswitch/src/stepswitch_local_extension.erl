@@ -263,6 +263,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec outbound_flags(kz_json:object()) -> api_binary().
+outbound_flags(JObj) ->
+    case kapi_offnet_resource:flags(JObj) of
+        [] -> 'undefined';
+        Flags -> kz_util:join_binary(Flags, <<"|">>)
+    end.
 
 -spec build_local_extension(state()) -> kz_proplist().
 build_local_extension(#state{number_props=Props
@@ -274,23 +280,25 @@ build_local_extension(#state{number_props=Props
     Number = knm_number_options:number(Props),
     AccountId = knm_number_options:account_id(Props),
     OriginalAccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    ResellerId = kz_services:find_reseller_id(OriginalAccountId),
     {CEDNum, CEDName} = local_extension_callee_id(JObj, Number),
     Realm = get_account_realm(AccountId),
     FromRealm = get_account_realm(OriginalAccountId),
-    FromURI = <<"sip:", CIDNum/binary, "@", FromRealm/binary>>,
+    FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
     CCVsOrig = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
-    CCVs = kz_json:set_values(
-             [{<<"Ignore-Display-Updates">>, <<"true">>}
-             ,{<<"From-URI">>, FromURI}
-             ,{<<"Account-ID">>, OriginalAccountId}
-             ,{<<"Reseller-ID">>, kz_services:find_reseller_id(OriginalAccountId)}
-             ],
-             CCVsOrig),
+    CCVs = kz_json:set_values(props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
+                                                     ,{<<"Account-ID">>, OriginalAccountId}
+                                                     ,{<<"Reseller-ID">>, ResellerId}
+                                                     ,{<<"Outbound-Flags">>, outbound_flags(JObj)}
+                                                     ])
+                             ,CCVsOrig
+                             ),
 
     CCVUpdates = props:filter_undefined(
                    [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, kz_json:get_value(<<"Retain-CID">>, CCVsOrig)}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, FromURI}
                    ,{<<"Resource-ID">>, AccountId}
                    ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
@@ -301,7 +309,7 @@ build_local_extension(#state{number_props=Props
                    [{<<"Invite-Format">>, <<"loopback">>}
                    ,{<<"Route">>, Number}
                    ,{<<"To-DID">>, Number}
-                   ,{<<"To-Realm">>, Realm}
+                   ,{<<"To-Realm">>, FromRealm}
                    ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVUpdates)}
                    ,{<<"Outbound-Caller-ID-Name">>, CIDName}
                    ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
