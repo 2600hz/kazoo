@@ -49,6 +49,7 @@
 -define(PATH_TOKEN_LOA, <<"loa">>).
 
 -define(PATH_TOKEN_TIMELINE, <<"timeline">>).
+-define(PATH_TOKEN_LAST_TRANSITIONS, <<"last_transitions">>).
 
 -define(REQ_TRANSITION, <<"reason">>).
 
@@ -90,6 +91,8 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
+allowed_methods(?PATH_TOKEN_LAST_TRANSITIONS) ->
+    [?HTTP_GET];
 allowed_methods(?PORT_SUBMITTED) ->
     [?HTTP_GET];
 allowed_methods(?PORT_PENDING) ->
@@ -238,6 +241,8 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 validate(Context) ->
     validate_port_request(Context, cb_context:req_verb(Context)).
 
+validate(Context, ?PATH_TOKEN_LAST_TRANSITIONS) ->
+    last_transitions(summary(Context));
 validate(Context, ?PORT_UNCONFIRMED = Type) ->
     validate_load_summary(Context, Type);
 validate(Context, ?PORT_SUBMITTED = Type) ->
@@ -749,17 +754,42 @@ maybe_normalize_summary_results(Context, 'true') ->
         _Else -> Context
     end.
 
+-spec last_transitions(cb_context:context()) -> cb_context:context().
+last_transitions(Context) ->
+    case success =:= cb_context:resp_status(Context) of
+        false -> Context;
+        true ->
+            [RespData] = cb_context:resp_data(Context),
+            Timelines = [{kz_doc:id(Doc), LastTransition}
+                         || Doc <- kz_json:get_list_value(<<"port_requests">>, RespData),
+                            Timeline <- [prepare_timeline(Context, Doc)],
+                            [LastTransition|_] <- [lists:reverse(transitions(Timeline))]
+                        ],
+            cb_context:set_resp_data(Context, kz_json:from_list(Timelines))
+    end.
+
+-spec transitions(kz_json:objects()) -> kz_json:objects().
+transitions(Timeline) ->
+    [JObj || JObj <- Timeline,
+             kz_json:get_ne_binary_value(?PORT_TRANSITION, JObj) =/= undefined
+    ].
+
+-spec prepare_timeline(cb_context:context(), kz_json:object()) -> kz_json:object().
+prepare_timeline(Context, Doc) ->
+    Comments = kz_json:get_list_value(<<"comments">>, filter_private_comments(Context, Doc), []),
+    Transitions = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
+    Indexed = [{kz_json:get_integer_value(?TRANSITION_TIMESTAMP, JObj), JObj}
+               || JObj <- Comments ++ Transitions
+              ],
+    {_, NewDoc} = lists:unzip(lists:keysort(1, Indexed)),
+    NewDoc.
+
+-spec timeline(cb_context:context()) -> cb_context:context().
 timeline(Context) ->
     case success =:= cb_context:resp_status(Context) of
         false -> Context;
         true ->
-            Doc = cb_context:doc(Context),
-            Comments = kz_json:get_value(<<"comments">>, filter_private_comments(Context, Doc)),
-            Transitions = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
-            Indexed = [{kz_json:get_integer_value(?TRANSITION_TIMESTAMP, JObj), JObj}
-                       || JObj <- Comments ++ Transitions
-                      ],
-            {_, NewDoc} = lists:unzip(lists:keysort(1, Indexed)),
+            NewDoc = prepare_timeline(Context, cb_context:doc(Context)),
             cb_context:set_resp_data(Context, NewDoc)
     end.
 
