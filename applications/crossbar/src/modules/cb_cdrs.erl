@@ -500,7 +500,8 @@ view_option(Key, ViewOptions) ->
 interaction_view_option(Key, ViewOptions) ->
     case props:get_value(Key, ViewOptions) of
         [_, Option, _] -> Option;
-        [Option, _] -> Option;
+        [Option, _] when is_integer(Option) -> Option;
+        [_, Option] when is_integer(Option) -> Option;
         [Option] -> Option;
         Option -> Option
     end.
