@@ -151,6 +151,16 @@ curl -v -X GET \
 
 #### Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/last_transitions
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/last_transitions
+```
+
+#### Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline
 
 ```shell
