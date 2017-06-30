@@ -796,7 +796,7 @@ check_for_collision(Call, JObj, SavedJObj, DieAnotherDay) ->
 
 -spec give_me_another_id(ne_binary()) -> ne_binary().
 give_me_another_id(?MATCH_MODB_PREFIX(Year, Month, _)) ->
-    ?MODB_MSG_ID(Year, Month, kz_binary:rand_hex(16)).
+    kazoo_modb_util:modb_id(Year, Month).
 
 -spec send_system_alert(kapps_call:call() | 'undefined', ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_system_alert('undefined', AccountId, Subject, Msg) ->

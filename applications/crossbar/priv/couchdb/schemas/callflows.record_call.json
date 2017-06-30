@@ -20,6 +20,10 @@
             ],
             "type": "string"
         },
+        "label": {
+            "description": "Label to include in the origin of call recording",
+            "type": "string"
+        },
         "media_name": {
             "description": "the name of media",
             "type": "string"

@@ -1181,7 +1181,7 @@ purge_doc_type(Type, Account, ChunkSize) ->
         {'error', _}=E -> E;
         {'ok', []} -> 'ok';
         {'ok', Ds} ->
-            lager:debug('deleting up to ~p documents of type ~p', [ChunkSize, Type]),
+            lager:debug("deleting up to ~p documents of type ~p", [ChunkSize, Type]),
             kz_datamgr:del_docs(Db, [kz_json:get_value(<<"doc">>, D) || D <- Ds]),
             purge_doc_type(Type, Account, ChunkSize)
     end.

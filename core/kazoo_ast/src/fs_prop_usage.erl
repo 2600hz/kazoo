@@ -10,7 +10,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(DEBUG(_Fmt, _Args), 'ok').
-%% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+%%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -spec to_header_file() -> ok.
 to_header_file() ->
@@ -147,8 +147,8 @@ function_args('ecallmgr_originate') ->
     ,[?VAR(0, 'Props'), ?VAR(0, 'UUID')]
     };
 function_args('ecallmgr_fs_event_stream') ->
-    {'handle_fs_props'
-    ,[?VAR(0, 'UUID'), ?VAR(0, 'Props'), ?VAR(0, 'Node'), ?VAR(0, 'SwitchURI'), ?VAR(0, 'SwitchURL')]
+    {'process_stream'
+    ,[?VAR(0, 'EventName'), ?VAR(0, 'UUID'), ?VAR(0, 'Props'), ?VAR(0, 'Node')]
     };
 function_args('ecallmgr_call_events') ->
     {'process_channel_event'

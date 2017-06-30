@@ -24,15 +24,15 @@
 -export([load_smtp_attachment/2]).
 -export([versions_in_use/0]).
 
--define(DEFAULT_MIGRATE_OPTIONS, []).
--define(OVERRIDE_DOCS, ['override_existing_document']).
+-define(DEFAULT_MIGRATE_OPTIONS, [{'allow_old_modb_creation', 'true'}]).
+-define(OVERRIDE_DOCS, ['override_existing_document' | ?DEFAULT_MIGRATE_OPTIONS]).
 -define(DEFAULT_BATCH_SIZE, 100).
 
 -spec migrate() -> 'ok'.
 migrate() ->
     Accounts = kapps_util:get_all_accounts(),
     Total = length(Accounts),
-    lists:foldr(fun(A, C) -> migrate_faxes_fold(A, C, Total,?DEFAULT_MIGRATE_OPTIONS) end, 1, Accounts),
+    lists:foldr(fun(A, C) -> migrate_faxes_fold(A, C, Total, ?DEFAULT_MIGRATE_OPTIONS) end, 1, Accounts),
     migrate_outbound_faxes(),
     'ok'.
 
@@ -408,7 +408,7 @@ migrate_outbound_fax(JObj) ->
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month),FromId),
 
-    case kazoo_modb:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']) of
+    case kazoo_modb:move_doc(FromDB, FromId, ToDB, ToId, ?OVERRIDE_DOCS) of
         {'ok', _} -> io:format("document ~s/~s moved to ~s/~s~n", [FromDB, FromId, ToDB, ToId]);
         {'error', _E} -> io:format("error ~p moving document ~s/~s to ~s/~s~n", [_E, FromDB, FromId, ToDB, ToId])
     end.

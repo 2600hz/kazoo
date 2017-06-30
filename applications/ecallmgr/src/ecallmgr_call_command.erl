@@ -1643,7 +1643,7 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
     Vars = props:filter_undefined(
              [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
              ,{<<"Simplify-Loopback">>, <<"false">>}
-             ,{<<"Loopback-Bowout">>, <<"false">>}
+             ,{<<"Loopback-Bowout">>, <<"true">>}
              ,{<<"Loopback-Request-URI">>, ReqURI}
              ,{<<"SIP-Invite-Domain">>, Realm}
              ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}

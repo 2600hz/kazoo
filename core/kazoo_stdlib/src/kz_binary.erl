@@ -204,10 +204,6 @@ rand_hex(Size) when is_integer(Size)
                     andalso Size > 0 ->
     kz_term:to_hex_binary(crypto:strong_rand_bytes(Size)).
 
--spec reverse(binary()) -> binary().
-reverse(Bin) ->
-    kz_term:to_binary(lists:reverse(kz_term:to_list(Bin))).
-
 -spec ucfirst(ne_binary()) -> ne_binary().
 ucfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_upper_char(F)):8, Bin/binary>>.
 
@@ -230,3 +226,9 @@ closests(Chars, Bin) ->
                 Pos =/= -1
             ],
     lists:keysort(2, Pairs).
+
+-spec reverse(binary()) -> binary().
+reverse(Binary) ->
+    Size = erlang:size(Binary)*8,
+    <<X:Size/integer-little>> = Binary,
+    <<X:Size/integer-big>>.
