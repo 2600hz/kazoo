@@ -434,6 +434,52 @@ curl -v -X POST \
             "inbound_cnam"
         ],
         "id": "{PHONE_NUMBER}",
+        "my_own_field": "some other value",
+        "state": "in_service",
+        "used_by": "callflow"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+
+#### Patch public fields of a number
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"my_own_field":42}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "_read_only": {
+            "created": 63635220353,
+            "features": [
+                "outbound_cnam",
+                "inbound_cnam"
+            ],
+            "modified": 63635220353,
+            "state": "in_service",
+            "used_by": "callflow"
+        },
+        "cnam": {
+            "display_name": "My caller ID",
+            "inbound_lookup": true
+        },
+        "features": [
+            "outbound_cnam",
+            "inbound_cnam"
+        ],
+        "id": "{PHONE_NUMBER}",
+        "my_own_field": 42,
         "state": "in_service",
         "used_by": "callflow"
     },
@@ -861,6 +907,51 @@ curl -v -X POST \
                 },
                 "id": "{PHONE_NUMBER2}",
                 "myfield": 1337,
+                "state": "reserved"
+            }
+        }
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+
+#### Patch public fields of a list of numbers
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"numbers": ["{PHONE_NUMBER1}", "{PHONE_NUMBER2}"], "myfield": 2337}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "success": {
+            "{PHONE_NUMBER1}": {
+                "_read_only": {
+                    "created": 63628454912,
+                    "modified": 63628454912,
+                    "state": "reserved"
+                },
+                "id": "{PHONE_NUMBER1}",
+                "myfield": 2337,
+                "state": "reserved"
+            },
+            "{PHONE_NUMBER2}": {
+                "_read_only": {
+                    "created": 63628454912,
+                    "modified": 63628454912,
+                    "state": "reserved"
+                },
+                "id": "{PHONE_NUMBER2}",
+                "myfield": 2337,
                 "state": "reserved"
             }
         }
