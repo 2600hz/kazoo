@@ -49,6 +49,7 @@
 -define(PATH_TOKEN_LOA, <<"loa">>).
 
 -define(PATH_TOKEN_TIMELINE, <<"timeline">>).
+-define(PATH_TOKEN_LAST_SUBMITTED, <<"last_submitted">>).
 
 -define(REQ_TRANSITION, <<"reason">>).
 
@@ -90,6 +91,8 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
+allowed_methods(?PATH_TOKEN_LAST_SUBMITTED) ->
+    [?HTTP_GET];
 allowed_methods(?PORT_SUBMITTED) ->
     [?HTTP_GET];
 allowed_methods(?PORT_PENDING) ->
@@ -238,6 +241,8 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 validate(Context) ->
     validate_port_request(Context, cb_context:req_verb(Context)).
 
+validate(Context, ?PATH_TOKEN_LAST_SUBMITTED) ->
+    last_submitted(summary(Context));
 validate(Context, ?PORT_UNCONFIRMED = Type) ->
     validate_load_summary(Context, Type);
 validate(Context, ?PORT_SUBMITTED = Type) ->
@@ -357,13 +362,12 @@ maybe_update_scheduled_date(Context, PortId) ->
             TZ = kz_json:get_ne_binary_value([Key, <<"timezone">>], ReqData),
             Datetime = kz_json:get_ne_binary_value([Key, <<"date_time">>], ReqData),
             Scheduled = date_as_configured_timezone(Datetime, TZ),
-            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, TZ, Scheduled]),
+            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, Scheduled, TZ]),
             Values = [{Key, Scheduled}
                      ,{<<"schedule_at">>, DateJObj}
                      ],
             NewReqData = kz_json:set_values(Values, ReqData),
-            NewContext = cb_context:set_req_data(Context, NewReqData),
-            patch_then_notify(NewContext, PortId, ?PORT_SCHEDULED)
+            maybe_update_scheduled_date(cb_context:set_req_data(Context, NewReqData), PortId)
     end.
 
 -spec date_as_configured_timezone(ne_binary(), ne_binary()) -> gregorian_seconds().
@@ -750,17 +754,42 @@ maybe_normalize_summary_results(Context, 'true') ->
         _Else -> Context
     end.
 
+-spec last_submitted(cb_context:context()) -> cb_context:context().
+last_submitted(Context) ->
+    case success =:= cb_context:resp_status(Context) of
+        false -> Context;
+        true ->
+            [RespData] = cb_context:resp_data(Context),
+            Timelines = [{kz_doc:id(Doc), LastSubmitted}
+                         || Doc <- kz_json:get_list_value(<<"port_requests">>, RespData),
+                            Timeline <- [prepare_timeline(Context, Doc)],
+                            [LastSubmitted|_] <- [lists:reverse(transitions_to_submitted(Timeline))]
+                        ],
+            cb_context:set_resp_data(Context, kz_json:from_list(Timelines))
+    end.
+
+-spec transitions_to_submitted(kz_json:objects()) -> kz_json:objects().
+transitions_to_submitted(Timeline) ->
+    [JObj || JObj <- Timeline,
+             kz_json:get_ne_binary_value([?PORT_TRANSITION, <<"new">>], JObj) =:= ?PORT_SUBMITTED
+    ].
+
+-spec prepare_timeline(cb_context:context(), kz_json:object()) -> kz_json:object().
+prepare_timeline(Context, Doc) ->
+    Comments = kz_json:get_list_value(<<"comments">>, filter_private_comments(Context, Doc), []),
+    Transitions = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
+    Indexed = [{kz_json:get_integer_value(?TRANSITION_TIMESTAMP, JObj), JObj}
+               || JObj <- Comments ++ Transitions
+              ],
+    {_, NewDoc} = lists:unzip(lists:keysort(1, Indexed)),
+    NewDoc.
+
+-spec timeline(cb_context:context()) -> cb_context:context().
 timeline(Context) ->
     case success =:= cb_context:resp_status(Context) of
         false -> Context;
         true ->
-            Doc = cb_context:doc(Context),
-            Comments = kz_json:get_value(<<"comments">>, filter_private_comments(Context, Doc)),
-            Transitions = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
-            Indexed = [{kz_json:get_integer_value(?TRANSITION_TIMESTAMP, JObj), JObj}
-                       || JObj <- Comments ++ Transitions
-                      ],
-            {_, NewDoc} = lists:unzip(lists:keysort(1, Indexed)),
+            NewDoc = prepare_timeline(Context, cb_context:doc(Context)),
             cb_context:set_resp_data(Context, NewDoc)
     end.
 

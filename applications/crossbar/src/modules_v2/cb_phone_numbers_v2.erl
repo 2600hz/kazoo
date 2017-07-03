@@ -21,6 +21,7 @@
         ,authenticate/1
         ,put/2, put/3
         ,post/2, post/3
+        ,patch/2
         ,delete/2
 
         ,set_response/2
@@ -91,6 +92,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.validate.phone_numbers">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.phone_numbers">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete'),
     ok.
 
@@ -157,7 +159,7 @@ allowed_methods(?FIX) ->
 allowed_methods(?CLASSIFIERS) ->
     [?HTTP_GET];
 allowed_methods(?COLLECTION) ->
-    [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
+    [?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE];
 allowed_methods(?PREFIX) ->
     [?HTTP_GET];
 allowed_methods(?LOCALITY) ->
@@ -165,7 +167,7 @@ allowed_methods(?LOCALITY) ->
 allowed_methods(?CHECK) ->
     [?HTTP_POST];
 allowed_methods(_PhoneNumber) ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_GET].
 
 allowed_methods(?FIX, _PhoneNumber) ->
     [?HTTP_POST];
@@ -293,6 +295,8 @@ validate(Context, Number) ->
 validate_number(Context, Number, ?HTTP_GET) ->
     summary(Context, Number);
 validate_number(Context, _Number, ?HTTP_POST) ->
+    validate_request(Context);
+validate_number(Context, _Number, ?HTTP_PATCH) ->
     validate_request(Context);
 validate_number(Context, _Number, ?HTTP_PUT) ->
     validate_request(Context);
@@ -432,6 +436,19 @@ put(Context, Number, ?PORT) ->
     Result = knm_number:create(Number, Options),
     CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?PORT) end,
     set_response(Result, Context, CB).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, ?COLLECTION) ->
+    Results = collection_process(Context, ?HTTP_PATCH),
+    CB = fun() -> ?MODULE:patch(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
+    set_response(Results, Context, CB);
+patch(Context, Number) ->
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
+              ],
+    JObj = cb_context:doc(Context),
+    Result = knm_number:update(Number, [{fun knm_phone_number:update_doc/2, JObj}], Options),
+    set_response(Result, Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
@@ -1004,7 +1021,7 @@ reply_number_not_found(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collection_process(cb_context:context(), ne_binary()) -> knm_numbers:ret().
+-spec collection_process(cb_context:context(), ne_binary() | http_method()) -> knm_numbers:ret().
 collection_process(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     Numbers = kz_json:get_value(<<"numbers">>, ReqData),
@@ -1012,7 +1029,7 @@ collection_process(Context, Action) ->
     numbers_action(Context1, Action, Numbers).
 
 %% @private
--spec numbers_action(cb_context:context(), ne_binary(), ne_binaries()) -> knm_numbers:ret().
+-spec numbers_action(cb_context:context(), ne_binary() | http_method(), ne_binaries()) -> knm_numbers:ret().
 numbers_action(Context, ?ACTIVATE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
@@ -1034,6 +1051,12 @@ numbers_action(Context, ?HTTP_POST, Numbers) ->
               ],
     JObj = cb_context:req_data(Context),
     knm_numbers:update(Numbers, [{fun knm_phone_number:reset_doc/2, JObj}], Options);
+numbers_action(Context, ?HTTP_PATCH, Numbers) ->
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
+              ],
+    JObj = cb_context:req_data(Context),
+    knm_numbers:update(Numbers, [{fun knm_phone_number:update_doc/2, JObj}], Options);
 numbers_action(Context, ?HTTP_DELETE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],

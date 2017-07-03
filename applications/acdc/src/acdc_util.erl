@@ -49,9 +49,9 @@ agent_presence_update(AcctId, AgentId) ->
     end.
 
 -spec presence_update(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
--spec presence_update(ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec presence_update(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 presence_update(AcctId, PresenceId, State) ->
-    presence_update(AcctId, PresenceId, State, 'undefined').
+    presence_update(AcctId, PresenceId, State, kz_term:to_hex_binary(crypto:hash('md5', PresenceId))).
 presence_update(AcctId, PresenceId, State, CallId) ->
     {'ok', AcctDoc} = kz_account:fetch(AcctId),
     To = <<PresenceId/binary, "@", (kz_json:get_value(<<"realm">>, AcctDoc))/binary>>,
