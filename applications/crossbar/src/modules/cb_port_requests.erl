@@ -362,7 +362,7 @@ maybe_update_scheduled_date(Context, PortId) ->
             TZ = kz_json:get_ne_binary_value([Key, <<"timezone">>], ReqData),
             Datetime = kz_json:get_ne_binary_value([Key, <<"date_time">>], ReqData),
             Scheduled = date_as_configured_timezone(Datetime, TZ),
-            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, Scheduled, TZ]),
+            lager:debug("date ~s (~s) translated to ~p", [Datetime, TZ, Scheduled]),
             Values = [{Key, Scheduled}
                      ,{<<"schedule_at">>, DateJObj}
                      ],
