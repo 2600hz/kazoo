@@ -263,11 +263,11 @@ fetch_account_dataplan(AccountId) ->
     case kz_json:get_value(<<"pvt_plan_id">>, JObj) of
         'undefined' ->
             Keys = [AccountId, ?SYSTEM_DATAPLAN],
-            MergedJObj = kz_json:merge(SystemJObj, JObj),
+            MergedJObj = kz_json:merge_recursive(SystemJObj, JObj),
             {Keys, MergedJObj};
         PlanId ->
-            PlanJObj = kz_json:merge(SystemJObj, fetch_dataplan(PlanId)),
-            MergedJObj = kz_json:merge(PlanJObj, JObj),
+            PlanJObj = kz_json:merge_recursive(SystemJObj, fetch_dataplan(PlanId)),
+            MergedJObj = kz_json:merge_recursive(PlanJObj, JObj),
             Keys = [AccountId, PlanId, ?SYSTEM_DATAPLAN],
             {Keys, MergedJObj}
     end.
@@ -275,7 +275,7 @@ fetch_account_dataplan(AccountId) ->
 -spec fetch_storage_dataplan({ne_binary(), ne_binary()}) -> fetch_dataplan_ret().
 fetch_storage_dataplan({AccountId, StorageId}) ->
     {Keys, AccountPlan} = fetch_account_dataplan(AccountId),
-    MergedJObj = kz_json:merge(AccountPlan, fetch_dataplan(StorageId)),
+    MergedJObj = kz_json:merge_recursive(AccountPlan, fetch_dataplan(StorageId)),
     {[StorageId | Keys], MergedJObj}.
 
 
