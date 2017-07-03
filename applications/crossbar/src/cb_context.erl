@@ -17,6 +17,7 @@
         ,add_system_error/2, add_system_error/3, add_system_error/4
         ,add_validation_error/4
         ,validate_request_data/2, validate_request_data/3, validate_request_data/4
+        ,validate_request_data_only/2, validate_request_data_only/3, validate_request_data_only/4
         ,add_content_types_provided/2
         ,add_content_types_accepted/2
         ,add_attachment_content_type/3
@@ -109,6 +110,13 @@
 -include("crossbar.hrl").
 
 -define(KEY_ACCEPT_CHARGES, <<"accept_charges">>).
+
+-define(SHOULD_ENSURE_SCHEMA_IS_VALID
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, true)).
+
+-define(SHOULD_FAIL_ON_INVALID_DATA
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, false)).
+
 
 -type context() :: #cb_context{}.
 -type setter_fun_1() :: fun((context()) -> context()).
@@ -706,84 +714,95 @@ response(#cb_context{resp_error_code=Code
                                    context().
 -spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun()) ->
                                    context().
-validate_request_data('undefined', Context) ->
+validate_request_data(SchemaId, Context) ->
+    validate_request_data(SchemaId, Context, undefined).
+validate_request_data(SchemaId, Context, OnSuccess) ->
+    validate_request_data(SchemaId, Context, OnSuccess, undefined).
+validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
+    OnPassing = fun copy_req_data_to_doc/1,
+    do_validate_request_data(SchemaId, Context, OnSuccess, OnFailure, OnPassing).
+
+copy_req_data_to_doc(Context) ->
+    set_doc(Context, req_data(Context)).
+
+-spec validate_request_data_only(ne_binary(), context()) -> context().
+-spec validate_request_data_only(ne_binary(), context(), after_fun()) -> context().
+-spec validate_request_data_only(ne_binary(), context(), after_fun(), after_fun()) -> context().
+
+validate_request_data_only(SchemaId, Context) ->
+    validate_request_data_only(SchemaId, Context, undefined).
+validate_request_data_only(SchemaId, Context, OnSuccess) ->
+    validate_request_data_only(SchemaId, Context, OnSuccess, undefined).
+validate_request_data_only(SchemaId, Context, OnSuccess, OnFailure) ->
+    do_validate_request_data(SchemaId, Context, OnSuccess, OnFailure, fun kz_term:identity/1).
+
+-type on_passing() :: fun((context()) -> context()).
+-spec do_validate_request_data(ne_binary(), context(), after_fun(), after_fun(), on_passing()) -> context().
+do_validate_request_data(SchemaId, Context, OnSuccess, OnFailure, OnPassing) ->
+    case do_validate_request_data(SchemaId, Context, OnPassing) of
+        #cb_context{resp_status='success'}=C1 when is_function(OnSuccess, 1) ->
+            OnSuccess(C1);
+        #cb_context{}=C2 when is_function(OnFailure, 1) ->
+            OnFailure(C2);
+        Else -> Else
+    end.
+
+-spec do_validate_request_data(ne_binary() | api_object(), context(), on_passing()) -> context().
+do_validate_request_data(undefined, Context, _) ->
     lager:error("why validate then?"),
     passed(Context);
-validate_request_data(Schema=?NE_BINARY, Context) ->
-    DefaultStrict = kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, 'true'),
-    Strict = fetch(Context, 'ensure_valid_schema', DefaultStrict),
-    case find_schema(Schema) of
-        'undefined' when Strict ->
-            Msg = <<"schema ", Schema/binary, " not found.">>,
-            system_error(Context, Msg);
-        'undefined' ->
-            lager:error("schema ~s not found, continuing anyway", [Schema]),
-            passed(set_doc(Context, req_data(Context)));
+do_validate_request_data(?NE_BINARY=SchemaId, Context, OnPassing) ->
+    Strict = fetch(Context, ensure_valid_schema, ?SHOULD_ENSURE_SCHEMA_IS_VALID),
+    case find_schema(SchemaId) of
+        undefined when Strict ->
+            system_error(Context, <<"schema ", SchemaId/binary, " not found.">>);
+        undefined ->
+            lager:error("schema ~s not found, continuing anyway", [SchemaId]),
+            passed(OnPassing(Context));
         SchemaJObj ->
-            validate_request_data(SchemaJObj, Context)
+            do_validate_request_data(SchemaJObj, Context, OnPassing)
     end;
-validate_request_data(SchemaJObj, Context) ->
-    Strict = kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false'),
+do_validate_request_data(SchemaJObj, Context, OnPassing) ->
+    Strict = ?SHOULD_FAIL_ON_INVALID_DATA,
     try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(req_data(Context))) of
-        {'ok', JObj} ->
-            passed(set_doc(Context, JObj));
+        {'ok', JObj} -> passed(OnPassing(set_req_data(Context, JObj)));
         {'error', Errors} when Strict ->
-            lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
-                                                                        ,Errors
-                                                                        ]),
+            lager:debug("validation failed ~s: ~p", [kz_doc:id(SchemaJObj), Errors]),
             failed(set_resp_error_msg(Context, <<"validation failed">>), Errors);
         {'error', Errors} ->
-            maybe_fix_js_types(Context, SchemaJObj, Errors)
+            maybe_fix_js_types(Context, SchemaJObj, OnPassing, Errors)
     catch
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
             lager:debug("function clause failure"),
             kz_util:log_stacktrace(ST),
-            Context#cb_context{resp_status='fatal'
-                              ,resp_error_code=500
-                              ,resp_data=kz_json:new()
-                              ,resp_error_msg= <<"validation failed to run on the server">>
+            Context#cb_context{resp_status = 'fatal'
+                              ,resp_error_code = 500
+                              ,resp_data = kz_json:new()
+                              ,resp_error_msg = <<"validation failed to run on the server">>
                               }
-    end.
-
-validate_request_data(Schema, Context, OnSuccess) ->
-    validate_request_data(Schema, Context, OnSuccess, 'undefined').
-
-validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
-    case validate_request_data(Schema, Context) of
-        #cb_context{resp_status='success'}=C1 when is_function(OnSuccess) ->
-            OnSuccess(C1);
-        #cb_context{}=C2 when is_function(OnFailure) ->
-            OnFailure(C2);
-        Else -> Else
     end.
 
 -spec failed(context(), [jesse_error:error_reason()]) -> context().
 failed(Context, Errors) ->
-    Context1 = setters(Context
-                      ,[{fun set_resp_error_code/2, 400}
-                       ,{fun set_resp_status/2, 'error'}
-                       ]
-                      ),
+    Context1 = setters(Context, [{fun set_resp_error_code/2, 400}
+                                ,{fun set_resp_status/2, 'error'}
+                                ]),
     lists:foldl(fun failed_error/2, Context1, Errors).
 
 -spec failed_error(jesse_error:error_reason(), context()) -> context().
 failed_error(Error, Context) ->
-    {ErrorCode, ErrorMessage, ErrorJObj} =
-        kz_json_schema:error_to_jobj(Error
-                                    ,props:filter_undefined(
-                                       [{'version', api_version(Context)}
-                                       ,{'error_code', resp_error_code(Context)}
-                                       ,{'error_message', resp_error_msg(Context)}
-                                       ]
-                                      )
-                                    ),
+    Props = props:filter_undefined([{'version', api_version(Context)}
+                                   ,{'error_code', resp_error_code(Context)}
+                                   ,{'error_message', resp_error_msg(Context)}
+                                   ]),
+    {ErrorCode, ErrorMessage, ErrorJObj} = kz_json_schema:error_to_jobj(Error, Props),
     JObj = validation_errors(Context),
-    Context#cb_context{validation_errors=kz_json:merge_jobjs(ErrorJObj, JObj)
-                      ,resp_status='error'
-                      ,resp_error_code=ErrorCode
-                      ,resp_data=kz_json:new()
-                      ,resp_error_msg=ErrorMessage
+    Context#cb_context{validation_errors = kz_json:merge_jobjs(ErrorJObj, JObj)
+                      ,resp_status = 'error'
+                      ,resp_error_code = ErrorCode
+                      ,resp_data = kz_json:new()
+                      ,resp_error_msg = ErrorMessage
                       }.
 
 -spec passed(context()) -> context().
@@ -962,16 +981,15 @@ maybe_update_error_message(_Old, <<"init failed">>) -> <<"validation error">>;
 maybe_update_error_message(Msg, Msg) -> Msg;
 maybe_update_error_message(_Old, New) -> New.
 
--spec maybe_fix_js_types(context(), kz_json:object(), [jesse_error:error_reason()]) -> context().
-maybe_fix_js_types(Context, SchemaJObj, Errors) ->
+-spec maybe_fix_js_types(context(), kz_json:object(), fun(), [jesse_error:error_reason()]) -> context().
+maybe_fix_js_types(Context, SchemaJObj, OnPassing, Errors) ->
     JObj = req_data(Context),
     case lists:foldl(fun maybe_fix_js_type/2, JObj, Errors) of
         JObj ->
-            lager:debug("request data did not validate against ~s: ~p"
-                       ,[kz_doc:id(SchemaJObj), Errors]),
+            lager:debug("validation failed ~s: ~p", [kz_doc:id(SchemaJObj), Errors]),
             failed(Context, Errors);
         NewJObj ->
-            validate_request_data(SchemaJObj, set_req_data(Context, NewJObj))
+            do_validate_request_data(SchemaJObj, set_req_data(Context, NewJObj), OnPassing)
     end.
 
 -spec maybe_fix_js_type(jesse_error:error_reason(), kz_json:object()) ->
@@ -1009,34 +1027,36 @@ maybe_fix_js_boolean(Key, Value, JObj) ->
 -spec maybe_fix_index(kz_json:path() | kz_json:path()) -> kz_json:path() | kz_json:path().
 maybe_fix_index(Keys)
   when is_list(Keys) ->
-    lists:map(fun(K) when is_integer(K) ->
-                      K + 1;
-                 (K) -> K
-              end, Keys);
+    [case is_integer(K) of
+         true -> K + 1;
+         false -> K
+     end
+     || K <- Keys
+    ];
 maybe_fix_index(Key) ->
     Key.
 
--spec system_error_props(context()) -> kz_proplist().
-system_error_props(Context) ->
-    Extract = [{fun account_id/1, <<"account_id">>}
-              ,{fun account_name/1, <<"account_name">>}
-              ,{fun auth_account_id/1, <<"auth_account_id">>}
-              ,{fun(C) -> kz_json:from_list(req_headers(C)) end, <<"req_headers">>}
-              ,{fun req_json/1, <<"req_json">>}
-              ,{fun req_data/1, <<"req_data">>}
-              ,{fun query_string/1, <<"query_json">>}
-              ,{fun req_id/1, <<"req_id">>}
-              ],
-    Fun = fun({Fun, K}, KVs) -> [{K, Fun(Context)} | KVs] end,
-    Props = lists:foldl(Fun, [], Extract),
-    props:filter_undefined(Props).
+-spec system_properties(context()) -> kz_json:object().
+system_properties(Context) ->
+    kz_json:from_list(
+      [{Key, Fun(Context)}
+       || {Fun, Key} <- [{fun req_id/1, <<"req_id">>}
+                        ,{fun query_string/1, <<"query_json">>}
+                        ,{fun req_data/1, <<"req_data">>}
+                        ,{fun req_json/1, <<"req_json">>}
+                        ,{fun(C) -> kz_json:from_list(req_headers(C)) end, <<"req_headers">>}
+                        ,{fun auth_account_id/1, <<"auth_account_id">>}
+                        ,{fun account_name/1, <<"account_name">>}
+                        ,{fun account_id/1, <<"account_id">>}
+                        ]
+      ]).
 
 -spec system_error(context(), ne_binary()) -> context().
 system_error(Context, Error) ->
     Notify = props:filter_undefined(
                [{<<"Subject">>, <<"System Alert: API Error - ", Error/binary>>}
                ,{<<"Message">>, Error}
-               ,{<<"Details">>, kz_json:from_list(system_error_props(Context))}
+               ,{<<"Details">>, system_properties(Context)}
                ,{<<"Account-ID">>, auth_account_id(Context)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),

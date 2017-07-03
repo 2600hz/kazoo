@@ -349,7 +349,7 @@ patch(Context, Id, ?PORT_CANCELED) ->
 -spec maybe_patch_to_scheduled(cb_context:context(), path_token()) -> cb_context:context().
 maybe_patch_to_scheduled(Context, Id) ->
     OnSuccess = fun (C) -> maybe_update_scheduled_date(C, Id) end,
-    cb_context:validate_request_data(<<"port_requests.to_scheduled">>, Context, OnSuccess).
+    cb_context:validate_request_data_only(<<"port_requests.to_scheduled">>, Context, OnSuccess).
 
 -spec maybe_update_scheduled_date(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_update_scheduled_date(Context, PortId) ->
