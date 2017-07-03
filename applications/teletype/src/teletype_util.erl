@@ -330,7 +330,7 @@ default_content_transfer_encoding(_) -> <<"7BIT">>.
 
 -spec system_params() -> kz_proplist().
 system_params() ->
-    [{<<"hostname">>, kz_term:to_binary(net_adm:localhost())}].
+    [{<<"hostname">>, kz_nodes:node_encoded()}].
 
 -spec user_params(kzd_user:doc()) -> kz_proplist().
 user_params(UserJObj) ->
