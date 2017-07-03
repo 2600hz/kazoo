@@ -707,6 +707,7 @@ response(#cb_context{resp_error_code=Code
 -spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun()) ->
                                    context().
 validate_request_data('undefined', Context) ->
+    lager:error("why validate then?"),
     passed(Context);
 validate_request_data(Schema=?NE_BINARY, Context) ->
     DefaultStrict = kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, 'true'),
@@ -716,6 +717,7 @@ validate_request_data(Schema=?NE_BINARY, Context) ->
             Msg = <<"schema ", Schema/binary, " not found.">>,
             system_error(Context, Msg);
         'undefined' ->
+            lager:error("schema ~s not found, continuing anyway", [Schema]),
             passed(set_doc(Context, req_data(Context)));
         SchemaJObj ->
             validate_request_data(SchemaJObj, Context)

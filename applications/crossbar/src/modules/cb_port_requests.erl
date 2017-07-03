@@ -1211,7 +1211,7 @@ send_port_notification(Context, Id, ?PORT_CANCELED=State) ->
 send_port_notification(Context, Id, State, Fun) ->
     try
         Fun(Context, Id),
-        lager:debug("port ~s notification sent", [State]),
+        lager:debug("port ~s notification sent for ~s", [State, Id]),
         Context
     catch
         _E:_R ->
