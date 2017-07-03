@@ -383,10 +383,10 @@ date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $
 -spec patch_then_notify(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch_then_notify(Context, PortId, PortState) ->
     Context1 = do_patch(Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            send_port_notification(Context1, PortId, PortState);
-        _ -> Context1
+    case success =:= cb_context:resp_status(Context1) of
+        false -> Context1;
+        true ->
+            send_port_notification(Context1, PortId, PortState)
     end.
 
 %% @private
@@ -1075,11 +1075,7 @@ load_attachment(AttachmentId, Context) ->
         ],
     cb_context:add_resp_headers(Context1, Headers).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_move_state(Context, Id, PortState) ->
     Metadata = knm_port_request:transition_metadata(cb_context:auth_account_id(Context)

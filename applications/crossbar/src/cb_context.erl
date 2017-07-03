@@ -724,10 +724,7 @@ validate_request_data(Schema=?NE_BINARY, Context) ->
     end;
 validate_request_data(SchemaJObj, Context) ->
     Strict = kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false'),
-    try kz_json_schema:validate(SchemaJObj
-                               ,kz_doc:public_fields(req_data(Context))
-                               )
-    of
+    try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(req_data(Context))) of
         {'ok', JObj} ->
             passed(set_doc(Context, JObj));
         {'error', Errors} when Strict ->
@@ -768,10 +765,7 @@ failed(Context, Errors) ->
                        ,{fun set_resp_status/2, 'error'}
                        ]
                       ),
-    lists:foldl(fun failed_error/2
-               ,Context1
-               ,Errors
-               ).
+    lists:foldl(fun failed_error/2, Context1, Errors).
 
 -spec failed_error(jesse_error:error_reason(), context()) -> context().
 failed_error(Error, Context) ->
