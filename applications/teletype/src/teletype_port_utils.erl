@@ -125,7 +125,7 @@ fix_number_fold(Number, _Value, Acc) ->
 fix_billing(JObj) ->
     kz_json:foldl(fun fix_billing_fold/3
                  ,kz_json:delete_key(<<"bill">>, JObj)
-                 ,kz_json:get_value(<<"bill">>, JObj)
+                 ,kz_json:get_json_value(<<"bill">>, JObj, kz_json:new())
                  ).
 
 -spec fix_billing_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
