@@ -1,7 +1,7 @@
                 Caller Name Change Request for {{request.number}}
 
 
-Caller name identification for number {{request.number}} has be changed to '{{cnam.display_name}}'.
+Caller name identification for number {{request.number}} has been changed to '{{cnam.display_name}}'.
 Following is the detailed information about this change.
 
     Note: Changes to Caller Identification can take up to 48 hours to take effect based on your carrier.
