@@ -187,13 +187,8 @@ fix_transfer_date(JObj) ->
 
 -spec fix_scheduled_date(kz_json:path()) -> kz_json:object().
 fix_scheduled_date(JObj) ->
-    ScheduledDate = case kz_json:get_integer_value([<<"scheduled_date">>, <<"local">>], JObj) of
-                        %% backward compatibility
-                        undefined -> kz_json:get_integer_value(<<"scheduled_date">>, JObj);
-                        Timestamp -> Timestamp
-                    end,
     kz_json:set_values([{<<"port_scheduled_date">>, kz_json:get_value(<<"scheduled_date">>, JObj)}
-                       ,{<<"scheduled_date">>, ScheduledDate}
+                       ,{<<"scheduled_date">>, kz_json:get_value([<<"scheduled_date">>, <<"local">>], JObj)}
                        ], JObj).
 
 -spec fix_ui_metadata(kz_json:path()) -> kz_json:object().
