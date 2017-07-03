@@ -722,6 +722,7 @@ validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
     OnPassing = fun copy_req_data_to_doc/1,
     do_validate_request_data(SchemaId, Context, OnSuccess, OnFailure, OnPassing).
 
+-spec copy_req_data_to_doc(context()) -> context().
 copy_req_data_to_doc(Context) ->
     set_doc(Context, req_data(Context)).
 
@@ -749,7 +750,7 @@ do_validate_request_data(SchemaId, Context, OnSuccess, OnFailure, OnPassing) ->
 
 -spec do_validate_request_data(ne_binary() | api_object(), context(), on_passing()) -> context().
 do_validate_request_data(undefined, Context, _) ->
-    lager:error("why validate then?"),
+    lager:error("schema id or schema JSON not defined, continuing anyway"),
     passed(Context);
 do_validate_request_data(?NE_BINARY=SchemaId, Context, OnPassing) ->
     Strict = fetch(Context, ensure_valid_schema, ?SHOULD_ENSURE_SCHEMA_IS_VALID),
