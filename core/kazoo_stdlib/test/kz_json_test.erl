@@ -749,7 +749,7 @@ merge_vs_merge_recursive_test_() ->
     ].
 
 -ifdef(PERF).
--define(REPEAT, 100000).
+-define(REPEAT, 100 * 1000).
 
 horse_merge() ->
     horse:repeat(?REPEAT
@@ -759,6 +759,41 @@ horse_merge() ->
 horse_merge_recursive() ->
     horse:repeat(?REPEAT
                 ,kz_json:merge_recursive(?D1, ?D2)
+                ).
+
+-define(ANSWERS, kz_json:from_list(
+                   [{<<"a">>, 41}
+                   ,{<<"b">>, 12}
+                   ,{<<"c">>, <<"2">>}
+                   ])).
+
+update_a(J) ->
+    kz_json:set_value(<<"a">>, 1+kz_json:get_integer_value(<<"a">>, J), J).
+
+update_b(J) ->
+    kz_json:set_value(<<"b">>, 2*kz_json:get_integer_value(<<"b">>, J), J).
+
+update_c(J) ->
+    kz_json:set_value(<<"c">>, binary_to_integer(<<"4", (kz_json:get_ne_binary_value(<<"c">>, J))/binary>>), J).
+
+horse_piping() ->
+    horse:repeat(?REPEAT * 10
+                ,lists:foldl(fun (F, J) -> F(J) end
+                            ,?ANSWERS
+                            ,[fun update_a/1
+                             ,fun update_b/1
+                             ,fun update_c/1
+                             ]
+                            )
+                ).
+
+horse_not_piping() ->
+    horse:repeat(?REPEAT * 10
+                ,update_c(
+                   update_b(
+                     update_a(?ANSWERS)
+                    )
+                  )
                 ).
 
 -endif.
