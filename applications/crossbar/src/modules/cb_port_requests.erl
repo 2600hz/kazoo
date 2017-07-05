@@ -746,9 +746,9 @@ last_submitted(Context) ->
     case success =:= cb_context:resp_status(Context) of
         false -> Context;
         true ->
-            [RespData] = cb_context:resp_data(Context),
             Timelines = [{kz_doc:id(Doc), LastSubmitted}
-                         || Doc <- kz_json:get_list_value(<<"port_requests">>, RespData),
+                         || [RespData] <- [cb_context:resp_data(Context)],
+                            Doc <- kz_json:get_list_value(<<"port_requests">>, RespData),
                             Timeline <- [prepare_timeline(Context, Doc)],
                             [LastSubmitted|_] <- [lists:reverse(transitions_to_submitted(Timeline))]
                         ],
