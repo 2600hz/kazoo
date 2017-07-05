@@ -180,7 +180,7 @@ normalize_number_map(N, Meta) ->
 new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
     Normalized = normalize_numbers(PortReq),
     Metadata = transition_metadata(AuthAccountId, AuthUserId),
-    Unconf = [{?PORT_PVT_TYPE, <<"port_request">>}
+    Unconf = [{?PORT_PVT_TYPE, ?TYPE_PORT_REQUEST}
              ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
              ,{?PORT_PVT_TRANSITIONS, [transition_metadata_jobj(undefined, ?PORT_UNCONFIRMED, Metadata)]}
              ],
