@@ -310,7 +310,8 @@ put(Context) ->
 update_port_request_for_save(Context) ->
     update_port_request_for_save(Context, cb_context:doc(Context)).
 update_port_request_for_save(Context, Doc) ->
-    NewDoc = kz_account:set_tree(Doc, kz_account:tree(cb_context:account_doc(Context))),
+    NewDoc1 = maybe_set_scheduled_date_from_schedule_on(Doc),
+    NewDoc = kz_account:set_tree(NewDoc1, kz_account:tree(cb_context:account_doc(Context))),
     cb_context:setters(Context
                       ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
                        ,{fun cb_context:set_doc/2, NewDoc}
@@ -347,27 +348,20 @@ patch(Context, Id, ?PORT_CANCELED) ->
     patch_then_notify(Context, Id, ?PORT_CANCELED).
 
 -spec maybe_patch_to_scheduled(cb_context:context(), path_token()) -> cb_context:context().
-maybe_patch_to_scheduled(Context, Id) ->
-    OnSuccess = fun (C) -> maybe_update_scheduled_date(C, Id) end,
+maybe_patch_to_scheduled(Context, PortId) ->
+    OnSuccess = fun (C) -> patch_then_notify(C, PortId, ?PORT_SCHEDULED) end,
     cb_context:validate_request_data_only(<<"port_requests.to_scheduled">>, Context, OnSuccess).
 
--spec maybe_update_scheduled_date(cb_context:context(), ne_binary()) -> cb_context:context().
-maybe_update_scheduled_date(Context, PortId) ->
-    Key = <<"scheduled_date">>,
-    ReqData = cb_context:req_data(Context),
-    case kz_json:get_ne_value(Key, ReqData) of
-        Timestamp when is_integer(Timestamp) ->
-            patch_then_notify(Context, PortId, ?PORT_SCHEDULED);
+-spec maybe_set_scheduled_date_from_schedule_on(kz_json:object()) -> kz_json:object().
+maybe_set_scheduled_date_from_schedule_on(Doc) ->
+    case kz_json:get_ne_value(<<"schedule_on">>, Doc) of
+        undefined -> Doc;
         DateJObj ->
-            TZ = kz_json:get_ne_binary_value([Key, <<"timezone">>], ReqData),
-            Datetime = kz_json:get_ne_binary_value([Key, <<"date_time">>], ReqData),
+            TZ = kz_json:get_ne_binary_value(<<"timezone">>, DateJObj),
+            Datetime = kz_json:get_ne_binary_value(<<"date_time">>, DateJObj),
             Scheduled = date_as_configured_timezone(Datetime, TZ),
             lager:debug("date ~s (~s) translated to ~p", [Datetime, TZ, Scheduled]),
-            Values = [{Key, Scheduled}
-                     ,{<<"schedule_at">>, DateJObj}
-                     ],
-            NewReqData = kz_json:set_values(Values, ReqData),
-            maybe_update_scheduled_date(cb_context:set_req_data(Context, NewReqData), PortId)
+            kz_json:set_value(<<"scheduled_date">>, Scheduled, Doc)
     end.
 
 -spec date_as_configured_timezone(ne_binary(), ne_binary()) -> gregorian_seconds().

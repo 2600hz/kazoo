@@ -3,7 +3,7 @@
     "_id": "port_requests.to_scheduled",
     "description": "Schema for a port request to be transitioned to the 'scheduled' state",
     "properties": {
-        "scheduled_date": {
+        "schedule_on": {
             "description": "Time at which to perform the porting, either as a gregorian timestamp or as datetime",
             "properties": {
                 "date_time": {
@@ -20,14 +20,11 @@
                 "timezone",
                 "date_time"
             ],
-            "type": [
-                "integer",
-                "object"
-            ]
+            "type": "object"
         }
     },
     "required": [
-        "scheduled_date"
+        "schedule_on"
     ],
     "type": "object"
 }

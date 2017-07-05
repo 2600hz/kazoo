@@ -329,7 +329,7 @@ curl -v -X GET \
                         "+12025559042": {}
                     },
                     "port_state": "scheduled",
-                    "schedule_at": {
+                    "schedule_on": {
                         "date_time": "2017-06-24 12:00",
                         "timezone": "America/New_York"
                     },
@@ -1087,10 +1087,13 @@ curl -v -X PATCH \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
 
+Note: `schedule_on` is a required field for this state transition.
+Note: `scheduled_date` is an automatically added timestamp computed from the value of the `schedule_on` object.
+
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"scheduled_date": {"timezone":"America/Los_Angeles", "date_time":"2017-06-24 12:00"}}}' \
+    -d '{"data": {"schedule_on": {"timezone":"America/Los_Angeles", "date_time":"2017-06-24 12:00"}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
 ```
 
@@ -1105,7 +1108,7 @@ curl -v -X PATCH \
             "+12025559000": {}
         },
         "port_state": "scheduled",
-        "schedule_at": {
+        "schedule_on": {
             "date_time": "2017-06-24 12:00",
             "timezone": "America/Los_Angeles"
         },
