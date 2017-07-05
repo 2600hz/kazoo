@@ -563,8 +563,10 @@ are_all_there(Values, Keys, Vs, Ks) ->
                                   ,{<<"k3">>, ?K3_JOBJ}
                                   ,{<<"k4">>, [1,2,3]}
                                   ])).
-codec_test() ->
-    ?assertEqual(?CODEC_JOBJ, kz_json:decode(kz_json:encode(?CODEC_JOBJ))).
+codec_test_() ->
+    [?_assertEqual(?CODEC_JOBJ, kz_json:decode(kz_json:encode(?CODEC_JOBJ)))
+    ,?_assertNotEqual(<<"\"undefined\"">>, kz_json:encode(undefined))
+    ].
 
 find_value_test_() ->
     JObjs = kz_json:decode(<<"[{\"k1\":\"v1\"},{\"k1\":\"v2\"}]">>),
