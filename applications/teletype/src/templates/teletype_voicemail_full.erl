@@ -24,8 +24,10 @@
           ,?MACRO_VALUE(<<"voicemail.mailbox">>, <<"mailbox">>, <<"Voicemail Box Number">>, <<"Number of the voicemail box">>)
           ,?MACRO_VALUE(<<"voicemail.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
           ,?MACRO_VALUE(<<"voicemail.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
-           | ?ACCOUNT_MACROS ++ ?USER_MACROS
-          ])
+           | ?USER_MACROS
+           ++ ?COMMON_TEMPLATE_MACROS
+          ]
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Voicemail box '{{voicemail.name}}' is full">>).

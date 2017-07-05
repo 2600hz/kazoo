@@ -21,8 +21,8 @@
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The Resulting Account Balance">>)
            | ?TRANSACTION_MACROS
-           ++ ?ACCOUNT_MACROS
            ++ ?USER_MACROS
+           ++ ?COMMON_TEMPLATE_MACROS
           ]
          )
        ).

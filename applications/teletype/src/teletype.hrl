@@ -196,6 +196,11 @@
          ++ ?TO_MACROS
         ]).
 
+-define(COMMON_TEMPLATE_MACROS
+       ,?ACCOUNT_MACROS
+        ++ ?SYSTEM_MACROS
+       ).
+
 -record(email_receipt, {to :: ne_binaries() | ne_binary()
                        ,from :: ne_binary()
                        ,call_id :: ne_binary()

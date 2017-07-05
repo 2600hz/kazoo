@@ -24,7 +24,9 @@
           ++ ?FAX_MACROS
           ++ ?DEFAULT_CALL_MACROS
           ++ ?USER_MACROS
-         )).
+          ++ ?COMMON_TEMPLATE_MACROS
+         )
+       ).
 
 -define(TEMPLATE_SUBJECT, <<"Error sending Fax to {{callee_id.name}} ({% firstof fax.remote_station_id callee_id.number \"Unknown Number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).

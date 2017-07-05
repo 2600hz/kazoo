@@ -20,8 +20,10 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"link">>, <<"link">>, <<"Password Reset Link">>, <<"Link to reset password">>)
-           | ?ACCOUNT_MACROS ++ ?USER_MACROS
-          ])
+           | ?USER_MACROS
+           ++ ?COMMON_TEMPLATE_MACROS
+          ]
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Reset your VoIP services user password">>).
