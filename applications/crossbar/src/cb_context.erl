@@ -16,6 +16,7 @@
         ,has_errors/1
         ,add_system_error/2, add_system_error/3, add_system_error/4
         ,add_validation_error/4
+        ,do_validate_request_data/5
         ,validate_request_data/2, validate_request_data/3, validate_request_data/4
         ,validate_request_data_only/2, validate_request_data_only/3, validate_request_data_only/4
         ,add_content_types_provided/2

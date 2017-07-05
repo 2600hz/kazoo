@@ -341,7 +341,7 @@ patch(Context, Id, NewState=?PORT_PENDING) ->
     save_then_maybe_notify(Context, Id, NewState);
 patch(Context, Id, NewState=?PORT_SCHEDULED) ->
     OnSuccess = fun (C) -> save_then_maybe_notify(C, Id, NewState) end,
-    cb_context:validate_request_data(?SCHEMA_TO_SCHEDULED, Context, OnSuccess);
+    cb_context:validate_request_data_only(?SCHEMA_TO_SCHEDULED, Context, OnSuccess);
 patch(Context, Id, NewState=?PORT_COMPLETED) ->
     save_then_maybe_notify(Context, Id, NewState);
 patch(Context, Id, NewState=?PORT_REJECTED) ->
@@ -504,8 +504,11 @@ validate_port_request(Context, Id, ToState=?PORT_CANCELED, ?HTTP_PATCH) ->
                                                        cb_context:context().
 patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
     ValidateFun = fun (_PortId, C) ->
+                          ReqData = cb_context:req_data(C),
                           OnSuccess = fun (OtherC) -> maybe_move_state(OtherC, ToState) end,
-                          cb_context:validate_request_data(?SCHEMA, C, OnSuccess)
+                          %% Note: patch_and_validate sets ReqData to what we want
+                          OnPassing = fun (OtherC) -> cb_context:set_doc(OtherC, ReqData) end,
+                          cb_context:do_validate_request_data(?SCHEMA, C, OnSuccess, undefined, OnPassing)
                   end,
     Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
     LoadOptions = ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST),
