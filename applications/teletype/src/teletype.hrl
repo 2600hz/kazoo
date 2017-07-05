@@ -157,6 +157,9 @@
 
 -define(SYSTEM_MACROS
        ,[?MACRO_VALUE(<<"system.hostname">>, <<"system_hostname">>, <<"Hostname">>, <<"Hostname of system generating the email">>)
+        ,?MACRO_VALUE(<<"system.encoded_hostname">>, <<"system_encoded_hostname">>, <<"Encoded Hostname">>, <<"Hostname of system generating the email, encoded to not reveal the real value">>)
+        ,?MACRO_VALUE(<<"system.node">>, <<"system_node">>, <<"Node">>, <<"Node name of system generating the email">>)
+        ,?MACRO_VALUE(<<"system.encoded_node">>, <<"system_encoded_node">>, <<"Encoded Node">>, <<"Node name of system generating the email, encoded to not reveal the real value">>)
         ]).
 
 -define(FAX_MACROS
