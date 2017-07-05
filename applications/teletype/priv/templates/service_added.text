@@ -50,4 +50,4 @@ Re-seller Account Information
 
 
 
-Sent from {{system.hostname}}
+Sent from {{system.encoded_node}}
