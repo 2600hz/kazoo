@@ -22,6 +22,7 @@ dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1ae
 dep_jiffy = hex 0.14.7
 dep_nklib = git https://github.com/NetComposer/nklib
 dep_plists = git https://github.com/essen/plists
+dep_erlydtl = git https://github.com/erlydtl/erlydtl 0.12.0
 
 dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
 ###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.4.1
