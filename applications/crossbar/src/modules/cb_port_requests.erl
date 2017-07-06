@@ -743,17 +743,27 @@ maybe_normalize_summary_results(Context, 'true') ->
 
 -spec last_submitted(cb_context:context()) -> cb_context:context().
 last_submitted(Context) ->
-    case success =:= cb_context:resp_status(Context) of
-        false -> Context;
-        true ->
-            Timelines = [{kz_doc:id(Doc), LastSubmitted}
-                         || [RespData] <- [cb_context:resp_data(Context)],
-                            Doc <- kz_json:get_list_value(<<"port_requests">>, RespData),
-                            Timeline <- [prepare_timeline(Context, Doc)],
-                            [LastSubmitted|_] <- [lists:reverse(transitions_to_submitted(Timeline))]
-                        ],
-            cb_context:set_resp_data(Context, kz_json:from_list(Timelines))
-    end.
+    AccountId = cb_context:account_id(Context),
+    ViewOptions = [{startkey, [AccountId]}
+                  ,{endkey, [AccountId, kz_json:new()]}
+                  ,include_docs
+                  ],
+    crossbar_doc:load_view(<<"port_requests/listing_submitted">>
+                          ,ViewOptions
+                          ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                          ,fun (Res, Acc) -> last_submitted(Context, Res, Acc) end
+                          ).
+
+-spec last_submitted(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
+last_submitted(Context, ResultJObj, Acc) ->
+    [begin
+         Doc = kz_json:get_value(<<"doc">>, ResultJObj),
+         Timeline = prepare_timeline(Context, Doc),
+         [LastSubmitted|_] = lists:reverse(transitions_to_submitted(Timeline)),
+         kz_json:from_list([{kz_doc:id(Doc), LastSubmitted}])
+     end
+     | Acc
+    ].
 
 -spec transitions_to_submitted(kz_json:objects()) -> kz_json:objects().
 transitions_to_submitted(Timeline) ->
@@ -1069,14 +1079,13 @@ maybe_move_state(Context, PortState) ->
                                                    ,cb_context:auth_user_id(Context)
                                                    ,cb_context:req_value(Context, ?REQ_TRANSITION)
                                                    ),
-    Context1 = remove_transition_reason(Context),
-    try cb_context:resp_status(Context1) =:= 'success'
-             andalso knm_port_request:maybe_transition(cb_context:doc(Context1), Metadata, PortState)
+    try cb_context:resp_status(Context) =:= 'success'
+             andalso knm_port_request:maybe_transition(cb_context:doc(Context), Metadata, PortState)
     of
-        'false' -> Context1;
+        'false' -> Context;
         {'ok', PortRequest} ->
             lager:debug("loaded new port request state ~s", [PortState]),
-            cb_context:set_doc(Context1, PortRequest);
+            cb_context:set_doc(Context, PortRequest);
         {'error', 'invalid_state_transition'} ->
             Msg = kz_json:from_list(
                     [{<<"message">>, <<"Cannot move to new state from current state">>}
@@ -1090,11 +1099,6 @@ maybe_move_state(Context, PortState) ->
         'throw':{'error', 'failed_to_charge'} ->
             cb_context:add_system_error('no_credit', Context)
     end.
-
--spec remove_transition_reason(cb_context:context()) -> cb_context:context().
-remove_transition_reason(Context) ->
-    NewDoc = kz_json:delete_key(?REQ_TRANSITION, cb_context:doc(Context)),
-    cb_context:set_doc(Context, NewDoc).
 
 %%--------------------------------------------------------------------
 %% @private

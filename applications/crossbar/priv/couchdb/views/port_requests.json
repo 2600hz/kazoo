@@ -58,10 +58,10 @@
         "listing_submitted": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
-                "  if (doc.pvt_port_state != 'submitted') return;",
+                "  if (doc.pvt_type !== 'port_request' || doc.pvt_deleted) return;",
+                "  if (doc.pvt_port_state !== 'submitted') return;",
                 "  if (doc.pvt_sent === true) return;",
-                "  emit(doc._id, null);",
+                "  emit([doc.pvt_account_id, doc._id], null);",
                 "}"
             ]
         },

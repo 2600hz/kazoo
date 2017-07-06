@@ -392,17 +392,14 @@ assign_to_app(Number, NewApp, JObj) ->
 %%--------------------------------------------------------------------
 -spec send_submitted_requests() -> 'ok'.
 send_submitted_requests() ->
-    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB
-                               ,?VIEW_LISTING_SUBMITTED
-                               ,['include_docs']
-                               )
-    of
+    View = ?VIEW_LISTING_SUBMITTED,
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, View, [include_docs]) of
         {'error', _R} ->
-            lager:error("failed to open view ~s ~p", [?VIEW_LISTING_SUBMITTED, _R]);
+            lager:error("failed to open view ~s ~p", [View, _R]);
         {'ok', []} -> 'ok';
         {'ok', JObjs} ->
             lists:foreach(fun send_submitted_request/1, JObjs),
-            lager:debug("sent requests")
+            lager:debug("requests sent")
     end.
 
 send_submitted_request(JObj) ->

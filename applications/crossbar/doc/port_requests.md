@@ -844,27 +844,29 @@ curl -v -X GET \
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "{PORT_REQUEST_ID}": {
-            "authorization": {
-                "account": {
-                    "id": "{AUTH_ACCOUNT_ID}",
-                    "name": "{AUTH_ACCOUNT_NAME}"
+    "data": [
+        {
+            "{PORT_REQUEST_ID}": {
+                "authorization": {
+                    "account": {
+                        "id": "{AUTH_ACCOUNT_ID}",
+                        "name": "{AUTH_ACCOUNT_NAME}"
+                    },
+                    "user": {
+                        "id": "0d46906ff1eb36bff4d09b5b32fc14be",
+                        "first_name": "John",
+                        "last_name": "Doe"
+                    }
                 },
-                "user": {
-                    "id": "0d46906ff1eb36bff4d09b5b32fc14be",
-                    "first_name": "John",
-                    "last_name": "Doe"
-                }
-            },
-            "reason": "this was approved by Jane Doe",
-            "timestamp": 63664096014,
-            "transition": {
-                "new": "submitted",
-                "previous": "unconfirmed"
-            },
-            "type": "transition"
-        }
+                "reason": "this was approved by Jane Doe",
+                "timestamp": 63664096014,
+                "transition": {
+                    "new": "submitted",
+                    "previous": "unconfirmed"
+                },
+                "type": "transition"
+            }
+        ]
     },
     "node": "{NODE}",
     "request_id": "{REQUEST_ID}",
