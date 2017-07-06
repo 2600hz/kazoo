@@ -126,8 +126,8 @@ maybe_perform_migration(MigId, Context) ->
 
         _Other ->
             Cause = kz_json:from_list([
-                                      {<<"error">>, <<"invalid action time">>}
-                                     ]),
+                                       {<<"error">>, <<"invalid action time">>}
+                                      ]),
             cb_context:add_validation_error(<<"migration">>, <<"failed">>, Cause, Context)
     end.
 
@@ -136,8 +136,8 @@ check_migration_valid(MigId, Context) ->
     case lists:keyfind(MigId, 1, ?MIGRATIONS_LIST) of
         'false' ->
             Cause = kz_json:from_list([
-                                      {<<"migration">>, <<"not found">>}
-                                     ]),
+                                       {<<"migration">>, <<"not found">>}
+                                      ]),
             cb_context:add_validation_error(<<"migration">>, <<"invalid">>, Cause, Context);
 
         {_, _, Module} ->
