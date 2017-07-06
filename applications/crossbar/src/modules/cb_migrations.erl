@@ -87,8 +87,7 @@ load_migration_summary(MigId, Context) ->
 
 -spec render_migration_summary({binary(), binary(), atom()}, cb_context:context()) -> cb_context:context().
 render_migration_summary({Id, Desc, _Callback}, Context) ->
-    Base = [
-            {<<"id">>, Id}
+    Base = [{<<"id">>, Id}
            ,{<<"description">>, Desc}
            ],
 
@@ -125,9 +124,7 @@ maybe_perform_migration(MigId, Context) ->
             check_migration_valid(MigId, Context);
 
         _Other ->
-            Cause = kz_json:from_list([
-                                       {<<"error">>, <<"invalid action time">>}
-                                      ]),
+            Cause = kz_json:from_list([{<<"error">>, <<"invalid action time">>}]),
             cb_context:add_validation_error(<<"migration">>, <<"failed">>, Cause, Context)
     end.
 
@@ -135,9 +132,7 @@ maybe_perform_migration(MigId, Context) ->
 check_migration_valid(MigId, Context) ->
     case lists:keyfind(MigId, 1, ?MIGRATIONS_LIST) of
         'false' ->
-            Cause = kz_json:from_list([
-                                       {<<"migration">>, <<"not found">>}
-                                      ]),
+            Cause = kz_json:from_list([{<<"migration">>, <<"not found">>}]),
             cb_context:add_validation_error(<<"migration">>, <<"invalid">>, Cause, Context);
 
         {_, _, Module} ->
@@ -155,15 +150,11 @@ perform_migration(MigId, Module, Context) ->
                      Descendants = filter_account_descendants(Account, All, []),
                      Filtered    = maybe_filter_resellers(Descendants, Context),
                      List = [migrate_on_account(kz_json:get_value(<<"id">>, X), MigId, Module, Context) || X <- Filtered],
-                     kz_json:from_list([
-                                        {<<"performed_on">>, List}
-                                       ]);
+                     kz_json:from_list([{<<"performed_on">>, List}]);
 
                  'false' ->
                      _ = migrate_on_account(cb_context:account_id(Context), MigId, Module, Context),
-                     kz_json:from_list([
-                                        {<<"performed_on">>, [cb_context:account_id(Context)]}
-                                       ])
+                     kz_json:from_list([{<<"performed_on">>, [cb_context:account_id(Context)]}])
              end,
     cb_context:set_resp_data(Context, Result).
 
@@ -244,8 +235,7 @@ mark_migration_complete(MigId, AccountId, Context) ->
     User = cb_context:auth_user_id(Context),
     Acct = cb_context:auth_account_id(Context),
 
-    Args = kz_json:from_list([
-                              {<<"auth_user_id">>, User}
+    Args = kz_json:from_list([{<<"auth_user_id">>, User}
                              ,{<<"auth_account_id">>, Acct}
                              ,{<<"auth_account_name">>, get_account_name(Acct)}
                              ,{<<"auth_user_name">>, get_user_name(Acct, User)}
@@ -255,22 +245,22 @@ mark_migration_complete(MigId, AccountId, Context) ->
     NewMigs = kz_json:set_value(MigId, Args, Migrations),
     kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"migrations_performed">>, NewMigs, Doc)).
 
--spec get_account_name(binary()) -> binary().
+-spec get_account_name(binary()) -> api_ne_binary().
 get_account_name(AcctId) ->
     case kz_datamgr:open_cache_doc(kz_util:format_account_id(AcctId, 'encoded'), AcctId) of
         {'ok', Doc} ->
             kz_json:get_value(<<"name">>, Doc);
         _Error ->
-            <<"">>
+            'undefined'
     end.
 
--spec get_user_name(binary(), binary()) -> binary().
+-spec get_user_name(binary(), binary()) -> api_ne_binary().
 get_user_name(AcctId, UserId) ->
     case kz_datamgr:open_cache_doc(kz_util:format_account_id(AcctId, 'encoded'), UserId) of
         {'ok', Doc} ->
             kz_json:get_value(<<"username">>, Doc);
         _Error ->
-            <<"">>
+            'undefined'
     end.
 
 -spec maybe_create_migration_doc(binary()) -> 'ok'.
@@ -286,8 +276,7 @@ maybe_create_migration_doc(Account) ->
 
 -spec create_migration_doc(binary()) -> kz_json:object().
 create_migration_doc(Account) ->
-    Doc = kz_json:from_list([
-                             {<<"_id">>, ?MIGRATIONS_DOC}
+    Doc = kz_json:from_list([{<<"_id">>, ?MIGRATIONS_DOC}
                             ,{<<"pvt_created">>, kz_time:current_tstamp()}
                             ,{<<"migrations_performed">>, []}
                             ]),
