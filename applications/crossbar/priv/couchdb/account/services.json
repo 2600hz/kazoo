@@ -7,7 +7,7 @@
             "reduce": "_sum"
         },
         "opaque_billing": {
-            "map": "function(doc) { if(!doc.billing || doc.pvt_deleted) return; for (index in doc.billing) emit( index, doc.billing[index] ); }",
+            "map": "function(doc) { if(!doc.billing || doc.pvt_deleted) return; for (index in doc.billing)  if (doc.billing[index].item) { emit( doc.billing[index].item, doc.billing[index].quantity ); } else { emit( index, doc.billing[index] ); } }",
             "reduce": "_sum"
         },
         "users": {
