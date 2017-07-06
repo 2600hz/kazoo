@@ -125,22 +125,20 @@ maybe_perform_migration(MigId, Context) ->
             check_migration_valid(MigId, Context);
 
         _Other ->
-            Resp = kz_json:from_list([
+            Cause = kz_json:from_list([
                                       {<<"error">>, <<"invalid action time">>}
                                      ]),
-            Context1 = cb_context:set_resp_data(Context, Resp),
-            cb_context:set_resp_status(Context1, 'failed')
+            cb_context:add_validation_error(<<"migration">>, <<"failed">>, Cause, Context)
     end.
 
 -spec check_migration_valid(binary(), cb_context:context()) -> cb_context:context().
 check_migration_valid(MigId, Context) ->
     case lists:keyfind(MigId, 1, ?MIGRATIONS_LIST) of
         'false' ->
-            Resp = kz_json:from_list([
-                                      {<<"error">>, <<"invalid migration">>}
+            Cause = kz_json:from_list([
+                                      {<<"migration">>, <<"not found">>}
                                      ]),
-            Context1 = cb_context:set_resp_data(Context, Resp),
-            cb_context:set_resp_status(Context1, 'failed');
+            cb_context:add_validation_error(<<"migration">>, <<"invalid">>, Cause, Context);
 
         {_, _, Module} ->
             Context1 = perform_migration(MigId, Module, Context),
@@ -152,8 +150,8 @@ perform_migration(MigId, Module, Context) ->
     {'ok', All} = kz_datamgr:get_all_results(<<"accounts">>, <<"accounts/listing_by_descendants">>),
     Account     = cb_context:account_id(Context),
 
-    Result = case kz_json:get_binary_boolean(<<"include_descendants">>, cb_context:req_data(Context), <<"false">>) of
-                 <<"true">> ->
+    Result = case kz_json:is_true(<<"include_descendants">>, cb_context:req_data(Context)) of
+                 'true' ->
                      Descendants = filter_account_descendants(Account, All, []),
                      Filtered    = maybe_filter_resellers(Descendants, Context),
                      List = [migrate_on_account(kz_json:get_value(<<"id">>, X), MigId, Module, Context) || X <- Filtered],
@@ -161,7 +159,7 @@ perform_migration(MigId, Module, Context) ->
                                         {<<"performed_on">>, List}
                                        ]);
 
-                 <<"false">> ->
+                 'false' ->
                      _ = migrate_on_account(cb_context:account_id(Context), MigId, Module, Context),
                      kz_json:from_list([
                                         {<<"performed_on">>, [cb_context:account_id(Context)]}
@@ -171,9 +169,9 @@ perform_migration(MigId, Module, Context) ->
 
 -spec maybe_filter_resellers(list(), cb_context:context()) -> list(kz_json:object()).
 maybe_filter_resellers(Accounts, Context) ->
-    case kz_json:get_binary_boolean(<<"include_resellers">>, cb_context:req_data(Context), <<"false">>) of
-        <<"true">>  -> Accounts;
-        <<"false">> -> filter_account_resellers(Accounts)
+    case kz_json:is_true(<<"include_resellers">>, cb_context:req_data(Context)) of
+        'true'  -> Accounts;
+        'false' -> filter_account_resellers(Accounts)
     end.
 
 -spec filter_account_descendants(binary(), list(), list()) -> list().
@@ -244,7 +242,8 @@ mark_migration_complete(MigId, AccountId, Context) ->
     Migrations  = kz_json:get_value(<<"migrations_performed">>, Doc),
 
     Args = kz_json:from_list([
-                              {<<"authorizing_id">>, cb_context:auth_user_id(Context)}
+                              {<<"auth_user_id">>, cb_context:auth_user_id(Context)}
+                             ,{<<"auth_account_id">>, cb_context:auth_account_id(Context)}
                              ,{<<"performed_time">>, kz_time:current_tstamp()}
                              ]),
 
