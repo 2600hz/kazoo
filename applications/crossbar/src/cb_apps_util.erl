@@ -47,7 +47,9 @@ allowed_app(AccountId, AppId) ->
                  AppId =:= kzd_app:id(App)
          ]
     of
-        [App] -> App;
+        [App|_] ->
+            %% More than one service plan can have the same app, hence taking the head
+            App;
         [] -> 'undefined'
     end.
 
