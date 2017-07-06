@@ -618,11 +618,11 @@ does_request_validate(Req, Context0) ->
         'false' ->
             lager:debug("failed to validate resource"),
             Msg = case cb_context:resp_error_msg(Context2) of
-                'undefined' ->
-                    Data = cb_context:resp_data(Context2),
-                    kz_json:get_value(<<"message">>, Data, <<"validation failed">>);
-                Message -> Message
-            end,
+                      'undefined' ->
+                          Data = cb_context:resp_data(Context2),
+                          kz_json:get_value(<<"message">>, Data, <<"validation failed">>);
+                      Message -> Message
+                  end,
             api_util:halt(Req, cb_context:set_resp_error_msg(Context2, Msg))
     end.
 
