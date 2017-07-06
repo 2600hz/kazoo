@@ -241,14 +241,37 @@ mark_migration_complete(MigId, AccountId, Context) ->
     {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, ?MIGRATIONS_DOC),
     Migrations  = kz_json:get_value(<<"migrations_performed">>, Doc),
 
+    User = cb_context:auth_user_id(Context),
+    Acct = cb_context:auth_account_id(Context),
+
     Args = kz_json:from_list([
-                              {<<"auth_user_id">>, cb_context:auth_user_id(Context)}
-                             ,{<<"auth_account_id">>, cb_context:auth_account_id(Context)}
+                              {<<"auth_user_id">>, User}
+                             ,{<<"auth_account_id">>, Acct}
+                             ,{<<"auth_account_name">>, get_account_name(Acct)}
+                             ,{<<"auth_user_name">>, get_user_name(Acct, User)}
                              ,{<<"performed_time">>, kz_time:current_tstamp()}
                              ]),
 
     NewMigs = kz_json:set_value(MigId, Args, Migrations),
     kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"migrations_performed">>, NewMigs, Doc)).
+
+-spec get_account_name(binary()) -> binary().
+get_account_name(AcctId) ->
+    case kz_datamgr:open_cache_doc(kz_util:format_account_id(AcctId, 'encoded'), AcctId) of
+        {'ok', Doc} ->
+            kz_json:get_value(<<"name">>, Doc);
+        _Error ->
+            <<"">>
+    end.
+
+-spec get_user_name(binary(), binary()) -> binary().
+get_user_name(AcctId, UserId) ->
+    case kz_datamgr:open_cache_doc(kz_util:format_account_id(AcctId, 'encoded'), UserId) of
+        {'ok', Doc} ->
+            kz_json:get_value(<<"username">>, Doc);
+        _Error ->
+            <<"">>
+    end.
 
 -spec maybe_create_migration_doc(binary()) -> 'ok'.
 maybe_create_migration_doc(Account) ->
