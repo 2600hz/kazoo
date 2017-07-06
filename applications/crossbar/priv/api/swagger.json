@@ -14063,6 +14063,15 @@
             "required": true,
             "type": "string"
         },
+        "MIGRATION_ID": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "MIGRATION_ID",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
         "MODULE": {
             "in": "path",
             "name": "MODULE",
@@ -19080,6 +19089,61 @@
                     },
                     {
                         "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/migrations": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/migrations/{MIGRATION_ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/MIGRATION_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/MIGRATION_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
