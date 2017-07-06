@@ -74,7 +74,7 @@ kazoo: core apps
 
 
 $(RELX):
-	wget 'https://github.com/erlware/relx/releases/download/v3.19.0/relx' -O $@
+	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
 	chmod +x $@
 
 clean-release:
@@ -84,10 +84,13 @@ clean-release:
 
 build-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
+	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 build-dev-release: $(RELX) clean-release rel/relx.config-dev rel/vm.args
 	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
+	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
+	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 tar-release: $(RELX) rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src
@@ -99,7 +102,7 @@ rel/relx.config-dev: rel/relx.config.src
 rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
 	cp $^ $@
 rel/vm.args: rel/args rel/dev-vm.args
-	( cat $<; echo '$${KZname}' ) > $@
+	( echo '-setcookie $${COOKIE}'; cat $<; echo '-name $${NODE_NAME}' ) > $@
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
@@ -108,14 +111,14 @@ ifneq ($(findstring kazoo_apps,$(REL)),kazoo_apps)
 release: export KAZOO_APPS = 'ecallmgr'
 endif
 release:
-	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
+	@NODE_NAME='$(REL)' COOKIE='change_me' $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
 
 install: compile build-release
 	cp -a _rel/kazoo /opt
 
 read-release-cookie: REL ?= kazoo_apps
 read-release-cookie:
-	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
+	@NODE_NAME='$(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
