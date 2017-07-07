@@ -211,19 +211,16 @@ docs-report:
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
 	@$(ROOT)/scripts/setup_docs.bash
-	@cp $(DOCS_ROOT)/mkdocs.yml $(DOCS_ROOT)/mkdocs.local.yml
 	@mkdir -p $(DOCS_ROOT)/theme
-	@if [ -f $(DOCS_ROOT)/theme/global.yml ]; then cat $(DOCS_ROOT)/theme/global.yml >> $(DOCS_ROOT)/mkdocs.local.yml; fi
 
 docs-build:
-	@echo "\ntheme: null\ntheme_dir: '$(DOCS_ROOT)/theme'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> $(DOCS_ROOT)/mkdocs.local.yml
-	@mkdocs build -f $(DOCS_ROOT)/mkdocs.local.yml --clean -q --site-dir $(DOCS_ROOT)/site
+	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-build
 
 docs-clean:
-	@rm -rf $(DOCS_ROOT)/site $(DOCS_ROOT)/docs $(DOCS_ROOT)/mkdocs.local.yml
+	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) clean
 
 docs-serve: docs-setup docs-build
-	@mkdocs serve --dev-addr=0.0.0.0:9876 -f $(DOCS_ROOT)/mkdocs.local.yml
+	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-serve
 
 fs-headers:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
