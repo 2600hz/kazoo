@@ -193,7 +193,7 @@ renew(Node, UUID) ->
     end.
 
 -spec channel_data(atom(), ne_binary()) -> {'ok', kz_proplist()} |
-                                           {'error', 'timeout' | 'badarg'}.
+                                           freeswitch:fs_api_error().
 channel_data(Node, UUID) ->
     case freeswitch:api(Node, 'uuid_dump', UUID) of
         {'error', _}=E -> E;
