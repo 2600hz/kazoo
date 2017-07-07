@@ -1,3 +1,3 @@
-# Apps
+# Welcome
 
-Pick an app you want to learn about!
+Use the left-hand nav to find topics of interest.
