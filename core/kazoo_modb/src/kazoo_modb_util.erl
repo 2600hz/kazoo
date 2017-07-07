@@ -13,7 +13,7 @@
 -export([prev_year_month/1, prev_year_month/2
         ,prev_year_month_mod/1
         ,split_account_mod/1
-        ,modb_id/0, modb_id/2, modb_id/3
+        ,modb_id/0, modb_id/1, modb_id/2, modb_id/3
         ]).
 
 -spec prev_year_month(ne_binary()) -> {kz_year(), kz_month()}.
@@ -71,6 +71,16 @@ split_account_mod(?MATCH_MODB_SUFFIX_ENCODED(Account,Year,Month)) ->
 modb_id() ->
     {Year, Month, _} = erlang:date(),
     modb_id(Year, Month, kz_binary:rand_hex(16)).
+
+%% @doc
+%% Equivalent to `modb_id/3`
+-spec modb_id(non_neg_integer() | ne_binary()) -> ne_binary().
+modb_id(Timestamp) when is_integer(Timestamp) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    modb_id(Year, Month, kz_binary:rand_hex(16));
+modb_id(Id) when is_binary(Id) ->
+    {Year, Month, _} = erlang:date(),
+    modb_id(Year, Month, Id).
 
 %% @doc
 %% Equivalent to `modb_id/3`

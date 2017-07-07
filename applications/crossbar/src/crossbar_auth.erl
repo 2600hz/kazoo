@@ -22,6 +22,9 @@
 -define(SHOULD_LOG_FAILED,
         kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_failed_attempts">>, 'false')
        ).
+-define(SHOULD_LOG_SUCCESS,
+        kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_successful_attempts">>, 'false')
+       ).
 -define(SYSTEM_AUTH_CONFIG,
         kapps_config:get_json(?AUTH_CONFIG_CAT, <<"auth_modules">>, kz_json:new())
        ).
@@ -30,20 +33,23 @@
                                cb_context:context().
 create_auth_token(Context, AuthModule) ->
     JObj = cb_context:doc(Context),
+    Method = kz_term:to_binary(AuthModule),
+    AccountId = kz_json:get_first_defined([<<"account_id">>, [<<"Claims">>, <<"account_id">>]], JObj),
     case kz_json:is_empty(JObj) of
         'true' ->
-            lager:debug("empty doc, no auth token created"),
+            Reason = <<"empty creds doc, no auth token created">>,
+            lager:debug("~s", [Reason]),
+            log_failed_auth(Context, AccountId, kz_json:new(), Method, <<"auth_token">>, Reason),
             crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
         'false' ->
-            create_auth_token(Context, AuthModule, JObj)
+            create_auth_token(Context, Method, JObj)
     end.
 
--spec create_auth_token(cb_context:context(), atom(), kz_json:object()) ->
+-spec create_auth_token(cb_context:context(), ne_binary(), kz_json:object()) ->
                                cb_context:context().
-create_auth_token(Context, AuthModule, JObj) ->
+create_auth_token(Context, Method, JObj) ->
     Data = cb_context:req_data(Context),
 
-    Method = kz_term:to_binary(AuthModule),
     AccountId = kz_json:get_first_defined([<<"account_id">>, [<<"Claims">>, <<"account_id">>]], JObj),
     OwnerId = kz_json:get_first_defined([<<"owner_id">>, [<<"Claims">>, <<"owner_id">>]], JObj),
 
@@ -67,10 +73,12 @@ create_auth_token(Context, AuthModule, JObj) ->
     IsMultiFactor = is_multi_factor_enabled(Claims, AuthConfig),
 
     case is_auth_module_enabled(Method, AuthConfig)
-        andalso maybe_create_token(Claims, AuthConfig, Method, IsMultiFactor)
+        andalso maybe_create_token(Context, Claims, AuthConfig, Method, IsMultiFactor)
     of
         'false' ->
-            {'error', <<"authentication module ", Method/binary, " is disabled">>};
+            Reason = <<"authentication module ", Method/binary, " is disabled">>,
+            log_failed_auth(Context, AccountId, AuthConfig, Method, <<"auth_token">>, Reason),
+            {'error', Reason};
         {'ok', Token} ->
             Setters = [{fun cb_context:set_auth_token/2, Token}
                       ,{fun cb_context:set_auth_doc/2, kz_json:from_list(Claims)}
@@ -83,10 +91,14 @@ create_auth_token(Context, AuthModule, JObj) ->
             Resp = crossbar_util:response_auth(RespObj, AccountId, OwnerId),
 
             lager:debug("created new local auth token: ~s", [kz_json:encode(Resp)]),
+            log_success_auth(Context, AccountId, AuthConfig, Method, <<"auth_token">>, <<"auth token created">>),
 
             crossbar_util:response(Resp, cb_context:setters(Context, Setters));
         {'error', R} ->
-            lager:debug("could not create new local auth token, ~s", [kz_term:to_binary(R)]),
+            Reason = kz_term:to_binary(R),
+            lager:debug("could not create new local auth token, ~s", [Reason]),
+            log_failed_auth(Context, AccountId, AuthConfig, Method, <<"auth_token">>, Reason),
+
             cb_context:add_system_error('invalid_credentials', Context);
         {'error', Reason, RespJObj} ->
             lager:debug("authentication factor module requested that the client should preform second-factor authentication, returning ~s with response ~p"
@@ -100,29 +112,34 @@ create_auth_token(Context, AuthModule, JObj) ->
             cb_context:add_system_error(401, 'invalid_credentials', MFAReq, Context)
     end.
 
--spec maybe_create_token(kz_proplist(), kz_json:object(), ne_binary(), boolean()) ->
+-spec maybe_create_token(cb_context:context(), kz_proplist(), kz_json:object(), ne_binary(), boolean()) ->
                                 {'ok', ne_binary()} |
                                 {'error', any()} |
                                 {'error', any(), any()}.
-maybe_create_token(Claims, _AuthConfig, _Method, 'false') ->
+maybe_create_token(_Context, Claims, _AuthConfig, _Method, 'false') ->
     kz_auth:create_token(Claims);
-maybe_create_token(Claims, AuthConfig, Method, 'true') ->
+maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
     lager:debug("auth module ~s is configured to use multi factor", [Method]),
+
+    AccountId = props:get_value(<<"account_id">>, Claims),
     NewClaims = props:filter_undefined(
                   [{<<"mfa_options">>, mfa_options(Method, AuthConfig)}
                    | Claims
                   ]),
+
     case kz_mfa_auth:authenticate(NewClaims) of
         {'ok', 'authenticated'} ->
-            lager:debug("multi factor authentication was successful, creating local auth token"),
+            Reason = <<"multi factor authentication was successful">>,
+            lager:debug("~s, creating local auth token", [Reason]),
+            log_success_auth(Context, AccountId, AuthConfig, Method, <<"multi_factor">>, Reason),
             kz_auth:create_token(Claims);
         {'error', 'no_provider'} ->
             Reason = <<"no multi factor authentication provider is configured">>,
             lager:debug("~s, creating local auth token", [Reason]),
-            maybe_log_failed_mfa_auth(NewClaims, AuthConfig, Method, Reason),
+            log_failed_auth(Context, AccountId, AuthConfig, Method, <<"multi_factor">>, Reason),
             kz_auth:create_token(Claims);
         {'error', Reason}=Error ->
-            maybe_log_failed_mfa_auth(NewClaims, AuthConfig, Method, Reason),
+            log_failed_auth(Context, AccountId, AuthConfig, Method, <<"multi_factor">>, Reason),
             Error;
         {'error', 401, _MFAReq}=Retry -> Retry
     end.
@@ -140,49 +157,13 @@ validate_auth_token(Token, Options) ->
         Other -> Other
     end.
 
-
 -spec authorize_auth_token(map() | ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 authorize_auth_token(Token) ->
     kz_auth:authorize_token(Token).
 
+-spec maybe_db_token(map() | ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
-
--spec maybe_log_failed_mfa_auth(kz_proplist(), kz_json:object(), ne_binary(), atom() | ne_binary()) -> 'ok'.
-maybe_log_failed_mfa_auth(Claims, AuthConfig, Method, Reason) ->
-    Key = method_config_path(Method, <<"log_failed_attempts">>),
-    case kz_json:is_true(Key, AuthConfig, ?SHOULD_LOG_FAILED) of
-        'true' -> log_failed_mfa_attempts(Claims, AuthConfig, Reason);
-        'false' -> 'ok'
-    end.
-
--spec log_failed_mfa_attempts(kz_proplist(), kz_json:object(), atom() | ne_binary()) -> 'ok'.
-log_failed_mfa_attempts(Claims, AuthConfig, Reason) ->
-    AccountId = props:get_value(<<"account_id">>, Claims),
-
-    Now = kz_time:current_tstamp(),
-    ModDb = kz_util:format_account_mod_id(AccountId, Now),
-
-    LogId = kazoo_modb_util:modb_id(),
-
-    Doc = kz_json:from_list(
-            [{<<"_id">>, LogId}
-            ,{<<"auth_type">>, <<"multi_factor">>}
-            ,{<<"debug_type">>, <<"failed">>}
-            ,{<<"message">>, kz_term:to_binary(Reason)}
-            ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfig)}
-            ,{<<"mfa_config_origin">>
-             ,props:get_value([<<"mfa_options">>, <<"account_id">>], Claims, <<"system">>)
-             }
-            ,{<<"timestamp">>, Now}
-            ,{<<"pvt_account_db">>, ModDb}
-            ,{<<"pvt_account_id">>, AccountId}
-            ,{<<"pvt_type">>, <<"login_attempt">>}
-            ,{<<"pvt_created">>, Now}
-            ,{<<"pvt_modified">>, Now}
-            ]),
-    _ = kazoo_modb:save_doc(ModDb, Doc),
-    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,6 +186,8 @@ is_auth_module_enabled(Method, Config) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec auth_config(api_ne_binary()) -> kz_json:object().
+auth_config('undefined') ->
+    system_auth_config();
 auth_config(AccountId) ->
     account_auth_config(AccountId, master_account_id()).
 
@@ -348,3 +331,80 @@ method_config_path(Method, Key) ->
 -spec method_mfa_path(ne_binary(), ne_binary()) -> ne_binaries().
 method_mfa_path(Method, Key) ->
     [<<"auth_modules">>, Method, <<"multi_factor">>, Key].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Log successful authentiaction if configured to do so
+%% @end
+%%--------------------------------------------------------------------
+-spec log_success_auth(cb_context:context(), api_binary(), api_object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+log_success_auth(Context, 'undefined', AuthConfig, Method, AuthType, Reason) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> 'ok';
+        AccountId -> log_success_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason)
+    end;
+log_success_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason) ->
+    case is_log_type_enabled(<<"success">>, Method, AuthConfig) of
+        'false' -> 'ok';
+        'true' ->
+            log_attempts(Context, AccountId, AuthConfig, Method, <<"success">>, AuthType, Reason)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Log failed authentiaction if configured to do so
+%% @end
+%%--------------------------------------------------------------------
+-spec log_failed_auth(cb_context:context(), api_binary(), api_object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+log_failed_auth(Context, 'undefined', AuthConfig, Method, AuthType, Reason) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> 'ok';
+        AccountId -> log_failed_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason)
+    end;
+log_failed_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason) ->
+    case is_log_type_enabled(<<"failed">>, Method, AuthConfig) of
+        'false' -> 'ok';
+        'true' ->
+            log_attempts(Context, AccountId, AuthConfig, Method, <<"failed">>, AuthType, Reason)
+    end.
+
+-spec is_log_type_enabled(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+is_log_type_enabled(<<"failed">>, Method, AuthConfig) ->
+    Key = method_config_path(Method, <<"log_failed_attempts">>),
+    kz_json:is_true(Key, AuthConfig, ?SHOULD_LOG_FAILED);
+is_log_type_enabled(<<"success">>, Method, AuthConfig) ->
+    Key = method_config_path(Method, <<"log_successful_attempts">>),
+    kz_json:is_true(Key, AuthConfig, ?SHOULD_LOG_SUCCESS).
+
+-spec log_attempts(cb_context:context(), ne_binary(), api_object(), ne_binary(), ne_binary(), ne_binary(), atom() | ne_binary()) -> 'ok'.
+log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason) ->
+    MultiFactorOrigin =
+      case mfa_options(Method, AuthConfig) of
+          'undefined' -> <<"system">>;
+          Opts -> props:get_value([<<"mfa_options">>, <<"account_id">>], Opts, <<"system">>)
+      end,
+    Now = kz_time:current_tstamp(),
+    MODB = kz_util:format_account_mod_id(AccountId, Now),
+
+    LogId = kazoo_modb_util:modb_id(Now),
+
+    Props = [{<<"_id">>, LogId}
+            ,{<<"auth_type">>, AuthType}
+            ,{<<"debug_type">>, DebugType}
+            ,{<<"auth_module">>, Method}
+            ,{<<"message">>, kz_term:to_binary(Reason)}
+            ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfig)}
+            ,{<<"multi_factor_config_origin">>, MultiFactorOrigin}
+            ,{<<"client_headers">>, kz_json:from_list(cb_context:req_headers(Context))}
+            ,{<<"client_ip">>, cb_context:client_ip(Context)}
+            ,{<<"timestamp">>, Now}
+            ],
+    Doc = kz_doc:update_pvt_parameters(
+            kz_json:from_list(Props), MODB, [{'type', <<"login_attempt">>}
+                                            ,{'now', Now}
+                                            ]
+           ),
+    _ = kazoo_modb:save_doc(MODB, Doc),
+    'ok'.
