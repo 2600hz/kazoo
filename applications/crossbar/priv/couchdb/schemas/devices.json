@@ -241,6 +241,11 @@
                         }
                     },
                     "type": "object"
+                },
+                "webrtc": {
+                    "description": "If true forces a webrtc compatible SDP on the INVITE.",
+                    "required": false,
+                    "type": "boolean"
                 }
             },
             "type": "object"
