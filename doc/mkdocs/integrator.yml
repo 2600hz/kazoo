@@ -15,7 +15,9 @@ pages:
     - 'applications/crossbar/doc/ip_auth.md'
     - 'applications/crossbar/doc/basic_auth.md'
     - 'applications/crossbar/doc/token_auth.md'
-    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
+    - 'Adding Multi-factor':
+        - 'API': 'applications/crossbar/doc/multi_factor.md'
+        - 'Backend': 'core/kazoo_auth/doc/multi_factor.md'
     - 'applications/crossbar/doc/authentication_configuration.md'
     - 'applications/crossbar/doc/shared_auth.md'
     - 'applications/crossbar/doc/ubiquiti_auth.md'
@@ -37,7 +39,9 @@ pages:
   - 'Connectivity':
     - 'applications/crossbar/doc/connectivity.md'
     - 'applications/crossbar/doc/ips.md'
-    - 'applications/crossbar/doc/rates.md'
+    - 'Ratedecks':
+        - 'API': 'applications/crossbar/doc/rates.md'
+        - 'Backend': 'applications/tasks/doc/rates.md'
     - 'applications/crossbar/doc/resources.md'
     - 'applications/crossbar/doc/resource_templates.md'
     - 'applications/crossbar/doc/resource_selectors.md'
