@@ -748,11 +748,12 @@ last_submitted(Context) ->
                   ,{endkey, [AccountId, kz_json:new()]}
                   ,include_docs
                   ],
-    crossbar_doc:load_view(<<"port_requests/listing_submitted">>
-                          ,ViewOptions
-                          ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                          ,fun (Res, Acc) -> last_submitted(Context, Res, Acc) end
-                          ).
+    merge_resp_data(
+      crossbar_doc:load_view(<<"port_requests/listing_submitted">>
+                            ,ViewOptions
+                            ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                            ,fun (Res, Acc) -> last_submitted(Context, Res, Acc) end
+                            )).
 
 -spec last_submitted(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
 last_submitted(Context, ResultJObj, Acc) ->
@@ -763,6 +764,14 @@ last_submitted(Context, ResultJObj, Acc) ->
         [LastSubmitted|_] ->
             JObj = kz_json:from_list([{kz_doc:id(Doc), LastSubmitted}]),
             [JObj|Acc]
+    end.
+
+-spec merge_resp_data(cb_context:context()) -> cb_context:context().
+merge_resp_data(Context) ->
+    case success =:= cb_context:resp_status(Context) of
+        false -> Context;
+        true ->
+            cb_context:set_resp_data(Context, kz_json:merge(cb_context:resp_data(Context)))
     end.
 
 -spec transitions_to_submitted(kz_json:objects()) -> kz_json:objects().
