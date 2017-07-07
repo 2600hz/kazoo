@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.sleep",
+    "description": "AMQP API for dialplan.sleep",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "sleep"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Time": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Time"
+    ],
+    "type": "object"
+}

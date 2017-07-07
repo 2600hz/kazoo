@@ -1,0 +1,63 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.set_terminators",
+    "description": "AMQP API for dialplan.set_terminators",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "set_terminators"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Terminators": {
+            "items": {
+                "enum": [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "*",
+                    "0",
+                    "#"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Terminators"
+    ],
+    "type": "object"
+}

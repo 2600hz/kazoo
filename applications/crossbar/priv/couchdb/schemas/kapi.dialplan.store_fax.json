@@ -1,0 +1,62 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.store_fax",
+    "description": "AMQP API for dialplan.store_fax",
+    "properties": {
+        "Additional-Headers": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Application-Name": {
+            "enum": [
+                "store_fax"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Fax-Local-Filename": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Media-Transfer-Destination": {
+            "type": "string"
+        },
+        "Media-Transfer-Method": {
+            "enum": [
+                "put"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Media-Transfer-Destination",
+        "Media-Transfer-Method"
+    ],
+    "type": "object"
+}

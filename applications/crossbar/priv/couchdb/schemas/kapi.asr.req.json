@@ -1,0 +1,48 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.asr.req",
+    "description": "AMQP API for asr.req",
+    "properties": {
+        "ASR-Account-ID": {
+            "type": "string"
+        },
+        "ASR-Account-Password": {
+            "type": "string"
+        },
+        "ASR-Endpoint": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Control-Queue": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "asr"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "req"
+            ],
+            "type": "string"
+        },
+        "Language": {
+            "type": "string"
+        },
+        "Stream-Response": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "ASR-Account-ID",
+        "ASR-Account-Password",
+        "ASR-Endpoint",
+        "Call-ID",
+        "Control-Queue"
+    ],
+    "type": "object"
+}

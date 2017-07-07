@@ -873,7 +873,7 @@ insert_command(#state{node=Node
             CommandQ;
         <<"queue">> ->
             'true' = kapi_dialplan:queue_v(JObj),
-            Commands = kz_json:get_value(<<"Commands">>, JObj, []),
+            Commands = kz_json:get_list_value(<<"Commands">>, JObj, []),
             DefJObj = kz_json:from_list(kz_api:extract_defaults(JObj)),
             _ = execute_queue_commands(Commands, DefJObj, State),
             CommandQ;
@@ -901,7 +901,7 @@ insert_command(Q, Pos, _) ->
 execute_queue_commands([], _, _) -> 'ok';
 execute_queue_commands([Command|Commands], DefJObj, State) ->
     case kz_json:is_empty(Command)
-        orelse kz_json:get_ne_value(<<"Application-Name">>, Command) =:= 'undefined'
+        orelse 'undefined' =:=  kz_json:get_ne_binary_value(<<"Application-Name">>, Command)
     of
         'true' -> execute_queue_commands(Commands, DefJObj, State);
         'false' ->

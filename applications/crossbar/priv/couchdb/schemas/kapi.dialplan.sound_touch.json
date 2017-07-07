@@ -1,0 +1,72 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.sound_touch",
+    "description": "AMQP API for dialplan.sound_touch",
+    "properties": {
+        "Action": {
+            "enum": [
+                "start",
+                "stop"
+            ],
+            "type": "string"
+        },
+        "Adjust-In-Octaves": {
+            "type": "string"
+        },
+        "Adjust-In-Semitones": {
+            "type": "string"
+        },
+        "Application-Name": {
+            "enum": [
+                "sound_touch"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Hook-DTMF": {
+            "type": "boolean"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Pitch": {
+            "type": "string"
+        },
+        "Rate": {
+            "type": "string"
+        },
+        "Sending-Leg": {
+            "type": "boolean"
+        },
+        "Tempo": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Action",
+        "Application-Name",
+        "Call-ID",
+        "Insert-At"
+    ],
+    "type": "object"
+}

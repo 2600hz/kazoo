@@ -1,0 +1,99 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.fax_outbound",
+    "description": "AMQP API for notifications.fax_outbound",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "outbound_fax"
+            ],
+            "type": "string"
+        },
+        "Fax-ID": {
+            "type": "string"
+        },
+        "Fax-Info": {
+            "type": "string"
+        },
+        "Fax-JobId": {
+            "type": "string"
+        },
+        "Fax-Notifications": {
+            "type": "string"
+        },
+        "Fax-Timestamp": {
+            "type": "string"
+        },
+        "FaxBox-ID": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Owner-ID": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Callee-ID-Number",
+        "Caller-ID-Number",
+        "Fax-ID",
+        "Fax-JobId"
+    ],
+    "type": "object"
+}

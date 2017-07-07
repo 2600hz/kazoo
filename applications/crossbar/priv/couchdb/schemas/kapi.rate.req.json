@@ -1,0 +1,71 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.rate.req",
+    "description": "AMQP API for rate.req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Authorizing-Type": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Direction": {
+            "enum": [
+                "inbound",
+                "outbound"
+            ],
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "rate"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "req"
+            ],
+            "type": "string"
+        },
+        "From-DID": {
+            "type": "string"
+        },
+        "Options": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Outbound-Flags": {
+            "type": "string"
+        },
+        "Ratedeck-ID": {
+            "type": "string"
+        },
+        "Resource-ID": {
+            "type": "string"
+        },
+        "Resource-Type": {
+            "enum": [
+                "audio",
+                "video",
+                "sms"
+            ],
+            "type": "string"
+        },
+        "Send-Empty": {
+            "type": "boolean"
+        },
+        "To-DID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "To-DID"
+    ],
+    "type": "object"
+}

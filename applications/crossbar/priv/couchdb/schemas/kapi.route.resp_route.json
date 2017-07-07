@@ -1,0 +1,102 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.route.resp_route",
+    "description": "AMQP API for route.resp_route",
+    "properties": {
+        "Auth-Password": {
+            "type": "string"
+        },
+        "Auth-User": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Type": {
+            "enum": [
+                "from",
+                "rpid",
+                "pid"
+            ],
+            "type": "string"
+        },
+        "Codecs": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Invite-Format": {
+            "enum": [
+                "username",
+                "e164",
+                "npan",
+                "1npan",
+                "route",
+                "loopback",
+                "contact"
+            ],
+            "type": "string"
+        },
+        "Media": {
+            "enum": [
+                "process",
+                "bypass",
+                "auto"
+            ],
+            "type": "string"
+        },
+        "Progress-Timeout": {
+            "type": "integer"
+        },
+        "Proxy-Via": {
+            "type": "string"
+        },
+        "Rate": {
+            "type": "string"
+        },
+        "Rate-Increment": {
+            "type": "string"
+        },
+        "Rate-Minimum": {
+            "type": "string"
+        },
+        "Rate-NoCharge-Time": {
+            "type": "integer"
+        },
+        "Route": {
+            "type": "string"
+        },
+        "Surcharge": {
+            "type": "string"
+        },
+        "To-DID": {
+            "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        },
+        "Weight-Cost": {
+            "type": "string"
+        },
+        "Weight-Location": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Invite-Format"
+    ],
+    "type": "object"
+}

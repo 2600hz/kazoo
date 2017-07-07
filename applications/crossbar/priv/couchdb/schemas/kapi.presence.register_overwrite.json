@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.register_overwrite",
+    "description": "AMQP API for presence.register_overwrite",
+    "properties": {
+        "Contact": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "register_overwrite"
+            ],
+            "type": "string"
+        },
+        "Previous-Contact": {
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Contact",
+        "Previous-Contact",
+        "Realm",
+        "Username"
+    ],
+    "type": "object"
+}

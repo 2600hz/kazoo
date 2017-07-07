@@ -1,0 +1,47 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.money.balance_resp",
+    "description": "AMQP API for money.balance_resp",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "transaction"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "balance_resp"
+            ],
+            "type": "string"
+        },
+        "Inbound": {
+            "type": "string"
+        },
+        "Max-Inbound": {
+            "type": "string"
+        },
+        "Max-Two-Way": {
+            "type": "string"
+        },
+        "Node": {
+            "type": "string"
+        },
+        "Prepay": {
+            "type": "string"
+        },
+        "Trunks": {
+            "type": "string"
+        },
+        "Two-Way": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID"
+    ],
+    "type": "object"
+}

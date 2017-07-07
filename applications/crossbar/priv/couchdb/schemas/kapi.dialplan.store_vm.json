@@ -1,0 +1,68 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.store_vm",
+    "description": "AMQP API for dialplan.store_vm",
+    "properties": {
+        "Additional-Headers": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Application-Name": {
+            "enum": [
+                "store_vm"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Media-Name": {
+            "type": "string"
+        },
+        "Media-Transfer-Destination": {
+            "type": "string"
+        },
+        "Media-Transfer-Method": {
+            "enum": [
+                "stream",
+                "put",
+                "post"
+            ],
+            "type": "string"
+        },
+        "Suppress-Error-Report": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Media-Name",
+        "Media-Transfer-Destination",
+        "Media-Transfer-Method"
+    ],
+    "type": "object"
+}

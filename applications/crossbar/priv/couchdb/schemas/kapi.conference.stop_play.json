@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.stop_play",
+    "description": "AMQP API for conference.stop_play",
+    "properties": {
+        "Affects": {
+            "enum": [
+                "current",
+                "all"
+            ],
+            "type": "string"
+        },
+        "Application-Name": {
+            "enum": [
+                "stop_play"
+            ],
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Participant-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Conference-ID"
+    ],
+    "type": "object"
+}

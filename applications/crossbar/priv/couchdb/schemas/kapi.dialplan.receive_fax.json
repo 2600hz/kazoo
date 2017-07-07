@@ -1,0 +1,57 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.receive_fax",
+    "description": "AMQP API for dialplan.receive_fax",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "receive_fax"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Enable-T38-Fax": {
+            "type": "string"
+        },
+        "Enable-T38-Fax-Request": {
+            "type": "string"
+        },
+        "Enable-T38-Gateway": {
+            "type": "string"
+        },
+        "Enable-T38-Passthrough": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Fax-Local-Filename": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID"
+    ],
+    "type": "object"
+}

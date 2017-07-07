@@ -1,0 +1,78 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.noop",
+    "description": "AMQP API for dialplan.noop",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "noop"
+            ],
+            "type": "string"
+        },
+        "B-Leg-Events": {
+            "items": {
+                "enum": [
+                    "CALL_SECURE",
+                    "CALL_UPDATE",
+                    "CHANNEL_ANSWER",
+                    "CHANNEL_CREATE",
+                    "CHANNEL_DESTROY",
+                    "CHANNEL_EXECUTE",
+                    "CHANNEL_EXECUTE_COMPLETE",
+                    "CHANNEL_EXECUTE_ERROR",
+                    "CHANNEL_FAX_STATUS",
+                    "CHANNEL_INTERCEPTED",
+                    "CHANNEL_PROGRESS_MEDIA",
+                    "CHANNEL_REPLACED",
+                    "CHANNEL_TRANSFEREE",
+                    "CHANNEL_TRANSFEROR",
+                    "CHANNEL_BRIDGE",
+                    "CHANNEL_UNBRIDGE",
+                    "CHANNEL_HOLD",
+                    "CHANNEL_UNHOLD",
+                    "DETECTED_TONE",
+                    "DTMF",
+                    "LEG_CREATED",
+                    "LEG_DESTROYED",
+                    "RECORD_START",
+                    "RECORD_STOP",
+                    "dialplan"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Filter-Applications": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID"
+    ],
+    "type": "object"
+}

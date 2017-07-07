@@ -1,0 +1,65 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.search_resp",
+    "description": "AMQP API for conference.search_resp",
+    "properties": {
+        "Answered": {
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Conferences": {
+            "type": "string"
+        },
+        "Dynamic": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "search_resp"
+            ],
+            "type": "string"
+        },
+        "Locked": {
+            "type": "string"
+        },
+        "Participant-Count": {
+            "type": "string"
+        },
+        "Participants": {
+            "type": "string"
+        },
+        "Run-Time": {
+            "type": "integer"
+        },
+        "Running": {
+            "type": "string"
+        },
+        "Start-Time": {
+            "type": "integer"
+        },
+        "Switch-External-IP": {
+            "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        },
+        "Switch-URL": {
+            "type": "string"
+        },
+        "UUID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Conferences"
+    ],
+    "type": "object"
+}

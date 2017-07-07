@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.inspector.filter_resp",
+    "description": "AMQP API for inspector.filter_resp",
+    "properties": {
+        "Call-IDs": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call_inspector"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "filter_resp"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

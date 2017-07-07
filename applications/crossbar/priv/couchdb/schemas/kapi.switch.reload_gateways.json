@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.switch.reload_gateways",
+    "description": "AMQP API for switch.reload_gateways",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "switch_event"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "reload_gateways"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

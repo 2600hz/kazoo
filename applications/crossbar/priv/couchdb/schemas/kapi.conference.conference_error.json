@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.conference_error",
+    "description": "AMQP API for conference.conference_error",
+    "properties": {
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Error-Message": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "error"
+            ],
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Conference-ID",
+        "Error-Message",
+        "Request"
+    ],
+    "type": "object"
+}

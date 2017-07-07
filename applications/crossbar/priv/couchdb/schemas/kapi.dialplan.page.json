@@ -1,0 +1,74 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.page",
+    "description": "AMQP API for dialplan.page",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "page"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Endpoints": {
+            "items": {
+                "$ref": "kapi.dialplan.bridge_endpoint",
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Page-Options": {
+            "type": "string"
+        },
+        "Timeout": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Endpoints"
+    ],
+    "type": "object"
+}

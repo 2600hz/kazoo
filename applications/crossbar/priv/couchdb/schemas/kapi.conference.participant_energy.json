@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.participant_energy",
+    "description": "AMQP API for conference.participant_energy",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "participant_energy"
+            ],
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Energy-Level": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Participant-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Conference-ID",
+        "Energy-Level",
+        "Participant-ID"
+    ],
+    "type": "object"
+}

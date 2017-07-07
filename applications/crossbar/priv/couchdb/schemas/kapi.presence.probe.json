@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.probe",
+    "description": "AMQP API for presence.probe",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "probe"
+            ],
+            "type": "string"
+        },
+        "Event-Package": {
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Event-Package",
+        "Realm",
+        "Username"
+    ],
+    "type": "object"
+}

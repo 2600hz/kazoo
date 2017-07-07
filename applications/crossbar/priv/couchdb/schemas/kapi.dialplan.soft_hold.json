@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.soft_hold",
+    "description": "AMQP API for dialplan.soft_hold",
+    "properties": {
+        "A-MOH": {
+            "type": "string"
+        },
+        "Application-Name": {
+            "enum": [
+                "soft_hold"
+            ],
+            "type": "string"
+        },
+        "B-MOH": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Unhold-Key": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Unhold-Key"
+    ],
+    "type": "object"
+}

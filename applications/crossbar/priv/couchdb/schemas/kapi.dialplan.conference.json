@@ -1,0 +1,67 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.conference",
+    "description": "AMQP API for dialplan.conference",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Deaf": {
+            "type": "boolean"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Member-Nospeak": {
+            "type": "string"
+        },
+        "Moderator": {
+            "type": "boolean"
+        },
+        "Mute": {
+            "type": "boolean"
+        },
+        "Nospeak-Check": {
+            "type": "string"
+        },
+        "Profile": {
+            "type": "string"
+        },
+        "Reinvite": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Conference-ID"
+    ],
+    "type": "object"
+}

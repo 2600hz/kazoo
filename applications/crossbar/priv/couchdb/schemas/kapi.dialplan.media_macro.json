@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.media_macro",
+    "description": "AMQP API for dialplan.media_macro",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "media_macro"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "now"
+            ],
+            "type": "string"
+        },
+        "Media-Macros": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Media-Macros"
+    ],
+    "type": "object"
+}

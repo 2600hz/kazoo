@@ -132,7 +132,7 @@ process_functions(Functions, Config0) ->
                ,Functions
                ).
 
-process_function({_Module, _Function, _Arity, Clauses}=Function, Config) ->
+process_function({_Module, Function, _Arity, Clauses}, Config) ->
     process_clauses(Clauses, callback_function(Function, Config)).
 
 process_clauses(Clauses, Config0) ->
@@ -240,6 +240,7 @@ process_expression(?MAP_FIELD_EXACT(K, V)=Expression, Config) ->
 process_expression(Expression, Config) ->
     callback_expression(Expression, Config).
 
+-spec callback_function(function(), config()) -> config().
 callback_function(Function
                  ,#{'function' := Fun
                    ,'accumulator' := Acc0

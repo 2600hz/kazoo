@@ -1,0 +1,59 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.hangups.query_resp",
+    "description": "AMQP API for hangups.query_resp",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "hangups"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "query_resp"
+            ],
+            "type": "string"
+        },
+        "account_id": {
+            "type": "string"
+        },
+        "count": {
+            "type": "string"
+        },
+        "day": {
+            "type": "string"
+        },
+        "fifteen": {
+            "type": "string"
+        },
+        "five": {
+            "type": "string"
+        },
+        "five_to_fifteen": {
+            "type": "string"
+        },
+        "hangup_cause": {
+            "type": "string"
+        },
+        "mean": {
+            "type": "string"
+        },
+        "meters": {
+            "type": "string"
+        },
+        "one": {
+            "type": "string"
+        },
+        "one_to_fifteen": {
+            "type": "string"
+        },
+        "one_to_five": {
+            "type": "string"
+        },
+        "start_time": {
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.metaflow.flow",
+    "description": "AMQP API for metaflow.flow",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "metaflow"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "flow"
+            ],
+            "type": "string"
+        },
+        "Flow": {
+            "type": "object"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Flow"
+    ],
+    "type": "object"
+}

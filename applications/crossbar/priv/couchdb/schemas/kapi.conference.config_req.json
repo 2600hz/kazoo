@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.config_req",
+    "description": "AMQP API for conference.config_req",
+    "properties": {
+        "Controls": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "config_req"
+            ],
+            "type": "string"
+        },
+        "Profile": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Profile",
+        "Request"
+    ],
+    "type": "object"
+}

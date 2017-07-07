@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.reset",
+    "description": "AMQP API for presence.reset",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "reset"
+            ],
+            "type": "string"
+        },
+        "Event-Package": {
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Realm",
+        "Username"
+    ],
+    "type": "object"
+}

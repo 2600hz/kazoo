@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.mwi_query",
+    "description": "AMQP API for presence.mwi_query",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "mwi_query"
+            ],
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Realm",
+        "Username"
+    ],
+    "type": "object"
+}

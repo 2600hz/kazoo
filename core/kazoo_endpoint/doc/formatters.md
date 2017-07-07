@@ -19,17 +19,23 @@ On the resource document, define a key `Formatters` which is a JSON object of ro
     {"_id":"some_resource_id"
      ,...
      ,"formatters":{
-         "request":{...}
+         "request":[{...}]
          ,"from":[{...},{...}]
-         ,"caller_id_number":{...}
+         ,"outbound_caller_id_number":{...}
          ...
      }
 
 In the above partial example, the resource has defined formatters for the `request` and `caller-id-number` fields, and a list of two formatters for the `from` field.
 
+For outbound (to the carrier) formatters, you can see the fields available by looking at the [kapi_offnet_resource request schema](applications/crossbar/priv/couchdb/schemas/kapi.offnet_resource.req.json).
+
+Inbound (from the carrier) fields are found in the [kapi_route request schema](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/kapi_route.req.json).
+
 #### Devices, users, accounts
 
 It can be desirable to control the format of fields going to registered devices. You can place the `formatters` object on a device, user, or account, to have it be used when processing calls to endpoints. The `formatter` object(s) will be merged before being applied to the endpoint.
+
+Inbound fields are found in the [kapi_route request schema](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/kapi_route.req.json); outbound fields are typically found when [bridging via kapi_dialplan](applications/crossbar/priv/couchdb/schemas/kapi.dialplan.bridge.json).
 
 ## Formatter format
 
@@ -84,7 +90,7 @@ A more full example:
               "match_invite_format":true
               ,"direction":"outbound"
           }]
-          ,"caller_id_name":[{
+          ,"outbound_caller_id_name":[{
               "value":"Kazoo"
           }]
       }
@@ -95,7 +101,7 @@ This will
 1. Format the 'From' DID as E164 before republishing the inbound request
 2. Format the From as NPAN on an offnet(outbound) request
 3. Format the Diversion username to match the invite format of the request on an outbound request
-4. Set the Caller ID Name to "Kazoo" on inbound and outbound calls
+4. Set the Outbound Caller ID Name to "Kazoo" on outbound calls
 
 ### SIP Headers
 

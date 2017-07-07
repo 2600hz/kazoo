@@ -1,0 +1,40 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.sysconf.set_req",
+    "description": "AMQP API for sysconf.set_req",
+    "properties": {
+        "Category": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "sysconf"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "set_req"
+            ],
+            "type": "string"
+        },
+        "Key": {
+            "type": "string"
+        },
+        "Node": {
+            "type": "string"
+        },
+        "Node-Specific": {
+            "type": "string"
+        },
+        "Value": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Category",
+        "Key",
+        "Value"
+    ],
+    "type": "object"
+}

@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.authz.balance_check_resp",
+    "description": "AMQP API for authz.balance_check_resp",
+    "properties": {
+        "Balances": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "authz"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "balance_check_resp"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Balances"
+    ],
+    "type": "object"
+}

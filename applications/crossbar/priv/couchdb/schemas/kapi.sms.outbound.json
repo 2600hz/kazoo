@@ -1,0 +1,121 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.sms.outbound",
+    "description": "AMQP API for sms.outbound",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Body": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Contact": {
+            "type": "string"
+        },
+        "Contact-IP": {
+            "type": "string"
+        },
+        "Contact-Port": {
+            "type": "string"
+        },
+        "Contact-Username": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Delivery-Failure": {
+            "type": "string"
+        },
+        "Delivery-Result-Code": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "message"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "outbound"
+            ],
+            "type": "string"
+        },
+        "Event-Queue": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Network-Addr": {
+            "type": "string"
+        },
+        "Geo-Location": {
+            "type": "string"
+        },
+        "Message-ID": {
+            "type": "string"
+        },
+        "Orig-IP": {
+            "type": "string"
+        },
+        "Orig-Port": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Route-ID": {
+            "type": "string"
+        },
+        "Route-Type": {
+            "enum": [
+                "on-net",
+                "off-net"
+            ],
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        },
+        "Switch-Nodename": {
+            "type": "string"
+        },
+        "System-ID": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "User-Agent": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Body",
+        "Callee-ID-Number",
+        "Caller-ID-Number",
+        "Message-ID",
+        "Route-ID"
+    ],
+    "type": "object"
+}

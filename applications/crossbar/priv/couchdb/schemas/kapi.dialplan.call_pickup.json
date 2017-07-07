@@ -1,0 +1,70 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.call_pickup",
+    "description": "AMQP API for dialplan.call_pickup",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "call_pickup"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Continue-On-Cancel": {
+            "type": "string"
+        },
+        "Continue-On-Fail": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Hangup-After-Pickup": {
+            "type": "boolean"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Move-Channel-If-Necessary": {
+            "type": "boolean"
+        },
+        "Other-Leg": {
+            "type": "string"
+        },
+        "Park-After-Pickup": {
+            "type": "boolean"
+        },
+        "Target-Call-ID": {
+            "type": "string"
+        },
+        "Unanswered-Only": {
+            "type": "string"
+        },
+        "Unbridged-Only": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Target-Call-ID"
+    ],
+    "type": "object"
+}

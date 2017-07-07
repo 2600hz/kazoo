@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.call.channel_status_req",
+    "description": "AMQP API for call.channel_status_req",
+    "properties": {
+        "Active-Only": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call_event"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "channel_status_req"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID"
+    ],
+    "type": "object"
+}

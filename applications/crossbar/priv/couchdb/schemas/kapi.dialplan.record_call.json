@@ -1,0 +1,92 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.record_call",
+    "description": "AMQP API for dialplan.record_call",
+    "properties": {
+        "Additional-Headers": {
+            "items": {
+                "type": "object"
+            },
+            "type": "array"
+        },
+        "Application-Name": {
+            "enum": [
+                "record_call"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Channels-As-Stereo": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Follow-Transfer": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Media-Name": {
+            "type": "string"
+        },
+        "Media-Recorder": {
+            "type": "string"
+        },
+        "Media-Recording-Endpoint-ID": {
+            "type": "string"
+        },
+        "Media-Recording-ID": {
+            "type": "string"
+        },
+        "Media-Recording-Origin": {
+            "type": "string"
+        },
+        "Media-Transfer-Destination": {
+            "type": "string"
+        },
+        "Media-Transfer-Method": {
+            "type": "string"
+        },
+        "Record-Action": {
+            "enum": [
+                "start",
+                "stop"
+            ],
+            "type": "string"
+        },
+        "Record-Min-Sec": {
+            "type": "string"
+        },
+        "Record-Sample-Rate": {
+            "type": "integer"
+        },
+        "Time-Limit": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Record-Action"
+    ],
+    "type": "object"
+}

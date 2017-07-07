@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.search_resp",
+    "description": "AMQP API for presence.search_resp",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "search_resp"
+            ],
+            "type": "string"
+        },
+        "Subscriptions": {
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

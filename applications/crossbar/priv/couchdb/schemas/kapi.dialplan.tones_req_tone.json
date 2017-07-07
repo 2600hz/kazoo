@@ -1,0 +1,6 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.tones_req_tone",
+    "description": "AMQP API for dialplan.tones_req_tone",
+    "type": "object"
+}

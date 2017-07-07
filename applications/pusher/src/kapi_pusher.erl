@@ -23,7 +23,8 @@
 -define(PUSH_EXCHANGE, <<"pushes">>).
 
 -define(PUSH_REQ_HEADERS, [<<"Token-ID">>
-                          ,<<"Token-Type">>, <<"Token-App">>
+                          ,<<"Token-Type">>
+                          ,<<"Token-App">>
                           ,[<<"Alert-Body">>,[<<"Alert-Key">>,<<"Alert-Params">>]]
                           ]).
 -define(OPTIONAL_PUSH_REQ_HEADERS, [<<"Queue">>, <<"Call-ID">>

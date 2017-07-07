@@ -35,6 +35,7 @@
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 -export([is_empty/1]).
 -export([is_json_object/1, is_json_object/2
+        ,are_json_objects/1
         ,is_valid_json_object/1
         ,is_json_term/1
         ]).
@@ -194,6 +195,10 @@ is_json_object(_) -> 'false'.
 
 is_json_object(Key, JObj) ->
     is_json_object(get_value(Key, JObj)).
+
+-spec are_json_objects(list()) -> boolean().
+are_json_objects(JObjs) when is_list(JObjs) ->
+    lists:all(fun is_json_object/1, JObjs).
 
 -spec is_valid_json_object(any()) -> boolean().
 is_valid_json_object(MaybeJObj) ->
