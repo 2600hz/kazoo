@@ -5,13 +5,16 @@
     "description": "corssbar authentication modules configurations",
     "properties": {
         "auth_modules": {
-            "cb_api_auth": {
-                "$ref": "auth_config"
-            },
-            "cb_user_auth": {
-                "$ref": "auth_config"
-            },
+            "additionalProperties": true,
             "description": "crossbar authentication modules configurations",
+            "properties": {
+                "cb_api_auth": {
+                    "$ref": "auth_config"
+                },
+                "cb_user_auth": {
+                    "$ref": "auth_config"
+                }
+            },
             "type": "object"
         }
     },

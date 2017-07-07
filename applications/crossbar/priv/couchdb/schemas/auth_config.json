@@ -8,10 +8,6 @@
             "description": "whether or not this authentication module is enabled",
             "type": "boolean"
         },
-        "expiration_s": {
-            "description": "expiration period of the JWT token (seconds)",
-            "type": "integer"
-        },
         "log_failed_attempts": {
             "default": true,
             "description": "should log failed logging attempts",
@@ -31,7 +27,6 @@
                     "type": "string"
                 },
                 "enabled": {
-                    "default": false,
                     "description": "turn on/off multi factor authentications for this module",
                     "type": "boolean"
                 },
@@ -41,7 +36,14 @@
                     "type": "boolean"
                 }
             },
+            "required": [
+                "enabled"
+            ],
             "type": "object"
+        },
+        "token_auth_expiry": {
+            "description": "expiration period of the JWT token (seconds)",
+            "type": "integer"
         }
     },
     "required": [
