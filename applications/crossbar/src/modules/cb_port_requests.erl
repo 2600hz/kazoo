@@ -756,14 +756,14 @@ last_submitted(Context) ->
 
 -spec last_submitted(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
 last_submitted(Context, ResultJObj, Acc) ->
-    [begin
-         Doc = kz_json:get_value(<<"doc">>, ResultJObj),
-         Timeline = prepare_timeline(Context, Doc),
-         [LastSubmitted|_] = lists:reverse(transitions_to_submitted(Timeline)),
-         kz_json:from_list([{kz_doc:id(Doc), LastSubmitted}])
-     end
-     | Acc
-    ].
+    Doc = kz_json:get_value(<<"doc">>, ResultJObj),
+    Timeline = prepare_timeline(Context, Doc),
+    case lists:reverse(transitions_to_submitted(Timeline)) of
+        [] -> Acc;
+        [LastSubmitted|_] ->
+            JObj = kz_json:from_list([{kz_doc:id(Doc), LastSubmitted}]),
+            [JObj|Acc]
+    end.
 
 -spec transitions_to_submitted(kz_json:objects()) -> kz_json:objects().
 transitions_to_submitted(Timeline) ->
