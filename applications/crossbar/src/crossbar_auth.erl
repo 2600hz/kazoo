@@ -7,7 +7,6 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_auth).
 
-
 -export([create_auth_token/2
         ,validate_auth_token/1, validate_auth_token/2
         ,authorize_auth_token/1
@@ -15,21 +14,16 @@
 
 -include("crossbar.hrl").
 
--define(TOKEN_AUTH_EXPIRY, kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
+-define(DEFAULT_AUTH_EXPIRY, kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
+-define(TOKEN_AUTH_EXPIRY(Method, AuthConfig)
+       ,kz_json:get_integer_value(method_config_path(Method, <<"token_auth_expiry">>), AuthConfig, ?DEFAULT_AUTH_EXPIRY)
+       ).
 
 -define(SHOULD_LOG_FAILED,
-        kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_failed_login_attempts">>, 'false')
+        kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_failed_attempts">>, 'false')
        ).
 -define(SYSTEM_AUTH_CONFIG,
         kapps_config:get_json(?AUTH_CONFIG_CAT, <<"auth_modules">>, kz_json:new())
-       ).
-
--define(ATTEMPT_LOG_ID(Year, Month),
-        <<(kz_term:to_binary(Year))/binary
-          ,(kz_time:pad_month(Month))/binary
-          ,"-"
-          ,(kz_binary:rand_hex(16))/binary
-        >>
        ).
 
 -spec create_auth_token(cb_context:context(), atom()) ->
@@ -49,14 +43,17 @@ create_auth_token(Context, AuthModule) ->
 create_auth_token(Context, AuthModule, JObj) ->
     Data = cb_context:req_data(Context),
 
+    Method = kz_term:to_binary(AuthModule),
     AccountId = kz_json:get_first_defined([<<"account_id">>, [<<"Claims">>, <<"account_id">>]], JObj),
     OwnerId = kz_json:get_first_defined([<<"owner_id">>, [<<"Claims">>, <<"owner_id">>]], JObj),
-    Expiration = case ?TOKEN_AUTH_EXPIRY of
+
+    AuthConfig = auth_config(AccountId),
+
+    Expiration = case ?TOKEN_AUTH_EXPIRY(Method, AuthConfig) of
                      TokenExp when TokenExp > 0 -> erlang:system_time('seconds') + TokenExp;
                      _ -> 'undefined'
                  end,
 
-    Method = kz_term:to_binary(AuthModule),
     Claims = props:filter_undefined(
                [{<<"account_id">>, AccountId}
                ,{<<"owner_id">>, OwnerId}
@@ -66,7 +63,14 @@ create_auth_token(Context, AuthModule, JObj) ->
                ,{<<"mfa_resp">>, kz_json:get_ne_value(<<"multi_factor_response">>, Data)}
                 | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
                ]),
-    case maybe_create_token(Claims, Method) of
+
+    IsMultiFactor = is_multi_factor_enabled(Claims, AuthConfig),
+
+    case is_auth_module_enabled(Method, AuthConfig)
+        andalso maybe_create_token(Claims, AuthConfig, Method, IsMultiFactor)
+    of
+        'false' ->
+            {'error', <<"authentication module ", Method/binary, " is disabled">>};
         {'ok', Token} ->
             Setters = [{fun cb_context:set_auth_token/2, Token}
                       ,{fun cb_context:set_auth_doc/2, kz_json:from_list(Claims)}
@@ -77,13 +81,15 @@ create_auth_token(Context, AuthModule, JObj) ->
                       ]),
             RespObj = kz_json:set_values(Props, kz_json:delete_key(<<"Claims">>, JObj)),
             Resp = crossbar_util:response_auth(RespObj, AccountId, OwnerId),
+
             lager:debug("created new local auth token: ~s", [kz_json:encode(Resp)]),
+
             crossbar_util:response(Resp, cb_context:setters(Context, Setters));
         {'error', R} ->
             lager:debug("could not create new local auth token, ~s", [kz_term:to_binary(R)]),
             cb_context:add_system_error('invalid_credentials', Context);
         {'error', Reason, RespJObj} ->
-            lager:debug("authentication factor module requested from client to preform second-factor authentication, returning ~s with response ~p"
+            lager:debug("authentication factor module requested that the client should preform second-factor authentication, returning ~s with response ~p"
                        ,[kz_term:to_binary(Reason), RespJObj]
                        ),
             MFAReq = kz_json:from_list(
@@ -94,30 +100,13 @@ create_auth_token(Context, AuthModule, JObj) ->
             cb_context:add_system_error(401, 'invalid_credentials', MFAReq, Context)
     end.
 
--spec maybe_create_token(kz_proplist(), ne_binary()) ->
-                                {'ok', ne_binary()} |
-                                {'error', any()} |
-                                {'error', any(), any()}.
-maybe_create_token(Claims, Method) ->
-    AuthConfig = auth_config(props:get_ne_binary_value(<<"account_id">>, Claims)),
-    maybe_create_token(Claims, AuthConfig, Method, is_auth_module_enabled(Method, AuthConfig)).
-
 -spec maybe_create_token(kz_proplist(), kz_json:object(), ne_binary(), boolean()) ->
                                 {'ok', ne_binary()} |
                                 {'error', any()} |
                                 {'error', any(), any()}.
-maybe_create_token(Claims, AuthConfig, Method, 'true') ->
-    maybe_multi_factor_auth(Claims, AuthConfig, Method, is_multi_factor_enabled(Claims, AuthConfig));
-maybe_create_token(_Claims, _AuthConfig, Method, 'false') ->
-    {'error', <<"authentication module ", Method/binary, " is disabled">>}.
-
--spec maybe_multi_factor_auth(kz_proplist(), kz_json:object(), ne_binary(), boolean()) ->
-                                     {'ok', ne_binary()} |
-                                     {'error', any()} |
-                                     {'error', any(), any()}.
-maybe_multi_factor_auth(Claims, _AuthConfig, _Method, 'false') ->
+maybe_create_token(Claims, _AuthConfig, _Method, 'false') ->
     kz_auth:create_token(Claims);
-maybe_multi_factor_auth(Claims, AuthConfig, Method, 'true') ->
+maybe_create_token(Claims, AuthConfig, Method, 'true') ->
     lager:debug("auth module ~s is configured to use multi factor", [Method]),
     NewClaims = props:filter_undefined(
                   [{<<"mfa_options">>, mfa_options(Method, AuthConfig)}
@@ -161,7 +150,8 @@ maybe_db_token(AuthToken) ->
 
 -spec maybe_log_failed_mfa_auth(kz_proplist(), kz_json:object(), ne_binary(), atom() | ne_binary()) -> 'ok'.
 maybe_log_failed_mfa_auth(Claims, AuthConfig, Method, Reason) ->
-    case should_log_failed_attempts(AuthConfig, Method) of
+    Key = method_config_path(Method, <<"log_failed_attempts">>),
+    case kz_json:is_true(Key, AuthConfig, ?SHOULD_LOG_FAILED) of
         'true' -> log_failed_mfa_attempts(Claims, AuthConfig, Reason);
         'false' -> 'ok'
     end.
@@ -173,8 +163,7 @@ log_failed_mfa_attempts(Claims, AuthConfig, Reason) ->
     Now = kz_time:current_tstamp(),
     ModDb = kz_util:format_account_mod_id(AccountId, Now),
 
-    {Year, Month, _} = erlang:date(),
-    LogId = ?ATTEMPT_LOG_ID(Year, Month),
+    LogId = kazoo_modb_util:modb_id(),
 
     Doc = kz_json:from_list(
             [{<<"_id">>, LogId}
@@ -195,16 +184,9 @@ log_failed_mfa_attempts(Claims, AuthConfig, Reason) ->
     _ = kazoo_modb:save_doc(ModDb, Doc),
     'ok'.
 
--spec should_log_failed_attempts(kz_json:object(), ne_binary()) -> boolean().
-should_log_failed_attempts(AuthConfig, Method) ->
-    case kz_json:is_true(method_config_path(Method, <<"log_failed_login_attempts">>), AuthConfig, 'undefined') of
-        'undefined' -> ?SHOULD_LOG_FAILED;
-        Boolean -> Boolean
-    end.
-
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Check if is authenticator module enabled or not
+%% @doc Check if is authenticator module is enabled or not
 %% @end
 %%--------------------------------------------------------------------
 -spec is_auth_module_enabled(ne_binary(), kz_json:object()) -> boolean().
@@ -214,12 +196,12 @@ is_auth_module_enabled(Method, Config) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Get Account's authentication configuration
-%%  1. If Account has kazoo_auth_config use it
-%%  2. If account is Master Account, get configs from system_config
-%%  3. If Account doesn't have configs defined:
+%%  1. If account is Master Account, get config from system_config
+%%  2. If Account has kazoo_auth_config use it
+%%  3. If Account doesn't have kazoo_auth_config:
 %%      3.1. Is the Account reseller?
 %%          3.1.1. Get configs from system_config
-%%      3.2. If not reseller get parent's AccountId and go to (1)
+%%      3.2. If not reseller, get parent's AccountId and go to (1)
 %% @end
 %%--------------------------------------------------------------------
 -spec auth_config(api_ne_binary()) -> kz_json:object().
@@ -235,25 +217,21 @@ auth_config(AccountId) ->
 -spec account_auth_config(api_ne_binary(), api_ne_binary()) -> kz_json:object().
 account_auth_config('undefined', _MasterId) ->
     system_auth_config();
-account_auth_config(MasterId, ?NE_BINARY = MasterId) ->
+account_auth_config(MasterId, ?NE_BINARY=MasterId) ->
     lager:debug("reached to the master account, getting auth configs from system_configs"),
     system_auth_config();
 account_auth_config(AccountId, MasterId) ->
     IsReseller = kz_services:is_reseller(AccountId),
-    account_auth_config(AccountId, MasterId, IsReseller).
+    auth_config_from_doc(fetch_config(AccountId), AccountId, MasterId, IsReseller).
 
--spec account_auth_config(ne_binary(), api_ne_binary(), boolean()) -> kz_json:object().
-account_auth_config(AccountId, MasterId, IsReseller) ->
-    auth_config_from_doc(account_auth_config(AccountId), AccountId, MasterId, IsReseller).
-
--spec account_auth_config(ne_binary()) -> kz_std_return().
-account_auth_config(AccountId) ->
+-spec fetch_config(ne_binary()) -> kz_std_return().
+fetch_config(AccountId) ->
     kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ?ACCOUNT_AUTH_CONFIG_ID).
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Look into database result, if it's not empty use it otherwise
-%% either go to parent's account or system config
+%% @doc Check database result, if it's not empty use it otherwise
+%% go to parent's account or system config to fetch auth config
 %% @end
 %%--------------------------------------------------------------------
 -spec auth_config_from_doc(kz_std_return(), ne_binary(), api_ne_binary(), boolean()) -> kz_json:object().
@@ -317,20 +295,19 @@ master_account_id() ->
 %%--------------------------------------------------------------------
 -spec mfa_options(ne_binary(), kz_json:object()) -> 'undefined' | kz_proplist().
 mfa_options(Method, AuthConfig) ->
-    From = kz_json:get_value(<<"from">>, AuthConfig),
-    case kz_json:get_value(method_mfa_path(Method, <<"configuration_id">>), AuthConfig) of
-        ?NE_BINARY=Id ->
-            maybe_system_config(From, Id);
-        _Other -> 'undefined'
+    ConfigOrigin = kz_json:get_value(<<"from">>, AuthConfig),
+    case kz_json:get_ne_binary_value(method_mfa_path(Method, <<"configuration_id">>), AuthConfig) of
+        'undefined' -> 'undefined';
+        ConfigId ->
+            maybe_system_config(ConfigOrigin, ConfigId)
     end.
 
-maybe_system_config(<<"system">>, _Id) ->
-    %% auth config is from system, using default mfa config
-    %% (see is_multi_factor_enabled/2 TODO comment)
+-spec maybe_system_config(ne_binary(), ne_binary()) -> kz_proplist().
+maybe_system_config(<<"system">>, _ConfigId) ->
     'undefined';
-maybe_system_config(?NE_BINARY=AccountId, Id) ->
+maybe_system_config(AccountId, ConfigId) ->
     [{<<"account_id">>, AccountId}
-    ,{<<"config_id">>, Id}
+    ,{<<"config_id">>, ConfigId}
     ].
 
 
@@ -341,28 +318,28 @@ maybe_system_config(?NE_BINARY=AccountId, Id) ->
 %%--------------------------------------------------------------------
 -spec is_multi_factor_enabled(kz_proplist(), kz_json:object()) -> boolean().
 is_multi_factor_enabled(Claims, AuthConfig) ->
+    MasterId = master_account_id(),
     Method = props:get_ne_binary_value(<<"method">>, Claims),
     AccountId = props:get_value(<<"account_id">>, Claims),
-    ConfigsFrom = kz_json:get_value(<<"from">>, AuthConfig),
+    ConfigOrigin = kz_json:get_value(<<"from">>, AuthConfig),
     IncludeSubAccounts = kz_json:is_true(method_mfa_path(Method, <<"include_subaccounts">>), AuthConfig),
 
-    %% TODO: is it good to check to see if there is a config_id here to force account to
-    %% use their own mfa config to prevent the child account take advatnage of the system's default provider?
     kz_json:is_true(method_mfa_path(Method, <<"enabled">>), AuthConfig)
-        andalso account_mfa_allowed(master_account_id(), AccountId, ConfigsFrom, IncludeSubAccounts).
+        andalso multi_factor_allowed_for_account(MasterId, AccountId, ConfigOrigin, IncludeSubAccounts).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc If the configuration document is pulled from a parent account
-%% then should look for a property 'multi_factor.include_subaccounts',
-%% which if 'false' should cause authentication to proceed normally.
+%% then should look for property 'multi_factor.include_subaccounts'
+%% if it's 'false' then authentication should to proceed normally
+%% without multi factor.
 %% @end
 %%--------------------------------------------------------------------
--spec account_mfa_allowed(api_binary(), api_binary(), ne_binary(), boolean()) -> boolean().
-account_mfa_allowed(?NE_BINARY=Master, ?NE_BINARY=Master, _, _) -> 'true';
-account_mfa_allowed(_Master, _AccountId, <<"system">>, _IncludeSubAcc) -> 'true';
-account_mfa_allowed(_Master, AccountId, AccountId, _IncludeSubAcc) -> 'true';
-account_mfa_allowed(_Master, _AccountId, _ParentAccount, IncludeSubAcc) -> IncludeSubAcc.
+-spec multi_factor_allowed_for_account(api_binary(), api_binary(), ne_binary(), boolean()) -> boolean().
+multi_factor_allowed_for_account(?NE_BINARY=Master, ?NE_BINARY=Master, _, _) -> 'true';
+multi_factor_allowed_for_account(_Master, _AccountId, <<"system">>, _IncludeSubAcc) -> 'true';
+multi_factor_allowed_for_account(_Master, AccountId, AccountId, _IncludeSubAcc) -> 'true';
+multi_factor_allowed_for_account(_Master, _AccountId, _ParentAccount, IncludeSubAcc) -> IncludeSubAcc.
 
 -spec method_config_path(ne_binary(), ne_binary()) -> ne_binaries().
 method_config_path(Method, Key) ->
