@@ -680,6 +680,73 @@
             ],
             "type": "object"
         },
+        "auth_config": {
+            "description": "corssbar authentication configurations",
+            "properties": {
+                "enabled": {
+                    "description": "whether or not this authentication module is enabled",
+                    "type": "boolean"
+                },
+                "expiration_s": {
+                    "description": "expiration period of the JWT token (seconds)",
+                    "type": "integer"
+                },
+                "log_failed_attempts": {
+                    "default": true,
+                    "description": "should log failed logging attempts",
+                    "type": "boolean"
+                },
+                "log_successful_attempts": {
+                    "default": true,
+                    "description": "should log successful logging attempts",
+                    "type": "boolean"
+                },
+                "multi_factor": {
+                    "additionalProperties": true,
+                    "description": "control multi factor authentications for this module",
+                    "properties": {
+                        "configuration_id": {
+                            "description": "document ID contains the multi factor configuration",
+                            "type": "string"
+                        },
+                        "enabled": {
+                            "default": false,
+                            "description": "turn on/off multi factor authentications for this module",
+                            "type": "boolean"
+                        },
+                        "include_subaccounts": {
+                            "default": false,
+                            "description": "should this multi factor authentication settings be applied when used by sub-accounts",
+                            "type": "boolean"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "required": [
+                "enabled"
+            ],
+            "type": "object"
+        },
+        "auth_configs": {
+            "description": "corssbar authentication modules configurations",
+            "properties": {
+                "auth_modules": {
+                    "cb_api_auth": {
+                        "$ref": "#/definitions/auth_config"
+                    },
+                    "cb_user_auth": {
+                        "$ref": "#/definitions/auth_config"
+                    },
+                    "description": "crossbar authentication modules configurations",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "auth_modules"
+            ],
+            "type": "object"
+        },
         "auth_provider": {
             "description": "authentication providers",
             "properties": {
@@ -24852,6 +24919,17 @@
                     "description": "Default crossbar authentication modules configuration",
                     "type": "object"
                 },
+                "available_auth_modules": {
+                    "default": [
+                        "cb_user_auth",
+                        "cb_api_auth"
+                    ],
+                    "description": "List of crossbar auth configurable modules",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "basic_auth_type": {
                     "default": "md5",
                     "description": "crossbar.auth basic auth type",
@@ -37998,6 +38076,175 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/security": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/security/{CONFIG_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/CONFIG_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/CONFIG_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/CONFIG_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/CONFIG_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/CONFIG_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

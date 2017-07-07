@@ -8,6 +8,17 @@
             "description": "Default crossbar authentication modules configuration",
             "type": "object"
         },
+        "available_auth_modules": {
+            "default": [
+                "cb_user_auth",
+                "cb_api_auth"
+            ],
+            "description": "List of crossbar auth configurable modules",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "basic_auth_type": {
             "default": "md5",
             "description": "crossbar.auth basic auth type",
