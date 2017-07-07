@@ -17,8 +17,6 @@
 
 -define(TOKEN_AUTH_EXPIRY, kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
 
--define(ACCOUNT_AUTH_CONFIG_ID, <<"kazoo_auth_configs">>).
-
 -define(SHOULD_LOG_FAILED,
         kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_failed_login_attempts">>, 'false')
        ).
