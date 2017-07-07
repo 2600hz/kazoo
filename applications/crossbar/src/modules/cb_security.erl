@@ -137,7 +137,7 @@ validate(Context) ->
 validate(Context, Id) ->
     case lists:member(Id, ?SYSTEM_AUTH_MODULES) of
         'true' -> validate_module_configs(Context, Id, cb_context:req_verb(Context));
-        'false' -> crossbar_doc:handle_datamgr_errors('not_found', Id, Context)
+        'false' -> not_found(Context, Id)
     end.
 
 %% validates /security
@@ -258,11 +258,10 @@ read(Id, Context) ->
     case cb_context:resp_status(C1) of
         'success' ->
             case kz_json:get_value(module_config_path(Id), cb_context:doc(C1)) of
-                'undefined' -> crossbar_doc:handle_datamgr_errors('not_found', Id, Context);
+                'undefined' -> not_found(Context, Id);
                 ModConfig ->crossbar_doc:handle_json_success(ModConfig, Context)
             end;
-        _ ->
-            crossbar_doc:handle_datamgr_errors('not_found', Id, Context)
+        _ -> not_found(Context, Id)
     end.
 
 %%--------------------------------------------------------------------
@@ -278,8 +277,7 @@ create(Context) ->
 
 -spec create(ne_binary(), cb_context:context()) -> cb_context:context().
 create(Id, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"auth_config">>, Context, OnSuccess).
+    validate_patch(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -307,7 +305,7 @@ update(Id, Context) ->
 validate_patch(?ACCOUNT_AUTH_CONFIG_ID=Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2);
 validate_patch(Id, Context) ->
-    C1 = fix_config_object(Id, cb_context:req_data(Context), Context),
+    C1 = fix_config_object(Id, cb_context:req_data(Context), cb_context:store(Context, <<"orig_mod_id">>, Id)),
     crossbar_doc:patch_and_validate(?ACCOUNT_AUTH_CONFIG_ID, C1, fun update/2).
 
 %%--------------------------------------------------------------------
@@ -322,8 +320,7 @@ validate_delete(Id, Context) ->
     case cb_context:resp_status(C1) =:= 'success'
         andalso kz_json:is_json_object(module_config_path(Id), cb_context:doc(C1))
     of
-        'false' ->
-            crossbar_doc:handle_datamgr_errors('not_found', Id, Context);
+        'false' -> not_found(Context, Id);
         'true' ->
             cb_context:set_doc(C1, kz_json:delete_key(module_config_path(Id), cb_context:doc(C1)))
     end.
@@ -339,24 +336,58 @@ on_successful_validation('undefined', Context) ->
     Doc = kz_doc:set_id(cb_context:doc(Context), ?ACCOUNT_AUTH_CONFIG_ID),
     cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"account_config">>));
 on_successful_validation(?ACCOUNT_AUTH_CONFIG_ID=Id, Context) ->
-    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>));
+    Verb = cb_context:req_verb(Context),
+    C1 = crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
+    OrigModId = cb_context:fetch(Context, <<"orig_mod_id">>),
+    handle_singularity_update(C1, Verb, Id, OrigModId, cb_context:resp_status(C1));
 on_successful_validation(Id, Context) ->
+    Verb = cb_context:req_verb(Context),
+    OrigModId = cb_context:fetch(Context, <<"orig_mod_id">>),
     C1 = fix_config_object(Id, cb_context:doc(Context), Context),
-    crossbar_doc:load_merge(?ACCOUNT_AUTH_CONFIG_ID, C1, ?TYPE_CHECK_OPTION(<<"account_config">>)).
+    C2 = crossbar_doc:load_merge(?ACCOUNT_AUTH_CONFIG_ID, C1, ?TYPE_CHECK_OPTION(<<"account_config">>)),
+    handle_singularity_update(C2, Verb, Id, OrigModId, cb_context:resp_status(C2)).
+
+-spec handle_singularity_update(cb_context:context(), http_methods(), ne_binary(), api_binary(), crossbar_status()) ->
+                                       cb_context:context().
+%% PUT on /security/{MOD_ID}
+handle_singularity_update(Context, ?HTTP_PUT, _Id, _OrigModId, 'success') -> Context;
+handle_singularity_update(Context, ?HTTP_PUT, _Id, _OrigModId, _) -> on_successful_validation('undefined', Context);
+%% PATCH on /security
+handle_singularity_update(Context, ?HTTP_PATCH, _Id, 'undefined', 'success') -> Context;
+handle_singularity_update(Context, ?HTTP_PATCH, Id, 'undefined', _) -> not_found(Context, Id);
+%% PATCH on /security/{MOD_ID}
+handle_singularity_update(Context, ?HTTP_PATCH, _Id, OrigModId, 'success') -> check_mod_config_exists(Context, OrigModId);
+handle_singularity_update(Context, ?HTTP_PATCH, _id, OrigModId, _) -> not_found(Context, OrigModId);
+%% POST on /security
+handle_singularity_update(Context, ?HTTP_POST, ?ACCOUNT_AUTH_CONFIG_ID, 'undefined', 'success') -> Context;
+handle_singularity_update(Context, ?HTTP_POST, ?ACCOUNT_AUTH_CONFIG_ID=Id, 'undefined', _) -> not_found(Context, Id);
+%% POST on /security/{MOD_ID}
+handle_singularity_update(Context, ?HTTP_POST, Id, 'undefined', 'success') -> check_mod_config_exists(Context, Id);
+handle_singularity_update(Context, ?HTTP_POST, Id, 'undefined', _) -> not_found(Context, Id).
+
+-spec check_mod_config_exists(cb_context:context(), ne_binary()) -> cb_context:context().
+check_mod_config_exists(Context, Id) ->
+    case kz_json:get_value(module_config_path(Id), cb_context:fetch(Context, 'db_doc')) of
+        'undefined' ->
+            not_found(Context, Id);
+        _ModConfig -> Context
+    end.
+
 
 -spec fix_config_object(ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
 fix_config_object(Id, JObj, Context) ->
-    Mods = kz_json:from_list([{<<"auth_modules">>
-                              ,kz_json:from_list([{Id, JObj}])
-                              }
-                             ]
-                            ),
-    cb_context:setters(Context, [{fun cb_context:set_doc/2, Mods}
-                                ,{fun cb_context:set_req_data/2, Mods}
+    ModConfigs = kz_json:from_list([{Id, JObj}]),
+    AuthMods = kz_json:from_list([{<<"auth_modules">>, ModConfigs}]),
+    cb_context:setters(Context, [{fun cb_context:set_doc/2, AuthMods}
+                                ,{fun cb_context:set_req_data/2, AuthMods}
                                 ]).
 
 -spec module_config_path(ne_binary()) -> ne_binaries().
 module_config_path(Id) -> [<<"auth_modules">>, Id].
+
+-spec not_found(cb_context:context(), ne_binary()) -> cb_context:context().
+not_found(Context, Id) ->
+    crossbar_doc:handle_datamgr_errors('not_found', Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
