@@ -17,7 +17,12 @@
 -define(TEMPLATE_ID, <<"port_request">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
--define(TEMPLATE_MACROS, kz_json:from_list(?PORT_REQUEST_MACROS ++ ?ACCOUNT_MACROS)).
+-define(TEMPLATE_MACROS
+       ,kz_json:from_list(
+          ?PORT_REQUEST_MACROS
+          ++ ?COMMON_TEMPLATE_MACROS
+         )
+       ).
 
 -define(TEMPLATE_SUBJECT, <<"Number port request for account '{{account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).

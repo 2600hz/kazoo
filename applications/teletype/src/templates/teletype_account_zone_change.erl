@@ -21,9 +21,11 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"zones">>, <<"zones">>, <<"Zones">>, <<"List of account's zones">>)
-           | ?ACCOUNT_MACROS
+           | ?COMMON_TEMPLATE_MACROS
           ]
-         )).
+         )
+       ).
+
 -define(TEMPLATE_SUBJECT, <<"Account '{{account.name}}' zone have changed">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Account Zone Change">>).

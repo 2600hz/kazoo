@@ -20,8 +20,10 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
-           | ?USER_MACROS ++ ?ACCOUNT_MACROS
-          ])
+           | ?USER_MACROS
+           ++ ?COMMON_TEMPLATE_MACROS
+          ]
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Your new VoIP services user profile has been created">>).

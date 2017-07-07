@@ -25,7 +25,9 @@
           ++ ?FAX_MACROS
           ++ ?DEFAULT_CALL_MACROS
           ++ ?USER_MACROS
-         )).
+          ++ ?COMMON_TEMPLATE_MACROS
+         )
+       ).
 
 -define(TEMPLATE_SUBJECT, <<"Error receiving fax from {% firstof caller_id.name fax.remote_station_id %} ({% firstof fax.remote_station_id caller_id.number \"Unknown Number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).

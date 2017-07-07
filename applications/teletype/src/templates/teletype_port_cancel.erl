@@ -20,7 +20,7 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           ?PORT_REQUEST_MACROS
-          ++ ?ACCOUNT_MACROS
+          ++ ?COMMON_TEMPLATE_MACROS
          )
        ).
 

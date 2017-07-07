@@ -27,8 +27,11 @@
           ,?MACRO_VALUE(<<"voicemail.file_name">>, <<"voicemail_file_name">>, <<"Voicemail File Name">>, <<"Name of the voicemail file">>)
           ,?MACRO_VALUE(<<"voicemail.file_type">>, <<"voicemail_file_type">>, <<"Voicemail File Type">>, <<"Type of the voicemail file">>)
           ,?MACRO_VALUE(<<"voicemail.file_size">>, <<"voicemail_file_size">>, <<"Voicemail File Size">>, <<"Size of the voicemail file in bytes">>)
-           | ?DEFAULT_CALL_MACROS ++ ?ACCOUNT_MACROS ++ ?USER_MACROS
-          ])
+           | ?DEFAULT_CALL_MACROS
+           ++ ?USER_MACROS
+           ++ ?COMMON_TEMPLATE_MACROS
+          ]
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>).
