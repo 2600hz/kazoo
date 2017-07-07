@@ -11,11 +11,10 @@ clean:
 docs-build: $(LOCAL)
 
 %.local: %.yml
-	echo " cp $< $@"
-	$(shell cp $< $@)
-	if [ -f $(DOCS_ROOT)/theme/global.yml ]; then cat $(DOCS_ROOT)/theme/global.yml >> $@ ; fi
-	echo "\ntheme: null\ntheme_dir: '$(DOCS_ROOT)/theme'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> $@
-	mkdocs build -f $@ --clean -q --site-dir $(DOCS_ROOT)/site/$@
+	@$(shell cp $< $@)
+	@if [ -f $(DOCS_ROOT)/theme/global.yml ]; then cat $(DOCS_ROOT)/theme/global.yml >> $@ ; fi
+	@echo "\ntheme: null\ntheme_dir: '$(DOCS_ROOT)/theme'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> $@
+	@mkdocs build -f $@ --clean -q --site-dir $(DOCS_ROOT)/site/$@
 
 docs-serve: $(LOCAL)
 	@mkdocs serve --dev-addr=0.0.0.0:9876 -f $(DOCS_ROOT)/$(LOCAL)
