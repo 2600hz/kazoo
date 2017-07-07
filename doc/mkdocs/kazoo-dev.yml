@@ -1,7 +1,7 @@
 site_name: Kazoo Dev Reference
 
 pages:
-- 'kazoo-dev.md'
+- 'index.md'
 - 'Internationalization':
   - 'Phone Numbers':
     - 'Overview': 'doc/internationalization/numbers.md'

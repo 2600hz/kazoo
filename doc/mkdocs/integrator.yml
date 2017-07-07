@@ -1,7 +1,7 @@
 site_name: Integrator Reference
 
 pages:
-- integrator.md
+- index.md
 - 'Voice APIs':
   - 'API Basics':
     - 'applications/crossbar/doc/basics.md'
