@@ -846,7 +846,8 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
-            "{PORT_REQUEST_ID}": {
+            "id": "{PORT_REQUEST_ID}",
+            "transition": {
                 "authorization": {
                     "account": {
                         "id": "{AUTH_ACCOUNT_ID}",
