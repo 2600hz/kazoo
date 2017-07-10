@@ -394,7 +394,7 @@ log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) ->
             log_attempts(Context, AccountId, AuthConfig, Method, <<"failed">>, AuthType, Reason)
     end.
 
--spec is_log_type_enabled(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec is_log_type_enabled(ne_binary(), ne_binary(), kz_json:object()) -> boolean().
 is_log_type_enabled(<<"failed">>, Method, AuthConfig) ->
     Key = method_config_path(Method, <<"log_failed_attempts">>),
     kz_json:is_true(Key, AuthConfig, ?SHOULD_LOG_FAILED);
@@ -405,10 +405,10 @@ is_log_type_enabled(<<"success">>, Method, AuthConfig) ->
 -spec log_attempts(cb_context:context(), ne_binary(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason) ->
     MultiFactorOrigin =
-      case mfa_options(Method, AuthConfig) of
-          'undefined' -> <<"system">>;
-          Opts -> props:get_value([<<"mfa_options">>, <<"account_id">>], Opts, <<"system">>)
-      end,
+        case mfa_options(Method, AuthConfig) of
+            'undefined' -> <<"system">>;
+            Opts -> props:get_value([<<"mfa_options">>, <<"account_id">>], Opts, <<"system">>)
+        end,
     Now = kz_time:current_tstamp(),
     MODB = kz_util:format_account_mod_id(AccountId, Now),
 

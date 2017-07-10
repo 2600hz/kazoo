@@ -687,10 +687,6 @@
                     "description": "whether or not this authentication module is enabled",
                     "type": "boolean"
                 },
-                "expiration_s": {
-                    "description": "expiration period of the JWT token (seconds)",
-                    "type": "integer"
-                },
                 "log_failed_attempts": {
                     "default": true,
                     "description": "should log failed logging attempts",
@@ -710,7 +706,6 @@
                             "type": "string"
                         },
                         "enabled": {
-                            "default": false,
                             "description": "turn on/off multi factor authentications for this module",
                             "type": "boolean"
                         },
@@ -720,7 +715,14 @@
                             "type": "boolean"
                         }
                     },
+                    "required": [
+                        "enabled"
+                    ],
                     "type": "object"
+                },
+                "token_auth_expiry": {
+                    "description": "expiration period of the JWT token (seconds)",
+                    "type": "integer"
                 }
             },
             "required": [
@@ -732,13 +734,16 @@
             "description": "corssbar authentication modules configurations",
             "properties": {
                 "auth_modules": {
-                    "cb_api_auth": {
-                        "$ref": "#/definitions/auth_config"
-                    },
-                    "cb_user_auth": {
-                        "$ref": "#/definitions/auth_config"
-                    },
+                    "additionalProperties": true,
                     "description": "crossbar authentication modules configurations",
+                    "properties": {
+                        "cb_api_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_user_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        }
+                    },
                     "type": "object"
                 }
             },
@@ -24935,9 +24940,19 @@
                     "description": "crossbar.auth basic auth type",
                     "type": "string"
                 },
+                "log_failed_attempts": {
+                    "default": false,
+                    "description": "Should log failed login attempts",
+                    "type": "boolean"
+                },
                 "log_failed_login_attempts": {
                     "default": false,
                     "description": "Should log failed login attempts",
+                    "type": "boolean"
+                },
+                "log_successful_attempts": {
+                    "default": false,
+                    "description": "Should log successful login attempts",
                     "type": "boolean"
                 }
             },
@@ -38153,6 +38168,43 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/security/attempts": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/security/attempts/{ATTEMPT_ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ATTEMPT_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
