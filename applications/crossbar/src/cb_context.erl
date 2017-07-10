@@ -16,9 +16,7 @@
         ,has_errors/1
         ,add_system_error/2, add_system_error/3, add_system_error/4
         ,add_validation_error/4
-        ,do_validate_request_data/5
         ,validate_request_data/2, validate_request_data/3, validate_request_data/4
-        ,validate_request_data_only/2, validate_request_data_only/3, validate_request_data_only/4
         ,add_content_types_provided/2
         ,add_content_types_accepted/2
         ,add_attachment_content_type/3
@@ -727,17 +725,6 @@ validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
 copy_req_data_to_doc(Context) ->
     NewDoc = kz_json:merge_jobjs(kz_doc:private_fields(doc(Context)), req_data(Context)),
     set_doc(Context, NewDoc).
-
--spec validate_request_data_only(ne_binary(), context()) -> context().
--spec validate_request_data_only(ne_binary(), context(), after_fun()) -> context().
--spec validate_request_data_only(ne_binary(), context(), after_fun(), after_fun()) -> context().
-
-validate_request_data_only(SchemaId, Context) ->
-    validate_request_data_only(SchemaId, Context, undefined).
-validate_request_data_only(SchemaId, Context, OnSuccess) ->
-    validate_request_data_only(SchemaId, Context, OnSuccess, undefined).
-validate_request_data_only(SchemaId, Context, OnSuccess, OnFailure) ->
-    do_validate_request_data(SchemaId, Context, OnSuccess, OnFailure, fun kz_term:identity/1).
 
 -type on_passing() :: fun((context()) -> context()).
 -spec do_validate_request_data(ne_binary(), context(), after_fun(), after_fun(), on_passing()) -> context().
