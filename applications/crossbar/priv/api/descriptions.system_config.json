@@ -678,6 +678,7 @@
     "stepswitch.default_prefix": "stepswitch default prefix",
     "stepswitch.default_progress_timeout": "stepswitch default progress timeout",
     "stepswitch.default_route": "stepswitch default route",
+    "stepswitch.default_rtcp_mux": "RTCP protocol messages mixed with RTP data",
     "stepswitch.default_suffix": "stepswitch default suffix",
     "stepswitch.default_video_codecs": "stepswitch default video codecs",
     "stepswitch.default_weight": "stepswitch default weight",
