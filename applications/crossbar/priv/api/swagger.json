@@ -22071,7 +22071,7 @@
             "description": "Schema for a port request to be transitioned to the 'scheduled' state",
             "properties": {
                 "schedule_on": {
-                    "description": "Time at which to perform the porting, either as a gregorian timestamp or as datetime",
+                    "description": "date-time at which to perform the porting",
                     "properties": {
                         "date_time": {
                             "pattern": "^2\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d$",
@@ -22664,11 +22664,12 @@
                         "date_time"
                     ],
                     "type": "object"
+                },
+                "scheduled_date": {
+                    "description": "Gregorian timestamp at which to perform the porting",
+                    "type": "integer"
                 }
             },
-            "required": [
-                "schedule_on"
-            ],
             "type": "object"
         },
         "profile": {
