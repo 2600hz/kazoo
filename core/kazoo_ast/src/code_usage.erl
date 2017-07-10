@@ -45,14 +45,14 @@ sort_and_truncate_dict(Dict, Top) ->
                  ,{'accumulator', dict:new()}
                  ]).
 
--spec process() -> map().
+-spec process() -> dict:dict().
 process() ->
     io:format("process mfa counts: "),
     Usage = kazoo_ast:walk_project(?OPTIONS),
     io:format(" done~n", []),
     Usage.
 
--spec process(atom()) -> map().
+-spec process(atom()) -> dict:dict().
 process(App) ->
     io:format("process mfa counts in ~s: ", [App]),
     Usage = kazoo_ast:walk_app(App, ?OPTIONS),
