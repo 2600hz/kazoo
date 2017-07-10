@@ -223,7 +223,6 @@ maybe_authenticate_user(Context) ->
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', _} ->
-            crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, <<"failed to find account">>, Context),
             cb_context:add_system_error('invalid_credentials', Context);
         {'ok', ?NE_BINARY=Account} ->
             maybe_auth_account(Context, Credentials, Method, Account);
@@ -279,9 +278,7 @@ maybe_auth_account(Context, Credentials, Method, Account) ->
 -spec maybe_auth_accounts(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) ->
                                  cb_context:context().
 maybe_auth_accounts(Context, _, _, []) ->
-    Reason = <<"no account(s) specified">>,
-    lager:debug("~s", [Reason]),
-    crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context),
+    lager:debug("no account(s) specified"),
     cb_context:add_system_error('invalid_credentials', Context);
 maybe_auth_accounts(Context, Credentials, Method, [Account|Accounts]) ->
     Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
@@ -335,7 +332,9 @@ load_sha1_results(Context, []) ->
     crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, kz_term:to_binary(Reason), Context),
     cb_context:add_system_error('invalid_credentials', Context);
 load_sha1_results(Context, JObj) ->
-    lager:debug("found SHA1 credentials belong to user ~s", [kz_doc:id(JObj)]),
+    Reason = kz_term:to_binary(io_lib:format("found SHA1 credentials belong to user ~s", [kz_doc:id(JObj)])),
+    lager:debug("~s", [Reason]),
+    crossbar_auth:log_success_auth(?MODULE, <<"credentials">>, Reason, Context, kz_doc:account_id(JObj)),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj)).
 
 -spec load_md5_results(cb_context:context(), kz_json:objects() | kz_json:object()) ->
@@ -349,7 +348,9 @@ load_md5_results(Context, []) ->
     crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, kz_term:to_binary(Reason), Context),
     cb_context:add_system_error('invalid_credentials', Context);
 load_md5_results(Context, JObj) ->
-    lager:debug("found MD5 credentials belong to user ~s", [kz_doc:id(JObj)]),
+    Reason = kz_term:to_binary(io_lib:format("found MD5 credentials belong to user ~s", [kz_doc:id(JObj)])),
+    lager:debug("~s", [Reason]),
+    crossbar_auth:log_success_auth(?MODULE, <<"credentials">>, Reason, Context, kz_doc:account_id(JObj)),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj)).
 
 

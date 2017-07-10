@@ -164,7 +164,9 @@ validate_by_api_key(Context, ApiKey, [Doc|_]) ->
                ),
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, Doc) ->
-    lager:debug("found API key '~s' belongs to account ~s", [ApiKey, kz_doc:id(Doc)]),
+    Reason = kz_term:to_binary(io_lib:format("found API key '~s' belongs to account ~s", [ApiKey, kz_doc:id(Doc)])),
+    lager:debug("~s", [Reason]),
+    crossbar_auth:log_success_auth(?MODULE, <<"credentials">>, Reason, Context, kz_doc:account_id(Doc)),
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
                        ,{fun cb_context:set_doc/2, kz_json:get_value(<<"value">>, Doc)}
