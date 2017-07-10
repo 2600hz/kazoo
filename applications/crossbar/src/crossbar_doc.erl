@@ -11,7 +11,6 @@
 
 -export([load/2, load/3
         ,load_merge/2, load_merge/3, load_merge/4
-        ,merge/3
         ,patch_and_validate/3, patch_and_validate/4
         ,load_view/3, load_view/4, load_view/5, load_view/6
         ,load_attachment/4, load_docs/2
@@ -299,20 +298,15 @@ load_merge(DocId, DataJObj, Context, Options) ->
 
 load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
     Context1 = load(DocId, Context, Options),
-    case cb_context:resp_status(Context1) of
-        'success' ->
+    case success =:= cb_context:resp_status(Context1) of
+        false -> Context1;
+        true ->
             lager:debug("loaded doc ~s(~s), merging", [DocId, kz_doc:revision(cb_context:doc(Context1))]),
-            merge(DataJObj, cb_context:doc(Context1), Context1);
-        _Status -> Context1
+            Merged = kz_json:merge_jobjs(kz_doc:private_fields(cb_context:doc(Context1)), DataJObj),
+            handle_datamgr_success(Merged, Context)
     end;
 load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
     handle_datamgr_success(BypassJObj, Context).
-
--spec merge(kz_json:object(), kz_json:object(), cb_context:context()) ->
-                   cb_context:context().
-merge(DataJObj, JObj, Context) ->
-    PrivJObj = kz_doc:private_fields(JObj),
-    handle_datamgr_success(kz_json:merge_jobjs(PrivJObj, DataJObj), Context).
 
 -type validate_fun() :: fun((ne_binary(), cb_context:context()) -> cb_context:context()).
 
