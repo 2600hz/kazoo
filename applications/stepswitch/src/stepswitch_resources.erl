@@ -83,6 +83,7 @@
         kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_progress_timeout">>, 8)).
 -define(DEFAULT_WEIGHT,
         kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 3)).
+-define(DEFAULT_RTCP_MUX, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_rtcp_mux">>)).
 
 -record(gateway, {server :: api_binary()
                  ,port :: api_integer()
@@ -94,6 +95,7 @@
                  ,suffix = <<>> :: binary()
                  ,codecs = [] :: ne_binaries()
                  ,bypass_media = 'false' :: boolean()
+                 ,rtcp_mux = <<>> :: binary()
                  ,caller_id_type = <<"external">> :: ne_binary()
                  ,fax_option :: ne_binary() | boolean()
                  ,sip_headers :: api_object()
@@ -656,6 +658,7 @@ gateway_to_endpoint(DestinationNumber
                    ,#gateway{invite_format=InviteFormat
                             ,caller_id_type=CallerIdType
                             ,bypass_media=BypassMedia
+                            ,rtcp_mux=RTCP_MUX
                             ,codecs=Codecs
                             ,username=Username
                             ,password=Password
@@ -672,9 +675,10 @@ gateway_to_endpoint(DestinationNumber
     IsEmergency = gateway_emergency_resource(Gateway),
     {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency, PrivacyMode),
 
-    CCVs = props:filter_empty(
+    CCVs = props:filter_undefined(
              [{<<"Emergency-Resource">>, IsEmergency}
              ,{<<"Matched-Number">>, DestinationNumber}
+             ,{<<"RTCP-MUX">>, RTCP_MUX}
               | gateway_from_uri_settings(Gateway)
              ]),
     kz_json:from_list(
@@ -1138,6 +1142,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,route = kz_json:get_ne_value(<<"route">>, JObj, ?DEFAULT_ROUTE)
             ,prefix = kz_json:get_binary_value(<<"prefix">>, JObj, ?DEFAULT_PREFIX)
             ,suffix = kz_json:get_binary_value(<<"suffix">>, JObj, ?DEFAULT_SUFFIX)
+            ,rtcp_mux = kz_json:get_binary_value([<<"media">>, <<"rtcp_mux">>], JObj, ?DEFAULT_RTCP_MUX)
             ,caller_id_type = kz_json:get_ne_value(<<"caller_id_type">>, JObj, ?DEFAULT_CALLER_ID_TYPE)
             ,progress_timeout = kz_json:get_integer_value(<<"progress_timeout">>, JObj, ?DEFAULT_PROGRESS_TIMEOUT)
             ,endpoint_options = endpoint_options(JObj, EndpointType)
