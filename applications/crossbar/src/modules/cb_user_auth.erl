@@ -212,7 +212,7 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
--spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
+-spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
                                      cb_context:context().
 maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
@@ -223,6 +223,7 @@ maybe_authenticate_user(Context) ->
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', _} ->
+            crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, <<"failed to find account">>, Context),
             cb_context:add_system_error('invalid_credentials', Context);
         {'ok', ?NE_BINARY=Account} ->
             maybe_auth_account(Context, Credentials, Method, Account);
@@ -239,8 +240,10 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
     case cb_context:resp_status(Context1) of
         'success' -> load_md5_results(Context1, cb_context:doc(Context1));
         _Status ->
-            lager:debug("credentials do not belong to any user: ~s: ~p"
-                       ,[_Status, cb_context:doc(Context1)]),
+            Reason = <<"md5 credentials do not belong to any user">>,
+            lager:debug("~s: ~s: ~p"
+                       ,[Reason, _Status, cb_context:doc(Context1)]),
+            crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context, Account),
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, ?NE_BINARY=Account) ->
@@ -252,11 +255,15 @@ maybe_authenticate_user(Context, Credentials, <<"sha">>, ?NE_BINARY=Account) ->
     case cb_context:resp_status(Context1) of
         'success' -> load_sha1_results(Context1, cb_context:doc(Context1));
         _Status ->
-            lager:debug("credentials do not belong to any user"),
+            Reason = <<"sha credentials do not belong to any user">>,
+            lager:debug("~s", [Reason]),
+            crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context, Account),
             cb_context:add_system_error('invalid_credentials', Context)
     end;
-maybe_authenticate_user(Context, _Creds, _Method, _Account) ->
-    lager:debug("invalid creds by method ~s", [_Method]),
+maybe_authenticate_user(Context, _Creds, _Method, Account) ->
+    Reason = kz_term:to_binary(io_lib:format("invalid creds by method ~s", [_Method])),
+    lager:debug("~s", [Reason]),
+    crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context, Account),
     cb_context:add_system_error('invalid_credentials', Context).
 
 -spec maybe_auth_account(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
@@ -272,7 +279,9 @@ maybe_auth_account(Context, Credentials, Method, Account) ->
 -spec maybe_auth_accounts(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) ->
                                  cb_context:context().
 maybe_auth_accounts(Context, _, _, []) ->
-    lager:debug("no account(s) specified"),
+    Reason = <<"no account(s) specified">>,
+    lager:debug("~s", [Reason]),
+    crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context),
     cb_context:add_system_error('invalid_credentials', Context);
 maybe_auth_accounts(Context, Credentials, Method, [Account|Accounts]) ->
     Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
@@ -295,6 +304,8 @@ maybe_account_is_expired(Context, Account) ->
                   ,{<<"cause">>, Expired}
                   ]
                  ),
+            Reason = kz_term:to_binary(io_lib:format("account expired: ~p", [Expired])),
+            crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context),
             cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context)
     end.
 
@@ -303,7 +314,9 @@ maybe_account_is_enabled(Context, Account) ->
     case kz_util:is_account_enabled(Account) of
         'true' -> Context;
         'false' ->
-            lager:debug("account ~p is disabled", [Account]),
+            Reason = kz_term:to_binary(io_lib:format("account ~p is disabled", [Account])),
+            lager:debug("~s", [Reason]),
+            crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account disabled">>}]
@@ -317,7 +330,9 @@ load_sha1_results(Context, [JObj|_]) ->
     lager:debug("found more that one user with SHA1 creds, using ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj));
 load_sha1_results(Context, []) ->
-    lager:warning("failed to find a user with SHA1 creds, request from IP address: ~s", [cb_context:client_ip(Context)]),
+    Reason = io_lib:format("failed to find a user with SHA1 creds, request from IP address: ~s", [cb_context:client_ip(Context)]),
+    lager:warning("~s", [Reason]),
+    crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, kz_term:to_binary(Reason), Context),
     cb_context:add_system_error('invalid_credentials', Context);
 load_sha1_results(Context, JObj) ->
     lager:debug("found SHA1 credentials belong to user ~s", [kz_doc:id(JObj)]),
@@ -329,7 +344,9 @@ load_md5_results(Context, [JObj|_]) ->
     lager:debug("found more that one user with MD5 creds, using ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj));
 load_md5_results(Context, []) ->
-    lager:warning("failed to find a user with MD5 creds, request from IP address: ~s", [cb_context:client_ip(Context)]),
+    Reason = io_lib:format("failed to find a user with MD5 creds, request from IP address: ~s", [cb_context:client_ip(Context)]),
+    lager:warning("~s", [Reason]),
+    crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, kz_term:to_binary(Reason), Context),
     cb_context:add_system_error('invalid_credentials', Context);
 load_md5_results(Context, JObj) ->
     lager:debug("found MD5 credentials belong to user ~s", [kz_doc:id(JObj)]),
@@ -370,7 +387,9 @@ maybe_load_user_doc_by_username(Account, Context) ->
                                                 ,{fun cb_context:set_resp_status/2, 'success'}
                                                 ]);
                 'true' ->
-                    lager:debug("user name '~s' was found but is disabled", [Username]),
+                    Reason = kz_term:to_binary(io_lib:format("user name '~s' was found but is disabled", [Username])),
+                    lager:debug("~s", [Reason]),
+                    crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context),
                     Msg =
                         kz_json:from_list(
                           [{<<"message">>, <<"The provided user name is disabled">>}
@@ -384,6 +403,8 @@ maybe_load_user_doc_by_username(Account, Context) ->
                   [{<<"message">>, <<"The provided user name was not found">>}
                   ,{<<"cause">>, Username}
                   ]),
+            Reason = kz_term:to_binary(io_lib:format("The provided user name ~s was not found", [Username])),
+            crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context),
             cb_context:add_validation_error(<<"username">>, <<"not_found">>, Msg, Context)
     end.
 
@@ -433,10 +454,12 @@ maybe_load_user_doc_via_reset_id(Context) ->
                                          ,{fun cb_context:set_doc/2, NewUserDoc}
                                          ]);
         _ ->
+            Reason = <<"The provided reset_id did not resolve to any user">>,
             Msg = kz_json:from_list(
-                    [{<<"message">>, <<"The provided reset_id did not resolve to any user">>}
+                    [{<<"message">>, Reason}
                     ,{<<"cause">>, ResetId}
                     ]),
+            crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context),
             cb_context:add_validation_error(<<"user">>, <<"not_found">>, Msg, Context)
     end.
 

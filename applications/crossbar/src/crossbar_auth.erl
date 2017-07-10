@@ -10,6 +10,8 @@
 -export([create_auth_token/2
         ,validate_auth_token/1, validate_auth_token/2
         ,authorize_auth_token/1
+        ,log_success_auth/4, log_success_auth/5, log_success_auth/6
+        ,log_failed_auth/4, log_failed_auth/5, log_failed_auth/6
         ]).
 
 -include("crossbar.hrl").
@@ -39,7 +41,7 @@ create_auth_token(Context, AuthModule) ->
         'true' ->
             Reason = <<"empty creds doc, no auth token created">>,
             lager:debug("~s", [Reason]),
-            log_failed_auth(Context, AccountId, kz_json:new(), Method, <<"auth_token">>, Reason),
+            log_failed_auth(Method, <<"auth_token">>, Reason, Context, AccountId),
             crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
         'false' ->
             create_auth_token(Context, Method, JObj)
@@ -77,7 +79,7 @@ create_auth_token(Context, Method, JObj) ->
     of
         'false' ->
             Reason = <<"authentication module ", Method/binary, " is disabled">>,
-            log_failed_auth(Context, AccountId, AuthConfig, Method, <<"auth_token">>, Reason),
+            log_failed_auth(Method, <<"auth_token">>, Reason, Context, AccountId, AuthConfig),
             {'error', Reason};
         {'ok', Token} ->
             Setters = [{fun cb_context:set_auth_token/2, Token}
@@ -91,13 +93,13 @@ create_auth_token(Context, Method, JObj) ->
             Resp = crossbar_util:response_auth(RespObj, AccountId, OwnerId),
 
             lager:debug("created new local auth token: ~s", [kz_json:encode(Resp)]),
-            log_success_auth(Context, AccountId, AuthConfig, Method, <<"auth_token">>, <<"auth token created">>),
+            log_success_auth(Method, <<"auth_token">>, <<"auth token created">>, Context, AccountId, AuthConfig),
 
             crossbar_util:response(Resp, cb_context:setters(Context, Setters));
         {'error', R} ->
             Reason = kz_term:to_binary(R),
             lager:debug("could not create new local auth token, ~s", [Reason]),
-            log_failed_auth(Context, AccountId, AuthConfig, Method, <<"auth_token">>, Reason),
+            log_failed_auth(Method, <<"auth_token">>, Reason, Context, AccountId, AuthConfig),
 
             cb_context:add_system_error('invalid_credentials', Context);
         {'error', Reason, RespJObj} ->
@@ -131,15 +133,15 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
         {'ok', 'authenticated'} ->
             Reason = <<"multi factor authentication was successful">>,
             lager:debug("~s, creating local auth token", [Reason]),
-            log_success_auth(Context, AccountId, AuthConfig, Method, <<"multi_factor">>, Reason),
+            log_success_auth(Method, <<"multi_factor">>, Reason, Context, AccountId, AuthConfig),
             kz_auth:create_token(Claims);
         {'error', 'no_provider'} ->
             Reason = <<"no multi factor authentication provider is configured">>,
             lager:debug("~s, creating local auth token", [Reason]),
-            log_failed_auth(Context, AccountId, AuthConfig, Method, <<"multi_factor">>, Reason),
+            log_failed_auth(Method, <<"multi_factor">>, Reason, Context, AccountId, AuthConfig),
             kz_auth:create_token(Claims);
         {'error', Reason}=Error ->
-            log_failed_auth(Context, AccountId, AuthConfig, Method, <<"multi_factor">>, Reason),
+            log_failed_auth(Method, <<"multi_factor">>, kz_term:to_binary(Reason), Context, AccountId, AuthConfig),
             Error;
         {'error', 401, _MFAReq}=Retry -> Retry
     end.
@@ -188,7 +190,8 @@ is_auth_module_enabled(Method, Config) ->
 -spec auth_config(api_ne_binary()) -> kz_json:object().
 auth_config('undefined') ->
     system_auth_config();
-auth_config(AccountId) ->
+auth_config(Account) ->
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     account_auth_config(AccountId, master_account_id()).
 
 %%--------------------------------------------------------------------
@@ -338,13 +341,24 @@ method_mfa_path(Method, Key) ->
 %% Log successful authentiaction if configured to do so
 %% @end
 %%--------------------------------------------------------------------
--spec log_success_auth(cb_context:context(), api_binary(), api_object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-log_success_auth(Context, 'undefined', AuthConfig, Method, AuthType, Reason) ->
+-spec log_success_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context()) -> 'ok'.
+log_success_auth(AuthModule, AuthType, Reason, Context) ->
+    log_success_auth(AuthModule, AuthType, Reason, Context, 'undefined', 'undefined').
+
+-spec log_success_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context(), api_binary()) -> 'ok'.
+log_success_auth(AuthModule, AuthType, Reason, Context, AccountId) ->
+    log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, 'undefined').
+
+-spec log_success_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context(), api_binary(), api_object()) -> 'ok'.
+log_success_auth(AuthModule, AuthType, Reason, Context, 'undefined', AuthConfig) ->
     case cb_context:account_id(Context) of
         'undefined' -> 'ok';
-        AccountId -> log_success_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason)
+        AccountId -> log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig)
     end;
-log_success_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason) ->
+log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, 'undefined') ->
+    log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, auth_config(AccountId));
+log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) ->
+    Method = kz_term:to_binary(AuthModule),
     case is_log_type_enabled(<<"success">>, Method, AuthConfig) of
         'false' -> 'ok';
         'true' ->
@@ -357,13 +371,24 @@ log_success_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason) ->
 %% Log failed authentiaction if configured to do so
 %% @end
 %%--------------------------------------------------------------------
--spec log_failed_auth(cb_context:context(), api_binary(), api_object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-log_failed_auth(Context, 'undefined', AuthConfig, Method, AuthType, Reason) ->
+-spec log_failed_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context()) -> 'ok'.
+log_failed_auth(AuthModule, AuthType, Reason, Context) ->
+    log_failed_auth(AuthModule, AuthType, Reason, Context, 'undefined', 'undefined').
+
+-spec log_failed_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context(), api_binary()) -> 'ok'.
+log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId) ->
+    log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, 'undefined').
+
+-spec log_failed_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context(), api_binary(), api_object()) -> 'ok'.
+log_failed_auth(AuthModule, AuthType, Reason, Context, 'undefined', AuthConfig) ->
     case cb_context:account_id(Context) of
         'undefined' -> 'ok';
-        AccountId -> log_failed_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason)
+        AccountId -> log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig)
     end;
-log_failed_auth(Context, AccountId, AuthConfig, Method, AuthType, Reason) ->
+log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, 'undefined') ->
+    log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, auth_config(AccountId));
+log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) ->
+    Method = kz_term:to_binary(AuthModule),
     case is_log_type_enabled(<<"failed">>, Method, AuthConfig) of
         'false' -> 'ok';
         'true' ->
@@ -378,7 +403,7 @@ is_log_type_enabled(<<"success">>, Method, AuthConfig) ->
     Key = method_config_path(Method, <<"log_successful_attempts">>),
     kz_json:is_true(Key, AuthConfig, ?SHOULD_LOG_SUCCESS).
 
--spec log_attempts(cb_context:context(), ne_binary(), api_object(), ne_binary(), ne_binary(), ne_binary(), atom() | ne_binary()) -> 'ok'.
+-spec log_attempts(cb_context:context(), ne_binary(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason) ->
     MultiFactorOrigin =
       case mfa_options(Method, AuthConfig) of
@@ -394,7 +419,7 @@ log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason
             ,{<<"auth_type">>, AuthType}
             ,{<<"debug_type">>, DebugType}
             ,{<<"auth_module">>, Method}
-            ,{<<"message">>, kz_term:to_binary(Reason)}
+            ,{<<"message">>, Reason}
             ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfig)}
             ,{<<"multi_factor_config_origin">>, MultiFactorOrigin}
             ,{<<"client_headers">>, kz_json:from_list(cb_context:req_headers(Context))}
