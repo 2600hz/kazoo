@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "auth_config_account",
     "additionalProperties": true,
-    "description": "corssbar account authentication modules configuration",
+    "description": "crossbar account authentication modules configuration",
     "properties": {
         "auth_modules": {
             "additionalProperties": true,

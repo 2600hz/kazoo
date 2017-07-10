@@ -681,7 +681,7 @@
             "type": "object"
         },
         "auth_config": {
-            "description": "corssbar authentication module configuration",
+            "description": "crossbar authentication module configuration",
             "properties": {
                 "enabled": {
                     "description": "whether or not this authentication module is enabled",
@@ -731,7 +731,7 @@
             "type": "object"
         },
         "auth_config_account": {
-            "description": "corssbar account authentication modules configuration",
+            "description": "crossbar account authentication modules configuration",
             "properties": {
                 "auth_modules": {
                     "additionalProperties": true,
@@ -22152,8 +22152,8 @@
         "port_requests.to_scheduled": {
             "description": "Schema for a port request to be transitioned to the 'scheduled' state",
             "properties": {
-                "schedule_on": {
-                    "description": "date-time at which to perform the porting",
+                "scheduled_date": {
+                    "description": "Time at which to perform the porting, either as a gregorian timestamp or as datetime",
                     "properties": {
                         "date_time": {
                             "pattern": "^2\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d$",
@@ -22745,13 +22745,15 @@
                         "timezone",
                         "date_time"
                     ],
-                    "type": "object"
-                },
-                "scheduled_date": {
-                    "description": "Gregorian timestamp at which to perform the porting",
-                    "type": "integer"
+                    "type": [
+                        "integer",
+                        "object"
+                    ]
                 }
             },
+            "required": [
+                "scheduled_date"
+            ],
             "type": "object"
         },
         "profile": {
@@ -24919,6 +24921,22 @@
                 "trial_time": {
                     "default": 1209600,
                     "description": "crossbar.accounts trial time",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.crossbar.acdc_call_stats": {
+            "description": "Schema for crossbar.acdc_call_stats system_config",
+            "properties": {
+                "maximum_bulk": {
+                    "default": 50,
+                    "description": "The maximum number of call stats to load in a request",
+                    "type": "integer"
+                },
+                "maximum_range": {
+                    "default": 2682000,
+                    "description": "The maximum number of seconds between the start and end time of a call stats request",
                     "type": "integer"
                 }
             },
@@ -30845,6 +30863,23 @@
                             "$ref": "#/definitions/access_lists"
                         }
                     },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/acdc_call_stats": {
+            "get": {
+                "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },
