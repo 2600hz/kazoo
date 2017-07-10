@@ -10,10 +10,10 @@
 -module(cb_security).
 
 -export([init/0
-        ,authorize/1, authorize/2
-        ,allowed_methods/0, allowed_methods/1
-        ,resource_exists/0, resource_exists/1
-        ,validate/1, validate/2
+        ,authorize/1, authorize/2, authorize/3
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/1, validate/2, validate/3
         ,put/1, put/2
         ,post/1, post/2
         ,patch/1, patch/2
@@ -34,12 +34,10 @@
        ,kz_json:from_list([{<<"available_auth_modules">>, ?SYSTEM_AUTH_MODULES}])
        ).
 
--define(LISTS_BY_TYPE, <<"auth/providers_by_type">>).
 -define(CB_LIST_ATTEMPT_LOG, <<"auth/login_attempt_by_time">>).
 
--define(AUTH_PROVIDER, <<"auth_provider">>).
 -define(ATTEMPTS, <<"attempts">>).
--define(ATTEMPTS_TYPE, <<"login_attempt">>).
+-define(AUTH_ATTEMPT_TYPE, <<"login_attempt">>).
 
 %%%===================================================================
 %%% API
@@ -72,18 +70,22 @@ init() ->
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+    authorize_list_available_module(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec authorize(cb_context:context(), path_token()) -> boolean().
-authorize(Context, _) ->
-    cb_simple_authz:authorize(Context).
+authorize(_Context, _) ->
+    'true'.
 
--spec authorize(cb_context:context(), req_nouns(), http_methods()) -> boolean().
-authorize(Context, [{<<"security">>, []}], ?HTTP_GET) ->
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(_Context, _, _) ->
+    'true'.
+
+-spec authorize_list_available_module(cb_context:context(), req_nouns(), http_methods()) -> boolean().
+authorize_list_available_module(Context, [{<<"security">>, []}], ?HTTP_GET) ->
     cb_simple_authz:authorize(Context);
-authorize(Context, [{<<"security">>, []}], _) ->
+authorize_list_available_module(Context, [{<<"security">>, []}], _) ->
     {'halt', cb_context:add_system_error('forbidden', Context)};
-authorize(Context, _Nouns, _Verb) ->
+authorize_list_available_module(Context, _Nouns, _Verb) ->
     cb_simple_authz:authorize(Context).
 
 %%--------------------------------------------------------------------
@@ -98,10 +100,14 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token()) -> http_methods().
-%% allowed_methods(?ATTEMPTS) ->
-%%     [?HTTP_GET];
+allowed_methods(?ATTEMPTS) ->
+    [?HTTP_GET];
 allowed_methods(_ConfigId) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+allowed_methods(?ATTEMPTS, _AttemptId) ->
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -116,9 +122,11 @@ allowed_methods(_ConfigId) ->
 resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
-%% resource_exists(?ATTEMPTS) -> 'true';
+resource_exists(?ATTEMPTS) -> 'true';
 resource_exists(_ConfigId) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
+resource_exists(?ATTEMPTS, _AttemptId) -> 'true'.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -134,11 +142,17 @@ validate(Context) ->
     validate_auth_configs(Context, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context, ?ATTEMPTS) ->
+    crossbar_view:load(Context, ?CB_LIST_ATTEMPT_LOG, [{mapper, fun normalize_attempt_view_result/1}]);
 validate(Context, Id) ->
     case lists:member(Id, ?SYSTEM_AUTH_MODULES) of
         'true' -> validate_module_configs(Context, Id, cb_context:req_verb(Context));
         'false' -> not_found(Context, Id)
     end.
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context, ?ATTEMPTS, AttemptId) ->
+    read_attempt_log(AttemptId, Context).
 
 %% validates /security
 -spec validate_auth_configs(cb_context:context(), http_method()) -> cb_context:context().
@@ -157,7 +171,7 @@ validate_auth_configs(Context, ?HTTP_PATCH) ->
 validate_auth_configs(Context, ?HTTP_DELETE) ->
     read(Context).
 
-%% validats /security/AUTH_MOD
+%% validats /security/{PATH_TOKEN}
 -spec validate_module_configs(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
 validate_module_configs(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
@@ -395,11 +409,9 @@ not_found(Context, Id) ->
 %% Load a login attempt log from MODB
 %% @end
 %%--------------------------------------------------------------------
-%% -spec read_attempt_log(ne_binary(), cb_context:context()) -> cb_context:context().
-%% read_attempt_log(?MATCH_MODB_PREFIX(YYYY, MM, _) = AttemptId, Context) ->
-%%     Year  = kz_term:to_integer(YYYY),
-%%     Month = kz_term:to_integer(MM),
-%%     crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?ATTEMPTS_TYPE)).
+-spec read_attempt_log(ne_binary(), cb_context:context()) -> cb_context:context().
+read_attempt_log(?MATCH_MODB_PREFIX(Year, Month, _)=AttemptId, Context) ->
+    crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?AUTH_ATTEMPT_TYPE)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -407,6 +419,6 @@ not_found(Context, Id) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
-%% -spec normalize_attempt_view_result(kz_json:object()) -> kz_json:object().
-%% normalize_attempt_view_result(JObj) ->
-%%     kz_json:get_value(<<"value">>, JObj).
+-spec normalize_attempt_view_result(kz_json:object()) -> kz_json:object().
+normalize_attempt_view_result(JObj) ->
+    kz_json:get_value(<<"value">>, JObj).
