@@ -506,7 +506,7 @@ interaction_view_option(Key, ViewOptions) ->
         {'endkey', [_OwnerId, CreatedFrom]} -> CreatedFrom;
         {'startkey', [CreatedTo]} -> CreatedTo;
         {_, Option} -> Option
-     end.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
