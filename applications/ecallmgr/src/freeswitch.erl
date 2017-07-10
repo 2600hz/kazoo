@@ -40,8 +40,13 @@
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
--type fs_api_return() :: {'ok', binary()} | {'error', 'timeout' | 'exception' | binary()}.
--export_type([fs_api_return/0]).
+-type fs_api_ok() :: {'ok', binary()}.
+-type fs_api_error():: {'error', 'timeout' | 'exception' | binary()}.
+-type fs_api_return() :: fs_api_ok() | fs_api_error().
+-export_type([fs_api_ok/0
+             ,fs_api_error/0
+             ,fs_api_return/0
+             ]).
 
 -spec version(atom()) -> fs_api_return().
 -spec version(atom(), pos_integer()) -> fs_api_return().
@@ -95,6 +100,7 @@ bind(Node, Type) ->
 bind(Node, Type, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, {'bind', Type}, Timeout) of
         'timeout' -> {'error', 'timeout'};
+        {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
         Result -> Result
     catch
         _E:_R ->
@@ -111,6 +117,7 @@ fetch_reply(Node, FetchID, Section, Reply) ->
 fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout) of
         'timeout' -> {'error', 'timeout'};
+        {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
         Result -> Result
     catch
         _E:_R ->
@@ -128,6 +135,7 @@ api(Node, Cmd, Args) ->
 api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
     try gen_server:call({'mod_kazoo', Node}, {'api', Cmd, Args}, Timeout) of
         'timeout' -> {'error', 'timeout'};
+        {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
         Result -> Result
     catch
         _E:_R ->
@@ -145,6 +153,8 @@ bgapi(Node, Cmd, Args) ->
     _ = kz_util:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
+                      {'ok', <<"-ERR ", Reason/binary>>} ->
+                          Self ! {'api', internal_fs_error(Reason)};
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
                           receive
@@ -176,6 +186,8 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
     _ = kz_util:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
+                      {'ok', <<"-ERR ", Reason/binary>>} ->
+                          Self ! {'api', internal_fs_error(Reason)};
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
                           receive
@@ -207,6 +219,8 @@ bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
     _ = kz_util:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
+                      {'ok', <<"-ERR ", Reason/binary>>} ->
+                          Self ! {'api', internal_fs_error(Reason)};
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
                           receive
@@ -238,6 +252,8 @@ bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
     _ = kz_util:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
+                      {'ok', <<"-ERR ", Reason/binary>>} ->
+                          Self ! {'api', internal_fs_error(Reason)};
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
                           receive
@@ -272,6 +288,7 @@ event(Node, [_|_]=Events, Timeout) ->
     PortOpen = get('port_open'),
     try gen_server:call({'mod_kazoo', Node}, {'event', Events}, Timeout) of
         'timeout' -> {'error', 'timeout'};
+        {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
         {'ok', {IP, Port}} when PortOpen =:= 'undefined' ->
             put('port_open', 'true'),
             {'ok', IPAddress} = inet_parse:address(IP),
@@ -319,6 +336,8 @@ bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
     _ = kz_util:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi4', Cmd, Args}, ?TIMEOUT) of
+                      {'ok', <<"-ERR ", Reason/binary>>} ->
+                          Self ! {'api', internal_fs_error(Reason)};
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
                           receive
@@ -348,3 +367,8 @@ bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
     receive
         {'api', Result} -> Result
     end.
+
+-spec internal_fs_error(binary()) -> {'error', binary()}.
+internal_fs_error(Reason) ->
+    Error = kz_binary:strip(binary:replace(Reason, <<"\n">>, <<>>)),
+    {'error', Error}.
