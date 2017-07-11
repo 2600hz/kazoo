@@ -145,8 +145,9 @@ maybe_authenticate_user(Context) ->
     of
         {'ok', 200, RespHeaders, RespBody} ->
             lager:debug("successfully authenticated to '~s'", [LoginURL]),
-            cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(Context, RespHeaders, RespBody)}
+            cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(RespHeaders, RespBody)}
                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:store/3, 'auth_type', <<"sso_auth">>}
                                         ]);
         {'ok', _RespCode, _RespHeaders, _RespBody} ->
             lager:debug("recv non-200(~p) code from '~s': ~s", [_RespCode, LoginURL, _RespBody]),
@@ -164,30 +165,27 @@ login_req(Context) ->
                      ,kz_json:delete_key(<<"username">>, Data)
                      ).
 
--spec auth_response(cb_context:context(), kz_proplist(), binary()) -> kz_json:object().
-auth_response(Context, _RespHeaders, RespBody) ->
+-spec auth_response(kz_proplist(), binary()) -> kz_json:object().
+auth_response(_RespHeaders, RespBody) ->
     RespJObj = kz_json:decode(RespBody),
     UUID = kz_json:get_value(<<"uuid">>, RespJObj),
 
-    maybe_add_account_information(Context
-                                 ,UUID
+    maybe_add_account_information(UUID
                                  ,kz_json:from_list(
                                     [{<<"sso">>, kz_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}]
                                    )
                                  ).
 
--spec maybe_add_account_information(cb_context:context(),api_binary(), kz_json:object()) -> kz_json:object().
-maybe_add_account_information(_Context, 'undefined', AuthResponse) ->
+-spec maybe_add_account_information(api_binary(), kz_json:object()) -> kz_json:object().
+maybe_add_account_information('undefined', AuthResponse) ->
     AuthResponse;
-maybe_add_account_information(Context, UUID, AuthResponse) ->
+maybe_add_account_information(UUID, AuthResponse) ->
     Options = [{'key', [?SSO_PROVIDER, UUID]}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_sso">>, Options) of
         {'ok', []} -> AuthResponse;
         {'ok', [AccountJObj]} ->
             AccountId = kz_json:get_value(<<"account_id">>, AccountJObj),
             lager:debug("found account as ~s", [AccountId]),
-            Reason = kz_term:to_binary(io_lib:format("found account ~s with uuid ~s", [AccountId, UUID])),
-            crossbar_auth:log_success_auth(?MODULE, <<"credentials">>, Reason, Context, AccountId),
 
             kz_json:set_values([{<<"account_id">>, AccountId}
                                ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}

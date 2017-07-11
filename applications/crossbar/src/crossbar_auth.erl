@@ -94,6 +94,8 @@ create_auth_token(Context, Method, JObj) ->
 
             lager:debug("created new local auth token: ~s", [kz_json:encode(Resp)]),
 
+            log_success_auth(Method, <<"jwt_auth_token">>, <<"authentiaction resulted in token creation">>, Context, AccountId, AuthConfig),
+
             crossbar_util:response(Resp, cb_context:setters(Context, Setters));
         {'error', R} ->
             Reason = kz_term:to_binary(R),
@@ -415,8 +417,8 @@ log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason
     LogId = kazoo_modb_util:modb_id(Now),
 
     Props = [{<<"_id">>, LogId}
-            ,{<<"auth_type">>, AuthType}
-            ,{<<"debug_type">>, DebugType}
+            ,{<<"auth_type">>, cb_context:fetch(Context, 'auth_type', AuthType)}
+            ,{<<"status">>, DebugType}
             ,{<<"auth_module">>, Method}
             ,{<<"message">>, Reason}
             ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfig)}
@@ -430,5 +432,12 @@ log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason
                                             ,{'now', Now}
                                             ]
            ),
-    _ = kazoo_modb:save_doc(MODB, Doc),
+    _ = kazoo_modb:save_doc(MODB, maybe_add_metadata(cb_context:doc(Context), Doc)),
     'ok'.
+
+-spec maybe_add_metadata(api_object(), kz_json:object()) -> kz_json:object().
+maybe_add_metadata(ContextDoc, Doc) ->
+    case kz_term:is_empty(ContextDoc) of
+        'true' -> Doc;
+        'false' -> kz_json:set_value(<<"metadata">>, ContextDoc, Doc)
+    end.

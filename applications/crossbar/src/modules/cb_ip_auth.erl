@@ -163,14 +163,10 @@ put(Context) ->
 
 -spec on_successful_load(cb_context:context(), crossbar_status(), kz_json:objects()) -> cb_context:context().
 on_successful_load(Context, 'success', [Doc]) ->
-    AccountId = kz_json:get_value(<<"value">>, Doc),
-    IpKey = cb_context:client_ip(Context),
-    Reason = kz_term:to_binary(io_lib:format("found IP key ~s belongs to account ~p", [IpKey, AccountId])),
-
-    lager:debug("~s", [Reason]),
-    crossbar_auth:log_success_auth(?MODULE, <<"credentials">>, Reason, Context, AccountId),
-
-    cb_context:set_doc(Context, Doc);
+    _AccountId = kz_json:get_value(<<"value">>, Doc),
+    _IpKey = cb_context:client_ip(Context),
+    lager:debug("found IP key ~s belongs to account ~p", [_IpKey, _AccountId]),
+    cb_context:set_doc(cb_context:store(Context, 'auth_type', <<"ip_auth">>), Doc);
 on_successful_load(Context, _Status, _Doc) ->
     Context.
 
