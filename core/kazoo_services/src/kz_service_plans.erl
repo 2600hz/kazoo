@@ -238,7 +238,7 @@ get_plan(PlanId, ResellerId, Services, ServicePlans) ->
 maybe_fetch_vendor_plan(PlanId, VendorId, VendorId, Overrides) ->
     case kz_service_plan:fetch(PlanId, VendorId) of
         'undefined' -> 'undefined';
-        ServicePlan when Overrides /= ?EMPTY_JSON_OBJECT ->
+        ServicePlan when Overrides =/= ?EMPTY_JSON_OBJECT ->
             kzd_service_plan:merge_overrides(ServicePlan, Overrides);
         ServicePlan -> ServicePlan
     end;
