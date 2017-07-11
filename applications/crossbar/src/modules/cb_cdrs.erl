@@ -497,15 +497,18 @@ view_option(Key, ViewOptions) ->
 
 -spec interaction_view_option('endkey' | 'startkey', crossbar_doc:view_options()) ->
                                      gregorian_seconds().
-interaction_view_option(Key, ViewOptions) ->
-    case {Key, props:get_value(Key, ViewOptions)} of
-        {'endkey', [_OwnerId, CreatedFrom, _]} -> CreatedFrom;
-        {'startkey', [_OwnerId, CreatedTo]} -> CreatedTo;
-        %% Handle case [CreatedFrom, kz_json:new()]
-        {'endkey', [CreatedFrom, _]} when is_integer(CreatedFrom) -> CreatedFrom;
-        {'endkey', [_OwnerId, CreatedFrom]} -> CreatedFrom;
-        {'startkey', [CreatedTo]} -> CreatedTo;
-        {_, Option} -> Option
+interaction_view_option('startkey', ViewOptions) ->
+    case props:get_value(Key, ViewOptions) of
+        [_OwnerId, CreatedTo] -> CreatedTo;
+        [CreatedTo] -> CreatedTo;
+        Option -> Option
+    end;
+interaction_view_option('endkey', ViewOptions) ->
+    case props:get_value(Key, ViewOptions) of
+        [_OwnerId, CreatedFrom, _] -> CreatedFrom;
+        [CreatedFrom, _] when is_integer(CreatedFrom) -> CreatedFrom;
+        [_OwnerId, CreatedFrom] -> CreatedFrom;
+        Option -> Option
     end.
 
 %%--------------------------------------------------------------------
