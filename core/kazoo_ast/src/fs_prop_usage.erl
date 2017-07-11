@@ -146,8 +146,8 @@ function_args('ecallmgr_originate') ->
     {'handle_fs_event'
     ,[?VAR(0, 'Props'), ?VAR(0, 'UUID')]
     };
-function_args('ecallmgr_fs_event_stream') ->
-    {'process_stream'
+function_args('ecallmgr_events') ->
+    {'event'
     ,[?VAR(0, 'EventName'), ?VAR(0, 'UUID'), ?VAR(0, 'Props'), ?VAR(0, 'Node')]
     };
 function_args('ecallmgr_call_events') ->
