@@ -454,6 +454,7 @@ subscribe(#omnip_subscription{user=_U
                              ,stalker=Stalker
                              ,contact=Contact
                              ,username=Username
+                             ,normalized_from=From
                              ,realm=Realm
                              ,event=Event
                              }=S) ->
@@ -471,11 +472,11 @@ subscribe(#omnip_subscription{user=_U
                                ,{#omnip_subscription.stalker, Stalker}
                                ,{#omnip_subscription.contact, Contact}
                                ]),
-            gen_server:cast(self(), {'after', {'resubscribe', {Event, Username, Realm, CallId}}});
+            gen_server:cast(self(), {'after', {'resubscribe', {Event, Username, From, Realm, CallId}}});
         {'error', 'not_found'} ->
             lager:debug("subscribe ~s/~s/~s expires in ~ps", [_U, _F, CallId, E1]),
             ets:insert(table_id(), S),
-            gen_server:cast(self(), {'after', {'subscribe', {Event, Username, Realm, CallId}}})
+            gen_server:cast(self(), {'after', {'subscribe', {Event, Username, From, Realm, CallId}}})
     end.
 
 -spec notify(kz_json:object()) -> 'ok' | {'error', any()}.
@@ -526,17 +527,18 @@ exec([Fun|Funs], Reason, Msg) ->
     exec(Funs, Reason, Msg).
 
 -spec maybe_probe(atom(), msg()) -> 'ok'.
-maybe_probe(_, {<<"message-summary">> = Package, Username, Realm, _}) ->
-    omnip_util:request_probe(Package, Username, Realm);
-maybe_probe(_, {<<"dialog">>, <<"*", _/binary>> = Username, Realm, _}) ->
+maybe_probe(_, {_, <<"*", _/binary>> = Username, From, Realm, _}) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', Account} ->
             VM = ?VM_NUMBER(kz_util:format_account_id(Account)),
             S = size(VM),
             case Username of
+                VM -> omnip_util:request_probe(<<"message-summary">>, From);
                 <<VM:S/binary, New/binary>> -> omnip_util:request_probe(<<"message-summary">>, New, Realm);
                 _ -> 'ok'
             end;
         _ -> 'ok'
     end;
+maybe_probe(_, {<<"message-summary">> = Package, Username, _, Realm, _}) ->
+    omnip_util:request_probe(Package, Username, Realm);
 maybe_probe(_, _) -> 'ok'.
