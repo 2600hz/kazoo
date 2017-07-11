@@ -116,6 +116,8 @@
 -define(SHOULD_FAIL_ON_INVALID_DATA
        ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, false)).
 
+-type validation_error() :: jesse_error:error_reason().
+-type validation_errors() :: [validation_error()].
 
 -type context() :: #cb_context{}.
 -type setter_fun_1() :: fun((context()) -> context()).
@@ -711,59 +713,39 @@ response(#cb_context{resp_error_code=Code
                                    context().
 -spec validate_request_data(ne_binary() | api_object(), context(), after_fun()) ->
                                    context().
--spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun()) ->
+-spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), boolean()) ->
                                    context().
 validate_request_data(SchemaId, Context) ->
-    validate_request_data(SchemaId, Context, undefined).
+    validate_request_data(SchemaId, Context, 'undefined').
 validate_request_data(SchemaId, Context, OnSuccess) ->
-    validate_request_data(SchemaId, Context, OnSuccess, undefined).
+    validate_request_data(SchemaId, Context, OnSuccess, 'undefined').
 validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
-    OnPassing = fun copy_req_data_to_doc/1,
-    do_validate_request_data(SchemaId, Context, OnSuccess, OnFailure, OnPassing).
-
--spec copy_req_data_to_doc(context()) -> context().
-copy_req_data_to_doc(Context) ->
-    NewDoc = case doc(Context) of
-                 undefined -> req_data(Context);
-                 Doc -> kz_json:merge_jobjs(kz_doc:private_fields(Doc), req_data(Context))
-             end,
-    set_doc(Context, NewDoc).
-
--type on_passing() :: fun((context()) -> context()).
--spec do_validate_request_data(ne_binary(), context(), after_fun(), after_fun(), on_passing()) -> context().
-do_validate_request_data(SchemaId, Context, OnSuccess, OnFailure, OnPassing) ->
-    case do_validate_request_data(SchemaId, Context, OnPassing) of
-        #cb_context{resp_status='success'}=C1 when is_function(OnSuccess, 1) ->
-            OnSuccess(C1);
-        #cb_context{}=C2 when is_function(OnFailure, 1) ->
-            OnFailure(C2);
-        Else -> Else
-    end.
-
--spec do_validate_request_data(ne_binary() | api_object(), context(), on_passing()) -> context().
-do_validate_request_data(undefined, Context, _) ->
+    Strict = fetch(Context, 'ensure_valid_schema', ?SHOULD_ENSURE_SCHEMA_IS_VALID),
+    validate_request_data(SchemaId, Context, OnSuccess, OnFailure, Strict).
+validate_request_data('undefined', Context, OnSuccess, _OnFailure, 'false') ->
     lager:error("schema id or schema JSON not defined, continuing anyway"),
-    passed(Context);
-do_validate_request_data(?NE_BINARY=SchemaId, Context, OnPassing) ->
-    Strict = fetch(Context, ensure_valid_schema, ?SHOULD_ENSURE_SCHEMA_IS_VALID),
+    validate_passed(Context, OnSuccess);
+validate_request_data('undefined', Context, _OnSuccess, _OnFailure, 'true') ->
+    lager:error("schema id or schema JSON not defined"),
+    system_error(Context, <<"schema id or schema JSON not defined.">>);
+validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, Strict) ->
     case find_schema(SchemaId) of
-        undefined when Strict ->
+        'undefined' when Strict ->
+            lager:error("schema ~s not found", [SchemaId]),
             system_error(Context, <<"schema ", SchemaId/binary, " not found.">>);
-        undefined ->
+        'undefined' ->
             lager:error("schema ~s not found, continuing anyway", [SchemaId]),
-            passed(OnPassing(Context));
+            validate_passed(Context, OnSuccess);
         SchemaJObj ->
-            do_validate_request_data(SchemaJObj, Context, OnPassing)
+            validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, Strict)
     end;
-do_validate_request_data(SchemaJObj, Context, OnPassing) ->
-    Strict = ?SHOULD_FAIL_ON_INVALID_DATA,
+validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, Strict) ->
     try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(req_data(Context))) of
-        {'ok', JObj} -> passed(OnPassing(set_req_data(Context, JObj)));
+        {'ok', JObj} -> validate_passed(set_req_data(Context, JObj), OnSuccess);
         {'error', Errors} when Strict ->
-            lager:debug("validation failed ~s: ~p", [kz_doc:id(SchemaJObj), Errors]),
-            failed(set_resp_error_msg(Context, <<"validation failed">>), Errors);
+            validate_failed(SchemaJObj, Context, Errors, OnFailure);
         {'error', Errors} ->
-            maybe_fix_js_types(Context, SchemaJObj, OnPassing, Errors)
+            maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
         'error':'function_clause' ->
             ST = erlang:get_stacktrace(),
@@ -776,14 +758,41 @@ do_validate_request_data(SchemaJObj, Context, OnPassing) ->
                               }
     end.
 
--spec failed(context(), [jesse_error:error_reason()]) -> context().
+-spec validate_failed(kz_json:object(), context(), _, after_fun()) -> context().
+validate_failed(SchemaJObj, Context, Errors, OnFailure) ->
+    lager:debug("validation failed ~s: ~p", [kz_doc:id(SchemaJObj), Errors]),
+    Context1 = failed(Context, Errors),
+    case is_function(OnFailure, 1) of
+        'true' -> OnFailure(Context1);
+        'false' -> Context1
+    end.
+
+-spec validate_passed(context(), after_fun()) -> context().
+validate_passed(Context, OnSuccess) ->
+    Context1 = passed(maybe_copy_req_data_to_doc(Context)),
+    case is_function(OnSuccess, 1) of
+        'true' -> OnSuccess(Context1);
+        'false' -> Context1
+    end.
+
+-spec maybe_copy_req_data_to_doc(context()) -> context().
+maybe_copy_req_data_to_doc(Context) ->
+    case doc(Context) of
+        'undefined' -> Context;
+        Doc ->
+            NewDoc = kz_json:merge_jobjs(kz_doc:private_fields(Doc), req_data(Context)),
+            set_doc(Context, NewDoc)
+    end.
+
+-spec failed(context(), validation_errors()) -> context().
 failed(Context, Errors) ->
     Context1 = setters(Context, [{fun set_resp_error_code/2, 400}
                                 ,{fun set_resp_status/2, 'error'}
+                                ,{fun set_resp_error_msg/2, <<"validation failed">>}
                                 ]),
     lists:foldl(fun failed_error/2, Context1, Errors).
 
--spec failed_error(jesse_error:error_reason(), context()) -> context().
+-spec failed_error(validation_error(), context()) -> context().
 failed_error(Error, Context) ->
     Props = props:filter_undefined([{'version', api_version(Context)}
                                    ,{'error_code', resp_error_code(Context)}
@@ -974,19 +983,16 @@ maybe_update_error_message(_Old, <<"init failed">>) -> <<"validation error">>;
 maybe_update_error_message(Msg, Msg) -> Msg;
 maybe_update_error_message(_Old, New) -> New.
 
--spec maybe_fix_js_types(context(), kz_json:object(), fun(), [jesse_error:error_reason()]) -> context().
-maybe_fix_js_types(Context, SchemaJObj, OnPassing, Errors) ->
+-spec maybe_fix_js_types(kz_json:object(), context(), after_fun(), after_fun(), validation_errors()) -> context().
+maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors) ->
     JObj = req_data(Context),
     case lists:foldl(fun maybe_fix_js_type/2, JObj, Errors) of
-        JObj ->
-            lager:debug("validation failed ~s: ~p", [kz_doc:id(SchemaJObj), Errors]),
-            failed(Context, Errors);
+        JObj -> validate_failed(SchemaJObj, Context, Errors, OnFailure);
         NewJObj ->
-            do_validate_request_data(SchemaJObj, set_req_data(Context, NewJObj), OnPassing)
+            validate_request_data(SchemaJObj, set_req_data(Context, NewJObj), OnSuccess, OnFailure)
     end.
 
--spec maybe_fix_js_type(jesse_error:error_reason(), kz_json:object()) ->
-                               kz_json:object().
+-spec maybe_fix_js_type(validation_error(), kz_json:object()) -> kz_json:object().
 maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, JObj) ->
     case kz_json:get_value(<<"type">>, SchemaJObj) of
         <<"integer">> -> maybe_fix_js_integer(Key, Value, JObj);
