@@ -74,9 +74,9 @@ fetch_master_attachments(TemplateId) ->
 
 -spec fetch_attachments(ne_binary(), ne_binary()) -> template_attachments().
 fetch_attachments(TemplateId, Account) ->
-    AccountDb = case Account of
-                    ?KZ_CONFIG_DB -> ?KZ_CONFIG_DB;
-                    Account -> kz_util:format_account_db(Account)
+    AccountDb = case ?KZ_CONFIG_DB =:= Account of
+                    true -> ?KZ_CONFIG_DB;
+                    false -> kz_util:format_account_db(Account)
                 end,
     DocId = doc_id(TemplateId),
     case fetch_notification(TemplateId, AccountDb) of
@@ -141,6 +141,13 @@ render(TemplateId, Macros, DataJObj, 'false') ->
 render(TemplateId, Macros, DataJObj, 'true') ->
     preview(TemplateId, Macros, DataJObj).
 
+-ifdef(TEST).
+reseller_id(?AN_ACCOUNT_ID) -> ?A_MASTER_ACCOUNT_ID;
+reseller_id(?MATCH_ACCOUNT_RAW(_)) -> youre_testing_too_far.
+-else.
+reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
+-endif.
+
 -spec templates_source(ne_binary(), api_binary() | kz_json:object()) -> api_binary().
 -spec templates_source(ne_binary(), api_binary(), ne_binary()) -> api_binary().
 templates_source(_TemplateId, 'undefined') ->
@@ -148,9 +155,9 @@ templates_source(_TemplateId, 'undefined') ->
     'undefined';
 templates_source(_TemplateId, ?KZ_CONFIG_DB) ->
     ?KZ_CONFIG_DB;
-templates_source(TemplateId, <<_/binary>> = AccountId) ->
-    lager:debug("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
-    ResellerId = kz_services:find_reseller_id(AccountId),
+templates_source(TemplateId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    ?LOG_DEBUG("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
+    ResellerId = reseller_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
     case teletype_util:find_account_id(DataJObj) of
@@ -169,6 +176,12 @@ templates_source(TemplateId, AccountId, AccountId) ->
         {'error', _E} -> 'undefined'
     end;
 templates_source(TemplateId, AccountId, ResellerId) ->
+    bypass_templates_source(TemplateId, AccountId, ResellerId).
+
+-ifdef(TEST).
+bypass_templates_source(?NE_BINARY, ?MATCH_ACCOUNT_RAW(_), ?MATCH_ACCOUNT_RAW(_)) -> ?KZ_CONFIG_DB.
+-else.
+bypass_templates_source(TemplateId, AccountId) ->
     case fetch_notification(TemplateId, AccountId) of
         {'error', 'not_found'} ->
             parent_templates_source(TemplateId, AccountId, ResellerId);
@@ -176,6 +189,7 @@ templates_source(TemplateId, AccountId, ResellerId) ->
             templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template);
         {'error', _E} -> 'undefined'
     end.
+-endif.
 
 -spec templates_source_has_attachments(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
                                               api_binary().
@@ -203,8 +217,8 @@ fetch_notification(TemplateId, Account) ->
 
 fetch_notification(TemplateId, 'undefined', _ResellerId) ->
     kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
-fetch_notification(TemplateId, ?KZ_CONFIG_DB, _ResellerId) ->
-    kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
+fetch_notification(TemplateId, Db=?KZ_CONFIG_DB, _ResellerId) ->
+    kz_datamgr:open_cache_doc(Db, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
 fetch_notification(TemplateId, AccountId, AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     DocId = doc_id(TemplateId),
@@ -229,28 +243,30 @@ render_masters(TemplateId, Macros) ->
     ].
 
 master_content_types(TemplateId) ->
-    case fetch_notification(TemplateId, ?KZ_CONFIG_DB) of
+    case from_system_config(TemplateId) of
         {'ok', NotificationJObj} ->
-            kz_json:foldl(fun master_content_type/3
-                         ,[]
-                         ,kz_doc:attachments(NotificationJObj)
-                         );
+            [kz_json:get_ne_binary_value(<<"content_type">>, AttachmentJObj)
+             || {_,AttachmentJObj} <- kz_json:to_proplist(kz_doc:attachments(NotificationJObj))
+            ];
         {'error', _E} ->
             lager:warning("failed to find master notification ~s", [TemplateId]),
             []
     end.
 
--spec master_content_type(ne_binary(), kz_json:object(), ne_binaries()) -> ne_binaries().
-master_content_type(_AttachmentName, AttachmentProps, Acc) ->
-    [kz_json:get_value(<<"content_type">>, AttachmentProps) | Acc].
+-ifdef(TEST).
+from_system_config(?NE_BINARY=TemplateId) ->
+    {ok, teletype_util:fixture("system_config,notification." ++ binary_to_list(TemplateId) ++ ".json")}.
+-else.
+from_system_config(TemplateId) -> fetch_notification(TemplateId, ?KZ_CONFIG_DB).
+-endif.
 
 -spec render_master(ne_binary(), ne_binary(), macros()) -> ne_binary().
-render_master(<<_/binary>> = TemplateId, <<_/binary>> = ContentType, Macros) ->
+render_master(?NE_BINARY=TemplateId, ?NE_BINARY=ContentType, Macros) ->
     ModuleName = renderer_name(TemplateId, ContentType),
     case kz_template:render(ModuleName, Macros) of
         {'ok', IOList} ->
             iolist_to_binary(IOList);
-        {'error', _} ->
+        {'error', _R} ->
             throw({'error', 'template_error'})
     end.
 
