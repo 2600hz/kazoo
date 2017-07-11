@@ -17,6 +17,13 @@
 
 -define(CACHE_NAME, 'teletype_cache').
 
+
+-ifdef(TEST).
+-define(AN_ACCOUNT_ID, <<"009afc511c97b2ae693c6cc4920988e8">>).
+-define(A_MASTER_ACCOUNT_ID, <<"6b71cb72c876b5b1396a335f8f8a2594">>).
+-endif.
+
+
 -type mime_tuples() :: [mimemail:mimetuple()].
 
 %% {ContentType, Filename, Content}
