@@ -1,7 +1,5 @@
 -module(kz_term_tests).
 
--include_lib("eunit/include/eunit.hrl").
-
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").
 -endif.
