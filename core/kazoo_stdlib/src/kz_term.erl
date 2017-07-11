@@ -43,8 +43,6 @@
 
 -include_lib("kazoo/include/kz_types.hrl").
 
--define(OPTIONS_FOR_FLOAT_TO, [{decimals,6}, compact]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -134,7 +132,7 @@ to_number(X) when is_list(X) ->
 
 -spec to_list(atom() | list() | binary() | integer() | float()) -> list().
 to_list(X) when is_list(X) -> X;
-to_list(X) when is_float(X) -> float_to_list(X, ?OPTIONS_FOR_FLOAT_TO);
+to_list(X) when is_float(X) -> kz_mochinum:digits(X);
 to_list(X) when is_integer(X) -> integer_to_list(X);
 to_list(X) when is_binary(X) -> binary_to_list(X);
 to_list(X) when is_atom(X) -> atom_to_list(X).
@@ -143,7 +141,7 @@ to_list(X) when is_atom(X) -> atom_to_list(X).
 %%   Converting [256 | _], lists with integers > 255
 -spec to_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
 to_binary(X) when is_binary(X) -> X;
-to_binary(X) when is_float(X) -> float_to_binary(X, ?OPTIONS_FOR_FLOAT_TO);
+to_binary(X) when is_float(X) -> to_binary(kz_mochinum:digits(X));
 to_binary(X) when is_integer(X) -> integer_to_binary(X);
 to_binary(X) when is_atom(X) -> atom_to_binary(X, utf8);
 to_binary(X) when is_list(X) -> iolist_to_binary(X);
