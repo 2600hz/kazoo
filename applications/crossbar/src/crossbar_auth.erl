@@ -80,7 +80,7 @@ create_auth_token(Context, Method, JObj) ->
         'false' ->
             Reason = <<"authentication module ", Method/binary, " is disabled">>,
             log_failed_auth(Method, <<"jwt_auth_token">>, Reason, Context, AccountId, AuthConfig),
-            {'error', Reason};
+            crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
         {'ok', Token} ->
             Setters = [{fun cb_context:set_auth_token/2, Token}
                       ,{fun cb_context:set_auth_doc/2, kz_json:from_list(Claims)}
