@@ -212,8 +212,15 @@ post(Context) ->
     crossbar_doc:save(Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
-    crossbar_doc:save(Context).
+post(Context, Id) ->
+    C1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            cb_context:set_resp_data(Context
+                                    ,kz_json:get_value(module_config_path(Id), cb_context:doc(C1), kz_json:new())
+                                    );
+        _ -> C1
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -227,8 +234,15 @@ patch(Context) ->
     crossbar_doc:save(Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _) ->
-    crossbar_doc:save(Context).
+patch(Context, Id) ->
+    C1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            cb_context:set_resp_data(Context
+                                    ,kz_json:get_value(module_config_path(Id), cb_context:doc(C1), kz_json:new())
+                                    );
+        _ -> C1
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -241,9 +255,14 @@ delete(Context) ->
     crossbar_doc:delete(Context, 'permanent').
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _) ->
-    io:format("~n after Doc ~p~n", [cb_context:doc(Context)]),
-    crossbar_doc:save(Context).
+delete(Context, Id) ->
+    C1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            DbDoc = cb_context:fetch(Context, 'db_doc', kz_json:new()),
+            cb_context:set_resp_data(Context, kz_json:get_value(module_config_path(Id), DbDoc, kz_json:new()));
+        _ -> C1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

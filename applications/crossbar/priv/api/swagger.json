@@ -681,7 +681,7 @@
             "type": "object"
         },
         "auth_config": {
-            "description": "corssbar authentication configurations",
+            "description": "corssbar authentication module configuration",
             "properties": {
                 "enabled": {
                     "description": "whether or not this authentication module is enabled",
@@ -693,7 +693,7 @@
                     "type": "boolean"
                 },
                 "log_successful_attempts": {
-                    "default": true,
+                    "default": false,
                     "description": "should log successful logging attempts",
                     "type": "boolean"
                 },
@@ -731,13 +731,19 @@
             "type": "object"
         },
         "auth_config_account": {
-            "description": "corssbar account authentication modules configurations",
+            "description": "corssbar account authentication modules configuration",
             "properties": {
                 "auth_modules": {
                     "additionalProperties": true,
-                    "description": "crossbar authentication modules configurations",
+                    "description": "crossbar authentication modules configuration",
                     "properties": {
                         "cb_api_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_ip_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_ubiquiti_auth": {
                             "$ref": "#/definitions/auth_config"
                         },
                         "cb_user_auth": {
@@ -756,7 +762,6 @@
             "description": "authentication providers",
             "properties": {
                 "enabled": {
-                    "default": true,
                     "description": "whether or not this authentication provider is enabled",
                     "type": "boolean"
                 },
@@ -778,6 +783,7 @@
                 }
             },
             "required": [
+                "enabled",
                 "provider_name",
                 "provider_type"
             ],

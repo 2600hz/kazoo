@@ -2,9 +2,9 @@
 
 #### Overview
 
-Integrating Kazoo to MFA providers to secure accessing to API endpoint. Users are authenticating with their usual Kazoo username and password and then will be authenticated through a second factors like Text message, a Phone call or push notification.
+Integrating Kazoo to MFA providers to secure accessing the Crossbar API endpoints. Users are authenticating with their usual Kazoo credentials and then will be authenticated through a second factors like a pin code recieved by text message or a phone call or a push notification.
 
-> **Note:** Please make sure that **NTP** service is configured on Kazoo servers and that your server's time is correct! Otherwise MFA request would be failed or incorrect.
+> **Caution:** Please make sure that **NTP** service is configured on Kazoo servers and that your server's time is correct! Otherwise MFA request would be failed or would be invalid.
 
 #### Multi Factor Authentication flow
 
@@ -15,8 +15,8 @@ MFA process involves these steps:
 3. Based on auth module configuration, MFA provider settings will be fetched either from account's that have configured the auth module or from default provider in `system_auth`
 4. If no MFA provider configuration was found, the auth request will be successful and a token will be generated as a normal auth-request as before
 5. If the MFA provider is disabled based on the configuration, a HTTP `401 unauthorized` error will be returned.
-6. Provider module will try to validate the request and settings and return a HTTP `401 unauthorized` if something is invalid and provide an appropriate error message.
-7. If the request doesn't have a response from MFA provider (if there is no `multi_factor_response` inside the body of the request) it will generate the required information that the client needs to preform second-factor auth with the provider. Crossbar will reply a HTTP `401 unauthorized` with the payload of:
+6. Provider module will try to validate the request and settings and return a HTTP `401 unauthorized` if some parameters is invalid and provide an appropriate error message.
+7. If the request doesn't have a response from MFA provider (if there is no `multi_factor_response` inside the body of the request) it will generate the required information that the client needs to preform second-factor auth with the provider. Crossbar will reply a HTTP `401 unauthorized` with the payload simliar to this:
 
 ```json
 {

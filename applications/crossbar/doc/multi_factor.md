@@ -2,11 +2,20 @@
 
 #### About Multi Factor
 
-After enabling multi-factor for your desired authentication method (see [Crossbar Auth Configs](./authentication_configuration.md)), you have to configure your MFA provider using this API endpoint.
+Allow to configure a Multi Factor Authentication (MFA) provider for an account.
 
-See [Kazoo Auth multi factor documentation](../../../core/kazoo_auth/doc/multi_factor.md) to learn more about available providers and how to setting them up.
+See [Kazoo Auth multi factor documentation](../../../core/kazoo_auth/doc/multi_factor.md) to learn more about available providers and their required settings.
 
-> **Note:** This only provides an API to create/change/get MFA settings. For more information about how MFA works and what settings are required please see Kazoo Auth MFA documentation and Crossbar Auth Configuration.
+##### Enable MFA for a Crossbar auth module
+
+If you want to use multi factor authentication for a module, set the `multi_factor.enabled` to `true` for that authentication module. You can control if the multi factor settings can be applied to the account's children by `multi_factor.include_subaccounts`.
+
+> **Note:** You can specify the `id` of multi factor provider settings. If you miss this value, system's default MFA provider will be used!
+
+#### Multi Factor Authentication (MFA) flow summary
+
+The MFA process in Kazoo is straight forward. You configured the Kazoo integrated MFA service provider, and enabling the multi factor for an authentication endpoint. User will authenticate as usual by its own Kazoo credential. If the first factor authentication passed, second-factor provider information (usually a signed token) would be returned to client with HTTP `401 Unauthorized` status.
+User's client performs the second-factor authentication with the provider and sends provider response to Kazoo. If the provider validates user will be authenicated successful and a Kazoo token will be generated as usual otherwise if the second-factor provider response is not validated a HTTP `401 Unauthorized` will be returned.
 
 #### Schema
 
@@ -47,10 +56,7 @@ curl -v -X GET \
 
 #### Configure a provider
 
-Create configuration for a provider by issuing below request. You have to provide the name of provider and and the type of the provider
-which for MFA is always `"multi_factor"`. `"settings"` contains the configs necessary for this provider.
-
-See [Kazoo Auth multi-factor documentation](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
+Creates configuration for a MFA provider. Provider type is `"multi_factor"`. Provider configs should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/multi_factor
 
@@ -89,7 +95,7 @@ curl -v -X PUT \
 
 #### Fetch a provider configuration
 
-Gets account's configuration of a provider in `{CONFIG_ID}`.
+Get account's configuration of a provider.
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -163,7 +169,7 @@ curl -v -X POST \
 }
 ```
 
-#### Patch
+#### Patch a field in a provider configuration
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -210,9 +216,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/c757665dca55edba2395df3ca6423f4f
 ```
 
-#### Get a summary of login attempts
-
-If the crossbar authentication modules is configured to save a debug log of login attempts, use this to get summary of the logs.
+#### Get a summary of multi-factor login attempts
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/attempts
 
@@ -243,7 +247,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch details of a login attempts
+#### Fetch details of a multi-factor login attempts
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/attempts/201702-09a979346eff06746e445a8cc1e574c4
 
