@@ -723,7 +723,10 @@ validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
 
 -spec copy_req_data_to_doc(context()) -> context().
 copy_req_data_to_doc(Context) ->
-    NewDoc = kz_json:merge_jobjs(kz_doc:private_fields(doc(Context)), req_data(Context)),
+    NewDoc = case doc(Context) of
+                 undefined -> req_data(Context);
+                 Doc -> kz_json:merge_jobjs(kz_doc:private_fields(Doc), req_data(Context))
+             end,
     set_doc(Context, NewDoc).
 
 -type on_passing() :: fun((context()) -> context()).
