@@ -713,7 +713,9 @@ response(#cb_context{resp_error_code=Code
                                    context().
 -spec validate_request_data(ne_binary() | api_object(), context(), after_fun()) ->
                                    context().
--spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), boolean()) ->
+-spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun()) ->
+                                   context().
+-spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun(), boolean()) ->
                                    context().
 validate_request_data(SchemaId, Context) ->
     validate_request_data(SchemaId, Context, 'undefined').
