@@ -8,14 +8,20 @@ rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
 
 echo "Checking release startup with node $rel..."
 
+sup() { $PWD/core/sup/priv/sup "$*" }
+
 script() {
-    $PWD/core/sup/priv/sup crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!'
+    sup crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!'
     sleep 3
-    $PWD/core/sup/priv/sup kapps_maintenance migrate
+    sup kazoo_perf_maintenance json_metrics | python -m json.tool
+    sleep 1
+    sup kazoo_perf_maintenance graphite_metrics 'compte_maitre' 'clu1' 'royaume'
+    sleep 1
+    sup kapps_maintenance migrate
     sleep 3
-    $PWD/core/sup/priv/sup kapps_maintenance migrate_to_4_0
+    sup kapps_maintenance migrate_to_4_0
     sleep 9
-    $PWD/core/sup/priv/sup init stop
+    sup init stop
 }
 
 sleep 240 && script &
