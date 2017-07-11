@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "auth_configs",
+    "_id": "auth_config_account",
     "additionalProperties": true,
-    "description": "corssbar authentication modules configurations",
+    "description": "corssbar account authentication modules configurations",
     "properties": {
         "auth_modules": {
             "additionalProperties": true,

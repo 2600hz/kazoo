@@ -287,7 +287,7 @@ read(Id, Context) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    cb_context:validate_request_data(<<"auth_configs">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"auth_config_account">>, Context, OnSuccess).
 
 -spec create(ne_binary(), cb_context:context()) -> cb_context:context().
 create(Id, Context) ->
@@ -303,7 +303,7 @@ create(Id, Context) ->
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(?ACCOUNT_AUTH_CONFIG_ID=Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"auth_configs">>, Context, OnSuccess);
+    cb_context:validate_request_data(<<"auth_config_account">>, Context, OnSuccess);
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"auth_config">>, Context, OnSuccess).
@@ -361,7 +361,7 @@ on_successful_validation(Id, Context) ->
     C2 = crossbar_doc:load_merge(?ACCOUNT_AUTH_CONFIG_ID, C1, ?TYPE_CHECK_OPTION(<<"account_config">>)),
     handle_singularity_update(C2, Verb, Id, OrigModId, cb_context:resp_status(C2)).
 
--spec handle_singularity_update(cb_context:context(), http_methods(), ne_binary(), api_binary(), crossbar_status()) ->
+-spec handle_singularity_update(cb_context:context(), http_method(), ne_binary(), api_binary(), crossbar_status()) ->
                                        cb_context:context().
 %% PUT on /security/{MOD_ID}
 handle_singularity_update(Context, ?HTTP_PUT, _Id, _OrigModId, 'success') -> Context;
@@ -382,8 +382,7 @@ handle_singularity_update(Context, ?HTTP_POST, Id, 'undefined', _) -> not_found(
 -spec check_mod_config_exists(cb_context:context(), ne_binary()) -> cb_context:context().
 check_mod_config_exists(Context, Id) ->
     case kz_json:get_value(module_config_path(Id), cb_context:fetch(Context, 'db_doc')) of
-        'undefined' ->
-            not_found(Context, Id);
+        'undefined' -> not_found(Context, Id);
         _ModConfig -> Context
     end.
 

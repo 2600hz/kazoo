@@ -22,6 +22,10 @@
         "basic_auth_type": {
             "default": "md5",
             "description": "crossbar.auth basic auth type",
+            "enum": [
+                "md5",
+                "sha"
+            ],
             "type": "string"
         },
         "log_failed_attempts": {

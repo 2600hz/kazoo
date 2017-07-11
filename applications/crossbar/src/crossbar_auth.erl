@@ -204,7 +204,7 @@ auth_config(Account) ->
 -spec account_auth_config(api_ne_binary(), api_ne_binary()) -> kz_json:object().
 account_auth_config('undefined', _MasterId) ->
     system_auth_config();
-account_auth_config(MasterId, ?NE_BINARY=MasterId) ->
+account_auth_config(MasterId, ?MATCH_ACCOUNT_RAW(MasterId)) ->
     lager:debug("reached to the master account, getting auth configs from system_configs"),
     system_auth_config();
 account_auth_config(AccountId, MasterId) ->
@@ -405,7 +405,7 @@ is_log_type_enabled(<<"success">>, Method, AuthConfig) ->
     kz_json:is_true(Key, AuthConfig, ?SHOULD_LOG_SUCCESS).
 
 -spec log_attempts(cb_context:context(), ne_binary(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason) ->
+log_attempts(Context, AccountId, AuthConfig, Method, Status, AuthType, Reason) ->
     MultiFactorOrigin =
         case mfa_options(Method, AuthConfig) of
             'undefined' -> <<"system">>;
@@ -418,7 +418,7 @@ log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason
 
     Props = [{<<"_id">>, LogId}
             ,{<<"auth_type">>, cb_context:fetch(Context, 'auth_type', AuthType)}
-            ,{<<"status">>, DebugType}
+            ,{<<"status">>, Status}
             ,{<<"auth_module">>, Method}
             ,{<<"message">>, Reason}
             ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfig)}
@@ -427,11 +427,10 @@ log_attempts(Context, AccountId, AuthConfig, Method, DebugType, AuthType, Reason
             ,{<<"client_ip">>, cb_context:client_ip(Context)}
             ,{<<"timestamp">>, Now}
             ],
-    Doc = kz_doc:update_pvt_parameters(
-            kz_json:from_list(Props), MODB, [{'type', <<"login_attempt">>}
-                                            ,{'now', Now}
-                                            ]
-           ),
+    Doc0 = maybe_add_metadata(cb_context:doc(Context), kz_json:from_list(Props)),
+    Doc = kz_doc:update_pvt_parameters(Doc0, MODB, [{'type', <<"login_attempt">>}
+                                                   ,{'now', Now}
+                                                   ]),
     _ = kazoo_modb:save_doc(MODB, maybe_add_metadata(cb_context:doc(Context), Doc)),
     'ok'.
 
