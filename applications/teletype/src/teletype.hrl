@@ -216,5 +216,17 @@
 -define(AUTOLOAD_MODULES_KEY, <<"autoload_modules">>).
 -define(AUTOLOAD_MODULES, kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES)).
 
+-ifdef(TEST).
+-define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
+-else.
+-define(LOG_ERROR(F,A), lager:error(F,A)).
+-define(LOG_WARN(F,A), lager:warning(F,A)).
+-define(LOG_DEBUG(F,A), lager:debug(F,A)).
+-define(LOG_DEBUG(F), lager:debug(F)).
+-endif.
+
 -define(TELETYPE_HRL, 'true').
 -endif.
