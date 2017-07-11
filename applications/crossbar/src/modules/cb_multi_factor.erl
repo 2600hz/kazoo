@@ -108,7 +108,7 @@ validate(Context, ?ATTEMPTS) ->
     crossbar_view:load(Context
                       ,?CB_LIST_ATTEMPT_LOG
                       ,[{mapper, fun normalize_attempt_view_result/1}
-                       ,{keymap, <<"multi_factor">>}
+                       ,{key_map, <<"multi_factor">>}
                        ]
                       );
 validate(Context, ConfigId) ->
