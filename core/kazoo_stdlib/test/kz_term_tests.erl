@@ -101,6 +101,9 @@ to_x_test_() ->
     ,?_assertEqual(element(1,calendar:gregorian_seconds_to_datetime(TS)), kz_term:to_date(TS))
     ,?_assertEqual(element(1,calendar:gregorian_seconds_to_datetime(TS)), kz_term:to_date(kz_term:to_list(TS)))
     ,?_assertEqual(element(1,calendar:gregorian_seconds_to_datetime(TS)), kz_term:to_date(kz_term:to_binary(TS)))
+    ,?_assertEqual("63611209435.0", kz_term:to_list(63611209435.0))
+    ,?_assertEqual(<<"63611209435.0">>, kz_term:to_binary(63611209435.0))
+    ,?_assertEqual(<<"63657597518.515563">>, kz_term:to_binary(63657597518.515564))
     ].
 
 shuffle_list_test_() ->
