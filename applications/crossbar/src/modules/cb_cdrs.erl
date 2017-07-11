@@ -497,13 +497,13 @@ view_option(Key, ViewOptions) ->
 
 -spec interaction_view_option('endkey' | 'startkey', crossbar_doc:view_options()) ->
                                      gregorian_seconds().
-interaction_view_option('startkey', ViewOptions) ->
+interaction_view_option('startkey' = Key, ViewOptions) ->
     case props:get_value(Key, ViewOptions) of
         [_OwnerId, CreatedTo] -> CreatedTo;
         [CreatedTo] -> CreatedTo;
         Option -> Option
     end;
-interaction_view_option('endkey', ViewOptions) ->
+interaction_view_option('endkey' = Key, ViewOptions) ->
     case props:get_value(Key, ViewOptions) of
         [_OwnerId, CreatedFrom, _] -> CreatedFrom;
         [CreatedFrom, _] when is_integer(CreatedFrom) -> CreatedFrom;
