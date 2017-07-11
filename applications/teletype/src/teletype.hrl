@@ -1,4 +1,5 @@
 -ifndef(TELETYPE_HRL).
+
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
@@ -6,8 +7,9 @@
 
 -include("teletype_default_modules.hrl").
 
--define(APP_NAME, <<"teletype">>).
--define(APP_VERSION, <<"4.0.0">> ).
+-define(APP, teletype).
+-define(APP_NAME, (atom_to_binary(?APP, utf8))).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(PVT_TYPE, kz_notification:pvt_type()).
 
