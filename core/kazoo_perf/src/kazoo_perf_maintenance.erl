@@ -90,9 +90,11 @@ graphite(Scheme, ets_tables_sizes, Tabs) ->
         Size =/= 0
     ];
 graphite(Scheme, info, Props) ->
-    [print_metric(Scheme, <<"info__", Key/binary>>, bin_to_integer(Value))
+    [print_metric(Scheme, <<"info__", Key/binary>>, IntValue)
      || {Key, Value} <- Props,
-        nomatch =:= binary:match(Value, <<$,>>)
+        nomatch =:= binary:match(Value, <<$,>>),
+        IntValue <- [bin_to_integer(Value)],
+        IntValue =/= not_an_int
     ].
 
 to_props(memory_statistics, MemoryMetrics) ->
@@ -149,4 +151,7 @@ cleanse_with(Sep, Bin) ->
 
 bin_to_integer(<<"true">>) -> 1;
 bin_to_integer(<<"false">>) -> 0;
-bin_to_integer(Value=?NE_BINARY) -> binary_to_integer(Value).
+bin_to_integer(Value=?NE_BINARY) ->
+    try binary_to_integer(Value)
+    catch error:badarg -> not_an_int
+    end.
