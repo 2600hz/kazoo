@@ -24,6 +24,8 @@
 
 -define(DEFAULT_AUTH_MODULES, [<<"cb_user_auth">>
                               ,<<"cb_api_auth">>
+                              ,<<"cb_ip_auth">>
+                              ,<<"cb_ubiquiti_auth">>
                               ]).
 
 -define(SYSTEM_AUTH_MODULES
