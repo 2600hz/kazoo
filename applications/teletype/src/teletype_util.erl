@@ -46,6 +46,10 @@
 
 -include("teletype.hrl").
 
+-ifdef(TEST).
+-export([fixture/1]).
+-endif.
+
 -define(TEMPLATE_RENDERING_ORDER, [{?TEXT_PLAIN, 3}
                                   ,{?TEXT_HTML, 2}
                                   ]).
@@ -366,7 +370,7 @@ account_params(DataJObj) ->
 -spec find_account_params(api_binary()) -> kz_proplist().
 find_account_params('undefined') -> [];
 find_account_params(AccountId) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), AccountId) of
+    case fetch_account_for_params(AccountId) of
         {'ok', AccountJObj} ->
             props:filter_undefined([{<<"name">>, kz_account:name(AccountJObj)}
                                    ,{<<"realm">>, kz_account:realm(AccountJObj)}
@@ -376,9 +380,26 @@ find_account_params(AccountId) ->
                                     | maybe_add_parent_params(AccountId, AccountJObj)
                                    ]);
         {'error', _E} ->
-            lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
+            ?LOG_DEBUG("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []
     end.
+
+-ifdef(TEST).
+fetch_account_for_params(?AN_ACCOUNT_ID) -> {ok, fixture("an_account.json")};
+fetch_account_for_params(?A_MASTER_ACCOUNT_ID) -> {ok, fixture("a_master_account.json")};
+fetch_account_for_params(?MATCH_ACCOUNT_RAW(_)) -> {error, testing_too_hard}.
+-else.
+fetch_account_for_params(AccountId) -> kz_account:fetch(AccountId).
+-endif.
+
+-ifdef(TEST).
+-spec fixture(nonempty_string()) -> kz_json:object().
+fixture(JSONFileName) ->
+    Path = filename:join([code:lib_dir(?APP), "test", JSONFileName]),
+    ?LOG_DEBUG("loading fixture: ~s", [Path]),
+    {ok, Bin} = file:read_file(Path),
+    kz_json:decode(Bin).
+-endif.
 
 -spec maybe_add_parent_params(ne_binary(), kz_json:object()) -> kz_proplist().
 maybe_add_parent_params(AccountId, AccountJObj) ->
@@ -386,7 +407,7 @@ maybe_add_parent_params(AccountId, AccountJObj) ->
         'undefined' -> [];
         AccountId -> [];
         ParentAccountId ->
-            {'ok', ParentAccountJObj} = kz_account:fetch(ParentAccountId),
+            {'ok', ParentAccountJObj} = fetch_account_for_params(ParentAccountId),
             [{<<"parent_name">>, kz_account:name(ParentAccountJObj)}
             ,{<<"parent_realm">>, kz_account:realm(ParentAccountJObj)}
             ,{<<"parent_id">>, kz_account:id(ParentAccountJObj)}

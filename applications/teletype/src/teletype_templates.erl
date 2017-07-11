@@ -52,8 +52,8 @@ init(TemplateId, Params) ->
 
 -spec compile_master_renderers(ne_binary()) -> 'ok'.
 compile_master_renderers(TemplateId) ->
-    _ = [build_renderer(TemplateId, ContentType, Template) ||
-            {ContentType, Template} <- fetch_master_attachments(TemplateId)
+    _ = [build_renderer(TemplateId, ContentType, Template)
+         || {ContentType, Template} <- fetch_master_attachments(TemplateId)
         ],
     lager:debug("built master renderers for ~s", [TemplateId]).
 
