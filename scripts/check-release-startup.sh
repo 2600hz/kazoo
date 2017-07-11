@@ -8,7 +8,9 @@ rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
 
 echo "Checking release startup with node $rel..."
 
-sup() { $PWD/core/sup/priv/sup "$*" }
+sup() {
+    "$PWD"/core/sup/priv/sup "$*"
+}
 
 script() {
     sup crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!'
@@ -34,12 +36,12 @@ if [[ -f erl_crash.dump ]]; then
     code=3
 fi
 
-error_log=$PWD/_rel/kazoo/log/error.log
+error_log="$PWD/_rel/kazoo/log/error.log"
 if [[ -f $error_log ]]; then
     echo
     echo Error log:
-    cat $error_log
-    if [[ $(grep -c -v -F 'exit with reason shutdown' $error_log) -gt 0 ]]; then
+    cat "$error_log"
+    if [[ $(grep -c -v -F 'exit with reason shutdown' "$error_log") -gt 0 ]]; then
         echo
         echo "Found errors in $error_log"
         code=4
