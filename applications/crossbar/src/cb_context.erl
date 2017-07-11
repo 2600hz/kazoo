@@ -726,8 +726,9 @@ validate_request_data('undefined', Context, OnSuccess, _OnFailure, 'false') ->
     lager:error("schema id or schema JSON not defined, continuing anyway"),
     validate_passed(Context, OnSuccess);
 validate_request_data('undefined', Context, _OnSuccess, _OnFailure, 'true') ->
-    lager:error("schema id or schema JSON not defined"),
-    system_error(Context, <<"schema id or schema JSON not defined.">>);
+    Msg = <<"schema id or schema JSON not defined.">>,
+    lager:error("~s", [Msg]),
+    system_error(Context, Msg);
 validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, Strict) ->
     case find_schema(SchemaId) of
         'undefined' when Strict ->
@@ -758,7 +759,7 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, Strict) ->
                               }
     end.
 
--spec validate_failed(kz_json:object(), context(), _, after_fun()) -> context().
+-spec validate_failed(kz_json:object(), context(), validation_errors(), after_fun()) -> context().
 validate_failed(SchemaJObj, Context, Errors, OnFailure) ->
     lager:debug("validation failed ~s: ~p", [kz_doc:id(SchemaJObj), Errors]),
     Context1 = failed(Context, Errors),
@@ -769,20 +770,19 @@ validate_failed(SchemaJObj, Context, Errors, OnFailure) ->
 
 -spec validate_passed(context(), after_fun()) -> context().
 validate_passed(Context, OnSuccess) ->
-    Context1 = passed(maybe_copy_req_data_to_doc(Context)),
+    Context1 = passed(copy_req_data_to_doc(Context)),
     case is_function(OnSuccess, 1) of
         'true' -> OnSuccess(Context1);
         'false' -> Context1
     end.
 
--spec maybe_copy_req_data_to_doc(context()) -> context().
-maybe_copy_req_data_to_doc(Context) ->
-    case doc(Context) of
-        'undefined' -> Context;
-        Doc ->
-            NewDoc = kz_json:merge_jobjs(kz_doc:private_fields(Doc), req_data(Context)),
-            set_doc(Context, NewDoc)
-    end.
+-spec copy_req_data_to_doc(context()) -> context().
+copy_req_data_to_doc(Context) ->
+    NewDoc = case doc(Context) of
+                 'undefined' -> req_data(Context);
+                 Doc -> kz_json:merge_jobjs(kz_doc:private_fields(Doc), req_data(Context))
+             end,
+    set_doc(Context, NewDoc).
 
 -spec failed(context(), validation_errors()) -> context().
 failed(Context, Errors) ->
@@ -801,31 +801,20 @@ failed_error(Error, Context) ->
     {ErrorCode, ErrorMessage, ErrorJObj} = kz_json_schema:error_to_jobj(Error, Props),
     JObj = validation_errors(Context),
     Context#cb_context{validation_errors = kz_json:merge_jobjs(ErrorJObj, JObj)
-                      ,resp_status = 'error'
                       ,resp_error_code = ErrorCode
                       ,resp_data = kz_json:new()
                       ,resp_error_msg = ErrorMessage
                       }.
 
 -spec passed(context()) -> context().
--spec passed(context(), crossbar_status()) -> context().
-passed(#cb_context{resp_status='error'}=Context) ->
-    passed(Context, 'error');
-passed(Context) ->
-    passed(Context, 'success').
-
-passed(#cb_context{req_data=Data}=Context, Status) ->
+passed(#cb_context{req_data=Data}=Context) ->
     case kz_doc:id(Data) of
-        'undefined' ->
-            Context#cb_context{resp_status = Status};
-        Id ->
-            Context#cb_context{resp_status = Status
-                              ,doc = kz_doc:set_id(doc(Context), Id)
-                              }
+        'undefined' -> Context;
+        Id -> set_doc(Context, kz_doc:set_id(doc(Context), Id))
     end.
 
 -spec find_schema(ne_binary()) -> api_object().
-find_schema(<<_/binary>> = Schema) ->
+find_schema(Schema=?NE_BINARY) ->
     case kz_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> SchemaJObj;
         {'error', _E} ->
