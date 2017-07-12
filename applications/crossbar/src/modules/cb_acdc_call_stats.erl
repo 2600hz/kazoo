@@ -4,7 +4,7 @@
 %%% Read only access to ACDC stats docs
 %%%
 %%% This code is VERY similar to that in cb_cdrs. At some point code
-%%% that is used by both should be refactored into a MODB utility 
+%%% that is used by both should be refactored into a MODB utility
 %%% module.
 %%%
 %%% This was initially developed on 3.22, and since modified to reflect
