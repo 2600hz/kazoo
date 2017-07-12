@@ -248,26 +248,20 @@ is_authenticated(#cb_context{}) -> 'true'.
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
     lager:debug("checking for superduper admin: ~s", [AccountId]),
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} ->
-            case kz_account:is_superduper_admin(JObj) of
-                'true' ->
-                    lager:debug("the requestor is a superduper admin"),
-                    'true';
-                'false' ->
-                    lager:debug("the requestor is not a superduper admin"),
-                    'false'
-            end;
-        {'error', _E} ->
-            lager:debug("not authorizing, error during lookup: ~p", [_E]),
+    case kz_util:is_system_admin(AccountId) of
+        'true' ->
+            lager:debug("the requestor is a superduper admin"),
+            'true';
+        'false' ->
+            lager:debug("the requestor is not a superduper admin"),
             'false'
     end;
 is_superduper_admin(Context) ->
     is_superduper_admin(auth_account_id(Context)).
 
 -spec is_account_admin(context()) -> boolean().
-is_account_admin(#cb_context{auth_doc=Doc}) ->
-    kzd_user:priv_level(Doc) =:= <<"admin">>.
+is_account_admin(Context) ->
+    kzd_user:is_admin(auth_account_id(Context), auth_user_id(Context)).
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.

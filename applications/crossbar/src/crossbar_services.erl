@@ -177,7 +177,7 @@ calc_service_updates(Context, <<"device">>) ->
 calc_service_updates(Context, <<"user">>) ->
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
-    UserType = kz_json:get_value(<<"priv_level">>, JObj),
+    UserType = kzd_user:priv_level(JObj),
     kz_service_users:reconcile(Services, UserType);
 calc_service_updates(Context, <<"limits">>) ->
     Services = fetch_service(Context),

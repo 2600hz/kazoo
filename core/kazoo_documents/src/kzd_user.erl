@@ -21,6 +21,7 @@
         ,fax_settings/1
         ,name/1, first_name/1, last_name/1
         ,priv_level/1, priv_level/2
+        ,is_admin/1, is_admin/2
 
         ,call_restrictions/1, call_restrictions/2
         ,classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3
@@ -273,10 +274,26 @@ devices(UserJObj) ->
 
 -spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
 fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
+
+-spec is_admin(api_object()) -> boolean().
+is_admin('undefined') -> 'false';
+is_admin(Doc) ->
+    priv_level(Doc) =:= <<"admin">>.
+
+-spec is_admin(api_binary(), api_binary()) -> boolean().
+is_admin('undefined', _) -> 'false';
+is_admin(_, 'undefined') -> 'false';
+is_admin(Account, UserId) ->
+    case fetch(Account, UserId) of
+        {'ok', JObj} -> is_admin(JObj);
+        {'error', _R} ->
+            lager:debug("unable to open user ~s definition in account ~s: ~p", [UserId, Account, _R]),
+            'false'
+    end.
 
 -spec fax_settings(doc()) -> doc().
 fax_settings(JObj) ->

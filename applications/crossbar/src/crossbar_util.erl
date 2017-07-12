@@ -986,8 +986,10 @@ get_priv_level(_AccountId, 'undefined') ->
     cb_token_restrictions:default_priv_level();
 get_priv_level(AccountId, OwnerId) ->
     AccountDB = kz_util:format_account_db(AccountId),
-    {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDB, OwnerId),
-    kz_json:get_ne_value(<<"priv_level">>, Doc).
+    case kz_datamgr:open_cache_doc(AccountDB, OwnerId) of
+        {'ok', Doc} -> kzd_user:priv_level(Doc);
+        {'error', _} -> cb_token_restrictions:default_priv_level()
+    end.
 
 -spec get_system_token_restrictions(atom()) -> api_object().
 get_system_token_restrictions(AuthModule) ->

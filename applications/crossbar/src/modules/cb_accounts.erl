@@ -230,10 +230,14 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
         _Else -> Context1
     end;
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_PUT) ->
-    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context), ?TYPE_CHECK_OPTION(?PVT_TYPE)),
-    case cb_context:resp_status(Context1) of
-        'success' -> add_pvt_api_key(Context1);
-        _Else -> Context1
+    case cb_context:is_account_admin(Context) of
+        'true' ->
+            Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context), ?TYPE_CHECK_OPTION(?PVT_TYPE)),
+            case cb_context:resp_status(Context1) of
+                'success' -> add_pvt_api_key(Context1);
+                _Else -> Context1
+            end;
+        'false' -> cb_context:add_system_error('forbidden', Context)
     end;
 validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
     Data = cb_context:req_data(Context),
