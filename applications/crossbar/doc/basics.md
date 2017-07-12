@@ -115,7 +115,7 @@ When receiving JSON responses, clients will receive the response in an envelope.
 * `auth_token`: contains the auth\_token used on the request
 * `status`: One of 'success', 'error', or 'fatal'
 * `message`: Optional message that should clarify what happened on the request
-* `error: Error code, if any
+* `error`: Error code, if any
 * `request_id`: ID of the request; usuable for debugging the server-side processing of the request
 
 **Sample Response Envelope:**
