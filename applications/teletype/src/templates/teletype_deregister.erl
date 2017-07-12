@@ -12,6 +12,10 @@
         ,handle_deregister/1
         ]).
 
+-ifdef(TEST).
+-export([macros/1]).
+-endif.
+
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"deregister">>).
@@ -36,34 +40,26 @@
           ,?MACRO_VALUE(<<"last_registration.expires">>, <<"last_registration_expires">>, <<"Expires">>, <<"Expires">>)
           ,?MACRO_VALUE(<<"last_registration.authorizing_id">>, <<"last_registration_authorizing_id">>, <<"Authorizing ID">>, <<"Authorizing ID">>)
            | ?COMMON_TEMPLATE_MACROS
-          ]
-         )
-       ).
+          ])).
 
 -define(TEMPLATE_SUBJECT, <<"Loss of Registration for '{{last_registration.username}}'">>).
--define(TEMPLATE_CATEGORY, <<"registration">>).
--define(TEMPLATE_NAME, <<"Deregister Notice">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
--define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_PARAMS, [{'macros', ?TEMPLATE_MACROS}
+                         ,{'subject', ?TEMPLATE_SUBJECT}
+                         ,{'category', <<"registration">>}
+                         ,{'friendly_name', <<"Deregister Notice">>}
+                         ,{'to', ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
+                         ,{'from', teletype_util:default_from_address(?MOD_CONFIG_CAT)}
+                         ,{'cc', ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
+                         ,{'bcc', ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
+                         ,{'reply_to', teletype_util:default_reply_to(?MOD_CONFIG_CAT)}
+                         ]).
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'subject', ?TEMPLATE_SUBJECT}
-                                          ,{'category', ?TEMPLATE_CATEGORY}
-                                          ,{'friendly_name', ?TEMPLATE_NAME}
-                                          ,{'to', ?TEMPLATE_TO}
-                                          ,{'from', ?TEMPLATE_FROM}
-                                          ,{'cc', ?TEMPLATE_CC}
-                                          ,{'bcc', ?TEMPLATE_BCC}
-                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]),
-    teletype_bindings:bind(<<"deregister">>, ?MODULE, 'handle_deregister').
+    teletype_templates:init(?TEMPLATE_ID, ?TEMPLATE_PARAMS),
+    teletype_bindings:bind(?TEMPLATE_ID, ?MODULE, 'handle_deregister').
 
 -spec handle_deregister(kz_json:object()) -> 'ok'.
 handle_deregister(JObj) ->
@@ -81,18 +77,14 @@ handle_deregister(JObj) ->
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    Macros = build_macros(DataJObj),
+    Macros = macros(DataJObj),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, kz_json:get_value(<<"account_id">>, DataJObj)),
-
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-                                          ,Macros
-               ),
-
+    Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT),
+    Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
@@ -100,16 +92,16 @@ handle_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec build_macros(kz_json:object()) -> kz_proplist().
--spec build_macros(kz_json:object(), kz_proplist()) -> kz_proplist().
-build_macros(DataJObj) ->
-    build_macros(DataJObj, teletype_util:account_params(DataJObj)).
+-spec macros(kz_json:object()) -> kz_proplist().
+-spec macros(kz_json:object(), kz_proplist()) -> kz_proplist().
+macros(DataJObj) ->
+    macros(DataJObj, teletype_util:account_params(DataJObj)).
 
-build_macros(DataJObj, []) ->
+macros(DataJObj, []) ->
     lager:info("no account data available for deregister, not sending notification"),
     teletype_util:send_update(DataJObj, <<"failed">>, <<"missing account">>),
     exit('normal');
-build_macros(DataJObj, AccountParams) ->
+macros(DataJObj, AccountParams) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, AccountParams}
     ,{<<"last_registration">>, kz_json:to_proplist(DataJObj)}

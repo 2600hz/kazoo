@@ -10,8 +10,11 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("teletype.hrl").
 
+-export([overwrite_t0/3]).
+
 render_preview_test_() ->
     [test_rendering("deregister")
+     %% ,test_rendering("service_added")
     ].
 
 test_rendering(TemplateIdStr) ->
@@ -35,9 +38,9 @@ render(TemplateId, CT, Macros) ->
     ?LOG_DEBUG(">>> TmpModule ~p", [TmpModule]),
     {ok, Template} = preview_template(TemplateId, CT),
     {ok, Rendered} = kz_template:render(Template, TmpModule, Macros),
-    Ext = ct_to_ext(CT),
-    Path = filename:join([code:lib_dir(?APP), <<TemplateId/binary,".",Ext/binary>>]),
-    ok  =file:write_file(Path, Rendered),
+    %% Below is only when adding new tests
+    %% overwrite_t0(TemplateId, CT, Rendered),
+    %% Above is only when adding new tests
     ?_assertEqual(t0(TemplateId, CT), lines(iolist_to_binary(Rendered))).
 
 t0(TemplateId, CT) ->
@@ -46,6 +49,11 @@ t0(TemplateId, CT) ->
     ?LOG_DEBUG("reading t0 template ~s", [Path]),
     {ok, Bin} = file:read_file(Path),
     lines(Bin).
+
+overwrite_t0(TemplateId, CT, Rendered) ->
+    Ext = ct_to_ext(CT),
+    Path = filename:join([code:lib_dir(?APP), <<TemplateId/binary,".",Ext/binary>>]),
+    ok = file:write_file(Path, Rendered).
 
 preview_template(TemplateId, CT) ->
     Ext = ct_to_ext(CT),
