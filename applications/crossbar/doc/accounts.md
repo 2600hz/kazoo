@@ -502,6 +502,30 @@ curl -v -X GET \
 }
 ```
 
+#### Re-create the account's API key
+
+If you think that your account's API key might be exposed you can create a new one with `api_key` endpoint. Issuing a `PUT` request to this endpoint will generates a new API key for the account and will returned it in response.
+
+> PUT /v2/accounts/{ACCOUNT_ID}/api_key
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "api_key": "{API_KEY}"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
 #### Fetch sibling accounts
 
 By default a user account under an admin/reseller account can view all the other accounts under that reseller. If you would like current account only will be able to query its child accounts' sibling and not other accounts then set `allow_sibling_listing` in `system_config/crossbar.accounts` to `false`. Admin account can unrestrictedly list siblings.
