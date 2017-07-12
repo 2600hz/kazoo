@@ -145,13 +145,6 @@ render(TemplateId, Macros, DataJObj, 'false') ->
 render(TemplateId, Macros, DataJObj, 'true') ->
     preview(TemplateId, Macros, DataJObj).
 
--ifdef(TEST).
-reseller_id(?AN_ACCOUNT_ID) -> ?A_MASTER_ACCOUNT_ID;
-reseller_id(?MATCH_ACCOUNT_RAW(_)) -> you_are_testing_too_far.
--else.
-reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
--endif.
-
 -spec templates_source(ne_binary(), api_binary() | kz_json:object()) -> api_binary().
 -spec templates_source(ne_binary(), api_binary(), ne_binary()) -> api_binary().
 templates_source(_TemplateId, 'undefined') ->
@@ -161,7 +154,7 @@ templates_source(_TemplateId, ?KZ_CONFIG_DB) ->
     ?KZ_CONFIG_DB;
 templates_source(TemplateId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     ?LOG_DEBUG("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
-    ResellerId = reseller_id(AccountId),
+    ResellerId = teletype_util:find_reseller_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
     case teletype_util:find_account_id(DataJObj) of
@@ -217,7 +210,7 @@ parent_templates_source(TemplateId, AccountId, ResellerId) ->
 fetch_notification(TemplateId, ?KZ_CONFIG_DB) ->
     fetch_notification(TemplateId, ?KZ_CONFIG_DB, 'undefined');
 fetch_notification(TemplateId, Account) ->
-    fetch_notification(TemplateId, Account, kz_services:find_reseller_id(Account)).
+    fetch_notification(TemplateId, Account, teletype_util:find_reseller_id(Account)).
 
 fetch_notification(TemplateId, 'undefined', _ResellerId) ->
     kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);

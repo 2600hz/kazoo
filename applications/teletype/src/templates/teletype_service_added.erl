@@ -12,6 +12,10 @@
         ,handle_req/1
         ]).
 
+-ifdef(TEST).
+-export([macros/1]).
+-endif.
+
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"service_added">>).
@@ -27,33 +31,23 @@
           ,?MACRO_VALUE(<<"service_changes">>, <<"service_changes">>, <<"Sub-Account Service Changes object">>, <<"Sub-Account Service Changes object">>)
            | ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
-          ]
-         )
-       ).
+          ])).
 
--define(TEMPLATE_SUBJECT, <<"New VoIP services were added to sub-account '{{sub_account.name}}'">>).
--define(TEMPLATE_CATEGORY, <<"account">>).
--define(TEMPLATE_NAME, <<"New Service Addition">>).
-
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
--define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_PARAMS, [{'macros', ?TEMPLATE_MACROS}
+                         ,{'subject', <<"New VoIP services were added to sub-account '{{sub_account.name}}'">>}
+                         ,{'category', <<"account">>}
+                         ,{'friendly_name', <<"New Service Addition">>}
+                         ,{'to', ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
+                         ,{'from', teletype_util:default_from_address(?MOD_CONFIG_CAT)}
+                         ,{'cc', ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
+                         ,{'bcc', ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
+                         ,{'reply_to', teletype_util:default_reply_to(?MOD_CONFIG_CAT)}
+                         ]).
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'subject', ?TEMPLATE_SUBJECT}
-                                          ,{'category', ?TEMPLATE_CATEGORY}
-                                          ,{'friendly_name', ?TEMPLATE_NAME}
-                                          ,{'to', ?TEMPLATE_TO}
-                                          ,{'from', ?TEMPLATE_FROM}
-                                          ,{'cc', ?TEMPLATE_CC}
-                                          ,{'bcc', ?TEMPLATE_BCC}
-                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]),
+    teletype_templates:init(?TEMPLATE_ID, ?TEMPLATE_PARAMS),
     teletype_bindings:bind(<<"service_added">>, ?MODULE, 'handle_req').
 
 -spec handle_req(kz_json:object()) -> 'ok'.
@@ -72,28 +66,30 @@ handle_req(JObj) ->
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, reseller_info_data(DataJObj)}
-             ,{<<"sub_account">>, sub_account_data(DataJObj)}
-             ,{<<"service_changes">>, service_added_data(DataJObj)}
-             ,{<<"user">>, auth_user_data(DataJObj)}
-             ],
+    Macros = macros(DataJObj),
+
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
-
-    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-                                          ,Macros
-                                          ),
-
+    Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj]),
+    Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
+
+-spec macros(kz_json:object()) -> kz_json:object().
+macros(DataJObj) ->
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, reseller_info_data(DataJObj)}
+    ,{<<"sub_account">>, sub_account_data(DataJObj)}
+    ,{<<"service_changes">>, service_added_data(DataJObj)}
+    ,{<<"user">>, auth_user_data(DataJObj)}
+    ].
 
 -spec reseller_info_data(kz_json:object()) -> kz_proplist().
 reseller_info_data(DataJObj) ->
@@ -102,7 +98,7 @@ reseller_info_data(DataJObj) ->
         'true' -> [];
         'false' ->
             AccountId = lists:last(kz_json:get_value(<<"tree">>, Audit)),
-            ResellerId = kz_services:find_reseller_id(AccountId),
+            ResellerId = teletype_util:find_reseller_id(AccountId),
             teletype_util:find_account_params(ResellerId)
     end.
 

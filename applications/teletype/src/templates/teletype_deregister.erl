@@ -82,7 +82,8 @@ handle_req(DataJObj) ->
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, kz_json:get_value(<<"account_id">>, DataJObj)),
+    AccountId = teletype_util:find_account_id(DataJObj),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT),
     Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),

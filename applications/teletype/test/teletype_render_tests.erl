@@ -14,7 +14,7 @@
 
 render_preview_test_() ->
     [test_rendering("deregister")
-     %% ,test_rendering("service_added")
+    ,test_rendering("service_added")
     ].
 
 test_rendering(TemplateIdStr) ->
@@ -39,7 +39,7 @@ render(TemplateId, CT, Macros) ->
     {ok, Template} = preview_template(TemplateId, CT),
     {ok, Rendered} = kz_template:render(Template, TmpModule, Macros),
     %% Below is only when adding new tests
-    %% overwrite_t0(TemplateId, CT, Rendered),
+    overwrite_t0(TemplateId, CT, Rendered),
     %% Above is only when adding new tests
     ?_assertEqual(t0(TemplateId, CT), lines(iolist_to_binary(Rendered))).
 

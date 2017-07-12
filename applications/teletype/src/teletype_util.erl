@@ -21,6 +21,7 @@
         ,find_account_admin/1
         ,find_account_id/1
         ,find_account_db/2
+        ,find_reseller_id/1
         ,find_account_params/1
         ,is_notice_enabled/3, is_notice_enabled_default/1
         ,should_handle_notification/1
@@ -353,7 +354,8 @@ user_params(UserJObj) ->
 
 -spec user_property(kzd_user:doc(), Key, fun((kz_json:object()) -> api_binary())) ->
                            {Key, api_binary()}.
-user_property(User, <<_/binary>>=Key, Fun) when is_function(Fun, 1) ->
+user_property(User, Key, Fun)
+  when is_function(Fun, 1), is_binary(Key) ->
     {Key, Fun(User)}.
 
 -spec account_params(kz_json:object()) -> kz_proplist().
@@ -521,7 +523,7 @@ find_account_rep_email(<<_/binary>> = AccountId) ->
             find_account_admin_email(AccountId);
         'false' ->
             lager:debug("finding admin email for reseller of account ~s", [AccountId]),
-            find_account_admin_email(kz_services:find_reseller_id(AccountId))
+            find_account_admin_email(find_reseller_id(AccountId))
     end;
 find_account_rep_email(AccountJObj) ->
     find_account_rep_email(
@@ -532,7 +534,7 @@ find_account_rep_email(AccountJObj) ->
 -spec find_account_admin_email(api_binary(), api_binary()) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
-    find_account_admin_email(AccountId, kz_services:find_reseller_id(AccountId)).
+    find_account_admin_email(AccountId, find_reseller_id(AccountId)).
 
 find_account_admin_email('undefined', _Id) ->
     'undefined';
@@ -568,11 +570,19 @@ extract_admin_emails(Users) ->
         (Email = kzd_user:email(Admin)) =/= 'undefined'
     ].
 
+-spec find_reseller_id(ne_binary()) -> ne_binary().
+-ifdef(TEST).
+find_reseller_id(?AN_ACCOUNT_ID) -> ?A_MASTER_ACCOUNT_ID;
+find_reseller_id(?MATCH_ACCOUNT_RAW(_)) -> <<"you_are_testing_too_far">>.
+-else.
+find_reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
+-endif.
+
 -spec find_account_admin(api_binary()) -> api_object().
 -spec find_account_admin(ne_binary(), ne_binary()) -> 'undefined' | kzd_user:doc().
 find_account_admin('undefined') -> 'undefined';
-find_account_admin(<<_/binary>> = AccountId) ->
-    find_account_admin(AccountId, kz_services:find_reseller_id(AccountId)).
+find_account_admin(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    find_account_admin(AccountId, find_reseller_id(AccountId)).
 
 find_account_admin(AccountId, AccountId) ->
     query_for_account_admin(AccountId);
@@ -637,7 +647,7 @@ is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
     case kz_json:is_true(<<"Preview">>, ApiJObj, 'false') of
         'true' -> 'true';
         'false' ->
-            ResellerAccountId = kz_services:find_reseller_id(AccountId),
+            ResellerAccountId = find_reseller_id(AccountId),
             is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId)
     end.
 
