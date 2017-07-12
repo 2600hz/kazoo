@@ -145,8 +145,9 @@ maybe_authenticate_user(Context) ->
     of
         {'ok', 200, RespHeaders, RespBody} ->
             lager:debug("successfully authenticated to '~s'", [LoginURL]),
-            cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(Context, RespHeaders, RespBody)}
+            cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(RespHeaders, RespBody)}
                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:store/3, 'auth_type', <<"sso_auth">>}
                                         ]);
         {'ok', _RespCode, _RespHeaders, _RespBody} ->
             lager:debug("recv non-200(~p) code from '~s': ~s", [_RespCode, LoginURL, _RespBody]),
@@ -164,8 +165,8 @@ login_req(Context) ->
                      ,kz_json:delete_key(<<"username">>, Data)
                      ).
 
--spec auth_response(cb_context:context(), kz_proplist(), binary()) -> kz_json:object().
-auth_response(_Context, _RespHeaders, RespBody) ->
+-spec auth_response(kz_proplist(), binary()) -> kz_json:object().
+auth_response(_RespHeaders, RespBody) ->
     RespJObj = kz_json:decode(RespBody),
     UUID = kz_json:get_value(<<"uuid">>, RespJObj),
 

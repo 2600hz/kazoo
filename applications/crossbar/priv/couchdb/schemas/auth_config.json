@@ -1,0 +1,53 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "auth_config",
+    "additionalProperties": true,
+    "description": "corssbar authentication module configuration",
+    "properties": {
+        "enabled": {
+            "description": "whether or not this authentication module is enabled",
+            "type": "boolean"
+        },
+        "log_failed_attempts": {
+            "default": true,
+            "description": "should log failed logging attempts",
+            "type": "boolean"
+        },
+        "log_successful_attempts": {
+            "default": false,
+            "description": "should log successful logging attempts",
+            "type": "boolean"
+        },
+        "multi_factor": {
+            "additionalProperties": true,
+            "description": "control multi factor authentications for this module",
+            "properties": {
+                "configuration_id": {
+                    "description": "document ID contains the multi factor configuration",
+                    "type": "string"
+                },
+                "enabled": {
+                    "description": "turn on/off multi factor authentications for this module",
+                    "type": "boolean"
+                },
+                "include_subaccounts": {
+                    "default": false,
+                    "description": "should this multi factor authentication settings be applied when used by sub-accounts",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "enabled"
+            ],
+            "type": "object"
+        },
+        "token_auth_expiry": {
+            "description": "expiration period of the JWT token (seconds)",
+            "type": "integer"
+        }
+    },
+    "required": [
+        "enabled"
+    ],
+    "type": "object"
+}

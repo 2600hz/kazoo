@@ -11,20 +11,24 @@
 -include("crossbar.hrl").
 -export([load/3]).
 
--type keymap_fun() :: fun((kz_json:path()) -> kz_json:path()).
-
 -define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
 
 -spec load(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, ViewName, Options) ->
     ResultMapper = props:get_value(mapper, Options, fun kz_term:identity/1),
     CouchOptions = props:get_value(couch_options, Options, []),
-    KeyMap = map_keymap(props:get_value(keymap, Options, fun kz_term:identity/1)),
+    KeyMap = props:get_value(key_map, Options),
+    StartKeyMap = props:get_value(start_key_map, Options),
+    EndKeyMap = props:get_value(end_key_map, Options),
     AccountId = cb_context:account_id(Context),
-    ModbViewOptions = [{mapper, build_filter_with_qs(Context, ResultMapper)}
-                      ,{couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
-                      ],
-    {StartKey, EndKey} = get_range(Context, KeyMap),
+    ModbViewOptions = props:filter_undefined(
+                        [{mapper, build_filter_with_qs(Context, ResultMapper)}
+                        ,{couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
+                        ,{key_map, KeyMap}
+                        ,{start_key_map, StartKeyMap}
+                        ,{end_key_map, EndKeyMap}
+                        ]),
+    {StartKey, EndKey} = get_range(Context),
     case is_paged(Context) of
         true ->
             PageSize = page_size(Context),
@@ -35,11 +39,6 @@ load(Context, ViewName, Options) ->
             crossbar_doc:handle_datamgr_success(JObjs, Context)
     end.
 
--spec map_keymap(ne_binary() | ne_binaries() | keymap_fun()) -> keymap_fun().
-map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
-map_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
-map_keymap(K) when is_function(K) -> K.
-
 -spec is_ascending(cb_context:context()) -> boolean().
 is_ascending(Context) ->
     kz_json:is_true(<<"ascending">>, cb_context:query_string(Context)).
@@ -48,18 +47,18 @@ is_ascending(Context) ->
 is_paged(Context) ->
     kz_json:is_true(<<"pagination">>, cb_context:query_string(Context), true).
 
--spec get_range(cb_context:context(), keymap_fun()) -> {integer(), integer()}.
-get_range(Context, KeyMap) ->
-    get_range(Context, KeyMap, is_ascending(Context)).
+-spec get_range(cb_context:context()) -> {integer(), integer()}.
+get_range(Context) ->
+    get_range(Context, is_ascending(Context)).
 
--spec get_range(cb_context:context(), keymap_fun(), boolean()) -> {integer(), integer()}.
-get_range(Context, KeyMap, _Ascending = true) ->
-    StartKey = KeyMap(ascending_start_key(Context)),
-    EndKey = KeyMap(ascending_end_key(Context, StartKey)),
+-spec get_range(cb_context:context(), boolean()) -> {integer(), integer()}.
+get_range(Context, _Ascending = true) ->
+    StartKey = ascending_start_key(Context),
+    EndKey = ascending_end_key(Context, StartKey),
     {StartKey, EndKey};
-get_range(Context, KeyMap, _Ascending = false) ->
-    StartKey = KeyMap(start_key(Context)),
-    EndKey = KeyMap(end_key(Context, StartKey)),
+get_range(Context, _Ascending = false) ->
+    StartKey = start_key(Context),
+    EndKey = end_key(Context, StartKey),
     {StartKey, EndKey}.
 
 -spec one_of(cb_context:context(), ne_binaries(), integer()) -> integer().

@@ -22,7 +22,7 @@
 -include("crossbar.hrl").
 
 -define(LISTS_BY_TYPE, <<"auth/providers_by_type">>).
--define(CB_LIST_ATTEMPT_LOG, <<"auth/login_attempt_by_time">>).
+-define(CB_LIST_ATTEMPT_LOG, <<"auth/login_attempt_by_auth_type">>).
 
 -define(AUTH_PROVIDER, <<"auth_provider">>).
 -define(ATTEMPTS, <<"attempts">>).
@@ -87,7 +87,7 @@ resource_exists(?ATTEMPTS) -> 'true';
 resource_exists(_ConfigId) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists(?ATTEMPTS, _AttemptsId) -> 'true'.
+resource_exists(?ATTEMPTS, _AttemptId) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -105,7 +105,12 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
-    crossbar_view:load(Context, ?CB_LIST_ATTEMPT_LOG, [{mapper, fun normalize_attempt_view_result/1}]);
+    crossbar_view:load(Context
+                      ,?CB_LIST_ATTEMPT_LOG
+                      ,[{mapper, fun normalize_attempt_view_result/1}
+                       ,{key_map, <<"multi_factor">>}
+                       ]
+                      );
 validate(Context, ConfigId) ->
     validate_auth_config(Context, ConfigId, cb_context:req_verb(Context)).
 

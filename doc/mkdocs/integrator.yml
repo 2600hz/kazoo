@@ -18,7 +18,7 @@ pages:
     - 'Adding Multi-factor':
         - 'API': 'applications/crossbar/doc/multi_factor.md'
         - 'Backend': 'core/kazoo_auth/doc/multi_factor.md'
-    - 'applications/crossbar/doc/authentication_configuration.md'
+    - 'applications/crossbar/doc/security.md'
     - 'applications/crossbar/doc/shared_auth.md'
     - 'applications/crossbar/doc/ubiquiti_auth.md'
   - 'Account Management':
