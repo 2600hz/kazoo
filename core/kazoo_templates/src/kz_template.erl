@@ -96,6 +96,7 @@ compile(Path, Module, CompileOpts) ->
 %%--------------------------------------------------------------------
 -spec render_template(atom(), kz_proplist()) -> template_result().
 render_template(Module, TemplateData) ->
+    ?LOG_DEBUG("rendering using ~p", [catch Module:module_info()]),
     try Module:render(props:filter_empty(TemplateData)) of
         {'ok', _IOList}=OK ->
             ?LOG_DEBUG("rendered template successfully: '~s'", [_IOList]),
@@ -176,10 +177,8 @@ log_info({{Row, Column}, _ErlydtlModule, Msg}, Template) ->
     Rows = binary:split(Template, <<"\n">>, ['global']),
     ErrorRow = lists:nth(Row + 1, Rows),
     <<Pre:Column/binary, Rest/binary>> = ErrorRow,
-
     lager:info("~p: '~s' '~s'", [Msg, Pre, Rest]);
 log_info({Line, _ErlydtlModule, Msg}, Template) ->
     Rows = binary:split(Template, <<"\n">>, ['global']),
     ErrorRow = lists:nth(Line + 1, Rows),
-
     lager:info("~p on line ~p: ~s", [Msg, Line, ErrorRow]).

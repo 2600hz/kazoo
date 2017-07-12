@@ -19,6 +19,10 @@
         ]).
 -export([doc_id/1]).
 
+-ifdef(TEST).
+-export([master_content_types/1]).
+-endif.
+
 -type macro() :: {ne_binary(), ne_binary() | number() | macros()}.
 -type macros() :: [macro()].
 
@@ -143,7 +147,7 @@ render(TemplateId, Macros, DataJObj, 'true') ->
 
 -ifdef(TEST).
 reseller_id(?AN_ACCOUNT_ID) -> ?A_MASTER_ACCOUNT_ID;
-reseller_id(?MATCH_ACCOUNT_RAW(_)) -> youre_testing_too_far.
+reseller_id(?MATCH_ACCOUNT_RAW(_)) -> you_are_testing_too_far.
 -else.
 reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
 -endif.
