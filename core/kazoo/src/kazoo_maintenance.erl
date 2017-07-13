@@ -78,7 +78,7 @@ debug_dump_process_status(FolderName) ->
 debug_dump_process_status(_, []) -> 'ok';
 debug_dump_process_status(StatusLog, [Pid|Pids]) ->
     Info = erlang:process_info(Pid),
-    Dictionary = props:get_value('dictionary', Info),
+    Dictionary = props:get_value('dictionary', Info, []),
     _ = case props:get_value('$initial_call', Dictionary) =/= 'undefined' of
             'false' -> 'ok';
             'true' ->
