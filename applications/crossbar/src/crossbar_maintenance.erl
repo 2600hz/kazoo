@@ -492,7 +492,7 @@ create_account(Context) ->
             Errors = cb_context:resp_data(Context1),
             io:format("failed to create account: '~s'~n", [kz_json:encode(Errors)]),
             AccountId = kz_doc:id(cb_context:req_data(Context)),
-            kz_datamgr:db_delete(kz_util:format_account_id(AccountId, 'encoded')),
+            kz_datamgr:db_delete(kz_util:format_account_db(AccountId)),
             {'error', Errors}
     end.
 
@@ -509,9 +509,7 @@ create_user(Context) ->
     Context1 = crossbar_bindings:fold(<<"v1_resource.execute.put.users">>, [Context]),
     case cb_context:resp_status(Context1) of
         'success' ->
-            io:format("created new account admin user '~s'~n"
-                     ,[kz_doc:id(cb_context:doc(Context1))]
-                     ),
+            io:format("created new account admin user '~s'~n", [kz_doc:id(cb_context:doc(Context1))]),
             {'ok', Context1};
         _Status ->
             Errors = cb_context:resp_data(Context1),
