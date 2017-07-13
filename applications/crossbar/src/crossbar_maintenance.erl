@@ -416,7 +416,7 @@ create_account(AccountName, Realm, Username, Password) ->
 -spec update_system_config(ne_binary()) -> 'ok'.
 update_system_config(AccountId) ->
     kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, AccountId),
-    io:format("updating master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]).
+    io:format("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -458,11 +458,11 @@ validate_user(JObj, Context) ->
                                  ,[{fun cb_context:set_req_data/2, JObj}
                                   ,{fun cb_context:set_req_nouns/2, [{?KZ_ACCOUNTS_DB, []}]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
-                                  ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                  ,{fun cb_context:set_resp_status/2, success}
                                   ]
                                  )
               ],
-    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload),
+    Context1 = crossbar_bindings:fold(<<"v2_resource.validate.users">>, Payload),
     case cb_context:resp_status(Context1) of
         'success' -> {'ok', Context1};
         _Status ->

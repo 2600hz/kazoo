@@ -591,7 +591,7 @@ check_user_name(UserId, Context) ->
     AccountDb = cb_context:account_db(Context),
     case is_username_unique(AccountDb, UserId, UserName) of
         'true' ->
-            lager:debug("user name ~p is unique", [UserName]),
+            lager:debug("user name ~s is unique", [UserName]),
             check_emergency_caller_id(UserId, Context);
         'false' ->
             lager:error("user name ~s is already in use", [UserName]),
