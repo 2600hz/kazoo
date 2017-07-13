@@ -41,7 +41,9 @@ render(TemplateId, CT, Macros) ->
     %% Below is only when adding new tests
     %% overwrite_t0(TemplateId, CT, Rendered),
     %% Above is only when adding new tests
-    ?_assertEqual(t0(TemplateId, CT), lines(iolist_to_binary(Rendered))).
+    [?_assertEqual(T0, Line)
+     || {T0, Line} <- lists:zip(t0(TemplateId, CT), lines(iolist_to_binary(Rendered)))
+    ].
 
 t0(TemplateId, CT) ->
     Ext = ct_to_ext(CT),
