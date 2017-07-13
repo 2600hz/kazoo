@@ -84,7 +84,7 @@ debug_dump_process_status(StatusLog, [Pid|Pids]) ->
             'true' ->
                 StatusBytes = io_lib:format("~p~n~p~n~n", [Pid, catch sys:get_status(Pid)]),
                 'ok' = file:write_file(StatusLog, StatusBytes, ['append'])
-         end,
+        end,
     debug_dump_process_status(StatusLog, Pids).
 
 -spec debug_dump_ets(string()) -> 'ok'.
