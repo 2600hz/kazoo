@@ -37,7 +37,7 @@
 -define(CB_LIST, <<"call_stats/crossbar_listing">>).
 
 -define(COLUMNS
-        ,[{<<"id">>, fun col_id/2}
+       ,[{<<"id">>, fun col_id/2}
         ,{<<"handled_timestamp">>, fun col_handled_timestamp/2}
         ,{<<"caller_id_number">>, fun col_caller_id_number/2}
         ,{<<"caller_id_name">>, fun col_caller_id_name/2}
@@ -47,7 +47,7 @@
         ,{<<"wait_time">>, fun col_wait_time/2}
         ,{<<"talk_time">>, fun col_talk_time/2}
         ,{<<"queue_id">>, fun col_queue_id/2}
-         ]).
+        ]).
 
 -type payload() :: {cowboy_req:req(), cb_context:context()}.
 -export_type([payload/0]).
@@ -333,7 +333,7 @@ paginate_and_clean(Context, Ids) ->
     end.
 
 -spec get_stat_ids(ne_binary(), ne_binary(), kz_datamgr:view_options()) ->
-                         {'ok', kz_proplist()}.
+                          {'ok', kz_proplist()}.
 get_stat_ids(Db, View, ViewOptions) ->
     _ = maybe_add_design_doc(Db),
     case kz_datamgr:get_results(Db, View, ViewOptions) of
