@@ -135,8 +135,16 @@ auth_user_data(DataJObj) ->
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
             UserId = kz_json:get_value([<<"authenticating_user">>, <<"auth_user_id">>], Audit),
-            case kzd_user:fetch(AccountId, UserId) of
+            case fetch_user(AccountId, UserId) of
                 {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
                 {'error', _} -> []
             end
     end.
+
+-spec fetch_user(ne_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
+-ifdef(TEST).
+fetch_user(?AN_ACCOUNT_ID, ?AN_ACCOUNT_USER_ID) -> {ok, teletype_util:fixture("an_account_user.json")};
+fetch_user(?MATCH_ACCOUNT_RAW(_), ?NE_BINARY) -> {error, <<"testing_too_hard">>}.
+-else.
+fetch_user(AccountId, UserId) -> kzd_user:fetch(AccountId, UserId).
+-endif.

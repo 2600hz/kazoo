@@ -346,17 +346,21 @@ user_params(UserJObj) ->
     Ks = [{<<"first_name">>, fun kzd_user:first_name/1}
          ,{<<"last_name">>, fun kzd_user:last_name/1}
          ,{<<"email">>, fun kzd_user:email/1}
-         ,{<<"timezone">>, fun kzd_user:timezone/1}
+         ,{<<"timezone">>, fun timezone/1}
          ],
     props:filter_undefined(
-      [user_property(UserJObj, K, F) || {K, F} <- Ks]
+      [{Key, Fun(UserJObj)} || {Key, Fun} <- Ks]
      ).
 
--spec user_property(kzd_user:doc(), Key, fun((kz_json:object()) -> api_binary())) ->
-                           {Key, api_binary()}.
-user_property(User, Key, Fun)
-  when is_function(Fun, 1), is_binary(Key) ->
-    {Key, Fun(User)}.
+-spec timezone(kzd_user:doc()) -> api_ne_binary().
+-ifdef(TEST).
+timezone(UserJObj) ->
+    ?AN_ACCOUNT_ID = kz_doc:account_id(UserJObj),
+    AccountJObj = fixture("an_account.json"),
+    kz_account:timezone(AccountJObj).
+-else.
+timezone(UserJObj) -> kzd_user:timezone(UserJObj).
+-endif.
 
 -spec account_params(kz_json:object()) -> kz_proplist().
 account_params(DataJObj) ->

@@ -629,6 +629,8 @@ open_doc(DbName, DocId) ->
 open_doc(DbName, {DocType, DocId}, Options) ->
     open_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
 open_doc(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
+    {_, ST} = erlang:process_info(self(), current_stacktrace),
+    kz_util:log_stacktrace(ST),
     io:format(user, "\n~s:open_doc(~p, ~p, ~p)\n", [?MODULE, DbName, DocId, Options]),
     kzs_doc:open_doc(kzs_plan:plan(DbName, Options), DbName, DocId, Options);
 open_doc(DbName, DocId, Options) ->

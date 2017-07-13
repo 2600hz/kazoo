@@ -12,6 +12,10 @@
         ,handle_topup/1
         ]).
 
+-ifdef(TEST).
+-export([macros/1]).
+-endif.
+
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"topup">>).
@@ -69,28 +73,27 @@ handle_topup(JObj) ->
         'true' -> handle_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
+-spec macros(kz_json:object()) -> kz_proplist().
+macros(DataJObj) ->
+    TransactionProps = transaction_data(DataJObj),
+    [{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"system">>, teletype_util:system_params()}
+    ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
+    ,{<<"transaction">>, TransactionProps}
+    ,{<<"balance">>, get_balance(DataJObj)}
+    ,{<<"amount">>, props:get_value(<<"amount">>, TransactionProps)} %% backward compatibility
+    ,{<<"response">>, props:get_value(<<"response">>, TransactionProps)} %% backward compatibility
+    ,{<<"success">>, props:get_value(<<"success">>, TransactionProps)} %% backward compatibility
+    ].
+
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    TransactionProps = transaction_data(DataJObj),
-    Macros = [{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"system">>, teletype_util:system_params()}
-             ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
-             ,{<<"transaction">>, TransactionProps}
-             ,{<<"balance">>, get_balance(DataJObj)}
-             ,{<<"amount">>, props:get_value(<<"amount">>, TransactionProps)} %% backward compatibility
-             ,{<<"response">>, props:get_value(<<"response">>, TransactionProps)} %% backward compatibility
-             ,{<<"success">>, props:get_value(<<"success">>, TransactionProps)} %% backward compatibility
-             ],
-
+    Macros = macros(DataJObj),
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
-
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-                                          ,Macros
-               ),
-
+    Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj]),
+    Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of

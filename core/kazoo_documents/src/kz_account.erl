@@ -279,12 +279,13 @@ timezone(JObj, Default) ->
     end.
 
 -spec parent_timezone(ne_binary(), api_ne_binary()) -> ne_binary().
-parent_timezone(AccountId, AccountId) -> ?DEFAULT_TIMEZONE;
-parent_timezone(_AccountId, 'undefined') -> ?DEFAULT_TIMEZONE;
+parent_timezone(AccountId, AccountId) -> default_timezone();
+parent_timezone(_AccountId, 'undefined') -> default_timezone();
 parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
 
 -spec default_timezone() -> ne_binary().
-default_timezone() -> ?DEFAULT_TIMEZONE.
+default_timezone() ->
+    kapps_config:get_ne_binary(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>).
 
 %%--------------------------------------------------------------------
 %% @public
