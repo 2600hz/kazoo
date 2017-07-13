@@ -1,0 +1,39 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.store_amqp_resp",
+    "description": "AMQP API for dialplan.store_amqp_resp",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "store"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Media-Content": {
+            "type": "string"
+        },
+        "Media-Name": {
+            "type": "string"
+        },
+        "Media-Sequence-ID": {
+            "type": "string"
+        },
+        "Media-Transfer-Method": {
+            "enum": [
+                "stream"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Media-Content",
+        "Media-Name",
+        "Media-Transfer-Method"
+    ],
+    "type": "object"
+}

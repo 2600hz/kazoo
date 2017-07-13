@@ -1,0 +1,64 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.mwi_update",
+    "description": "AMQP API for presence.mwi_update",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "mwi_update"
+            ],
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "Message-Account": {
+            "type": "string"
+        },
+        "Messages-New": {
+            "type": "integer"
+        },
+        "Messages-Saved": {
+            "type": "integer"
+        },
+        "Messages-Urgent": {
+            "type": "integer"
+        },
+        "Messages-Urgent-Saved": {
+            "type": "integer"
+        },
+        "Messages-Waiting": {
+            "type": "string"
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Messages-New",
+        "Messages-Saved",
+        "To"
+    ],
+    "type": "object"
+}

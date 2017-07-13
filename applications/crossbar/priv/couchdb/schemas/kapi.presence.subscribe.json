@@ -1,0 +1,51 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.subscribe",
+    "description": "AMQP API for presence.subscribe",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Contact": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "subscription"
+            ],
+            "type": "string"
+        },
+        "Event-Package": {
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Tag": {
+            "type": "string"
+        },
+        "Queue": {
+            "type": "string"
+        },
+        "To-Tag": {
+            "type": "string"
+        },
+        "User": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Expires",
+        "User"
+    ],
+    "type": "object"
+}

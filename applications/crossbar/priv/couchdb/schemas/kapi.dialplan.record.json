@@ -1,0 +1,75 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.record",
+    "description": "AMQP API for dialplan.record",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "record"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Media-Name": {
+            "type": "string"
+        },
+        "Silence-Hits": {
+            "type": "string"
+        },
+        "Silence-Threshold": {
+            "type": "string"
+        },
+        "Terminators": {
+            "items": {
+                "enum": [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "*",
+                    "0",
+                    "#"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Time-Limit": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Media-Name"
+    ],
+    "type": "object"
+}

@@ -52,6 +52,7 @@ record_to_xml(Descriptor) ->
     record_to_xml(Descriptor, false).
 
 -spec record_to_xml(bt_descriptor(), boolean()) -> kz_proplist() | bt_xml().
+record_to_xml('undefined', _ToString) -> 'undefined';
 record_to_xml(Descriptor, ToString) ->
     Props = [{'name', Descriptor#bt_descriptor.name}
             ,{'phone', Descriptor#bt_descriptor.phone}

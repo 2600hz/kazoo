@@ -1,0 +1,70 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.tone_detect",
+    "description": "AMQP API for dialplan.tone_detect",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "tone_detect"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Frequencies": {
+            "type": "string"
+        },
+        "Hits-Needed": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "On-Success": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Sniff-Direction": {
+            "enum": [
+                "read",
+                "write"
+            ],
+            "type": "string"
+        },
+        "Timeout": {
+            "minimum": 0,
+            "type": "integer"
+        },
+        "Tone-Detect-Name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Frequencies",
+        "Tone-Detect-Name"
+    ],
+    "type": "object"
+}

@@ -1,0 +1,197 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.bridge",
+    "description": "AMQP API for dialplan.bridge",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "bridge"
+            ],
+            "type": "string"
+        },
+        "B-Leg-Events": {
+            "items": {
+                "enum": [
+                    "CALL_SECURE",
+                    "CALL_UPDATE",
+                    "CHANNEL_ANSWER",
+                    "CHANNEL_CREATE",
+                    "CHANNEL_DESTROY",
+                    "CHANNEL_EXECUTE",
+                    "CHANNEL_EXECUTE_COMPLETE",
+                    "CHANNEL_EXECUTE_ERROR",
+                    "CHANNEL_FAX_STATUS",
+                    "CHANNEL_INTERCEPTED",
+                    "CHANNEL_PROGRESS_MEDIA",
+                    "CHANNEL_REPLACED",
+                    "CHANNEL_TRANSFEREE",
+                    "CHANNEL_TRANSFEROR",
+                    "CHANNEL_BRIDGE",
+                    "CHANNEL_UNBRIDGE",
+                    "CHANNEL_HOLD",
+                    "CHANNEL_UNHOLD",
+                    "DETECTED_TONE",
+                    "DTMF",
+                    "LEG_CREATED",
+                    "LEG_DESTROYED",
+                    "RECORD_START",
+                    "RECORD_STOP",
+                    "dialplan"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Confirm-Cancel-Timeout": {
+            "type": "integer"
+        },
+        "Confirm-File": {
+            "type": "string"
+        },
+        "Confirm-Key": {
+            "type": "string"
+        },
+        "Continue-On-Fail": {
+            "type": "boolean"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Dial-Endpoint-Method": {
+            "enum": [
+                "single",
+                "simultaneous"
+            ],
+            "type": "string"
+        },
+        "Enable-T38-Fax": {
+            "type": "string"
+        },
+        "Enable-T38-Fax-Request": {
+            "type": "string"
+        },
+        "Enable-T38-Gateway": {
+            "enum": [
+                "self",
+                "peer"
+            ],
+            "type": "string"
+        },
+        "Enable-T38-Passthrough": {
+            "type": "string"
+        },
+        "Endpoints": {
+            "items": {
+                "$ref": "kapi.dialplan.bridge_endpoint",
+                "type": "object"
+            },
+            "type": "array"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Fail-On-Single-Reject": {
+            "type": "string"
+        },
+        "Force-Fax": {
+            "type": "string"
+        },
+        "Hold-Media": {
+            "type": "string"
+        },
+        "Ignore-Completed-Elsewhere": {
+            "type": "string"
+        },
+        "Ignore-Early-Media": {
+            "type": "string"
+        },
+        "Ignore-Forward": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Loopback-Bowout": {
+            "type": "string"
+        },
+        "Media": {
+            "enum": [
+                "process",
+                "bypass",
+                "auto"
+            ],
+            "type": "string"
+        },
+        "Outbound-Callee-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Callee-ID-Number": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Ringback": {
+            "type": "string"
+        },
+        "SIP-Transport": {
+            "enum": [
+                "udp",
+                "tcp",
+                "tls"
+            ],
+            "type": "string"
+        },
+        "Secure-RTP": {
+            "type": "boolean"
+        },
+        "Simplify-Loopback": {
+            "type": "string"
+        },
+        "Timeout": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Endpoints"
+    ],
+    "type": "object"
+}

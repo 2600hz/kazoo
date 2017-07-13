@@ -1,0 +1,77 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.fax.status",
+    "description": "AMQP API for fax.status",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Cloud-Job-ID": {
+            "type": "string"
+        },
+        "Cloud-Printer-ID": {
+            "type": "string"
+        },
+        "Direction": {
+            "enum": [
+                "incoming",
+                "outgoing"
+            ],
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "fax"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "status"
+            ],
+            "type": "string"
+        },
+        "Fax-Info": {
+            "type": "string"
+        },
+        "Fax-State": {
+            "enum": [
+                "start",
+                "prepare",
+                "send",
+                "receive",
+                "end",
+                "error"
+            ],
+            "type": "string"
+        },
+        "FaxBox-ID": {
+            "type": "string"
+        },
+        "Job-ID": {
+            "type": "string"
+        },
+        "Page": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Job-ID"
+    ],
+    "type": "object"
+}

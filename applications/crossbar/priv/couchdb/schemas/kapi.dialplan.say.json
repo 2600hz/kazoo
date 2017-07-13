@@ -1,0 +1,93 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.say",
+    "description": "AMQP API for dialplan.say",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "say"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Gender": {
+            "enum": [
+                "masculine",
+                "feminine",
+                "neuter"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Language": {
+            "type": "string"
+        },
+        "Method": {
+            "enum": [
+                "none",
+                "pronounced",
+                "iterated",
+                "counted"
+            ],
+            "type": "string"
+        },
+        "Say-Text": {
+            "type": "string"
+        },
+        "Type": {
+            "enum": [
+                "number",
+                "items",
+                "persons",
+                "messages",
+                "currency",
+                "time_measurement",
+                "current_date",
+                "current_time",
+                "current_date_time",
+                "telephone_number",
+                "telephone_extension",
+                "url",
+                "ip_address",
+                "e-mail_address",
+                "postal_address",
+                "account_number",
+                "name_spelled",
+                "name_phonetic",
+                "short_date_time"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Language",
+        "Method",
+        "Say-Text",
+        "Type"
+    ],
+    "type": "object"
+}

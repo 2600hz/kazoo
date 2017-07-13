@@ -85,57 +85,67 @@ to_hex_binary(S) ->
 -spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
 to_integer(X) -> to_integer(X, 'notstrict').
 
+to_integer(X, _) when is_integer(X) -> X;
 to_integer(X, 'strict') when is_float(X) -> erlang:error('badarg');
 to_integer(X, 'notstrict') when is_float(X) -> round(X);
-to_integer(X, S) when is_binary(X) -> to_integer(binary_to_list(X), S);
+to_integer(X, strict) when is_binary(X) -> binary_to_integer(X);
+to_integer(X, notstrict) when is_binary(X) ->
+    try binary_to_integer(X)
+    catch error:badarg -> round(binary_to_float(X))
+    end;
 to_integer(X, S) when is_list(X) ->
     try list_to_integer(X)
     catch
         'error':'badarg' when S =:= 'notstrict' ->
             round(list_to_float(X))
-    end;
-to_integer(X, _) when is_integer(X) ->
-    X.
+    end.
 
 -spec to_float(string() | binary() | integer() | float()) -> float().
 -spec to_float(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
 to_float(X) -> to_float(X, 'notstrict').
 
-to_float(X, S) when is_binary(X) -> to_float(binary_to_list(X), S);
+to_float(X, _) when is_float(X) -> X;
+to_float(X, strict) when is_binary(X) -> binary_to_float(X);
+to_float(X, notstrict) when is_binary(X) ->
+    try binary_to_float(X)
+    catch error:badarg -> binary_to_integer(X) * 1.0
+    end;
 to_float(X, S) when is_list(X) ->
     try list_to_float(X)
     catch
         'error':'badarg' when S =:= 'notstrict' -> list_to_integer(X)*1.0 %% "500" -> 500.0
     end;
 to_float(X, 'strict') when is_integer(X) -> erlang:error('badarg');
-to_float(X, 'notstrict') when is_integer(X) -> X * 1.0;
-to_float(X, _) when is_float(X) -> X.
+to_float(X, 'notstrict') when is_integer(X) -> X * 1.0.
 
 -spec to_number(binary() | string() | number()) -> number().
 to_number(X) when is_number(X) -> X;
-to_number(X) when is_binary(X) -> to_number(to_list(X));
+to_number(X) when is_binary(X) ->
+    try binary_to_integer(X)
+    catch error:badarg -> binary_to_float(X)
+    end;
 to_number(X) when is_list(X) ->
     try list_to_integer(X)
     catch
         'error':'badarg' -> list_to_float(X)
     end.
 
--spec to_list(ets:tab() | atom() | list() | binary() | integer() | float()) -> list().
+-spec to_list(atom() | list() | binary() | integer() | float()) -> list().
+to_list(X) when is_list(X) -> X;
 to_list(X) when is_float(X) -> kz_mochinum:digits(X);
 to_list(X) when is_integer(X) -> integer_to_list(X);
 to_list(X) when is_binary(X) -> binary_to_list(X);
-to_list(X) when is_atom(X) -> atom_to_list(X);
-to_list(X) when is_list(X) -> X.
+to_list(X) when is_atom(X) -> atom_to_list(X).
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
 -spec to_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
+to_binary(X) when is_binary(X) -> X;
 to_binary(X) when is_float(X) -> to_binary(kz_mochinum:digits(X));
-to_binary(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
-to_binary(X) when is_atom(X) -> list_to_binary(atom_to_list(X));
+to_binary(X) when is_integer(X) -> integer_to_binary(X);
+to_binary(X) when is_atom(X) -> atom_to_binary(X, utf8);
 to_binary(X) when is_list(X) -> iolist_to_binary(X);
-to_binary(X) when is_pid(X) -> to_binary(pid_to_list(X));
-to_binary(X) when is_binary(X) -> X.
+to_binary(X) when is_pid(X) -> to_binary(pid_to_list(X)).
 
 -spec to_api_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> api_binary().
 to_api_binary('undefined') -> 'undefined';
@@ -145,6 +155,7 @@ to_api_binary(Arg) -> to_binary(Arg).
 -spec to_atom(atom() | list() | binary() | integer() | float()) -> atom().
 to_atom(X) when is_atom(X) -> X;
 to_atom(X) when is_list(X) -> list_to_existing_atom(X);
+to_atom(X) when is_binary(X) -> binary_to_existing_atom(X, utf8);
 to_atom(X) -> to_atom(to_list(X)).
 
 %% only if you're really sure you want this
@@ -157,6 +168,7 @@ to_atom(X) -> to_atom(to_list(X)).
 -spec to_atom(atom() | list() | binary() | integer() | float(), 'true' | list()) -> atom().
 to_atom(X, _) when is_atom(X) -> X;
 to_atom(X, 'true') when is_list(X) -> list_to_atom(X);
+to_atom(X, 'true') when is_binary(X) -> binary_to_atom(X, utf8);
 to_atom(X, 'true') -> to_atom(to_list(X), 'true');
 to_atom(X, 'false') -> to_atom(X);
 to_atom(X, SafeList) when is_list(SafeList) ->

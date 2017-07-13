@@ -1180,7 +1180,6 @@ terminators_v(_) -> 'false'.
 
 terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
-
 -spec offsite_store_url(api_binary(), ne_binary()) -> ne_binary().
 offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
 offsite_store_url(Url, MediaName) ->

@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.frontier.ratelimits_resp",
+    "description": "AMQP API for frontier.ratelimits_resp",
+    "properties": {
+        "Device": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "rate_limit"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "query_resp"
+            ],
+            "type": "string"
+        },
+        "Realm": {
+            "type": "object"
+        }
+    },
+    "type": "object"
+}

@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.inspector.lookup_req",
+    "description": "AMQP API for inspector.lookup_req",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call_inspector"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "lookup_req"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID"
+    ],
+    "type": "object"
+}

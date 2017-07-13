@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.frontier.acls_req",
+    "description": "AMQP API for frontier.acls_req",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "acl"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "query"
+            ],
+            "type": "string"
+        },
+        "With-Realm": {}
+    },
+    "type": "object"
+}

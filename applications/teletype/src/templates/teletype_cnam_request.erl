@@ -24,9 +24,11 @@
           ,?MACRO_VALUE(<<"request.number_state">>, <<"request_number_state">>, <<"Number State">>, <<"Number state">>)
           ,?MACRO_VALUE(<<"request.local_number">>, <<"request_local_number">>, <<"Local Number">>, <<"Is a local number">>)
           ,?MACRO_VALUE(<<"request.acquired_for">>, <<"request_acquired_for">>, <<"Acquired For">>, <<"Who authorized the request">>)
-           | ?ACCOUNT_MACROS ++ ?USER_MACROS
+           | ?USER_MACROS
+           ++ ?COMMON_TEMPLATE_MACROS
           ]
-         )).
+         )
+       ).
 
 -define(TEMPLATE_SUBJECT, <<"Caller name update request for {{request.number}}">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).

@@ -23,7 +23,9 @@
           ?FAX_MACROS
           ++ ?DEFAULT_CALL_MACROS
           ++ ?USER_MACROS
-         )).
+          ++ ?COMMON_TEMPLATE_MACROS
+         )
+       ).
 
 -define(TEMPLATE_SUBJECT, <<"Fax has been sended to {{callee_id.name}} ({{callee_id.number}})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).

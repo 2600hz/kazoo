@@ -25,9 +25,10 @@
           ,?MACRO_VALUE(<<"plan.item">>, <<"plan_item">>, <<"Plan Item">>, <<"Plan Item">>)
           ,?MACRO_VALUE(<<"plan.activation_charge">>, <<"plan_activation_charge">>, <<"Activation Charge">>, <<"Activiation Charge">>)
            | ?TRANSACTION_MACROS
-           ++ ?ACCOUNT_MACROS
            ++ ?USER_MACROS
-          ])
+           ++ ?COMMON_TEMPLATE_MACROS
+          ]
+         )
        ).
 
 -define(SUCCESS_TEMPLATE_SUBJECT, <<"Receipt for your payment of account '{{account.name}}'">>).

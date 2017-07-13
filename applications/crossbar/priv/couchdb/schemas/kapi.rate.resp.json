@@ -1,0 +1,65 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.rate.resp",
+    "description": "AMQP API for rate.resp",
+    "properties": {
+        "Base-Cost": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Discount-Percentage": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "rate"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "resp"
+            ],
+            "type": "string"
+        },
+        "Prefix": {
+            "type": "string"
+        },
+        "Pvt-Cost": {
+            "type": "string"
+        },
+        "Rate": {
+            "type": "string"
+        },
+        "Rate-Description": {
+            "type": "string"
+        },
+        "Rate-Increment": {
+            "type": "integer"
+        },
+        "Rate-Minimum": {
+            "type": "string"
+        },
+        "Rate-Name": {
+            "type": "string"
+        },
+        "Rate-NoCharge-Time": {
+            "type": "integer"
+        },
+        "Rate-Version": {
+            "type": "string"
+        },
+        "Ratedeck-ID": {
+            "type": "string"
+        },
+        "Surcharge": {
+            "type": "string"
+        },
+        "Update-Callee-ID": {
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

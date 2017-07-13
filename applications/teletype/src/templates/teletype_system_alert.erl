@@ -20,8 +20,10 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
-           | ?ACCOUNT_MACROS ++ ?USER_MACROS
-          ])
+           | ?USER_MACROS
+           ++ ?COMMON_TEMPLATE_MACROS
+          ]
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"System Alert: '{{request.level}}' from '{{request.node}}'">>).

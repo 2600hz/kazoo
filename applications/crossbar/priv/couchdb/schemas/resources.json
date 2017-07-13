@@ -139,6 +139,10 @@
                             "fax_option": {
                                 "description": "Is T.38 Supported?",
                                 "type": "boolean"
+                            },
+                            "rtcp_mux": {
+                                "description": "RTCP protocol messages mixed with RTP data",
+                                "type": "boolean"
                             }
                         },
                         "type": "object"

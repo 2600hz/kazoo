@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.offnet_resource.resp",
+    "description": "AMQP API for offnet_resource.resp",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Control-Queue": {
+            "type": "string"
+        },
+        "Error-Message": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "resource"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "offnet_resp"
+            ],
+            "type": "string"
+        },
+        "Resource-Response": {
+            "type": "string"
+        },
+        "Response-Code": {
+            "type": "string"
+        },
+        "Response-Message": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Response-Message"
+    ],
+    "type": "object"
+}

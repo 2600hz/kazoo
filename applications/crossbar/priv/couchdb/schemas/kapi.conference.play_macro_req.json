@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.play_macro_req",
+    "description": "AMQP API for conference.play_macro_req",
+    "properties": {
+        "Application-Name": {
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Media-Macro": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Conference-ID",
+        "Media-Macro"
+    ],
+    "type": "object"
+}

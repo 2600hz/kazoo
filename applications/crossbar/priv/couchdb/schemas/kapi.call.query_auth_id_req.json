@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.call.query_auth_id_req",
+    "description": "AMQP API for call.query_auth_id_req",
+    "properties": {
+        "Auth-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call_event"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "query_auth_id_req"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Auth-ID"
+    ],
+    "type": "object"
+}

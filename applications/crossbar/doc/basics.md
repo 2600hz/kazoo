@@ -40,7 +40,7 @@ Given a uri of `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`:
 
 So we have a request to account {account\_id} to do something with a device {device\_id}.
 
-##### HTTP Verbs
+#### HTTP Verbs
 
 The HTTP verb will determine the class of actions to take against the resource. Generically speaking, the verbs map thusly:
 
@@ -53,7 +53,7 @@ The HTTP verb will determine the class of actions to take against the resource. 
     * POST: Updates the full respresentation of the resource
     * DELETE: Deletes the resource
 
-###### PATCH
+##### PATCH
 
 Some resources are beginning to support the PATCH verb, allowing partial updates instead of requiring the request to include the full version of the document. `/users/{USER_ID}`, for instance, now supports PATCH:
 
@@ -63,28 +63,31 @@ This cURL request will patch the user's doc and set `vm_to_email_enabled` to `tr
 
 If a resource does not support PATCH yet, clients can expect to receive a `405 Method Not Allowed` error.
 
-###### Tunneling the HTTP Verb
+##### Tunneling the HTTP Verb
 
 Some clients do not support the full range of HTTP verbs, and are typically limited to *GET* and *POST*. To access the functionalities of *PUT* and *DELETE*, you can tunnel the verb in a *POST* in a couple of ways:
 
 1. As part of the [request envelope](#request_envelope): `{"data":{...}, "verb":"PUT"}`
 1. As a query string parameter: `/v2/accounts/{ACCOUNT_ID}/resources?verb=PUT`
 
-###### Tunneling the Accept Header
+#### Tunneling the Accept Header
 
 Some clients do not support the ability to set the [Accept header](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) in the request, meaning they will not necessarily receive the response in the format they wish. Clients can append `accept=text/html` to the request body or query string to indicate they'd like the response processed as if the Accept header was `text/html`.
 
 *Note*: `accept=csv` is retained for backwards-compatibility but it is encouraged to use a proper media type going forward.
 
-##### Authentication Tokens
+#### Authentication Tokens
 
 Most APIs require the client to have authenticated and received a token usable on subsequent requests. Crossbar provides a couple ways to receive an authentication token:
 
-1. [User Authentication](./user_authentication.md)
-2. [API Key Authentication](./api_authentication.md)
+1. [User Authentication](./user_authentication.md): This is the preferred way of authenticating a user and useful for making an UI
+2. [API Key Authentication](./api_authentication.md): If you're building a server applications, the recommanded way for authentication is using your account's API key
+3. [Multi Factor Authentication](./multi_factor.md): For adding more security to your system, authenticate users with a multi factor authentication provider
+4. [Crossbar Security Configuration](./security.md): API endpoint for configuring Crossbar authentication methods.
 
 <a name="request_envelope"></a>
-##### Request Envelope
+
+#### Request Envelope
 
 When issuing a PUT or POST, a request body is needed. When submitting a JSON (the most common body), Crossbar expects a request envelope with a few bits of metadata:
 
@@ -92,7 +95,7 @@ When issuing a PUT or POST, a request body is needed. When submitting a JSON (th
 * auth_token: optionally put your auth token in the envelope
 * verb: optionally tunnel a PUT or DELETE in a POST request
 
-###### Sample Request Envelope
+**Sample Request Envelope:**
 
 ```json
 {
@@ -104,7 +107,7 @@ When issuing a PUT or POST, a request body is needed. When submitting a JSON (th
 }
 ```
 
-##### Response Envelope
+#### Response Envelope
 
 When receiving JSON responses, clients will receive the response in an envelope. The response includes some duplicated data from the HTTP Response headers, since some clients do not have access to those headers.
 
@@ -112,10 +115,10 @@ When receiving JSON responses, clients will receive the response in an envelope.
 * `auth_token`: contains the auth\_token used on the request
 * `status`: One of 'success', 'error', or 'fatal'
 * `message`: Optional message that should clarify what happened on the request
-* `error: Error code, if any
+* `error`: Error code, if any
 * `request_id`: ID of the request; usuable for debugging the server-side processing of the request
 
-###### Sample Response Envelope
+**Sample Response Envelope:**
 
 ```json
 {
@@ -129,13 +132,13 @@ When receiving JSON responses, clients will receive the response in an envelope.
 }
 ```
 
-##### Pagination
+#### Pagination
 
 All listing APIs in v2 will be paginated by default (v1 will operate as before).
 
 Let's take a look at the CDRs API to see how to interpret pagination.
 
-###### CDR Pagination
+##### CDR Pagination
 
 We start with the typical CDR request for a listing of CDRs:
 
@@ -205,13 +208,13 @@ Observe now that `start_key` is the requested `start_key` and `next_start_key` p
 
 You can also choose to receive pages in bigger or smaller increments by specifying `page_size` on the request. Do take care, as the `next_start_key` will probably vary if you use the same `start_key` but differing `page_size` values.
 
-###### Disabling Pagination
+##### Disabling Pagination
 
 If you want to disable pagination for a request, simply include `paginate=false` on the query string.
 
-###### Pretty Printing
+#### Pretty Printing
 
-If needed the json response from the server can be pretty printed.
+If needed the json response to be pretty printed, the server can can do so.
 
 Include pretty printing inside the header.
 

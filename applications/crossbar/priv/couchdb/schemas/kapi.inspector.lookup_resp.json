@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.inspector.lookup_resp",
+    "description": "AMQP API for inspector.lookup_resp",
+    "properties": {
+        "Analysis": {
+            "type": "string"
+        },
+        "Chunks": {
+            "type": "string"
+        },
+        "Dialog-Entities": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call_inspector"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "lookup_resp"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Chunks"
+    ],
+    "type": "object"
+}

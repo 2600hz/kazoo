@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.blackhole.module_req",
+    "description": "AMQP API for blackhole.module_req",
+    "properties": {
+        "Action": {
+            "enum": [
+                "start",
+                "stop"
+            ],
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "blackhole"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "module_req"
+            ],
+            "type": "string"
+        },
+        "Module": {
+            "type": "string"
+        },
+        "Persist": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "Action",
+        "Module"
+    ],
+    "type": "object"
+}

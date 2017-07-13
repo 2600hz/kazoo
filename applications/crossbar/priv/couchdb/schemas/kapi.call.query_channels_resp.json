@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.call.query_channels_resp",
+    "description": "AMQP API for call.query_channels_resp",
+    "properties": {
+        "Channels": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "call_event"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "query_channels_resp"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Channels"
+    ],
+    "type": "object"
+}

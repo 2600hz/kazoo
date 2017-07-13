@@ -1,17 +1,17 @@
                 Caller Name Change Request for {{request.number}}
 
 
-A request to change the Caller name to '{{cnam.display_name}}' for number {{request.number}} has
-been submitted. Following are the information about this request.
+Caller name identification for number {{request.number}} has been changed to '{{cnam.display_name}}'.
+Following is the detailed information about this change.
 
-    Note: Change to Caller name can take up to 48 hours to take effect based on your carrier.
+    Note: Changes to Caller Identification can take up to 48 hours to take effect based on your carrier.
 
 
 === Change Request Details ===
 
     Caller Display Name: {{cnam.display_name}}
     Number: {{request.number}}
-    Number State: {{request.state}}
+    Number State: {{request.number_state}}
     Local Number: {{request.local_number}}
     Display-Name: "{{cnam.display_name}}"
 
@@ -26,4 +26,4 @@ Account Information
 
 
 
-Sent from {{system.hostname}}
+Sent from {{system.encoded_node}}

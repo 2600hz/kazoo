@@ -8,14 +8,39 @@
             "description": "Default crossbar authentication modules configuration",
             "type": "object"
         },
+        "available_auth_modules": {
+            "default": [
+                "cb_user_auth",
+                "cb_api_auth"
+            ],
+            "description": "List of crossbar auth configurable modules",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "basic_auth_type": {
             "default": "md5",
             "description": "crossbar.auth basic auth type",
+            "enum": [
+                "md5",
+                "sha"
+            ],
             "type": "string"
+        },
+        "log_failed_attempts": {
+            "default": false,
+            "description": "Should log failed login attempts",
+            "type": "boolean"
         },
         "log_failed_login_attempts": {
             "default": false,
             "description": "Should log failed login attempts",
+            "type": "boolean"
+        },
+        "log_successful_attempts": {
+            "default": false,
+            "description": "Should log successful login attempts",
             "type": "boolean"
         }
     },

@@ -19,7 +19,8 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          ?ACCOUNT_MACROS ++ ?USER_MACROS
+          ?USER_MACROS
+          ++ ?COMMON_TEMPLATE_MACROS
          )
        ).
 

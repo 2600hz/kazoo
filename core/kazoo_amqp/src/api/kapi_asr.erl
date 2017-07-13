@@ -31,7 +31,7 @@
 -define(ASR_REQ_VALUES, [{<<"Event-Category">>, <<"asr">>}
                         ,{<<"Event-Name">>, <<"req">>}
                         ]).
--define(ASR_REQ_TYPES, [{<<"Stream-Response">>, fun(V) -> is_boolean(kz_term:to_boolean(V)) end}
+-define(ASR_REQ_TYPES, [{<<"Stream-Response">>, fun kz_term:is_boolean/1}
                        ]).
 
 %% Asr Response

@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "auth_config_account",
+    "additionalProperties": true,
+    "description": "corssbar account authentication modules configuration",
+    "properties": {
+        "auth_modules": {
+            "additionalProperties": true,
+            "description": "crossbar authentication modules configuration",
+            "properties": {
+                "cb_api_auth": {
+                    "$ref": "auth_config"
+                },
+                "cb_ip_auth": {
+                    "$ref": "auth_config"
+                },
+                "cb_ubiquiti_auth": {
+                    "$ref": "auth_config"
+                },
+                "cb_user_auth": {
+                    "$ref": "auth_config"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "required": [
+        "auth_modules"
+    ],
+    "type": "object"
+}

@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.tasks.start_req",
+    "description": "AMQP API for tasks.start_req",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "tasks"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "start_req"
+            ],
+            "type": "string"
+        },
+        "Task-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Task-ID"
+    ],
+    "type": "object"
+}

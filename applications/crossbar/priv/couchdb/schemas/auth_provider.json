@@ -5,7 +5,6 @@
     "description": "authentication providers",
     "properties": {
         "enabled": {
-            "default": true,
             "description": "whether or not this authentication provider is enabled",
             "type": "boolean"
         },
@@ -27,6 +26,7 @@
         }
     },
     "required": [
+        "enabled",
         "provider_name",
         "provider_type"
     ],

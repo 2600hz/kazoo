@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.search_partial_resp",
+    "description": "AMQP API for presence.search_partial_resp",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "search_partial_resp"
+            ],
+            "type": "string"
+        },
+        "Subscriptions": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Subscriptions"
+    ],
+    "type": "object"
+}

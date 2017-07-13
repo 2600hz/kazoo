@@ -18,7 +18,10 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-       ,kz_json:from_list(?PORT_REQUEST_MACROS ++ ?ACCOUNT_MACROS)
+       ,kz_json:from_list(
+          ?PORT_REQUEST_MACROS
+          ++ ?COMMON_TEMPLATE_MACROS
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Number port request '{{port_request.name}}' completed">>).

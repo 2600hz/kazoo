@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.discovery.flush",
+    "description": "AMQP API for discovery.flush",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "discovery"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "flush"
+            ],
+            "type": "string"
+        },
+        "Query-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Query-ID"
+    ],
+    "type": "object"
+}

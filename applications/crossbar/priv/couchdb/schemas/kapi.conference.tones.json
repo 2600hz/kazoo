@@ -1,0 +1,76 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.tones",
+    "description": "AMQP API for conference.tones",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "tones"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Group-ID": {
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Terminators": {
+            "items": {
+                "enum": [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "*",
+                    "0",
+                    "#"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Tones": {
+            "items": {
+                "$ref": "kapi.dialplan.tones_req_tone_headers",
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Tones"
+    ],
+    "type": "object"
+}

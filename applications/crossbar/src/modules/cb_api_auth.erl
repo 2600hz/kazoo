@@ -168,6 +168,7 @@ validate_by_api_key(Context, ApiKey, Doc) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
                        ,{fun cb_context:set_doc/2, kz_json:get_value(<<"value">>, Doc)}
+                       ,{fun cb_context:store/3, 'auth_type', <<"account_api_token">>}
                        ]
                       ).
 

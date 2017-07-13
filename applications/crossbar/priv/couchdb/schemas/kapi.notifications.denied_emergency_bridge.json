@@ -1,0 +1,75 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.denied_emergency_bridge",
+    "description": "AMQP API for notifications.denied_emergency_bridge",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Emergency-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Emergency-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "denied_emergency_bridge"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Call-ID"
+    ],
+    "type": "object"
+}

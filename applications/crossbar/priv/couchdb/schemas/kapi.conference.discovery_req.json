@@ -1,0 +1,47 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.discovery_req",
+    "description": "AMQP API for conference.discovery_req",
+    "properties": {
+        "Call": {
+            "type": "object"
+        },
+        "Conference-Doc": {
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "discovery_req"
+            ],
+            "type": "string"
+        },
+        "Moderator": {
+            "type": "boolean"
+        },
+        "Play-Entry-Tone": {
+            "type": "string"
+        },
+        "Play-Exit-Tone": {
+            "type": "string"
+        },
+        "Play-Welcome": {
+            "type": "boolean"
+        },
+        "Play-Welcome-Media": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call"
+    ],
+    "type": "object"
+}

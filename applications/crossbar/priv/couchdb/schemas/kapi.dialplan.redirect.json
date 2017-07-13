@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.redirect",
+    "description": "AMQP API for dialplan.redirect",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "redirect"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        },
+        "Redirect-Contact": {
+            "type": "string"
+        },
+        "Redirect-Node": {
+            "type": "string"
+        },
+        "Redirect-Server": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Redirect-Contact"
+    ],
+    "type": "object"
+}

@@ -1,0 +1,152 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.resource.originate_req_endpoint_headers",
+    "description": "AMQP API for resource.originate_req_endpoint_headers",
+    "properties": {
+        "Auth-Password": {
+            "type": "string"
+        },
+        "Auth-Realm": {
+            "type": "string"
+        },
+        "Auth-User": {
+            "type": "string"
+        },
+        "Bypass-Media": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Codecs": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "string"
+        },
+        "Custom-SIP-Headers": {
+            "type": "string"
+        },
+        "Enable-T38-Fax": {
+            "type": "string"
+        },
+        "Enable-T38-Fax-Request": {
+            "type": "string"
+        },
+        "Enable-T38-Gateway": {
+            "type": "string"
+        },
+        "Enable-T38-Passthrough": {
+            "type": "string"
+        },
+        "Endpoint-Actions": {
+            "type": "string"
+        },
+        "Endpoint-Delay": {
+            "type": "string"
+        },
+        "Endpoint-Options": {
+            "type": "string"
+        },
+        "Endpoint-Progress-Timeout": {
+            "type": "integer"
+        },
+        "Endpoint-Timeout": {
+            "type": "integer"
+        },
+        "Endpoint-Type": {
+            "type": "string"
+        },
+        "Failover": {
+            "type": "string"
+        },
+        "Force-Fax": {
+            "type": "string"
+        },
+        "Forward-IP": {
+            "type": "string"
+        },
+        "Hold-Media": {
+            "type": "string"
+        },
+        "Ignore-Completed-Elsewhere": {
+            "type": "string"
+        },
+        "Ignore-Early-Media": {
+            "type": "string"
+        },
+        "Invite-Format": {
+            "type": "string"
+        },
+        "Loopback-Bowout": {
+            "type": "string"
+        },
+        "Outbound-Call-ID": {
+            "type": "string"
+        },
+        "Outbound-Callee-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Callee-ID-Number": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Proxy-IP": {
+            "type": "string"
+        },
+        "Proxy-Zone": {
+            "type": "string"
+        },
+        "Route": {
+            "type": "string"
+        },
+        "SIP-Interface": {
+            "type": "string"
+        },
+        "SIP-Transport": {
+            "type": "string"
+        },
+        "Simplify-Loopback": {
+            "type": "string"
+        },
+        "To-DID": {
+            "type": "string"
+        },
+        "To-IP": {
+            "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-URI": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        },
+        "To-Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Invite-Format"
+    ],
+    "type": "object"
+}

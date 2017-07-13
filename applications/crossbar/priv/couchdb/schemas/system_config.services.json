@@ -16,6 +16,11 @@
         "modules": {
             "description": "services modules"
         },
+        "reseller_bookkeeper_lookup": {
+            "default": false,
+            "description": "allow resellers configure bookkeeper for children billing",
+            "type": "boolean"
+        },
         "scan_rate": {
             "default": 20000,
             "description": "services scan rate",

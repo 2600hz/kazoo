@@ -1,0 +1,62 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.nodes.advertise",
+    "description": "AMQP API for nodes.advertise",
+    "properties": {
+        "Channels": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "nodes"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "advertise"
+            ],
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "Globals": {
+            "type": "string"
+        },
+        "Media-Servers": {
+            "type": "string"
+        },
+        "Node-Info": {
+            "type": "string"
+        },
+        "Ports": {
+            "type": "string"
+        },
+        "Processes": {
+            "type": "string"
+        },
+        "Registrations": {
+            "type": "string"
+        },
+        "Used-Memory": {
+            "type": "string"
+        },
+        "Version": {
+            "type": "string"
+        },
+        "WhApps": {
+            "type": "string"
+        },
+        "Zone": {
+            "type": "string"
+        },
+        "md5": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Expires"
+    ],
+    "type": "object"
+}

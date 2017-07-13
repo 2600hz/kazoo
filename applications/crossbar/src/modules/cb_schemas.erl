@@ -135,11 +135,18 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = crossbar_doc:load_docs(Context, fun normalize_view_results/2),
-    cb_context:set_resp_data(
-      Context1
+    Context1 = crossbar_doc:load_docs(Context, normalize_fun(Context)),
+    cb_context:set_resp_data(Context1
                             ,lists:sort(cb_context:resp_data(Context1))
-     ).
+                            ).
+
+-type normalizer_fun() :: fun((kz_json:object(), ne_binaries()) -> ne_binaries()).
+-spec normalize_fun(cb_context:context()) -> normalizer_fun().
+normalize_fun(Context) ->
+    case kz_term:to_boolean(cb_context:req_value(Context, <<"internals">>, 'false')) of
+        'true' -> fun normalize_all_results/2;
+        'false' -> fun normalize_doc_results/2
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,9 +154,17 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
+-spec normalize_all_results(kz_json:object(), kz_json:objects()) -> ne_binaries().
+normalize_all_results(JObj, Acc) ->
     case kz_doc:id(JObj) of
         <<"_design/", _/binary>> -> Acc;
+        ID -> [ID | Acc]
+    end.
+
+-spec normalize_doc_results(kz_json:object(), kz_json:objects()) -> ne_binaries().
+normalize_doc_results(JObj, Acc) ->
+    case kz_doc:id(JObj) of
+        <<"_design/", _/binary>> -> Acc;
+        <<"kapi.", _/binary>> -> Acc;
         ID -> [ID | Acc]
     end.

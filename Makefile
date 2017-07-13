@@ -55,7 +55,7 @@ clean-deps:
 	$(if $(wildcard deps/), rm -r deps/)
 
 .erlang.mk:
-	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2017.05.18/erlang.mk' -O $(ROOT)/erlang.mk
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2017.07.06/erlang.mk' -O $(ROOT)/erlang.mk
 
 deps: deps/Makefile
 	$(MAKE) -C deps/ all
@@ -74,7 +74,7 @@ kazoo: core apps
 
 
 $(RELX):
-	wget 'https://github.com/erlware/relx/releases/download/v3.19.0/relx' -O $@
+	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
 	chmod +x $@
 
 clean-release:
@@ -84,10 +84,13 @@ clean-release:
 
 build-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
+	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 build-dev-release: $(RELX) clean-release rel/relx.config-dev rel/vm.args
 	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
+	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
+	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 tar-release: $(RELX) rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src
@@ -99,7 +102,7 @@ rel/relx.config-dev: rel/relx.config.src
 rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
 	cp $^ $@
 rel/vm.args: rel/args rel/dev-vm.args
-	( cat $<; echo '$${KZname}' ) > $@
+	( echo '-setcookie $${COOKIE}'; cat $<; echo '-name $${NODE_NAME}' ) > $@
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
@@ -108,14 +111,14 @@ ifneq ($(findstring kazoo_apps,$(REL)),kazoo_apps)
 release: export KAZOO_APPS = 'ecallmgr'
 endif
 release:
-	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
+	@NODE_NAME='$(REL)' COOKIE='change_me' $(ROOT)/scripts/dev/kazoo.sh $(ACT) "$$@"
 
 install: compile build-release
 	cp -a _rel/kazoo /opt
 
 read-release-cookie: REL ?= kazoo_apps
 read-release-cookie:
-	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
+	@NODE_NAME='$(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
@@ -208,19 +211,16 @@ docs-report:
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
 	@$(ROOT)/scripts/setup_docs.bash
-	@cp $(DOCS_ROOT)/mkdocs.yml $(DOCS_ROOT)/mkdocs.local.yml
 	@mkdir -p $(DOCS_ROOT)/theme
-	@if [ -f $(DOCS_ROOT)/theme/global.yml ]; then cat $(DOCS_ROOT)/theme/global.yml >> $(DOCS_ROOT)/mkdocs.local.yml; fi
 
 docs-build:
-	@echo "\ntheme: null\ntheme_dir: '$(DOCS_ROOT)/theme'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> $(DOCS_ROOT)/mkdocs.local.yml
-	@mkdocs build -f $(DOCS_ROOT)/mkdocs.local.yml --clean -q --site-dir $(DOCS_ROOT)/site
+	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-build
 
 docs-clean:
-	@rm -rf $(DOCS_ROOT)/site $(DOCS_ROOT)/docs $(DOCS_ROOT)/mkdocs.local.yml
+	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) clean
 
 docs-serve: docs-setup docs-build
-	@mkdocs serve --dev-addr=0.0.0.0:9876 -f $(DOCS_ROOT)/mkdocs.local.yml
+	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-serve
 
 fs-headers:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript

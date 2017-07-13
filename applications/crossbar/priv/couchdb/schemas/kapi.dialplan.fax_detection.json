@@ -1,0 +1,60 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.fax_detection",
+    "description": "AMQP API for dialplan.fax_detection",
+    "properties": {
+        "Action": {
+            "enum": [
+                "start",
+                "stop"
+            ],
+            "type": "string"
+        },
+        "Application-Name": {
+            "enum": [
+                "fax_detection"
+            ],
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Direction": {
+            "enum": [
+                "inbound",
+                "outbound"
+            ],
+            "type": "string"
+        },
+        "Duration": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "enum": [
+                "head",
+                "tail",
+                "flush",
+                "now"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Action",
+        "Application-Name",
+        "Call-ID"
+    ],
+    "type": "object"
+}

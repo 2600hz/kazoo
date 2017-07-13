@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.sms.message_endpoint",
+    "description": "AMQP API for sms.message_endpoint",
+    "properties": {
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Endpoint-Options": {
+            "type": "object"
+        },
+        "Endpoint-Type": {
+            "enum": [
+                "sip",
+                "xmpp",
+                "smpp",
+                "http",
+                "amqp"
+            ],
+            "type": "string"
+        },
+        "SIP-Headers": {
+            "type": "object"
+        }
+    },
+    "type": "object"
+}

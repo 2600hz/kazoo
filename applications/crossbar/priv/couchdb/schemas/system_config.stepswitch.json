@@ -60,6 +60,10 @@
             "description": "stepswitch default route",
             "type": "string"
         },
+        "default_rtcp_mux": {
+            "description": "RTCP protocol messages mixed with RTP data",
+            "type": "string"
+        },
         "default_suffix": {
             "default": "",
             "description": "stepswitch default suffix",

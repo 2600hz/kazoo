@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.pivot.req",
+    "description": "AMQP API for pivot.req",
+    "properties": {
+        "CDR-URI": {
+            "type": "string"
+        },
+        "Call": {
+            "type": "object"
+        },
+        "Debug": {
+            "type": "boolean"
+        },
+        "Event-Category": {
+            "enum": [
+                "dialplan"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "pivot_req"
+            ],
+            "type": "string"
+        },
+        "HTTP-Method": {
+            "type": "string"
+        },
+        "Request-Format": {
+            "type": "string"
+        },
+        "Voice-URI": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call",
+        "Voice-URI"
+    ],
+    "type": "object"
+}

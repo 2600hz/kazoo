@@ -1,0 +1,98 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.presence.dialog",
+    "description": "AMQP API for presence.dialog",
+    "properties": {
+        "Call-Cookie": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Direction": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "presence"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "dialog_update"
+            ],
+            "type": "string"
+        },
+        "Event-Package": {
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "Flush-Level": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-Tag": {
+            "type": "string"
+        },
+        "From-URI": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Presentity": {
+            "type": "string"
+        },
+        "Presentity-Realm": {
+            "type": "string"
+        },
+        "Presentity-User": {
+            "type": "string"
+        },
+        "State": {
+            "enum": [
+                "early",
+                "confirmed",
+                "terminated"
+            ],
+            "type": "string"
+        },
+        "Switch-URI": {
+            "type": "string"
+        },
+        "Target-Call-ID": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-Tag": {
+            "type": "string"
+        },
+        "To-URI": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "From",
+        "To"
+    ],
+    "type": "object"
+}

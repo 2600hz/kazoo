@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.call.usurp_control",
+    "description": "AMQP API for call.usurp_control",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "call_event"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "usurp_control"
+            ],
+            "type": "string"
+        },
+        "Fetch-ID": {
+            "type": "string"
+        },
+        "Media-Node": {
+            "type": "string"
+        },
+        "Reason": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Fetch-ID"
+    ],
+    "type": "object"
+}

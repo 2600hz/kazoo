@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.discovery.resp",
+    "description": "AMQP API for discovery.resp",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "discovery"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "response"
+            ],
+            "type": "string"
+        },
+        "Query-ID": {
+            "type": "string"
+        },
+        "Results": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Results"
+    ],
+    "type": "object"
+}

@@ -30,6 +30,9 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
+-define(SCHEMA, <<"port_requests">>).
+-define(SCHEMA_TO_SCHEDULED, <<(?SCHEMA)/binary, ".to_scheduled">>).
+
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
 -define(TEMPLATE_ATTACHMENT_ID, <<"template">>).
 
@@ -303,28 +306,27 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(update_port_request_for_save(Context)).
-
--spec update_port_request_for_save(cb_context:context()) -> cb_context:context().
--spec update_port_request_for_save(cb_context:context(), kz_json:object()) -> cb_context:context().
-update_port_request_for_save(Context) ->
-    update_port_request_for_save(Context, cb_context:doc(Context)).
-update_port_request_for_save(Context, Doc) ->
-    NewDoc = kz_account:set_tree(Doc, kz_account:tree(cb_context:account_doc(Context))),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
-                       ,{fun cb_context:set_doc/2, NewDoc}
-                       ]
-                      ).
+    save(Context).
 
 put(Context, Id, ?PORT_ATTACHMENT) ->
     [{Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)],
     AName = cb_modules_util:attachment_name(Filename, CT),
     Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
     crossbar_doc:save_attachment(Id, AName, Contents, Context1, Opts).
+
+-spec save(cb_context:context()) -> cb_context:context().
+save(Context) ->
+    NewDoc1 = maybe_set_scheduled_date_from_schedule_on(cb_context:doc(Context)),
+    NewDoc = kz_account:set_tree(NewDoc1, kz_account:tree(cb_context:account_doc(Context))),
+    Context1 = cb_context:setters(Context
+                                 ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
+                                  ,{fun cb_context:set_doc/2, NewDoc}
+                                  ]
+                                 ),
+    crossbar_doc:save(Context1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -332,42 +334,43 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-patch(Context, Id, ?PORT_SUBMITTED) ->
-    Callback = fun() -> patch_then_notify(Context, Id, ?PORT_SUBMITTED) end,
+patch(Context, Id, NewState=?PORT_SUBMITTED) ->
+    Callback = fun() -> save_then_maybe_notify(Context, Id, NewState) end,
     crossbar_services:maybe_dry_run(Context, Callback);
-patch(Context, Id, ?PORT_PENDING) ->
-    patch_then_notify(Context, Id, ?PORT_PENDING);
-patch(Context, Id, ?PORT_SCHEDULED) ->
-    maybe_patch_to_scheduled(Context, Id);
-patch(Context, Id, ?PORT_COMPLETED) ->
-    patch_then_notify(Context, Id, ?PORT_COMPLETED);
-patch(Context, Id, ?PORT_REJECTED) ->
-    patch_then_notify(Context, Id, ?PORT_REJECTED);
-patch(Context, Id, ?PORT_CANCELED) ->
-    patch_then_notify(Context, Id, ?PORT_CANCELED).
+patch(Context, Id, NewState=?PORT_PENDING) ->
+    save_then_maybe_notify(Context, Id, NewState);
+patch(Context, Id, NewState=?PORT_SCHEDULED) ->
+    OnSuccess = fun (C) -> save_then_maybe_notify(C, Id, NewState) end,
+    cb_context:validate_request_data(?SCHEMA_TO_SCHEDULED, Context, OnSuccess);
+patch(Context, Id, NewState=?PORT_COMPLETED) ->
+    save_then_maybe_notify(Context, Id, NewState);
+patch(Context, Id, NewState=?PORT_REJECTED) ->
+    save_then_maybe_notify(Context, Id, NewState);
+patch(Context, Id, NewState=?PORT_CANCELED) ->
+    save_then_maybe_notify(Context, Id, NewState).
 
--spec maybe_patch_to_scheduled(cb_context:context(), path_token()) -> cb_context:context().
-maybe_patch_to_scheduled(Context, Id) ->
-    OnSuccess = fun (C) -> maybe_update_scheduled_date(C, Id) end,
-    cb_context:validate_request_data(<<"port_requests.to_scheduled">>, Context, OnSuccess).
+-spec save_then_maybe_notify(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+save_then_maybe_notify(Context, PortId, NewState) ->
+    Context1 = save(Context),
+    case success =:= cb_context:resp_status(Context1) of
+        false -> Context1;
+        true ->
+            RespData1 = knm_port_request:public_fields(cb_context:doc(Context1)),
+            RespData = filter_private_comments(Context1, RespData1),
+            Context2 = cb_context:set_resp_data(Context1, RespData),
+            send_port_notification(Context2, PortId, NewState)
+    end.
 
--spec maybe_update_scheduled_date(cb_context:context(), ne_binary()) -> cb_context:context().
-maybe_update_scheduled_date(Context, PortId) ->
-    Key = <<"scheduled_date">>,
-    ReqData = cb_context:req_data(Context),
-    case kz_json:get_ne_value(Key, ReqData) of
-        Timestamp when is_integer(Timestamp) ->
-            patch_then_notify(Context, PortId, ?PORT_SCHEDULED);
+-spec maybe_set_scheduled_date_from_schedule_on(kz_json:object()) -> kz_json:object().
+maybe_set_scheduled_date_from_schedule_on(Doc) ->
+    case kz_json:get_ne_value(<<"schedule_on">>, Doc) of
+        undefined -> Doc;
         DateJObj ->
-            TZ = kz_json:get_ne_binary_value([Key, <<"timezone">>], ReqData),
-            Datetime = kz_json:get_ne_binary_value([Key, <<"date_time">>], ReqData),
+            TZ = kz_json:get_ne_binary_value(<<"timezone">>, DateJObj),
+            Datetime = kz_json:get_ne_binary_value(<<"date_time">>, DateJObj),
             Scheduled = date_as_configured_timezone(Datetime, TZ),
-            lager:debug("date ~s (~s) translated to ~p (~s)", [Datetime, Scheduled, TZ]),
-            Values = [{Key, Scheduled}
-                     ,{<<"schedule_at">>, DateJObj}
-                     ],
-            NewReqData = kz_json:set_values(Values, ReqData),
-            maybe_update_scheduled_date(cb_context:set_req_data(Context, NewReqData), PortId)
+            lager:debug("date ~s (~s) translated to ~p", [Datetime, TZ, Scheduled]),
+            kz_json:set_value(<<"scheduled_date">>, Scheduled, Doc)
     end.
 
 -spec date_as_configured_timezone(ne_binary(), ne_binary()) -> gregorian_seconds().
@@ -379,30 +382,6 @@ date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $
     Time = {kz_term:to_integer(HH), kz_term:to_integer(Mm), 0},
     kz_time:to_gregorian_seconds({Date, Time}, FromTimezone).
 
-%% @private
--spec patch_then_notify(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-patch_then_notify(Context, PortId, PortState) ->
-    Context1 = do_patch(Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            send_port_notification(Context1, PortId, PortState);
-        _ -> Context1
-    end.
-
-%% @private
--spec do_patch(cb_context:context()) -> cb_context:context().
-do_patch(Context) ->
-    UpdatedDoc = kz_json:merge(cb_context:doc(Context), kz_doc:public_fields(cb_context:req_data(Context))),
-
-    Context1  = crossbar_doc:save(update_port_request_for_save(Context, UpdatedDoc)),
-    RespData1 = knm_port_request:public_fields(cb_context:doc(Context1)),
-    RespData2 = filter_private_comments(Context1, RespData1),
-
-    case cb_context:resp_status(Context1) of
-        'success' -> cb_context:set_resp_data(Context1, RespData2);
-        _Status -> Context1
-    end.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -413,7 +392,7 @@ do_patch(Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
-    Context1 = crossbar_doc:save(update_port_request_for_save(Context)),
+    Context1 = save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             _ = maybe_send_port_comment_notification(Context1, Id),
@@ -427,20 +406,14 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
-
+    Options = [{'content_type', CT} | ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)],
     case kz_doc:attachment(cb_context:doc(Context), AttachmentId) of
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
         _AttachmentMeta ->
             lager:debug("deleting old attachment ~s", [AttachmentId]),
             kz_datamgr:delete_attachment(cb_context:account_db(Context), Id, AttachmentId)
     end,
-    crossbar_doc:save_attachment(Id
-                                ,AttachmentId
-                                ,Contents
-                                ,Context
-                                ,Opts
-                                ).
+    crossbar_doc:save_attachment(Id, AttachmentId, Contents, Context, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -464,7 +437,7 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 -spec load_port_request(cb_context:context(), ne_binary()) -> cb_context:context().
 load_port_request(Context, Id) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
-    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"port_request">>)).
+    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -514,18 +487,29 @@ validate_port_request(Context, Id, ?HTTP_POST) ->
 validate_port_request(Context, Id, ?HTTP_DELETE) ->
     is_deletable(load_port_request(Context, Id)).
 
-validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_PATCH) ->
-    maybe_move_state(Context, Id, ?PORT_SUBMITTED);
-validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_PATCH) ->
-    maybe_move_state(Context, Id, ?PORT_PENDING);
-validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_PATCH) ->
-    maybe_move_state(Context, Id, ?PORT_SCHEDULED);
-validate_port_request(Context, Id, ?PORT_COMPLETED, ?HTTP_PATCH) ->
-    maybe_move_state(Context, Id, ?PORT_COMPLETED);
-validate_port_request(Context, Id, ?PORT_REJECTED, ?HTTP_PATCH) ->
-    maybe_move_state(Context, Id, ?PORT_REJECTED);
-validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_PATCH) ->
-    maybe_move_state(Context, Id, ?PORT_CANCELED).
+validate_port_request(Context, Id, ToState=?PORT_SUBMITTED, ?HTTP_PATCH) ->
+    patch_then_validate_then_maybe_transition(Context, Id, ToState);
+validate_port_request(Context, Id, ToState=?PORT_PENDING, ?HTTP_PATCH) ->
+    patch_then_validate_then_maybe_transition(Context, Id, ToState);
+validate_port_request(Context, Id, ToState=?PORT_SCHEDULED, ?HTTP_PATCH) ->
+    patch_then_validate_then_maybe_transition(Context, Id, ToState);
+validate_port_request(Context, Id, ToState=?PORT_COMPLETED, ?HTTP_PATCH) ->
+    patch_then_validate_then_maybe_transition(Context, Id, ToState);
+validate_port_request(Context, Id, ToState=?PORT_REJECTED, ?HTTP_PATCH) ->
+    patch_then_validate_then_maybe_transition(Context, Id, ToState);
+validate_port_request(Context, Id, ToState=?PORT_CANCELED, ?HTTP_PATCH) ->
+    patch_then_validate_then_maybe_transition(Context, Id, ToState).
+
+-spec patch_then_validate_then_maybe_transition(cb_context:context(), ne_binary(), ne_binary()) ->
+                                                       cb_context:context().
+patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
+    ValidateFun = fun (_PortId, C) ->
+                          OnSuccess = fun (OtherC) -> maybe_move_state(OtherC, ToState) end,
+                          cb_context:validate_request_data(?SCHEMA, C, OnSuccess)
+                  end,
+    Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
+    LoadOptions = ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST),
+    crossbar_doc:patch_and_validate(PortId, Context1, ValidateFun, LoadOptions).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -579,7 +563,7 @@ is_deletable(Context, _PortState) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation(C, 'undefined') end,
-    cb_context:validate_request_data(<<"port_requests">>, Context, OnSuccess).
+    cb_context:validate_request_data(?SCHEMA, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -618,7 +602,7 @@ authority(AccountId) ->
 -spec update(cb_context:context(), ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     OnSuccess = fun(C) -> on_successful_validation(C, Id) end,
-    cb_context:validate_request_data(<<"port_requests">>, Context, OnSuccess).
+    cb_context:validate_request_data(?SCHEMA, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -756,16 +740,29 @@ maybe_normalize_summary_results(Context, 'true') ->
 
 -spec last_submitted(cb_context:context()) -> cb_context:context().
 last_submitted(Context) ->
-    case success =:= cb_context:resp_status(Context) of
-        false -> Context;
-        true ->
-            [RespData] = cb_context:resp_data(Context),
-            Timelines = [{kz_doc:id(Doc), LastSubmitted}
-                         || Doc <- kz_json:get_list_value(<<"port_requests">>, RespData),
-                            Timeline <- [prepare_timeline(Context, Doc)],
-                            [LastSubmitted|_] <- [lists:reverse(transitions_to_submitted(Timeline))]
-                        ],
-            cb_context:set_resp_data(Context, kz_json:from_list(Timelines))
+    AccountId = cb_context:account_id(Context),
+    ViewOptions = [{startkey, [AccountId]}
+                  ,{endkey, [AccountId, kz_json:new()]}
+                  ,include_docs
+                  ],
+    crossbar_doc:load_view(<<"port_requests/listing_submitted">>
+                          ,ViewOptions
+                          ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                          ,fun (Res, Acc) -> last_submitted(Context, Res, Acc) end
+                          ).
+
+-spec last_submitted(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
+last_submitted(Context, ResultJObj, Acc) ->
+    Doc = kz_json:get_value(<<"doc">>, ResultJObj),
+    Timeline = prepare_timeline(Context, Doc),
+    case lists:reverse(transitions_to_submitted(Timeline)) of
+        [] -> Acc;
+        [LastSubmitted|_] ->
+            JObj = kz_json:from_list(
+                     [{<<"id">>, kz_doc:id(Doc)}
+                     ,{<<"transition">>, LastSubmitted}
+                     ]),
+            [JObj|Acc]
     end.
 
 -spec transitions_to_submitted(kz_json:objects()) -> kz_json:objects().
@@ -896,7 +893,7 @@ on_successful_validation(Context, 'undefined') ->
 on_successful_validation(Context, Id) ->
     Context1 = crossbar_doc:load_merge(Id
                                       ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                                      ,?TYPE_CHECK_OPTION(<<"port_request">>)
+                                      ,?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)
                                       ),
     on_successful_validation(Context1, Id, can_update_port_request(Context1)).
 
@@ -1065,7 +1062,7 @@ load_attachment(Id, AttachmentId, Context) ->
 load_attachment(AttachmentId, Context) ->
     Context1 = crossbar_doc:load_attachment(cb_context:doc(Context)
                                            ,AttachmentId
-                                           ,?TYPE_CHECK_OPTION(<<"port_request">>)
+                                           ,?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)
                                            ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                            ),
     Headers =
@@ -1075,25 +1072,20 @@ load_attachment(AttachmentId, Context) ->
         ],
     cb_context:add_resp_headers(Context1, Headers).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-maybe_move_state(Context, Id, PortState) ->
+-spec maybe_move_state(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_move_state(Context, PortState) ->
     Metadata = knm_port_request:transition_metadata(cb_context:auth_account_id(Context)
                                                    ,cb_context:auth_user_id(Context)
                                                    ,cb_context:req_value(Context, ?REQ_TRANSITION)
                                                    ),
-    Context1 = remove_transition_reason(load_port_request(Context, Id)),
-    try cb_context:resp_status(Context1) =:= 'success'
-             andalso knm_port_request:maybe_transition(cb_context:doc(Context1), Metadata, PortState)
+    try cb_context:resp_status(Context) =:= 'success'
+             andalso knm_port_request:maybe_transition(cb_context:doc(Context), Metadata, PortState)
     of
-        'false' -> Context1;
+        'false' -> Context;
         {'ok', PortRequest} ->
             lager:debug("loaded new port request state ~s", [PortState]),
-            cb_context:set_doc(Context1, PortRequest);
+            cb_context:set_doc(Context, PortRequest);
         {'error', 'invalid_state_transition'} ->
             Msg = kz_json:from_list(
                     [{<<"message">>, <<"Cannot move to new state from current state">>}
@@ -1107,11 +1099,6 @@ maybe_move_state(Context, Id, PortState) ->
         'throw':{'error', 'failed_to_charge'} ->
             cb_context:add_system_error('no_credit', Context)
     end.
-
--spec remove_transition_reason(cb_context:context()) -> cb_context:context().
-remove_transition_reason(Context) ->
-    NewDoc = kz_json:delete_key(?REQ_TRANSITION, cb_context:doc(Context)),
-    cb_context:set_doc(Context, NewDoc).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1211,7 +1198,7 @@ send_port_notification(Context, Id, ?PORT_CANCELED=State) ->
 send_port_notification(Context, Id, State, Fun) ->
     try
         Fun(Context, Id),
-        lager:debug("port ~s notification sent", [State]),
+        lager:debug("port ~s notification sent for ~s", [State, Id]),
         Context
     catch
         _E:_R ->

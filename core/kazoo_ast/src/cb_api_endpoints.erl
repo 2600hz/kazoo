@@ -225,7 +225,8 @@ process_schema(Filename, Definitions) ->
                 end
                 || {Path,V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
                    not lists:member(<<"patternProperties">>, Path),
-                   not lists:member(<<"kazoo-validation">>, Path)
+                   not lists:member(<<"kazoo-validation">>, Path),
+                   not lists:member(<<"oneOf">>, Path)
                ])),
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
@@ -840,6 +841,7 @@ def_path_param(<<"{TEMPORAL_RULE_SET}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{USER_ID}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{WEBHOOK_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{MIGRATION_ID}">>=P) -> generic_id_path_param(P);
 
 %% When param represents an MoDB id (i.e. 32+4+2 bytes of hexa & 1 dash):
 def_path_param(<<"{CDR_ID}">>=P) -> modb_id_path_param(P);

@@ -64,5 +64,6 @@ compile_commands.json
 /make/cover.mk
 /core/*/cover/*.html
 /applications/*/cover/*.html
-
 /applications/crossbar/priv/couchdb/schemas/port_requests.to_scheduled.json
+/out/
+/doc/mkdocs/*.local

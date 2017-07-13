@@ -3,6 +3,7 @@
 -export([module_ast/1
         ,add_module_ast/3
 
+        ,ast_to_list_of_binaries/1
         ,binary_match_to_binary/1
         ,smash_snake/1
 
@@ -19,6 +20,8 @@
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
+-include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
+-include_lib("kazoo_amqp/src/api/kapi_call.hrl").
 
 -type ast() :: [erl_parse:abstract_form()].
 -type abstract_code() :: {'raw_abstract_v1', ast()}.
@@ -53,7 +56,26 @@ add_module_ast_fold(?AST_RECORD(Name, Fields), _Module, #module_ast{records=Rs}=
 add_module_ast_fold(_Other, _Module, Acc) ->
     Acc.
 
--spec binary_match_to_binary(ast()) -> binary().
+-spec ast_to_list_of_binaries(erl_parse:abstract_expr()) -> ne_binaries().
+ast_to_list_of_binaries(ASTList) ->
+    ast_to_list_of_binaries(ASTList, []).
+
+ast_to_list_of_binaries(?APPEND(First, Second), Binaries) ->
+    ast_to_list_of_binaries(Second, ast_to_list_of_binaries(First, Binaries));
+ast_to_list_of_binaries(?EMPTY_LIST, Binaries) ->
+    lists:reverse(Binaries);
+ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_headers', []), Binaries) ->
+    ?OPTIONAL_BRIDGE_REQ_HEADERS ++ Binaries;
+ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_endpoint_headers', []), Binaries) ->
+    ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS ++ Binaries;
+ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_call', 'optional_call_event_headers', []), Binaries) ->
+    ?OPTIONAL_CALL_EVENT_HEADERS ++ Binaries;
+ast_to_list_of_binaries(?LIST(?LIST(_, _)=H, T), Binaries) ->
+    ast_to_list_of_binaries(T, [ast_to_list_of_binaries(H) | Binaries]);
+ast_to_list_of_binaries(?LIST(H, T), Binaries) ->
+    ast_to_list_of_binaries(T, [binary_match_to_binary(H) | Binaries]).
+
+-spec binary_match_to_binary(erl_parse:abstract_expr()) -> binary().
 binary_match_to_binary(?ATOM(A)) -> kz_term:to_binary(A);
 binary_match_to_binary(?BINARY_STRING(V)) ->
     kz_term:to_binary(V);

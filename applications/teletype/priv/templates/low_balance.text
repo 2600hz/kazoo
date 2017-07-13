@@ -20,4 +20,4 @@ Current balance is now {{current_balance}}
 
 
 
-Sent from {{system.hostname}}
+Sent from {{system.encoded_node}}

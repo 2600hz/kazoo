@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.globals.call",
+    "description": "AMQP API for globals.call",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "globals"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "call"
+            ],
+            "type": "string"
+        },
+        "Message": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Message",
+        "Name"
+    ],
+    "type": "object"
+}

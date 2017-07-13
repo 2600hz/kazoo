@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conf_participant.dialplan_req",
+    "description": "AMQP API for conf_participant.dialplan_req",
+    "properties": {
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Dialplan-Command": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "dialplan_req"
+            ],
+            "type": "string"
+        },
+        "Participant-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Dialplan-Command"
+    ],
+    "type": "object"
+}

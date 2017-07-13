@@ -1,0 +1,209 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.offnet_resource.req",
+    "description": "AMQP API for offnet_resource.req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Account-Realm": {
+            "type": "string"
+        },
+        "Application-Data": {
+            "type": "string"
+        },
+        "Application-Name": {
+            "enum": [
+                "bridge",
+                "eavesdrop",
+                "fax",
+                "park",
+                "sms",
+                "transfer"
+            ],
+            "type": "string"
+        },
+        "B-Leg-Events": {
+            "items": {
+                "enum": [
+                    "CALL_SECURE",
+                    "CALL_UPDATE",
+                    "CHANNEL_ANSWER",
+                    "CHANNEL_CREATE",
+                    "CHANNEL_DESTROY",
+                    "CHANNEL_EXECUTE",
+                    "CHANNEL_EXECUTE_COMPLETE",
+                    "CHANNEL_EXECUTE_ERROR",
+                    "CHANNEL_FAX_STATUS",
+                    "CHANNEL_INTERCEPTED",
+                    "CHANNEL_PROGRESS_MEDIA",
+                    "CHANNEL_REPLACED",
+                    "CHANNEL_TRANSFEREE",
+                    "CHANNEL_TRANSFEROR",
+                    "CHANNEL_BRIDGE",
+                    "CHANNEL_UNBRIDGE",
+                    "CHANNEL_HOLD",
+                    "CHANNEL_UNHOLD",
+                    "DETECTED_TONE",
+                    "DTMF",
+                    "LEG_CREATED",
+                    "LEG_DESTROYED",
+                    "RECORD_START",
+                    "RECORD_STOP",
+                    "dialplan"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Body": {
+            "type": "string"
+        },
+        "Bypass-E164": {
+            "type": "boolean"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Control-Queue": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Emergency-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Emergency-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Enable-T38-Fax": {
+            "type": "string"
+        },
+        "Enable-T38-Fax-Request": {
+            "type": "string"
+        },
+        "Enable-T38-Gateway": {
+            "type": "string"
+        },
+        "Enable-T38-Passthrough": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "resource"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "offnet_req"
+            ],
+            "type": "string"
+        },
+        "Fax-Identity-Name": {
+            "type": "string"
+        },
+        "Fax-Identity-Number": {
+            "type": "string"
+        },
+        "Fax-T38-Enabled": {
+            "type": "string"
+        },
+        "Fax-Timezone": {
+            "type": "string"
+        },
+        "Flags": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Force-Fax": {
+            "type": "boolean"
+        },
+        "Force-Outbound": {
+            "type": "boolean"
+        },
+        "Format-From-URI": {
+            "type": "string"
+        },
+        "From-URI-Realm": {
+            "type": "string"
+        },
+        "Group-ID": {
+            "type": "string"
+        },
+        "Hold-Media": {
+            "type": "string"
+        },
+        "Hunt-Account-ID": {
+            "type": "string"
+        },
+        "Ignore-Early-Media": {
+            "type": "string"
+        },
+        "Inception": {
+            "type": "string"
+        },
+        "Media": {
+            "enum": [
+                "process",
+                "bypass",
+                "auto"
+            ],
+            "type": "string"
+        },
+        "Message-ID": {
+            "type": "string"
+        },
+        "Mode": {
+            "enum": [
+                "full",
+                "listen",
+                "whisper"
+            ],
+            "type": "string"
+        },
+        "Outbound-Call-ID": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Resource-Type": {
+            "enum": [
+                "audio",
+                "video",
+                "originate",
+                "sms"
+            ],
+            "type": "string"
+        },
+        "Ringback": {
+            "type": "string"
+        },
+        "Timeout": {
+            "type": "string"
+        },
+        "To-DID": {
+            "minLength": 1,
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Resource-Type",
+        "To-DID"
+    ],
+    "type": "object"
+}

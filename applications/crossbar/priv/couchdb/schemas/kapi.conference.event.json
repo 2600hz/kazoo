@@ -1,0 +1,55 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.event",
+    "description": "AMQP API for conference.event",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Channel-Presence-ID": {
+            "type": "string"
+        },
+        "Conference-Channel-Vars": {
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "string"
+        },
+        "Event": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "event"
+            ],
+            "type": "string"
+        },
+        "Instance-ID": {
+            "type": "string"
+        },
+        "Participant-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Conference-ID",
+        "Event",
+        "Instance-ID"
+    ],
+    "type": "object"
+}

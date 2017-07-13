@@ -73,7 +73,10 @@
 -define(RATE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                           ,{<<"Event-Name">>, <<"resp">>}
                           ]).
--define(RATE_RESP_TYPES, []).
+-define(RATE_RESP_TYPES, [{<<"Rate-Increment">>, fun is_integer/1}
+                         ,{<<"Rate-NoCharge-Time">>, fun is_integer/1}
+                         ,{<<"Update-Callee-ID">>, fun kz_term:is_boolean/1}
+                         ]).
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Request - see wiki

@@ -21,8 +21,9 @@
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"current_balance">>, <<"current_balance">>, <<"Current Balance">>, <<"Account's Current Credit Balance">>)
           ,?MACRO_VALUE(<<"threshold">>, <<"threshold">>, <<"Threshold">>, <<"Account's Low Credit Balance Threshold">>)
-           | ?ACCOUNT_MACROS
-          ])
+           | ?COMMON_TEMPLATE_MACROS
+          ]
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Account '{{account.name}}' is running out of credit">>).

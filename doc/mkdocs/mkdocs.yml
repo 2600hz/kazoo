@@ -16,7 +16,7 @@ pages:
     - 'applications/crossbar/doc/basic_auth.md'
     - 'applications/crossbar/doc/token_auth.md'
     - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
-    - 'applications/crossbar/doc/authentication_configuration.md'
+    - 'applications/crossbar/doc/security.md'
     - 'applications/crossbar/doc/shared_auth.md'
     - 'applications/crossbar/doc/ubiquiti_auth.md'
   - 'Account Management':
