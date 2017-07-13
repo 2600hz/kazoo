@@ -178,7 +178,7 @@ templates_source(TemplateId, AccountId, ResellerId) ->
 -ifdef(TEST).
 bypass_templates_source(?NE_BINARY, ?MATCH_ACCOUNT_RAW(_), ?MATCH_ACCOUNT_RAW(_)) -> ?KZ_CONFIG_DB.
 -else.
-bypass_templates_source(TemplateId, AccountId) ->
+bypass_templates_source(TemplateId, AccountId, ResellerId) ->
     case fetch_notification(TemplateId, AccountId) of
         {'error', 'not_found'} ->
             parent_templates_source(TemplateId, AccountId, ResellerId);
