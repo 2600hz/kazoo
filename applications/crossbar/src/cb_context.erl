@@ -809,10 +809,14 @@ failed_error(Error, Context) ->
                       }.
 
 -spec passed(context()) -> context().
-passed(#cb_context{req_data=Data}=Context) ->
-    case kz_doc:id(Data) of
-        'undefined' -> Context;
-        Id -> set_doc(Context, kz_doc:set_id(doc(Context), Id))
+passed(Context) ->
+    Context1 = case error =:= resp_status(Context) of
+                   true -> Context;
+                   false -> set_resp_status(Context, success)
+               end,
+    case kz_doc:id(req_data(Context1)) of
+        'undefined' -> Context1;
+        Id -> set_doc(Context1, kz_doc:set_id(doc(Context1), Id))
     end.
 
 -spec find_schema(ne_binary()) -> api_object().
