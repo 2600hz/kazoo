@@ -225,7 +225,8 @@ process_schema(Filename, Definitions) ->
                 end
                 || {Path,V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
                    not lists:member(<<"patternProperties">>, Path),
-                   not lists:member(<<"kazoo-validation">>, Path)
+                   not lists:member(<<"kazoo-validation">>, Path),
+                   not lists:member(<<"oneOf">>, Path)
                ])),
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).

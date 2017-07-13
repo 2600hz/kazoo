@@ -1,5 +1,7 @@
 -ifndef(KNM_PORT_REQUEST_HRL).
 
+-define(TYPE_PORT_REQUEST, <<"port_request">>).
+
 -define(PORT_ATTACHMENT, <<"attachments">>).
 -define(PORT_CANCELED, <<"canceled">>).
 -define(PORT_COMPLETED, <<"completed">>).

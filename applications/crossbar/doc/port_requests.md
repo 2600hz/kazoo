@@ -329,7 +329,7 @@ curl -v -X GET \
                         "+12025559042": {}
                     },
                     "port_state": "scheduled",
-                    "schedule_at": {
+                    "schedule_on": {
                         "date_time": "2017-06-24 12:00",
                         "timezone": "America/New_York"
                     },
@@ -844,27 +844,30 @@ curl -v -X GET \
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "{PORT_REQUEST_ID}": {
-            "authorization": {
-                "account": {
-                    "id": "{AUTH_ACCOUNT_ID}",
-                    "name": "{AUTH_ACCOUNT_NAME}"
-                },
-                "user": {
-                    "id": "0d46906ff1eb36bff4d09b5b32fc14be",
-                    "first_name": "John",
-                    "last_name": "Doe"
-                }
-            },
-            "reason": "this was approved by Jane Doe",
-            "timestamp": 63664096014,
+    "data": [
+        {
+            "id": "{PORT_REQUEST_ID}",
             "transition": {
-                "new": "submitted",
-                "previous": "unconfirmed"
-            },
-            "type": "transition"
-        }
+                "authorization": {
+                    "account": {
+                        "id": "{AUTH_ACCOUNT_ID}",
+                        "name": "{AUTH_ACCOUNT_NAME}"
+                    },
+                    "user": {
+                        "id": "0d46906ff1eb36bff4d09b5b32fc14be",
+                        "first_name": "John",
+                        "last_name": "Doe"
+                    }
+                },
+                "reason": "this was approved by Jane Doe",
+                "timestamp": 63664096014,
+                "transition": {
+                    "new": "submitted",
+                    "previous": "unconfirmed"
+                },
+                "type": "transition"
+            }
+        ]
     },
     "node": "{NODE}",
     "request_id": "{REQUEST_ID}",
@@ -1087,10 +1090,13 @@ curl -v -X PATCH \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
 
+Note: `schedule_on` is a required field for this state transition.
+Note: `scheduled_date` is an automatically added timestamp computed from the value of the `schedule_on` object.
+
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"scheduled_date": {"timezone":"America/Los_Angeles", "date_time":"2017-06-24 12:00"}}}' \
+    -d '{"data": {"schedule_on": {"timezone":"America/Los_Angeles", "date_time":"2017-06-24 12:00"}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
 ```
 
@@ -1105,7 +1111,7 @@ curl -v -X PATCH \
             "+12025559000": {}
         },
         "port_state": "scheduled",
-        "schedule_at": {
+        "schedule_on": {
             "date_time": "2017-06-24 12:00",
             "timezone": "America/Los_Angeles"
         },

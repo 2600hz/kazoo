@@ -125,7 +125,7 @@ fix_number_fold(Number, _Value, Acc) ->
 fix_billing(JObj) ->
     kz_json:foldl(fun fix_billing_fold/3
                  ,kz_json:delete_key(<<"bill">>, JObj)
-                 ,kz_json:get_value(<<"bill">>, JObj)
+                 ,kz_json:get_json_value(<<"bill">>, JObj, kz_json:new())
                  ).
 
 -spec fix_billing_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
@@ -135,11 +135,8 @@ fix_billing_fold(Key, Value, Acc) ->
 
 -spec fix_comments(kz_json:object()) -> kz_json:object().
 fix_comments(JObj) ->
-    case kz_json:get_value(<<"comments">>, JObj) of
-        'undefined' ->
-            kz_json:delete_key(<<"comments">>, JObj);
-        [] ->
-            kz_json:delete_key(<<"comments">>, JObj);
+    case kz_json:get_list_value(<<"comments">>, JObj, []) of
+        [] -> kz_json:delete_key(<<"comments">>, JObj);
         Comments ->
             LastComment = lists:last(Comments),
 
@@ -157,10 +154,7 @@ fix_comments(JObj) ->
 
 -spec fix_dates(kz_json:object()) -> kz_json:object().
 fix_dates(JObj) ->
-    lists:foldl(fun fix_date_fold/2
-               ,JObj
-               ,[<<"transfer_date">>, <<"scheduled_date">>]
-               ).
+    lists:foldl(fun fix_date_fold/2, JObj, [<<"transfer_date">>, <<"scheduled_date">>]).
 
 -spec fix_date_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
 fix_date_fold(Key, JObj) ->
@@ -193,13 +187,8 @@ fix_transfer_date(JObj) ->
 
 -spec fix_scheduled_date(kz_json:path()) -> kz_json:object().
 fix_scheduled_date(JObj) ->
-    ScheduledDate = case kz_json:get_integer_value([<<"scheduled_date">>, <<"local">>], JObj) of
-                        %% backward compatibility
-                        undefined -> kz_json:get_integer_value(<<"scheduled_date">>, JObj);
-                        Timestamp -> Timestamp
-                    end,
     kz_json:set_values([{<<"port_scheduled_date">>, kz_json:get_value(<<"scheduled_date">>, JObj)}
-                       ,{<<"scheduled_date">>, ScheduledDate}
+                       ,{<<"scheduled_date">>, kz_json:get_value([<<"scheduled_date">>, <<"local">>], JObj)}
                        ], JObj).
 
 -spec fix_ui_metadata(kz_json:path()) -> kz_json:object().

@@ -219,11 +219,8 @@ validate_user_id(UserId, Context) ->
 validate_user_id(UserId, Context, Doc) ->
     case kz_doc:is_soft_deleted(Doc) of
         'true' ->
-            cb_context:add_system_error(
-              'bad_identifier'
-                                       ,kz_json:from_list([{<<"cause">>, UserId}])
-                                       ,Context
-             );
+            Msg = kz_json:from_list([{<<"cause">>, UserId}]),
+            cb_context:add_system_error('bad_identifier', Msg, Context);
         'false'->
             cb_context:setters(Context
                               ,[{fun cb_context:set_user_id/2, UserId}
@@ -347,16 +344,18 @@ patch(Context, Id) ->
 -spec load_attachment(ne_binary(), ne_binary(), cb_context:context()) ->
                              cb_context:context().
 load_attachment(AttachmentId, Context) ->
+    Headers =
+        [{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+        ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+        ],
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
                                   ,AttachmentId
                                   ,?TYPE_CHECK_OPTION(kzd_user:type())
                                   ,Context
                                   )
-                               ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-                                ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-                                ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
-                                ]).
+                               ,Headers).
 
 load_attachment(UserId, AttachmentId, Context) ->
     Context1 = load_user(UserId, Context),
@@ -463,13 +462,12 @@ send_email(Context) ->
 %%--------------------------------------------------------------------
 -spec load_user_summary(cb_context:context()) -> cb_context:context().
 load_user_summary(Context) ->
-    Context1 = crossbar_doc:load_view(
-                 ?CB_LIST
-                                     ,[]
-                                     ,Context
-                                     ,fun normalize_view_results/2
-                ),
-    fix_envelope(Context1).
+    fix_envelope(
+      crossbar_doc:load_view(?CB_LIST
+                            ,[]
+                            ,Context
+                            ,fun normalize_view_results/2
+                            )).
 
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
@@ -526,14 +524,11 @@ check_user_name(UserId, Context) ->
 
 -spec non_unique_username_error(cb_context:context(), ne_binary()) -> cb_context:context().
 non_unique_username_error(Context, Username) ->
-    cb_context:add_validation_error([<<"username">>]
-                                   ,<<"unique">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"User name is not unique for this account">>}
-                                      ,{<<"cause">>, Username}
-                                      ])
-                                   ,Context
-                                   ).
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"User name is not unique for this account">>}
+            ,{<<"cause">>, Username}
+            ]),
+    cb_context:add_validation_error([<<"username">>], <<"unique">>, Msg, Context).
 
 -spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
 check_emergency_caller_id(UserId, Context) ->
@@ -631,25 +626,18 @@ manditory_rehash_creds(UserId, Username, Context) ->
 
 -spec required_password_error(cb_context:context()) -> cb_context:context().
 required_password_error(Context) ->
-    cb_context:add_validation_error(<<"password">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"The password must be provided when updating the user name">>}]
-                                     )
-                                   ,Context
-                                   ).
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"The password must be provided when updating the user name">>}
+            ]),
+    cb_context:add_validation_error(<<"password">>, <<"required">>, Msg, Context).
 
 -spec rehash_creds(api_binary(), api_binary(), ne_binary(), cb_context:context()) ->
                           cb_context:context().
 rehash_creds(_UserId, 'undefined', _Password, Context) ->
-    cb_context:add_validation_error(
-      <<"username">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"The user name must be provided when updating the password">>}]
-                                     )
-                                   ,Context
-     );
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"The user name must be provided when updating the password">>}
+            ]),
+    cb_context:add_validation_error(<<"username">>, <<"required">>, Msg, Context);
 rehash_creds(_UserId, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),
     {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),

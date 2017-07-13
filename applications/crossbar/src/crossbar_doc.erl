@@ -11,8 +11,7 @@
 
 -export([load/2, load/3
         ,load_merge/2, load_merge/3, load_merge/4
-        ,merge/3
-        ,patch_and_validate/3
+        ,patch_and_validate/3, patch_and_validate/4
         ,load_view/3, load_view/4, load_view/5, load_view/6
         ,load_attachment/4, load_docs/2
         ,save/1, save/2, save/3
@@ -299,31 +298,31 @@ load_merge(DocId, DataJObj, Context, Options) ->
 
 load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
     Context1 = load(DocId, Context, Options),
-    case cb_context:resp_status(Context1) of
-        'success' ->
+    case success =:= cb_context:resp_status(Context1) of
+        false -> Context1;
+        true ->
             lager:debug("loaded doc ~s(~s), merging", [DocId, kz_doc:revision(cb_context:doc(Context1))]),
-            merge(DataJObj, cb_context:doc(Context1), Context1);
-        _Status -> Context1
+            Merged = kz_json:merge_jobjs(kz_doc:private_fields(cb_context:doc(Context1)), DataJObj),
+            handle_datamgr_success(Merged, Context)
     end;
 load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
     handle_datamgr_success(BypassJObj, Context).
-
--spec merge(kz_json:object(), kz_json:object(), cb_context:context()) ->
-                   cb_context:context().
-merge(DataJObj, JObj, Context) ->
-    PrivJObj = kz_doc:private_fields(JObj),
-    handle_datamgr_success(kz_json:merge_jobjs(PrivJObj, DataJObj), Context).
 
 -type validate_fun() :: fun((ne_binary(), cb_context:context()) -> cb_context:context()).
 
 -spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
                                 cb_context:context().
--spec patch_and_validate_doc(ne_binary(), cb_context:context(), validate_fun(), crossbar_status()) ->
-                                    cb_context:context().
+-spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun(), load_options()) ->
+                                cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
-    Context1 = load(Id, Context, ?TYPE_CHECK_OPTION_ANY),
+    patch_and_validate(Id, Context, ValidateFun, ?TYPE_CHECK_OPTION_ANY).
+
+patch_and_validate(Id, Context, ValidateFun, LoadOptions) ->
+    Context1 = load(Id, Context, LoadOptions),
     patch_and_validate_doc(Id, Context1, ValidateFun, cb_context:resp_status(Context1)).
 
+-spec patch_and_validate_doc(ne_binary(), cb_context:context(), validate_fun(), crossbar_status()) ->
+                                    cb_context:context().
 patch_and_validate_doc(Id, Context, ValidateFun, 'success') ->
     PatchedJObj = patch_the_doc(cb_context:req_data(Context), cb_context:doc(Context)),
     Context1 = cb_context:set_req_data(Context, PatchedJObj),

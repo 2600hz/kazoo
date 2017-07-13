@@ -439,7 +439,7 @@ vcard_normalize_type(T) when is_list(T) -> iolist_join(<<";">>, [vcard_normalize
 vcard_normalize_type({T, V}) -> iolist_join(<<"=">>, [T, V]);
 vcard_normalize_type(T) -> T.
 
-                                                %-spec card_field(ne_binary(), kz_json:object()) -> {vcard_type_spec(), vcard_val()}.
+%%-spec card_field(ne_binary(), kz_json:object()) -> {vcard_type_spec(), vcard_val()}.
 card_field(Key, _)
   when Key =:= <<"BEGIN">> ->
     {Key, <<"VCARD">>};
@@ -591,20 +591,15 @@ check_user_name(UserId, Context) ->
     AccountDb = cb_context:account_db(Context),
     case is_username_unique(AccountDb, UserId, UserName) of
         'true' ->
-            lager:debug("user name ~p is unique", [UserName]),
+            lager:debug("user name ~s is unique", [UserName]),
             check_emergency_caller_id(UserId, Context);
         'false' ->
-            Context1 =
-                cb_context:add_validation_error(
-                  [<<"username">>]
-                                               ,<<"unique">>
-                                               ,kz_json:from_list([
-                                                                   {<<"message">>, <<"User name already in use">>}
-                                                                  ,{<<"cause">>, UserName}
-                                                                  ])
-                                               ,Context
-                 ),
-            lager:error("user name ~p is already used", [UserName]),
+            lager:error("user name ~s is already in use", [UserName]),
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"User name already in use">>}
+                    ,{<<"cause">>, UserName}
+                    ]),
+            Context1 = cb_context:add_validation_error([<<"username">>], <<"unique">>, Msg, Context),
             check_emergency_caller_id(UserId, Context1)
     end.
 
@@ -674,15 +669,11 @@ maybe_validate_username(UserId, Context) ->
             manditory_rehash_creds(UserId, NewUsername, Context);
         %% updated user name to existing, collect any further errors...
         _Else ->
-            C = cb_context:add_validation_error(
-                  <<"username">>
-                                               ,<<"unique">>
-                                               ,kz_json:from_list([
-                                                                   {<<"message">>, <<"User name is not unique for this account">>}
-                                                                  ,{<<"cause">>, NewUsername}
-                                                                  ])
-                                               ,Context
-                 ),
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"User name is not unique for this account">>}
+                    ,{<<"cause">>, NewUsername}
+                    ]),
+            C = cb_context:add_validation_error(<<"username">>, <<"unique">>, Msg, Context),
             manditory_rehash_creds(UserId, NewUsername, C)
     end.
 
@@ -704,28 +695,20 @@ maybe_rehash_creds(UserId, Username, Context) ->
 manditory_rehash_creds(UserId, Username, Context) ->
     case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         'undefined' ->
-            cb_context:add_validation_error(
-              <<"password">>
-                                           ,<<"required">>
-                                           ,kz_json:from_list([
-                                                               {<<"message">>, <<"The password must be provided when updating the user name">>}
-                                                              ])
-                                           ,Context
-             );
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"The password must be provided when updating the user name">>}
+                    ]),
+            cb_context:add_validation_error(<<"password">>, <<"required">>, Msg, Context);
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
 -spec rehash_creds(api_binary(), api_binary(), ne_binary(), cb_context:context()) ->
                           cb_context:context().
 rehash_creds(_UserId, 'undefined', _Password, Context) ->
-    cb_context:add_validation_error(
-      <<"username">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([
-                                                       {<<"message">>, <<"The user name must be provided when updating the password">>}
-                                                      ])
-                                   ,Context
-     );
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"The user name must be provided when updating the password">>}
+            ]),
+    cb_context:add_validation_error(<<"username">>, <<"required">>, Msg, Context);
 rehash_creds(_UserId, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),
     {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
