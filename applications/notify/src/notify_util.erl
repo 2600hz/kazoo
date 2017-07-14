@@ -350,7 +350,7 @@ find_admin([AcctId|Tree]) ->
             case [Doc
                   || User <- Users,
                      Doc <- [kz_json:get_value(<<"doc">>, User)],
-                     kzd_user:is_admin(Doc),
+                     kzd_user:is_account_admin(Doc),
                      kz_term:is_not_empty(kzd_user:email(Doc))
                  ]
             of

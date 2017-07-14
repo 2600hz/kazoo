@@ -261,7 +261,7 @@ is_superduper_admin(Context) ->
 
 -spec is_account_admin(context()) -> boolean().
 is_account_admin(Context) ->
-    kzd_user:is_admin(auth_account_id(Context), auth_user_id(Context)).
+    kzd_user:is_account_admin(auth_account_id(Context), auth_user_id(Context)).
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
