@@ -7,5 +7,6 @@
 -export([main/1]).
 
 main(_) ->
+    cb_api_endpoints:to_ref_doc('crossbar_doc'),
     cb_api_endpoints:to_ref_doc(),
     cb_api_endpoints:to_swagger_json().
