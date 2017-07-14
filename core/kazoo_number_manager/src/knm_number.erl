@@ -249,6 +249,8 @@ ensure_can_create(Num, Options) ->
 -endif.
 
 -spec allow_number_additions(knm_number_options:options(), ne_binary()) -> boolean().
+allow_number_additions(_Options, ?KNM_DEFAULT_AUTH_BY) ->
+    'true';
 allow_number_additions(_Options, _AccountId) ->
     {'ok', JObj} = ?LOAD_ACCOUNT(_Options, _AccountId),
     kz_account:allow_number_additions(JObj).
