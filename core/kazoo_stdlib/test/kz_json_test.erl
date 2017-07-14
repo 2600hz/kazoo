@@ -563,9 +563,17 @@ are_all_there(Values, Keys, Vs, Ks) ->
                                   ,{<<"k3">>, ?K3_JOBJ}
                                   ,{<<"k4">>, [1,2,3]}
                                   ])).
+-define(PROPS_WITH_UNDEFINED, [{<<"a">>, 42}
+                              ,{<<"b">>, undefined}
+                              ]).
+
 codec_test_() ->
     [?_assertEqual(?CODEC_JOBJ, kz_json:decode(kz_json:encode(?CODEC_JOBJ)))
-    ,?_assertNotEqual(<<"\"undefined\"">>, kz_json:encode(undefined))
+    ,?_assertThrow({error,{invalid_ejson,undefined}}, kz_json:encode(undefined))
+    ,?_assertThrow({error,{invalid_ejson,undefined}}, kz_json:encode(?JSON_WRAPPER(?PROPS_WITH_UNDEFINED)))
+    ,?_assert(kz_json:are_equal(kz_json:from_list(?PROPS_WITH_UNDEFINED)
+                               ,kz_json:decode(kz_json:encode(kz_json:from_list(?PROPS_WITH_UNDEFINED)))
+                               ))
     ].
 
 find_value_test_() ->
