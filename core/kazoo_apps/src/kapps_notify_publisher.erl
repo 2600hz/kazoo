@@ -86,7 +86,7 @@ check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
 
 -spec maybe_handle_error(api_binary(), api_terms(), any()) -> 'ok'.
 maybe_handle_error('undefined', _Req, _Error) ->
-    lager:error("not saving undefined notification");
+    lager:warning("not saving undefined notification");
 maybe_handle_error(NotifyType, Req, Error) ->
     AccountId = find_account_id(Req),
     should_presist_notify(AccountId)
@@ -97,7 +97,7 @@ maybe_handle_error(NotifyType, Req, Error) ->
 %% @doc save pay load to db to retry later
 -spec handle_error(ne_binary(), api_terms(), any()) -> 'ok'.
 handle_error(NotifyType, Req, Error) ->
-    lager:error("attempt for publishing notifcation ~s was unsuccessful: ~p", [NotifyType, Error]),
+    lager:warning("attempt for publishing notifcation ~s was unsuccessful: ~p", [NotifyType, Error]),
     Props = props:filter_undefined(
               [{<<"description">>, <<"failed to publish notification">>}
               ,{<<"failure_reason">>, error_to_failure_reason(Error)}
@@ -119,7 +119,7 @@ save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
 save_pending_notification(NotifyType, JObj, Loop) ->
     case kz_datamgr:save_doc(?KZ_PENDING_NOTIFY_DB, JObj) of
         {'ok', _} ->
-            lager:error("payload for failed notification ~s publish attempt was saved", [NotifyType]);
+            lager:warning("payload for failed notification ~s publish attempt was saved", [NotifyType]);
         {'error', 'not_found'} ->
             kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             save_pending_notification(NotifyType, JObj, Loop - 1);
@@ -136,7 +136,7 @@ save_pending_notification(NotifyType, JObj, Loop) ->
 -spec collecting(kz_json:objects()) -> boolean().
 collecting([JObj|_]) ->
     case kapi_notifications:notify_update_v(JObj)
-        andalso kz_json:get_value(<<"Status">>, JObj)
+        andalso kz_json:get_ne_binary_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
         <<"failed">> -> 'true';
@@ -149,7 +149,7 @@ collecting([JObj|_]) ->
 is_completed([]) -> 'false';
 is_completed([JObj|_]) ->
     case kapi_notifications:notify_update_v(JObj)
-        andalso kz_json:get_value(<<"Status">>, JObj)
+        andalso kz_json:get_ne_binary_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
         <<"failed">> -> maybe_ignore_failure(kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj));

@@ -374,6 +374,7 @@ create_account(AccountName, Realm, Username, Password)
                                 ,{<<"name">>, AccountName}
                                 ,{<<"realm">>, Realm}
                                 ]),
+
     User = kz_json:from_list([{<<"_id">>, kz_datamgr:get_uuid()}
                              ,{<<"username">>, Username}
                              ,{<<"password">>, Password}
@@ -381,29 +382,19 @@ create_account(AccountName, Realm, Username, Password)
                              ,{<<"last_name">>, <<"Admin">>}
                              ,{<<"priv_level">>, <<"admin">>}
                              ]),
-    try
-        {'ok', C1} = validate_account(Account, cb_context:new()),
-        {'ok', C2} = create_account(C1),
-        {'ok', C3} = validate_user(User, C2),
-        {'ok', _} = create_user(C3),
 
-        AccountDb = cb_context:account_db(C3),
-        AccountId = cb_context:account_id(C3),
-
-        case kapps_util:get_all_accounts() of
-            [AccountDb] ->
-                _ = promote_account(AccountId),
-                _ = allow_account_number_additions(AccountId),
-                _ = whs_account_conversion:force_promote(AccountId),
-                _ = update_system_config(AccountId),
-                'ok';
-            _Else -> 'ok'
-        end
+    try create_account_and_user(Account, User) of
+        {'ok', Context} -> maybe_promote_account(Context)
     catch
+        'throw':Errors ->
+            io:format("failed to create '~s': ~s~n", [AccountName, kz_json:encode(Errors)]),
+            'failed';
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:error("crashed creating account: ~s: ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
+
+            io:format("failed to create '~s': ~p~n", [AccountName, _R]),
             'failed'
     end;
 create_account(AccountName, Realm, Username, Password) ->
@@ -413,10 +404,83 @@ create_account(AccountName, Realm, Username, Password) ->
                   ,kz_term:to_binary(Password)
                   ).
 
+-spec maybe_promote_account(cb_context:context()) -> 'ok'.
+maybe_promote_account(Context) ->
+    AccountDb = cb_context:account_db(Context),
+    AccountId = cb_context:account_id(Context),
+
+    case kapps_util:get_all_accounts() of
+        [AccountDb] ->
+            'ok' = promote_account(AccountId),
+            'ok' = allow_account_number_additions(AccountId),
+            'ok' = whs_account_conversion:force_promote(AccountId),
+            update_system_config(AccountId);
+        _Else -> 'ok'
+    end.
+
+-spec create_account_and_user(kz_json:object(), kz_json:object()) ->
+                                     {'ok', cb_context:context()}.
+create_account_and_user(Account, User) ->
+    Funs = [fun prechecks/1
+           ,{fun validate_account/2, Account}
+           ,fun create_account/1
+           ,{fun validate_user/2, User}
+           ,fun create_user/1
+           ],
+    lists:foldl(fun create_fold/2
+               ,{'ok', cb_context:new()}
+               ,Funs
+               ).
+
+-spec create_fold(fun() | {fun(), kz_json:object()}, {'ok', cb_context:context()}) ->
+                         {'ok', cb_context:context()}.
+create_fold({F, V}, {'ok', C}) -> F(V, C);
+create_fold(F, {'ok', C}) -> F(C).
+
 -spec update_system_config(ne_binary()) -> 'ok'.
 update_system_config(AccountId) ->
     kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, AccountId),
     io:format("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]).
+
+-spec prechecks(cb_context:context()) -> {'ok', cb_context:context()}.
+prechecks(Context) ->
+    Funs = [fun db_accounts_exists/0
+           ,fun db_system_config_exists/0
+           ,fun db_system_schemas_exists/0
+           ],
+    'true' = lists:all(fun(F) -> F() end, Funs),
+    {'ok', Context}.
+
+-spec db_accounts_exists() -> 'true'.
+db_accounts_exists() ->
+    db_exists(?KZ_ACCOUNTS_DB).
+
+-spec db_system_config_exists() -> 'true'.
+db_system_config_exists() ->
+    db_exists(?KZ_CONFIG_DB).
+
+-spec db_system_schemas_exists() -> 'true'.
+db_system_schemas_exists() ->
+    db_exists(?KZ_SCHEMA_DB).
+
+-spec db_exists(ne_binary()) -> 'true'.
+-spec db_exists(ne_binary(), boolean()) -> 'true'.
+db_exists(Database) ->
+    db_exists(Database, 'true').
+
+db_exists(Database, ShouldRetry) ->
+    case kz_datamgr:db_exists(Database) of
+        'true' -> 'true';
+        'false' when ShouldRetry ->
+            io:format("db '~s' doesn't exist~n", [Database]),
+            kapps_maintenance:refresh(Database),
+            db_exists(Database, 'false');
+        'false' ->
+            throw(kz_json:from_list([{<<"error">>, <<"database not ready">>}
+                                    ,{<<"database">>, Database}
+                                    ])
+                 )
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -425,8 +489,7 @@ update_system_config(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_account(kz_json:object(), cb_context:context()) ->
-                              {'ok', cb_context:context()} |
-                              {'error', kz_json:object()}.
+                              {'ok', cb_context:context()}.
 validate_account(JObj, Context) ->
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
@@ -435,13 +498,13 @@ validate_account(JObj, Context) ->
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
                                   ])
               ],
-    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload),
+    Context1 = crossbar_bindings:fold(<<"v2_resource.validate.accounts">>, Payload),
     case cb_context:resp_status(Context1) of
         'success' -> {'ok', Context1};
         _Status ->
-            Errors = cb_context:resp_data(Context1),
-            io:format("failed to validate account properties(~p): '~s'~n", [_Status, kz_json:encode(Errors)]),
-            {'error', Errors}
+            {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
+            io:format("failed to validate account: ~p ~s~n", [_Code, _Msg]),
+            throw(Errors)
     end.
 
 %%--------------------------------------------------------------------
@@ -451,8 +514,7 @@ validate_account(JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_user(kz_json:object(), cb_context:context()) ->
-                           {'ok', cb_context:context()} |
-                           {'error', kz_json:object()}.
+                           {'ok', cb_context:context()}.
 validate_user(JObj, Context) ->
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
@@ -466,9 +528,9 @@ validate_user(JObj, Context) ->
     case cb_context:resp_status(Context1) of
         'success' -> {'ok', Context1};
         _Status ->
-            Errors = cb_context:resp_data(Context1),
-            io:format("failed to validate user properties: '~s'~n", [kz_json:encode(Errors)]),
-            {'error', Errors}
+            {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
+            io:format("failed to validate user: ~p ~s~n", [_Code, _Msg]),
+            throw(Errors)
     end.
 
 %%--------------------------------------------------------------------
@@ -481,7 +543,7 @@ validate_user(JObj, Context) ->
                             {'ok', cb_context:context()} |
                             {'error', kz_json:object()}.
 create_account(Context) ->
-    Context1 = crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]),
+    Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.accounts">>, [Context]),
     case cb_context:resp_status(Context1) of
         'success' ->
             io:format("created new account '~s' in db '~s'~n", [cb_context:account_id(Context1)
@@ -489,11 +551,13 @@ create_account(Context) ->
                                                                ]),
             {'ok', Context1};
         _Status ->
-            Errors = cb_context:resp_data(Context1),
-            io:format("failed to create account: '~s'~n", [kz_json:encode(Errors)]),
+            {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
             AccountId = kz_doc:id(cb_context:req_data(Context)),
             kz_datamgr:db_delete(kz_util:format_account_db(AccountId)),
-            {'error', Errors}
+
+            io:format("failed to create the account: ~p ~s", [_Code, _Msg]),
+
+            throw(Errors)
     end.
 
 %%--------------------------------------------------------------------
@@ -506,15 +570,15 @@ create_account(Context) ->
                          {'ok', cb_context:context()} |
                          {'error', kz_json:object()}.
 create_user(Context) ->
-    Context1 = crossbar_bindings:fold(<<"v1_resource.execute.put.users">>, [Context]),
+    Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.users">>, [Context]),
     case cb_context:resp_status(Context1) of
         'success' ->
             io:format("created new account admin user '~s'~n", [kz_doc:id(cb_context:doc(Context1))]),
             {'ok', Context1};
         _Status ->
-            Errors = cb_context:resp_data(Context1),
-            io:format("failed to create account admin user: '~s'~n", [kz_json:encode(Errors)]),
-            {'error', Errors}
+            {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
+            io:format("failed to create the admin user: ~p ~s", [_Code, _Msg]),
+            throw(Errors)
     end.
 
 -spec print_account_info(ne_binary()) -> {'ok', ne_binary()}.
@@ -530,7 +594,7 @@ print_account_info(AccountDb, AccountId) ->
             io:format("  Realm: ~s~n", [kz_account:realm(JObj)]),
             io:format("  Enabled: ~s~n", [kz_account:is_enabled(JObj)]),
             io:format("  System Admin: ~s~n", [kz_account:is_superduper_admin(JObj)]);
-        {'error', not_found} ->
+        {'error', 'not_found'} ->
             io:format("Account ID: ~s (~s) does not exist~n", [AccountId, AccountDb]);
         {'error', _} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb])
