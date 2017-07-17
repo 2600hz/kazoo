@@ -35,7 +35,7 @@
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 %% don't import the get_keys/1 that fetches keys from the process dictionary
 -compile({'no_auto_import', [get_keys/1]}).

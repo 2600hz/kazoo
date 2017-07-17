@@ -8,7 +8,7 @@
 
 -export([push/3, push/4, sync_push/3, sync_push/4]).
 
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(RETRY, 3).

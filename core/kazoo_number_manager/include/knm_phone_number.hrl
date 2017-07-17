@@ -1,6 +1,6 @@
 -ifndef(KNM_NUMBER_MANAGER_HRL).
 
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_types.hrl").
 
 -define(KNM_DEFAULT_AUTH_BY, <<"system">>).
