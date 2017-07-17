@@ -67,4 +67,4 @@ ct_to_ext(<<"text/plain">>) -> <<"text">>;
 ct_to_ext(<<"text/html">>) -> <<"html">>.
 
 lines(Bin) ->
-    binary:split(Bin, <<$\n>>, [global]).
+    kz_binary:strip(binary:split(Bin, <<$\n>>, [global])).
