@@ -7,48 +7,53 @@
 %%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(teletype_service_added).
+-behaviour(teletype_gen_email_template).
 
--export([init/0
-        ,handle_req/1
+-export([id/0
+        ,init/0
+        ,macros/0, macros/1
+        ,subject/0
+        ,category/0
+        ,friendly_name/0
         ]).
-
--ifdef(TEST).
--export([macros/1]).
--endif.
+-export([handle_req/1]).
 
 -include("teletype.hrl").
 
--define(TEMPLATE_ID, <<"service_added">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+-spec id() -> ne_binary().
+id() ->
+    <<"service_added">>.
 
--define(TEMPLATE_MACROS
-       ,kz_json:from_list(
-          [?MACRO_VALUE(<<"sub_account.id">>, <<"sub_account_id">>, <<"Sub-Account ID">>, <<"Sub-Account ID">>)
-          ,?MACRO_VALUE(<<"sub_account.name">>, <<"sub_account_name">>, <<"Sub-Account Name">>, <<"Sub-Account Name">>)
-          ,?MACRO_VALUE(<<"sub_account.realm">>, <<"sub_account_realm">>, <<"Sub-Account Realm">>, <<"Sub-Account Realm">>)
-          ,?MACRO_VALUE(<<"sub_account.language">>, <<"sub_account_language">>, <<"Sub-Account Language">>, <<"Sub-Account Language">>)
-          ,?MACRO_VALUE(<<"sub_account.timezone">>, <<"sub_account_timezone">>, <<"Sub-Account Timezone">>, <<"Sub-Account Timezone">>)
-          ,?MACRO_VALUE(<<"service_changes">>, <<"service_changes">>, <<"Sub-Account Service Changes object">>, <<"Sub-Account Service Changes object">>)
-           | ?USER_MACROS
-           ++ ?COMMON_TEMPLATE_MACROS
-          ])).
+-spec macros() -> kz_json:from_list().
+macros() ->
+    kz_json:from_list(
+      [?MACRO_VALUE(<<"sub_account.id">>, <<"sub_account_id">>, <<"Sub-Account ID">>, <<"Sub-Account ID">>)
+      ,?MACRO_VALUE(<<"sub_account.name">>, <<"sub_account_name">>, <<"Sub-Account Name">>, <<"Sub-Account Name">>)
+      ,?MACRO_VALUE(<<"sub_account.realm">>, <<"sub_account_realm">>, <<"Sub-Account Realm">>, <<"Sub-Account Realm">>)
+      ,?MACRO_VALUE(<<"sub_account.language">>, <<"sub_account_language">>, <<"Sub-Account Language">>, <<"Sub-Account Language">>)
+      ,?MACRO_VALUE(<<"sub_account.timezone">>, <<"sub_account_timezone">>, <<"Sub-Account Timezone">>, <<"Sub-Account Timezone">>)
+      ,?MACRO_VALUE(<<"service_changes">>, <<"service_changes">>, <<"Sub-Account Service Changes object">>, <<"Sub-Account Service Changes object">>)
+       | ?USER_MACROS
+       ++ ?COMMON_TEMPLATE_MACROS
+      ]).
 
--define(TEMPLATE_PARAMS, [{'macros', ?TEMPLATE_MACROS}
-                         ,{'subject', <<"New VoIP services were added to sub-account '{{sub_account.name}}'">>}
-                         ,{'category', <<"account">>}
-                         ,{'friendly_name', <<"New Service Addition">>}
-                         ,{'to', ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
-                         ,{'from', teletype_util:default_from_address(?MOD_CONFIG_CAT)}
-                         ,{'cc', ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-                         ,{'bcc', ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-                         ,{'reply_to', teletype_util:default_reply_to(?MOD_CONFIG_CAT)}
-                         ]).
+-spec subject() -> ne_binary().
+subject() ->
+    <<"New VoIP services were added to sub-account '{{sub_account.name}}'">>.
+
+-spec category() -> ne_binary().
+category() ->
+    <<"account">>.
+
+-spec friendly_name() -> ne_binary().
+friendly_name() ->
+    <<"New Service Addition">>.
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(?TEMPLATE_ID, ?TEMPLATE_PARAMS),
-    teletype_bindings:bind(<<"service_added">>, ?MODULE, 'handle_req').
+    teletype_templates:init(?MODULE),
+    teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(JObj) ->
@@ -59,8 +64,8 @@ handle_req(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+    case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
+        'false' -> teletype_util:notification_disabled(DataJObj, id());
         'true' -> process_req(DataJObj)
     end.
 
@@ -69,13 +74,13 @@ process_req(DataJObj) ->
     Macros = macros(DataJObj),
 
     %% Load templates
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
+    RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj]),
     Subject = teletype_util:render_subject(Subject0, Macros),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, teletype_util:mod_config_cat(id())),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);

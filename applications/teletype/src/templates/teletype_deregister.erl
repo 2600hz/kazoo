@@ -10,7 +10,6 @@
 -behaviour(teletype_gen_email_template).
 
 -export([id/0
-        ,configuration/0
         ,init/0
         ,macros/0, macros/1
         ,subject/0
@@ -24,10 +23,6 @@
 -spec id() -> ne_binary().
 id() ->
     <<"deregister">>.
-
--spec configuration() -> ne_binary().
-configuration() ->
-    <<(?NOTIFY_CONFIG_CAT)/binary, ".", (id())/binary>>.
 
 -spec macros() -> kz_json:object().
 macros() ->
@@ -66,7 +61,7 @@ friendly_name() ->
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(id(), ?MODULE),
+    teletype_templates:init(?MODULE),
     teletype_bindings:bind(id(), ?MODULE, 'handle_deregister').
 
 -spec handle_deregister(kz_json:object()) -> 'ok'.
@@ -94,7 +89,7 @@ handle_req(DataJObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, configuration()),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, teletype_util:mod_config_cat(id())),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);

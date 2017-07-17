@@ -43,6 +43,8 @@
 
         ,maybe_get_attachments/1
         ,fetch_attachment_from_url/1
+
+        ,mod_config_cat/1
         ]).
 
 -include("teletype.hrl").
@@ -966,3 +968,7 @@ attachment_from_url_result(Headers, Body) ->
                    FileDisposition -> FileDisposition
                end,
     {CT, Filename, Body}.
+
+-spec mod_config_cat(ne_binary()) -> ne_binary().
+mod_config_cat(TemplateId=?NE_BINARY) ->
+    <<(?NOTIFY_CONFIG_CAT)/binary, ".", TemplateId/binary>>.

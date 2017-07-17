@@ -10,7 +10,7 @@
 
 -include("teletype.hrl").
 
--export([init/2
+-export([init/1, init/2
         ,renderer_name/2
         ,render/2, render/3, render/4
         ,preview/3
@@ -35,10 +35,11 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec init(ne_binary(), init_params() | module()) -> 'ok'.
-init(TemplateId, Module)
+-spec init(module()) -> ok.
+init(Module)
   when is_atom(Module) ->
-    ModConfigCat = Module:configuration(),
+    TemplateId = Module:id(),
+    ModConfigCat = teletype_util:mod_config_cat(TemplateId),
     Params = [{macros, Module:macros()}
              ,{subject, Module:subject()}
              ,{category, Module:category()}
@@ -51,7 +52,9 @@ init(TemplateId, Module)
              ,{html, TemplateId}
              ,{text, TemplateId}
              ],
-    init(TemplateId, Params);
+    init(TemplateId, Params).
+
+-spec init(ne_binary(), init_params()) -> 'ok'.
 init(TemplateId, Params) ->
     UpdatedParams = props:set_values([{'html', TemplateId}
                                      ,{'text', TemplateId}

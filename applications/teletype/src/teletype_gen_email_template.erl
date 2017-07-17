@@ -15,8 +15,6 @@
 
 -callback id() -> ne_binary().
 
--callback configuration() -> ne_binary().
-
 -callback init() -> ok.
 
 -callback macros(kz_json:object()) -> kz_proplist().
