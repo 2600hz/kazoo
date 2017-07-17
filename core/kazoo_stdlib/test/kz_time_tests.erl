@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_time_tests).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").
 -endif.

@@ -4,7 +4,7 @@
 -define(KAPPS_CALL_CACHE, 'kapps_call_cache').
 -define(KAPPS_GETBY_CACHE, 'kapps_getby_cache').
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -type callback_fun() :: fun((any(), any(), 'flush' | 'erase' | 'expire') -> any()).
 -type callback_funs() :: [callback_fun()].

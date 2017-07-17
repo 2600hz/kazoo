@@ -22,7 +22,7 @@
         ,from_jobjs/2
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_csv/include/kazoo_csv.hrl").
 
 -type cell() :: binary() | ?ZILCH.

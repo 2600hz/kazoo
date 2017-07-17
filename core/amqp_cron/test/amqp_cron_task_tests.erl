@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(amqp_cron_task_tests).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(AMQP_TESTS).

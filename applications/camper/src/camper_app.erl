@@ -10,7 +10,7 @@
 
 -behaviour(application).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %% Application callbacks
 -export([start/2, stop/1]).

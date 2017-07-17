@@ -9,7 +9,7 @@
 -define(IN, ?OUT ++ ".src").
 
 -include_lib("erlang_localtime/include/tz_index.hrl").
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 main(_) ->
     {ok, SchemaBin} = file:read_file(?IN),

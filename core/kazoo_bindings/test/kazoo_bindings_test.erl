@@ -24,7 +24,7 @@
 - include_lib("proper/include/proper.hrl").
 -endif.
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %% EUNIT and PropEr TESTING %%
 -spec binding_matches(ne_binary(), binary()) -> boolean().

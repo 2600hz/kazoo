@@ -11,7 +11,7 @@
 -export([get_results/6, get_results/5]).
 -export_type([mapper_fun/0]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -type mapper_fun() :: fun((kz_json:object()) -> kz_json:object()) |
                       fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).

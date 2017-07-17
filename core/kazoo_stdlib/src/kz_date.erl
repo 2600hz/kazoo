@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_date).
 
--include("kazoo/include/kz_types.hrl").
+-include("kazoo_stdlib/include/kz_types.hrl").
 
 %% Date object functions
 -export([
