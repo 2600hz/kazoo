@@ -797,7 +797,7 @@ process_event(Call, NoopId, JObj) ->
 get_timezone(JObj, Call) ->
     case kz_json:get_ne_binary_value(<<"timezone">>, JObj) of
         'undefined'   -> kz_account:timezone(kapps_call:account_id(Call));
-        <<"inherit">> -> kz_account:timezone(kapps_call:account_id(Call));
+        <<"inherit">> -> kz_account:timezone(kapps_call:account_id(Call)); %% UI-1808
         TZ -> TZ
     end.
 
