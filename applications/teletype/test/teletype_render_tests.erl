@@ -47,7 +47,7 @@ render(TemplateId, CT, Macros) ->
 
 t0(TemplateId, CT) ->
     Ext = ct_to_ext(CT),
-    Path = filename:join([code:lib_dir(?APP), <<TemplateId/binary,".",Ext/binary>>]),
+    Path = filename:join([code:lib_dir(?APP), "test", <<TemplateId/binary,".",Ext/binary>>]),
     ?LOG_DEBUG("reading t0 template ~s", [Path]),
     {ok, Bin} = file:read_file(Path),
     lines(Bin).
