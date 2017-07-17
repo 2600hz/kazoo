@@ -9,7 +9,7 @@
 -module(kz_csv_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo_csv/include/kazoo_csv.hrl").
 
 -define(FIELDS, [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>]).

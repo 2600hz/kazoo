@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 -include("ecallmgr.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_types/include/kz_databases.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -1,6 +1,6 @@
 -module(kapps_config_doc).
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_databases.hrl").
 -compile({no_auto_import,[get_keys/1]}).
 -export([
          get_keys/1

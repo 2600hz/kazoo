@@ -1,6 +1,6 @@
 -ifndef(KAZOO_GLOBALS_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_api_literals.hrl").
 

@@ -1,5 +1,5 @@
 -module(kapps_config_util).
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_types/include/kz_types.hrl").
 -export([get_config/2
         ,get_reseller_config/2
         ,load_config_from_account/2

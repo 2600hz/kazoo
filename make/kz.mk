@@ -51,7 +51,7 @@ PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
 ## SOURCES provides a way to specify compilation order (left to right)
-SOURCES     ?= src/*.erl $(if $(wildcard src/*/*.erl), src/*/*.erl)
+SOURCES     ?= $(wildcard src/*.erl) $(if $(wildcard src/*/*.erl), src/*/*.erl)
 TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
@@ -88,7 +88,7 @@ clean-test: $(CLEAN_MOAR)
 
 ## Use this one when debugging
 test: compile-test
-	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//;s%*%%'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 test.%: compile-test
 	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$*], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
@@ -98,7 +98,7 @@ COVER_REPORT_DIR=cover
 ## Use this one when CI
 eunit: compile-test
 	@mkdir -p $(COVER_REPORT_DIR)
-	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
+	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//;s%*%%'`], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
 
 cover: $(ROOT)/make/cover.mk
 	COVER=1 $(MAKE) eunit

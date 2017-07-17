@@ -1,5 +1,5 @@
 -ifndef(KNM_HRL).
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_types/include/kz_databases.hrl").
 -include("knm_phone_number.hrl").
 
 -define(APP, kazoo_number_manager).
