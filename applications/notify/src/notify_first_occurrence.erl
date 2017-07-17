@@ -10,7 +10,7 @@
 -module(notify_first_occurrence).
 
 -include("notify.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -export([init/0
         ,handle_req/2

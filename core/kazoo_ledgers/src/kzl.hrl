@@ -1,6 +1,6 @@
 -ifndef(KZL_HRL).
 
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_ledgers/include/kazoo_ledger.hrl").
 
 -define(APP_VERSION, <<"4.0.1">>).
