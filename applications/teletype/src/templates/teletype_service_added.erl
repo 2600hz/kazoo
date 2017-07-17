@@ -87,14 +87,20 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec macros(kz_json:object()) -> kz_json:object().
+-spec macros(kz_json:object()) -> kz_proplist().
 macros(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, reseller_info_data(DataJObj)}
     ,{<<"sub_account">>, sub_account_data(DataJObj)}
     ,{<<"service_changes">>, service_added_data(DataJObj)}
     ,{<<"user">>, auth_user_data(DataJObj)}
+    ,{<<"time_stamp">>, time_stamp(DataJObj)}
     ].
+
+-spec time_stamp(kz_json:object()) -> kz_proplist().
+time_stamp(DataJObj) ->
+    TS = kz_json:get_integer_value(<<"time_stamp">>, DataJObj),
+    teletype_util:fix_timestamp(TS, DataJObj).
 
 -spec reseller_info_data(kz_json:object()) -> kz_proplist().
 reseller_info_data(DataJObj) ->
