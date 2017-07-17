@@ -7,59 +7,67 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(teletype_deregister).
+-behaviour(teletype_gen_email_template).
 
--export([init/0
-        ,handle_deregister/1
+-export([id/0
+        ,configuration/0
+        ,init/0
+        ,macros/0, macros/1
+        ,subject/0
+        ,category/0
+        ,friendly_name/0
         ]).
-
--ifdef(TEST).
--export([macros/1]).
--endif.
+-export([handle_deregister/1]).
 
 -include("teletype.hrl").
 
--define(TEMPLATE_ID, <<"deregister">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+-spec id() -> ne_binary().
+id() ->
+    <<"deregister">>.
 
--define(TEMPLATE_MACROS
-       ,kz_json:from_list(
-          [?MACRO_VALUE(<<"last_registration.username">>, <<"last_registration_username">>, <<"SIP Username">>, <<"SIP username">>)
-          ,?MACRO_VALUE(<<"last_registration.status">>, <<"last_registration_status">>, <<"Status">>, <<"Status">>)
-          ,?MACRO_VALUE(<<"last_registration.user_agent">>, <<"last_registration_user_agent">>, <<"SIP User Agent">>, <<"SIP User Agent">>)
-          ,?MACRO_VALUE(<<"last_registration.call_id">>, <<"last_registration_call_id">>, <<"SIP Call ID">>, <<"SIP Call ID">>)
-          ,?MACRO_VALUE(<<"last_registration.profile_name">>, <<"last_registration_profile_name">>, <<"Profile Name">>, <<"Profile Name">>)
-          ,?MACRO_VALUE(<<"last_registration.presence_hosts">>, <<"last_registration_presence_hosts">>, <<"Presence Hosts">>, <<"Presence Hosts">>)
-          ,?MACRO_VALUE(<<"last_registration.from_user">>, <<"last_registration_from_user">>, <<"SIP From User">>, <<"SIP From User">>)
-          ,?MACRO_VALUE(<<"last_registration.from_host">>, <<"last_registration_from_host">>, <<"SIP From Host">>, <<"SIP From Host">>)
-          ,?MACRO_VALUE(<<"last_registration.to_user">>, <<"last_registration_to_user">>, <<"SIP To User">>, <<"SIP To User">>)
-          ,?MACRO_VALUE(<<"last_registration.to_host">>, <<"last_registration_to_host">>, <<"SIP To Host">>, <<"SIP To Host">>)
-          ,?MACRO_VALUE(<<"last_registration.rpid">>, <<"last_registration_rpid">>, <<"SIP RPID">>, <<"SIP RPID">>)
-          ,?MACRO_VALUE(<<"last_registration.network_ip">>, <<"last_registration_network_ip">>, <<"Network IP">>, <<"Network IP">>)
-          ,?MACRO_VALUE(<<"last_registration.network_port">>, <<"last_registration_network_port">>, <<"Network Port">>, <<"Network Port">>)
-          ,?MACRO_VALUE(<<"last_registration.contact">>, <<"last_registration_contact">>, <<"SIP Contact">>, <<"SIP Contact">>)
-          ,?MACRO_VALUE(<<"last_registration.expires">>, <<"last_registration_expires">>, <<"Expires">>, <<"Expires">>)
-          ,?MACRO_VALUE(<<"last_registration.authorizing_id">>, <<"last_registration_authorizing_id">>, <<"Authorizing ID">>, <<"Authorizing ID">>)
-           | ?COMMON_TEMPLATE_MACROS
-          ])).
+-spec configuration() -> ne_binary().
+configuration() ->
+    <<(?NOTIFY_CONFIG_CAT)/binary, ".", (id())/binary>>.
 
--define(TEMPLATE_SUBJECT, <<"Loss of Registration for '{{last_registration.username}}'">>).
+-spec macros() -> kz_json:object().
+macros() ->
+    kz_json:from_list(
+      [?MACRO_VALUE(<<"last_registration.username">>, <<"last_registration_username">>, <<"SIP Username">>, <<"SIP username">>)
+      ,?MACRO_VALUE(<<"last_registration.status">>, <<"last_registration_status">>, <<"Status">>, <<"Status">>)
+      ,?MACRO_VALUE(<<"last_registration.user_agent">>, <<"last_registration_user_agent">>, <<"SIP User Agent">>, <<"SIP User Agent">>)
+      ,?MACRO_VALUE(<<"last_registration.call_id">>, <<"last_registration_call_id">>, <<"SIP Call ID">>, <<"SIP Call ID">>)
+      ,?MACRO_VALUE(<<"last_registration.profile_name">>, <<"last_registration_profile_name">>, <<"Profile Name">>, <<"Profile Name">>)
+      ,?MACRO_VALUE(<<"last_registration.presence_hosts">>, <<"last_registration_presence_hosts">>, <<"Presence Hosts">>, <<"Presence Hosts">>)
+      ,?MACRO_VALUE(<<"last_registration.from_user">>, <<"last_registration_from_user">>, <<"SIP From User">>, <<"SIP From User">>)
+      ,?MACRO_VALUE(<<"last_registration.from_host">>, <<"last_registration_from_host">>, <<"SIP From Host">>, <<"SIP From Host">>)
+      ,?MACRO_VALUE(<<"last_registration.to_user">>, <<"last_registration_to_user">>, <<"SIP To User">>, <<"SIP To User">>)
+      ,?MACRO_VALUE(<<"last_registration.to_host">>, <<"last_registration_to_host">>, <<"SIP To Host">>, <<"SIP To Host">>)
+      ,?MACRO_VALUE(<<"last_registration.rpid">>, <<"last_registration_rpid">>, <<"SIP RPID">>, <<"SIP RPID">>)
+      ,?MACRO_VALUE(<<"last_registration.network_ip">>, <<"last_registration_network_ip">>, <<"Network IP">>, <<"Network IP">>)
+      ,?MACRO_VALUE(<<"last_registration.network_port">>, <<"last_registration_network_port">>, <<"Network Port">>, <<"Network Port">>)
+      ,?MACRO_VALUE(<<"last_registration.contact">>, <<"last_registration_contact">>, <<"SIP Contact">>, <<"SIP Contact">>)
+      ,?MACRO_VALUE(<<"last_registration.expires">>, <<"last_registration_expires">>, <<"Expires">>, <<"Expires">>)
+      ,?MACRO_VALUE(<<"last_registration.authorizing_id">>, <<"last_registration_authorizing_id">>, <<"Authorizing ID">>, <<"Authorizing ID">>)
+       | ?COMMON_TEMPLATE_MACROS
+      ]).
 
--define(TEMPLATE_PARAMS, [{'macros', ?TEMPLATE_MACROS}
-                         ,{'subject', ?TEMPLATE_SUBJECT}
-                         ,{'category', <<"registration">>}
-                         ,{'friendly_name', <<"Deregister Notice">>}
-                         ,{'to', ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
-                         ,{'from', teletype_util:default_from_address(?MOD_CONFIG_CAT)}
-                         ,{'cc', ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-                         ,{'bcc', ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-                         ,{'reply_to', teletype_util:default_reply_to(?MOD_CONFIG_CAT)}
-                         ]).
+-spec subject() -> ne_binary().
+subject() ->
+    <<"Loss of Registration for '{{last_registration.username}}'">>.
+
+-spec category() -> ne_binary().
+category() ->
+    <<"registration">>.
+
+-spec friendly_name() -> ne_binary().
+friendly_name() ->
+    <<"Deregister Notice">>.
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(?TEMPLATE_ID, ?TEMPLATE_PARAMS),
-    teletype_bindings:bind(?TEMPLATE_ID, ?MODULE, 'handle_deregister').
+    teletype_templates:init(id(), ?MODULE),
+    teletype_bindings:bind(id(), ?MODULE, 'handle_deregister').
 
 -spec handle_deregister(kz_json:object()) -> 'ok'.
 handle_deregister(JObj) ->
@@ -70,8 +78,8 @@ handle_deregister(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+    case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
+        'false' -> teletype_util:notification_disabled(DataJObj, id());
         'true' -> handle_req(DataJObj)
     end.
 
@@ -80,13 +88,13 @@ handle_req(DataJObj) ->
     Macros = macros(DataJObj),
 
     %% Load templates
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
+    RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
-    Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
+    Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, configuration()),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
@@ -94,10 +102,10 @@ handle_req(DataJObj) ->
     end.
 
 -spec macros(kz_json:object()) -> kz_proplist().
--spec macros(kz_json:object(), kz_proplist()) -> kz_proplist().
 macros(DataJObj) ->
     macros(DataJObj, teletype_util:account_params(DataJObj)).
 
+-spec macros(kz_json:object(), kz_proplist()) -> kz_proplist().
 macros(DataJObj, []) ->
     lager:info("no account data available for deregister, not sending notification"),
     teletype_util:send_update(DataJObj, <<"failed">>, <<"missing account">>),

@@ -35,7 +35,23 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec init(ne_binary(), init_params()) -> 'ok'.
+-spec init(ne_binary(), init_params() | module()) -> 'ok'.
+init(TemplateId, Module)
+  when is_atom(Module) ->
+    ModConfigCat = Module:configuration(),
+    Params = [{macros, Module:macros()}
+             ,{subject, Module:subject()}
+             ,{category, Module:category()}
+             ,{friendly_name, Module:friendly_name()}
+             ,{to, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
+             ,{from, teletype_util:default_from_address(ModConfigCat)}
+             ,{cc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
+             ,{bcc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
+             ,{reply_to, teletype_util:default_reply_to(ModConfigCat)}
+             ,{html, TemplateId}
+             ,{text, TemplateId}
+             ],
+    init(TemplateId, Params);
 init(TemplateId, Params) ->
     UpdatedParams = props:set_values([{'html', TemplateId}
                                      ,{'text', TemplateId}
