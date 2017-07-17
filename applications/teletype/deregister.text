@@ -13,7 +13,7 @@ lost its registration.
 
     Device ID: 7de6398c97328de9f488c9e1e594321a
     Account ID: 009afc511c97b2ae693c6cc4920988e8
-    Account Realm: wefwefwefwef
+    Account Realm: wefwefwefwef.app.com
     User Agent: OBIHAI/OBi1020-5.0.0.3201
     Contact: sip:user_bla@101.3.2.55:5060;expires=60;+sip.instance=&quot;urn:uuid:00000000-0000-0000-0000-9cadefc002b5&quot;
 
@@ -23,7 +23,7 @@ Account Information
 
     Account ID: 009afc511c97b2ae693c6cc4920988e8
     Account Name: wefwefwefwef
-    Account Realm: wefwefwefwef
+    Account Realm: wefwefwefwef.app.com
 
 
 
