@@ -122,7 +122,7 @@ get_fax_doc(DataJObj, 'false') ->
 maybe_get_fax_doc(DataJObj) ->
     try get_fax_doc(DataJObj)
     catch _:_ ->
-        kz_json:new()
+            kz_json:new()
     end.
 
 -spec get_attachments(kz_json:object(), kz_proplist()) -> attachments().
