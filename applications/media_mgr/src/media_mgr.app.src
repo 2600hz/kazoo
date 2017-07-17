@@ -8,6 +8,7 @@
                  , stdlib
                  , crypto
 
+                 , kazoo_media
                  , kazoo_apps
                  , kazoo_amqp
                  , kazoo_data
