@@ -214,12 +214,13 @@ normalize_address(JObj) ->
     {kz_binary:join(Types, <<",">>), Address}.
 
 -spec timezone(kz_json:object()) -> api_binary().
--spec timezone(kz_json:object(), Default) -> ne_binary() | Default.
 timezone(JObj) ->
     timezone(JObj, 'undefined').
+
+-spec timezone(kz_json:object(), Default) -> ne_binary() | Default.
 timezone(JObj, Default) ->
     case kz_json:get_value(?KEY_TIMEZONE, JObj, Default) of
-        <<"inherit">> -> kz_account:timezone(kz_doc:account_id(JObj));  %% UI-1808
+        <<"inherit">> -> kz_account:timezone(kz_doc:account_id(JObj), Default);  %% UI-1808
         'undefined' -> kz_account:timezone(kz_doc:account_id(JObj));
         TZ -> TZ
     end.

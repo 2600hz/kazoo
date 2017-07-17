@@ -62,7 +62,6 @@
         ,get_token_restrictions/3
         ]).
 -export([get_user_timezone/2
-        ,get_account_timezone/1
         ]).
 -export([apply_response_map/2]).
 -export([maybe_remove_attachments/1]).
@@ -860,23 +859,11 @@ get_account_lang(AccountId) ->
             'error'
     end.
 
--spec get_user_timezone(api_ne_binary(), api_ne_binary()) -> api_ne_binary().
-get_user_timezone(AccountId, 'undefined') ->
-    get_account_timezone(AccountId);
+-spec get_user_timezone(api_ne_binary(), api_ne_binary()) -> ne_binary().
 get_user_timezone(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
+    case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> kzd_user:timezone(UserJObj);
-        {'error', _E} -> get_account_timezone(AccountId)
-    end.
-
--spec get_account_timezone(api_ne_binary()) -> api_ne_binary().
-get_account_timezone('undefined') ->
-    'undefined';
-get_account_timezone(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', AccountJObj} -> kz_account:timezone(AccountJObj);
-        {'error', _E} -> 'undefined'
+        {'error', _E} -> kz_account:timezone(AccountId)
     end.
 
 -spec apply_response_map(cb_context:context(), kz_proplist()) -> cb_context:context().

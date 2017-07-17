@@ -792,13 +792,13 @@ is_preview(DataJObj) ->
 %% returns a prop list with local, utc time and timezone
 -spec fix_timestamp(gregorian_seconds() | api_ne_binary()) -> kz_proplist().
 fix_timestamp(Timestamp) ->
-    fix_timestamp(Timestamp, <<"GMT">>).
+    fix_timestamp(Timestamp, <<"UTC">>).
 
 -spec fix_timestamp(gregorian_seconds() | api_ne_binary(), api_binary() | kz_json:object()) -> kz_proplist().
 fix_timestamp('undefined', Thing) ->
     fix_timestamp(kz_time:current_tstamp(), Thing);
-fix_timestamp(?NE_BINARY=Timestamp, TZ) ->
-    fix_timestamp(kz_term:to_integer(Timestamp), TZ);
+fix_timestamp(?NE_BINARY=Timestamp, Thing) ->
+    fix_timestamp(kz_term:to_integer(Timestamp), Thing);
 fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
     DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
     ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
@@ -811,16 +811,16 @@ fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
       ,{<<"timezone">>, TZ}
       ]);
 fix_timestamp(Timestamp, 'undefined') ->
-    fix_timestamp(Timestamp, <<"GMT">>);
+    fix_timestamp(Timestamp, <<"UTC">>);
 fix_timestamp(Timestamp, DataJObj) ->
     Params = account_params(DataJObj),
-    TZ = props:get_value(<<"timezone">>, Params),
+    TZ = props:get_ne_binary_value(<<"timezone">>, Params),
     fix_timestamp(Timestamp, TZ).
 
--spec fix_timestamp(gregorian_seconds() | api_ne_binary(), api_binary() | kz_json:object(), api_binary() | kz_json:object()) -> kz_proplist().
-fix_timestamp(Timestamp, 'undefined', Thing) ->
-    fix_timestamp(Timestamp, Thing);
-fix_timestamp(Timestamp, TZ, _Thing) ->
+-spec fix_timestamp(gregorian_seconds() | api_ne_binary(), kz_json:object(), api_ne_binary()) -> kz_proplist().
+fix_timestamp(Timestamp, DataJObj, 'undefined') ->
+    fix_timestamp(Timestamp, DataJObj);
+fix_timestamp(Timestamp, _DataJObj, TZ) ->
     fix_timestamp(Timestamp, TZ).
 
 -spec build_call_data(kz_json:object(), api_ne_binary()) -> kz_proplist().
@@ -838,14 +838,14 @@ build_call_data(DataJObj, Timezone) ->
 build_caller_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, kz_json:get_value(<<"caller_id_name">>, DataJObj)}
-      ,{<<"number">>, kz_json:get_value(<<"caller_id_number">>, DataJObj)}
+      ,{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"caller_id_number">>, DataJObj))}
       ]).
 
 -spec build_callee_id_data(kz_json:object()) -> kz_proplist().
 build_callee_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, kz_json:get_value(<<"callee_id_name">>, DataJObj)}
-      ,{<<"number">>, kz_json:get_value(<<"callee_id_number">>, DataJObj)}
+      ,{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"callee_id_number">>, DataJObj))}
       ]).
 
 -spec build_date_called_data(kz_json:object(), api_ne_binary()) -> kz_proplist().
