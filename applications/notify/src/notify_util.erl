@@ -347,14 +347,15 @@ find_admin([AcctId|Tree]) ->
                   ],
     case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', Users} ->
-            case [User
+            case [Doc
                   || User <- Users,
-                     kz_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>,
-                     kz_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= 'undefined'
+                     Doc <- [kz_json:get_value(<<"doc">>, User)],
+                     kzd_user:is_account_admin(Doc),
+                     kz_term:is_not_empty(kzd_user:email(Doc))
                  ]
             of
                 [] -> find_admin(Tree);
-                [Admin|_] -> kz_json:get_value(<<"doc">>, Admin)
+                [Admin|_] -> Admin
             end;
         _E ->
             lager:debug("faild to find users in ~s: ~p", [AccountDb, _E]),

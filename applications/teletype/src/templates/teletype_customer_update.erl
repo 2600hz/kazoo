@@ -109,7 +109,7 @@ select_users_to_update(Users, DataJObj) ->
         <<"all_users">> ->
             [send_update_to_user(User, DataJObj) || User <- Users];
         _ ->
-            [send_update_to_user(User, DataJObj) || User <- Users, kz_json:get_value(<<"priv_level">>, User) == <<"admin">>]
+            [send_update_to_user(User, DataJObj) || User <- Users, kzd_user:is_account_admin(User)]
     end.
 
 -spec send_update_to_user(kz_json:object(), kz_json:object()) -> 'ok'.

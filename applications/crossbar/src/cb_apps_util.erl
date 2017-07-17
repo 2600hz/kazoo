@@ -74,7 +74,7 @@ is_authorized(AccountId, UserId, AppId) ->
                 {<<"specific">>, UserIds} ->
                     lists:member(UserId, UserIds);
                 {<<"admins">>, _} ->
-                    <<"admin">> =:= get_user_priv_level(AccountId, UserId);
+                    kzd_user:is_account_admin(AccountId, UserId);
                 {_A, _U} ->
                     lager:error("unknown data ~p : ~p", [_A, _U]),
                     'false'
@@ -127,22 +127,6 @@ get_apps_store_doc(Account) ->
         {'error', 'not_found'} ->
             cb_apps_maintenance:migrate(Account);
         Result -> Result
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_user_priv_level(ne_binary(), ne_binary()) -> binary().
-get_user_priv_level(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
-        {'error', _R} ->
-            lager:error("failed to open user ~s in ~s", [UserId, AccountDb]),
-            'undefined';
-        {'ok', JObj} ->
-            kz_json:get_value(<<"priv_level">>, JObj)
     end.
 
 %% @private

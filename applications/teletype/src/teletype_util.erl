@@ -583,7 +583,7 @@ query_for_account_admin(AccountId) ->
 filter_for_admins(Users) ->
     [Doc
      || User <- Users,
-        kzd_user:priv_level(Doc = kz_json:get_value(<<"doc">>, User)) =:= <<"admin">>
+        kzd_user:is_account_admin(Doc = kz_json:get_value(<<"doc">>, User))
     ].
 
 -spec should_handle_notification(kz_json:object()) -> boolean().

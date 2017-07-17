@@ -179,7 +179,7 @@ find_admin([]) -> kz_json:new();
 find_admin([Doc|Docs]) ->
     JObj = kz_json:get_value(<<"doc">>, Doc),
     case kz_doc:type(JObj) =:= <<"user">>
-        andalso kz_json:get_value(<<"priv_level">>, JObj) =:= <<"admin">>
+        andalso kzd_user:is_account_admin(JObj)
     of
         'true' -> JObj;
         'false' -> find_admin(Docs)
