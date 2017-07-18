@@ -48,9 +48,9 @@
              ]).
 
 -record(state, {table_id :: atom()
-               ,give_away_pid :: pid()
-               ,find_me_fun :: find_me_fun()
-               ,find_me_pid_ref :: {pid(), reference()}
+               ,give_away_pid :: api_pid()
+               ,find_me_fun :: find_me_fun() | undefined
+               ,find_me_pid_ref :: api_pid_ref()
                ,gift_data :: any()
                }).
 -type state() :: #state{}.

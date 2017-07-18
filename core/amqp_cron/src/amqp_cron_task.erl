@@ -98,7 +98,7 @@
 -record(state, {schedule :: schedule()
                ,exec :: execargs()
                ,task_pid :: pid()
-               ,status :: status()
+               ,status :: status() | undefined
                ,next
                }).
 -type state() :: #state{}.
@@ -222,7 +222,8 @@ init([{Schedule, Exec}]) ->
                      end),
     {'ok', #state{schedule = Schedule
                  ,exec = Exec
-                 ,task_pid = Pid}}.
+                 ,task_pid = Pid
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
