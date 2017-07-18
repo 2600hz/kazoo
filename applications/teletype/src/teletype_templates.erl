@@ -38,21 +38,27 @@
 -spec init(module()) -> ok.
 init(Module)
   when is_atom(Module) ->
+    init(Module:id(), params(Module)).
+
+-spec params(module() | ne_binary()) -> kz_proplist().
+params(TemplateId=?NE_BINARY) ->
+    Module = kz_term:to_atom(<<(?APP_NAME)/binary, "_", TemplateId/binary>>, true),
+    params(Module);
+params(Module) ->
     TemplateId = Module:id(),
     ModConfigCat = teletype_util:mod_config_cat(TemplateId),
-    Params = [{macros, Module:macros()}
-             ,{subject, Module:subject()}
-             ,{category, Module:category()}
-             ,{friendly_name, Module:friendly_name()}
-             ,{to, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
-             ,{from, teletype_util:default_from_address(ModConfigCat)}
-             ,{cc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-             ,{bcc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-             ,{reply_to, teletype_util:default_reply_to(ModConfigCat)}
-             ,{html, TemplateId}
-             ,{text, TemplateId}
-             ],
-    init(TemplateId, Params).
+    [{macros, Module:macros()}
+    ,{subject, Module:subject()}
+    ,{category, Module:category()}
+    ,{friendly_name, Module:friendly_name()}
+    ,{to, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
+    ,{from, teletype_util:default_from_address(ModConfigCat)}
+    ,{cc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
+    ,{bcc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
+    ,{reply_to, teletype_util:default_reply_to(ModConfigCat)}
+    ,{html, TemplateId}
+    ,{text, TemplateId}
+    ].
 
 -spec init(ne_binary(), init_params()) -> 'ok'.
 init(TemplateId, Params) ->
@@ -271,7 +277,12 @@ master_content_types(TemplateId) ->
 
 -ifdef(TEST).
 from_system_config(?NE_BINARY=TemplateId) ->
-    {ok, teletype_util:fixture("system_config,notification." ++ binary_to_list(TemplateId) ++ ".json")}.
+    JObj = kz_json:from_list(lists:keymap(fun kz_term:to_binary/1, 1, params(TemplateId))),
+    FakeAttachments = kz_json:from_list_recursive(
+                        [{<<"template.text/html">>, [{<<"content_type">>, <<"text/html">>}]}
+                        ,{<<"template.text/plain">>, [{<<"content_type">>, <<"text/plain">>}]}
+                        ]),
+    {ok, kz_json:set_value(<<"_attachments">>, FakeAttachments, JObj)}.
 -else.
 from_system_config(TemplateId) -> fetch_notification(TemplateId, ?KZ_CONFIG_DB).
 -endif.
