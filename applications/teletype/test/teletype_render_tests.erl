@@ -13,13 +13,13 @@
 -export([overwrite_t0/3]).
 
 render_preview_test_() ->
-    [test_rendering("deregister")
-    ,test_rendering("service_added")
+    [test_rendering(teletype_deregister)
+    ,test_rendering(teletype_service_added)
     ].
 
-test_rendering(TemplateIdStr) ->
-    TemplateId = list_to_binary(TemplateIdStr),
-    Module = list_to_atom("teletype_" ++ TemplateIdStr),
+test_rendering(Module) ->
+    TemplateId = Module:id(),
+    TemplateIdStr = binary_to_list(TemplateId),
     Fixture = "notif__" ++ TemplateIdStr ++ ".json",
     DataJObj = kz_json:normalize(teletype_util:fixture(Fixture)),
     ?LOG_DEBUG(">>> normalized ~s", [kz_json:encode(DataJObj)]),
