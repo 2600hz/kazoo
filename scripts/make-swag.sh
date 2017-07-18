@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 # Generate Kazoo SDKs using the Swagger file
 
@@ -64,22 +64,32 @@ langs="$langs spring"
 langs="$langs swift3"
 langs="$langs tizen"
 langs="$langs typescript-angular"
-langs="$langs typescript-angular2"
+# langs="$langs typescript-angular2"
 langs="$langs typescript-fetch"
 langs="$langs typescript-jquery"
 langs="$langs typescript-node"
 langs="$langs undertow"
 langs="$langs ze-ph"
 
+img=swaggerapi/swagger-codegen-cli
+docker pull $img >/dev/null || exit 1
+mkdir out out/_logs
+
 for lang in $langs; do
-    echo
-    echo
+    log=out/_logs/$lang.log
     echo Generating SDK in $lang
-    echo
     docker run --rm \
            -v ${PWD}/out:/out \
-           swaggerapi/swagger-codegen-cli generate \
+           $img generate \
            -i https://raw.githubusercontent.com/2600hz/kazoo/master/applications/crossbar/priv/api/swagger.json \
            -l $lang \
-           -o /out/$lang
+           -o /out/$lang \
+           >$log 2>&1
+    err=$?
+    if [[ $err -ne 0 ]]; then
+        echo An error occured!
+        echo
+        cat $log
+        exit $err
+    fi
 done
