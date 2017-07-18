@@ -48,7 +48,7 @@ timezone(Box) ->
 timezone(Box, Default) ->
     case kz_json:get_value(?KEY_TIMEZONE, Box) of
         'undefined'   -> owner_timezone(Box, Default);
-        <<"inherit">> -> owner_timezone(Box, Default);
+        <<"inherit">> -> owner_timezone(Box, Default); %% UI-1808
         TZ -> TZ
     end.
 
