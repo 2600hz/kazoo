@@ -12,9 +12,15 @@
 
 -export([overwrite_t0/3]).
 
-render_preview_test_() ->
+render_test_() ->
     [test_rendering(teletype_deregister)
+     %% ,test_rendering(teletype_fax_inbound_error_to_email)
+     %% ,test_rendering(teletype_low_balance)
+    ,test_rendering(teletype_new_account)
+     %% ,test_rendering(teletype_new_user)
     ,test_rendering(teletype_service_added)
+     %% ,test_rendering(teletype_system_alert)
+     %% ,test_rendering(teletype_voicemail_to_email)
     ].
 
 test_rendering(Module) ->
@@ -36,7 +42,7 @@ test_rendering(Module) ->
 render(TemplateId, CT, Macros) ->
     TmpModule = teletype_templates:renderer_name(TemplateId, CT),
     ?LOG_DEBUG(">>> TmpModule ~p", [TmpModule]),
-    {ok, Template} = preview_template(TemplateId, CT),
+    {ok, Template} = fetch_template(TemplateId, CT),
     {ok, Rendered} = kz_template:render(Template, TmpModule, Macros),
     %% Below is only when adding new tests
     %% overwrite_t0(TemplateId, CT, Rendered),
@@ -54,13 +60,13 @@ t0(TemplateId, CT) ->
 
 overwrite_t0(TemplateId, CT, Rendered) ->
     Ext = ct_to_ext(CT),
-    Path = filename:join([code:lib_dir(?APP), <<TemplateId/binary,".",Ext/binary>>]),
+    Path = filename:join([code:lib_dir(?APP), "test", <<TemplateId/binary,".",Ext/binary>>]),
     ok = file:write_file(Path, Rendered).
 
-preview_template(TemplateId, CT) ->
+fetch_template(TemplateId, CT) ->
     Ext = ct_to_ext(CT),
     Path = filename:join([code:priv_dir(?APP), "templates", <<TemplateId/binary,".",Ext/binary>>]),
-    ?LOG_DEBUG("reading preview template ~s", [Path]),
+    ?LOG_DEBUG("reading template ~s", [Path]),
     file:read_file(Path).
 
 ct_to_ext(<<"text/plain">>) -> <<"text">>;

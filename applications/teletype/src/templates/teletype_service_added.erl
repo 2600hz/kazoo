@@ -152,10 +152,9 @@ auth_user_data(DataJObj) ->
             end
     end.
 
--spec fetch_user(ne_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 -ifdef(TEST).
-fetch_user(?AN_ACCOUNT_ID, ?AN_ACCOUNT_USER_ID) -> {ok, teletype_util:fixture("an_account_user.json")};
-fetch_user(?MATCH_ACCOUNT_RAW(_), ?NE_BINARY) -> {error, <<"testing_too_hard">>}.
+fetch_user(?AN_ACCOUNT_ID, ?AN_ACCOUNT_USER_ID) ->
+    {ok, teletype_util:fixture("an_account_user.json")}.
 -else.
 fetch_user(AccountId, UserId) -> kzd_user:fetch(AccountId, UserId).
 -endif.

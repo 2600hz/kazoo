@@ -20,7 +20,9 @@
 
 -ifdef(TEST).
 -define(A_MASTER_ACCOUNT_ID, <<"6b71cb72c876b5b1396a335f8f8a2594">>).
+-define(A_MASTER_ACCOUNT_DB, <<"account%2F6b%2F71%2Fcb72c876b5b1396a335f8f8a2594">>).
 -define(AN_ACCOUNT_ID, <<"009afc511c97b2ae693c6cc4920988e8">>).
+-define(AN_ACCOUNT_DB, <<"account%2F00%2F9a%2Ffc511c97b2ae693c6cc4920988e8">>).
 -define(AN_ACCOUNT_USER_ID, <<"8e248327b85591955749e53ea45b6baa">>).
 -endif.
 
