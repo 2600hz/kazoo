@@ -44,7 +44,8 @@ init(Module)
 params(TemplateId=?NE_BINARY) ->
     Module = kz_term:to_atom(<<(?APP_NAME)/binary, "_", TemplateId/binary>>, true),
     params(Module);
-params(Module) ->
+params(Module)
+  when is_atom(Module) ->
     TemplateId = Module:id(),
     ModConfigCat = teletype_util:mod_config_cat(TemplateId),
     [{macros, Module:macros()}
