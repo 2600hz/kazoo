@@ -154,27 +154,36 @@ build_template_data(DataJObj) ->
 caller_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, wh_json:get_value(<<"caller_id_name">>, DataJObj)}
-       ,{<<"number">>, wh_json:get_value(<<"caller_id_number">>, DataJObj)}
+       ,{<<"number">>, wnm_util:pretty_print(wh_json:get_value(<<"caller_id_number">>, DataJObj))}
       ]).
 
 -spec callee_id_data(wh_json:object()) -> wh_proplist().
 callee_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, wh_json:get_value(<<"callee_id_name">>, DataJObj)}
-       ,{<<"number">>, wh_json:get_value(<<"callee_id_number">>, DataJObj)}
+       ,{<<"number">>, wnm_util:pretty_print(wh_json:get_value(<<"callee_id_number">>, DataJObj))}
       ]).
 
 -spec date_called_data(wh_json:object()) -> wh_proplist().
 date_called_data(DataJObj) ->
     DateCalled = wh_json:get_integer_value(<<"fax_timestamp">>, DataJObj, wh_util:current_tstamp()),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-    Timezone = wh_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
+    Timezone = find_timezone(DataJObj),
     ClockTimezone = whapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     props:filter_undefined(
       [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
        ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
       ]).
+
+-spec find_timezone(wh_json:object()) -> ne_binary().
+find_timezone(DataJObj) ->
+    Paths = [<<"fax_timezone">>
+            ,[<<"fax_info">>, <<"fax_timezone">>]
+            ,[<<"fax">>, <<"rx_result">>, <<"timezone">>]
+            ,[<<"fax">>, <<"tx_result">>, <<"timezone">>]
+            ],
+    wh_json:get_first_defined(Paths, DataJObj, <<"UTC">>).
 
 -spec from_data(wh_json:object()) -> wh_proplist().
 from_data(DataJObj) ->
