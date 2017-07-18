@@ -13,14 +13,39 @@
 -export([overwrite_t0/3]).
 
 render_test_() ->
-    [test_rendering(teletype_deregister)
+    [?_assertEqual(32, length(?DEFAULT_MODULES))
+     %% ,test_rendering(teletype_account_zone_change)
+     %% ,test_rendering(teletype_cnam_request)
+     %% ,test_rendering(teletype_customer_update)
+     %% ,test_rendering(teletype_denied_emergency_bridge)
+    ,test_rendering(teletype_deregister)
      %% ,test_rendering(teletype_fax_inbound_error_to_email)
+     %% ,test_rendering(teletype_fax_inbound_to_email)
+     %% ,test_rendering(teletype_fax_outbound_error_to_email)
+     %% ,test_rendering(teletype_fax_outbound_smtp_error_to_email)
+     %% ,test_rendering(teletype_fax_outbound_to_email)
+     %% ,test_rendering(teletype_first_occurrence)
     ,test_rendering(teletype_low_balance)
+     %% ,test_rendering(teletype_missed_call)
     ,test_rendering(teletype_new_account)
     ,test_rendering(teletype_new_user)
+     %% ,test_rendering(teletype_password_recovery)
+     %% ,test_rendering(teletype_port_cancel)
+     %% ,test_rendering(teletype_port_comment)
+     %% ,test_rendering(teletype_port_pending)
+     %% ,test_rendering(teletype_port_rejected)
+     %% ,test_rendering(teletype_port_request)
+     %% ,test_rendering(teletype_port_request_admin)
+     %% ,test_rendering(teletype_port_scheduled)
+     %% ,test_rendering(teletype_port_unconfirmed)
+     %% ,test_rendering(teletype_ported)
     ,test_rendering(teletype_service_added)
     ,test_rendering(teletype_system_alert)
+     %% ,test_rendering(teletype_topup)
+     %% ,test_rendering(teletype_transaction)
+     %% ,test_rendering(teletype_voicemail_full)
      %% ,test_rendering(teletype_voicemail_to_email)
+     %% ,test_rendering(teletype_webhook_disabled)
     ].
 
 test_rendering(Module) ->
@@ -28,11 +53,8 @@ test_rendering(Module) ->
     TemplateIdStr = binary_to_list(TemplateId),
     Fixture = "notif__" ++ TemplateIdStr ++ ".json",
     DataJObj = kz_json:normalize(teletype_util:fixture(Fixture)),
-    ?LOG_DEBUG(">>> normalized ~s", [kz_json:encode(DataJObj)]),
     Macros = Module:macros(DataJObj),
-    ?LOG_DEBUG(">>> macros ~p", [Macros]),
     CTs = teletype_templates:master_content_types(TemplateId),
-    ?LOG_DEBUG(">>> CTs ~p", [CTs]),
     [{"Render "++ TemplateIdStr ++" "++ binary_to_list(CT) ++" using "++ Fixture
      ,render(TemplateId, CT, Macros)
      }
@@ -41,7 +63,6 @@ test_rendering(Module) ->
 
 render(TemplateId, CT, Macros) ->
     TmpModule = teletype_templates:renderer_name(TemplateId, CT),
-    ?LOG_DEBUG(">>> TmpModule ~p", [TmpModule]),
     {ok, Template} = fetch_template(TemplateId, CT),
     {ok, Rendered} = kz_template:render(Template, TmpModule, Macros),
     %% Below is only when adding new tests

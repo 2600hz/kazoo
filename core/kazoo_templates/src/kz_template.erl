@@ -96,10 +96,10 @@ compile(Path, Module, CompileOpts) ->
 %%--------------------------------------------------------------------
 -spec render_template(atom(), kz_proplist()) -> template_result().
 render_template(Module, TemplateData) ->
-    ?LOG_DEBUG("rendering using ~p", [catch Module:module_info()]),
+    ?LOG_DEBUG("rendering using ~s", [Module]),
     try Module:render(props:filter_empty(TemplateData)) of
         {'ok', _IOList}=OK ->
-            ?LOG_DEBUG("rendered template successfully: '~s'", [_IOList]),
+            ?LOG_DEBUG("rendered template successfully"),
             OK;
         {'error', _E}=E ->
             ?LOG_DEBUG("failed to render template: ~p", [_E]),
