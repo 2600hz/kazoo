@@ -600,11 +600,7 @@ find_account_admin(AccountId, ResellerId) ->
 
 -spec query_for_account_admin(ne_binary()) -> 'undefined' | kzd_user:doc().
 query_for_account_admin(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    ViewOptions = [{'key', <<"user">>}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case account_users(AccountId) of
         {'ok', []} -> 'undefined';
         {'ok', Users} ->
             case filter_for_admins(Users) of
@@ -612,15 +608,29 @@ query_for_account_admin(AccountId) ->
                 [Admin|_] -> Admin
             end;
         {'error', _E} ->
-            lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
+            ?LOG_DEBUG("failed to find users in ~s: ~p", [AccountId, _E]),
             'undefined'
     end.
+
+-ifdef(TEST).
+account_users(?AN_ACCOUNT_ID) ->
+    UserJObj = kzd_user:set_priv_level(<<"admin">>, teletype_util:fixture("an_account_user.json")),
+    {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
+-else.
+account_users(AccountId) ->
+    AccountDb = kz_util:format_account_db(AccountId),
+    ViewOptions = [{'key', <<"user">>}
+                  ,'include_docs'
+                  ],
+    kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions).
+-endif.
 
 -spec filter_for_admins(kz_json:objects()) -> kzd_user:docs().
 filter_for_admins(Users) ->
     [Doc
      || User <- Users,
-        kzd_user:is_account_admin(Doc = kz_json:get_value(<<"doc">>, User))
+        Doc <- [kz_json:get_value(<<"doc">>, User)],
+        kzd_user:is_account_admin(Doc)
     ].
 
 -spec should_handle_notification(kz_json:object()) -> boolean().

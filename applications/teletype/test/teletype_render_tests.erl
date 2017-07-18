@@ -19,7 +19,7 @@ render_test_() ->
     ,test_rendering(teletype_new_account)
     ,test_rendering(teletype_new_user)
     ,test_rendering(teletype_service_added)
-     %% ,test_rendering(teletype_system_alert)
+    ,test_rendering(teletype_system_alert)
      %% ,test_rendering(teletype_voicemail_to_email)
     ].
 

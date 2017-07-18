@@ -7,49 +7,56 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(teletype_system_alert).
+-behaviour(teletype_gen_email_template).
 
--export([init/0
-        ,handle_system_alert/1
+-export([id/0
+        ,init/0
+        ,macros/0, macros/1
+        ,subject/0
+        ,category/0
+        ,friendly_name/0
         ]).
+-export([handle_system_alert/1]).
 
 -include("teletype.hrl").
 
--define(TEMPLATE_ID, <<"system_alert">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".system_alert">>).
 
--define(TEMPLATE_MACROS
-       ,kz_json:from_list(
-          [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
-           | ?USER_MACROS
-           ++ ?COMMON_TEMPLATE_MACROS
-          ]
-         )
-       ).
+-define(SHOULD_USE_EMAIL
+       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true')).
+-define(SUBSCRIBER_URL
+       ,kapps_config:get_string(?MOD_CONFIG_CAT, <<"subscriber_url">>)).
 
--define(TEMPLATE_SUBJECT, <<"System Alert: '{{request.level}}' from '{{request.node}}'">>).
--define(TEMPLATE_CATEGORY, <<"system">>).
--define(TEMPLATE_NAME, <<"System Notifications">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
--define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-spec id() -> ne_binary().
+id() ->
+    <<"system_alert">>.
+
+-spec macros() -> kz_json:object().
+macros() ->
+    kz_json:from_list(
+      [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
+       | ?USER_MACROS
+       ++ ?COMMON_TEMPLATE_MACROS
+      ]).
+
+-spec subject() -> ne_binary().
+subject() ->
+    <<"System Alert: '{{request.level}}' from '{{request.node}}'">>.
+
+-spec category() -> ne_binary().
+category() ->
+    <<"system">>.
+
+-spec friendly_name() -> ne_binary().
+friendly_name() ->
+    <<"System Notifications">>.
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'subject', ?TEMPLATE_SUBJECT}
-                                          ,{'category', ?TEMPLATE_CATEGORY}
-                                          ,{'friendly_name', ?TEMPLATE_NAME}
-                                          ,{'to', ?TEMPLATE_TO}
-                                          ,{'from', ?TEMPLATE_FROM}
-                                          ,{'cc', ?TEMPLATE_CC}
-                                          ,{'bcc', ?TEMPLATE_BCC}
-                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]),
-    teletype_bindings:bind(<<"system_alert">>, ?MODULE, 'handle_system_alert').
+    teletype_templates:init(?MODULE),
+    teletype_bindings:bind(id(), ?MODULE, 'handle_system_alert').
 
 -spec handle_system_alert(kz_json:object()) -> 'ok'.
 handle_system_alert(JObj) ->
@@ -60,10 +67,9 @@ handle_system_alert(JObj) ->
         'undefined' -> handle_req_as_email(JObj, 'true');
         _Format ->
             lager:debug("using format string '~s'", [_Format]),
-            UseEmail = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true'),
-            Url = kapps_config:get_string(?MOD_CONFIG_CAT, <<"subscriber_url">>),
+            UseEmail = ?SHOULD_USE_EMAIL,
             handle_req_as_email(JObj, UseEmail),
-            handle_req_as_http(JObj, Url, UseEmail)
+            handle_req_as_http(JObj, ?SUBSCRIBER_URL, UseEmail)
     end.
 
 -spec handle_req_as_http(kz_json:object(), api_binary(), boolean()) -> 'ok'.
@@ -93,46 +99,34 @@ handle_req_as_email(_JObj, 'false') ->
     lager:debug("email not enabled for system alerts");
 handle_req_as_email(JObj, 'true') ->
     %% Gather data for template
-    case teletype_util:is_notice_enabled_default(?TEMPLATE_ID) of
-        'false' -> teletype_util:notification_disabled(JObj, ?TEMPLATE_ID);
-        'true' -> process_req(JObj)
+    DataJObj = kz_json:normalize(JObj),
+    case teletype_util:is_notice_enabled_default(id()) of
+        'false' -> teletype_util:notification_disabled(DataJObj, id());
+        'true' -> process_req(DataJObj)
     end.
 
 -spec process_req(kz_json:object()) -> 'ok'.
-process_req(JObj) ->
-    DataJObj = kz_json:normalize(JObj),
-    lager:debug("template is enabled for account, fetching templates for rendering"),
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"user">>, admin_user_data(DataJObj)}
-             ,{<<"request">>, request_macros(DataJObj)}
-             ,{<<"message">>, kz_json:get_value(<<"message">>, DataJObj, <<>>)}
-              | details_macros(DataJObj)
-             ],
+process_req(DataJObj) ->
+    Macros = macros(DataJObj),
 
     %% Populate templates
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
+    RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
-    {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_notification(?TEMPLATE_ID
-                                             ,teletype_util:find_account_id(DataJObj)
-                                             ),
-
+    AccountId = teletype_util:find_account_id(DataJObj),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
+    Subject0 = kz_json:get_ne_binary_value(<<"subject">>, TemplateMetaJObj, subject()),
     Subject = try kz_json:get_ne_binary_value(<<"subject">>, DataJObj) of
-                  'undefined' ->
-                      SubjectTemplate = kz_json:get_ne_binary_value(<<"subject">>, TemplateMetaJObj, ?TEMPLATE_SUBJECT),
-                      teletype_util:render_subject(SubjectTemplate, Macros);
+                  'undefined' -> teletype_util:render_subject(Subject0, Macros);
                   Text -> Text
               catch
                   _:_ -> <<"system alert received into ", (kz_term:to_binary(node()))/binary>>
               end,
 
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    Emails = teletype_util:find_addresses(
-               kz_json:set_value(<<"account_id">>, MasterAccountId, DataJObj)
+    Emails = teletype_util:find_addresses(kz_json:set_value(<<"account_id">>, MasterAccountId, DataJObj)
                                          ,TemplateMetaJObj
-                                         ,?MOD_CONFIG_CAT
-              ),
+                                         ,teletype_util:mod_config_cat(id())
+                                         ),
 
     Attachments = teletype_util:maybe_get_attachments(DataJObj),
 
@@ -141,6 +135,16 @@ process_req(JObj) ->
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
+
+-spec macros(kz_json:object()) -> kz_proplist().
+macros(DataJObj) ->
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"user">>, admin_user_data(DataJObj)}
+    ,{<<"request">>, request_macros(DataJObj)}
+    ,{<<"message">>, kz_json:get_value(<<"message">>, DataJObj, <<>>)}
+     | details_macros(DataJObj)
+    ].
 
 -spec details_macros(kz_json:object()) -> kz_proplist().
 details_macros(DataJObj) ->
@@ -213,7 +217,8 @@ request_macros(DataJObj) ->
 
 -spec admin_user_data(kz_json:object()) -> kz_proplist().
 admin_user_data(DataJObj) ->
-    case teletype_util:find_account_admin(kz_json:get_value(<<"account_id">>, DataJObj)) of
+    AccountId = teletype_util:find_account_id(DataJObj),
+    case teletype_util:find_account_admin(AccountId) of
         'undefined' -> [];
         UserDoc -> teletype_util:user_params(UserDoc)
     end.
