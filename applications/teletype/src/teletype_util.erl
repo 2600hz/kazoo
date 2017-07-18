@@ -614,7 +614,7 @@ query_for_account_admin(AccountId) ->
 
 -ifdef(TEST).
 account_users(?AN_ACCOUNT_ID) ->
-    UserJObj = kzd_user:set_priv_level(<<"admin">>, teletype_util:fixture("an_account_user.json")),
+    UserJObj = kzd_user:set_priv_level(<<"admin">>, fixture("an_account_user.json")),
     {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
 -else.
 account_users(AccountId) ->
