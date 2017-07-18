@@ -472,6 +472,7 @@
     "notify.first_occurrence.html_content_transfer_encoding": "notify.first_occurrence html content transfer encoding",
     "notify.first_occurrence.text_content_transfer_encoding": "notify.first_occurrence text content transfer encoding",
     "notify.low_balance.default_enabled": "notify.low_balance default enabled",
+    "notify.low_balance.threshold": "default threshold that will trigger a low balance notification",
     "notify.new_account.default_to": "notify.new_account default to",
     "notify.new_account.html_content_transfer_encoding": "notify.new_account html content transfer encoding",
     "notify.new_account.text_content_transfer_encoding": "notify.new_account text content transfer encoding",
