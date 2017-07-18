@@ -264,7 +264,7 @@ timezone('undefined', Default) ->
 timezone(AccountId, Default) when is_binary(AccountId) ->
     case fetch(AccountId) of
         {'ok', JObj} -> timezone(JObj, Default);
-        {'error', _R} when Default =:= 'undefined',
+        {'error', _R} when Default =:= 'undefined';
                            Default =:= <<"inherit">> -> %% UI-1808
             lager:debug("failed to open account ~s definition, returning system's default timezone"),
             ?DEFAULT_TIMEZONE;
