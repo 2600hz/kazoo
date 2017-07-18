@@ -1,6 +1,6 @@
 #!/bin/bash
 
-pushd $(dirname $0) > /dev/null
+pushd $(dirname $(dirname $0)) > /dev/null
 
 HRL=src/teletype_default_modules.hrl
 STARTED=0
