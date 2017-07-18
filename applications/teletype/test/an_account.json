@@ -47,7 +47,8 @@
         "deregister": {},
         "fax_to_email": {},
         "low_balance": {
-            "sent_low_balance": false
+            "sent_low_balance": false,
+            "threshold": 40
         },
         "voicemail_to_email": {}
     },

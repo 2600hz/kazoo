@@ -15,7 +15,7 @@
 render_test_() ->
     [test_rendering(teletype_deregister)
      %% ,test_rendering(teletype_fax_inbound_error_to_email)
-     %% ,test_rendering(teletype_low_balance)
+    ,test_rendering(teletype_low_balance)
     ,test_rendering(teletype_new_account)
     ,test_rendering(teletype_new_user)
     ,test_rendering(teletype_service_added)

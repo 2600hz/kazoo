@@ -274,7 +274,7 @@ devices(UserJObj) ->
     end.
 
 -spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
-fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
+fetch(AccountId=?NE_BINARY, UserId=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->

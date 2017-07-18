@@ -327,8 +327,7 @@ set_home_zone(JObj, Zone) ->
 %%--------------------------------------------------------------------
 -spec low_balance_threshold(ne_binary() | doc()) -> api_float().
 low_balance_threshold(Thing) ->
-    ConfigCat = <<"notify.low_balance">>,
-    Default = kapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+    Default = kapps_config:get_float(<<"notify.low_balance">>, <<"threshold">>, 5.00),
     low_balance_threshold(Thing, Default).
 
 -spec low_balance_threshold(ne_binary() | doc(), Default) -> float() | Default.
