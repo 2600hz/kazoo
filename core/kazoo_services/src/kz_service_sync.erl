@@ -18,6 +18,7 @@
         ,terminate/2
         ,code_change/3
         ]).
+-export([mark_dirty/1]).
 
 -include("kazoo_services.hrl").
 
@@ -223,12 +224,10 @@ bump_modified(JObj) ->
     Services = kz_services:reconcile_only(AccountId),
     'true' = (Services =/= 'false'),
 
-    UpdatedServicesJObj =
-        kz_json:set_values([{<<"pvt_modified">>, kz_time:current_tstamp()}
-                           ,{<<"_rev">>, kz_doc:revision(JObj)}
-                           ]
-                          ,kz_services:to_json(Services)
-                          ),
+    Values = [{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+             ,{?SERVICES_PVT_REV, kz_doc:revision(JObj)}
+             ],
+    UpdatedServicesJObj = kz_json:set_values(Values, kz_services:to_json(Services)),
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, UpdatedServicesJObj) of
         {'error', _}=E ->
             %% If we conflict or cant save the doc with a new modified timestamp
@@ -421,36 +420,28 @@ get_billing_id(AccountId, ServicesJObj) ->
     end.
 
 -spec mark_dirty(ne_binary() | kzd_services:doc()) -> kz_std_return().
-mark_dirty(AccountId) when is_binary(AccountId) ->
+mark_dirty(?MATCH_ACCOUNT_RAW(AccountId)) ->
     case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} -> mark_dirty(ServicesJObj)
     end;
 mark_dirty(ServicesJObj) ->
-    kz_datamgr:save_doc(?KZ_SERVICES_DB
-                       ,kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                           ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                                           ]
-                                          ,ServicesJObj
-                                          )
-                       ).
+    Values = [{?SERVICES_PVT_IS_DIRTY, 'true'}
+             ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+             ],
+    kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)).
 
 -spec mark_clean(kzd_services:doc()) -> kz_std_return().
 mark_clean(ServicesJObj) ->
-    kz_datamgr:save_doc(?KZ_SERVICES_DB
-                       ,kzd_services:set_is_dirty(ServicesJObj, 'false')
-                       ).
+    kz_datamgr:save_doc(?KZ_SERVICES_DB, kzd_services:set_is_dirty(ServicesJObj, 'false')).
 
 -spec mark_clean_and_status(ne_binary(), kzd_services:doc()) -> kz_std_return().
 mark_clean_and_status(Status, ServicesJObj) ->
     lager:debug("marking services clean with status ~s", [Status]),
-    kz_datamgr:save_doc(?KZ_SERVICES_DB
-                       ,kz_json:set_values([{<<"pvt_dirty">>, 'false'}
-                                           ,{<<"pvt_status">>, Status}
-                                           ]
-                                          ,ServicesJObj
-                                          )
-                       ).
+    Values = [{?SERVICES_PVT_IS_DIRTY, 'false'}
+             ,{?SERVICES_PVT_STATUS, Status}
+             ],
+    kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)).
 
 -spec maybe_update_billing_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->

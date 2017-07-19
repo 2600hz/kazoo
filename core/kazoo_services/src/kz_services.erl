@@ -422,11 +422,10 @@ delete(Account) ->
     case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
         {'ok', JObj} ->
             lager:debug("marking services for account ~s as deleted", [AccountId]),
-            kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values([{<<"pvt_deleted">>, 'true'}
-                                                                    ,{<<"pvt_dirty">>, 'true'}
-                                                                    ]
-                                                                   ,JObj
-                                                                   ));
+            Values = [{?SERVICES_PVT_IS_DELETED, 'true'}
+                     ,{?SERVICES_PVT_IS_DIRTY, 'true'}
+                     ],
+            kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, JObj));
         {'error', 'not_found'} -> {'ok', kz_json:new()};
         {'error', _R}=E ->
             lager:debug("unable to mark service plan ~s as deleted: ~p", [AccountId, _R]),
@@ -1402,7 +1401,7 @@ maybe_augment_with_plan(ResellerId, JObj, PlanId) ->
 
 -spec incorporate_depreciated_service_plans(kz_json:object(), kz_json:object()) -> kz_json:object().
 incorporate_depreciated_service_plans(Plans, JObj) ->
-    PlanIds = kz_json:get_value(<<"pvt_service_plans">>, JObj),
+    PlanIds = kz_json:get_value(?SERVICES_PVT_PLANS, JObj),
     ResellerId = kzd_services:reseller_id(JObj),
     case kz_term:is_empty(PlanIds)
         orelse kz_term:is_empty(ResellerId)

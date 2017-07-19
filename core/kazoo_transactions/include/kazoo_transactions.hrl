@@ -1,4 +1,4 @@
--ifndef(TRANSACTIONS_HRL).
+-ifndef(KAZOO_TRANSACTIONS_HRL).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
@@ -29,5 +29,5 @@
 -define(CODE_MOBILE, 6000).
 -define(CODE_UNKNOWN, 9999).
 
--define(TRANSACTIONS_HRL, 'true').
+-define(KAZOO_TRANSACTIONS_HRL, 'true').
 -endif.

@@ -10,9 +10,7 @@
 -export([init/2]).
 -export([should_topup/1, should_topup/2]).
 
--include("include/kazoo_transactions.hrl").
-
--define(KZ_SERVICES_DB, <<"services">>).
+-include("transactions.hrl").
 
 -type error() :: 'topup_disabled' |
                  'topup_undefined' |

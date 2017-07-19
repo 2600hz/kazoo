@@ -46,9 +46,7 @@
 -export([service_save/1]).
 -export([is_per_minute/1]).
 
--include("include/kazoo_transactions.hrl").
-
--define(KZ_SERVICES_DB, <<"services">>).
+-include("transactions.hrl").
 
 -record(kz_transaction, {id :: api_ne_binary()
                         ,rev :: api_ne_binary()
@@ -586,7 +584,7 @@ service_save(#kz_transaction{}=Transaction) ->
                                       {'ok', transaction()} |
                                       {'error', any()}.
 service_save_transaction(#kz_transaction{pvt_account_id=AccountId}=Transaction) ->
-    TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified=kz_time:current_tstamp()}),
+    TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified = kz_time:current_tstamp()}),
     case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
         {'error', _R}=Error ->
             lager:debug("unable to open account ~s services doc: ~p", [AccountId, _R]),
@@ -595,7 +593,7 @@ service_save_transaction(#kz_transaction{pvt_account_id=AccountId}=Transaction) 
             Transactions = kz_json:get_value(<<"transactions">>, JObj, []),
             JObj1 = kz_json:set_values(
                       [{<<"transactions">>, [TransactionJObj|Transactions]}
-                      ,{<<"pvt_dirty">>, 'true'}
+                      ,{?SERVICES_PVT_IS_DIRTY, 'true'}
                       ], JObj),
             case kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1) of
                 {'ok', _SavedJObj1} ->

@@ -163,8 +163,8 @@ commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
         {'ok', JObj} ->
             NewTransactions = kz_json:get_value(<<"transactions">>, JObj, [])
                 ++ kz_transactions:to_json(Transactions),
-            JObj1 = kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                       ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+            JObj1 = kz_json:set_values([{?SERVICES_PVT_IS_DIRTY, 'true'}
+                                       ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
                                        ,{<<"transactions">>, NewTransactions}
                                        ], JObj),
             case kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1) of
@@ -211,10 +211,8 @@ charge_transactions(BillingId, [], Dict) ->
      );
 charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     Code = kz_json:get_value(<<"pvt_code">>, Transaction),
-    charge_transactions(BillingId
-                       ,Transactions
-                       ,dict:append(Code, Transaction, Dict)
-                       ).
+    NewDict = dict:append(Code, Transaction, Dict),
+    charge_transactions(BillingId, Transactions, NewDict).
 
 -spec handle_charged_transactions(ne_binary(), pos_integer(), kz_json:objects()) -> boolean().
 handle_charged_transactions(BillingId, Code, []) ->
