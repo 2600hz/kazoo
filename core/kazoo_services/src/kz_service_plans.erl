@@ -25,8 +25,6 @@
 
 -include("kazoo_services.hrl").
 
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
-
 -record(kz_service_plans, {vendor_id :: api_binary()
                           ,plans = [] :: kzd_service_plan:docs()
                           }).
@@ -236,9 +234,11 @@ get_plan(PlanId, ResellerId, Services, ServicePlans) ->
 -spec maybe_fetch_vendor_plan(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
                                      api_object().
 maybe_fetch_vendor_plan(PlanId, VendorId, VendorId, Overrides) ->
+    OverridesAreEmpty = kz_json:is_empty(Overrides),
+
     case kz_service_plan:fetch(PlanId, VendorId) of
         'undefined' -> 'undefined';
-        ServicePlan when Overrides =/= ?EMPTY_JSON_OBJECT ->
+        ServicePlan when OverridesAreEmpty ->
             kzd_service_plan:merge_overrides(ServicePlan, Overrides);
         ServicePlan -> ServicePlan
     end;
