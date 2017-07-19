@@ -18,6 +18,7 @@
         ,write_templates_to_disk/2
         ]).
 -export([doc_id/1]).
+-export([params/1]).
 
 -ifdef(TEST).
 -export([master_content_types/1]).
