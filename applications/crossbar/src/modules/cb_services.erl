@@ -23,8 +23,6 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".services">>).
 
--define(PVT_TYPE, <<"service">>).
--define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"services/crossbar_listing">>).
 -define(AUDIT_LOG_LIST, <<"services/audit_logs_by_creation">>).
 

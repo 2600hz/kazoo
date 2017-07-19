@@ -58,7 +58,6 @@
 -define(STATUS_GOOD, <<"good_standing">>).
 -define(STATUS_DELINQUENT, <<"delinquent">>).
 -define(TREE, <<"pvt_tree">>).
--define(TYPE, <<"service">>).
 -define(PLANS, <<"plans">>).
 -define(QUANTITIES, <<"quantities">>).
 -define(TRANSACTIONS, <<"transactions">>).
@@ -127,9 +126,9 @@ reason_code(JObj, Default) ->
 
 -spec type() -> ne_binary().
 -spec type(kz_json:object()) -> ne_binary().
-type() -> ?TYPE.
+type() -> <<"service">>.
 type(JObj) ->
-    kz_doc:type(JObj, ?TYPE).
+    kz_doc:type(JObj, type()).
 
 -spec status_good() -> ne_binary().
 status_good() ->
@@ -229,7 +228,7 @@ set_reason_code(JObj, Code) when is_integer(Code) ->
 
 -spec set_type(doc()) -> doc().
 set_type(JObj) ->
-    kz_doc:set_type(JObj, ?TYPE).
+    kz_doc:set_type(JObj, type()).
 
 -spec set_plans(doc(), kz_json:object()) -> doc().
 set_plans(JObj, Plans) ->

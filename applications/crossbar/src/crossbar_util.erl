@@ -436,26 +436,12 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
     case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
         {'ok', _} ->
-            NewResellerId = find_reseller_id(ToAccount),
+            NewResellerId = kz_services:find_reseller_id(ToAccount),
             {'ok', _} = replicate_account_definition(JObj1),
             {'ok', _} = move_descendants(AccountId, ToTree, NewResellerId),
             {'ok', _} = kz_service_sync:mark_dirty(AccountId),
             move_service(AccountId, ToTree, NewResellerId, 'true')
     end.
-
--spec find_reseller_id(ne_binary()) -> ne_binary().
--spec find_reseller_id(ne_binary(), boolean()) -> ne_binary().
-find_reseller_id(ToAccount) ->
-    case kz_services:fetch_services_doc(ToAccount, 'false') of
-        {'error', _} -> kz_services:get_reseller_id(ToAccount);
-        {'ok', JObj} ->
-            find_reseller_id(ToAccount, kzd_services:is_reseller(JObj))
-    end.
-
-find_reseller_id(ToAccount, 'true') ->
-    ToAccount;
-find_reseller_id(ToAccount, 'false') ->
-    kz_services:get_reseller_id(ToAccount).
 
 %%--------------------------------------------------------------------
 %% @private

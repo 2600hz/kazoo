@@ -20,7 +20,8 @@
         ,reconcile_only/1, reconcile_only/2
         ,save_as_dirty/1
         ]).
--export([fetch/1, fetch_services_doc/2
+-export([fetch/1
+        ,fetch_services_doc/1, fetch_services_doc/2
         ,flush_services/0
         ]).
 -export([update/4]).
@@ -230,8 +231,7 @@ cache_services(AccountId, Services) ->
 flush_services() ->
     kz_cache:flush_local(?CACHE_NAME).
 
--spec services_cache_key(AccountId :: ne_binary()) ->
-                                {?MODULE, ne_binary()}.
+-spec services_cache_key(ne_binary()) -> {?MODULE, ne_binary()}.
 services_cache_key(AccountId) ->
     {?MODULE, AccountId}.
 
@@ -1439,7 +1439,7 @@ get_reseller_id(Account=?NE_BINARY) ->
         {'ok', AccountJObj} ->
             get_reseller_id(lists:reverse(kz_account:tree(AccountJObj)));
         {'error', _R} ->
-            %% lager:info("unable to open account definition for ~s: ~p", [Account, _R]),
+            lager:warning("unable to open account definition for ~s: ~p", [Account, _R]),
             get_reseller_id([])
     end.
 

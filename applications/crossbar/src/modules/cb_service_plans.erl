@@ -151,8 +151,8 @@ validate(Context, PlanId) ->
 validate(Context, ?AVAILABLE, PlanId) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services:find_reseller_id(AccountId),
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
-    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(<<"service_plan">>)).
+    Context1 = cb_context:set_account_db(Context, kz_util:format_account_db(ResellerId)),
+    crossbar_doc:load(PlanId, Context1, ?TYPE_CHECK_OPTION(kzd_service_plan:type())).
 
 -spec validate_service_plan(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
@@ -422,7 +422,7 @@ check_plan_ids(Context, ResellerId, PlanIds) ->
                            cb_context:context().
 check_plan_id(Context, PlanId, ResellerId) ->
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
-    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(<<"service_plan">>)).
+    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(kzd_service_plan:type())).
 
 -spec maybe_forbid_delete(cb_context:context()) -> cb_context:context().
 maybe_forbid_delete(Context) ->
@@ -434,7 +434,7 @@ maybe_forbid_delete(Context) ->
 
 -spec maybe_forbid_delete(ne_binaries(), cb_context:context()) -> cb_context:context().
 maybe_forbid_delete(DeletePlansIds, Context) ->
-    case kz_services:fetch_services_doc(cb_context:account_id(Context), 'false') of
+    case kz_services:fetch_services_doc(cb_context:account_id(Context)) of
         {'error', 'not_found'} -> Context;
         {'ok', Services} ->
             ExistingPlansIds = kzd_services:plan_ids(Services),

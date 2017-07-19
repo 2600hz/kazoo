@@ -8,6 +8,7 @@
 -module(kzd_service_plan).
 
 -export([new/0
+        ,type/0
         ,account_id/1, account_id/2
         ,overrides/1, overrides/2
         ,merge_overrides/2
@@ -50,7 +51,11 @@
 -define(BOOKKEEPERS, <<"bookkeepers">>).
 
 -spec new() -> doc().
-new() -> kz_json:new().
+new() ->
+    kz_doc:set_type(kz_json:new(), type()).
+
+-spec type() -> ne_binary().
+type() -> <<"service_plan">>.
 
 -spec all_items_key() -> ne_binary().
 all_items_key() -> ?ALL.

@@ -96,18 +96,18 @@ handle_resp({'error', _E}, _Sync) ->
 
 -spec get_sync_id(ne_binary()) -> ne_binary().
 get_sync_id(AccountId) ->
-    {'ok', JObj} = kz_services:fetch_services_doc(AccountId, 'false'),
+    {'ok', JObj} = kz_services:fetch_services_doc(AccountId),
     kz_doc:revision(JObj).
 
 -spec http_payload(sync()) -> iolist().
 http_payload(#sync{content_type = <<"application/json">>} = Sync) ->
     lager:debug("creating application/json payload for http billing sync"),
-    JObj = kz_json:from_list([
-                              {<<"account_id">>, Sync#sync.account_id}
-                             ,{<<"sync_id">>, Sync#sync.id}
-                             ,{<<"items">>, kz_service_items:public_json(Sync#sync.items)}
-                             ]),
-    kz_json:encode(JObj).
+    kz_json:encode(
+      kz_json:from_list(
+        [{<<"account_id">>, Sync#sync.account_id}
+        ,{<<"sync_id">>, Sync#sync.id}
+        ,{<<"items">>, kz_service_items:public_json(Sync#sync.items)}
+        ])).
 
 -spec http_headers(sync()) -> kz_proplist().
 http_headers(Sync) ->

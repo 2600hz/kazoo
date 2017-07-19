@@ -81,8 +81,6 @@
 -define(SENT_INITIAL_REGISTRATION, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]).
 -define(SENT_INITIAL_CALL, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]).
 
--define(PVT_TYPE, <<"account">>).
-
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
@@ -132,7 +130,7 @@ check_reseller(Account, ValueFun, Default) ->
 %%--------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
-    kz_doc:set_type(kz_json:new(), ?PVT_TYPE).
+    kz_doc:set_type(kz_json:new(), type()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -140,7 +138,7 @@ new() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec type() -> ne_binary().
-type() -> ?PVT_TYPE.
+type() -> <<"account">>.
 
 %%--------------------------------------------------------------------
 %% @public
