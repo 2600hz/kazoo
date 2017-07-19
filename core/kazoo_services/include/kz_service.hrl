@@ -9,7 +9,7 @@
         kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>, 'kz_bookkeeper_local')).
 
 -define(MAYBE_RESELLER_BOOKKEEPER_LOOKUP,
-        kapps_config:get_atom(<<"services">> ,<<"reseller_bookkeeper_lookup">> ,'false')).
+        kapps_config:get_is_true(<<"services">> ,<<"reseller_bookkeeper_lookup">> ,'false')).
 
 -define(KZ_LOOKUP_BOOKKEEPER(ResellerId),
         kz_term:to_atom(kapps_account_config:get_global(ResellerId
