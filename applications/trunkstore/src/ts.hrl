@@ -47,7 +47,7 @@
                            ,amqp_worker :: api_pid()
                            ,callctl_q :: api_ne_binary()
                            ,call_cost = 0.0 :: float()
-                           ,failover :: kz_json:object()
+                           ,failover :: api_object()
                            }).
 
 -record(route_flags, {callid = <<>> :: binary()                      % unique call ID
