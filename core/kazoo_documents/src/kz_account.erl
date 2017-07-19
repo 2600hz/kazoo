@@ -242,23 +242,22 @@ set_language(JObj, Language) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec timezone(api_ne_binary() | doc()) -> ne_binary().
-timezone('undefined') ->
-    ?DEFAULT_TIMEZONE;
+timezone('undefined') -> default_timezone();
 timezone(AccountId) when is_binary(AccountId) ->
     case fetch(AccountId) of
         {'ok', JObj} -> timezone(JObj);
         {'error', _R} ->
             lager:debug("failed to open account ~s definition, returning system's default timezone"),
-            ?DEFAULT_TIMEZONE
+            default_timezone()
     end;
 timezone(JObj) ->
     timezone(JObj, 'undefined').
 
 -spec timezone(api_ne_binary() | doc(), Default) -> ne_binary() | Default.
 timezone('undefined', 'undefined') ->
-    ?DEFAULT_TIMEZONE;
+    default_timezone();
 timezone('undefined', <<"inherit">>) -> %% UI-1808
-    ?DEFAULT_TIMEZONE;
+    default_timezone();
 timezone('undefined', Default) ->
     Default;
 timezone(AccountId, Default) when is_binary(AccountId) ->
@@ -267,7 +266,7 @@ timezone(AccountId, Default) when is_binary(AccountId) ->
         {'error', _R} when Default =:= 'undefined';
                            Default =:= <<"inherit">> -> %% UI-1808
             lager:debug("failed to open account ~s definition, returning system's default timezone"),
-            ?DEFAULT_TIMEZONE;
+            default_timezone();
         {'error', _} ->
             Default
     end;
