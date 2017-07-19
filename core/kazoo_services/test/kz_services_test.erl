@@ -7,6 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(kz_services_test).
 
+-export([fixture/1]).
+
 -include_lib("eunit/include/eunit.hrl").
 
 -include("kazoo_services.hrl").
@@ -19,6 +21,7 @@
                ,services_jobj :: kz_json:object()
                ,account_plan :: kzd_service_plan:plan()
                }).
+
 
 services_test_() ->
     {'foreach'
@@ -38,12 +41,12 @@ init() ->
     lists:foldl(fun (F, State) -> F(State) end, #state{}, Routines).
 
 read_service_plan(State) ->
-    JObj = fixture_json("example_service_plan_1.json"),
+    JObj = fixture("example_service_plan_1.json"),
     State#state{service_plan_jobj = JObj
                }.
 
 read_services(#state{service_plan_jobj=ServicePlan}=State) ->
-    JObj = fixture_json("example_account_services.json"),
+    JObj = fixture("example_account_services.json"),
     Services = kz_services:from_service_json(JObj, 'false'),
     Overrides = kzd_services:plan_overrides(JObj, kz_doc:id(ServicePlan)),
     AccountPlan = kzd_service_plan:merge_overrides(ServicePlan, Overrides),
@@ -52,10 +55,15 @@ read_services(#state{service_plan_jobj=ServicePlan}=State) ->
                ,account_plan = AccountPlan
                }.
 
-fixture_json(Filename) ->
-    Path = filename:join([code:priv_dir(?APP), Filename]),
+-spec fixture(nonempty_string()) -> binary() | kz_json:object().
+fixture(Filename) ->
+    Path = filename:join([code:lib_dir(?APP), "test", Filename]),
+    ?LOG_DEBUG("reading fixture ~s", [Path]),
     {ok, Bin} = file:read_file(Path),
-    kz_json:decode(Bin).
+    case lists:suffix(".json", Filename) of
+        false -> Bin;
+        true -> kz_json:decode(Bin)
+    end.
 
 services_json_to_record(#state{services = Services
                               ,services_jobj = JObj
@@ -167,4 +175,8 @@ category_quantities(CurrentServices, UpdatedServices, Increment) ->
     ,{"Verify updated category quantities minus did_us numbers"
      ,?_assertEqual(MinusDIDUS, UpdatedCategoryQuantity-DIDUSQuantity)
      }
+    ].
+
+find_reseller_id_test_() ->
+    [
     ].

@@ -187,9 +187,8 @@ maybe_calc_updates(Services, 'false') ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) -> services().
-fetch(<<_/binary>> = Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-
+fetch(Account=?NE_BINARY) ->
+    AccountId = kz_util:format_account_id(Account),
     case fetch_cached_services(AccountId) of
         {'ok', Services} -> Services;
         {'error', 'not_found'} ->
@@ -237,14 +236,26 @@ services_cache_key(AccountId) ->
 -spec fetch_services_doc(ne_binary(), boolean()) ->
                                 {'ok', kz_json:object()} |
                                 {'error', any()}.
-fetch_services_doc(AccountId) ->
+fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId)) ->
     %% TODO: if reseller populate cascade via merchant id
     fetch_services_doc(AccountId, 'false').
 
-fetch_services_doc(AccountId, 'false') ->
+-ifdef(TEST).
+fetch_services_doc(?A_MASTER_ACCOUNT_ID, _NotFromCache)
+  when is_boolean(_NotFromCache) ->
+    {ok, kz_services_test:fixture("a_master_services.json")};
+fetch_services_doc(?A_RESELLER_ACCOUNT_ID, _NotFromCache)
+  when is_boolean(_NotFromCache) ->
+    {ok, kz_services_test:fixture("a_reseller_services.json")};
+fetch_services_doc(?A_SUB_ACCOUNT_ID, _NotFromCache)
+  when is_boolean(_NotFromCache) ->
+    {ok, kz_services_test:fixture("a_sub_services.json")}.
+-else.
+fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), 'false') ->
     kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId);
-fetch_services_doc(AccountId, 'true') ->
+fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), 'true') ->
     kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId).
+-endif.
 
 -spec handle_fetch_result(ne_binary(), kz_json:object()) -> services().
 handle_fetch_result(AccountId, JObj) ->
@@ -695,7 +706,7 @@ find_reseller_id('undefined') ->
         {'ok', MasterAccountId} -> MasterAccountId
     end;
 find_reseller_id(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account),
     case fetch_services_doc(AccountId) of
         {'ok', JObj} ->
             case kzd_services:reseller_id(JObj) of
@@ -1427,12 +1438,12 @@ get_reseller_id([Parent|Ancestors]) ->
         {'ok', JObj} ->
             get_reseller_id(Parent, Ancestors, JObj)
     end;
-get_reseller_id(<<_/binary>> = Account) ->
+get_reseller_id(Account=?NE_BINARY) ->
     case kz_account:fetch(Account) of
         {'ok', AccountJObj} ->
             get_reseller_id(lists:reverse(kz_account:tree(AccountJObj)));
         {'error', _R} ->
-            %%            lager:info("unable to open account definition for ~s: ~p", [Account, _R]),
+            %% lager:info("unable to open account definition for ~s: ~p", [Account, _R]),
             get_reseller_id([])
     end.
 
