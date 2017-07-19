@@ -112,17 +112,14 @@
 new() ->
     #kz_services{}.
 
-new(<<_/binary>> = AccountId) ->
+new(?MATCH_ACCOUNT_RAW(AccountId)) ->
     AccountJObj = get_account_definition(AccountId),
-
     JObj = base_service_object(AccountId, AccountJObj),
-
     BillingId = case ?SUPPORT_BILLING_ID of
                     'true' -> kzd_services:billing_id(JObj);
                     'false' -> AccountId
                 end,
     IsReseller = kzd_services:is_reseller(JObj),
-
     #kz_services{account_id = AccountId
                 ,jobj = JObj
                 ,cascade_quantities = cascade_quantities(AccountId, IsReseller)
@@ -136,7 +133,7 @@ new(<<_/binary>> = AccountId) ->
 base_service_object(AccountId, AccountJObj) ->
     ResellerId = get_reseller_id(AccountId),
     BaseJObj = kz_doc:update_pvt_parameters(kz_json:new()
-                                           ,kz_util:format_account_id(AccountId, 'encoded')
+                                           ,kz_util:format_account_db(AccountId)
                                            ,[{'account_id', AccountId}
                                             ,{'crossbar_doc_vsn', <<"1">>}
                                             ,{'id', AccountId}
@@ -319,7 +316,7 @@ save_as_dirty(#kz_services{}=Services) ->
 
 save_as_dirty(#kz_services{jobj = JObj
                           ,updates = _Updates
-                          ,account_id = <<_/binary>> = AccountId
+                          ,account_id = ?MATCH_ACCOUNT_RAW(AccountId)
                           }=Services
              ,BackOff
              ) ->
@@ -709,7 +706,7 @@ to_json(#kz_services{jobj=JObj
 %%--------------------------------------------------------------------
 -spec find_reseller_id(api_binary()) -> api_binary().
 find_reseller_id('undefined') ->
-    case kapps_util:get_master_account_id() of
+    case master_account_id() of
         {'error', _} -> 'undefined';
         {'ok', MasterAccountId} -> MasterAccountId
     end;
@@ -723,6 +720,12 @@ find_reseller_id(Account) ->
             end;
         {'error', _} -> get_reseller_id(Account)
     end.
+
+-ifdef(TEST).
+master_account_id() -> {ok, ?A_MASTER_ACCOUNT_ID}.
+-else.
+master_account_id() -> kapps_util:get_master_account_id().
+-endif.
 
 %%%===================================================================
 %%% Services functions
@@ -1044,8 +1047,9 @@ cascade_category_quantity(CategoryId, ItemExceptions, #kz_services{cascade_quant
 %% @end
 %%--------------------------------------------------------------------
 -spec reset_category(ne_binary(), services()) -> services().
-reset_category(CategoryId, #kz_services{updates=JObj}=Services) ->
-    Services#kz_services{updates=kz_json:set_value(CategoryId, kz_json:new(), JObj)}.
+reset_category(CategoryId, #kz_services{updates = JObj}=Services) ->
+    NewUpdates = kz_json:set_value(CategoryId, kz_json:new(), JObj),
+    Services#kz_services{updates = NewUpdates}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1055,9 +1059,9 @@ reset_category(CategoryId, #kz_services{updates=JObj}=Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_reseller(ne_binary() | services() | kz_json:object()) -> boolean().
-is_reseller(#kz_services{jobj=ServicesJObj}) ->
+is_reseller(#kz_services{jobj = ServicesJObj}) ->
     kzd_services:is_reseller(ServicesJObj);
-is_reseller(<<_/binary>> = Account) ->
+is_reseller(Account=?NE_BINARY) ->
     case fetch_services_doc(Account) of
         {'ok', ServicesJObj} -> kzd_services:is_reseller(ServicesJObj);
         _ -> 'false'
@@ -1432,7 +1436,7 @@ get_reseller_id([Parent|Ancestors]) ->
             get_reseller_id(Parent, Ancestors, JObj)
     end;
 get_reseller_id(Account=?NE_BINARY) ->
-    case kz_account:fetch(Account) of
+    case fetch_account(Account) of
         {'ok', AccountJObj} ->
             get_reseller_id(lists:reverse(kz_account:tree(AccountJObj)));
         {'error', _R} ->
@@ -1446,6 +1450,14 @@ get_reseller_id(Parent, Ancestors, JObj) ->
         'false' -> get_reseller_id(Ancestors);
         'true' -> Parent
     end.
+
+-ifdef(TEST).
+fetch_account(?A_MASTER_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_master_account.json")};
+fetch_account(?A_RESELLER_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_reseller_account.json")};
+fetch_account(?A_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")}.
+-else.
+fetch_account(Account) -> kz_account:fetch(Account).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
