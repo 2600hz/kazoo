@@ -26,7 +26,7 @@
               }).
 -type sync() :: #sync{}.
 
--define(MOD_CONFIG_CAT, <<(?WHS_CONFIG_CAT)/binary, ".http_sync">>).
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".http_sync">>).
 
 -define(CONNECT_TIMEOUT_MS
        ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"connect_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND)

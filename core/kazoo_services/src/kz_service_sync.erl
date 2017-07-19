@@ -27,6 +27,16 @@
 -record(state, {}).
 -type state() :: #state{}.
 
+-define(SHOULD_SYNC_SERVICES
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"sync_services">>, 'false')).
+
+-define(SCAN_RATE
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND)).
+
+-define(SYNC_BUFFER_PERIOD
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"sync_buffer_period">>, 600)).
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -74,9 +84,9 @@ clean(Account) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
-    io:format("getting ~s sync_services~n", [?WHS_CONFIG_CAT]),
-    lager:debug("getting ~s sync_services", [?WHS_CONFIG_CAT]),
-    case kapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, 'false') of
+    io:format("getting ~s sync_services~n", [?CONFIG_CAT]),
+    lager:debug("getting ~s sync_services", [?CONFIG_CAT]),
+    case ?SHOULD_SYNC_SERVICES of
         'false' ->
             io:format("not starting sync services~n"),
             lager:debug("not starting sync services"),
@@ -90,8 +100,7 @@ init([]) ->
 
 -spec start_sync_service_timer() -> reference().
 start_sync_service_timer() ->
-    ScanRate = kapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND),
-    erlang:send_after(ScanRate, self(), ?SCAN_MSG).
+    erlang:send_after(?SCAN_RATE, self(), ?SCAN_MSG).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -198,10 +207,9 @@ sync(AccountId, ServicesJObj) ->
 
 -spec maybe_sync_service() -> kz_std_return().
 maybe_sync_service() ->
-    SyncBufferPeriod = kapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
     ViewOptions = [{'limit', 1}
                   ,'include_docs'
-                  ,{'endkey', kz_time:current_tstamp() - SyncBufferPeriod}
+                  ,{'endkey', kz_time:current_tstamp() - ?SYNC_BUFFER_PERIOD}
                   ],
     case kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
         {'error', _}=E -> E;

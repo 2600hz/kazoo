@@ -43,7 +43,7 @@
         ]).
 -export([is_dirty/1]).
 -export([quantity/3
-        ,diff_quantities/1, diff_quantities/2
+        ,diff_quantities/1
         ,diff_quantity/3
         ,have_quantities_changed/1
         ]).
@@ -82,12 +82,20 @@
 -define(BASE_BACKOFF, 50).
 
 -type services() :: #kz_services{}.
+
 -type bookkeeper() :: 'kz_bookkeeper_braintree' |
                       'kz_bookkeeper_local' |
                       'kz_bookkeeper_http'.
+
 -export_type([services/0
              ,bookkeeper/0
              ]).
+
+-define(SHOULD_ALLOW_UPDATES
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_updates">>, 'true')).
+
+-define(DEFAULT_SERVICE_MODULES
+       ,kapps_config:get_ne_binaries(?CONFIG_CAT, <<"modules">>)).
 
 %%%===================================================================
 %%% Operations
@@ -729,8 +737,9 @@ find_reseller_id(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allow_updates(ne_binary() | services()) -> 'true'.
-allow_updates(<<_/binary>> = Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+allow_updates(Account=?NE_BINARY) ->
+    allow_updates(kz_util:format_account_id(Account));
+allow_updates(?MATCH_ACCOUNT_RAW(AccountId)) ->
     case fetch_services_doc(AccountId) of
         {'error', _R} ->
             lager:debug("can't determine if account ~s can make updates: ~p", [AccountId, _R]),
@@ -739,8 +748,8 @@ allow_updates(<<_/binary>> = Account) ->
             lager:debug("determining if account ~s is able to make updates", [AccountId]),
             maybe_follow_billing_id(AccountId, ServicesJObj)
     end;
-allow_updates(#kz_services{jobj=ServicesJObj
-                          ,account_id=AccountId
+allow_updates(#kz_services{jobj = ServicesJObj
+                          ,account_id = AccountId
                           }) ->
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
     maybe_follow_billing_id(AccountId, ServicesJObj).
@@ -762,9 +771,7 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
         orelse kzd_services:status(ServicesJObj)
     of
         'true' ->
-            lager:debug("allowing request for account ~s with no service plans"
-                       ,[AccountId]
-                       ),
+            lager:debug("allowing request for account ~s with no service plans", [AccountId]),
             'true';
         StatusGood ->
             lager:debug("allowing request for account in good standing"),
@@ -792,10 +799,10 @@ maybe_bookkeeper_allow_updates(AccountId, Status) ->
 
 -spec default_maybe_allow_updates(ne_binary()) -> 'true'.
 default_maybe_allow_updates(AccountId) ->
-    case kapps_config:get_is_true(?WHS_CONFIG_CAT, <<"default_allow_updates">>, 'true') of
+    case ?SHOULD_ALLOW_UPDATES of
         'true' -> 'true';
         'false' ->
-            lager:debug("denying update request, ~s.default_allow_updates is false", [?WHS_CONFIG_CAT]),
+            lager:debug("denying update request, ~s.default_allow_updates is false", [?CONFIG_CAT]),
             Reason = io_lib:format("Service updates are disallowed by default for billing account ~s", [AccountId]),
             Error = kz_json:from_list([{<<"error">>, <<"updates_disallowed">>}
                                       ,{<<"message">>, kz_term:to_binary(Reason)}
@@ -804,12 +811,12 @@ default_maybe_allow_updates(AccountId) ->
     end.
 
 -spec spawn_move_to_good_standing(ne_binary()) -> 'true'.
-spawn_move_to_good_standing(<<_/binary>> = AccountId) ->
+spawn_move_to_good_standing(?MATCH_ACCOUNT_RAW(AccountId)) ->
     _ = kz_util:spawn(fun move_to_good_standing/1, [AccountId]),
     'true'.
 
 -spec move_to_good_standing(ne_binary()) -> services().
-move_to_good_standing(<<_/binary>> = AccountId) ->
+move_to_good_standing(?MATCH_ACCOUNT_RAW(AccountId)) ->
     #kz_services{jobj=JObj}=Services = fetch(AccountId),
     lager:debug("moving account ~s services to good standing", [AccountId]),
     save(Services#kz_services{jobj = kzd_services:set_status(JObj, ?STATUS_GOOD)}).
@@ -836,7 +843,7 @@ reconcile_module(M, Services) ->
     M:reconcile(Services).
 
 reconcile('undefined') -> 'false';
-reconcile(<<_/binary>> = Account) ->
+reconcile(Account=?NE_BINARY) ->
     save(reconcile_only(Account));
 reconcile(#kz_services{}=Services) ->
     save(reconcile_only(Services)).
@@ -849,7 +856,7 @@ reconcile(#kz_services{}=Services) ->
 %%--------------------------------------------------------------------
 -spec reconcile_only(api_binary() | services(), text()) -> 'false' | services().
 reconcile_only('undefined', _Module) -> 'false';
-reconcile_only(<<_/binary>> = Account, Module) ->
+reconcile_only(Account=?NE_BINARY, Module) ->
     reconcile_only(fetch(Account), Module);
 reconcile_only(#kz_services{account_id=AccountId}=CurrentServices, Module) ->
     lager:debug("reconcile ~s services for ~s", [Module, AccountId]),
@@ -861,7 +868,7 @@ reconcile_only(#kz_services{account_id=AccountId}=CurrentServices, Module) ->
 
 -spec reconcile(api_binary() | services(), text()) -> 'false' | services().
 reconcile('undefined', _Module) -> 'false';
-reconcile(<<_/binary>> = Account, Module) ->
+reconcile(Account=?NE_BINARY, Module) ->
     timer:sleep(?MILLISECONDS_IN_SECOND),
     maybe_save(reconcile_only(Account, Module));
 reconcile(#kz_services{}=Services, Module) ->
@@ -879,12 +886,12 @@ reconcile(#kz_services{}=Services, Module) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec account_id(services()) -> ne_binary().
-account_id(#kz_services{account_id='undefined'
-                       ,jobj=JObj
+account_id(#kz_services{account_id = 'undefined'
+                       ,jobj = JObj
                        }) ->
     lager:debug("services has no account id, looking in ~s", [kz_json:encode(JObj)]),
     kz_doc:account_id(JObj);
-account_id(#kz_services{account_id=AccountId}) ->
+account_id(#kz_services{account_id = AccountId}) ->
     AccountId.
 
 -spec services_json(services()) -> kzd_services:doc().
@@ -892,7 +899,7 @@ services_json(#kz_services{jobj=JObj}) ->
     JObj.
 
 -spec is_dirty(services()) -> boolean().
-is_dirty(#kz_services{dirty=IsDirty}) ->
+is_dirty(#kz_services{dirty = IsDirty}) ->
     kz_term:is_true(IsDirty).
 
 %%--------------------------------------------------------------------
@@ -903,16 +910,16 @@ is_dirty(#kz_services{dirty=IsDirty}) ->
 %%--------------------------------------------------------------------
 -spec quantity(ne_binary(), ne_binary(), services()) -> integer().
 quantity(_, _, #kz_services{deleted='true'}) -> 0;
-quantity(CategoryId, ItemId, #kz_services{updates=Updates
-                                         ,jobj=JObj
+quantity(CategoryId, ItemId, #kz_services{updates = Updates
+                                         ,jobj = JObj
                                          }) ->
     ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
     kz_json:get_integer_value([CategoryId, ItemId], Updates, ItemQuantity).
 
 -spec diff_quantities(services()) -> api_object().
 diff_quantities(#kz_services{deleted='true'}) -> 'undefined';
-diff_quantities(#kz_services{jobj=JObj
-                            ,updates=Updates
+diff_quantities(#kz_services{jobj = JObj
+                            ,updates = Updates
                             }) ->
     kz_json:foldl(fun diff_cat_quantities/3, Updates, kzd_services:quantities(JObj)).
 
@@ -923,20 +930,6 @@ diff_cat_quantities(CategoryId, ItemsJObj, Updates) ->
                   end
                  ,Updates
                  ,ItemsJObj
-                 ).
-
--spec diff_quantities(ne_binary(), services()) -> api_object().
-diff_quantities(_CategoryId, #kz_services{deleted='true'}) -> 'undefined';
-diff_quantities(CategoryId, #kz_services{jobj=JObj
-                                        ,updates=Updates
-                                        }) ->
-    CatQuantities = kzd_services:category_quantities(JObj, CategoryId),
-    UpdateQuantities = kz_json:get_value(CategoryId, Updates, kz_json:new()),
-    kz_json:foldl(fun(Id, Q, Acc) ->
-                          diff_item_quantities(Id, Q, Acc, CategoryId)
-                  end
-                 ,UpdateQuantities
-                 ,CatQuantities
                  ).
 
 -spec diff_item_quantities(ne_binary(), integer(), kz_json:object(), ne_binary()) ->
@@ -1232,7 +1225,7 @@ get_item_plan(CategoryId, ItemId, ServicePlan) ->
 %%--------------------------------------------------------------------
 -spec get_service_modules() -> atoms().
 get_service_modules() ->
-    case kapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
+    case ?DEFAULT_SERVICE_MODULES of
         'undefined' -> ?SERVICE_MODULES;
         ConfModules ->
             lager:debug("configured service modules: ~p", [ConfModules]),
