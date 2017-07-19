@@ -26,7 +26,7 @@
                            }).
 
 -record(kz_service_updates, {bt_subscriptions = [] :: [update()]
-                            ,account_id :: api_binary()
+                            ,account_id :: api_ne_binary()
                             ,bt_customer :: braintree_customer:customer()
                             }).
 
@@ -156,21 +156,21 @@ commit_transactions(BillingId, Transactions) ->
     commit_transactions(BillingId, Transactions, 3).
 
 commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, BillingId) of
+    case kz_services:fetch_services_doc(BillingId, true) of
         {'error', _E} ->
-            lager:error("could not open services for ~p : ~p retrying...", [BillingId, _E]),
-            commit_transactions(BillingId, Transactions, Try-1);
-        {'ok', JObj} ->
-            NewTransactions = kz_json:get_value(<<"transactions">>, JObj, [])
+            lager:error("could not open services for ~p: ~p retrying...", [BillingId, _E]),
+            commit_transactions(BillingId, Transactions, Try - 1);
+        {'ok', ServicesJObj} ->
+            NewTransactions = kz_json:get_list_value(<<"transactions">>, ServicesJObj, [])
                 ++ kz_transactions:to_json(Transactions),
-            JObj1 = kz_json:set_values([{?SERVICES_PVT_IS_DIRTY, 'true'}
-                                       ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
-                                       ,{<<"transactions">>, NewTransactions}
-                                       ], JObj),
-            case kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1) of
+            Values = [{?SERVICES_PVT_IS_DIRTY, 'true'}
+                     ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                     ,{<<"transactions">>, NewTransactions}
+                     ],
+            case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)) of
                 {'error', _E} ->
-                    lager:error("could not save services for ~p : ~p retrying...", [BillingId, _E]),
-                    commit_transactions(BillingId, Transactions, Try-1);
+                    lager:error("could not save services for ~p: ~p retrying...", [BillingId, _E]),
+                    commit_transactions(BillingId, Transactions, Try - 1);
                 {'ok', _} -> 'ok'
             end
     end;

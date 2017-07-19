@@ -61,8 +61,8 @@ sync(Account) ->
 
 -spec clean(ne_binary()) -> kz_std_return().
 clean(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+    AccountId = kz_util:format_account_id(Account),
+    case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} ->
             immediate_sync(AccountId, kz_doc:set_soft_deleted(ServicesJObj, 'true'))
@@ -421,7 +421,7 @@ get_billing_id(AccountId, ServicesJObj) ->
 
 -spec mark_dirty(ne_binary() | kzd_services:doc()) -> kz_std_return().
 mark_dirty(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+    case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} -> mark_dirty(ServicesJObj)
     end;

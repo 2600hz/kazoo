@@ -130,7 +130,7 @@ set_reseller_id(Reseller, Account) ->
 %%--------------------------------------------------------------------
 -spec maybe_update_services(ne_binary(), ne_binary(), any()) -> {'error', _} | 'ok'.
 maybe_update_services(AccountId, Key, Value) ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+    case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _R}=Error ->
             io:format("unable to open services doc ~s: ~p~n", [AccountId, _R]),
             Error;

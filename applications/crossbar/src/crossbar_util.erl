@@ -470,7 +470,7 @@ validate_move(AccountId, ToAccount) ->
 -spec move_descendants(ne_binary(), ne_binaries(), ne_binary()) ->
                               {'ok', 'done'} |
                               {'error', any()}.
-move_descendants(<<_/binary>> = AccountId, Tree, NewResellerId) ->
+move_descendants(?MATCH_ACCOUNT_RAW(AccountId), Tree, NewResellerId) ->
     update_descendants_tree(get_descendants(AccountId), Tree, NewResellerId, AccountId).
 
 -spec update_descendants_tree(ne_binaries(), ne_binaries(), ne_binary(), ne_binary()) ->
@@ -478,23 +478,23 @@ move_descendants(<<_/binary>> = AccountId, Tree, NewResellerId) ->
                                      {'error', any()}.
 update_descendants_tree([], _, _, _) -> {'ok', 'done'};
 update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAccountId) ->
-    AccountId = kz_util:format_account_id(Descendant, 'raw'),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Descendant) of
         {'error', _E}=Error -> Error;
-        {'ok', JObj} ->
-            PreviousTree = kz_account:tree(JObj),
+        {'ok', AccountJObj} ->
+            PreviousTree = kz_account:tree(AccountJObj),
             %% Preserve tree below and including common ancestor
             {_, Tail} = lists:splitwith(fun(X) -> X =/= MovedAccountId end, PreviousTree),
             ToTree = Tree ++ Tail,
-            JObj1 = kz_json:set_values([{?SERVICES_PVT_TREE, ToTree}
-                                       ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
-                                       ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
-                                       ], JObj),
-            case kz_datamgr:save_doc(AccountDb, JObj1) of
+            Values = [{?SERVICES_PVT_TREE, ToTree}
+                     ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
+                     ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                     ],
+            AccountDb = kz_util:format_account_db(Descendant),
+            case kz_datamgr:save_doc(AccountDb, kz_json:set_values(Values, AccountJObj)) of
                 {'error', _E}=Error -> Error;
-                {'ok', _} ->
-                    {'ok', _} = replicate_account_definition(JObj1),
+                {'ok', NewAccountJObj} ->
+                    {'ok', _} = replicate_account_definition(NewAccountJObj),
+                    AccountId = kz_util:format_account_id(Descendant),
                     {'ok', _} = move_service(AccountId, ToTree, NewResellerId, 'undefined'),
                     update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
             end
@@ -509,24 +509,18 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 move_service(AccountId, NewTree, NewResellerId, Dirty) ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+    case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
-            move_service_doc(NewTree, NewResellerId, Dirty, JObj)
+            Props = props:filter_undefined(
+                      [{?SERVICES_PVT_TREE, NewTree}
+                      ,{?SERVICES_PVT_TREE_PREVIOUSLY, kz_account:tree(JObj)}
+                      ,{?SERVICES_PVT_IS_DIRTY, Dirty}
+                      ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                      ,{?SERVICES_PVT_RESELLER_ID, NewResellerId}
+                      ]),
+            kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj))
     end.
-
--spec move_service_doc(ne_binaries(), ne_binary(), api_boolean(), kz_json:object()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', any()}.
-move_service_doc(NewTree, NewResellerId, Dirty, JObj) ->
-    Props = props:filter_undefined(
-              [{?SERVICES_PVT_TREE, NewTree}
-              ,{?SERVICES_PVT_TREE_PREVIOUSLY, kz_account:tree(JObj)}
-              ,{?SERVICES_PVT_IS_DIRTY, Dirty}
-              ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
-              ,{?SERVICES_PVT_RESELLER_ID, NewResellerId}
-              ]),
-    kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj)).
 
 %%--------------------------------------------------------------------
 %% @public

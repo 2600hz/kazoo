@@ -583,22 +583,21 @@ service_save(#kz_transaction{}=Transaction) ->
 -spec service_save_transaction(transaction()) ->
                                       {'ok', transaction()} |
                                       {'error', any()}.
-service_save_transaction(#kz_transaction{pvt_account_id=AccountId}=Transaction) ->
-    TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified = kz_time:current_tstamp()}),
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+service_save_transaction(#kz_transaction{pvt_account_id = AccountId}=Transaction) ->
+    TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified = kz_time:current_tstamp()
+                                                        }),
+    case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _R}=Error ->
             lager:debug("unable to open account ~s services doc: ~p", [AccountId, _R]),
             Error;
-        {'ok', JObj} ->
-            Transactions = kz_json:get_value(<<"transactions">>, JObj, []),
-            JObj1 = kz_json:set_values(
-                      [{<<"transactions">>, [TransactionJObj|Transactions]}
-                      ,{?SERVICES_PVT_IS_DIRTY, 'true'}
-                      ], JObj),
-            case kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1) of
-                {'ok', _SavedJObj1} ->
-                    {'ok', from_json(TransactionJObj)};
-                {'error', _R} = Error ->
+        {'ok', ServicesJObj} ->
+            Transactions = kz_json:get_value(<<"transactions">>, ServicesJObj, []),
+            Props = [{<<"transactions">>, [TransactionJObj|Transactions]}
+                    ,{?SERVICES_PVT_IS_DIRTY, 'true'}
+                    ],
+            case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, ServicesJObj)) of
+                {'ok', _} -> {'ok', from_json(TransactionJObj)};
+                {'error', _R}=Error ->
                     lager:debug("failed to save account ~s services doc for transaction ~s: ~p"
                                ,[AccountId, kz_doc:id(TransactionJObj), _R]),
                     Error

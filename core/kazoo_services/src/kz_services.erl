@@ -66,6 +66,7 @@
 -define(QUANTITIES_ACCOUNT, <<"account_quantities">>).
 -define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
 -define(PLANS, <<"plans">>).
+-define(DEFAULT_PLAN, <<"default_service_plan">>).
 -define(SERVICE_MODULE_PREFIX, "kz_service_").
 -define(SERVICE_MODULES, application:get_env(?APP, 'service_modules', default_service_modules())).
 
@@ -404,8 +405,8 @@ save(#kz_services{jobj = JObj
         {'error', 'conflict'} ->
             lager:debug("services for ~s conflicted, merging changes and retrying", [AccountId]),
             timer:sleep(BackOff + rand:uniform(?BASE_BACKOFF)),
-            {'ok', Existing} = kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId),
-            save(Services#kz_services{jobj=Existing}, BackOff*2)
+            {ok, Existing} = fetch_services_doc(AccountId, true),
+            save(Services#kz_services{jobj = Existing}, 2 * BackOff)
     end.
 
 %%--------------------------------------------------------------------
@@ -416,10 +417,10 @@ save(#kz_services{jobj = JObj
 %%--------------------------------------------------------------------
 -spec delete(ne_binary()) -> kz_std_return().
 delete(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account),
     %% TODO: support other bookkeepers, and just cancel subscriptions....
     _ = (catch braintree_customer:delete(AccountId)),
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+    case fetch_services_doc(AccountId, true) of
         {'ok', JObj} ->
             lager:debug("marking services for account ~s as deleted", [AccountId]),
             Values = [{?SERVICES_PVT_IS_DELETED, 'true'}
@@ -439,15 +440,15 @@ delete(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec list_categories(services()) -> api_binaries().
-list_categories(#kz_services{jobj=JObj
-                            ,updates=Updates
-                            ,cascade_quantities=CascadeQuantities}) ->
-    Set = sets:union([
-                      sets:from_list(kz_json:get_keys(kzd_services:quantities(JObj, kz_json:new())))
-                     ,sets:from_list(kz_json:get_keys(Updates))
-                     ,sets:from_list(kz_json:get_keys(CascadeQuantities))
-                     ]),
-    sets:to_list(Set).
+list_categories(#kz_services{jobj = JObj
+                            ,updates = Updates
+                            ,cascade_quantities = CascadeQuantities
+                            }) ->
+    sets:to_list(
+      sets:union([sets:from_list(kz_json:get_keys(kzd_services:quantities(JObj, kz_json:new())))
+                 ,sets:from_list(kz_json:get_keys(Updates))
+                 ,sets:from_list(kz_json:get_keys(CascadeQuantities))
+                 ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -456,15 +457,17 @@ list_categories(#kz_services{jobj=JObj
 %% @end
 %%--------------------------------------------------------------------
 -spec list_items(services(), ne_binary()) -> api_binaries().
-list_items(#kz_services{jobj=JObj
-                       ,updates=Updates
-                       ,cascade_quantities=CascadeQuantities}, Category) ->
-    Set = sets:union([
-                      sets:from_list(kz_json:get_keys(kzd_services:category_quantities(JObj, Category, kz_json:new())))
-                     ,sets:from_list(kz_json:get_keys(Category, Updates))
-                     ,sets:from_list(kz_json:get_keys(Category, CascadeQuantities))
-                     ]),
-    sets:to_list(Set).
+list_items(#kz_services{jobj = JObj
+                       ,updates = Updates
+                       ,cascade_quantities = CascadeQuantities
+                       }
+          ,Category
+          ) ->
+    sets:to_list(
+      sets:union([sets:from_list(kz_json:get_keys(kzd_services:category_quantities(JObj, Category, kz_json:new())))
+                 ,sets:from_list(kz_json:get_keys(Category, Updates))
+                 ,sets:from_list(kz_json:get_keys(Category, CascadeQuantities))
+                 ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1356,8 +1359,8 @@ populate_service_plans(JObj, ResellerId) ->
 
 -spec default_service_plan_id(ne_binary()) -> api_binary().
 default_service_plan_id(ResellerId) ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, ResellerId) of
-        {'ok', JObj} -> kz_json:get_value(<<"default_service_plan">>, JObj);
+    case fetch_services_doc(ResellerId, true) of
+        {'ok', JObj} -> kz_json:get_value(?DEFAULT_PLAN, JObj);
         {'error', _R} ->
             lager:debug("unable to open reseller ~s services: ~p", [ResellerId, _R]),
             'undefined'
@@ -1365,9 +1368,8 @@ default_service_plan_id(ResellerId) ->
 
 -spec depreciated_default_service_plan_id(ne_binary()) -> api_binary().
 depreciated_default_service_plan_id(ResellerId) ->
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
-    case kz_datamgr:open_doc(ResellerDb, ResellerId) of
-        {'ok', JObj} -> kz_json:get_value(<<"default_service_plan">>, JObj);
+    case kz_account:fetch(ResellerId) of
+        {'ok', JObj} -> kz_json:get_value(?DEFAULT_PLAN, JObj);
         {'error', _R} ->
             lager:debug("unable to open reseller ~s account definition: ~p", [ResellerId, _R]),
             'undefined'
@@ -1396,7 +1398,9 @@ incorporate_only_default_service_plan(ResellerId, JObj) ->
 
 maybe_augment_with_plan(_ResellerId, JObj, 'undefined') -> JObj;
 maybe_augment_with_plan(ResellerId, JObj, PlanId) ->
-    Plan = kz_json:from_list([{<<"account_id">>, ResellerId}]),
+    Plan = kz_json:from_list(
+             [{<<"account_id">>, ResellerId}
+             ]),
     kz_json:set_value(PlanId, Plan, JObj).
 
 -spec incorporate_depreciated_service_plans(kz_json:object(), kz_json:object()) -> kz_json:object().
