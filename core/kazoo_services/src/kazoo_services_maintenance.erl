@@ -18,7 +18,7 @@
 -export([cascade_reseller_id/2]).
 -export([set_reseller_id/2]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

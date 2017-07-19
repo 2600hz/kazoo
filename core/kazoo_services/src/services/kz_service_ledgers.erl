@@ -12,7 +12,7 @@
 
 -define(CATEGORY, <<"ledgers">>).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

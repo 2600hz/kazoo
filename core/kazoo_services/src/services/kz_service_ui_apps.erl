@@ -14,7 +14,7 @@
 -define(ACCOUNTS_DB, <<"accounts">>).
 -define(CATEGORY, <<"ui_apps">>).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

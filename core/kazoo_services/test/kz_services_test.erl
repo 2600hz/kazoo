@@ -11,7 +11,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(CAT, <<"phone_numbers">>).
 -define(ITEM, <<"did_us">>).

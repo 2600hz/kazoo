@@ -11,7 +11,7 @@
 -export([current_billing_period/3]).
 -export([reconcile/1]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

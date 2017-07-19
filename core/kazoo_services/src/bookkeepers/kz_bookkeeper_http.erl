@@ -13,7 +13,7 @@
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(DEFAULT_SYNC_CONTENT_TYPE, ?DEFAULT_CONTENT_TYPE).
 

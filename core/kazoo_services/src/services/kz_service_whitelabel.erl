@@ -15,7 +15,7 @@
 -define(ITEM, <<"whitelabel">>).
 -define(DESIGN_DOC, <<"whitelabel/crossbar_listing">>).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

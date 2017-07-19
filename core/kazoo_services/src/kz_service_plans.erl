@@ -23,7 +23,7 @@
 -export([append_vendor_plan/3]).
 -endif.
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -record(kz_service_plans, {vendor_id :: api_binary()
                           ,plans = [] :: kzd_service_plan:docs()

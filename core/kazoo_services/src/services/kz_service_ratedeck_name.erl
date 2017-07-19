@@ -11,7 +11,7 @@
 -export([reconcile/1, reconcile/2]).
 -export([get_ratedeck_name/1]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(SERVICE_CATEGORY, <<"ratedeck_name">>).
 
