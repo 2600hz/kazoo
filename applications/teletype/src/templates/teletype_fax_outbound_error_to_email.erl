@@ -141,27 +141,35 @@ build_template_data(DataJObj) ->
 caller_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, kz_json:get_value(<<"caller_id_name">>, DataJObj)}
-      ,{<<"number">>, kz_json:get_value(<<"caller_id_number">>, DataJObj)}
+      ,{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"caller_id_number">>, DataJObj))}
       ]).
 
 -spec callee_id_data(kz_json:object()) -> kz_proplist().
 callee_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, kz_json:get_value(<<"callee_id_name">>, DataJObj)}
-      ,{<<"number">>, kz_json:get_value(<<"callee_id_number">>, DataJObj)}
+      ,{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"callee_id_number">>, DataJObj))}
       ]).
 
 -spec date_called_data(kz_json:object()) -> kz_proplist().
 date_called_data(DataJObj) ->
     DateCalled = kz_json:get_integer_value(<<"fax_timestamp">>, DataJObj, kz_util:current_tstamp()),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-    Timezone = kz_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
+    Timezone = find_timezone(DataJObj),
     ClockTimezone = kapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     props:filter_undefined(
       [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
       ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
       ]).
+
+find_timezone(DataJObj) ->
+    Paths = [<<"fax_timezone">>
+            ,[<<"fax_info">>, <<"fax_timezone">>]
+            ,[<<"fax">>, <<"tx_result">>, <<"timezone">>]
+            ,[<<"fax">>, <<"rx_result">>, <<"timezone">>]
+            ],
+    kz_json:get_first_defined(Paths, DataJObj, <<"UTC">>).
 
 -spec from_data(kz_json:object()) -> kz_proplist().
 from_data(DataJObj) ->
