@@ -239,7 +239,7 @@ services_cache_key(AccountId) ->
 -spec fetch_services_doc(ne_binary()) ->
                                 {'ok', kz_json:object()} |
                                 {'error', any()}.
--spec fetch_services_doc(ne_binary(), boolean()) ->
+-spec fetch_services_doc(ne_binary(), boolean() | cache_failures) ->
                                 {'ok', kz_json:object()} |
                                 {'error', any()}.
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId)) ->
@@ -248,15 +248,17 @@ fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId)) ->
 
 -ifdef(TEST).
 fetch_services_doc(?A_MASTER_ACCOUNT_ID, _NotFromCache)
-  when is_boolean(_NotFromCache) ->
+  when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
     {ok, kz_services_test:fixture("a_master_services.json")};
 fetch_services_doc(?A_RESELLER_ACCOUNT_ID, _NotFromCache)
-  when is_boolean(_NotFromCache) ->
+  when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
     {ok, kz_services_test:fixture("a_reseller_services.json")};
 fetch_services_doc(?A_SUB_ACCOUNT_ID, _NotFromCache)
-  when is_boolean(_NotFromCache) ->
+  when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
     {ok, kz_services_test:fixture("a_sub_services.json")}.
 -else.
+fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), cache_failures=Option) ->
+    kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId, [Option]);
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), 'false') ->
     kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId);
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), 'true') ->
@@ -1431,7 +1433,7 @@ get_reseller_id([]) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     MasterAccountId;
 get_reseller_id([Parent|Ancestors]) ->
-    case kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, Parent, ['cache_failures']) of
+    case fetch_services_doc(Parent, cache_failures) of
         {'error', _R} ->
             lager:debug("failed to open services doc ~s durning reseller search: ~p", [Parent, _R]),
             get_reseller_id(Ancestors);
