@@ -25,7 +25,7 @@
 -export([to_json/1]).
 -export([to_public_json/1]).
 
--include_lib("kazoo_services/include/kz_service.hrl").
+-include_lib("kazoo_services/include/kazoo_services.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -type kz_transactions() :: kz_transaction:transactions().

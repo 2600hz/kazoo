@@ -79,7 +79,7 @@
 -export([trunkstore_servers_changed/2]).
 -endif.
 
--include_lib("kazoo_services/include/kz_service.hrl").
+-include_lib("kazoo_services/include/kazoo_services.hrl").
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE
