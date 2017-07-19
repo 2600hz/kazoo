@@ -14,9 +14,8 @@
 
 -include("teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_to_email">>).
-
 -define(TEMPLATE_ID, <<"voicemail_to_email">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -79,7 +78,7 @@ handle_req(DataJObj, AccountId) ->
     {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     VMBoxId = kz_json:get_value(<<"voicemail_box">>, DataJObj),
-    {'ok', VMBox} = teletype_util:open_doc(<<"voicemail">>, VMBoxId, DataJObj),
+    {'ok', VMBox} = teletype_util:open_doc(<<"vmbox">>, VMBoxId, DataJObj),
 
     {'ok', UserJObj} = get_owner(VMBox, DataJObj),
 
@@ -87,7 +86,7 @@ handle_req(DataJObj, AccountId) ->
     Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
 
     ReqData =
-        kz_json:set_values([{<<"voicemail">>, VMBox}
+        kz_json:set_values([{<<"vmbox">>, VMBox}
                            ,{<<"user">>, UserJObj}
                            ,{<<"account">>, AccountJObj}
                            ,{<<"to">>, Emails}
@@ -202,7 +201,7 @@ get_extension(MediaJObj) ->
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
-    Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"voicemail">>, DataJObj)),
+    Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"vmbox">>, DataJObj)),
     [{<<"voicemail">>, build_voicemail_data(DataJObj)}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
@@ -215,8 +214,8 @@ build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"vmbox_id">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
       ,{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)} %% backward compatibility
-      ,{<<"vmbox_name">>, kz_json:get_value([<<"voicemail">>, <<"name">>], DataJObj)}
-      ,{<<"vmbox_number">>, kz_json:get_value([<<"voicemail">>, <<"mailbox">>], DataJObj)}
+      ,{<<"vmbox_name">>, kz_json:get_value([<<"vmbox">>, <<"name">>], DataJObj)}
+      ,{<<"vmbox_number">>, kz_json:get_value([<<"vmbox">>, <<"mailbox">>], DataJObj)}
       ,{<<"msg_id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
       ,{<<"name">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)} %% backward compatibility
       ,{<<"transcription">>, kz_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
@@ -236,13 +235,11 @@ pretty_print_length(JObj) ->
 -spec maybe_add_file_data(kz_proplist(), attachments()) -> kz_proplist().
 maybe_add_file_data(Macros, []) -> Macros;
 maybe_add_file_data(Macros, [{ContentType, Filename, Bin}]) ->
-    VMF = props:set_values(
-            props:filter_undefined(
+    Props = props:filter_undefined(
               [{<<"file_name">>, Filename}
               ,{<<"file_type">>, kz_mime:to_extension(ContentType)}
               ,{<<"file_size">>, erlang:size(Bin)}
               ]
-             )
-                          ,props:get_value(<<"voicemail">>, Macros, [])
-           ),
+             ),
+    VMF = props:set_values(Props, props:get_value(<<"voicemail">>, Macros, [])),
     props:set_value(<<"voicemail">>, VMF, Macros).

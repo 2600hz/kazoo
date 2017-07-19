@@ -36,7 +36,7 @@
         ,find_user_endpoints/3
         ,find_group_endpoints/2
         ,check_value_of_fields/4
-        ,get_timezone/2, account_timezone/1
+        ,get_timezone/2
         ]).
 
 -export([wait_for_noop/2]).
@@ -796,16 +796,9 @@ process_event(Call, NoopId, JObj) ->
 -spec get_timezone(kz_json:object(), kapps_call:call()) -> ne_binary().
 get_timezone(JObj, Call) ->
     case kz_json:get_ne_binary_value(<<"timezone">>, JObj) of
-        'undefined'   -> account_timezone(Call);
-        <<"inherit">> -> account_timezone(Call);  %% UI-1808
+        'undefined'   -> kz_account:timezone(kapps_call:account_id(Call));
+        <<"inherit">> -> kz_account:timezone(kapps_call:account_id(Call)); %% UI-1808
         TZ -> TZ
-    end.
-
--spec account_timezone(kapps_call:call()) -> ne_binary().
-account_timezone(Call) ->
-    case kz_account:fetch(kapps_call:account_id(Call)) of
-        {'ok', AccountJObj} -> kz_account:timezone(AccountJObj);
-        {'error', _E} -> kz_account:default_timezone()
     end.
 
 -spec start_task(fun(), list(), kapps_call:call()) -> 'ok'.

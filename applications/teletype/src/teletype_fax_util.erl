@@ -29,8 +29,22 @@ add_data(DataJObj) ->
           ,{<<"faxbox">>, FaxBoxJObj}
           ,{<<"owner">>, get_owner_doc(DataJObj, FaxBoxJObj)}
           ,{<<"fax">>, kz_doc:public_fields(maybe_get_fax_doc(DataJObj))}
+          ,{<<"timezone">>, find_timezone(DataJObj, FaxBoxJObj)}
           ]),
     kz_json:set_values(Values, DataJObj).
+
+-spec find_timezone(api_ne_binary() | kz_json:object(), kz_json:object()) -> ne_binary().
+find_timezone('undefined', FaxBoxJObj) ->
+    kzd_fax_box:timezone(FaxBoxJObj);
+find_timezone(Timezone, _FaxBoxJObj) when is_binary(Timezone) ->
+    Timezone;
+find_timezone(DataJObj, FaxBoxJObj) ->
+    Paths = [<<"fax_timezone">>
+            ,[<<"fax_info">>, <<"fax_timezone">>]
+            ,[<<"fax">>, <<"tx_result">>, <<"timezone">>]
+            ,[<<"fax">>, <<"rx_result">>, <<"timezone">>]
+            ],
+    find_timezone(kz_json:get_first_defined(Paths, DataJObj), FaxBoxJObj).
 
 -spec maybe_add_document_data(kz_proplist(), attachments()) -> kz_proplist().
 maybe_add_document_data(Macros, []) -> Macros;
@@ -106,7 +120,10 @@ get_fax_doc(DataJObj, 'false') ->
 
 -spec maybe_get_fax_doc(kz_json:object()) -> kz_json:object().
 maybe_get_fax_doc(DataJObj) ->
-    try get_fax_doc(DataJObj) catch _:_ -> kz_json:new() end.
+    try get_fax_doc(DataJObj)
+    catch _:_ ->
+            kz_json:new()
+    end.
 
 -spec get_attachments(kz_json:object(), kz_proplist()) -> attachments().
 -spec maybe_get_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().

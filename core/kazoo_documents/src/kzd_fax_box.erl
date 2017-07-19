@@ -11,7 +11,6 @@
 -export([new/0
         ,type/0
         ,owner_id/1, owner_id/2
-        ,owner/1
         ,timezone/1, timezone/2
         ,retries/1, retries/2
         ]).
@@ -41,52 +40,23 @@ owner_id(Box) ->
 owner_id(Box, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, Box, Default).
 
--spec owner(doc()) -> kzd_user:doc() | 'undefined'.
--spec owner(doc(), ne_binary()) -> kzd_user:doc() | 'undefined'.
-owner(Box) ->
-    case owner_id(Box) of
-        'undefined' -> 'undefined';
-        OwnerId -> owner(Box, OwnerId)
-    end.
-
-owner(Box, OwnerId) ->
-    case kz_datamgr:open_cache_doc(kz_doc:account_db(Box), OwnerId) of
-        {'ok', OwnerJObj} -> OwnerJObj;
-        {'error', 'not_found'} -> 'undefined'
-    end.
-
--spec timezone(doc()) -> api_binary().
--spec timezone(doc(), Default) -> ne_binary() | Default.
+-spec timezone(doc()) -> ne_binary().
 timezone(Box) ->
     timezone(Box, 'undefined').
+
+-spec timezone(doc(), Default) -> ne_binary() | Default.
 timezone(Box, Default) ->
     case kz_json:get_value(?KEY_TIMEZONE, Box) of
         'undefined'   -> owner_timezone(Box, Default);
-        <<"inherit">> -> owner_timezone(Box, Default);
+        <<"inherit">> -> owner_timezone(Box, Default); %% UI-1808
         TZ -> TZ
     end.
 
 -spec owner_timezone(doc(), Default) -> ne_binary() | Default.
--spec owner_timezone(doc(), Default, kzd_user:doc()) -> ne_binary() | Default.
 owner_timezone(Box, Default) ->
-    case owner(Box) of
-        'undefined' -> account_timezone(Box, Default);
-        OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
-    end.
-
-owner_timezone(Box, Default, OwnerJObj) ->
-    case kzd_user:timezone(OwnerJObj, 'undefined') of
-        'undefined' -> account_timezone(Box, Default);
-        TZ -> TZ
-    end.
-
--spec account_timezone(doc(), Default) -> ne_binary() | Default.
-account_timezone(Box, Default) ->
-    case kz_doc:account_id(Box) of
-        'undefined' -> Default;
-        AccountId ->
-            {'ok', AccountJObj} = kz_account:fetch(AccountId),
-            kz_account:timezone(AccountJObj, Default)
+    case kzd_user:fetch(kz_doc:account_db(Box), owner_id(Box)) of
+        {'ok', OwnerJObj} -> kzd_user:timezone(OwnerJObj, Default);
+        {'error', _} -> kz_account:timezone(kz_doc:account_id(Box), Default)
     end.
 
 -spec retries(doc()) -> api_integer().

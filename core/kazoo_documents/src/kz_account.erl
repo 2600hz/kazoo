@@ -241,21 +241,39 @@ set_language(JObj, Language) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec timezone(ne_binary() | doc()) -> api_ne_binary().
--spec timezone(ne_binary() | doc(), Default) -> ne_binary() | Default.
-timezone(AccountId)
-  when is_binary(AccountId) ->
-    {'ok', JObj} = fetch(AccountId),
-    timezone(JObj);
+-spec timezone(api_ne_binary() | doc()) -> ne_binary().
+timezone('undefined') ->
+    ?DEFAULT_TIMEZONE;
+timezone(AccountId) when is_binary(AccountId) ->
+    case fetch(AccountId) of
+        {'ok', JObj} -> timezone(JObj);
+        {'error', _R} ->
+            lager:debug("failed to open account ~s definition, returning system's default timezone"),
+            ?DEFAULT_TIMEZONE
+    end;
 timezone(JObj) ->
     timezone(JObj, 'undefined').
-timezone(AccountId, Default)
-  when is_binary(AccountId) ->
-    {'ok', JObj} = fetch(AccountId),
-    timezone(JObj, Default);
+
+-spec timezone(api_ne_binary() | doc(), Default) -> ne_binary() | Default.
+timezone('undefined', 'undefined') ->
+    ?DEFAULT_TIMEZONE;
+timezone('undefined', <<"inherit">>) -> %% UI-1808
+    ?DEFAULT_TIMEZONE;
+timezone('undefined', Default) ->
+    Default;
+timezone(AccountId, Default) when is_binary(AccountId) ->
+    case fetch(AccountId) of
+        {'ok', JObj} -> timezone(JObj, Default);
+        {'error', _R} when Default =:= 'undefined';
+                           Default =:= <<"inherit">> -> %% UI-1808
+            lager:debug("failed to open account ~s definition, returning system's default timezone"),
+            ?DEFAULT_TIMEZONE;
+        {'error', _} ->
+            Default
+    end;
 timezone(JObj, Default) ->
     case kz_json:get_value(?TIMEZONE, JObj, Default) of
-        <<"inherit">> -> parent_timezone(kz_doc:account_id(JObj), parent_account_id(JObj));
+        <<"inherit">> -> parent_timezone(kz_doc:account_id(JObj), parent_account_id(JObj)); %% UI-1808
         'undefined' -> parent_timezone(kz_doc:account_id(JObj), parent_account_id(JObj));
         TZ -> TZ
     end.

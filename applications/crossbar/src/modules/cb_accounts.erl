@@ -524,8 +524,9 @@ ensure_account_has_timezone(_AccountId, Context) ->
 -spec get_timezone_from_parent(cb_context:context()) -> ne_binary().
 get_timezone_from_parent(Context) ->
     case create_new_tree(Context) of
-        [_|_]=Tree -> kz_account:timezone(lists:last(Tree));
-        [] -> kz_account:default_timezone()
+        'error' -> kz_account:default_timezone();
+        [] -> kz_account:default_timezone();
+        Tree -> kz_account:timezone(lists:last(Tree))
     end.
 
 -spec random_realm() -> ne_binary().

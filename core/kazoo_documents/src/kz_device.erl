@@ -291,10 +291,11 @@ enabled(DeviceJObj, Default) ->
 set_enabled(DeviceJObj, Enabled) ->
     kz_json:set_value(?ENABLED, Enabled, DeviceJObj).
 
--spec timezone(doc()) -> api_binary().
--spec timezone(doc(), Default) -> ne_binary() | Default.
+-spec timezone(doc()) -> ne_binary().
 timezone(Box) ->
     timezone(Box, 'undefined').
+
+-spec timezone(doc(), Default) -> ne_binary() | Default.
 timezone(Box, Default) ->
     case kz_json:get_value(?KEY_TIMEZONE, Box) of
         'undefined'   -> owner_timezone(Box, Default);
@@ -303,41 +304,11 @@ timezone(Box, Default) ->
     end.
 
 -spec owner_timezone(doc(), Default) -> ne_binary() | Default.
--spec owner_timezone(doc(), Default, kzd_user:doc()) -> ne_binary() | Default.
 owner_timezone(Box, Default) ->
-    case owner(Box) of
-        'undefined'   -> account_timezone(Box, Default);
-        OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
+    case kzd_user:fetch(kz_doc:account_db(Box), owner_id(Box)) of
+        {'ok', OwnerJObj} -> kzd_user:timezone(OwnerJObj, Default);
+        {'error', _} -> kz_account:timezone(kz_doc:account_id(Box), Default)
     end.
-
--spec owner(doc()) -> kzd_user:doc() | 'undefined'.
--spec owner(doc(), ne_binary()) -> kzd_user:doc() | 'undefined'.
-owner(Box) ->
-    case owner_id(Box) of
-        'undefined' -> 'undefined';
-        OwnerId -> owner(Box, OwnerId)
-    end.
-
-owner(Box, OwnerId) ->
-    case kz_datamgr:open_cache_doc(kz_doc:account_db(Box)
-                                  ,OwnerId
-                                  )
-    of
-        {'ok', OwnerJObj} -> OwnerJObj;
-        {'error', 'not_found'} -> 'undefined'
-    end.
-
-owner_timezone(Box, Default, OwnerJObj) ->
-    case kzd_user:timezone(OwnerJObj, 'undefined') of
-        'undefined'   -> account_timezone(Box, Default);
-        <<"inherit">> -> account_timezone(Box, Default);  %% UI-1808
-        TZ -> TZ
-    end.
-
--spec account_timezone(doc(), Default) -> ne_binary() | Default.
-account_timezone(Box, Default) ->
-    {'ok', AccountJObj} = kz_account:fetch(kz_doc:account_id(Box)),
-    kz_account:timezone(AccountJObj, Default).
 
 -spec unsolicitated_mwi_updates(doc()) -> boolean().
 unsolicitated_mwi_updates(DeviceJObj) ->
