@@ -234,10 +234,12 @@ get_plan(PlanId, ResellerId, Services, ServicePlans) ->
 -spec maybe_fetch_vendor_plan(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
                                      api_object().
 maybe_fetch_vendor_plan(PlanId, VendorId, VendorId, Overrides) ->
+    AreOverridesEmpty = kz_json:is_empty(Overrides),
     case kz_service_plan:fetch(PlanId, VendorId) of
         'undefined' -> 'undefined';
-        ServicePlan ->
-            kzd_service_plan:merge_overrides(ServicePlan, Overrides)
+        ServicePlan when not AreOverridesEmpty ->
+            kzd_service_plan:merge_overrides(ServicePlan, Overrides);
+        ServicePlan -> ServicePlan
     end;
 maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
     lager:debug("service plan ~s doesnt belong to reseller ~s", [PlanId, ResellerId]),
