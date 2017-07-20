@@ -31,7 +31,7 @@
         ,unitfy_seconds/1
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %% returns current seconds
 -spec current_tstamp() -> gregorian_seconds().

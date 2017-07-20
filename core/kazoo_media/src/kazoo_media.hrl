@@ -1,9 +1,9 @@
 -ifndef(KAZOO_MEDIA_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_media.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
+-include_lib("kazoo_media/include/kz_media.hrl").
 
 -define(APP_NAME, <<"media_srv">>).
 -define(APP_VERSION, <<"4.0.0">>).
@@ -18,7 +18,7 @@
                       ,{'reuseaddr', 'true'}
                       ]).
 -define(MAX_RESERVED_PORTS, 10).
--define(MAX_WAIT_FOR_LISTENERS, 600 * ?MILLISECONDS_IN_SECOND). %% 600 secs = 10 minutes
+-define(MAX_WAIT_FOR_LISTENERS, (10 * 60 * ?MILLISECONDS_IN_SECOND)).
 
 -define(PROMPT_LANGUAGE_KEY, <<"default_language">>).
 
@@ -49,12 +49,11 @@
                     ,{<<"record_min_sec">>, 0}
                     ]).
 
--record(media_store_path,
-        {db :: ne_binary()
-        ,id :: ne_binary()
-        ,att :: ne_binary()
-        ,opt = [] :: kz_proplist()
-        }).
+-record(media_store_path, {db :: ne_binary()
+                          ,id :: ne_binary()
+                          ,att :: ne_binary()
+                          ,opt = [] :: kz_proplist()
+                          }).
 
 -type media_store_path() :: #media_store_path{}.
 

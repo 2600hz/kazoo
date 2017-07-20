@@ -23,7 +23,7 @@
 -export([publish_binding/1, publish_binding/2]).
 
 -include_lib("amqp_util.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(METAFLOW_EXCHANGE, <<"metaflow">>).
 -define(METAFLOW_EXCHANGE_TYPE, <<"topic">>).

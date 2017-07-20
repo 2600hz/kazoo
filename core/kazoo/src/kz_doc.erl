@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_doc).
 
--include_lib("kazoo/include/kz_types.hrl"). % get the kazoo types
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3

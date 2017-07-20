@@ -1,6 +1,6 @@
 -ifndef(KAZOO_JSON_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %% How do we wrap proplists to denote they're json objects?
 %% -define(JSON_WRAPPER(Proplist), {struct, Proplist}).

@@ -29,7 +29,7 @@
         ,save/2
         ]).
 
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include("kz_documents.hrl").
 
 -define(KEY_AUDIT, <<"audit">>).

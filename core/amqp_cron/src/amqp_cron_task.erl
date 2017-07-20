@@ -91,14 +91,14 @@
 
 -export_type([sleeper/0, cron/0, execargs/0, datetime/0, status/0, schedule/0]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(SERVER, ?MODULE).
 
 -record(state, {schedule :: schedule()
                ,exec :: execargs()
                ,task_pid :: pid()
-               ,status :: status()
+               ,status :: status() | undefined
                ,next
                }).
 -type state() :: #state{}.
@@ -222,7 +222,8 @@ init([{Schedule, Exec}]) ->
                      end),
     {'ok', #state{schedule = Schedule
                  ,exec = Exec
-                 ,task_pid = Pid}}.
+                 ,task_pid = Pid
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private

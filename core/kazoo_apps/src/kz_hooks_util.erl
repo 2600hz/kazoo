@@ -20,8 +20,8 @@
 -export([lookup_account_id/1]).
 -export([handle_call_event/2]).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_apps/include/kz_hooks.hrl").
 
 -define(HOOK_REG

@@ -13,8 +13,8 @@
 -export([main/1]).
 -export([in_kazoo/4]).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(MAX_CHARS, round(math:pow(2012, 80))).
 

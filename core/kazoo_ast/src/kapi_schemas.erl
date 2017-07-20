@@ -4,7 +4,7 @@
         ,to_schemas/0, to_schema/1
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_presence.hrl").

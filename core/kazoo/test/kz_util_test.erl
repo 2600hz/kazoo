@@ -10,15 +10,13 @@
 %%%-------------------------------------------------------------------
 -module(kz_util_test).
 
--include_lib("kazoo/include/kz_types.hrl").
--include("kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").
 -endif.
 -include_lib("eunit/include/eunit.hrl").
-
--include_lib("kazoo/include/kz_types.hrl").
 
 %% For format_account_* tests
 -export([format_account_id_raw/1

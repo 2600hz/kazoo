@@ -1,7 +1,7 @@
 -ifndef(BRAINTREE_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -type bt_result() :: {'ok', any()}.
 -type bt_xml() :: any(). %%  record_proplist() | braintree_util:char_to_bin_res().
