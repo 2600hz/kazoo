@@ -255,7 +255,11 @@ fetch_services_doc(?A_RESELLER_ACCOUNT_ID, _NotFromCache)
     {ok, kz_services_test:fixture("a_reseller_services.json")};
 fetch_services_doc(?A_SUB_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
-    {ok, kz_services_test:fixture("a_sub_services.json")}.
+    {ok, kz_services_test:fixture("a_sub_services.json")};
+fetch_services_doc(?B_SUB_ACCOUNT_ID, _NotFromCache)
+  when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
+    ServicesJObj = kz_services_test:fixture("a_sub_services.json"),
+    {ok, kzd_services:set_reseller_id(ServicesJObj, undefined)}.
 -else.
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), cache_failures=Option) ->
     kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId, [Option]);
@@ -1429,8 +1433,8 @@ get_reseller_id([Parent|Ancestors]) ->
         {'error', _R} ->
             lager:debug("failed to open services doc ~s durning reseller search: ~p", [Parent, _R]),
             get_reseller_id(Ancestors);
-        {'ok', JObj} ->
-            get_reseller_id(Parent, Ancestors, JObj)
+        {'ok', ServicesJObj} ->
+            get_reseller_id(Parent, Ancestors, ServicesJObj)
     end;
 get_reseller_id(Account=?NE_BINARY) ->
     case fetch_account(Account) of
@@ -1442,8 +1446,8 @@ get_reseller_id(Account=?NE_BINARY) ->
     end.
 
 -spec get_reseller_id(ne_binary(), ne_binaries(), kz_json:object()) -> api_binary().
-get_reseller_id(Parent, Ancestors, JObj) ->
-    case kzd_services:is_reseller(JObj) of
+get_reseller_id(Parent, Ancestors, ServicesJObj) ->
+    case kzd_services:is_reseller(ServicesJObj) of
         'false' -> get_reseller_id(Ancestors);
         'true' -> Parent
     end.
@@ -1451,7 +1455,8 @@ get_reseller_id(Parent, Ancestors, JObj) ->
 -ifdef(TEST).
 fetch_account(?A_MASTER_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_master_account.json")};
 fetch_account(?A_RESELLER_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_reseller_account.json")};
-fetch_account(?A_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")}.
+fetch_account(?A_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")};
+fetch_account(?B_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")}.
 -else.
 fetch_account(Account) -> kz_account:fetch(Account).
 -endif.

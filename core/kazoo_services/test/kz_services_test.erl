@@ -209,4 +209,7 @@ find_reseller_id_test_() ->
     ,?_assertEqual(?A_MASTER_ACCOUNT_ID, kz_services:find_reseller_id(?A_MASTER_ACCOUNT_ID))
     ,?_assertEqual(?A_MASTER_ACCOUNT_ID, kz_services:find_reseller_id(?A_RESELLER_ACCOUNT_ID))
     ,?_assertEqual(?A_RESELLER_ACCOUNT_ID, kz_services:find_reseller_id(?A_SUB_ACCOUNT_ID))
+    ,{"Verify missing info on service doc can be recovered from account doc"
+     ,?_assertEqual(?A_RESELLER_ACCOUNT_ID, kz_services:find_reseller_id(?B_SUB_ACCOUNT_ID))
+     }
     ].

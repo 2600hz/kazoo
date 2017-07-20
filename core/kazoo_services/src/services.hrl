@@ -39,6 +39,7 @@
 -define(A_SUB_ACCOUNT_ID, <<"sub________152f639c4118f8c21d4bb">>).
 -define(A_SUB_ACCOUNT_DB, <<"account%2Fsu%2Fb_%2F_______152f639c4118f8c21d4bb">>).
 -define(A_SUB_USER_ID, <<"sub_user_b26d94e175cb6bf60624769">>).
+-define(B_SUB_ACCOUNT_ID, <<"sub_b______152f639c4118f8c21d4bb">>).
 -endif.
 
 -ifdef(TEST).

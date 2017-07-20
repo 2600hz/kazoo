@@ -20,7 +20,7 @@
     "pvt_modified": 63664004330,
     "pvt_node": "kazoo_apps@apps001.kazoo.com",
     "pvt_request_id": "2e02afac7b0f6a3dedca3a29c09522f1",
-    "pvt_reseller": false,
+    "pvt_reseller": true,
     "pvt_reseller_id": "master_3dd0df9f3b3940b8a972c0e43",
     "pvt_status": "good_standing",
     "pvt_tree": [
