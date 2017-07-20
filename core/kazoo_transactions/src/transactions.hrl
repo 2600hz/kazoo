@@ -1,6 +1,6 @@
 -ifndef(TRANSACTIONS_HRL).
 
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 -include_lib("kazoo_services/include/kazoo_services.hrl").
 
