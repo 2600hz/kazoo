@@ -412,10 +412,10 @@ read(Id, Context) ->
 -spec read_job(cb_context:context(), ne_binary()) -> cb_context:context().
 read_job(Context, ?MATCH_MODB_PREFIX(Year,Month,_) = JobId) ->
     Modb = cb_context:account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource">>)));
+    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource_job">>)));
 read_job(Context, ?MATCH_MODB_PREFIX_M1(Year,Month,_) = JobId) ->
     Modb = cb_context:account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource">>)));
+    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource_job">>)));
 read_job(Context, JobId) ->
     lager:debug("invalid job id format: ~s", [JobId]),
     crossbar_util:response_bad_identifier(JobId, Context).
