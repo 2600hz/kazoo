@@ -164,7 +164,7 @@ maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
 create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
     Options = [{'assign_to', AccountId}
               ,{'auth_by', AuthAccountId}
-              ,{'state', ?NUMBER_STATE_AVAILABLE}
+              ,{'state', ?NUMBER_STATE_RESERVED}
               ,{'public_fields', build_number_properties(Job)}
               ,{'dry_run', 'false'}
               ,{'module_name', CarrierModule}
@@ -174,7 +174,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
             PhoneNumber = knm_number:phone_number(Number),
             lager:debug("successfully created number ~s for account ~s"
                        ,[knm_phone_number:number(PhoneNumber), AccountId]),
-            update_status(kz_json:set_value([?KEY_SUCCESS, Number]
+            update_status(kz_json:set_value([?KEY_SUCCESS, knm_phone_number:number(PhoneNumber)]
                                            ,knm_phone_number:to_public_json(PhoneNumber)
                                            ,Job
                                            )
@@ -184,6 +184,8 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
             update_with_failure(Job, AccountId, DID, Failure, JObj)
     catch
         E:_R ->
+            ST = erlang:get_stacktrace(),
+            kz_util:log_stacktrace(ST),
             lager:debug("exception creating number ~s for account ~s: ~s: ~p"
                        ,[DID, AccountId, E, _R]),
             update_status(kz_json:set_value([<<"errors">>, DID]
