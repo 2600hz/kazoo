@@ -52,6 +52,7 @@ empty() -> [].
 -spec from_service_json(kzd_services:doc()) -> plans().
 from_service_json(ServicesJObj) ->
     PlanIds = kzd_services:plan_ids(ServicesJObj),
+    ?LOG_DEBUG("found plans: ~s", [kz_util:iolist_join($,, PlanIds)]),
     ResellerId = find_reseller_id(ServicesJObj),
     get_plans(PlanIds, ResellerId, ServicesJObj).
 

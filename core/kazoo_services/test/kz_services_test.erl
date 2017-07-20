@@ -23,9 +23,15 @@
                }).
 
 
-services_test_() ->
+phone_number_services_test_() ->
+    services_tests({"example_account_services.json", "example_service_plan_1.json"}).
+
+%% services_reseller_test_() ->
+%%     services_tests(?A_RESELLER_ACCOUNT_ID).
+
+services_tests(Init) ->
     {'foreach'
-    ,fun init/0
+    ,fun () -> init(Init) end
     ,fun (#state{}) -> ok end
     ,[fun services_json_to_record/1
      ,fun services_record_to_json/1
@@ -34,26 +40,47 @@ services_test_() ->
      ]
     }.
 
-init() ->
-    Routines = [fun read_service_plan/1
-               ,fun read_services/1
-               ],
-    lists:foldl(fun (F, State) -> F(State) end, #state{}, Routines).
+services_master_test_() ->
+    no_plans_tests(?A_MASTER_ACCOUNT_ID).
 
-read_service_plan(State) ->
-    JObj = fixture("example_service_plan_1.json"),
-    State#state{service_plan_jobj = JObj
-               }.
+services_sub_test_() ->
+    no_plans_tests(?A_SUB_ACCOUNT_ID).
 
-read_services(#state{service_plan_jobj=ServicePlan}=State) ->
-    JObj = fixture("example_account_services.json"),
-    Services = kz_services:from_service_json(JObj, 'false'),
-    Overrides = kzd_services:plan_overrides(JObj, kz_doc:id(ServicePlan)),
-    AccountPlan = kzd_service_plan:merge_overrides(ServicePlan, Overrides),
-    State#state{services_jobj = JObj
-               ,services = Services
-               ,account_plan = AccountPlan
-               }.
+no_plans_tests(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    {ok, ServicesJObj} = kz_services:fetch_services_doc(AccountId),
+    [?_assertEqual([], kz_service_plans:from_service_json(ServicesJObj))
+    ,?_assertEqual(kz_json:new(), kzd_services:plan_overrides(ServicesJObj, undefined))
+    ].
+
+init(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    ?LOG_DEBUG(">>> AccountId ~s", [AccountId]),
+    {ok, ServicesJObj} = kz_services:fetch_services_doc(AccountId),
+    ?LOG_DEBUG(">>> ServicesJObj ~s", [kz_json:encode(ServicesJObj)]),
+    ServicePlans = kz_service_plans:from_service_json(ServicesJObj),
+    ?LOG_DEBUG(">>> ServicePlans ~s", [kz_json:encode(ServicePlans)]),
+    Overrides = kzd_services:plan_overrides(ServicesJObj, kz_doc:id(ServicePlans)),
+    ?LOG_DEBUG(">>> Overrides ~s", [kz_json:encode(Overrides)]),
+    AccountPlan = kzd_service_plan:merge_overrides(ServicePlans, Overrides),
+    ?LOG_DEBUG(">>> AccountPlan ~s", [kz_json:encode(AccountPlan)]),
+    #state{service_plan_jobj = ServicePlans
+          ,services_jobj = ServicesJObj
+          ,services = kz_services:from_service_json(ServicesJObj)
+           %% ,account_plan = ServicePlanJObj
+          ,account_plan = AccountPlan
+          };
+
+init({ServicesFixture, ServicePlanFixture}) ->
+    ServicePlanJObj = fixture(ServicePlanFixture),
+    ServicesJObj = fixture(ServicesFixture),
+    Services = kz_services:from_service_json(ServicesJObj, 'false'),
+    Overrides = kzd_services:plan_overrides(ServicesJObj, kz_doc:id(ServicePlanJObj)),
+    AccountPlan = kzd_service_plan:merge_overrides(ServicePlanJObj, Overrides),
+    #state{service_plan_jobj = ServicePlanJObj
+          ,services_jobj = ServicesJObj
+          ,services = Services
+          %% ,account_plan = ServicePlanJObj
+          ,account_plan = AccountPlan
+          }.
 
 -spec fixture(nonempty_string()) -> binary() | kz_json:object().
 fixture(Filename) ->
