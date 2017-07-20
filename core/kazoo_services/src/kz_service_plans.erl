@@ -192,10 +192,8 @@ create_items(ServiceJObj, ServicePlans) ->
 -spec public_json_items(kzd_services:doc()) -> kz_json:object().
 public_json_items(ServiceJObj) ->
     case create_items(ServiceJObj) of
-        {'ok', Items} ->
-            kz_service_items:public_json(Items);
-        {'error', _} ->
-            kz_json:new()
+        {'ok', Items} -> kz_service_items:public_json(Items);
+        {'error', _} -> kz_json:new()
     end.
 
 %%--------------------------------------------------------------------
@@ -219,7 +217,6 @@ get_plans(PlanIds, ResellerId, Services) ->
 get_plan(PlanId, ResellerId, Services, ServicePlans) ->
     VendorId = kzd_services:plan_account_id(Services, PlanId, ResellerId),
     Overrides = kzd_services:plan_overrides(Services, PlanId),
-
     case maybe_fetch_vendor_plan(PlanId, VendorId, ResellerId, Overrides) of
         'undefined' -> ServicePlans;
         Plan -> append_vendor_plan(Plan, VendorId, ServicePlans)
@@ -256,14 +253,14 @@ maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
 append_vendor_plan(Plan, VendorId, ServicePlans) ->
     case lists:keyfind(VendorId, #kz_service_plans.vendor_id, ServicePlans) of
         'false' ->
-            ServicePlan = #kz_service_plans{vendor_id=VendorId
-                                           ,plans=[Plan]
+            ServicePlan = #kz_service_plans{vendor_id = VendorId
+                                           ,plans = [Plan]
                                            },
             [ServicePlan|ServicePlans];
-        #kz_service_plans{plans=Plans}=ServicePlan ->
+        #kz_service_plans{plans = Plans}=ServicePlan ->
             lists:keyreplace(VendorId
                             ,#kz_service_plans.vendor_id
                             ,ServicePlans
-                            ,ServicePlan#kz_service_plans{plans=[Plan|Plans]}
+                            ,ServicePlan#kz_service_plans{plans = [Plan|Plans]}
                             )
     end.
