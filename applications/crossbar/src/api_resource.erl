@@ -190,7 +190,7 @@ maybe_allow_proxy_req(Peer, ForwardIP) ->
 -spec is_proxied(ne_binary()) -> boolean().
 -spec is_proxied(ne_binary(), ne_binaries()) -> boolean().
 is_proxied(Peer) ->
-    Proxies = kapps_config:get_ne_binaries(?APP_NAME, <<"reverse_proxies">>, []),
+    Proxies = kapps_config:get_ne_binaries(?APP_NAME, <<"reverse_proxies">>, [<<"127.0.0.1">>]),
     is_proxied(Peer, Proxies).
 
 is_proxied(_Peer, []) -> 'false';
