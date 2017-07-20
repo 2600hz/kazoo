@@ -88,7 +88,9 @@
             "type": "integer"
         },
         "reverse_proxies": {
-            "default": [],
+            "default": [
+                "127.0.0.1"
+            ],
             "description": "crossbar reverse proxies",
             "items": {
                 "type": "string"
