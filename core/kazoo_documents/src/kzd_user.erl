@@ -20,7 +20,7 @@
         ,fetch/2
         ,fax_settings/1
         ,name/1, first_name/1, last_name/1
-        ,priv_level/1, priv_level/2
+        ,priv_level/1, priv_level/2, set_priv_level/2
         ,is_account_admin/1, is_account_admin/2
 
         ,call_restrictions/1, call_restrictions/2
@@ -274,7 +274,7 @@ devices(UserJObj) ->
     end.
 
 -spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
-fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
+fetch(AccountId=?NE_BINARY, UserId=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
@@ -335,6 +335,12 @@ priv_level(Doc) ->
     priv_level(Doc, <<"user">>).
 priv_level(Doc, Default) ->
     kz_json:get_binary_value(?KEY_PRIV_LEVEL, Doc, Default).
+
+-spec set_priv_level(ne_binary(), doc()) -> doc().
+set_priv_level(<<"user">>=LVL, Doc) ->
+    kz_json:set_value(?KEY_PRIV_LEVEL, LVL, Doc);
+set_priv_level(<<"admin">>=LVL, Doc) ->
+    kz_json:set_value(?KEY_PRIV_LEVEL, LVL, Doc).
 
 -spec call_restrictions(doc()) -> api_object().
 -spec call_restrictions(doc(), Default) -> kz_json:object() | Default.

@@ -32,7 +32,6 @@
                 "teletype_port_unconfirmed",
                 "teletype_service_added",
                 "teletype_system_alert",
-                "teletype_template_skel",
                 "teletype_topup",
                 "teletype_transaction",
                 "teletype_voicemail_full",

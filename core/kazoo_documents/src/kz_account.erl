@@ -242,23 +242,22 @@ set_language(JObj, Language) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec timezone(api_ne_binary() | doc()) -> ne_binary().
-timezone('undefined') ->
-    ?DEFAULT_TIMEZONE;
+timezone('undefined') -> default_timezone();
 timezone(AccountId) when is_binary(AccountId) ->
     case fetch(AccountId) of
         {'ok', JObj} -> timezone(JObj);
         {'error', _R} ->
             lager:debug("failed to open account ~s definition, returning system's default timezone"),
-            ?DEFAULT_TIMEZONE
+            default_timezone()
     end;
 timezone(JObj) ->
     timezone(JObj, 'undefined').
 
 -spec timezone(api_ne_binary() | doc(), Default) -> ne_binary() | Default.
 timezone('undefined', 'undefined') ->
-    ?DEFAULT_TIMEZONE;
+    default_timezone();
 timezone('undefined', <<"inherit">>) -> %% UI-1808
-    ?DEFAULT_TIMEZONE;
+    default_timezone();
 timezone('undefined', Default) ->
     Default;
 timezone(AccountId, Default) when is_binary(AccountId) ->
@@ -267,7 +266,7 @@ timezone(AccountId, Default) when is_binary(AccountId) ->
         {'error', _R} when Default =:= 'undefined';
                            Default =:= <<"inherit">> -> %% UI-1808
             lager:debug("failed to open account ~s definition, returning system's default timezone"),
-            ?DEFAULT_TIMEZONE;
+            default_timezone();
         {'error', _} ->
             Default
     end;
@@ -279,12 +278,13 @@ timezone(JObj, Default) ->
     end.
 
 -spec parent_timezone(ne_binary(), api_ne_binary()) -> ne_binary().
-parent_timezone(AccountId, AccountId) -> ?DEFAULT_TIMEZONE;
-parent_timezone(_AccountId, 'undefined') -> ?DEFAULT_TIMEZONE;
+parent_timezone(AccountId, AccountId) -> default_timezone();
+parent_timezone(_AccountId, 'undefined') -> default_timezone();
 parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
 
 -spec default_timezone() -> ne_binary().
-default_timezone() -> ?DEFAULT_TIMEZONE.
+default_timezone() ->
+    kapps_config:get_ne_binary(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -326,8 +326,7 @@ set_home_zone(JObj, Zone) ->
 %%--------------------------------------------------------------------
 -spec low_balance_threshold(ne_binary() | doc()) -> api_float().
 low_balance_threshold(Thing) ->
-    ConfigCat = <<"notify.low_balance">>,
-    Default = kapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+    Default = kapps_config:get_float(<<"notify.low_balance">>, <<"threshold">>, 5.00),
     low_balance_threshold(Thing, Default).
 
 -spec low_balance_threshold(ne_binary() | doc(), Default) -> float() | Default.

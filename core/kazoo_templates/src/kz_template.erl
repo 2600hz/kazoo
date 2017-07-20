@@ -72,7 +72,7 @@ compile(Template, Module, CompileOpts) when is_binary(Template) ->
             handle_compile_result(Template, Module, Result)
     catch
         _E:_R ->
-            lager:debug("exception compiling template: ~s: ~p", [_E, _R]),
+            ?LOG_DEBUG("exception compiling template: ~s: ~p", [_E, _R]),
             {'error', 'failed_to_compile'}
     end;
 compile(Path, Module, CompileOpts) ->
@@ -81,7 +81,7 @@ compile(Path, Module, CompileOpts) ->
             handle_compile_result(Path, Module, Result)
     catch
         _E:_R ->
-            lager:debug("exception compiling template: ~s: ~p", [_E, _R]),
+            ?LOG_DEBUG("exception compiling template: ~s: ~p", [_E, _R]),
             {'error', 'failed_to_compile'}
     end.
 
@@ -96,22 +96,23 @@ compile(Path, Module, CompileOpts) ->
 %%--------------------------------------------------------------------
 -spec render_template(atom(), kz_proplist()) -> template_result().
 render_template(Module, TemplateData) ->
+    ?LOG_DEBUG("rendering using ~s", [Module]),
     try Module:render(props:filter_empty(TemplateData)) of
         {'ok', _IOList}=OK ->
-            lager:debug("rendered template successfully: '~s'", [_IOList]),
+            ?LOG_DEBUG("rendered template successfully"),
             OK;
         {'error', _E}=E ->
-            lager:debug("failed to render template: ~p", [_E]),
+            ?LOG_DEBUG("failed to render template: ~p", [_E]),
             E
     catch
         'error':'undef' ->
             ST = erlang:get_stacktrace(),
-            lager:debug("something in the template ~s is undefined", [Module]),
+            ?LOG_DEBUG("something in the template ~s is undefined", [Module]),
             kz_util:log_stacktrace(ST),
             {'error', 'undefined'};
         _E:R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("crashed rendering template ~s: ~s: ~p", [Module, _E, R]),
+            ?LOG_DEBUG("crashed rendering template ~s: ~s: ~p", [Module, _E, R]),
             kz_util:log_stacktrace(ST),
             {'error', R}
     end.
@@ -128,24 +129,24 @@ render_template(Module, TemplateData) ->
 -spec handle_compile_result(template(), atom(), template_result()) ->
                                    template_result().
 handle_compile_result(_Template, Module, {'ok', Module} = OK) ->
-    lager:debug("built renderer for ~p", [Module]),
+    ?LOG_DEBUG("built renderer for ~p", [Module]),
     OK;
 handle_compile_result(_Template, Module, {'ok', Module, []}) ->
-    lager:debug("built renderer for ~p", [Module]),
+    ?LOG_DEBUG("built renderer for ~p", [Module]),
     {'ok', Module};
 handle_compile_result(Template, Module, {'ok', Module, Warnings}) ->
-    lager:debug("compiling template renderer for ~p produced warnings: ~p"
-               ,[Module, Warnings]),
+    ?LOG_DEBUG("compiling template renderer for ~p produced warnings: ~p"
+              ,[Module, Warnings]),
     log_warnings(Warnings, Template),
     {'ok', Module};
 handle_compile_result(_Template, Module, 'ok') ->
-    lager:debug("build renderer for ~p from template file", [Module]),
+    ?LOG_DEBUG("build renderer for ~p from template file", [Module]),
     {'ok', Module};
 handle_compile_result(_Template, _Module, 'error') ->
-    lager:debug("failed to compile template for ~p", [_Module]),
+    ?LOG_DEBUG("failed to compile template for ~p", [_Module]),
     {'error', 'failed_to_compile'};
 handle_compile_result(Template, _Module, {'error', Errors, Warnings}) ->
-    lager:debug("failed to compile template for ~p", [_Module]),
+    ?LOG_DEBUG("failed to compile template for ~p", [_Module]),
     log_errors(Errors, Template),
     log_warnings(Warnings, Template),
     {'error', 'failed_to_compile'}.
@@ -167,7 +168,7 @@ log_warnings(Ws, Template) ->
 
 -spec log_infos(string(), string(), [info()], template()) -> 'ok'.
 log_infos(Type, Module, Errors, Template) ->
-    lager:info("~s in module ~s", [Type, Module]),
+    ?LOG_INFO("~s in module ~s", [Type, Module]),
     lists:foreach(fun (Error) -> catch log_info(Error, Template) end, Errors).
 
 -spec log_info(info(), template()) -> 'ok'.
@@ -176,10 +177,8 @@ log_info({{Row, Column}, _ErlydtlModule, Msg}, Template) ->
     Rows = binary:split(Template, <<"\n">>, ['global']),
     ErrorRow = lists:nth(Row + 1, Rows),
     <<Pre:Column/binary, Rest/binary>> = ErrorRow,
-
-    lager:info("~p: '~s' '~s'", [Msg, Pre, Rest]);
+    ?LOG_INFO("~p: '~s' '~s'", [Msg, Pre, Rest]);
 log_info({Line, _ErlydtlModule, Msg}, Template) ->
     Rows = binary:split(Template, <<"\n">>, ['global']),
     ErrorRow = lists:nth(Line + 1, Rows),
-
-    lager:info("~p on line ~p: ~s", [Msg, Line, ErrorRow]).
+    ?LOG_INFO("~p on line ~p: ~s", [Msg, Line, ErrorRow]).

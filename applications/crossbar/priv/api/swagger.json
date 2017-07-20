@@ -15896,6 +15896,9 @@
                 "Text": {
                     "type": "string"
                 },
+                "Time-Stamp": {
+                    "type": "string"
+                },
                 "To": {
                     "type": "string"
                 }
@@ -26870,7 +26873,6 @@
                         "teletype_port_unconfirmed",
                         "teletype_service_added",
                         "teletype_system_alert",
-                        "teletype_template_skel",
                         "teletype_topup",
                         "teletype_transaction",
                         "teletype_voicemail_full",
@@ -27058,6 +27060,11 @@
                     "default": false,
                     "description": "notify.low_balance default enabled",
                     "type": "boolean"
+                },
+                "threshold": {
+                    "default": 5.0,
+                    "description": "default threshold that will trigger a low balance notification",
+                    "type": "number"
                 }
             },
             "type": "object"

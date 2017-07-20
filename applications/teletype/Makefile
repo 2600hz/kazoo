@@ -8,7 +8,7 @@ compile: default_modules
 default_modules: src/teletype_default_modules.hrl
 
 src/teletype_default_modules.hrl:
-	@./templates_to_header.bash
+	@./priv/templates_to_header.bash
 
 clean: clean-default_modules
 

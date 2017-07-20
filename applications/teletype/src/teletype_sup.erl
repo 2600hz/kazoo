@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(teletype_sup).
-
 -behaviour(supervisor).
 
 -export([start_link/0

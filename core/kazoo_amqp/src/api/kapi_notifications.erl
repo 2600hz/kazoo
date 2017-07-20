@@ -482,7 +482,7 @@
 -define(TRANSACTION_TYPES, []).
 
 %% Notify New Service Addition (from service audit log)
--define(SERVICE_ADDED_HEADERS, [<<"Account-ID">>, <<"Audit-Log">>]).
+-define(SERVICE_ADDED_HEADERS, [<<"Account-ID">>, <<"Audit-Log">>, <<"Time-Stamp">>]).
 -define(OPTIONAL_SERVICE_ADDED_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(SERVICE_ADDED_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"service_added">>}

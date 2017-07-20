@@ -96,7 +96,7 @@ clean(Bin, Opts) ->
 
 
 -spec strip(binary()) -> binary().
--spec strip(binary(), 'both' | 'left' | 'right' | char() | [char()]) -> binary().
+-spec strip(binary(), 'both' | 'left' | 'right' | char() | nonempty_string()) -> binary().
 -spec strip_left(binary(), char() | binary()) -> binary().
 -spec strip_right(binary(), char() | binary()) -> binary().
 strip(B) -> strip(B, 'both').

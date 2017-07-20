@@ -51,6 +51,9 @@
         "Text": {
             "type": "string"
         },
+        "Time-Stamp": {
+            "type": "string"
+        },
         "To": {
             "type": "string"
         }

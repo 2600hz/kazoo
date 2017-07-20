@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(teletype_app).
-
 -behaviour(application).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -15,7 +14,9 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Implement the application start behaviour
+%% @doc
+%% Implement the application start behaviour
+%% @end
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
@@ -24,12 +25,13 @@ start(_Type, _Args) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Implement the application stop behaviour
+%% @doc
+%% Implement the application stop behaviour
+%% @end
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
     'ok'.
-
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->

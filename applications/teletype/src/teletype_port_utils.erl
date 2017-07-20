@@ -57,7 +57,7 @@ fix_email(ReqData, OnlyAdmin) ->
 
 -spec get_emails(kz_json:object(), api_binary(), boolean()) -> ne_binaries().
 get_emails(_ReqData, AccountId, 'true') ->
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    ResellerId = teletype_util:find_reseller_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
     AdminEmails = teletype_util:find_account_admin_email(ResellerId),
@@ -68,7 +68,7 @@ get_emails(_ReqData, AccountId, 'true') ->
         {ResellerEmail, _} -> [ResellerEmail]
     end;
 get_emails(ReqData, AccountId, 'false') ->
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    ResellerId = teletype_util:find_reseller_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
     AdminEmails = teletype_util:find_account_admin_email(ResellerId),

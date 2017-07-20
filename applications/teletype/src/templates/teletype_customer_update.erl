@@ -60,6 +60,9 @@ init() ->
 -spec handle_req(kz_json:object()) -> kz_proplist()|'ok'.
 handle_req(JObj) ->
     'true' = kapi_notifications:customer_update_v(JObj),
+    kz_util:put_callid(JObj),
+
+    %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case teletype_util:is_notice_enabled(AccountId, JObj, maybe_expand_template_id(DataJObj)) of
