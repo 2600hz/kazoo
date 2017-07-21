@@ -20,6 +20,8 @@
 
 -export([new_private_key/1, new_private_key/2]).
 
+-export([reset_kazoo_private_key/0]).
+
 -include("kazoo_auth.hrl").
 
 -type rsa_key() :: public_key:rsa_private_key() | public_key:rsa_public_key().
@@ -202,11 +204,14 @@ fetch_key(#{key_id := KeyId
                               ,public_key_method := <<"lookup">>
                               }
            }= Token) ->
+    lager:debug("looking up public key sets in '~s' field in downloaded json : ~p", [Field, KeyDoc]),
     case kz_json:find_value(Field, KeyId, kz_json:get_value(<<"keys">>, KeyDoc)) of
-        'undefined' -> Token;
+        'undefined' ->
+            lager:debug("public key not found from '~s' field in downloaded json : ~p", [Field, KeyDoc]),
+            Token;
         JObj -> Token#{key_value => kz_json:to_map(JObj)}
     end;
-fetch_key(#{}=Token) -> Token.
+fetch_key(#{}=Token) -> io:format("~n fetch_key ~n"),Token.
 
 -spec extract_key(map()) -> map().
 extract_key(#{key_value := #{<<"n">> := N0, <<"e">> := E0}} = Token) ->
@@ -281,8 +286,9 @@ save_private_key(JObj, Key) ->
               ,{'content_type', ?SYSTEM_KEY_ATTACHMENT_CTYPE}
               ],
     case kz_datamgr:put_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME, to_pem(Key), Options) of
-        {'ok', _} -> store({'private', KeyId}, Key),
-                     {'ok', Key};
+        {'ok', _} ->
+            store({'private', KeyId}, Key),
+            {'ok', Key};
         {'error', 'conflict'} -> private_key(KeyId);
         {'error', _Err}=Err ->
             lager:debug("error ~p saving generated system key ~s", [_Err, KeyId]),
@@ -308,3 +314,55 @@ gen_private_key() ->
 erlint(MPInts) when is_list(MPInts) -> [erlint(X) || X <- MPInts ];
 erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Reset Kazoo private key, first get KeyId by from config.
+%% * Check if the document exists, if not create it,
+%% * generate a new private key and put it in cache
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_kazoo_private_key() -> 'ok' | {'error', any()}.
+reset_kazoo_private_key() ->
+    lager:debug("trying to reset kazoo private key"),
+    reset_kazoo_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>)).
+
+-spec reset_kazoo_private_key(map() | ne_binary()) -> 'ok' | {'error', any()}.
+reset_kazoo_private_key(#{pvt_server_key := KeyId}) ->
+    reset_kazoo_private_key(KeyId);
+reset_kazoo_private_key(#{}) ->
+    {'error', 'invalid_identity_provider'};
+reset_kazoo_private_key(?NE_BINARY=KeyId) ->
+    lager:debug("check if key document (kid ~s) exists", [KeyId]),
+    case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, KeyId) of
+        {'ok', JObj} -> reset_kazoo_private_key(KeyId, JObj);
+        {'error', 'not_found'} ->
+            lager:debug("private key document (kid ~s) is not exists, creating it...", [KeyId]),
+            case new_private_key(KeyId) of
+                {ok, _} ->
+                    lager:debug("private key document (kid ~s) is created successfully", [KeyId]);
+                {'error', _Reason}=Error ->
+                    lager:debug("failed to create new private key (kid ~s): ~p", [KeyId, _Reason]),
+                    Error
+            end;
+        {'error', _Reason}=Error ->
+            lager:debug("failed to open private key document (kid ~s)", [KeyId, _Reason]),
+            Error
+    end.
+
+-spec reset_kazoo_private_key(ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
+reset_kazoo_private_key(KeyId, JObj) ->
+    lager:debug("resetting kazoo private key ~s", [KeyId]),
+    {'ok', Key} = gen_private_key(),
+    Options = [{'doc_type', <<"system_key">>}
+              ,{'rev', kz_doc:revision(JObj)}
+              ,{'content_type', ?SYSTEM_KEY_ATTACHMENT_CTYPE}
+              ],
+    case kz_datamgr:put_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME, to_pem(Key), Options) of
+        {'ok', _} ->
+            store({'private', KeyId}, Key),
+            'ok';
+        {'error', _Err}=Err ->
+            lager:debug("error ~p saving generated system key ~s", [_Err, KeyId]),
+            Err
+    end.

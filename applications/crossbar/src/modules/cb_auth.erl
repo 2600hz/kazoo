@@ -29,7 +29,10 @@
 -define(APPS_PATH, <<"apps">>).
 -define(PROVIDERS_PATH, <<"providers">>).
 -define(KEYS_PATH, <<"keys">>).
+-define(PRIVATE_PATH, <<"private">>).
+-define(PUBLIC_PATH, <<"public">>).
 -define(WHITELABEL_PATH, <<"whitelabel">>).
+-define(IDENTITY_SECRET_PATH, <<"identity_secret">>).
 
 -define(LINKS_VIEW, <<"users/list_linked_users">>).
 -define(PROVIDERS_VIEW, <<"providers/list_by_id">>).
@@ -70,14 +73,14 @@ allowed_methods(?CALLBACK_PATH) -> [?HTTP_PUT];
 allowed_methods(?LINKS_PATH) -> [?HTTP_GET];
 allowed_methods(?PROVIDERS_PATH) -> [?HTTP_GET];
 allowed_methods(?APPS_PATH) -> [?HTTP_GET];
-allowed_methods(?KEYS_PATH) -> [?HTTP_GET].
+allowed_methods(?IDENTITY_SECRET_PATH) -> [?HTTP_PATCH].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?LINKS_PATH, _LinkId) -> [?HTTP_GET , ?HTTP_PUT , ?HTTP_DELETE];
 allowed_methods(?PROVIDERS_PATH, _ProviderId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE];
 allowed_methods(?APPS_PATH, _AppId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE];
-allowed_methods(?KEYS_PATH, _KeyId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE].
-
+allowed_methods(?KEYS_PATH, ?PRIVATE_PATH) -> [?HTTP_PATCH];
+allowed_methods(?KEYS_PATH, ?PUBLIC_PATH) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,13 +97,14 @@ resource_exists(?CALLBACK_PATH) -> 'true';
 resource_exists(?LINKS_PATH) -> 'true';
 resource_exists(?PROVIDERS_PATH) -> 'true';
 resource_exists(?APPS_PATH) -> 'true';
-resource_exists(?KEYS_PATH) -> 'true'.
+resource_exists(?IDENTITY_SECRET_PATH) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists(?LINKS_PATH, _LinkId) -> 'true';
 resource_exists(?PROVIDERS_PATH, _ProviderId) -> 'true';
 resource_exists(?APPS_PATH, _AppId) -> 'true';
-resource_exists(?KEYS_PATH, _KeyId) -> 'true'.
+resource_exists(?KEYS_PATH, ?PRIVATE_PATH) -> 'true';
+resource_exists(?KEYS_PATH, ?PUBLIC_PATH) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -120,6 +124,11 @@ authorize_nouns(_Context, ?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true
 authorize_nouns(_Context, ?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_Context, ?KEYS_PATH, ?HTTP_PATCH, [{<<"auth">>, ?PRIVATE_PATH}]) -> 'true';
+authorize_nouns(_Context, ?KEYS_PATH, ?HTTP_GET, [{<<"auth">>, ?PUBLIC_PATH}]) -> 'true';
+authorize_nouns(_Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_Context, ?KEYS_PATH, ?HTTP_PATCH, [{<<"auth">>, ?PRIVATE_PATH}, {<<"accounts">>, _}]) -> 'true';
+authorize_nouns(_Context, ?KEYS_PATH, ?HTTP_GET, [{<<"auth">>, ?PUBLIC_PATH}, {<<"accounts">>, _}]) -> 'true';
 authorize_nouns(_, _, _, _) -> 'false'.
 
 -spec authorize_nouns(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
@@ -207,8 +216,14 @@ validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
               ],
     crossbar_doc:load_view(?APPS_VIEW, Options, Context, fun normalize_view/2);
 validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
-    cb_context:validate_request_data(<<"auth.app">>, Context, fun add_app/1).
+    cb_context:validate_request_data(<<"auth.app">>, Context, fun add_app/1);
 
+validate_path(Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH) ->
+    case cb_context:req_nouns(Context) of
+        [{<<"auth">>, _}] -> reset_system_identity_secret(Context);
+        [{<<"auth">>, _}, {<<"accounts">>, _AccountId}] ->
+            cb_context:validate_request_data(<<"auth.reset_identity">>, Context, fun reset_identity_secret/1)
+    end.
 
 -spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 
@@ -235,7 +250,12 @@ validate_path(Context, ?LINKS_PATH, Id, ?HTTP_GET) ->
 validate_path(Context, ?LINKS_PATH, Id, ?HTTP_PUT) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
 validate_path(Context, ?LINKS_PATH, Id, ?HTTP_DELETE) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>)).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
+
+validate_path(Context, ?KEYS_PATH, ?PRIVATE_PATH, ?HTTP_PATCH) ->
+    reset_system_private_key(Context);
+validate_path(Context, ?KEYS_PATH, ?PUBLIC_PATH, ?HTTP_GET) ->
+    get_system_public_key(Context).
 
 -spec validate_token_info(cb_context:context(), ne_binary()) -> cb_context:context().
 validate_token_info(Context, Token) ->
@@ -372,3 +392,51 @@ add_app(Context) ->
 -spec add_provider(cb_context:context()) -> cb_context:context().
 add_provider(Context) ->
     Context.
+
+-spec reset_system_identity_secret(cb_context:context()) -> cb_context:context().
+reset_system_identity_secret(Context) ->
+    case kz_auth_identity:reset_system_secret() of
+        {'ok', _} -> cb_context:set_resp_status(Context, 'success');
+        {'error', _} -> cb_context:add_system_error('datastore_fault', Context)
+    end.
+
+-spec reset_identity_secret(cb_context:context()) -> cb_context:context().
+reset_identity_secret(Context) ->
+    OwnerId = kz_json:ne_binary(<<"owner_id">>, cb_context:doc(Context)),
+    Claims = [{<<"account_id">>, cb_context:account_id(Context)}
+             ,{<<"owner_id">>, OwnerId}
+             ],
+    case kz_auth:reset_secret(Claims) of
+        'ok' -> Context;
+        {'error', Reason} ->
+            crossbar_doc:handle_datamgr_errors(Reason, OwnerId, Context)
+    end.
+
+-spec reset_system_private_key(cb_context:context()) -> cb_context:context().
+reset_system_private_key(Context) ->
+    case kz_auth_keys:reset_kazoo_private_key() of
+        'ok' -> cb_context:set_resp_status(Context, 'success');
+        {'error', Error} ->
+            try kz_term:to_binary(Error) of
+                Reason -> cb_context:add_system_error('datastore_fault', kz_json:from_list([{<<"cause">>, Reason}]), Context)
+            catch
+                _:_ -> cb_context:add_system_error('datastore_fault', Context)
+            end
+    end.
+
+-spec get_system_public_key(cb_context:context()) -> cb_context:context().
+get_system_public_key(Context) ->
+    lager:debug("trying to get kazoo public key"),
+    try kz_auth_keys:to_pem(kz_auth_keys:public_key(<<"kazoo">>)) of
+        PublicKeyPem ->
+            RespDoc = kz_json:from_list([{<<"system_public_key_pem">>, PublicKeyPem}]),
+            Setters = [{fun cb_context:set_resp_status/2, 'success'}
+                      ,{fun cb_context:set_doc/2, RespDoc}
+                      ],
+            cb_context:setters(Context, Setters)
+    catch
+        _T:_E ->
+            lager:debug("failed to get kazoo public key: ~p:~p", [_T, _E]),
+            cb_context:add_system_error('datastore_fault', Context)
+    end.
+

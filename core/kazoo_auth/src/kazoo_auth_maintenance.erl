@@ -21,7 +21,7 @@
 register_auth_app(AccountId, OAuthId, Secret, Provider) ->
     Doc = kz_json:from_list([{<<"_id">>, OAuthId}
                             ,{<<"pvt_account_id">>, AccountId}
-                            ,{<<"pvt_secret">>,Secret}
+                            ,{<<"pvt_secret">>, Secret}
                             ,{<<"pvt_user_prefix">>, kz_binary:rand_hex(16)}
                             ,{<<"pvt_auth_provider">>, Provider}
                             ,{<<"pvt_type">>, <<"app">>}

@@ -14,12 +14,22 @@
 -export([verify/1
         ,sign/1
         ,token/1
+        ,reset_system_secret/0
+        ,reset_secret/1
         ]).
 
 -include("kazoo_auth.hrl").
 
 -define(PVT_SIGNING_SECRET, <<"pvt_signature_secret">>).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Sign the identity (a user_id or an account_id).
+%% Secret is consist of identity secrect and a provider secret.
+%% (Kazoo is the only provider for signing)
+%% @end
+%%--------------------------------------------------------------------
 -spec sign(map() | kz_proplist() | kz_json:object()) -> {'ok', ne_binary()} | {'error', any()}.
 sign(Claims)
   when is_map(Claims) ->
@@ -50,7 +60,9 @@ sign(Claims)
 sign(Claims) ->
     sign(kz_json:to_map(Claims)).
 
-
+%% @private
+%% @doc
+%% Find the identity based on Provider and Claims, return the secret
 -spec identity_secret(map()) -> map() | {'error', any()}.
 identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                  ,payload := #{<<"account_id">> := AccountId
@@ -107,7 +119,9 @@ identity_secret(#{auth_provider := #{jwt_user_id_claim := IdentityField
 
 identity_secret(#{}) -> {'error', {500, 'invalid_identity_provider'}}.
 
-
+%% @private
+%% @doc
+%% Fetch the identity from DB or profile (if it's an OAuth provider)
 -spec get_identity_secret(map()) -> map() | {'error', any()}.
 get_identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                      ,auth_db := Db
@@ -132,6 +146,9 @@ get_identity_secret(#{auth_provider := #{profile_cache_timer := _Timer}
 get_identity_secret(Token) ->
     get_identity(Token).
 
+%% @private
+%% @doc
+%% Fetch the identity profile from DB cache
 -spec get_identity(map()) -> map() | {'error', any()}.
 get_identity(#{auth_db := Db
               ,auth_db_id := Key
@@ -141,6 +158,10 @@ get_identity(#{auth_db := Db
         {'error', 'not_found'} -> from_profile(Token)
     end.
 
+%% @private
+%% @doc
+%% Check if cached doc is expired or not, if it is read from profile
+%% to force refershing.
 -spec check_cache_expiration(map(), kz_json:object()) -> map() | {'error', any()}.
 check_cache_expiration(#{auth_provider := #{cached_profile_field := ProfileField
                                            ,cached_profile_claim_field := Claim
@@ -160,6 +181,9 @@ check_cache_expiration(#{auth_provider := #{cached_profile_field := ProfileField
 check_cache_expiration(#{}=Token, JObj) ->
     check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)}).
 
+%% @private
+%% @doc
+%% Read the identity secret from profile (Only third-party OAuth provider)
 -spec check_secret(map()) -> map() | {'error', any()}.
 check_secret(#{auth_provider := #{profile_signature_secret_field := Field}
               ,user_doc := JObj
@@ -174,6 +198,9 @@ check_secret(#{auth_provider := #{name := Name}}) ->
     lager:debug("provider ~s does not support profile signature secret field", [Name]),
     {'error', {500, 'invalid_identity_provider'}}.
 
+%% @private
+%% @doc
+%% Get the identity profile from the third-party OAuth provider
 -spec from_profile(map()) -> map() | {'error', any()}.
 from_profile(Token) ->
     case kz_auth_profile:token(Token) of
@@ -182,10 +209,19 @@ from_profile(Token) ->
         Error -> Error
     end.
 
+%% @private
+%% @doc
+%% Get the identity secret from doc. (Only Kazoo provider)
+%% Create it if it's not present.
 -spec check_kazoo_secret(map()) -> map() | {'error', any()}.
 check_kazoo_secret(#{user_doc := JObj}=Token) ->
     case kz_json:get_value(?PVT_SIGNING_SECRET, JObj) of
-        'undefined' -> update_kazoo_secret(Token);
+        'undefined' ->
+            case update_kazoo_secret(Token) of
+                #{}=NewToken -> NewToken;
+                {'error', _} ->
+                    {'error', {500, 'datastore_fault'}}
+            end;
         Secret -> Token#{identity_secret => Secret}
     end.
 
@@ -200,11 +236,18 @@ update_kazoo_secret(#{auth_db := Db
                      }=Token, Secret) ->
     case kz_datamgr:update_doc(Db, Key, [{?PVT_SIGNING_SECRET, Secret}]) of
         {'ok', _} -> Token#{identity_secret => Secret};
-        _Error ->
-            lager:info("unable to store the kazoo signing secret on ~s/~s: ~p", [Db, Key, _Error]),
-            {'error', {500, 'datastore_fault'}}
+        {'error', _Reason}=Error ->
+            lager:info("unable to store the kazoo signing secret on ~s/~s: ~p", [Db, Key, _Reason]),
+            Error
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Verify the identity signature from a Token map.
+%% Retruns the map with `identify_verified` is set to result of verification
+%% @end
+%%--------------------------------------------------------------------
 -spec token(map()) -> map().
 token(#{identify_verified := _}=Token) -> Token;
 token(#{auth_provider := #{name := <<"kazoo">>
@@ -260,11 +303,80 @@ verify_identity_signature(Token, _IdentitySignature, _ExpectedSignature) ->
     lager:info("provided identity signature (~s) did not match the expected signature", [_IdentitySignature]),
     Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'}.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns a boolean of the Token map's verification result
+%% @end
+%%--------------------------------------------------------------------
 -spec verify(map()) -> boolean().
 verify(Token) ->
     #{identify_verified := Verified} = token(Token),
     Verified.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Reset system_key (provider identity secret).
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_system_secret() -> {'ok', kz_json:object()} | {'error', any()}.
+reset_system_secret() ->
+    kapps_config:set_string(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID, ?KAZOO_GEN_SIGNATURE_SECRET).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Reset account/user identity secret
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_secret(map() | kz_proplist() | kz_json:object()) -> 'ok' | {'error', any()}.
+reset_secret(#{<<"account_id">> := Account
+              ,<<"owner_id">> := OwnerId
+              }) ->
+    AccountDb = kz_util:format_account_db(Account),
+    reset_identity_secret(#{auth_db => AccountDb
+                           ,auth_id => OwnerId
+                           ,auth_db_id => OwnerId
+                           });
+reset_secret(#{<<"account_id">> := Account
+              }) ->
+    AccountId = kz_util:format_account_id(Account),
+    AccountDb = kz_util:format_account_db(AccountId),
+    reset_identity_secret(#{auth_db => AccountDb
+                           ,auth_id => AccountId
+                           ,auth_db_id => AccountId
+                           });
+reset_secret(#{}) ->
+    {'error', 'invalid_identity_provider'};
+reset_secret(Claims)
+  when is_list(Claims) ->
+    reset_secret(maps:from_list(Claims));
+reset_secret(Claims) ->
+    reset_secret(kz_json:to_map(Claims)).
+
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Read identity secret from DB first and update it
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_identity_secret(map()) -> 'ok' | {'error', any()}.
+reset_identity_secret(#{auth_db := Db
+                       ,auth_id := Key
+                       }=Token) ->
+    lager:debug("trying to reset identity secret, auth_db ~s auth_id ~s", [Db, Key]),
+    case kz_datamgr:open_cache_doc(Db, Key) of
+        {'ok', _JObj} ->
+            case update_kazoo_secret(Token) of
+                #{} -> 'ok';
+                {'error', _}=Error -> Error
+            end;
+        {'error', _Reason}=Error ->
+            lager:debug("failed to read identity document, auth_db ~s auth_id ~s: ~p", [Db, Key, _Reason]),
+            Error
+    end.

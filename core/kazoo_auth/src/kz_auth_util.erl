@@ -50,7 +50,7 @@ fetch_access_code(AppId, AuthorizationCode) ->
 fetch_access_code(AppId, AuthorizationCode, RedirectUri)
   when is_binary(AppId) ->
     lager:debug("getting auth-app ~p",[AppId]),
-    case get_app_and_provider(AppId) of
+    case kz_auth_apps:get_auth_app(AppId, app_and_provider) of
         #{} = Map -> fetch_access_code(Map, AuthorizationCode, RedirectUri);
         Error -> Error
     end;
@@ -79,16 +79,6 @@ fetch_access_code(#{auth_app := #{name := ClientId
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
--spec get_app_and_provider(ne_binary()) -> map() | {'error', any()}.
-get_app_and_provider(AppId) ->
-    case kz_auth_apps:get_auth_app(AppId) of
-        #{pvt_auth_provider := Provider} = App ->
-            #{auth_app => App
-             ,auth_provider => kz_auth_providers:get_auth_provider(Provider)
-             };
-        Error -> Error
-    end.
 
 -spec run(map(), list()) -> {ok | error, map()}.
 run(Token, []) -> {ok, Token};
