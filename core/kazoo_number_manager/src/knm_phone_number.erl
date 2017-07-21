@@ -364,6 +364,8 @@ test_fetch(?TEST_IN_SERVICE_MDN) ->
     {ok, ?IN_SERVICE_MDN};
 test_fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM) ->
     {ok, ?IN_SERVICE_WITH_HISTORY_NUMBER};
+test_fetch(?TEST_RESERVED_NUM) ->
+    {ok, ?RESERVED_NUMBER};
 test_fetch(?BW_EXISTING_DID) ->
     {ok, ?BW_EXISTING_JSON};
 test_fetch(?TEST_EXISTING_TOLL) ->
