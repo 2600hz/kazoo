@@ -117,24 +117,27 @@ authorize(Context, PathToken) ->
 
 -spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
 authorize(Context, PathToken, Id) ->
-    authorize_nouns(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authorize_nouns_id(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authorize_nouns(cb_context:context(), path_token(), req_verb(), req_nouns()) -> boolean().
 authorize_nouns(_Context, ?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?KEYS_PATH, ?HTTP_PATCH, [{<<"auth">>, ?PRIVATE_PATH}]) -> 'true';
-authorize_nouns(_Context, ?KEYS_PATH, ?HTTP_GET, [{<<"auth">>, ?PUBLIC_PATH}]) -> 'true';
-authorize_nouns(_Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?KEYS_PATH, ?HTTP_PATCH, [{<<"auth">>, ?PRIVATE_PATH}, {<<"accounts">>, _}]) -> 'true';
-authorize_nouns(_Context, ?KEYS_PATH, ?HTTP_GET, [{<<"auth">>, ?PUBLIC_PATH}, {<<"accounts">>, _}]) -> 'true';
+authorize_nouns(Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) ->
+    cb_context:is_superduper_admin(Context);
+authorize_nouns(Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}, {<<"accounts">>, _AccountId}]) ->
+    cb_context:is_account_admin(Context);
 authorize_nouns(_, _, _, _) -> 'false'.
 
--spec authorize_nouns(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
-authorize_nouns(Context, ?LINKS_PATH, _Id, ?HTTP_PUT, [{<<"auth">>, _}]) ->
+-spec authorize_nouns_id(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
+authorize_nouns_id(Context, ?KEYS_PATH, ?PRIVATE_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) ->
+    cb_context:is_superduper_admin(Context);
+authorize_nouns_id(Context, ?KEYS_PATH, ?PUBLIC_PATH, ?HTTP_GET, [{<<"auth">>, _}]) ->
+    cb_context:is_account_admin(Context);
+authorize_nouns_id(Context, ?LINKS_PATH, _Id, ?HTTP_PUT, [{<<"auth">>, _}]) ->
     cb_context:is_authenticated(Context);
-authorize_nouns(Context, ?LINKS_PATH, _Id, ?HTTP_DELETE, [{<<"auth">>, _}]) ->
+authorize_nouns_id(Context, ?LINKS_PATH, _Id, ?HTTP_DELETE, [{<<"auth">>, _}]) ->
     cb_context:is_authenticated(Context).
 
 %%--------------------------------------------------------------------
@@ -175,15 +178,13 @@ validate(Context, Path) ->
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Path, Id) ->
-    validate_path(Context, Path, Id, cb_context:req_verb(Context)).
+    validate_path_id(Context, Path, Id, cb_context:req_verb(Context)).
 
 -spec validate_path(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_path(Context, ?AUTHORIZE_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.authorize">>, Context, fun maybe_authorize/1);
-
 validate_path(Context, ?CALLBACK_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.callback">>, Context, fun maybe_authenticate/1);
-
 validate_path(Context, ?TOKENINFO_PATH, ?HTTP_GET) ->
     case cb_context:req_param(Context, <<"token">>) of
         'undefined' -> crossbar_util:response('error', <<"missing token in params">>, 404, Context);
@@ -198,18 +199,15 @@ validate_path(Context, ?TOKENINFO_PATH, ?HTTP_POST) ->
             lager:debug("validating posted tokeninfo : ~p", [Token]),
             validate_token_info(Context, Token)
     end;
-
 validate_path(Context, ?LINKS_PATH, ?HTTP_GET) ->
     Options = [{'key', [cb_context:auth_account_id(Context), cb_context:auth_user_id(Context)]}
               ,'include_docs'
               ],
     crossbar_doc:load_view(?LINKS_VIEW, Options, Context, fun normalize_view/2);
-
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_GET) ->
     crossbar_doc:load_view(?PROVIDERS_VIEW, [], Context, fun normalize_view/2);
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.provider">>, Context, fun add_provider/1);
-
 validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
     Options = [{'key', account_id(Context)}
               ,'include_docs'
@@ -217,7 +215,6 @@ validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
     crossbar_doc:load_view(?APPS_VIEW, Options, Context, fun normalize_view/2);
 validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.app">>, Context, fun add_app/1);
-
 validate_path(Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH) ->
     case cb_context:req_nouns(Context) of
         [{<<"auth">>, _}] -> reset_system_identity_secret(Context);
@@ -225,36 +222,33 @@ validate_path(Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH) ->
             cb_context:validate_request_data(<<"auth.reset_identity">>, Context, fun reset_identity_secret/1)
     end.
 
--spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
+-spec validate_path_id(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 
-validate_path(Context, ?APPS_PATH, Id, ?HTTP_GET) ->
+validate_path_id(Context, ?APPS_PATH, Id, ?HTTP_GET) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
-validate_path(Context, ?APPS_PATH, Id, ?HTTP_POST) ->
+validate_path_id(Context, ?APPS_PATH, Id, ?HTTP_POST) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
-validate_path(Context, ?APPS_PATH, Id, ?HTTP_DELETE) ->
+validate_path_id(Context, ?APPS_PATH, Id, ?HTTP_DELETE) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
-
-validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_GET) ->
+validate_path_id(Context, ?PROVIDERS_PATH, Id, ?HTTP_GET) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>));
-validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_POST) ->
+validate_path_id(Context, ?PROVIDERS_PATH, Id, ?HTTP_POST) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>));
-validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_DELETE) ->
+validate_path_id(Context, ?PROVIDERS_PATH, Id, ?HTTP_DELETE) ->
     Options = [{'key', Id}],
     case kz_datamgr:get_result_keys(cb_context:account_db(Context), ?PROVIDERS_APP_VIEW, Options) of
         [] -> Context;
         _ -> cb_context:add_system_error(<<"apps exist for provider">>, Context)
     end;
-
-validate_path(Context, ?LINKS_PATH, Id, ?HTTP_GET) ->
+validate_path_id(Context, ?LINKS_PATH, Id, ?HTTP_GET) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
-validate_path(Context, ?LINKS_PATH, Id, ?HTTP_PUT) ->
+validate_path_id(Context, ?LINKS_PATH, Id, ?HTTP_PUT) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
-validate_path(Context, ?LINKS_PATH, Id, ?HTTP_DELETE) ->
+validate_path_id(Context, ?LINKS_PATH, Id, ?HTTP_DELETE) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
-
-validate_path(Context, ?KEYS_PATH, ?PRIVATE_PATH, ?HTTP_PATCH) ->
+validate_path_id(Context, ?KEYS_PATH, ?PRIVATE_PATH, ?HTTP_PATCH) ->
     reset_system_private_key(Context);
-validate_path(Context, ?KEYS_PATH, ?PUBLIC_PATH, ?HTTP_GET) ->
+validate_path_id(Context, ?KEYS_PATH, ?PUBLIC_PATH, ?HTTP_GET) ->
     get_system_public_key(Context).
 
 -spec validate_token_info(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -397,7 +391,9 @@ add_provider(Context) ->
 reset_system_identity_secret(Context) ->
     case kz_auth_identity:reset_system_secret() of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
-        {'error', _} -> cb_context:add_system_error('datastore_fault', Context)
+        {'error', _Reason} ->
+            lager:warning("failed to reset system identity secret: ~p", [_Reason]),
+            cb_context:add_system_error('datastore_fault', Context)
     end.
 
 -spec reset_identity_secret(cb_context:context()) -> cb_context:context().
