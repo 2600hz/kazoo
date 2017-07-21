@@ -22,6 +22,7 @@
 -include("crossbar.hrl").
 
 -define(CB_LIST, <<"groups/crossbar_listing">>).
+-define(CB_LIST_BY_USER, <<"groups/crossbar_listing_by_user">>).
 
 %%%===================================================================
 %%% API
@@ -198,7 +199,10 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    case cb_context:user_id(Context) of
+        'undefined' -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+        UserId -> crossbar_doc:load_view(?CB_LIST_BY_USER, [{'key', UserId}], Context, fun normalize_view_results/2)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
