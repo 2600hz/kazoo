@@ -10,6 +10,8 @@
                  , inet_cidr
                  , observer
 
+                 ,kazoo_stdlib
+
                  , lager
                  ]}
  ]}.
