@@ -58,5 +58,9 @@
                        ,?KZ_PENDING_NOTIFY_DB
                        ]).
 
+-define(KNM_DB_PREFIX, "numbers/").
+-define(KNM_DB_PREFIX_ENCODED, "numbers%2F").
+-define(KNM_DB_PREFIX_encoded, "numbers%2f").
+
 -define(KZ_DATABASES_HRL, 'true').
 -endif.

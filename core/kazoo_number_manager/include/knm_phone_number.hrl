@@ -39,10 +39,6 @@
 -define(PVT_TYPE, <<"pvt_type">>).
 -define(PVT_USED_BY, <<"pvt_used_by">>).
 
--define(KNM_DB_PREFIX, "numbers/").
--define(KNM_DB_PREFIX_ENCODED, "numbers%2F").
--define(KNM_DB_PREFIX_encoded, "numbers%2f").
-
 -define(NUMBER_STATE_AGING, <<"aging">>).
 -define(NUMBER_STATE_AVAILABLE, <<"available">>).
 -define(NUMBER_STATE_DELETED, <<"deleted">>).
