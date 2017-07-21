@@ -81,3 +81,5 @@ compile_commands.json
 /doc/mkdocs/*.local
 
 .idea/
+
+/_build/
