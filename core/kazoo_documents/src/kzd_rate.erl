@@ -49,18 +49,17 @@ from_map(Map) ->
     ensure_id(set_type(Rate)).
 
 -spec ensure_id(doc()) -> doc().
+-spec ensure_id(doc(), api_ne_binary()) -> doc().
 ensure_id(Rate) ->
-    case kz_doc:id(Rate) of
-        'undefined' -> set_rate_id(Rate);
-        _Id -> Rate
-    end.
+    ensure_id(Rate, kz_json:get_ne_binary_value(<<"_id">>, Rate)).
 
--spec set_rate_id(doc()) -> doc().
-set_rate_id(Rate) ->
+ensure_id(Rate, 'undefined') ->
     ID = list_to_binary([iso_country_code(Rate, <<"XX">>)
                         ,<<"-">>
                         ,prefix(Rate)
                         ]),
+    kz_doc:set_id(Rate, ID);
+ensure_id(Rate, ID) ->
     kz_doc:set_id(Rate, ID).
 
 -spec minimum(doc()) -> integer().
