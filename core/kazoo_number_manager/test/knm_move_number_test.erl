@@ -66,13 +66,13 @@ acquire_parent_reserved_failure_test_() ->
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PN0))
      }
     ,?_assert(knm_phone_number:is_dirty(PN1))
-    ,{"verify subaccount can assign parent reserved number"
+    ,{"verify master account can assign parent reserved number"
      ,?_assertEqual(To, knm_phone_number:assigned_to(PN1))
      }
-    ,{"verify subaccount transition to in_service"
+    ,{"verify master account transition to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
      }
-    ,{"verify master account can assign reserved number"
+    ,{"verify some random account cannot assign reserved number"
      ,?_assertEqual(<<"forbidden">>, knm_errors:error(Error1))
      }
     ].
