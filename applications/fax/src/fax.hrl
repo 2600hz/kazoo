@@ -102,8 +102,7 @@
                               "-dSAFER "
                               "-sDEVICE=tiffg3 "
                               "-sOutputFile=~s - > /dev/null 2>&1"
-                              "&& if [ $? == "0" ]; then"
-                              "echo -n "success"; fi"
+                              "&& echo -n "success"
                             >>).
 
 -define(CONVERT_IMAGE_COMMAND
