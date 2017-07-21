@@ -58,7 +58,6 @@ unspecified(Error, Number) ->
 
 -spec unauthorized() -> no_return().
 unauthorized() ->
-    kz_util:log_stacktrace(),
     throw({'error', 'unauthorized'}).
 
 -spec number_exists(ne_binary()) -> no_return().
