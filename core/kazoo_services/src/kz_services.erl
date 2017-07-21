@@ -681,18 +681,18 @@ public_json(#kz_services{jobj = ServicesJObj
                      catch
                          'throw':_ -> 'false'
                      end,
-    Props = [{?QUANTITIES_ACCOUNT, kzd_services:quantities(ServicesJObj)}
-            ,{?QUANTITIES_CASCADE, CascadeQuantities}
-            ,{?PLANS, kz_service_plans:plan_summary(ServicesJObj)}
-            ,{<<"billing_id">>, kzd_services:billing_id(ServicesJObj, AccountId)}
-            ,{<<"reseller">>, kzd_services:is_reseller(ServicesJObj)}
-            ,{<<"reseller_id">>, kzd_services:reseller_id(ServicesJObj)}
-            ,{<<"dirty">>, kzd_services:is_dirty(ServicesJObj)}
-            ,{<<"in_good_standing">>, InGoodStanding}
-            ,{<<"items">>, kz_service_plans:public_json_items(ServicesJObj)}
-            ],
-    kz_json:from_list(Props);
-public_json(<<_/binary>> = Account) ->
+    kz_json:from_list(
+      [{?QUANTITIES_ACCOUNT, kzd_services:quantities(ServicesJObj)}
+      ,{?QUANTITIES_CASCADE, CascadeQuantities}
+      ,{?PLANS, kz_service_plans:plan_summary(ServicesJObj)}
+      ,{<<"billing_id">>, kzd_services:billing_id(ServicesJObj, AccountId)}
+      ,{<<"reseller">>, kzd_services:is_reseller(ServicesJObj)}
+      ,{<<"reseller_id">>, kzd_services:reseller_id(ServicesJObj)}
+      ,{<<"dirty">>, kzd_services:is_dirty(ServicesJObj)}
+      ,{<<"in_good_standing">>, InGoodStanding}
+      ,{<<"items">>, kz_service_plans:public_json_items(ServicesJObj)}
+      ]);
+public_json(Account=?NE_BINARY) ->
     public_json(fetch(Account)).
 
 -spec to_json(services()) -> kz_json:object().
@@ -1291,21 +1291,15 @@ cascade_quantities(#kz_services{cascade_quantities=JObj}) -> JObj.
 
 -spec cascade_quantities(ne_binary(), boolean()) -> kz_json:object().
 cascade_quantities(Account=?NE_BINARY, 'false') ->
-    lager:debug("computing cascade quantities"),
+    ?LOG_DEBUG("computing cascade quantities"),
     do_cascade_quantities(Account, <<"services/cascade_quantities">>);
 cascade_quantities(Account=?NE_BINARY, 'true') ->
-    lager:debug("computing reseller cascade quantities"),
+    ?LOG_DEBUG("computing reseller cascade quantities"),
     do_cascade_quantities(Account, <<"services/reseller_quantities">>).
 
 -spec do_cascade_quantities(ne_binary(), ne_binary()) -> kz_json:object().
-do_cascade_quantities(Account=?NE_BINARY, View=?NE_BINARY) ->
-    AccountId = kz_util:format_account_id(Account),
-    ViewOptions = ['group'
-                  ,'reduce'
-                  ,{'startkey', [AccountId]}
-                  ,{'endkey', [AccountId, kz_json:new()]}
-                  ],
-    case kz_datamgr:get_results(?KZ_SERVICES_DB, View, ViewOptions) of
+do_cascade_quantities(Account, View) ->
+    case cascade_results(View, kz_util:format_account_id(Account)) of
         {'error', _} -> kz_json:new();
         {'ok', JObjs} ->
             lists:foldl(fun do_cascade_quantities_fold/2, kz_json:new(), JObjs)
@@ -1316,6 +1310,39 @@ do_cascade_quantities_fold(JObj, AccJObj) ->
     Value = kz_json:get_integer_value(<<"value">>, JObj),
     lager:debug("setting cascade quantity ~p: ~p", [Keys, Value]),
     kz_json:set_value(Keys, Value, AccJObj).
+
+-ifdef(TEST).
+-define(ITEM(Category, Item, Quantity)
+       ,kz_json:from_list(
+          [{<<"key">>, [?A_RESELLER_ACCOUNT_ID, Category, Item]}
+          ,{<<"value">>, Quantity}
+          ])).
+
+cascade_results(<<"services/reseller_quantities">>, ?A_RESELLER_ACCOUNT_ID) ->
+    {ok, [?ITEM(<<"billing">>, <<"devices">>, 42)
+         ,?ITEM(<<"billing">>, <<"fax">>, 1)
+         ,?ITEM(<<"billing">>, <<"localDIDs">>, 7)
+         ,?ITEM(<<"branding">>, <<"whitelabel">>, 10)
+         ,?ITEM(<<"devices">>, <<"mobile">>, 40)
+         ,?ITEM(<<"devices">>, <<"sip_device">>, 2)
+         ,?ITEM(<<"ledgers">>, <<"per-minute-voip">>, 913840)
+         ,?ITEM(<<"limits">>, <<"twoway_trunks">>, 404)
+         ,?ITEM(<<"number_carriers">>, <<"knm_bandwidth2">>, 7)
+         ,?ITEM(<<"number_services">>, <<"dash_e911">>, 2)
+         ,?ITEM(<<"number_services">>, <<"failover">>, 3)
+         ,?ITEM(<<"phone_numbers">>, <<"did_us">>, 7)
+         ,?ITEM(<<"users">>, <<"admin">>, 1)
+         ,?ITEM(<<"users">>, <<"user">>, 1)
+         ]}.
+-else.
+cascade_results(View, AccountId) ->
+    ViewOptions = ['group'
+                  ,'reduce'
+                  ,{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
+                  ],
+    kz_datamgr:get_results(?KZ_SERVICES_DB, View, ViewOptions).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private

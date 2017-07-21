@@ -76,7 +76,7 @@ public_json(ServicePlans) ->
 -spec public_json(plans(), kz_json:object()) -> kzd_service_plan:doc().
 public_json([], JObj) ->
     kzd_service_plan:set_plan(kzd_service_plan:new(), JObj);
-public_json([#kz_service_plans{plans=Plans}|ServicePlans], JObj) ->
+public_json([#kz_service_plans{plans = Plans}|ServicePlans], JObj) ->
     NewJObj = lists:foldl(fun merge_plans/2, JObj, Plans),
     public_json(ServicePlans, NewJObj).
 

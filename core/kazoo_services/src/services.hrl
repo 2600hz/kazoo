@@ -33,6 +33,7 @@
 -define(A_MASTER_ACCOUNT_ID, <<"master_3dd0df9f3b3940b8a972c0e43">>).
 -define(A_MASTER_ACCOUNT_DB, <<"account%2Fma%2Fst%2Fer_3dd0df9f3b3940b8a972c0e43">>).
 -define(A_MASTER_USER_ID, <<"master_user_36bff4d09b5b32fc14be">>).
+-define(A_MASTER_PLAN_ID, <<"plan_saas_ss_l3">>).
 -define(A_RESELLER_ACCOUNT_ID, <<"reseller_c0f0a3fe3ab10b6f6234d07">>).
 -define(A_RESELLER_ACCOUNT_DB, <<"account%2Fre%2Fse%2Fller_c0f0a3fe3ab10b6f6234d07">>).
 -define(A_RESELLER_USER_ID, <<"reseller_user_dfcec203fb5717efb8">>).

@@ -53,19 +53,19 @@ no_plans_tests(?MATCH_ACCOUNT_RAW(AccountId)) ->
     ].
 
 init(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    ?LOG_DEBUG(">>> AccountId ~s", [AccountId]),
     {ok, ServicesJObj} = kz_services:fetch_services_doc(AccountId),
-    ?LOG_DEBUG(">>> ServicesJObj ~s", [kz_json:encode(ServicesJObj)]),
-    ServicePlans = kz_service_plans:from_service_json(ServicesJObj),
-    ?LOG_DEBUG(">>> ServicePlans ~s", [kz_json:encode(ServicePlans)]),
-    Overrides = kzd_services:plan_overrides(ServicesJObj, kz_doc:id(ServicePlans)),
+    [PlanId] = kzd_services:plan_ids(ServicesJObj),
+    ?LOG_DEBUG(">>> plan id ~s", [PlanId]),
+    ServicePlan = kz_service_plans:from_service_json(ServicesJObj),
+    ServicePlanJObj = kz_service_plans:public_json(ServicePlan),
+    ?LOG_DEBUG(">>> ServicePlanJObj ~s", [kz_json:encode(ServicePlanJObj)]),
+    Overrides = kzd_services:plan_overrides(ServicesJObj, PlanId),
     ?LOG_DEBUG(">>> Overrides ~s", [kz_json:encode(Overrides)]),
-    AccountPlan = kzd_service_plan:merge_overrides(ServicePlans, Overrides),
+    AccountPlan = kzd_service_plan:merge_overrides(ServicePlanJObj, Overrides),
     ?LOG_DEBUG(">>> AccountPlan ~s", [kz_json:encode(AccountPlan)]),
-    #state{service_plan_jobj = ServicePlans
+    #state{service_plan_jobj = ServicePlanJObj
           ,services_jobj = ServicesJObj
           ,services = kz_services:from_service_json(ServicesJObj)
-           %% ,account_plan = ServicePlanJObj
           ,account_plan = AccountPlan
           };
 
@@ -78,7 +78,6 @@ init({ServicesFixture, ServicePlanFixture}) ->
     #state{service_plan_jobj = ServicePlanJObj
           ,services_jobj = ServicesJObj
           ,services = Services
-          %% ,account_plan = ServicePlanJObj
           ,account_plan = AccountPlan
           }.
 
