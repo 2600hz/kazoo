@@ -74,9 +74,11 @@ has_account_rate_matching(#kazoo_model{'accounts'=Accounts}, AccountId, DID) ->
 has_system_rate_matching(#kazoo_model{'rates'=Ratedeck}, DID) ->
     has_rate_matching(Ratedeck, DID).
 
+-spec has_rate_matching(map(), ne_binary()) -> boolean().
 has_rate_matching(Ratedeck, <<"+", Number/binary>>) ->
     has_rate_matching(Ratedeck, Number);
 has_rate_matching(Ratedeck, Number) ->
+    io:format('user', " is ~s in ~p~n", [Number, Ratedeck]),
     lists:any(fun(Prefix) -> binary:match(Number, Prefix) =/= 'nomatch' end
              ,maps:keys(Ratedeck)
              ).
