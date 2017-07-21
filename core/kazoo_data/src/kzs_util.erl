@@ -11,7 +11,7 @@
         ,db_priority/1
         ]).
 
--include_lib("kazoo_documents/include/kzd_ratedeck.hrl").
+-include_lib("kazoo_stdlib/include/kzd_ratedeck.hrl").
 -include("kz_data.hrl").
 
 %%------------------------------------------------------------------------------
