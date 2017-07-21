@@ -6,11 +6,10 @@
  ,{applications, [kernel
                  ,stdlib
                  ,getopt
-                 ,kazoo
-                 ,kazoo_stdlib
-                 ,kazoo_config
                  ,zucchini
                  ,lager
+                 ,kazoo_stdlib
+                 ,kazoo_config
                  ]}
  ,{env, []}
  ]}.
