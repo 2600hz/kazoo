@@ -4,7 +4,7 @@
         ,v2_base_url/0
         ,auth_account_id/1
 
-        ,request_headers/1
+        ,request_headers/1, request_headers/2
         ,create_envelope/1, create_envelope/2
         ,make_request/4, make_request/5
         ]).
@@ -21,7 +21,7 @@
              ]).
 
 -define(API_BASE, "http://localhost:8000/v2").
--define(API_KEY, <<"df52943da7119a3fc901dcadba313c0689d6d883dd26f5fa84abbc44df6c30d1">>).
+-define(API_KEY, <<"d056f9d536914499dd1e8cf63593be4ea333368adf630583a38db30b1877a710">>).
 
 -spec authenticate() -> state().
 authenticate() ->
@@ -51,18 +51,26 @@ v2_base_url() -> ?API_BASE.
 auth_account_id(#{'account_id' := AccountId}) -> AccountId.
 
 -spec request_headers(state()) -> kz_proplist().
+-spec request_headers(state(), kz_proplist()) -> kz_proplist().
+request_headers(API) ->
+    request_headers(API, []).
+
 request_headers(#{'auth_token' := AuthToken
                  ,'request_id' := RequestId
-                 }) ->
-    [{"x-auth-token", kz_term:to_list(AuthToken)}
-    ,{"x-request-id", kz_term:to_list(RequestId) ++ pid_to_list(self())}
-     | default_request_headers()
-    ].
+                 }
+               ,RequestHeaders
+               ) ->
+    props:set_values(RequestHeaders
+                    ,[{<<"x-auth-token">>, kz_term:to_list(AuthToken)}
+                     ,{<<"x-request-id">>, kz_term:to_list(RequestId) ++ pid_to_list(self())}
+                      | default_request_headers()
+                     ]
+                    ).
 
 -spec default_request_headers() -> kz_proplist().
 default_request_headers() ->
-    [{"content-type", "application/json"}
-    ,{"accept", "application/json"}
+    [{<<"content-type">>, <<"application/json">>}
+    ,{<<"accept">>, <<"application/json">>}
     ].
 
 -type expected_codes() :: [integer()].
@@ -72,9 +80,11 @@ default_request_headers() ->
 -spec make_request(expected_codes(), fun(), string(), kz_proplist()) -> response().
 -spec make_request(expected_codes(), fun(), string(), kz_proplist(), binary()) -> response().
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders) ->
+    io:format('user', "~p: ~p~n~p~n", [HTTP, URL, RequestHeaders]),
     handle_response(ExpectedCodes, HTTP(URL, RequestHeaders)).
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders, RequestBody) ->
-    handle_response(ExpectedCodes, HTTP(URL, RequestHeaders, RequestBody)).
+    io:format('user', "~p: ~p~n~p~n~p~n", [HTTP, URL, RequestHeaders, RequestBody]),
+    handle_response(ExpectedCodes, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
 
 -spec create_envelope(kz_json:object()) ->
                              kz_json:object().
