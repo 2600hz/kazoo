@@ -20,6 +20,65 @@ move_to_child_test_() ->
      }
     ].
 
+acquire_parent_reserved_test_() ->
+    Num = ?TEST_RESERVED_NUM,
+    To = ?CHILD_ACCOUNT_ID,
+    {'ok', N0} = knm_number:get(Num),
+    {'ok', N1} = knm_number:move(Num, To, [{auth_by, To}]),
+    {'ok', N2} = knm_number:move(Num, To),
+    PN0 = knm_number:phone_number(N0),
+    PN1 = knm_number:phone_number(N1),
+    PN2 = knm_number:phone_number(N2),
+    [?_assert(not knm_phone_number:is_dirty(PN0))
+    ,{"verify test number is assigned to reseller"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
+     }
+    ,{"verify test number is in the reserved state"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PN0))
+     }
+    ,?_assert(knm_phone_number:is_dirty(PN1))
+    ,{"verify subaccount can assign parent reserved number"
+     ,?_assertEqual(To, knm_phone_number:assigned_to(PN1))
+     }
+    ,{"verify subaccount transition to in_service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
+     }
+    ,?_assert(knm_phone_number:is_dirty(PN2))
+    ,{"verify master account can assign reserved number"
+     ,?_assertEqual(To, knm_phone_number:assigned_to(PN2))
+     }
+    ,{"verify master account transition to in_service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN2))
+     }
+    ].
+
+acquire_parent_reserved_failure_test_() ->
+    Num = ?TEST_RESERVED_NUM,
+    To = ?UNRELATED_ACCOUNT_ID,
+    {'ok', N0} = knm_number:get(Num),
+    {'error', Error1} = knm_number:move(Num, To, [{auth_by, To}]),
+    {'ok', N1} = knm_number:move(Num, To),
+    PN0 = knm_number:phone_number(N0),
+    PN1 = knm_number:phone_number(N1),
+    [?_assert(not knm_phone_number:is_dirty(PN0))
+    ,{"verify test number is assigned to reseller"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
+     }
+    ,{"verify test number is in the reserved state"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PN0))
+     }
+    ,?_assert(knm_phone_number:is_dirty(PN1))
+    ,{"verify master account can assign parent reserved number"
+     ,?_assertEqual(To, knm_phone_number:assigned_to(PN1))
+     }
+    ,{"verify master account transition to in_service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
+     }
+    ,{"verify some random account cannot assign reserved number"
+     ,?_assertEqual(<<"forbidden">>, knm_errors:error(Error1))
+     }
+    ].
+
 move_changing_public_fields_test_() ->
     Key = <<"my_key">>,
     Fields = [{<<"a">>, <<"bla">>}
