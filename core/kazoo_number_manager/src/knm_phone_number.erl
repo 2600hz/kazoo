@@ -41,7 +41,6 @@
         ,region/1, set_region/2
         ,auth_by/1, set_auth_by/2
         ,is_authorized/1, is_admin/1
-        ,number_belongs_to_parent/1
         ,dry_run/1, set_dry_run/2
         ,batch_run/1, set_batch_run/2
         ,mdn_run/1, set_mdn_run/2
@@ -1447,14 +1446,14 @@ is_authorized(#knm_phone_number{assigned_to = undefined
     is_admin_or_in_account_hierarchy(AuthBy, AssignTo);
 is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
+                               ,state = ?NUMBER_STATE_RESERVED
+                               }) ->
+    is_admin_or_in_account_hierarchy(AuthBy, AssignedTo)
+        orelse is_admin_or_in_account_hierarchy(AssignedTo, AuthBy);
+is_authorized(#knm_phone_number{assigned_to = AssignedTo
+                               ,auth_by = AuthBy
                                }) ->
     is_admin_or_in_account_hierarchy(AuthBy, AssignedTo).
-
--spec number_belongs_to_parent(knm_phone_number()) -> boolean().
-number_belongs_to_parent(#knm_phone_number{assigned_to = AssignedTo
-                                          ,auth_by = AuthBy
-                                          }) ->
-    is_admin_or_in_account_hierarchy(AssignedTo, AuthBy).
 
 %%%===================================================================
 %%% Internal functions

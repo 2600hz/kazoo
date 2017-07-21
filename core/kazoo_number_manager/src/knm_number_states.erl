@@ -178,25 +178,12 @@ to_in_service(Number, ?NUMBER_STATE_AVAILABLE) ->
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_RESERVED) ->
     Routines = [fun (N) -> fail_if_mdn(N, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RESERVED) end
-               ,fun authorize_subaccount/1
+               ,fun authorize/1
                ,fun move_to_in_service_state/1
                ],
     apply_transitions(Number, Routines);
 to_in_service(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_IN_SERVICE).
-
-
--spec authorize_subaccount(kn()) -> kn().
-authorize_subaccount(N) ->
-    PhoneNumber = knm_number:phone_number(N),
-    ?LOG_DEBUG("is_authorized: ~p", [knm_phone_number:is_authorized(PhoneNumber)]),
-    ?LOG_DEBUG("number belongs: ~p", [knm_phone_number:number_belongs_to_parent(PhoneNumber)]),
-    case knm_phone_number:is_authorized(PhoneNumber)
-        orelse knm_phone_number:number_belongs_to_parent(PhoneNumber)
-    of
-        true -> N;
-        false -> knm_errors:unauthorized()
-    end.
 
 -spec authorize(kn()) -> kn().
 authorize(N) ->
