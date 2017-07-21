@@ -40,7 +40,7 @@
         ,carrier_data/1, set_carrier_data/2, update_carrier_data/2
         ,region/1, set_region/2
         ,auth_by/1, set_auth_by/2
-        ,is_authorized/1, is_admin/1
+        ,is_authorized/1, is_admin/1, is_reserved_from_parent/1
         ,dry_run/1, set_dry_run/2
         ,batch_run/1, set_batch_run/2
         ,mdn_run/1, set_mdn_run/2
@@ -251,6 +251,8 @@ fetch(?TEST_PORT_IN2_NUM, Options) ->
     handle_fetch(?PORT_IN2_NUMBER, Options);
 fetch(?TEST_PORT_IN3_NUM, Options) ->
     handle_fetch(?PORT_IN3_NUMBER, Options);
+fetch(?TEST_RESERVED_NUMBER, Options) ->
+    handle_fetch(?RESERVED_NUMBER, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
@@ -275,7 +277,9 @@ fetch(NumberDb, NormalizedNum, Options) ->
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
     case state(PN) =:= ?NUMBER_STATE_AVAILABLE
-        orelse (is_authorized(PN)
+        orelse ((is_authorized(PN)
+                 orelse is_reserved_from_parent(PN)
+                )
                 andalso is_mdn_for_mdn_run(PN, Options)
                )
     of
@@ -1446,6 +1450,17 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
     is_admin_or_in_account_hierarchy(AuthBy, AssignedTo).
+
+-spec is_reserved_from_parent(knm_phone_number()) -> boolean().
+is_reserved_from_parent(#knm_phone_number{assigned_to = ?MATCH_ACCOUNT_RAW(AssignedTo)
+                                         ,auth_by = AuthBy
+                                         ,state = ?NUMBER_STATE_RESERVED
+                                         }) ->
+    Authorized = is_admin_or_in_account_hierarchy(AssignedTo, AuthBy),
+    Authorized
+        andalso ?LOG_DEBUG("is reserved from parent, allowing"),
+    Authorized;
+is_reserved_from_parent(_) -> false.
 
 %%%===================================================================
 %%% Internal functions
