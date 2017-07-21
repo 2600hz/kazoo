@@ -65,7 +65,6 @@ delete_rate(API, RateDoc) ->
                                   ),
     io:format("deleted: ~p~n", [_Del]).
 
-
 -spec rate_account_did(cb_pqc_api:state(), api_ne_binary(), ne_binary()) -> integer() | 'undefined'.
 rate_account_did(_API, 'undefined', _DID) -> 'undefined';
 rate_account_did(API, AccountId, DID) ->
