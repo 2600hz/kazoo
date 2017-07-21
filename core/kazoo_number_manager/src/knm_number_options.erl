@@ -90,7 +90,7 @@ to_phone_number_setters(Options) ->
          'public_fields' ->
              {fun knm_phone_number:reset_doc/2, Value};
          _ ->
-             FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
+             FName = list_to_atom("set_" ++ atom_to_list(Option)),
              {fun knm_phone_number:FName/2, Value}
      end
      || {Option, Value} <- kz_util:uniq(Options),

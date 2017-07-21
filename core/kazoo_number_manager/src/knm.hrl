@@ -90,12 +90,14 @@
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 -define(TEST_PORT_IN2_NUM, <<"+14252151008">>).
 -define(TEST_PORT_IN3_NUM, <<"+14252151009">>).
+-define(TEST_RESERVED_NUMBER, <<"+14252151010">>).
 -define(TEST_NEW_PORT_NUM, <<"+19042471591">>).
 -define(BW_EXISTING_DID, <<"+14122065197">>).
 -define(TEST_AVAILABLE_NON_LOCAL_NUM, <<"+19162154006">>).
 
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
+-define(UNRELATED_ACCOUNT_ID, <<"unrelated_account_b113394f16cb71">>).
 -define(CHILD_ACCOUNT_ID,    <<"child_account_670a04df0014d0b27a">>).
 -define(CHILD_ACCOUNT_DB,    <<"account%2Fch%2Fil%2Fd_account_670a04df0014d0b27a">>).
 
@@ -323,6 +325,20 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1916">>}
           ,{?PVT_CREATED, 63565900000}
+          ])).
+
+-define(RESERVED_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_RESERVED_NUMBER}
+          ,{<<"_rev">>, <<"2-7dddead523e81a4e3c2689140ed3abeef">>}
+          ,{?PVT_MODIFIED, 63565935527}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
+          ,{?PVT_STATE, ?NUMBER_STATE_RESERVED}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
+          ,{?PVT_CREATED, 63565935000}
           ])).
 
 -define(TEST_NEW_PORT_REQ

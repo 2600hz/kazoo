@@ -41,6 +41,7 @@
         ,region/1, set_region/2
         ,auth_by/1, set_auth_by/2
         ,is_authorized/1, is_admin/1
+        ,number_belongs_to_parent/1
         ,dry_run/1, set_dry_run/2
         ,batch_run/1, set_batch_run/2
         ,mdn_run/1, set_mdn_run/2
@@ -251,6 +252,8 @@ fetch(?TEST_PORT_IN2_NUM, Options) ->
     handle_fetch(?PORT_IN2_NUMBER, Options);
 fetch(?TEST_PORT_IN3_NUM, Options) ->
     handle_fetch(?PORT_IN3_NUMBER, Options);
+fetch(?TEST_RESERVED_NUMBER, Options) ->
+    handle_fetch(?RESERVED_NUMBER, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
@@ -284,7 +287,7 @@ handle_fetch(JObj, Options) ->
     end.
 
 is_mdn_for_mdn_run(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}, _) ->
-    lager:debug("mdn check disabled by auth_by"),
+    ?LOG_DEBUG("mdn check disabled by auth_by"),
     true;
 is_mdn_for_mdn_run(PN, Options) ->
     IsMDN = ?CARRIER_MDN =:= module_name(PN),
@@ -293,7 +296,7 @@ is_mdn_for_mdn_run(PN, Options) ->
         false -> not IsMDN;
         true ->
             _ = IsMDN
-                andalso lager:debug("~s is an mdn", [number(PN)]),
+                andalso ?LOG_DEBUG("~s is an mdn", [number(PN)]),
             IsMDN
     end.
 
@@ -1446,6 +1449,12 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
     is_admin_or_in_account_hierarchy(AuthBy, AssignedTo).
+
+-spec number_belongs_to_parent(knm_phone_number()) -> boolean().
+number_belongs_to_parent(#knm_phone_number{assigned_to = AssignedTo
+                                          ,auth_by = AuthBy
+                                          }) ->
+    is_admin_or_in_account_hierarchy(AssignedTo, AuthBy).
 
 %%%===================================================================
 %%% Internal functions
