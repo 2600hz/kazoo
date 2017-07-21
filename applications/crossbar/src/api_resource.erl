@@ -176,7 +176,14 @@ find_version(Path) ->
 
 -spec maybe_allow_proxy_req(ne_binary(), ne_binary()) -> ne_binary().
 maybe_allow_proxy_req(Peer, ForwardIP) ->
-    case is_proxied(Peer) of
+    ShouldCheck = kapps_config:get_is_true(?APP_NAME, <<"check_reverse_proxies">>, 'true'),
+    maybe_allow_proxy_req(Peer, ForwardIP, ShouldCheck).
+
+-spec maybe_allow_proxy_req(ne_binary(), ne_binary(), boolean()) -> ne_binary().
+maybe_allow_proxy_req(_Peer, ForwardIP, 'false') ->
+    ForwardIP;
+maybe_allow_proxy_req(Peer, ForwardIP, 'true') ->
+     case is_proxied(Peer) of
         'true' ->
             lager:info("request is from expected reverse proxy: ~s", [ForwardIP]),
             kz_term:to_binary(ForwardIP);
