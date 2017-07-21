@@ -42,7 +42,7 @@ Key | Description | Type | Default | Required
 
 List of all available auth module to be configured.
 
-> GET /v2/accounts/{ACCOUNT_ID}/security
+> GET /v2/security
 
 ```shell
 curl -v -X GET \
