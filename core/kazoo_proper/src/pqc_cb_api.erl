@@ -80,10 +80,10 @@ default_request_headers() ->
 -spec make_request(expected_codes(), fun(), string(), kz_proplist()) -> response().
 -spec make_request(expected_codes(), fun(), string(), kz_proplist(), binary()) -> response().
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders) ->
-    io:format('user', "~p: ~p~n~p~n", [HTTP, URL, RequestHeaders]),
+    %% io:format('user', "~p: ~p~n~p~n", [HTTP, URL, RequestHeaders]),
     handle_response(ExpectedCodes, HTTP(URL, RequestHeaders)).
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders, RequestBody) ->
-    io:format('user', "~p: ~p~n~p~n~p~n", [HTTP, URL, RequestHeaders, RequestBody]),
+    %% io:format('user', "~p: ~p~n~p~n~p~n", [HTTP, URL, RequestHeaders, RequestBody]),
     handle_response(ExpectedCodes, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
 
 -spec create_envelope(kz_json:object()) ->
