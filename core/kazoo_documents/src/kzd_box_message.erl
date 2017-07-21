@@ -129,7 +129,7 @@ new(AccountId, Props) ->
 %%--------------------------------------------------------------------
 -spec create_message_name(ne_binary(), api_binary(), gregorian_seconds()) -> ne_binary().
 create_message_name(BoxNum, 'undefined', UtcSeconds) ->
-    create_message_name(BoxNum, ?DEFAULT_TIMEZONE, UtcSeconds);
+    create_message_name(BoxNum, kz_account:default_timezone(), UtcSeconds);
 create_message_name(BoxNum, Timezone, UtcSeconds) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(UtcSeconds)),
     case localtime:utc_to_local(UtcDateTime, Timezone) of

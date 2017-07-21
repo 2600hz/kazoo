@@ -52,9 +52,9 @@ dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50
 dep_eiconv = git https://github.com/zotonic/eiconv
 dep_escalus = git https://github.com/esl/escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5
 dep_exml = git https://github.com/paulgray/exml 2.2.1
-dep_jiffy = hex 0.14.7
+dep_jiffy = git https://github.com/fenollp/jiffy patch-1  ## See https://github.com/davisp/jiffy/pull/152
 dep_nklib = git https://github.com/NetComposer/nklib
-dep_plists = git https://github.com/essen/plists
+dep_plists = hex 1.0.0
 
 dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
 ###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.4.1

@@ -84,7 +84,14 @@ clean-release:
 
 build-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
-	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
+	patch _rel/'kazoo'/bin/'kazoo' -i rel/relx.patch
+build-all-release: build-release
+	for path in applications/*/; do \
+	  app=$$(echo $$path | cut -d/ -f2) ; \
+	  if [ $$app = 'skel' ]; then continue; fi ; \
+	  $(RELX) --config rel/relx.config -V 2 release --relname $$app ; \
+	  patch _rel/$$app/bin/$$app -i rel/relx.patch ; \
+	done
 build-dev-release: $(RELX) clean-release rel/relx.config-dev rel/vm.args
 	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
 	patch _rel/kazoo/bin/kazoo -i rel/relx.patch

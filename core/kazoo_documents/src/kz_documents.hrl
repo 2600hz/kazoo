@@ -1,15 +1,12 @@
 -ifndef(KZ_DOCUMENTS_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -define(FAX_SETTINGS_KEY, <<"fax_settings">>).
 -define(FAX_TIMEZONE_KEY, <<"fax_timezone">>).
 
-
--define(DEFAULT_TIMEZONE
-       ,kapps_config:get_ne_binary(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)).
 
 -define(DEFAULT_FAX_SETTINGS,
         kapps_config:get_json(<<"fax">>, ?FAX_SETTINGS_KEY, kz_json:from_list(
@@ -17,7 +14,7 @@
                                                               ,{<<"override_callee_number">>, 'false'}
                                                               ]))).
 
--define(SYSTEM_FAX_SETTINGS, kz_json:set_value(?FAX_TIMEZONE_KEY, ?DEFAULT_TIMEZONE, ?DEFAULT_FAX_SETTINGS)).
+-define(SYSTEM_FAX_SETTINGS, kz_json:set_value(?FAX_TIMEZONE_KEY, kz_account:default_timezone(), ?DEFAULT_FAX_SETTINGS)).
 
 -ifdef(TEST).
 -define(SCHEMA_KEY1, kz_json:from_list([{<<"type">>, <<"string">>}])).

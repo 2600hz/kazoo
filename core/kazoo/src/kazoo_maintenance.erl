@@ -26,36 +26,68 @@
         ,mem_info/0
         ]).
 
--include("include/kz_types.hrl").
--include("include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -spec crash() -> no_return().
 crash() ->
+    _ = debug_dump(),
     erlang:halt("crash requested").
 
 -spec debug_dump() -> 'ok'.
 debug_dump() ->
     FolderName = "/tmp/" ++ kz_term:to_list(node()) ++ "_" ++ kz_term:to_list(kz_time:current_tstamp()),
     'ok' = file:make_dir(FolderName),
-    _ = debug_dump_process(FolderName),
+    _ = debug_dump_process_info(FolderName),
     _ = debug_dump_memory(FolderName),
     _ = debug_dump_ports(FolderName),
     _ = debug_dump_ets(FolderName),
+    %% Do this last since it takes the longest,
+    %% that way if the admin is impatient we have
+    %% some complete data
+    _ = debug_dump_process_status(FolderName),
     'ok'.
 
--spec debug_dump_memory(list()) -> 'ok'.
+-spec debug_dump_memory(string()) -> 'ok'.
 debug_dump_memory(FolderName) ->
     MemoryLog = FolderName ++ "/memory_log",
     _ = [log_memory_type(Info, MemoryLog) || Info <- erlang:memory()],
     'ok'.
 
--spec debug_dump_process(list()) -> 'ok'.
-debug_dump_process(FolderName) ->
-    ProcessLog = FolderName ++ "/process_info",
-    Bytes = [erlang:process_info(Pid)|| Pid <- erlang:processes()],
-    'ok' = file:write_file(ProcessLog, io_lib:format("~p~n", [Bytes])).
+-spec debug_dump_process_info(string()) -> 'ok'.
+debug_dump_process_info(FolderName) ->
+    InfoLog = FolderName ++ "/processes_info",
+    'ok' = start_debug_file(InfoLog),
+    debug_dump_process_info(InfoLog, erlang:processes()).
 
--spec debug_dump_ets(list()) -> 'ok'.
+-spec debug_dump_process_info(string(), [pid()]) -> 'ok'.
+debug_dump_process_info(_, []) -> 'ok';
+debug_dump_process_info(InfoLog, [Pid|Pids]) ->
+    Info = erlang:process_info(Pid),
+    InfoBytes = io_lib:format("~p~n~p~n~n", [Pid, Info]),
+    'ok' = file:write_file(InfoLog, InfoBytes, ['append']),
+    debug_dump_process_info(InfoLog, Pids).
+
+-spec debug_dump_process_status(string()) -> 'ok'.
+debug_dump_process_status(FolderName) ->
+    StatusLog = FolderName ++ "/processes_status",
+    'ok' = start_debug_file(StatusLog),
+    debug_dump_process_status(StatusLog, erlang:processes()).
+
+-spec debug_dump_process_status(string(), [pid()]) -> 'ok'.
+debug_dump_process_status(_, []) -> 'ok';
+debug_dump_process_status(StatusLog, [Pid|Pids]) ->
+    Info = erlang:process_info(Pid),
+    Dictionary = props:get_value('dictionary', Info, []),
+    _ = case props:get_value('$initial_call', Dictionary) =/= 'undefined' of
+            'false' -> 'ok';
+            'true' ->
+                StatusBytes = io_lib:format("~p~n~p~n~n", [Pid, catch sys:get_status(Pid)]),
+                'ok' = file:write_file(StatusLog, StatusBytes, ['append'])
+        end,
+    debug_dump_process_status(StatusLog, Pids).
+
+-spec debug_dump_ets(string()) -> 'ok'.
 debug_dump_ets(FolderName) ->
     EtsLog = FolderName ++ "/ets_log",
     _ = [log_table(T, EtsLog) || T <- sort_tables(ets:all())],
@@ -64,20 +96,31 @@ debug_dump_ets(FolderName) ->
     _ = debug_dump_ets_details(EtsFolder, ets:all()),
     'ok'.
 
--spec debug_dump_ets_details(list(), [ets:tab()]) -> 'ok'.
+-spec debug_dump_ets_details(string(), [ets:tab()]) -> 'ok'.
 debug_dump_ets_details(_, []) -> 'ok';
 debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
     TabInfoLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_info",
+    'ok' = start_debug_file(TabInfoLog),
     'ok' = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
     TabDumpLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_dump",
-    catch ets:tab2file(Tab, TabDumpLog),
+    TabList = (catch ets:tab2list(Tab)),
+    'ok' = start_debug_file(TabDumpLog),
+    'ok' = file:write_file(TabDumpLog, io_lib:format("~p~n", [TabList])),
+    TabBinaryLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_binary",
+    catch ets:tab2file(Tab, TabBinaryLog),
     debug_dump_ets_details(EtsFolder, Tabs).
 
--spec debug_dump_ports(list()) -> 'ok'.
+-spec debug_dump_ports(string()) -> 'ok'.
 debug_dump_ports(FolderName) ->
     PortLog = FolderName ++ "/ports_info",
     Bytes = [erlang:port_info(Port) || Port <- erlang:ports()],
+    'ok' = start_debug_file(PortLog),
     'ok' = file:write_file(PortLog, io_lib:format("~p~n", [Bytes])).
+
+-spec start_debug_file(file:name_all()) -> file:posix() | 'badarg' | 'terminated' | 'system_limit'.
+start_debug_file(File) ->
+    Timestamp = kz_time:current_unix_tstamp(),
+    file:write_file(File, io_lib:format("Created: ~p~n~n", [Timestamp])).
 
 -spec syslog_level(text()) -> 'ok'.
 syslog_level(Level) ->

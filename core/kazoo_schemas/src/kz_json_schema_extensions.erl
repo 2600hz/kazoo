@@ -10,7 +10,7 @@
 -export([extra_validator/2
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(INVALID_STORAGE_ATTACHMENT_REFERENCE(R), <<"invalid reference '", R/binary, "' to attachments">>).
 -define(INVALID_STORAGE_CONNECTION_REFERENCE(R), <<"invalid reference '", R/binary, "' to connections">>).

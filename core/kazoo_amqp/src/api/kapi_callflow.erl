@@ -7,7 +7,7 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kapi_callflow).
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -export([resume/1, resume_v/1]).
 

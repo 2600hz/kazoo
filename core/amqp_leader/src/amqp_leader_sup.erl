@@ -13,7 +13,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(SERVER, ?MODULE).
 

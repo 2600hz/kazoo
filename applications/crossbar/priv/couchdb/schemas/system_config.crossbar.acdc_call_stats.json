@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.crossbar.acdc_call_stats",
+    "description": "Schema for crossbar.acdc_call_stats system_config",
+    "properties": {
+        "maximum_bulk": {
+            "default": 50,
+            "description": "The maximum number of call stats to load in a request",
+            "type": "integer"
+        },
+        "maximum_range": {
+            "default": 2682000,
+            "description": "The maximum number of seconds between the start and end time of a call stats request",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

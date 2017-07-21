@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "auth_config",
     "additionalProperties": true,
-    "description": "corssbar authentication module configuration",
+    "description": "crossbar authentication module configuration",
     "properties": {
         "enabled": {
             "description": "whether or not this authentication module is enabled",

@@ -9,7 +9,7 @@
 -module(kzd_domains_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -define(DOMAIN, <<"2600hz.com">>).
 

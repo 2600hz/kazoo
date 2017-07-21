@@ -1,6 +1,6 @@
 -ifndef(KZ_ATT_AWS_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -record(aws_config, {
           %%           as_host="autoscaling.amazonaws.com"::string(),

@@ -425,6 +425,7 @@ log_attempts(Context, AccountId, AuthConfig, Method, Status, AuthType, Reason) -
             ,{<<"multi_factor_config_origin">>, MultiFactorOrigin}
             ,{<<"client_headers">>, kz_json:from_list(cb_context:req_headers(Context))}
             ,{<<"client_ip">>, cb_context:client_ip(Context)}
+            ,{<<"crossbar_request_id">>, cb_context:req_id(Context)}
             ,{<<"timestamp">>, Now}
             ],
     Doc0 = maybe_add_metadata(cb_context:doc(Context), kz_json:from_list(Props)),

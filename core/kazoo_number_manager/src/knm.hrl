@@ -1,5 +1,5 @@
 -ifndef(KNM_HRL).
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include("knm_phone_number.hrl").
 
 -define(APP, kazoo_number_manager).
@@ -75,6 +75,7 @@
 -define(TEST_IN_SERVICE_MDN, <<"+15551233324">>).
 -define(TEST_IN_SERVICE_BAD_CARRIER_NUM, <<"+15551233337">>).
 -define(TEST_IN_SERVICE_WITH_HISTORY_NUM, <<"+15551255693">>).
+-define(TEST_RESERVED_NUM, <<"+14252151010">>).
 -define(TEST_CREATE_TOLL, <<"+18887771111">>).
 -define(TEST_EXISTING_TOLL, <<"+18005551212">>).
 -define(TEST_OLD1_NUM, <<"+15045551226">>).
@@ -104,6 +105,7 @@
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
 -define(CHILD_ACCOUNT_ID,    <<"child_account_670a04df0014d0b27a">>).
 -define(CHILD_ACCOUNT_DB,    <<"account%2Fch%2Fil%2Fd_account_670a04df0014d0b27a">>).
+-define(UNRELATED_ACCOUNT_ID, <<"unrelated_account_b113394f16cb71">>).
 
 -define(PVT_TREE, [?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID]).
 
@@ -185,6 +187,20 @@
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
           ,{?PVT_USED_BY, <<"callflow">>}
+          ])).
+
+-define(RESERVED_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_RESERVED_NUM}
+          ,{<<"_rev">>, <<"2-7dddead523e81a4e3c2689140ed3abeef">>}
+          ,{?PVT_MODIFIED, 63565935527}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
+          ,{?PVT_STATE, ?NUMBER_STATE_RESERVED}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
+          ,{?PVT_CREATED, 63565935000}
           ])).
 
 -define(EXISTING_TOLL

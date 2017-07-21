@@ -105,8 +105,7 @@ process_req(DataJObj) ->
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
-    FaxBoxJObj = kz_json:get_value(<<"faxbox">>, DataJObj),
-    Timezone = kz_json:get_value([<<"fax">>, <<"tx_result">>, <<"timezone">>], DataJObj, kzd_fax_box:timezone(FaxBoxJObj)),
+    Timezone = kz_json:get_value(<<"timezone">>, DataJObj),
     props:filter_undefined(
       [{<<"account">>, teletype_util:account_params(DataJObj)}
       ,{<<"fax">>, build_fax_template_data(DataJObj)}

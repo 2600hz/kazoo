@@ -21,7 +21,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), api_binary()) -> kz_services:services().
+-spec reconcile(kz_services:services(), ne_binary()) -> kz_services:services().
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -41,7 +41,6 @@ reconcile(Services) ->
                         end, kz_services:reset_category(?SERVICE_CATEGORY, Services), JObjs)
     end.
 
-reconcile(Services, 'undefined') -> Services;
 reconcile(Services0, UserType) ->
     Services1 = reconcile(Services0),
     Quantity = kz_services:updated_quantity(?SERVICE_CATEGORY, UserType, Services1),

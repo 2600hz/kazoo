@@ -62,7 +62,6 @@
         ,get_token_restrictions/3
         ]).
 -export([get_user_timezone/2
-        ,get_account_timezone/1
         ]).
 -export([apply_response_map/2]).
 -export([maybe_remove_attachments/1]).
@@ -695,14 +694,13 @@ enable_account(AccountId) ->
 -spec response_auth(kz_json:object(), api_binary(), api_binary()) ->
                            kz_json:object().
 response_auth(JObj) ->
-    response_auth(JObj
-                 ,kz_json:get_first_defined([<<"account_id">>, <<"pvt_account_id">>], JObj)
-                 ,kz_json:get_first_defined([<<"owner_id">>, <<"user_id">>], JObj)
-                 ).
+    AccountId = kz_json:get_first_defined([<<"account_id">>, <<"pvt_account_id">>], JObj),
+    OwnerId = kz_json:get_first_defined([<<"owner_id">>, <<"user_id">>], JObj),
+    response_auth(JObj, AccountId, OwnerId).
 
 response_auth(JObj, AccountId) ->
-    UserId  = kz_json:get_value(<<"owner_id">>, JObj),
-    response_auth(JObj, AccountId, UserId).
+    OwnerId = kz_json:get_first_defined([<<"owner_id">>, <<"user_id">>], JObj),
+    response_auth(JObj, AccountId, OwnerId).
 
 response_auth(JObj, AccountId, UserId) ->
     populate_resp(JObj, AccountId, UserId).
@@ -860,23 +858,11 @@ get_account_lang(AccountId) ->
             'error'
     end.
 
--spec get_user_timezone(api_ne_binary(), api_ne_binary()) -> api_ne_binary().
-get_user_timezone(AccountId, 'undefined') ->
-    get_account_timezone(AccountId);
+-spec get_user_timezone(api_ne_binary(), api_ne_binary()) -> ne_binary().
 get_user_timezone(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
+    case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> kzd_user:timezone(UserJObj);
-        {'error', _E} -> get_account_timezone(AccountId)
-    end.
-
--spec get_account_timezone(api_ne_binary()) -> api_ne_binary().
-get_account_timezone('undefined') ->
-    'undefined';
-get_account_timezone(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', AccountJObj} -> kz_account:timezone(AccountJObj);
-        {'error', _E} -> 'undefined'
+        {'error', _E} -> kz_account:timezone(AccountId)
     end.
 
 -spec apply_response_map(cb_context:context(), kz_proplist()) -> cb_context:context().
@@ -986,8 +972,10 @@ get_priv_level(_AccountId, 'undefined') ->
     cb_token_restrictions:default_priv_level();
 get_priv_level(AccountId, OwnerId) ->
     AccountDB = kz_util:format_account_db(AccountId),
-    {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDB, OwnerId),
-    kz_json:get_ne_value(<<"priv_level">>, Doc).
+    case kz_datamgr:open_cache_doc(AccountDB, OwnerId) of
+        {'ok', Doc} -> kzd_user:priv_level(Doc);
+        {'error', _} -> cb_token_restrictions:default_priv_level()
+    end.
 
 -spec get_system_token_restrictions(atom()) -> api_object().
 get_system_token_restrictions(AuthModule) ->

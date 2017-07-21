@@ -13,7 +13,7 @@
         ,deregister_rr/0, deregister_rr/1, deregister_rr/2
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -spec register() -> 'true'.
 -spec register(ne_binary()) -> 'true'.

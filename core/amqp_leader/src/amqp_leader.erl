@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(amqp_leader).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -export([start_link/6]).
 

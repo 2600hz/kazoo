@@ -117,7 +117,7 @@ allowed_methods(_AccountId, ?RESELLER) ->
 allowed_methods(_AccountId, ?CHILDREN) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?DESCENDANTS) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?SIBLINGS) -> [?HTTP_GET];
-allowed_methods(_AccountId, ?API_KEY) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?API_KEY) -> [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_AccountId, ?TREE) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET].
 
@@ -236,6 +236,16 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
             cb_context:set_resp_data(Context1, RespJObj);
         _Else -> Context1
     end;
+validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_PUT) ->
+    case cb_context:is_account_admin(Context) of
+        'true' ->
+            Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context), ?TYPE_CHECK_OPTION(?PVT_TYPE)),
+            case cb_context:resp_status(Context1) of
+                'success' -> add_pvt_api_key(Context1);
+                _Else -> Context1
+            end;
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
 validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
     Data = cb_context:req_data(Context),
     case kz_json:get_binary_value(<<"to">>, Data) of
@@ -341,6 +351,16 @@ put(Context, PathAccountId) ->
             cb_context:add_system_error('unspecified_fault', <<"internal error, unable to create the account">>, Context)
     end.
 
+put(Context, _AccountId, ?API_KEY) ->
+    C1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            JObj = cb_context:doc(C1),
+            ApiKey = kz_account:api_key(JObj),
+            RespJObj = kz_json:from_list([{<<"api_key">>, ApiKey}]),
+            cb_context:set_resp_data(C1, RespJObj);
+        _ -> C1
+    end;
 put(Context, AccountId, ?RESELLER) ->
     case whs_account_conversion:promote(AccountId) of
         {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
@@ -504,8 +524,9 @@ ensure_account_has_timezone(_AccountId, Context) ->
 -spec get_timezone_from_parent(cb_context:context()) -> ne_binary().
 get_timezone_from_parent(Context) ->
     case create_new_tree(Context) of
-        [_|_]=Tree -> kz_account:timezone(lists:last(Tree));
-        [] -> kz_account:default_timezone()
+        'error' -> kz_account:default_timezone();
+        [] -> kz_account:default_timezone();
+        Tree -> kz_account:timezone(lists:last(Tree))
     end.
 
 -spec random_realm() -> ne_binary().
@@ -1173,11 +1194,15 @@ add_pvt_enabled(Context) ->
 maybe_add_pvt_api_key(Context) ->
     JObj = cb_context:doc(Context),
     case kz_account:api_key(JObj) of
-        'undefined' ->
-            APIKey = kz_term:to_hex_binary(crypto:strong_rand_bytes(32)),
-            cb_context:set_doc(Context, kz_account:set_api_key(JObj, APIKey));
+        'undefined' -> add_pvt_api_key(Context);
         _Else -> Context
     end.
+
+-spec add_pvt_api_key(cb_context:context()) -> cb_context:context().
+add_pvt_api_key(Context) ->
+    JObj = cb_context:doc(Context),
+    APIKey = kz_term:to_hex_binary(crypto:strong_rand_bytes(32)),
+    cb_context:set_doc(Context, kz_account:set_api_key(JObj, APIKey)).
 
 -spec maybe_add_pvt_tree(cb_context:context()) -> cb_context:context().
 maybe_add_pvt_tree(Context) ->

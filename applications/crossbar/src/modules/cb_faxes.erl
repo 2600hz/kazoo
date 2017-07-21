@@ -516,28 +516,35 @@ verify_number(Context) ->
 %%--------------------------------------------------------------------
 -spec on_success(cb_context:context()) -> cb_context:context().
 on_success(Context) ->
-    AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
     ResellerId = cb_context:reseller_id(Context),
-    AuthDoc = cb_context:auth_doc(Context),
-    OwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
-    Timezone = crossbar_util:get_user_timezone(AccountId, OwnerId),
     JobStatus = initial_job_status(cb_context:req_files(Context)),
-
     cb_context:set_doc(Context
                       ,kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                                           ,{<<"pvt_job_status">>, JobStatus}
                                           ,{<<"pvt_created">>, kz_time:current_tstamp()}
                                           ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                           ,{<<"attempts">>, 0}
-                                          ,{<<"pvt_account_id">>, AccountId}
+                                          ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
                                           ,{<<"pvt_account_db">>, AccountDb}
                                           ,{<<"pvt_reseller_id">>, ResellerId}
-                                          ,{<<"fax_timezone">>, Timezone}
-                                          ]
+                                          ] ++ maybe_add_timezone(Context)
                                          ,cb_context:doc(Context)
                                          )
                       ).
+
+-spec maybe_add_timezone(cb_context:context()) -> kz_proplist().
+maybe_add_timezone(Context) ->
+    maybe_add_timezone(Context, kz_json:get_value(<<"timezone">>, cb_context:doc(Context))).
+
+-spec maybe_add_timezone(cb_context:context(), api_binary()) -> kz_proplist().
+maybe_add_timezone(Context, 'undefined') ->
+    AuthDoc = cb_context:auth_doc(Context),
+    OwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
+    Timezone = crossbar_util:get_user_timezone(cb_context:account_id(Context), OwnerId),
+    [{<<"fax_timezone">>, Timezone}];
+maybe_add_timezone(_Context, Timezone) ->
+    [{<<"fax_timezone">>, Timezone}].
 
 -spec initial_job_status(req_files()) -> ne_binary().
 initial_job_status([]) -> <<"pending">>;

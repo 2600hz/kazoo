@@ -234,3 +234,17 @@ curl -v \
     -H "Content-Type: application/json" \
     http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}?pretty_print=true
 ```
+
+#### Requesting a range of binary data
+
+It is useful to be able to get just a section of a file when streaming or
+resuming a download. This can be accomplished with the range header, eg:
+
+```shell
+curl -v \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -H "Accept: audio/mpeg" \
+    -H "Range: bytes={START_BYTE}-{END_BYTE}" \
+    http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MESSAGE_ID}/raw
+```

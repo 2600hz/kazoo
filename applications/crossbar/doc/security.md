@@ -42,7 +42,7 @@ Key | Description | Type | Default | Required
 
 List of all available auth module to be configured.
 
-> GET /v2/accounts/{ACCOUNT_ID}/security
+> GET /v2/security
 
 ```shell
 curl -v -X GET \
@@ -430,7 +430,8 @@ curl -v -X GET \
       "auth_module": "cb_user_auth",
       "status": "success",
       "message": "authentiaction resulted in token creation",
-      "timestamp": 63667032239
+      "timestamp": 63667032239,
+      "client_ip": "10.1.0.2"
     }
   ],
   "timestamp": "{TIMESTAMP}",
@@ -478,6 +479,7 @@ curl -v -X GET \
       "accept-language": "en-US,en;q=0.8"
     },
     "client_ip": "10.1.0.2",
+    "crossbar_request_id": "a6edc00018ebd9c7c991fbddf3677fcb",
     "timestamp": 63667032239,
     "metadata": {
       "owner_id": "0528dc7bbbf94bcc5df7d74d808a4ec0",

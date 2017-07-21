@@ -177,7 +177,7 @@ calc_service_updates(Context, <<"device">>) ->
 calc_service_updates(Context, <<"user">>) ->
     Services = fetch_service(Context),
     JObj = cb_context:doc(Context),
-    UserType = kz_json:get_value(<<"priv_level">>, JObj),
+    UserType = kzd_user:priv_level(JObj),
     kz_service_users:reconcile(Services, UserType);
 calc_service_updates(Context, <<"limits">>) ->
     Services = fetch_service(Context),
@@ -341,6 +341,7 @@ maybe_notify_reseller(Context, Services, AuditLog) ->
         'false' ->
             Props = [{<<"Account-ID">>, cb_context:account_id(Context)}
                     ,{<<"Audit-Log">>, AuditLog}
+                    ,{<<"Time-Stamp">>, kz_time:current_tstamp()}
                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_service_added/1)

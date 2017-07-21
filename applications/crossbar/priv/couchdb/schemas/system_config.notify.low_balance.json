@@ -7,6 +7,11 @@
             "default": false,
             "description": "notify.low_balance default enabled",
             "type": "boolean"
+        },
+        "threshold": {
+            "default": 5.0,
+            "description": "default threshold that will trigger a low balance notification",
+            "type": "number"
         }
     },
     "type": "object"

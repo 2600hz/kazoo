@@ -16,7 +16,7 @@
 
 -define(SUCCESS_TEMPLATE_ID, <<"transaction">>).
 -define(FAILED_TEMPLATE_ID, <<"transaction_failed">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?NOTIFY_CONFIG_CAT)/binary>>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?SUCCESS_TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(

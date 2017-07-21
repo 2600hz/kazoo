@@ -21,6 +21,7 @@
         ,find_account_admin/1
         ,find_account_id/1
         ,find_account_db/2
+        ,find_reseller_id/1
         ,find_account_params/1
         ,is_notice_enabled/3, is_notice_enabled_default/1
         ,should_handle_notification/1
@@ -42,9 +43,15 @@
 
         ,maybe_get_attachments/1
         ,fetch_attachment_from_url/1
+
+        ,mod_config_cat/1
         ]).
 
 -include("teletype.hrl").
+
+-ifdef(TEST).
+-export([fixture/1]).
+-endif.
 
 -define(TEMPLATE_RENDERING_ORDER, [{?TEXT_PLAIN, 3}
                                   ,{?TEXT_HTML, 2}
@@ -341,16 +348,21 @@ user_params(UserJObj) ->
     Ks = [{<<"first_name">>, fun kzd_user:first_name/1}
          ,{<<"last_name">>, fun kzd_user:last_name/1}
          ,{<<"email">>, fun kzd_user:email/1}
-         ,{<<"timezone">>, fun kzd_user:timezone/1}
+         ,{<<"timezone">>, fun timezone/1}
          ],
     props:filter_undefined(
-      [user_property(UserJObj, K, F) || {K, F} <- Ks]
+      [{Key, Fun(UserJObj)} || {Key, Fun} <- Ks]
      ).
 
--spec user_property(kzd_user:doc(), Key, fun((kz_json:object()) -> api_binary())) ->
-                           {Key, api_binary()}.
-user_property(User, <<_/binary>>=Key, Fun) when is_function(Fun, 1) ->
-    {Key, Fun(User)}.
+-spec timezone(kzd_user:doc()) -> api_ne_binary().
+-ifdef(TEST).
+timezone(UserJObj) ->
+    ?AN_ACCOUNT_ID = kz_doc:account_id(UserJObj),
+    AccountJObj = fixture("an_account.json"),
+    kz_account:timezone(AccountJObj).
+-else.
+timezone(UserJObj) -> kzd_user:timezone(UserJObj).
+-endif.
 
 -spec account_params(kz_json:object()) -> kz_proplist().
 account_params(DataJObj) ->
@@ -366,7 +378,7 @@ account_params(DataJObj) ->
 -spec find_account_params(api_binary()) -> kz_proplist().
 find_account_params('undefined') -> [];
 find_account_params(AccountId) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), AccountId) of
+    case fetch_account_for_params(AccountId) of
         {'ok', AccountJObj} ->
             props:filter_undefined([{<<"name">>, kz_account:name(AccountJObj)}
                                    ,{<<"realm">>, kz_account:realm(AccountJObj)}
@@ -376,9 +388,26 @@ find_account_params(AccountId) ->
                                     | maybe_add_parent_params(AccountId, AccountJObj)
                                    ]);
         {'error', _E} ->
-            lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
+            ?LOG_DEBUG("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []
     end.
+
+-ifdef(TEST).
+fetch_account_for_params(?AN_ACCOUNT_ID) -> {ok, fixture("an_account.json")};
+fetch_account_for_params(?A_MASTER_ACCOUNT_ID) -> {ok, fixture("a_master_account.json")};
+fetch_account_for_params(?MATCH_ACCOUNT_RAW(_)) -> {error, testing_too_hard}.
+-else.
+fetch_account_for_params(AccountId) -> kz_account:fetch(AccountId).
+-endif.
+
+-ifdef(TEST).
+-spec fixture(nonempty_string()) -> kz_json:object().
+fixture(JSONFileName) ->
+    Path = filename:join([code:lib_dir(?APP), "test", JSONFileName]),
+    ?LOG_DEBUG("loading fixture: ~s", [Path]),
+    {ok, Bin} = file:read_file(Path),
+    kz_json:decode(Bin).
+-endif.
 
 -spec maybe_add_parent_params(ne_binary(), kz_json:object()) -> kz_proplist().
 maybe_add_parent_params(AccountId, AccountJObj) ->
@@ -386,7 +415,7 @@ maybe_add_parent_params(AccountId, AccountJObj) ->
         'undefined' -> [];
         AccountId -> [];
         ParentAccountId ->
-            {'ok', ParentAccountJObj} = kz_account:fetch(ParentAccountId),
+            {'ok', ParentAccountJObj} = fetch_account_for_params(ParentAccountId),
             [{<<"parent_name">>, kz_account:name(ParentAccountJObj)}
             ,{<<"parent_realm">>, kz_account:realm(ParentAccountJObj)}
             ,{<<"parent_id">>, kz_account:id(ParentAccountJObj)}
@@ -500,7 +529,7 @@ find_account_rep_email(<<_/binary>> = AccountId) ->
             find_account_admin_email(AccountId);
         'false' ->
             lager:debug("finding admin email for reseller of account ~s", [AccountId]),
-            find_account_admin_email(kz_services:find_reseller_id(AccountId))
+            find_account_admin_email(find_reseller_id(AccountId))
     end;
 find_account_rep_email(AccountJObj) ->
     find_account_rep_email(
@@ -511,7 +540,7 @@ find_account_rep_email(AccountJObj) ->
 -spec find_account_admin_email(api_binary(), api_binary()) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
-    find_account_admin_email(AccountId, kz_services:find_reseller_id(AccountId)).
+    find_account_admin_email(AccountId, find_reseller_id(AccountId)).
 
 find_account_admin_email('undefined', _Id) ->
     'undefined';
@@ -547,11 +576,19 @@ extract_admin_emails(Users) ->
         (Email = kzd_user:email(Admin)) =/= 'undefined'
     ].
 
+-spec find_reseller_id(ne_binary()) -> ne_binary().
+-ifdef(TEST).
+find_reseller_id(?AN_ACCOUNT_ID) -> ?A_MASTER_ACCOUNT_ID;
+find_reseller_id(?MATCH_ACCOUNT_RAW(_)) -> <<"you_are_testing_too_far">>.
+-else.
+find_reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
+-endif.
+
 -spec find_account_admin(api_binary()) -> api_object().
 -spec find_account_admin(ne_binary(), ne_binary()) -> 'undefined' | kzd_user:doc().
 find_account_admin('undefined') -> 'undefined';
-find_account_admin(<<_/binary>> = AccountId) ->
-    find_account_admin(AccountId, kz_services:find_reseller_id(AccountId)).
+find_account_admin(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    find_account_admin(AccountId, find_reseller_id(AccountId)).
 
 find_account_admin(AccountId, AccountId) ->
     query_for_account_admin(AccountId);
@@ -563,11 +600,7 @@ find_account_admin(AccountId, ResellerId) ->
 
 -spec query_for_account_admin(ne_binary()) -> 'undefined' | kzd_user:doc().
 query_for_account_admin(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    ViewOptions = [{'key', <<"user">>}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case account_users(AccountId) of
         {'ok', []} -> 'undefined';
         {'ok', Users} ->
             case filter_for_admins(Users) of
@@ -575,15 +608,29 @@ query_for_account_admin(AccountId) ->
                 [Admin|_] -> Admin
             end;
         {'error', _E} ->
-            lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
+            ?LOG_DEBUG("failed to find users in ~s: ~p", [AccountId, _E]),
             'undefined'
     end.
+
+-ifdef(TEST).
+account_users(?AN_ACCOUNT_ID) ->
+    UserJObj = kzd_user:set_priv_level(<<"admin">>, fixture("an_account_user.json")),
+    {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
+-else.
+account_users(AccountId) ->
+    AccountDb = kz_util:format_account_db(AccountId),
+    ViewOptions = [{'key', <<"user">>}
+                  ,'include_docs'
+                  ],
+    kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions).
+-endif.
 
 -spec filter_for_admins(kz_json:objects()) -> kzd_user:docs().
 filter_for_admins(Users) ->
     [Doc
      || User <- Users,
-        kzd_user:priv_level(Doc = kz_json:get_value(<<"doc">>, User)) =:= <<"admin">>
+        Doc <- [kz_json:get_value(<<"doc">>, User)],
+        kzd_user:is_account_admin(Doc)
     ].
 
 -spec should_handle_notification(kz_json:object()) -> boolean().
@@ -616,7 +663,7 @@ is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
     case kz_json:is_true(<<"Preview">>, ApiJObj, 'false') of
         'true' -> 'true';
         'false' ->
-            ResellerAccountId = kz_services:find_reseller_id(AccountId),
+            ResellerAccountId = find_reseller_id(AccountId),
             is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId)
     end.
 
@@ -792,13 +839,13 @@ is_preview(DataJObj) ->
 %% returns a prop list with local, utc time and timezone
 -spec fix_timestamp(gregorian_seconds() | api_ne_binary()) -> kz_proplist().
 fix_timestamp(Timestamp) ->
-    fix_timestamp(Timestamp, <<"GMT">>).
+    fix_timestamp(Timestamp, <<"UTC">>).
 
 -spec fix_timestamp(gregorian_seconds() | api_ne_binary(), api_binary() | kz_json:object()) -> kz_proplist().
 fix_timestamp('undefined', Thing) ->
     fix_timestamp(kz_time:current_tstamp(), Thing);
-fix_timestamp(?NE_BINARY=Timestamp, TZ) ->
-    fix_timestamp(kz_term:to_integer(Timestamp), TZ);
+fix_timestamp(?NE_BINARY=Timestamp, Thing) ->
+    fix_timestamp(kz_term:to_integer(Timestamp), Thing);
 fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
     DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
     ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
@@ -811,16 +858,16 @@ fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
       ,{<<"timezone">>, TZ}
       ]);
 fix_timestamp(Timestamp, 'undefined') ->
-    fix_timestamp(Timestamp, <<"GMT">>);
+    fix_timestamp(Timestamp, <<"UTC">>);
 fix_timestamp(Timestamp, DataJObj) ->
     Params = account_params(DataJObj),
-    TZ = props:get_value(<<"timezone">>, Params),
+    TZ = props:get_ne_binary_value(<<"timezone">>, Params),
     fix_timestamp(Timestamp, TZ).
 
--spec fix_timestamp(gregorian_seconds() | api_ne_binary(), api_binary() | kz_json:object(), api_binary() | kz_json:object()) -> kz_proplist().
-fix_timestamp(Timestamp, 'undefined', Thing) ->
-    fix_timestamp(Timestamp, Thing);
-fix_timestamp(Timestamp, TZ, _Thing) ->
+-spec fix_timestamp(gregorian_seconds() | api_ne_binary(), kz_json:object(), api_ne_binary()) -> kz_proplist().
+fix_timestamp(Timestamp, DataJObj, 'undefined') ->
+    fix_timestamp(Timestamp, DataJObj);
+fix_timestamp(Timestamp, _DataJObj, TZ) ->
     fix_timestamp(Timestamp, TZ).
 
 -spec build_call_data(kz_json:object(), api_ne_binary()) -> kz_proplist().
@@ -838,14 +885,14 @@ build_call_data(DataJObj, Timezone) ->
 build_caller_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, kz_json:get_value(<<"caller_id_name">>, DataJObj)}
-      ,{<<"number">>, kz_json:get_value(<<"caller_id_number">>, DataJObj)}
+      ,{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"caller_id_number">>, DataJObj))}
       ]).
 
 -spec build_callee_id_data(kz_json:object()) -> kz_proplist().
 build_callee_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, kz_json:get_value(<<"callee_id_name">>, DataJObj)}
-      ,{<<"number">>, kz_json:get_value(<<"callee_id_number">>, DataJObj)}
+      ,{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"callee_id_number">>, DataJObj))}
       ]).
 
 -spec build_date_called_data(kz_json:object(), api_ne_binary()) -> kz_proplist().
@@ -931,3 +978,7 @@ attachment_from_url_result(Headers, Body) ->
                    FileDisposition -> FileDisposition
                end,
     {CT, Filename, Body}.
+
+-spec mod_config_cat(ne_binary()) -> ne_binary().
+mod_config_cat(TemplateId=?NE_BINARY) ->
+    <<(?NOTIFY_CONFIG_CAT)/binary, ".", TemplateId/binary>>.

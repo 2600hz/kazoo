@@ -31,7 +31,7 @@
 -compile([{'no_auto_import', [get/1]}]).
 
 -include("ecallmgr.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -spec flush() -> 'ok'.
 -spec flush(kz_json:path()) -> 'ok' | {'error', any()}.

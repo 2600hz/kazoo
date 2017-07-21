@@ -6,7 +6,7 @@
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %% define the callback function for the various options
 
@@ -17,12 +17,15 @@
                       {'stop', accumulator()}.
 
 -type expression_fun() :: fun((any(), accumulator()) -> fun_return()).
--type function_fun() :: fun((atom(), accumulator()) -> fun_return()).
+-type function_fun() :: fun((function(), accumulator()) -> fun_return()) |
+                        fun((function(), arity(), accumulator()) -> fun_return()).
+-type clause_fun() :: fun(([erl_parse:abstract_expr()], [erl_parse:abstract_expr()], accumulator()) -> accumulator()).
 -type module_fun() :: fun((atom(), accumulator()) -> fun_return()).
 -type record_fun() :: fun((any(), accumulator()) -> fun_return()).
 
 -type option() :: {'expression', expression_fun()} |
                   {'function', function_fun()} |
+                  {'clause', clause_fun()} |
                   {'module', module_fun()} |
                   {'after_module', module_fun()} |
                   {'record', record_fun()} |
@@ -132,8 +135,11 @@ process_functions(Functions, Config0) ->
                ,Functions
                ).
 
-process_function({_Module, Function, _Arity, Clauses}, Config) ->
-    process_clauses(Clauses, callback_function(Function, Config)).
+process_function({_Module, Function, Arity, Clauses}, Config) ->
+    case callback_function(Function, Arity, Config) of
+        {'skip', Config1} -> Config1;
+        {'ok', Config1} -> process_clauses(Clauses, Config1)
+    end.
 
 process_clauses(Clauses, Config0) ->
     lists:foldl(fun process_clause/2
@@ -145,7 +151,7 @@ process_clause(?CLAUSE(Args, Guards, Expressions), Config0) ->
     process_expressions(Args
                         ++ lists:flatten(Guards)
                         ++ Expressions
-                       ,Config0
+                       ,callback_clause(Args, Guards, Config0)
                        ).
 
 process_expressions(Expressions, Config0) ->
@@ -240,14 +246,28 @@ process_expression(?MAP_FIELD_EXACT(K, V)=Expression, Config) ->
 process_expression(Expression, Config) ->
     callback_expression(Expression, Config).
 
--spec callback_function(function(), config()) -> config().
+-spec callback_function(function(), arity(), config()) -> {'ok' | 'skip', config()}.
 callback_function(Function
+                  ,_Arity
                  ,#{'function' := Fun
                    ,'accumulator' := Acc0
                    }=Config0
-                 ) ->
-    Config0#{'accumulator' => Fun(Function, Acc0)};
-callback_function(_Function, Config) -> Config.
+                 ) when is_function(Fun, 2) ->
+    case Fun(Function, Acc0) of
+        {'skip', Acc1} -> {'skip', Config0#{accumulator => Acc1}};
+        Acc1 -> {'ok', Config0#{'accumulator' => Acc1}}
+    end;
+callback_function(Function
+                  ,Arity
+                 ,#{'function' := Fun
+                   ,'accumulator' := Acc0
+                   }=Config0
+                 ) when is_function(Fun, 3) ->
+    case Fun(Function, Arity, Acc0) of
+        {'skip', Acc1} -> {'skip', Config0#{accumulator => Acc1}};
+        Acc1 -> {'ok', Config0#{'accumulator' => Acc1}}
+    end;
+callback_function(_Function, _Artiy, Config) -> {'ok', Config}.
 
 callback_expression(Expression
                    ,#{'expression':=Fun
@@ -280,10 +300,10 @@ callback_module(Module
 callback_module(_Module, Config) -> Config.
 
 callback_after_module(Module
-               ,#{'after_module' := Fun
-                 ,'accumulator' := Acc0
-                 }=Config0
-               ) ->
+                     ,#{'after_module' := Fun
+                       ,'accumulator' := Acc0
+                       }=Config0
+                     ) ->
     case Fun(Module, Acc0) of
         {'skip', Acc} ->
             {'skip', Config0#{'accumulator' => Acc}};
@@ -293,3 +313,10 @@ callback_after_module(Module
             Config0#{'accumulator' => Acc}
     end;
 callback_after_module(_Module, Config) -> Config.
+
+callback_clause(Args, Guards, #{'accumulator' := Acc
+                                ,'clause' := ClauseFun
+                               }=Config0
+               ) when is_function(ClauseFun, 3) ->
+    Config0#{'accumulator' => ClauseFun(Args, Guards, Acc)};
+callback_clause(_Args, _Guards, Config) -> Config.

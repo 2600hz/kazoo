@@ -1,6 +1,6 @@
 -ifndef(ACDC_CONFIG_HRL).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %% Save data to the DB
 -define(ACDC_ARCHIVE_WINDOW,

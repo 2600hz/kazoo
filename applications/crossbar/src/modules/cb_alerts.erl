@@ -264,7 +264,7 @@ view_keys(Context) ->
     AccountId = cb_context:account_id(Context),
     OwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
 
-    IsAdmin = is_user_admin(AccountId, OwnerId),
+    IsAdmin = kzd_user:is_account_admin(AccountId, OwnerId),
 
     Routines = [fun(K) ->
                         [[<<"all">>, <<"all">>]
@@ -300,25 +300,6 @@ view_keys(Context) ->
                 end
                ],
     lists:foldl(fun(F, Keys) -> F(Keys) end, [], Routines).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_user_admin(ne_binary(), api_binary()) -> boolean().
-is_user_admin(_Account, 'undefined') -> 'false';
-is_user_admin(Account, UserId) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
-        {'error', _} -> 'false';
-        {'ok', JObj} ->
-            case kz_json:get_value(<<"priv_level">>, JObj) of
-                <<"admin">> -> 'true';
-                _ -> 'false'
-            end
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -13,8 +13,8 @@
 -export([get_response/2]).
 -export([config_doc_id/0]).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(CALL_RESPONSE_CONF, <<"call_response">>).
 

@@ -1,8 +1,8 @@
 -ifndef(KZ_LISTENER_TYPES_HRL).
 
 -include_lib("kazoo_amqp/include/kz_amqp.hrl").
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -type binding_module() :: atom() | ne_binary().
 -type binding() :: {binding_module(), kz_proplist()}. %% {kapi_module, options}

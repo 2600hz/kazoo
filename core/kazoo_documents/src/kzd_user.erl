@@ -20,7 +20,8 @@
         ,fetch/2
         ,fax_settings/1
         ,name/1, first_name/1, last_name/1
-        ,priv_level/1, priv_level/2
+        ,priv_level/1, priv_level/2, set_priv_level/2
+        ,is_account_admin/1, is_account_admin/2
 
         ,call_restrictions/1, call_restrictions/2
         ,classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3
@@ -213,13 +214,14 @@ normalize_address(JObj) ->
     {kz_binary:join(Types, <<",">>), Address}.
 
 -spec timezone(kz_json:object()) -> api_binary().
--spec timezone(kz_json:object(), Default) -> ne_binary() | Default.
 timezone(JObj) ->
     timezone(JObj, 'undefined').
+
+-spec timezone(kz_json:object(), Default) -> ne_binary() | Default.
 timezone(JObj, Default) ->
     case kz_json:get_value(?KEY_TIMEZONE, JObj, Default) of
-        <<"inherit">> -> kz_account:timezone(kz_doc:account_id(JObj));  %% UI-1808
         'undefined' -> kz_account:timezone(kz_doc:account_id(JObj));
+        <<"inherit">> -> kz_account:timezone(kz_doc:account_id(JObj)); %% UI-1808
         TZ -> TZ
     end.
 
@@ -272,11 +274,27 @@ devices(UserJObj) ->
     end.
 
 -spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
-fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+fetch(AccountId=?NE_BINARY, UserId=?NE_BINARY) ->
+    AccountDb = kz_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
+
+-spec is_account_admin(api_object()) -> boolean().
+is_account_admin('undefined') -> 'false';
+is_account_admin(Doc) ->
+    priv_level(Doc) =:= <<"admin">>.
+
+-spec is_account_admin(api_binary(), api_binary()) -> boolean().
+is_account_admin('undefined', _) -> 'false';
+is_account_admin(_, 'undefined') -> 'false';
+is_account_admin(Account, UserId) ->
+    case fetch(Account, UserId) of
+        {'ok', JObj} -> is_account_admin(JObj);
+        {'error', _R} ->
+            lager:debug("unable to open user ~s definition in account ~s: ~p", [UserId, Account, _R]),
+            'false'
+    end.
 
 -spec fax_settings(doc()) -> doc().
 fax_settings(JObj) ->
@@ -317,6 +335,12 @@ priv_level(Doc) ->
     priv_level(Doc, <<"user">>).
 priv_level(Doc, Default) ->
     kz_json:get_binary_value(?KEY_PRIV_LEVEL, Doc, Default).
+
+-spec set_priv_level(ne_binary(), doc()) -> doc().
+set_priv_level(<<"user">>=LVL, Doc) ->
+    kz_json:set_value(?KEY_PRIV_LEVEL, LVL, Doc);
+set_priv_level(<<"admin">>=LVL, Doc) ->
+    kz_json:set_value(?KEY_PRIV_LEVEL, LVL, Doc).
 
 -spec call_restrictions(doc()) -> api_object().
 -spec call_restrictions(doc(), Default) -> kz_json:object() | Default.

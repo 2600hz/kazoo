@@ -1,0 +1,42 @@
+{
+    "Account-ID": "009afc511c97b2ae693c6cc4920988e8",
+    "App-Name": "crossbar",
+    "App-Version": "4.0.0",
+    "Audit-Log": {
+        "audit": {
+            "009afc511c97b2ae693c6cc4920988e8": {
+                "account_name": "testaccount",
+                "diff_quantities": {
+                    "devices": {
+                        "sip_device": 1
+                    }
+                }
+            }
+        },
+        "authenticating_user": {
+            "account_id": "009afc511c97b2ae693c6cc4920988e8",
+            "account_name": "testaccount",
+            "auth_user_id": "8e248327b85591955749e53ea45b6baa",
+            "created": 63636183145,
+            "language": "fr-FR",
+            "realm": "rlm.my_backend.server.com",
+            "timezone": "Eupore/Paris"
+        },
+        "pvt_created": 63667033675,
+        "pvt_document_hash": "5fdb6e641e04f4d6789665c5987751c8",
+        "pvt_modified": 63667033675,
+        "pvt_node": "kazoo_apps@my_backend.server.com",
+        "pvt_type": "audit_log",
+        "tree": [
+            "6b71cb72c876b5b1396a335f8f8a2594",
+            "009afc511c97b2ae693c6cc4920988e8"
+        ]
+    },
+    "Event-Category": "notification",
+    "Event-Name": "service_added",
+    "Msg-ID": "dab6c2826c1d2fa3",
+    "Node": "kazoo_apps@my_backend.server.com",
+    "Server-ID": "kazoo_apps@my_backend.server.com-<0.797.0>-51857161",
+    "System-Log-ID": "dab6c2826c1d2fa3",
+    "Time-Stamp": 63667531037
+}

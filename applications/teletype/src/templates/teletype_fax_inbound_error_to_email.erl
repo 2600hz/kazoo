@@ -17,7 +17,6 @@
 -define(TEMPLATE_ID, <<"fax_inbound_error_to_email">>).
 -define(TEMPLATE_ID_FILTERED, <<"fax_inbound_error_to_email_filtered">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
--define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -162,8 +161,7 @@ handle_fax_inbound(DataJObj, TemplateId) ->
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
-    FaxBoxJObj = kz_json:get_value(<<"faxbox">>, DataJObj),
-    Timezone = kz_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj, kzd_fax_box:timezone(FaxBoxJObj)),
+    Timezone = kz_json:get_value(<<"timezone">>, DataJObj),
     props:filter_undefined(
       [{<<"account">>, teletype_util:account_params(DataJObj)}
       ,{<<"fax">>, build_fax_template_data(DataJObj)}

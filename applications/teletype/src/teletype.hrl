@@ -1,19 +1,31 @@
 -ifndef(TELETYPE_HRL).
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_config.hrl").
 
 -include("teletype_default_modules.hrl").
 
--define(APP_NAME, <<"teletype">>).
--define(APP_VERSION, <<"4.0.0">> ).
+-define(APP, teletype).
+-define(APP_NAME, (atom_to_binary(?APP, utf8))).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(PVT_TYPE, kz_notification:pvt_type()).
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 
 -define(CACHE_NAME, 'teletype_cache').
+
+
+-ifdef(TEST).
+-define(A_MASTER_ACCOUNT_ID, <<"6b71cb72c876b5b1396a335f8f8a2594">>).
+-define(A_MASTER_ACCOUNT_DB, <<"account%2F6b%2F71%2Fcb72c876b5b1396a335f8f8a2594">>).
+-define(AN_ACCOUNT_ID, <<"009afc511c97b2ae693c6cc4920988e8">>).
+-define(AN_ACCOUNT_DB, <<"account%2F00%2F9a%2Ffc511c97b2ae693c6cc4920988e8">>).
+-define(AN_ACCOUNT_USER_ID, <<"8e248327b85591955749e53ea45b6baa">>).
+-endif.
+
 
 -type mime_tuples() :: [mimemail:mimetuple()].
 
@@ -213,6 +225,18 @@
 
 -define(AUTOLOAD_MODULES_KEY, <<"autoload_modules">>).
 -define(AUTOLOAD_MODULES, kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES)).
+
+-ifdef(TEST).
+-define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
+-else.
+-define(LOG_ERROR(F,A), lager:error(F,A)).
+-define(LOG_WARN(F,A), lager:warning(F,A)).
+-define(LOG_DEBUG(F,A), lager:debug(F,A)).
+-define(LOG_DEBUG(F), lager:debug(F)).
+-endif.
 
 -define(TELETYPE_HRL, 'true').
 -endif.

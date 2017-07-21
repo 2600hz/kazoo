@@ -5,6 +5,7 @@ pages:
 - 'Voice APIs':
   - 'API Basics':
     - 'applications/crossbar/doc/basics.md'
+    - 'applications/crossbar/doc/filters.md'
     - 'applications/crossbar/doc/multipart.md'
     - 'applications/crossbar/doc/schemas.md'
     - 'applications/crossbar/doc/402.md'

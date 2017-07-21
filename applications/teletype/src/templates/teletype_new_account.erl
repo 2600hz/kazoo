@@ -7,96 +7,94 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(teletype_new_account).
+-behaviour(teletype_gen_email_template).
 
--export([init/0
-        ,handle_new_account/1
+-export([id/0
+        ,init/0
+        ,macros/0, macros/1
+        ,subject/0
+        ,category/0
+        ,friendly_name/0
         ]).
+-export([handle_new_account/1]).
 
 -include("teletype.hrl").
 
--define(TEMPLATE_ID, <<"new_account">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+-spec id() -> ne_binary().
+id() ->
+    <<"new_account">>.
 
--define(TEMPLATE_MACROS
-       ,kz_json:from_list(
-          [?MACRO_VALUE(<<"admin.first_name">>, <<"first_name">>, <<"First Name">>, <<"Admin user first name">>)
-          ,?MACRO_VALUE(<<"admin.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Admin user last name">>)
-          ,?MACRO_VALUE(<<"admin.email">>, <<"email">>, <<"email">>, <<"Admin user email">>)
-          ,?MACRO_VALUE(<<"admin.timezone">>, <<"timezone">>, <<"timezone">>, <<"Admin user timezone">>)
-           | ?COMMON_TEMPLATE_MACROS
-          ]
-         )
-       ).
+-spec macros() -> kz_json:object().
+macros() ->
+    kz_json:from_list(
+      [?MACRO_VALUE(<<"admin.first_name">>, <<"first_name">>, <<"First Name">>, <<"Admin user first name">>)
+      ,?MACRO_VALUE(<<"admin.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Admin user last name">>)
+      ,?MACRO_VALUE(<<"admin.email">>, <<"email">>, <<"email">>, <<"Admin user email">>)
+      ,?MACRO_VALUE(<<"admin.timezone">>, <<"timezone">>, <<"timezone">>, <<"Admin user timezone">>)
+       | ?COMMON_TEMPLATE_MACROS
+      ]).
 
--define(TEMPLATE_SUBJECT, <<"Your new VoIP services account '{{account.name}}' has been created">>).
--define(TEMPLATE_CATEGORY, <<"account">>).
--define(TEMPLATE_NAME, <<"New Account">>).
+-spec subject() -> ne_binary().
+subject() ->
+    <<"Your new VoIP services account '{{account.name}}' has been created">>.
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
--define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-spec category() -> ne_binary().
+category() ->
+    <<"account">>.
+
+-spec friendly_name() -> ne_binary().
+friendly_name() ->
+    <<"New Account">>.
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'subject', ?TEMPLATE_SUBJECT}
-                                          ,{'category', ?TEMPLATE_CATEGORY}
-                                          ,{'friendly_name', ?TEMPLATE_NAME}
-                                          ,{'to', ?TEMPLATE_TO}
-                                          ,{'from', ?TEMPLATE_FROM}
-                                          ,{'cc', ?TEMPLATE_CC}
-                                          ,{'bcc', ?TEMPLATE_BCC}
-                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]),
-    teletype_bindings:bind(<<"new_account">>, ?MODULE, 'handle_new_account').
+    teletype_templates:init(?MODULE),
+    teletype_bindings:bind(id(), ?MODULE, 'handle_new_account').
 
 -spec handle_new_account(kz_json:object()) -> 'ok'.
 handle_new_account(JObj) ->
     'true' = kapi_notifications:new_account_v(JObj),
-
     kz_util:put_callid(JObj),
+
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+    case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
+        'false' -> teletype_util:notification_disabled(DataJObj, id());
         'true' -> process_req(DataJObj)
     end.
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"admin">>, admin_user_properties(DataJObj)}
-             ],
+    Macros = macros(DataJObj),
 
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
+    %% Load templates
+    RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
-    {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_notification(?TEMPLATE_ID
-                                             ,teletype_util:find_account_id(DataJObj)
-                                             ),
-
-    Subject =
-        teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-                                    ,Macros
-                                    ),
-
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    AccountId = teletype_util:find_account_id(DataJObj),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
+    Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
+    Subject = teletype_util:render_subject(Subject0, Macros),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, teletype_util:mod_config_cat(id())),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
+-spec macros(kz_json:object()) -> kz_proplist().
+macros(DataJObj) ->
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"admin">>, admin_user_properties(DataJObj)}
+    ].
+
 -spec admin_user_properties(kz_json:object()) -> kz_proplist().
 admin_user_properties(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    case kz_account:fetch(AccountId) of
+    case account_fetch(AccountId) of
         {'ok', JObj} -> account_admin_user_properties(JObj);
         {'error', _} -> []
     end.
@@ -104,9 +102,9 @@ admin_user_properties(DataJObj) ->
 -spec account_admin_user_properties(kz_json:object()) -> kz_proplist().
 account_admin_user_properties(AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
-    case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
+    case list_users(AccountDb) of
         {'error', _E} ->
-            lager:debug("failed to get user listing from ~s: ~p", [AccountDb, _E]),
+            ?LOG_DEBUG("failed to get user listing from ~s: ~p", [AccountDb, _E]),
             [];
         {'ok', Users} ->
             find_admin(Users)
@@ -114,11 +112,26 @@ account_admin_user_properties(AccountJObj) ->
 
 -spec find_admin(kz_json:objects()) -> kz_proplist().
 find_admin([]) ->
-    lager:debug("account has no admin users"),
+    ?LOG_DEBUG("account has no admin users"),
     [];
 find_admin([User|Users]) ->
     UserDoc = kz_json:get_value(<<"doc">>, User),
-    case kzd_user:priv_level(UserDoc) of
-        <<"admin">> -> teletype_util:user_params(UserDoc);
-        _ -> find_admin(Users)
+    case kzd_user:is_account_admin(UserDoc) of
+        'true' -> teletype_util:user_params(UserDoc);
+        'false' -> find_admin(Users)
     end.
+
+-ifdef(TEST).
+account_fetch(?AN_ACCOUNT_ID) ->
+    {ok, teletype_util:fixture("an_account.json")}.
+
+list_users(?AN_ACCOUNT_DB) ->
+    UserJObj = kzd_user:set_priv_level(<<"admin">>, teletype_util:fixture("an_account_user.json")),
+    {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
+-else.
+account_fetch(AccountId) ->
+    kz_account:fetch(AccountId).
+
+list_users(AccountDb) ->
+    kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']).
+-endif.

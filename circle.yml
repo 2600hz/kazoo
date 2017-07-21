@@ -3,6 +3,7 @@ machine:
     OTP_VERSION: 19.3
     PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
     CHANGED: 'git --no-pager diff --name-only HEAD origin/master -- applications core'
+    CHANGED_SWAGGER: 'git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json'
   services:
     - rabbitmq-server
     - docker
@@ -39,7 +40,12 @@ test:
     - . ~/.kerl/$OTP_VERSION/activate && make apis
     - make docs
     - make validate-schemas
-    - make validate-swagger
+    - |
+      if [[ ! -z "$($CHANGED_SWAGGER)" ]]; then
+        make validate-swagger
+        npm install swagger-tools && time ./node_modules/swagger-tools/bin/swagger-tools validate applications/crossbar/priv/api/swagger.json
+        make sdks
+      fi
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
         echo Unstaged changes!
@@ -48,7 +54,6 @@ test:
         echo 'Maybe try `make apis` and see if that fixes anything ;)'
         exit 1
       fi
-    - npm install swagger-tools && time ./node_modules/swagger-tools/bin/swagger-tools validate applications/crossbar/priv/api/swagger.json
     - . ~/.kerl/$OTP_VERSION/activate && make xref
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - |
@@ -58,6 +63,5 @@ test:
         TO_DIALYZE="$(echo $($CHANGED))" make dialyze
       fi
     - . ~/.kerl/$OTP_VERSION/activate && make elvis
-    - make sdks
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh

@@ -257,26 +257,20 @@ is_authenticated(#cb_context{}) -> 'true'.
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
     lager:debug("checking for superduper admin: ~s", [AccountId]),
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} ->
-            case kz_account:is_superduper_admin(JObj) of
-                'true' ->
-                    lager:debug("the requestor is a superduper admin"),
-                    'true';
-                'false' ->
-                    lager:debug("the requestor is not a superduper admin"),
-                    'false'
-            end;
-        {'error', _E} ->
-            lager:debug("not authorizing, error during lookup: ~p", [_E]),
+    case kz_util:is_system_admin(AccountId) of
+        'true' ->
+            lager:debug("the requestor is a superduper admin"),
+            'true';
+        'false' ->
+            lager:debug("the requestor is not a superduper admin"),
             'false'
     end;
 is_superduper_admin(Context) ->
     is_superduper_admin(auth_account_id(Context)).
 
 -spec is_account_admin(context()) -> boolean().
-is_account_admin(#cb_context{auth_doc=Doc}) ->
-    kzd_user:priv_level(Doc) =:= <<"admin">>.
+is_account_admin(Context) ->
+    kzd_user:is_account_admin(auth_account_id(Context), auth_user_id(Context)).
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
@@ -722,8 +716,8 @@ validate_request_data(SchemaId, Context) ->
 validate_request_data(SchemaId, Context, OnSuccess) ->
     validate_request_data(SchemaId, Context, OnSuccess, 'undefined').
 validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
-    Strict = fetch(Context, 'ensure_valid_schema', ?SHOULD_ENSURE_SCHEMA_IS_VALID),
-    validate_request_data(SchemaId, Context, OnSuccess, OnFailure, Strict).
+    SchemaRequired = fetch(Context, 'ensure_valid_schema', ?SHOULD_ENSURE_SCHEMA_IS_VALID),
+    validate_request_data(SchemaId, Context, OnSuccess, OnFailure, SchemaRequired).
 validate_request_data('undefined', Context, OnSuccess, _OnFailure, 'false') ->
     lager:error("schema id or schema JSON not defined, continuing anyway"),
     validate_passed(Context, OnSuccess);
@@ -731,18 +725,19 @@ validate_request_data('undefined', Context, _OnSuccess, _OnFailure, 'true') ->
     Msg = <<"schema id or schema JSON not defined.">>,
     lager:error("~s", [Msg]),
     system_error(Context, Msg);
-validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, Strict) ->
+validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, SchemaRequired) ->
     case find_schema(SchemaId) of
-        'undefined' when Strict ->
+        'undefined' when SchemaRequired ->
             lager:error("schema ~s not found", [SchemaId]),
             system_error(Context, <<"schema ", SchemaId/binary, " not found.">>);
         'undefined' ->
             lager:error("schema ~s not found, continuing anyway", [SchemaId]),
             validate_passed(Context, OnSuccess);
         SchemaJObj ->
-            validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, Strict)
+            validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, SchemaRequired)
     end;
-validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, Strict) ->
+validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired) ->
+    Strict = fetch(Context, 'schema_strict_validation', ?SHOULD_FAIL_ON_INVALID_DATA),
     try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(req_data(Context))) of
         {'ok', JObj} -> validate_passed(set_req_data(Context, JObj), OnSuccess);
         {'error', Errors} when Strict ->

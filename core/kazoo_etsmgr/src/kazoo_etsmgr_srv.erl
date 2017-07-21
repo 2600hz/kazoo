@@ -29,8 +29,8 @@
 %% Internal
 -export([find_me/2]).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -48,9 +48,9 @@
              ]).
 
 -record(state, {table_id :: atom()
-               ,give_away_pid :: pid()
-               ,find_me_fun :: find_me_fun()
-               ,find_me_pid_ref :: {pid(), reference()}
+               ,give_away_pid :: api_pid()
+               ,find_me_fun :: find_me_fun() | undefined
+               ,find_me_pid_ref :: api_pid_ref()
                ,gift_data :: any()
                }).
 -type state() :: #state{}.

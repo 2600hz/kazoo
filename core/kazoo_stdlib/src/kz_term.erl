@@ -41,7 +41,7 @@
 
 -export([a1hash/3, floor/1, ceiling/1]).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

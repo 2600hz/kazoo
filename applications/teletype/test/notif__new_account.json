@@ -1,0 +1,15 @@
+{
+    "Account-API-Key": "92d8c9f5f5249afca7512f0f11b16d91f58163366f61fb064ddf2a5f8d86c353",
+    "Account-DB": "account%2F00%2F9a%2Ffc511c97b2ae693c6cc4920988e8",
+    "Account-ID": "009afc511c97b2ae693c6cc4920988e8",
+    "Account-Name": "wefwefwefwef",
+    "Account-Realm": "wefwefwefwef.app.com",
+    "App-Name": "4.0.0",
+    "App-Version": "crossbar",
+    "Event-Category": "notification",
+    "Event-Name": "new_account",
+    "Msg-ID": "8a63d13585ed037f",
+    "Node": "kazoo_apps@apps001.app.com",
+    "Server-ID": "kazoo_apps@apps001.app.com-<0.595.0>-1f0d0793",
+    "System-Log-ID": "8a63d13585ed037f"
+}

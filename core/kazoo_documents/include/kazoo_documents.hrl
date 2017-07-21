@@ -10,7 +10,7 @@
 -define(VM_KEY_MESSAGES, <<"messages">>).
 -define(VM_KEY_FOLDER, <<"folder">>).
 
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -define(VERSION_1, <<"v1">>).
 -define(VERSION_2, <<"v2">>).
