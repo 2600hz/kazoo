@@ -211,7 +211,7 @@ fetch_key(#{key_id := KeyId
             Token;
         JObj -> Token#{key_value => kz_json:to_map(JObj)}
     end;
-fetch_key(#{}=Token) -> io:format("~n fetch_key ~n"),Token.
+fetch_key(#{}=Token) -> Token.
 
 -spec extract_key(map()) -> map().
 extract_key(#{key_value := #{<<"n">> := N0, <<"e">> := E0}} = Token) ->
@@ -341,6 +341,10 @@ reset_kazoo_private_key(?NE_BINARY=KeyId) ->
             case new_private_key(KeyId) of
                 {ok, _} ->
                     lager:debug("private key document (kid ~s) is created successfully", [KeyId]);
+
+                    store({'private', KeyId}, PrivateKey),
+                    PublicKey = get_public_key_from_private_key(PrivateKey),
+                    store(KeyId, PublicKey);
                 {'error', _Reason}=Error ->
                     lager:debug("failed to create new private key (kid ~s): ~p", [KeyId, _Reason]),
                     Error
@@ -353,15 +357,18 @@ reset_kazoo_private_key(?NE_BINARY=KeyId) ->
 -spec reset_kazoo_private_key(ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
 reset_kazoo_private_key(KeyId, JObj) ->
     lager:debug("resetting kazoo private key ~s", [KeyId]),
-    {'ok', Key} = gen_private_key(),
+    {'ok', PrivateKey} = gen_private_key(),
     Options = [{'doc_type', <<"system_key">>}
               ,{'rev', kz_doc:revision(JObj)}
               ,{'content_type', ?SYSTEM_KEY_ATTACHMENT_CTYPE}
               ],
-    case kz_datamgr:put_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME, to_pem(Key), Options) of
+    case kz_datamgr:put_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME, to_pem(PrivateKey), Options) of
         {'ok', _} ->
-            store({'private', KeyId}, Key),
-            'ok';
+            lager:debug("refreshing private/public cache for key ~s", [KeyId]),
+
+            store({'private', KeyId}, PrivateKey),
+            PublicKey = get_public_key_from_private_key(PrivateKey),
+            store(KeyId, PublicKey);
         {'error', _Err}=Err ->
             lager:debug("error ~p saving generated system key ~s", [_Err, KeyId]),
             Err

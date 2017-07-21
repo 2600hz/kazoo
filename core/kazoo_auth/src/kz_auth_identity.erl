@@ -322,6 +322,7 @@ verify(Token) ->
 %%--------------------------------------------------------------------
 -spec reset_system_secret() -> {'ok', kz_json:object()} | {'error', any()}.
 reset_system_secret() ->
+    lager:warning("resetting system identity secret"),
     kapps_config:set_string(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID, ?KAZOO_GEN_SIGNATURE_SECRET).
 
 %%--------------------------------------------------------------------
@@ -369,7 +370,7 @@ reset_secret(Claims) ->
 reset_identity_secret(#{auth_db := Db
                        ,auth_id := Key
                        }=Token) ->
-    lager:debug("trying to reset identity secret, auth_db ~s auth_id ~s", [Db, Key]),
+    lager:debug("resetting identity secret, auth_db ~s auth_id ~s", [Db, Key]),
     case kz_datamgr:open_cache_doc(Db, Key) of
         {'ok', _JObj} ->
             case update_kazoo_secret(Token) of
