@@ -16,18 +16,19 @@
 -define(CAT, <<"phone_numbers">>).
 -define(ITEM, <<"did_us">>).
 
--record(state, {service_plan_jobj :: kzd_service_plan:plan()
-               ,services :: kz_services:services()
+-record(state, {services :: kz_services:services()
                ,services_jobj :: kz_json:object()
+               ,service_plan_jobj :: kzd_service_plan:plan()
                ,account_plan :: kzd_service_plan:plan()
+               ,no_overrides :: boolean()
                }).
 
 
 phone_number_services_test_() ->
     services_tests({"example_account_services.json", "example_service_plan_1.json"}).
 
-%% services_reseller_test_() ->
-%%     services_tests(?A_RESELLER_ACCOUNT_ID).
+services_reseller_test_() ->
+    services_tests(?A_RESELLER_ACCOUNT_ID).
 
 services_tests(Init) ->
     {'foreach'
@@ -55,30 +56,25 @@ no_plans_tests(?MATCH_ACCOUNT_RAW(AccountId)) ->
 init(?MATCH_ACCOUNT_RAW(AccountId)) ->
     {ok, ServicesJObj} = kz_services:fetch_services_doc(AccountId),
     [PlanId] = kzd_services:plan_ids(ServicesJObj),
-    ?LOG_DEBUG(">>> plan id ~s", [PlanId]),
     ServicePlan = kz_service_plans:from_service_json(ServicesJObj),
     ServicePlanJObj = kz_service_plans:public_json(ServicePlan),
-    ?LOG_DEBUG(">>> ServicePlanJObj ~s", [kz_json:encode(ServicePlanJObj)]),
     Overrides = kzd_services:plan_overrides(ServicesJObj, PlanId),
-    ?LOG_DEBUG(">>> Overrides ~s", [kz_json:encode(Overrides)]),
-    AccountPlan = kzd_service_plan:merge_overrides(ServicePlanJObj, Overrides),
-    ?LOG_DEBUG(">>> AccountPlan ~s", [kz_json:encode(AccountPlan)]),
-    #state{service_plan_jobj = ServicePlanJObj
-          ,services_jobj = ServicesJObj
+    #state{services_jobj = ServicesJObj
           ,services = kz_services:from_service_json(ServicesJObj)
-          ,account_plan = AccountPlan
+          ,service_plan_jobj = ServicePlanJObj
+          ,account_plan = kzd_service_plan:merge_overrides(ServicePlanJObj, Overrides)
+          ,no_overrides = kz_json:is_empty(Overrides)
           };
 
 init({ServicesFixture, ServicePlanFixture}) ->
     ServicePlanJObj = fixture(ServicePlanFixture),
     ServicesJObj = fixture(ServicesFixture),
-    Services = kz_services:from_service_json(ServicesJObj, 'false'),
     Overrides = kzd_services:plan_overrides(ServicesJObj, kz_doc:id(ServicePlanJObj)),
-    AccountPlan = kzd_service_plan:merge_overrides(ServicePlanJObj, Overrides),
-    #state{service_plan_jobj = ServicePlanJObj
-          ,services_jobj = ServicesJObj
-          ,services = Services
-          ,account_plan = AccountPlan
+    #state{services_jobj = ServicesJObj
+          ,services = kz_services:from_service_json(ServicesJObj, false)
+          ,service_plan_jobj = ServicePlanJObj
+          ,account_plan = kzd_service_plan:merge_overrides(ServicePlanJObj, Overrides)
+          ,no_overrides = kz_json:is_empty(Overrides)
           }.
 
 -spec fixture(nonempty_string()) -> binary() | kz_json:object().
@@ -137,8 +133,9 @@ item_check(Category, Item, Quantity, Services) ->
 
 service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
                                  ,account_plan = AccountPlan
+                                 ,services = Services
+                                 ,no_overrides = NoOverrides
                                  }) ->
-
     [{"Verify plan from file matches services plan"
      ,?_assertEqual(kz_doc:account_id(ServicePlan), kzd_service_plan:account_id(AccountPlan))
      }
@@ -148,6 +145,7 @@ service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
     ,{"Verify cumulative discount rate was overridden"
      ,?_assertEqual(5.0, rate(cumulative_discount(did_us_item(AccountPlan))))
      }
+    ,?_assert(not NoOverrides orelse kz_json:are_equal(ServicePlan, kz_services:service_plan_json(Services)))
     ].
 
 did_us_item(Plan) ->

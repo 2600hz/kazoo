@@ -52,7 +52,8 @@
             "local": 3
         },
         "phone_numbers": {
-            "did_us": 5
+            "did_us": 9,
+            "tollfree_us": 1
         },
         "ratedeck_name": {},
         "ui_apps": {},

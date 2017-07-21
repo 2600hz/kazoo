@@ -217,7 +217,7 @@ fetch_and_build(AccountId) ->
 -spec fetch_cached_services(ne_binary()) ->
                                    {'ok', services()} |
                                    {'error', 'not_found'}.
-fetch_cached_services(AccountId) ->
+fetch_cached_services(?MATCH_ACCOUNT_RAW(AccountId)) ->
     kz_cache:fetch_local(?CACHE_NAME, services_cache_key(AccountId)).
 
 -spec cache_services(ne_binary(), services()) -> 'ok'.

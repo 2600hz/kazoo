@@ -2,7 +2,7 @@
     "_id": "plan_saas_ss_l3",
     "_rev": "4-1b74a2114d132905309305d5368c8c55",
     "bookkeepers": {
-        "braintree": {
+        "local": {
             "devices": {
                 "sip_device": {
                     "addon": "sip_device",
@@ -22,6 +22,9 @@
             "phone_numbers": {
                 "did_us": {
                     "addon": "did_us",
+                    "discounts": {
+                        "cumulative": "discount_did_us"
+                    },
                     "plan": "SIP_Services"
                 },
                 "tollfree_us": {
@@ -70,6 +73,10 @@
         "phone_numbers": {
             "did_us": {
                 "discounts": {
+                    "cumulative": {
+                        "maximum": 2,
+                        "rate": 0.5
+                    },
                     "single": {
                         "rate": 3
                     }
