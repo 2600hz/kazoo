@@ -37,5 +37,6 @@ load_nif() ->
                       filename:join(AppPath, "priv");
                   Path ->  Path
               end,
-    lager:info("path to nif: ~s", [PrivDir]),
-    erlang:load_nif(filename:join(PrivDir, "comp128"), ?NIF_LOAD_INFO).
+    PathToNif = filename:join(PrivDir, "comp128"),
+    lager:info("path to nif: ~s exists: ~s", [PathToNif, filelib:is_regular(PathToNif++".so")]),
+    erlang:load_nif(PathToNif, ?NIF_LOAD_INFO).
