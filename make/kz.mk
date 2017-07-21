@@ -68,7 +68,7 @@ json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 
 
-compile-test: clean-test $(COMPILE_MOAR) test/$(PROJECT).app
+compile-test: clean-test $(COMPILE_MOAR) test/$(PROJECT).app json
 
 test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(TEST_SOURCES)
