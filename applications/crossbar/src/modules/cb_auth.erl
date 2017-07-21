@@ -10,6 +10,7 @@
 -export([init/0
         ,allowed_methods/1, allowed_methods/2
         ,resource_exists/1, resource_exists/2
+        ,content_types_provided/2, content_types_provided/3
         ,authorize/2, authorize/3
         ,authenticate/2
         ,validate_resource/1, validate_resource/2, validate_resource/3
@@ -40,6 +41,8 @@
 -define(APPS_VIEW, <<"apps/list_by_account">>).
 -define(KEYS_VIEW, <<"auth/list_keys">>).
 
+-define(PUBLIC_KEY_MIME, [{<<"application">>, <<"x-pem-file">>}]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -50,6 +53,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authorize.auth">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.auth">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.auth">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.validate_resource.auth">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"*.validate.auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.auth">>, ?MODULE, 'put'),
@@ -106,6 +110,23 @@ resource_exists(?APPS_PATH, _AppId) -> 'true';
 resource_exists(?KEYS_PATH, ?PRIVATE_PATH) -> 'true';
 resource_exists(?KEYS_PATH, ?PUBLIC_PATH) -> 'true'.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(Context, _) -> Context.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+content_types_provided(Context, ?KEYS_PATH, ?PUBLIC_PATH) ->
+    cb_context:set_content_types_provided(Context, [{'to_json', ?JSON_CONTENT_TYPES}
+                                                   ,{'to_binary', ?PUBLIC_KEY_MIME}
+                                                   ]);
+content_types_provided(Context, _, _) ->
+    Context.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -425,14 +446,72 @@ get_system_public_key(Context) ->
     lager:debug("trying to get kazoo public key"),
     try kz_auth_keys:to_pem(kz_auth_keys:public_key(<<"kazoo">>)) of
         PublicKeyPem ->
-            RespDoc = kz_json:from_list([{<<"system_public_key_pem">>, PublicKeyPem}]),
-            Setters = [{fun cb_context:set_resp_status/2, 'success'}
-                      ,{fun cb_context:set_doc/2, RespDoc}
-                      ],
-            cb_context:setters(Context, Setters)
+            AcceptType = find_accept_type(Context),
+            set_public_key_response(Context, PublicKeyPem, AcceptType)
     catch
         _T:_E ->
             lager:debug("failed to get kazoo public key: ~p:~p", [_T, _E]),
             cb_context:add_system_error('datastore_fault', Context)
     end.
 
+set_public_key_response(Context, PublicKeyPem, <<"application/json">>) ->
+    RespDoc = kz_json:from_list([{<<"system_public_key_pem">>, PublicKeyPem}]),
+    Setters = [{fun cb_context:set_resp_status/2, 'success'}
+              ,{fun cb_context:set_resp_data/2, RespDoc}
+              ],
+    cb_context:setters(Context, Setters);
+set_public_key_response(Context, PublicKeyPem, <<"application/x-pem-file">>=CT) ->
+    Setters = [{fun cb_context:set_resp_status/2, 'success'}
+              ,{fun cb_context:set_resp_data/2, PublicKeyPem}
+              ,{fun cb_context:add_resp_headers/2
+               ,[{<<"Content-Type">>, CT}
+                ,{<<"Content-Disposition">>, <<"attachment; filename=system_pub_key.pem">>}
+                ,{<<"Content-Length">>, erlang:size(PublicKeyPem)}
+                ]
+               }
+              ],
+    cb_context:setters(Context, Setters).
+
+%% @private
+%% @doc
+%% Find Mime type we should return from Accept header or payload if provided by module
+%% (temporary, better to make generic function to use across crossbar module)
+-spec find_accept_type(cb_context:context()) -> ne_binary().
+find_accept_type(Context) ->
+    Acceptable = accept_values(Context),
+    find_accept_type(Context, Acceptable).
+
+find_accept_type(_Context, [?MEDIA_VALUE(<<"application">>, <<"json">>, _, _, _)|_Acceptable]) ->
+    <<"application/json">>;
+find_accept_type(_Context, [?MEDIA_VALUE(<<"application">>, <<"x-json">>, _, _, _)|_Acceptable]) ->
+    <<"application/json">>;
+find_accept_type(_Context, [?MEDIA_VALUE(<<"*">>, <<"*">>, _, _, _)|_Acceptable]) ->
+    <<"application/json">>;
+find_accept_type(_Context, [?MEDIA_VALUE(Type, SubType, _, _, _)|_Acceptable]) ->
+    case [{Type, SubType}] of
+        ?PUBLIC_KEY_MIME -> <<Type/binary, "/", SubType/binary>>;
+        _ -> <<"application/json">>
+    end.
+
+-spec accept_values(cb_context:context()) -> media_values().
+accept_values(Context) ->
+    AcceptValue = cb_context:req_header(Context, <<"accept">>),
+    Tunneled = cb_context:req_value(Context, <<"accept">>),
+    media_values(AcceptValue, Tunneled).
+
+-spec media_values(api_binary(), api_binary()) -> media_values().
+media_values('undefined', 'undefined') ->
+    lager:debug("no accept headers, assuming JSON"),
+    [?MEDIA_VALUE(<<"application">>, <<"json">>)];
+media_values(AcceptValue, 'undefined') ->
+    case cb_modules_util:parse_media_type(AcceptValue) of
+        {'error', 'badarg'} -> media_values('undefined', 'undefined');
+        AcceptValues -> lists:reverse(lists:keysort(2, AcceptValues))
+    end;
+media_values(AcceptValue, Tunneled) ->
+    case cb_modules_util:parse_media_type(Tunneled) of
+        {'error', 'badarg'} -> media_values(AcceptValue, 'undefined');
+        TunneledValues ->
+            lager:debug("using tunneled accept value ~s", [Tunneled]),
+            lists:reverse(lists:keysort(2, TunneledValues))
+    end.
