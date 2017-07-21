@@ -183,7 +183,7 @@ maybe_allow_proxy_req(Peer, ForwardIP) ->
 maybe_allow_proxy_req(_Peer, ForwardIP, 'false') ->
     ForwardIP;
 maybe_allow_proxy_req(Peer, ForwardIP, 'true') ->
-     case is_proxied(Peer) of
+    case is_proxied(Peer) of
         'true' ->
             lager:info("request is from expected reverse proxy: ~s", [ForwardIP]),
             kz_term:to_binary(ForwardIP);
