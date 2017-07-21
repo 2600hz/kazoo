@@ -41,7 +41,7 @@
         ,carrier_data/1, set_carrier_data/2, update_carrier_data/2
         ,region/1, set_region/2
         ,auth_by/1, set_auth_by/2
-        ,is_authorized/1, is_admin/1
+        ,is_authorized/1, is_admin/1, is_reserved_from_parent/1
         ,dry_run/1, set_dry_run/2
         ,batch_run/1, set_batch_run/2
         ,mdn_run/1, set_mdn_run/2
@@ -364,6 +364,8 @@ test_fetch(?TEST_IN_SERVICE_MDN) ->
     {ok, ?IN_SERVICE_MDN};
 test_fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM) ->
     {ok, ?IN_SERVICE_WITH_HISTORY_NUMBER};
+test_fetch(?TEST_RESERVED_NUM) ->
+    {ok, ?RESERVED_NUMBER};
 test_fetch(?BW_EXISTING_DID) ->
     {ok, ?BW_EXISTING_JSON};
 test_fetch(?TEST_EXISTING_TOLL) ->
@@ -430,7 +432,9 @@ fetch(NumberDb, NormalizedNum, Options) ->
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
     case state(PN) =:= ?NUMBER_STATE_AVAILABLE
-        orelse (is_authorized(PN)
+        orelse ((is_authorized(PN)
+                 orelse is_reserved_from_parent(PN)
+                )
                 andalso is_mdn_for_mdn_run(PN, Options)
                )
     of
@@ -1588,7 +1592,7 @@ sanitize_public_fields(JObj) ->
     kz_json:delete_keys(Keys, kz_doc:public_fields(JObj)).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1614,6 +1618,19 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
     is_admin_or_in_account_hierarchy(AuthBy, AssignedTo).
+
+-spec is_reserved_from_parent(knm_numbers:collection()) -> knm_numbers:collection();
+                             (knm_phone_number()) -> boolean().
+is_reserved_from_parent(T) when is_map(T) -> is_reserved_from_parent_collection(T);
+is_reserved_from_parent(#knm_phone_number{assigned_to = ?MATCH_ACCOUNT_RAW(AssignedTo)
+                                         ,auth_by = AuthBy
+                                         ,state = ?NUMBER_STATE_RESERVED
+                                         }) ->
+    Authorized = is_admin_or_in_account_hierarchy(AssignedTo, AuthBy),
+    Authorized
+        andalso ?LOG_DEBUG("is reserved from parent, allowing"),
+    Authorized;
+is_reserved_from_parent(_) -> false.
 
 %%%===================================================================
 %%% Internal functions
@@ -1643,13 +1660,26 @@ is_in_account_hierarchy(AuthBy, AccountId, ShouldIncludeSelf) ->
 
 -spec is_authorized_collection(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
 is_authorized_collection(T0=#{todo := PNs}) ->
+    {error,A} = (catch knm_errors:unauthorized()),
+    Reason = knm_errors:to_json(A),
     F = fun (PN, T) ->
                 case is_authorized(PN) of
                     true -> knm_numbers:ok(PN, T);
-                    false ->
-                        {error,A} = (catch knm_errors:unauthorized()),
-                        Reason = knm_errors:to_json(A),
-                        knm_numbers:ko(number(PN), Reason, T)
+                    false -> knm_numbers:ko(number(PN), Reason, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs).
+
+-spec is_reserved_from_parent_collection(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
+is_reserved_from_parent_collection(T0=#{todo := PNs}) ->
+    {error,A} = (catch knm_errors:unauthorized()),
+    Reason = knm_errors:to_json(A),
+    F = fun (PN, T) ->
+                case is_authorized(PN)
+                    orelse is_reserved_from_parent(PN)
+                of
+                    true -> knm_numbers:ok(PN, T);
+                    false -> knm_numbers:ko(number(PN), Reason, T)
                 end
         end,
     lists:foldl(F, T0, PNs).
