@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.edr",
+    "description": "Schema for edr system_config",
+    "properties": {
+        "backends": {
+            "default": {},
+            "description": "Enabled edr backends",
+            "type": "object"
+        }
+    },
+    "type": "object"
+}

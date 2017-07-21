@@ -1,0 +1,18 @@
+{application, edr,
+ [
+  {description, "Event Data Record application"},
+  {vsn, "4.0.0"},
+  {registered, [edr_sup, edr_listener]},
+  {modules, []},
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo_apps
+                 , kazoo_auth
+
+                 , lager
+                 , ranch
+                 , cowboy
+                 ]},
+  {mod, {edr_app, []}}
+ ]}.

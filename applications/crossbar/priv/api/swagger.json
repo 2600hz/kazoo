@@ -1562,6 +1562,11 @@
             },
             "type": "object"
         },
+        "callflows.edr": {
+            "description": "Validator for the edr callflow's data object",
+            "properties": {},
+            "type": "object"
+        },
         "callflows.fax_detect": {
             "description": "Validator for the fax_detect callflow's data object",
             "properties": {
@@ -12478,6 +12483,31 @@
             "required": [
                 "Results"
             ],
+            "type": "object"
+        },
+        "kapi.edr.build_msg": {
+            "description": "AMQP API for edr.build_msg",
+            "properties": {
+                "Tags": {
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Tags",
+                "Timestamp"
+            ],
+            "type": "object"
+        },
+        "kapi.edr.validate": {
+            "description": "AMQP API for edr.validate",
+            "properties": {
+                "Tags": {
+                    "type": "object"
+                }
+            },
             "type": "object"
         },
         "kapi.fax.query_status": {
@@ -25878,6 +25908,17 @@
                     "default": 3600000,
                     "description": "ecallmgr user cache time in in milliseconds",
                     "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.edr": {
+            "description": "Schema for edr system_config",
+            "properties": {
+                "backends": {
+                    "default": {},
+                    "description": "Enabled edr backends",
+                    "type": "object"
                 }
             },
             "type": "object"

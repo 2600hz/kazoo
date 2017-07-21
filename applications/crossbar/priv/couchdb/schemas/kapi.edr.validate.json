@@ -1,0 +1,11 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.edr.validate",
+    "description": "AMQP API for edr.validate",
+    "properties": {
+        "Tags": {
+            "type": "object"
+        }
+    },
+    "type": "object"
+}
