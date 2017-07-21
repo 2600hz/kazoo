@@ -13,6 +13,7 @@
 
                  , kazoo_apps
                  , kazoo_auth
+                 ,kazoo_sip
 
                  , lager
                  , ranch
