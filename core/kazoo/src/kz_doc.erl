@@ -10,7 +10,6 @@
 -module(kz_doc).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3
         ,public_fields/1, public_fields/2, get_public_keys/1
@@ -276,9 +275,10 @@ attachments(JObj) ->
 attachments(JObj, Default) ->
     A1 = kz_json:get_json_value(?KEY_ATTACHMENTS, JObj, kz_json:new()),
     A2 = kz_json:get_json_value(?KEY_EXTERNAL_ATTACHMENTS, JObj, kz_json:new()),
-    case kz_json:merge_jobjs(A1, A2) of
-        ?EMPTY_JSON_OBJECT -> Default;
-        A3 -> A3
+    A3 = kz_json:merge_jobjs(A1, A2),
+    case kz_json:is_empty(A3) of
+        true -> Default;
+        false -> A3
     end.
 
 -spec stub_attachments(kz_json:object()) -> api_object().
@@ -286,9 +286,10 @@ attachments(JObj, Default) ->
 stub_attachments(JObj) ->
     stub_attachments(JObj, 'undefined').
 stub_attachments(JObj, Default) ->
-    case kz_json:get_json_value(?KEY_ATTACHMENTS, JObj, kz_json:new()) of
-        ?EMPTY_JSON_OBJECT -> Default;
-        A3 -> A3
+    A = kz_json:get_json_value(?KEY_ATTACHMENTS, JObj, kz_json:new()),
+    case kz_json:is_empty(A) of
+        true -> Default;
+        false -> A3
     end.
 
 -spec external_attachments(kz_json:object()) -> api_object().
@@ -296,9 +297,10 @@ stub_attachments(JObj, Default) ->
 external_attachments(JObj) ->
     external_attachments(JObj, 'undefined').
 external_attachments(JObj, Default) ->
-    case kz_json:get_json_value(?KEY_EXTERNAL_ATTACHMENTS, JObj, kz_json:new()) of
-        ?EMPTY_JSON_OBJECT -> Default;
-        A3 -> A3
+    A = kz_json:get_json_value(?KEY_EXTERNAL_ATTACHMENTS, JObj, kz_json:new()),
+    case kz_json:is_empty(A) of
+        true -> Default;
+        false -> A
     end.
 
 -spec attachment_names(kz_json:object()) -> ne_binaries() | [].
