@@ -164,7 +164,9 @@ maybe_bypass_endpoint_media(Endpoints, BridgeProfile, ChannelProfile, DP) ->
                                                                   ,BridgeProfile
                                                                   ,ChannelProfile
                                                                   )
-                             end, Endpoints),
+                             end
+                            ,Endpoints
+                            ),
     case ShouldBypass of
         'true' -> [{"application", "set bypass_media=true"}|DP];
         'false' -> DP
