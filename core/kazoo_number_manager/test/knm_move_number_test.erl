@@ -21,10 +21,10 @@ move_to_child_test_() ->
     ].
 
 acquire_parent_reserved_test_() ->
-    Options = [{auth_by, ?CHILD_ACCOUNT_ID}],
+    To = ?CHILD_ACCOUNT_ID,
     {'ok', N0} = knm_number:get(?TEST_RESERVED_NUMBER),
-    {'ok', N1} = knm_number:move(?TEST_RESERVED_NUMBER, ?CHILD_ACCOUNT_ID, Options),
-    {'ok', N2} = knm_number:move(?TEST_RESERVED_NUMBER, ?CHILD_ACCOUNT_ID),
+    {'ok', N1} = knm_number:move(?TEST_RESERVED_NUMBER, To, [{auth_by, To}]),
+    {'ok', N2} = knm_number:move(?TEST_RESERVED_NUMBER, To),
     PN0 = knm_number:phone_number(N0),
     PN1 = knm_number:phone_number(N1),
     PN2 = knm_number:phone_number(N2),
@@ -37,14 +37,14 @@ acquire_parent_reserved_test_() ->
      }
     ,?_assert(knm_phone_number:is_dirty(PN1))
     ,{"verify subaccount can assign parent reserved number"
-     ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN1))
+     ,?_assertEqual(To, knm_phone_number:assigned_to(PN1))
      }
     ,{"verify subaccount transition to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
      }
     ,?_assert(knm_phone_number:is_dirty(PN2))
     ,{"verify master account can assign reserved number"
-     ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN2))
+     ,?_assertEqual(To, knm_phone_number:assigned_to(PN2))
      }
     ,{"verify master account transition to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN2))
@@ -52,10 +52,10 @@ acquire_parent_reserved_test_() ->
     ].
 
 acquire_parent_reserved_failure_test_() ->
-    Options = [{auth_by, ?UNRELATED_ACCOUNT_ID}],
+    To = ?UNRELATED_ACCOUNT_ID,
     {'ok', N0} = knm_number:get(?TEST_RESERVED_NUMBER),
-    {'error', Error1} = knm_number:move(?TEST_RESERVED_NUMBER, ?UNRELATED_ACCOUNT_ID, Options),
-    {'ok', N1} = knm_number:move(?TEST_RESERVED_NUMBER, ?UNRELATED_ACCOUNT_ID),
+    {'error', Error1} = knm_number:move(?TEST_RESERVED_NUMBER, To, [{auth_by, To}]),
+    {'ok', N1} = knm_number:move(?TEST_RESERVED_NUMBER, To),
     PN0 = knm_number:phone_number(N0),
     PN1 = knm_number:phone_number(N1),
     [?_assert(not knm_phone_number:is_dirty(PN0))
@@ -67,7 +67,7 @@ acquire_parent_reserved_failure_test_() ->
      }
     ,?_assert(knm_phone_number:is_dirty(PN1))
     ,{"verify subaccount can assign parent reserved number"
-     ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN1))
+     ,?_assertEqual(To, knm_phone_number:assigned_to(PN1))
      }
     ,{"verify subaccount transition to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
