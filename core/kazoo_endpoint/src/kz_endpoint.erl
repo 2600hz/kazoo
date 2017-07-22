@@ -1468,6 +1468,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
               ,fun maybe_set_owner_id/1
               ,fun maybe_set_account_id/1
               ,fun maybe_set_call_forward/1
+              ,fun maybe_set_call_forward_fail/1
               ,fun maybe_set_confirm_properties/1
               ,fun maybe_enable_fax/1
               ,fun maybe_enforce_security/1
@@ -1561,6 +1562,22 @@ bowout_settings('false') ->
     [{<<"Simplify-Loopback">>, <<"false">>}
     ,{<<"Loopback-Bowout">>, <<"true">>}
     ].
+
+
+-spec maybe_set_call_forward_fail(ccv_acc()) -> ccv_acc().
+maybe_set_call_forward_fail({_Endpoint, _Call, 'undefined', _CCVs}=Acc) ->
+    Acc;
+maybe_set_call_forward_fail({Endpoint, Call, CallFwd, CCVs}=Acc) ->
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"fail_on_single_call_forward_reject">>, 'false') of
+        'true' ->
+            Fail = kapps_config:get_binary(?CONFIG_CAT, <<"fail_on_reject_val">>, <<"NORMAL_CLEARING">>),
+            {Endpoint, Call, CallFwd
+            ,kz_json:set_values([{<<"Fail-On-Single-Reject">>, Fail}]
+                               ,CCVs
+                               )
+            };
+        'false' -> Acc
+    end.
 
 -spec maybe_auto_answer(ccv_acc()) -> ccv_acc().
 maybe_auto_answer({Endpoint, Call, CallFwd, CCVs}=Acc) ->
