@@ -134,7 +134,7 @@ item_check(Category, Item, Quantity, Services) ->
 service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
                                  ,account_plan = AccountPlan
                                  ,services = Services
-                                 ,no_overrides = NoOverrides
+                                 ,no_overrides = false
                                  }) ->
     [{"Verify plan from file matches services plan"
      ,?_assertEqual(kz_doc:account_id(ServicePlan), kzd_service_plan:account_id(AccountPlan))
@@ -145,7 +145,26 @@ service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
     ,{"Verify cumulative discount rate was overridden"
      ,?_assertEqual(5.0, rate(cumulative_discount(did_us_item(AccountPlan))))
      }
-    ,?_assert(not NoOverrides orelse kz_json:are_equal(ServicePlan, kz_services:service_plan_json(Services)))
+    ,?_assert(not kz_json:are_equal(ServicePlan, kz_services:service_plan_json(Services)))
+    ];
+
+service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
+                                 ,account_plan = AccountPlan
+                                 ,services = Services
+                                 ,no_overrides = true
+                                 }) ->
+    [{"Verify plan from file matches services plan"
+     ,?_assertEqual(kz_doc:account_id(ServicePlan), kzd_service_plan:account_id(AccountPlan))
+     }
+    ,{"Verify cumulative discount rate from service plan (set as int)"
+     ,?_assertEqual(5.0, rate(cumulative_discount(did_us_item(ServicePlan))))
+     }
+    ,{"Verify cumulative discount rate was not overridden"
+     ,?_assertEqual(undefined, did_us_item(AccountPlan))
+     }
+    ,{"Since ?A_RESELLER_ACCOUNT_ID does not have overrides, verify none were applied"
+     ,?_assert(kz_json:are_equal(ServicePlan, kz_services:service_plan_json(Services)))
+     }
     ].
 
 did_us_item(Plan) ->
