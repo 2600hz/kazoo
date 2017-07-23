@@ -7,6 +7,7 @@
         ,rate_account_did/3
         ,rate_global_did/2
         ,delete_rate/2
+        ,get_rate/2
         ]).
 
 -export([command/1
@@ -52,18 +53,43 @@ upload_rate(API, RateDoc) ->
     CreateResp = pqc_cb_tasks:create(API, "category=rates&action=import", CSV),
     TaskId = kz_json:get_value([<<"data">>, <<"_read_only">>, <<"id">>], kz_json:decode(CreateResp)),
     _ExecResp = pqc_cb_tasks:execute(API, TaskId),
+    _DelResp = wait_for_task(API, TaskId),
+
     {'ok', TaskId}.
+
+wait_for_task(API, TaskId) ->
+    GetResp = pqc_cb_tasks:fetch(API, TaskId),
+    case kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
+                          ,kz_json:decode(GetResp)
+                          )
+    of
+        <<"success">> ->
+            io:format('user', "task ~s completed~n", [TaskId]),
+            pqc_cb_tasks:delete(API, TaskId);
+        _Status ->
+            timer:sleep(1000),
+            wait_for_task(API, TaskId)
+    end.
 
 -spec delete_rate(cb_pqc_api:state(), kz_json:object()) -> 'ok'.
 delete_rate(API, RateDoc) ->
     ID = kz_doc:id(RateDoc),
     URL = rate_url(ID),
-    _Del = pqc_cb_api:make_request([200, 404]
-                                  ,fun kz_http:delete/2
-                                  ,URL
-                                  ,pqc_cb_api:request_headers(API)
-                                  ),
-    io:format("deleted: ~p~n", [_Del]).
+    pqc_cb_api:make_request([200, 404]
+                           ,fun kz_http:delete/2
+                           ,URL ++ "?should_soft_delete=false"
+                           ,pqc_cb_api:request_headers(API)
+                           ).
+
+-spec get_rate(cb_pqc_api:state(), kz_json:object()) -> 'ok'.
+get_rate(API, RateDoc) ->
+    ID = kz_doc:id(RateDoc),
+    URL = rate_url(ID),
+    pqc_cb_api:make_request([200, 404]
+                           ,fun kz_http:get/2
+                           ,URL
+                           ,pqc_cb_api:request_headers(API)
+                           ).
 
 -spec rate_account_did(cb_pqc_api:state(), api_ne_binary(), ne_binary()) -> integer() | 'undefined'.
 rate_account_did(_API, 'undefined', _DID) -> 'undefined';
@@ -73,7 +99,6 @@ rate_account_did(API, AccountId, DID) ->
 rate_did(API, URL) ->
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    io:format('user', "rate global DID ~s~n", [URL]),
     Resp = pqc_cb_api:make_request([200, 500]
                                   ,fun kz_http:get/2
                                   ,URL
@@ -81,7 +106,9 @@ rate_did(API, URL) ->
                                   ),
     RespJObj = kz_json:decode(Resp),
     case kz_json:get_ne_binary_value(<<"status">>, RespJObj) of
-        <<"error">> -> 'undefined';
+        <<"error">> ->
+            io:format("failed to find rate for DID: ~s~n", [Resp]),
+            'undefined';
         <<"success">> -> kz_json:get_integer_value([<<"data">>, <<"Rate">>], RespJObj)
     end.
 
@@ -163,9 +190,14 @@ seq() ->
     _Up = ?MODULE:upload_rate(API, ?GLOBAL_RATE),
     io:format("upload: ~p~n", [_Up]),
 
-    _Rated = ?MODULE:rate_global_did(API, hd(?PHONE_NUMBERS)),
-    io:format("rated: ~p~n", [_Rated]).
+    _Get = ?MODULE:get_rate(API, ?GLOBAL_RATE),
+    io:format("get: ~p~n", [_Get]),
 
+    _Rated = ?MODULE:rate_global_did(API, hd(?PHONE_NUMBERS)),
+    io:format("rated: ~p~n", [_Rated]),
+
+    _Deleted = ?MODULE:delete_rate(API, ?GLOBAL_RATE),
+    io:format("deleted: ~p~n", [_Deleted]).
 
 -spec command(any()) -> proper_types:type().
 -spec command(any(), boolean()) -> proper_types:type().
@@ -274,6 +306,9 @@ matches_account_cost(Model, AccountId, PhoneNumber, APIResult) ->
     end.
 
 matches_global_cost(Model, PhoneNumber, APIResult) ->
+    io:format('user', "does model have rate for ~p: ~p~n~p == ~p~n"
+             ,[PhoneNumber, pqc_kazoo_model:ratedeck(Model), APIResult, ?GLOBAL_COST]
+             ),
     case pqc_kazoo_model:has_system_rate_matching(Model, PhoneNumber) of
         'true' -> APIResult =:= ?GLOBAL_COST;
         'false' -> APIResult =:= 'undefined'
