@@ -6,6 +6,7 @@
         ,api/1
         ,account_id_by_name/2
         ,number_data/2
+        ,ratedeck/1, ratedeck/2
 
          %% Predicates
         ,has_accounts/1
@@ -29,6 +30,7 @@
         ]).
 
 -include("kazoo_proper.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 %% #{"prefix" => cost}
 -type rate_data() :: #{ne_binary() => integer()}.
@@ -46,7 +48,7 @@
 -record(kazoo_model
        ,{'accounts' = #{} :: accounts()
         ,'numbers' = #{} :: numbers()
-        ,'rates' = #{} :: rate_data()
+        ,'ratedecks' = #{} :: #{ne_binary() => rate_data()}
         ,'api' :: pqc_cb_api:state()
         }
        ).
@@ -61,20 +63,29 @@ new(API) ->
 -spec api(model()) -> pqc_cb_api:state().
 api(#kazoo_model{'api'=API}) -> API.
 
+-spec ratedeck(model()) -> map() | 'undefined'.
+-spec ratedeck(model(), ne_binary()) -> map() | 'undefined'.
+ratedeck(Model) ->
+    ratedeck(Model, ?KZ_RATES_DB).
+
+ratedeck(#kazoo_model{'ratedecks'=Ratedecks}, Name) ->
+    maps:get(Name, Ratedecks, #{}).
+
 -spec has_accounts(model()) -> boolean().
 has_accounts(#kazoo_model{'accounts'=Accounts}) ->
     0 =:= map_size(Accounts).
 
 -spec has_account_rate_matching(model(), ne_binary(), ne_binary()) -> boolean().
 has_account_rate_matching(#kazoo_model{'accounts'=Accounts}, AccountId, DID) ->
-    #{'rates' := Ratedeck} = maps:get(AccountId, Accounts),
+    #{'ratedecks' := Ratedeck} = maps:get(AccountId, Accounts),
     has_rate_matching(Ratedeck, DID).
 
 -spec has_system_rate_matching(model(), ne_binary()) -> boolean().
-has_system_rate_matching(#kazoo_model{'rates'=Ratedeck}, DID) ->
+has_system_rate_matching(#kazoo_model{'ratedecks'=Ratedecks}, DID) ->
+    Ratedeck = maps:get(?KZ_RATES_DB, Ratedecks, #{}),
     has_rate_matching(Ratedeck, DID).
 
--spec has_rate_matching(map(), ne_binary()) -> boolean().
+-spec has_rate_matching(rate_data(), ne_binary()) -> boolean().
 has_rate_matching(Ratedeck, <<"+", Number/binary>>) ->
     has_rate_matching(Ratedeck, Number);
 has_rate_matching(Ratedeck, Number) ->
@@ -118,8 +129,10 @@ is_account_rate_missing(#kazoo_model{'accounts'=Accounts}, AccountId, RateDoc) -
     end.
 
 -spec is_system_rate_missing(model(), kzd_rate:doc()) -> boolean().
-is_system_rate_missing(#kazoo_model{'rates'=Ratedeck}, RateDoc) ->
+is_system_rate_missing(#kazoo_model{'ratedecks'=Ratedecks}, RateDoc) ->
+    Ratedeck = maps:get(?KZ_RATES_DB, Ratedecks, #{}),
     Prefix = kzd_rate:prefix(RateDoc),
+    io:format('user', "checking for ~s in ~p~n", [Prefix, Ratedeck]),
     'undefined' =:= maps:get(Prefix, Ratedeck, 'undefined').
 
 -spec add_account(model(), ne_binary(), pqc_cb_api:response()) -> model().
@@ -135,18 +148,23 @@ add_account(#kazoo_model{'accounts'=Accounts}=State, Name, APIResp) ->
 add_rate_to_account(#kazoo_model{'accounts'=Accounts}=Model, AccountId, RateDoc) ->
     #{'rates':=Ratedeck}=Account = maps:get(AccountId, Accounts),
 
-    Model#kazoo_model{'accounts'=Accounts#{
-                                   AccountId => Account#{
-                                                  'rates' => Ratedeck#{
-                                                               kzd_rate:prefix(RateDoc) => kzd_rate:rate_cost(RateDoc)
-                                                              }
-                                                 }
-                                  }
-                     }.
+    Updated = Model#kazoo_model{'accounts'=Accounts#{
+                                             AccountId => Account#{
+                                                            'rates' => Ratedeck#{
+                                                                         kzd_rate:prefix(RateDoc) => kzd_rate:rate_cost(RateDoc)
+                                                                        }
+                                                           }
+                                            }
+                               },
+    io:format('user', "updated ~p~nto ~p~n", [Model, Updated]),
+    Updated.
 
 -spec add_rate_to_system(model(), kzd_rate:doc()) -> model().
-add_rate_to_system(#kazoo_model{'rates'=Ratedeck}=Model, RateDoc) ->
-    Model#kazoo_model{'rates'= Ratedeck#{kzd_rate:prefix(RateDoc) => kzd_rate:rate_cost(RateDoc)}}.
+add_rate_to_system(#kazoo_model{'ratedecks'=Ratedecks}=Model, RateDoc) ->
+    Ratedeck = maps:get(?KZ_RATES_DB, Ratedecks, #{}),
+    UpdatedDeck = Ratedeck#{kzd_rate:prefix(RateDoc) => kzd_rate:rate_cost(RateDoc)},
+    UpdatedDecks = Ratedecks#{?KZ_RATES_DB => UpdatedDeck},
+    Model#kazoo_model{'ratedecks'=UpdatedDecks}.
 
 -spec add_number_to_account(model(), ne_binary(), ne_binary(), pqc_cb_api:response()) -> model().
 add_number_to_account(#kazoo_model{'numbers'=Numbers}=Model, AccountId, Number, APIResp) ->
