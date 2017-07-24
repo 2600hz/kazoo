@@ -172,7 +172,7 @@ maybe_bypass_endpoint_media(Endpoints, BridgeProfile, ChannelProfile, DP) ->
 
 -spec bypass_endpoint_media_enabled(kz_json:object(), ne_binary(), ne_binary()) -> boolean().
 bypass_endpoint_media_enabled(Endpoint, BridgeProfile, ChannelProfile) ->
-    EndpointProfile = kz_json:get_value(<<"SIP-Interface">>, Endpoint, BridgeProfile),
+    EndpointProfile = kz_json:get_ne_binary_value(<<"SIP-Interface">>, Endpoint, BridgeProfile),
     kz_json:is_true(<<"Bypass-Media">>, Endpoint)
         andalso EndpointProfile =:= ChannelProfile.
 
