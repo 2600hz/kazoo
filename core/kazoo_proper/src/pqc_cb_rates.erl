@@ -4,10 +4,10 @@
 -export([seq/0]).
 
 -export([upload_rate/2
-        ,rate_account_did/3
-        ,rate_global_did/2
+        ,rate_did/3
         ,delete_rate/2
         ,get_rate/2
+        ,get_rates/1, get_rates/2
         ]).
 
 -export([command/1
@@ -25,27 +25,19 @@
 -include("kazoo_proper.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 
--define(ACCOUNT_NAMES, [<<"rated_account">>]).
+-define(RATE_ID, <<"XX-1222">>).
+-define(RATEDECK_NAMES, [?KZ_RATES_DB, <<"custom">>]).
 -define(PHONE_NUMBERS, [<<"+12223334444">>]).
 
 -define(GLOBAL_COST, 1).
 -define(ACCOUNT_COST, 4).
 
--define(GLOBAL_RATE
-       ,kzd_rate:from_map(#{<<"prefix">> => <<"1222">>
-                           ,<<"rate_cost">> => ?GLOBAL_COST
-                           ,<<"ratedeck_id">> => ?KZ_RATES_DB
-                           }
-                         )
-       ).
--define(ACCOUNT_RATE(AccountId)
-       ,lists:foldl(fun({K, V}, Rate) -> kz_json:set_value(K, V, Rate) end
-                   ,?GLOBAL_RATE
-                   ,[{<<"rate_cost">>, ?ACCOUNT_COST}
-                    ,{<<"ratedeck_id">>, AccountId}
-                    ]
-                   )
-       ).
+rate_doc(RatedeckId, Cost) ->
+    kzd_rate:from_map(#{<<"prefix">> => <<"1222">>
+                       ,<<"rate_cost">> => Cost
+                       ,<<"ratedeck_id">> => RatedeckId
+                       }
+                     ).
 
 -spec upload_rate(cb_pqc_api:state(), kz_json:object()) -> {'ok', ne_binary()}.
 upload_rate(API, RateDoc) ->
@@ -70,36 +62,43 @@ wait_for_task(API, TaskId) ->
             wait_for_task(API, TaskId)
     end.
 
--spec delete_rate(cb_pqc_api:state(), kz_json:object()) -> 'ok'.
-delete_rate(API, RateDoc) ->
-    ID = kz_doc:id(RateDoc),
-    URL = rate_url(ID),
+-spec delete_rate(cb_pqc_api:state(), ne_binary() | kz_json:object()) -> 'ok'.
+delete_rate(API, <<_/binary>>=RatedeckId) ->
+    delete_rate(API, ?RATE_ID, RatedeckId).
+delete_rate(API, ID, <<_/binary>>=RatedeckId) ->
+    URL = rate_url(ID, RatedeckId),
     pqc_cb_api:make_request([200, 404]
                            ,fun kz_http:delete/2
-                           ,URL ++ "?should_soft_delete=false"
+                           ,URL ++ "&should_soft_delete=false"
                            ,pqc_cb_api:request_headers(API)
-                           ).
+                           );
+delete_rate(API, ID, RateDoc) ->
+    delete_rate(API, ID, kzd_rate:ratedeck(RateDoc)).
 
 -spec get_rate(cb_pqc_api:state(), kz_json:object()) -> 'ok'.
 get_rate(API, RateDoc) ->
     ID = kz_doc:id(RateDoc),
-    URL = rate_url(ID),
+    URL = rate_url(ID, kzd_rate:ratedeck(RateDoc)),
     pqc_cb_api:make_request([200, 404]
                            ,fun kz_http:get/2
                            ,URL
                            ,pqc_cb_api:request_headers(API)
                            ).
 
--spec rate_account_did(cb_pqc_api:state(), api_ne_binary(), ne_binary()) -> integer() | 'undefined'.
+-spec get_rates(cb_pqc_api:state()) -> cb_pqc_api:response().
+-spec get_rates(cb_pqc_api:state(), ne_binary()) -> cb_pqc_api:response().
+get_rates(API) ->
+    get_rates(API, ?KZ_RATES_DB).
+get_rates(API, RatedeckId) ->
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:get/2
+                           ,rates_url() ++ "?ratedeck_id=" ++ kz_term:to_list(RatedeckId)
+                           ,pqc_cb_api:request_headers(API)
+                           ).
 
-rate_account_did(API, AccountId, DID) ->
-    rate_did(API, rate_url(AccountId, DID)).
-
--spec rate_global_did(cb_pqc_api:state(), ne_binary()) -> pos_integer() | 'undefined'.
-rate_global_did(API, DID) ->
-    rate_did(API, rate_url(DID)).
-
-rate_did(API, URL) ->
+-spec rate_did(cb_pqc_api:state(), ne_binary(), ne_binary()) -> cb_pqc_api:response().
+rate_did(API, RatedeckId, DID) ->
+    URL = rate_number_url(RatedeckId, DID),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
     Resp = pqc_cb_api:make_request([200, 500]
@@ -113,13 +112,15 @@ rate_did(API, URL) ->
         <<"success">> -> kz_json:get_integer_value([<<"data">>, <<"Rate">>], RespJObj)
     end.
 
-rate_url(AccountId, DID) ->
-    rate_did_url(pqc_cb_accounts:account_url(AccountId), DID).
+rates_url() ->
+    string:join([pqc_cb_api:v2_base_url(), "rates"], "/").
 
-rate_url(<<"XX-", _/binary>>=ID) ->
-    string:join([pqc_cb_api:v2_base_url(), "rates", kz_term:to_list(ID)], "/");
-rate_url(DID) ->
-    rate_did_url(pqc_cb_api:v2_base_url(), DID).
+rate_number_url(RatedeckId, DID) ->
+    rate_did_url(pqc_cb_api:v2_base_url(), DID) ++ "?ratedeck_id=" ++ kz_term:to_list(RatedeckId).
+
+rate_url(ID, RatedeckId) ->
+    string:join([pqc_cb_api:v2_base_url(), "rates", kz_term:to_list(ID)], "/")
+        ++ "?ratedeck_id=" ++ kz_term:to_list(RatedeckId).
 
 rate_did_url(Base, DID) ->
     string:join([Base, "rates", "number", kz_term:to_list(kz_http_util:urlencode(DID))], "/").
@@ -170,9 +171,8 @@ init() ->
         ].
 
 cleanup(API) ->
-    pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
-    kt_cleanup:cleanup_soft_deletes(<<"accounts">>),
-    ?MODULE:delete_rate(API, ?GLOBAL_RATE).
+    _Cleanup = [?MODULE:delete_rate(API, RatedeckId) || RatedeckId <- ?RATEDECK_NAMES],
+    'ok'.
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->
@@ -184,56 +184,40 @@ initial_state() ->
 seq() ->
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
-    _Up = ?MODULE:upload_rate(API, ?GLOBAL_RATE),
+
+    RateDoc = rate_doc(?KZ_RATES_DB, 1),
+
+    _Up = ?MODULE:upload_rate(API, RateDoc),
     io:format("upload: ~p~n", [_Up]),
 
-    _Get = ?MODULE:get_rate(API, ?GLOBAL_RATE),
+    _Get = ?MODULE:get_rate(API, RateDoc),
     io:format("get: ~p~n", [_Get]),
 
-    _Rated = ?MODULE:rate_global_did(API, hd(?PHONE_NUMBERS)),
+    _Rated = ?MODULE:rate_did(API, kzd_rate:ratedeck(RateDoc), hd(?PHONE_NUMBERS)),
     io:format("rated: ~p~n", [_Rated]),
 
-    _Deleted = ?MODULE:delete_rate(API, ?GLOBAL_RATE),
+    _Deleted = ?MODULE:delete_rate(API, RateDoc),
     io:format("deleted: ~p~n", [_Deleted]).
 
 -spec command(any()) -> proper_types:type().
--spec command(any(), boolean()) -> proper_types:type().
 command(Model) ->
-    command(Model, 'true').
-%% command(Model, pqc_kazoo_model:has_accounts(Model)).
-
-%% command(Model, 'false') ->
-%%     {'call', 'pqc_cb_accounts', 'create_account', [pqc_kazoo_model:api(Model), name()]};
-command(Model, 'true') ->
     API = pqc_kazoo_model:api(Model),
-    AccountId = {'call', 'pqc_kazoo_model', 'account_id_by_name', [Model, name()]},
 
-    oneof([{'call', ?MODULE, 'upload_rate', [API, rate(AccountId)]}
-          ,{'call', ?MODULE, 'delete_rate', [API, rate(AccountId)]}
-           %% ,{'call', ?MODULE, 'rate_account_did', [API, AccountId, phone_number()]}
-          ,{'call', ?MODULE, 'rate_global_did', [API, phone_number()]}
-           %% ,{'call', 'pqc_cb_accounts', 'create_account', [pqc_kazoo_model:api(Model), name()]}
+    oneof([{'call', ?MODULE, 'upload_rate', [API, rate_doc(ratedeck_id(), rate_cost())]}
+          ,{'call', ?MODULE, 'delete_rate', [API, ratedeck_id()]}
+          ,{'call', ?MODULE, 'rate_did', [API, ratedeck_id(), phone_number()]}
           ]).
 
-rate('undefined') -> ?GLOBAL_RATE;
-rate(_AccountId) -> ?GLOBAL_RATE.
-%% oneof([?ACCOUNT_RATE(AccountId), ?GLOBAL_RATE]).
+ratedeck_id() ->
+    oneof(?RATEDECK_NAMES).
 
-name() ->
-    elements(?ACCOUNT_NAMES).
+rate_cost() ->
+    range(1,10).
 
 phone_number() ->
     elements(?PHONE_NUMBERS).
 
 -spec next_state(pqc_kazoo_model:model(), any(), any()) -> pqc_kazoo_model:model().
-next_state(Model
-          ,APIResp
-          ,{'call', _, 'create_account', [_API, Name]}
-          ) ->
-    pqc_util:transition_if(Model
-                          ,[{fun pqc_kazoo_model:is_account_missing/2, [Name]}
-                           ,{fun pqc_kazoo_model:add_account/3, [Name, APIResp]}
-                           ]);
 next_state(Model
           ,_APIResp
           ,{'call', _, 'upload_rate', [_API, RateDoc]}
@@ -245,21 +229,16 @@ next_state(Model
                            ]);
 next_state(Model
           ,_APIResp
-          ,{'call', _, 'delete_rate', [_API, RateDoc]}
+          ,{'call', _, 'delete_rate', [_API, RatedeckId]}
           ) ->
-    Ratedeck = kzd_rate:ratedeck(RateDoc, ?KZ_RATES_DB),
+    RateDoc = rate_doc(RatedeckId, 0),
     pqc_util:transition_if(Model
-                          ,[{fun pqc_kazoo_model:does_rate_exist/3, [Ratedeck, RateDoc]}
-                           ,{fun pqc_kazoo_model:remove_rate_from_ratedeck/3, [Ratedeck, RateDoc]}
+                          ,[{fun pqc_kazoo_model:does_rate_exist/3, [RatedeckId, RateDoc]}
+                           ,{fun pqc_kazoo_model:remove_rate_from_ratedeck/3, [RatedeckId, RateDoc]}
                            ]);
 next_state(Model
           ,_APIResp
-          ,{'call', _, 'rate_account_did', [_API, _AccountId, _PhoneNumber]}
-          ) ->
-    Model;
-next_state(Model
-          ,_APIResp
-          ,{'call', _, 'rate_global_did', [_API, _PhoneNumber]}
+          ,{'call', _, 'rate_did', [_API, _RatedeckId, _PhoneNumber]}
           ) ->
     Model.
 
@@ -267,16 +246,6 @@ next_state(Model
 precondition(_Model, _Call) -> 'true'.
 
 -spec postcondition(pqc_kazoo_model:model(), any(), any()) -> boolean().
-postcondition(Model
-             ,{'call', _, 'create_account', [_API, Name]}
-             ,APIResult
-             ) ->
-    case pqc_kazoo_model:account_id_by_name(Model, Name) of
-        'undefined' ->
-            'undefined' =/= pqc_cb_response:account_id(APIResult);
-        _AccountId ->
-            500 =:= pqc_cb_response:error_code(APIResult)
-    end;
 postcondition(_Model
              ,{'call', _, 'upload_rate', [_API, _RateDoc]}
              ,{'ok', _TaskId}
@@ -288,31 +257,16 @@ postcondition(_Model
              ) ->
     'true';
 postcondition(Model
-             ,{'call', _, 'rate_global_did', [_API, PhoneNumber]}
+             ,{'call', _, 'rate_did', [_API, RatedeckId, PhoneNumber]}
              ,APIResult
              ) ->
-    matches_global_cost(Model, PhoneNumber, APIResult);
-postcondition(_Model
-             ,{'call', _, 'rate_account_did', [_API, 'undefined', _PhoneNumber]}
-             ,'undefined'
-             ) ->
-    'true';
-postcondition(Model
-             ,{'call', _, 'rate_account_did', [_API, AccountId, PhoneNumber]}
-             ,APIResult
-             ) ->
-    matches_account_cost(Model, AccountId, PhoneNumber, APIResult).
+    matches_cost(Model, RatedeckId, PhoneNumber, APIResult).
 
-matches_account_cost(Model, AccountId, PhoneNumber, APIResult) ->
-    RatedeckName = kzd_rate:ratedeck(?ACCOUNT_RATE(AccountId)),
-    case pqc_kazoo_model:has_rate_matching(Model, RatedeckName, PhoneNumber) of
-        'true' -> APIResult =:= ?ACCOUNT_COST;
-        'false' -> matches_global_cost(Model, PhoneNumber, APIResult)
-    end.
-
-matches_global_cost(Model, PhoneNumber, APIResult) ->
-    RatedeckName = kzd_rate:ratedeck(?GLOBAL_RATE),
-    case pqc_kazoo_model:has_rate_matching(Model, RatedeckName, PhoneNumber) of
-        'true' -> APIResult =:= ?GLOBAL_COST;
-        'false' -> APIResult =:= 'undefined'
+matches_cost(Model, RatedeckId, PhoneNumber, APIResult) ->
+    case pqc_kazoo_model:has_rate_matching(Model, RatedeckId, PhoneNumber) of
+        {'true', Cost} ->
+            io:format("found ~p against api ~p~n", [Cost, APIResult]),
+            Cost =:= wht_util:dollars_to_units(APIResult);
+        'false' ->
+            'undefined' =:= APIResult
     end.
