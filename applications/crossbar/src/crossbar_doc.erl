@@ -303,7 +303,7 @@ load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
         true ->
             lager:debug("loaded doc ~s(~s), merging", [DocId, kz_doc:revision(cb_context:doc(Context1))]),
             Merged = kz_json:merge_jobjs(kz_doc:private_fields(cb_context:doc(Context1)), DataJObj),
-            handle_datamgr_success(Merged, Context)
+            handle_datamgr_success(Merged, Context1)
     end;
 load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
     handle_datamgr_success(BypassJObj, Context).
