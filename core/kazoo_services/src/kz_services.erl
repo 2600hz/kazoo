@@ -517,8 +517,8 @@ set_billing_id(BillingId, <<_/binary>> = AccountId) ->
 %%--------------------------------------------------------------------
 -spec get_billing_id(ne_binary() | services()) -> ne_binary().
 get_billing_id(#kz_services{billing_id=BillingId}) -> BillingId;
-get_billing_id(<<_/binary>> = Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+get_billing_id(Account=?NE_BINARY) ->
+    AccountId = kz_util:format_account_id(Account),
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
     case fetch_services_doc(AccountId) of
         {'error', _R} ->
@@ -602,8 +602,8 @@ charge_transactions(#kz_services{billing_id=BillingId}=Services, Activations) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec select_bookkeeper(services() | ne_binary()) -> bookkeeper().
-select_bookkeeper(#kz_services{billing_id=BillingId
-                              ,account_id=AccountId
+select_bookkeeper(#kz_services{billing_id = BillingId
+                              ,account_id = AccountId
                               }
                  ) ->
     BillingIdReseller = get_reseller_id(BillingId),
@@ -752,8 +752,7 @@ master_account_id() -> kapps_util:get_master_account_id().
 %%--------------------------------------------------------------------
 -spec allow_updates(ne_binary() | services()) -> 'true'.
 allow_updates(Account=?NE_BINARY) ->
-    allow_updates(kz_util:format_account_id(Account));
-allow_updates(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    AccountId = kz_util:format_account_id(Account),
     case fetch_services_doc(AccountId) of
         {'error', _R} ->
             lager:debug("can't determine if account ~s can make updates: ~p", [AccountId, _R]),
