@@ -953,8 +953,8 @@ def_path_param(<<"{PHONE_NUMBER}">>=P) ->
      | base_path_param(P)
     ];
 
-def_path_param(<<"{REFRESH_TOKEN}">>) ->
-    [{<<"name">>, <<"X-Auth-Refresh-Token">>}
+def_path_param(<<"{REFRESH_TOKEN}">>=P) ->
+    [{<<"name">>, unbrace_param(P)}
     ,{<<"in">>, <<"header">>}
     ,{<<"type">>, <<"string">>}
     ,{<<"minLength">>, 32}
