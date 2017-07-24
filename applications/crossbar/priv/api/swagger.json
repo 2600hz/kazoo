@@ -30534,10 +30534,11 @@
         },
         "REFRESH_TOKEN": {
             "description": "authentication refresh token",
-            "in": "header",
+            "in": "path",
             "maxLength": 32,
             "minLength": 32,
             "name": "REFRESH_TOKEN",
+            "required": true,
             "type": "string"
         },
         "REPORT_ID": {

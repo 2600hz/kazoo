@@ -954,12 +954,10 @@ def_path_param(<<"{PHONE_NUMBER}">>=P) ->
     ];
 
 def_path_param(<<"{REFRESH_TOKEN}">>=P) ->
-    [{<<"name">>, unbrace_param(P)}
-    ,{<<"in">>, <<"header">>}
-    ,{<<"type">>, <<"string">>}
-    ,{<<"minLength">>, 32}
+    [{<<"minLength">>, 32}
     ,{<<"maxLength">>, 32}
     ,{<<"description">>, <<"authentication refresh token">>}
+     | base_path_param(P)
     ];
 
 def_path_param(<<"{SCHEMA_NAME}">>=P) ->
