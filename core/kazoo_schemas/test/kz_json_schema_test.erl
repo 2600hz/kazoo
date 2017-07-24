@@ -187,6 +187,7 @@ did_duplication_test() ->
     {'ok', Schema} = kz_json_schema:fload(<<"connectivity">>),
 
     {'ok', Valid} = kz_json_schema:validate(Schema, JObj),
+
     ?assertEqual(name_and_did(JObj), name_and_did(Valid)).
 
 name_and_did(JObj) ->
