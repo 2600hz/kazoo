@@ -219,16 +219,21 @@ fetch_and_build(AccountId) ->
 -spec fetch_cached_services(ne_binary()) ->
                                    {'ok', services()} |
                                    {'error', 'not_found'}.
+%% -ifdef(TEST).
+%% fetch_cached_services(?MATCH_ACCOUNT_RAW(_)) -> {error, not_found}.
+%% -else.
 fetch_cached_services(?MATCH_ACCOUNT_RAW(AccountId)) ->
     kz_cache:fetch_local(?CACHE_NAME, services_cache_key(AccountId)).
+%% -endif.
 
 -spec cache_services(ne_binary(), services()) -> 'ok'.
+-ifdef(TEST).
+cache_services(?MATCH_ACCOUNT_RAW(_), #kz_services{}) -> ok.
+-else.
 cache_services(AccountId, Services) ->
-    kz_cache:store_local(?CACHE_NAME
-                        ,services_cache_key(AccountId)
-                        ,Services
-                        ,[{'origin', [{'db', ?KZ_SERVICES_DB, AccountId}]}]
-                        ).
+    Options = [{'origin', [{'db', ?KZ_SERVICES_DB, AccountId}]}],
+    kz_cache:store_local(?CACHE_NAME, services_cache_key(AccountId), Services, Options).
+-endif.
 
 -spec flush_services() -> 'ok'.
 flush_services() ->
