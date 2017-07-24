@@ -62,7 +62,6 @@
 
 -include("services.hrl").
 
--define(STATUS_GOOD, kzd_services:status_good()).
 -define(QUANTITIES_ACCOUNT, <<"account_quantities">>).
 -define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
 -define(PLANS, <<"plans">>).
@@ -75,7 +74,7 @@
                      ,current_billing_id :: api_binary()
                      ,dirty = 'false' :: boolean()
                      ,deleted = 'false' :: boolean()
-                     ,status = ?STATUS_GOOD :: ne_binary()
+                     ,status = kzd_services:status_good() :: ne_binary()
                      ,jobj = kz_json:new() :: kz_json:object()
                      ,updates = kz_json:new() :: kz_json:object()
                      ,cascade_quantities = kz_json:new() :: kz_json:object()
@@ -144,7 +143,7 @@ base_service_object(AccountId, AccountJObj) ->
 
     lists:foldl(fun({F, V}, J) -> F(J, V) end
                ,BaseJObj
-               ,[{fun kzd_services:set_status/2, ?STATUS_GOOD}
+               ,[{fun kzd_services:set_status/2, kzd_services:status_good()}
                 ,{fun kzd_services:set_is_reseller/2, depreciated_is_reseller(AccountJObj)}
                 ,{fun kzd_services:set_reseller_id/2, ResellerId}
                 ,{fun kzd_services:set_tree/2, kz_account:tree(AccountJObj)}
@@ -777,9 +776,8 @@ maybe_follow_billing_id(AccountId, ServicesJObj) ->
 
 -spec maybe_allow_updates(ne_binary(), kz_json:object()) -> 'true'.
 maybe_allow_updates(AccountId, ServicesJObj) ->
-    StatusGood = ?STATUS_GOOD,
-    Plans = kz_service_plans:plan_summary(ServicesJObj),
-    case kz_term:is_empty(Plans)
+    StatusGood = kzd_services:status_good(),
+    case kz_term:is_empty(kz_service_plans:plan_summary(ServicesJObj))
         orelse kzd_services:status(ServicesJObj)
     of
         'true' ->
@@ -829,9 +827,10 @@ spawn_move_to_good_standing(?MATCH_ACCOUNT_RAW(AccountId)) ->
 
 -spec move_to_good_standing(ne_binary()) -> services().
 move_to_good_standing(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    #kz_services{jobj=JObj}=Services = fetch(AccountId),
+    #kz_services{jobj = JObj}=Services = fetch(AccountId),
     lager:debug("moving account ~s services to good standing", [AccountId]),
-    save(Services#kz_services{jobj = kzd_services:set_status(JObj, ?STATUS_GOOD)}).
+    save(Services#kz_services{jobj = kzd_services:set_status(JObj, kzd_services:status_good())
+                             }).
 
 %%--------------------------------------------------------------------
 %% @public

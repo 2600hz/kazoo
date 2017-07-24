@@ -55,8 +55,6 @@
 -define(RESELLER_ID, <<"pvt_reseller_id">>).
 -define(IS_DIRTY, <<"pvt_dirty">>).
 -define(STATUS, <<"pvt_status">>).
--define(STATUS_GOOD, <<"good_standing">>).
--define(STATUS_DELINQUENT, <<"delinquent">>).
 -define(TREE, <<"pvt_tree">>).
 -define(PLANS, <<"plans">>).
 -define(QUANTITIES, <<"quantities">>).
@@ -99,7 +97,7 @@ is_dirty(JObj, Default) ->
 -spec status(doc()) -> ne_binary().
 -spec status(doc(), Default) -> ne_binary() | Default.
 status(JObj) ->
-    status(JObj, ?STATUS_GOOD).
+    status(JObj, status_good()).
 status(JObj, Default) ->
     kz_json:get_value(?STATUS, JObj, Default).
 
@@ -131,12 +129,10 @@ type(JObj) ->
     kz_doc:type(JObj, type()).
 
 -spec status_good() -> ne_binary().
-status_good() ->
-    ?STATUS_GOOD.
+status_good() -> <<"good_standing">>.
 
 -spec status_delinquent() -> ne_binary().
-status_delinquent() ->
-    ?STATUS_DELINQUENT.
+status_delinquent() -> <<"delinquent">>.
 
 -spec plans(doc()) -> kz_json:object().
 -spec plans(doc(), Default) -> kz_json:object() | Default.
