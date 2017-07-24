@@ -1,7 +1,7 @@
 -module(pqc_util).
 
 -export([transition_if/2
-        ,run_counterexample/2
+        ,run_counterexample/1
         ]).
 
 -include("kazoo_proper.hrl").
@@ -24,10 +24,10 @@ transition_if_fold({Fun, Args}, {'true', Model}) ->
         NewModel -> {'true', NewModel}
     end.
 
--spec run_counterexample(module(), list()) -> {module(), any()}.
-run_counterexample(PQC, Steps) ->
-    run_counterexample(PQC, Steps, PQC:initial_state()).
-run_counterexample(PQC, Steps, State) ->
+-spec run_counterexample(module()) -> {module(), any()}.
+run_counterexample(PQC) ->
+    run_counterexample(PQC, proper:counterexample(), PQC:initial_state()).
+run_counterexample(PQC, [Steps], State) ->
     lists:foldl(fun run_step/2, {PQC, State}, Steps).
 
 run_step({'set', Var, Call}, {PQC, State}) ->
