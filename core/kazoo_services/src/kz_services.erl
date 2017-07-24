@@ -215,7 +215,7 @@ fetch_and_build(AccountId) ->
             cache_services(AccountId, Services),
             Services;
         {'error', _R} ->
-            lager:debug("unable to open account ~s services doc (creating new): ~p", [AccountId, _R]),
+            ?LOG_DEBUG("unable to open account ~s services doc (creating new): ~p", [AccountId, _R]),
             new(AccountId)
     end.
 
@@ -260,7 +260,10 @@ fetch_services_doc(?A_SUB_ACCOUNT_ID, _NotFromCache)
 fetch_services_doc(?B_SUB_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
     ServicesJObj = kz_services_test:fixture("a_sub_services.json"),
-    {ok, kzd_services:set_reseller_id(ServicesJObj, undefined)}.
+    {ok, kzd_services:set_reseller_id(ServicesJObj, undefined)};
+fetch_services_doc(?UNRELATED_ACCOUNT_ID, _NotFromCache)
+  when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
+    {error, not_found}.
 -else.
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), cache_failures=Option) ->
     kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId, [Option]);
@@ -608,7 +611,7 @@ select_bookkeeper(#kz_services{billing_id = BillingId
                               }
                  ) ->
     BillingIdReseller = get_reseller_id(BillingId),
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    {'ok', MasterAccountId} = master_account_id(),
     case BillingIdReseller =/= MasterAccountId of
         'true' ->
             case BillingIdReseller == get_reseller_id(AccountId) of
@@ -619,7 +622,7 @@ select_bookkeeper(#kz_services{billing_id = BillingId
     end;
 select_bookkeeper(AccountId) ->
     ResellerId = get_reseller_id(AccountId),
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    {'ok', MasterAccountId} = master_account_id(),
     case ResellerId =/= MasterAccountId of
         'true' ->
             case ?MAYBE_RESELLER_BOOKKEEPER_LOOKUP of
@@ -1330,6 +1333,8 @@ do_cascade_quantities_fold(JObj, AccJObj) ->
           ,{<<"value">>, Quantity}
           ])).
 
+cascade_results(<<"services/cascade_quantities">>, ?UNRELATED_ACCOUNT_ID) ->
+    {ok, []};
 cascade_results(<<"services/reseller_quantities">>, ?A_RESELLER_ACCOUNT_ID) ->
     {ok, [?ITEM(<<"billing">>, <<"devices">>, 42)
          ,?ITEM(<<"billing">>, <<"fax">>, 1)
@@ -1405,7 +1410,7 @@ default_service_plan_id(ResellerId) ->
 
 -spec depreciated_default_service_plan_id(ne_binary()) -> api_binary().
 depreciated_default_service_plan_id(ResellerId) ->
-    case kz_account:fetch(ResellerId) of
+    case fetch_account(ResellerId) of
         {'ok', JObj} -> kz_json:get_value(?DEFAULT_PLAN, JObj);
         {'error', _R} ->
             lager:debug("unable to open reseller ~s account definition: ~p", [ResellerId, _R]),
@@ -1414,7 +1419,7 @@ depreciated_default_service_plan_id(ResellerId) ->
 
 -spec master_default_service_plan() -> kz_json:object().
 master_default_service_plan() ->
-    case kapps_util:get_master_account_id() of
+    case master_account_id() of
         {'error', _} -> kz_json:new();
         {'ok', MasterAccountId} ->
             incorporate_default_service_plan(MasterAccountId, kz_json:new())
@@ -1465,7 +1470,7 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
 %%--------------------------------------------------------------------
 -spec get_reseller_id(ne_binaries() | ne_binary()) -> ne_binary().
 get_reseller_id([]) ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    {'ok', MasterAccountId} = master_account_id(),
     MasterAccountId;
 get_reseller_id([Parent|Ancestors]) ->
     case fetch_services_doc(Parent, cache_failures) of
@@ -1495,7 +1500,8 @@ get_reseller_id(Parent, Ancestors, ServicesJObj) ->
 fetch_account(?A_MASTER_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_master_account.json")};
 fetch_account(?A_RESELLER_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_reseller_account.json")};
 fetch_account(?A_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")};
-fetch_account(?B_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")}.
+fetch_account(?B_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")};
+fetch_account(?UNRELATED_ACCOUNT_ID) -> {ok, kz_services_test:fixture("unrelated_account.json")}.
 -else.
 fetch_account(Account) -> kz_account:fetch(Account).
 -endif.
@@ -1560,7 +1566,7 @@ any_changed(KeyNotSameFun, Quantities) ->
 %%--------------------------------------------------------------------
 -spec get_account_definition(ne_binary()) -> kz_account:doc().
 get_account_definition(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    case kz_account:fetch(AccountId) of
+    case fetch_account(AccountId) of
         {'error', _R} ->
             lager:debug("unable to get account defintion for ~s: ~p", [AccountId, _R]),
             kz_json:new();

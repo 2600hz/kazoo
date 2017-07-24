@@ -275,3 +275,20 @@ fetch_reseller_test_() ->
                                 )
                   )
     ].
+
+new_unrelated_test_() ->
+    AccountId = ?UNRELATED_ACCOUNT_ID,
+    Services = kz_services:fetch(AccountId),
+    [?_assertEqual(AccountId, kz_services:account_id(Services))
+    ,?_assertEqual(AccountId, kz_services:get_billing_id(Services))
+    ,?_assertEqual(true, kz_services:is_dirty(Services))
+    ,?_assertEqual(false, kz_services:is_deleted(Services))
+    ,?_assertEqual(<<"good_standing">>, kz_services:status(Services))
+    ,?_assert(not kz_json:is_empty(kz_services:services_json(Services)))
+    ,?_assertEqual([], kz_services:list_categories(Services))
+    ,?_assertEqual([]
+                  ,lists:flatmap(fun (Cat) -> kz_services:list_items(Services, Cat) end
+                                ,kz_services:list_categories(Services)
+                                )
+                  )
+    ].
