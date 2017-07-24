@@ -28,14 +28,14 @@ transition_if_fold({Fun, Args}, {'true', Model}) ->
 run_counterexample(PQC) ->
     run_counterexample(PQC, proper:counterexample(), PQC:initial_state()).
 run_counterexample(PQC, [Steps], State) ->
-    lists:foldl(fun run_step/2, {PQC, State}, Steps).
+    lists:foldl(fun run_step/2, {0, PQC, State}, Steps).
 
-run_step({'set', Var, Call}, {PQC, State}) ->
-    run_call(Var, Call, {PQC, State}).
+run_step({'set', Var, Call}, {Step, PQC, State}) ->
+    run_call(Var, Call, {Step, PQC, State}).
 
-run_call(_Var, {'call', M, F, Args}=Call, {PQC, State}) ->
-    io:format('user', "~p:~p(~p) -> ", [M, F, Args]),
+run_call(_Var, {'call', M, F, Args}=Call, {Step, PQC, State}) ->
+    io:format('user', "(~p) ~p:~p(~p) -> ", [Step, M, F, Args]),
     Resp = erlang:apply(M, F, Args),
-    io:format('user', "~p~n", [Resp]),
+    io:format('user', "~p~n~n", [Resp]),
     'true' = PQC:postcondition(State, Call, Resp),
-    {PQC, PQC:next_state(State, Resp, Call)}.
+    {Step+1, PQC, PQC:next_state(State, Resp, Call)}.
