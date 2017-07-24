@@ -186,7 +186,7 @@ delete(Context, ?REFRESH_TOKENS_PATH_TOKEN) ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc),
     OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, AuthDoc),
     case kz_datamgr:get_results(?KZ_TOKEN_DB
-                               ,<<"refresh_tokens/listing_by_account_and_owner_id">>
+                               ,<<"token_auth/refresh_tokens_listing">>
                                ,[{'key', [AccountId, OwnerId]}]
                                ) of
         {'ok', Docs} -> delete_refresh_tokens(Context, Docs);

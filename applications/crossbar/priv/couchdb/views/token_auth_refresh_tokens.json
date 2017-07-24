@@ -1,9 +1,0 @@
-{
-    "_id": "_design/refresh_tokens",
-    "language": "javascript",
-    "views": {
-        "listing_by_account_and_owner_id": {
-            "map": "function(doc) { if (doc.pvt_type != 'refresh_token' || doc.pvt_deleted) return; emit([doc.account_id, doc.owner_id], doc._id); }"
-        }
-    }
-}
