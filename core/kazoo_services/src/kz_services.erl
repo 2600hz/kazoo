@@ -73,7 +73,6 @@
 -record(kz_services, {account_id :: api_binary()
                      ,billing_id :: api_binary()
                      ,current_billing_id :: api_binary()
-                     ,new_billing_id = 'false' :: boolean()
                      ,dirty = 'false' :: boolean()
                      ,deleted = 'false' :: boolean()
                      ,status = ?STATUS_GOOD :: ne_binary()
