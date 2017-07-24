@@ -436,7 +436,8 @@ load_view(#load_view_params{view = View
           ]),
 
     IncludeOptions =
-        case has_qs_filter(Context) orelse should_load_full_docs(Context) of
+        case has_qs_filter(Context)
+            orelse should_load_full_docs(Context) of
             'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
             'false' -> DefaultOptions
         end,
@@ -1032,10 +1033,10 @@ maybe_full_docs_fun(_Context, Fun, 'true') ->
     %% Check whether something has been added by the filter function to
     %% decide whether whe should add this doc
     fun(J, Acc) ->
-        case Fun(J, Acc) of
-            Acc -> Acc;
-            _ -> [kz_json:get_value(<<"doc">>, J) | Acc]
-        end
+            case Fun(J, Acc) of
+                Acc -> Acc;
+                _ -> [kz_json:get_value(<<"doc">>, J) | Acc]
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -1310,7 +1311,8 @@ is_filter_key(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 should_load_full_docs(Context) ->
-    kz_term:is_true(cb_context:req_param(Context, <<"full_docs">>)).
+    kz_term:is_true(cb_context:req_param(Context, <<"full_docs">>))
+        andalso kapps_config:get_is_true(?CONFIG_CAT, <<"allow_fetch_full_docs">>, 'false').
 
 %%--------------------------------------------------------------------
 %% @private

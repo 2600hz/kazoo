@@ -3,6 +3,11 @@
     "_id": "system_config.crossbar",
     "description": "Schema for crossbar system_config",
     "properties": {
+        "allow_fetch_full_docs": {
+            "default": false,
+            "description": "Should the full_docs=true query parameter be acknowledged for fetch all requests?",
+            "type": "boolean"
+        },
         "allow_tracing": {
             "default": false,
             "description": "crossbar allow tracing",
