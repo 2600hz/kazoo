@@ -191,6 +191,8 @@ did_duplication_test() ->
     ?assertEqual(name_and_did(JObj), name_and_did(Valid)).
 
 name_and_did(JObj) ->
-    [{kz_json:get_value(<<"server_name">>, Server), kz_json:get_value(<<"DIDs">>, Server)}
+    [{kz_json:get_value(<<"server_name">>, Server)
+     ,kz_json:is_empty(kz_json:get_json_value(<<"DIDs">>, Server))
+     }
      || Server <- kz_json:get_value(<<"servers">>, JObj)
     ].
