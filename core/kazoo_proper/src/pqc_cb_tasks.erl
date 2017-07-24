@@ -4,6 +4,7 @@
         ,execute/2
         ,fetch/2
         ,delete/2
+        ,query/3
         ]).
 
 -include("kazoo_proper.hrl").
@@ -42,6 +43,19 @@ delete(API, TaskId) ->
     pqc_cb_api:make_request([200]
                            ,fun kz_http:delete/2
                            ,task_url(TaskId)
+                           ,pqc_cb_api:request_headers(API)
+                           ).
+
+-spec query(pqc_cb_api:state(), ne_binary(), ne_binary()) -> pqc_cb_api:response().
+query(API, Category, Action) ->
+    TaskURL = tasks_url(["category=", kz_term:to_list(Category)
+                        ,"&action=", kz_term:to_list(Action)
+                        ]
+                       ),
+
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:get/2
+                           ,TaskURL
                            ,pqc_cb_api:request_headers(API)
                            ).
 
