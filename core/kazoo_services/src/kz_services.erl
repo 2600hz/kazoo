@@ -79,7 +79,10 @@
                      ,updates = kz_json:new() :: kz_json:object()
                      ,cascade_quantities = kz_json:new() :: kz_json:object()
                      }).
+
 -define(BASE_BACKOFF, 50).
+
+-define(CACHE_KEY(AccountId), {?MODULE, AccountId}).
 
 -type services() :: #kz_services{}.
 
@@ -216,15 +219,10 @@ fetch_and_build(AccountId) ->
             new(AccountId)
     end.
 
--spec fetch_cached_services(ne_binary()) ->
-                                   {'ok', services()} |
-                                   {'error', 'not_found'}.
-%% -ifdef(TEST).
-%% fetch_cached_services(?MATCH_ACCOUNT_RAW(_)) -> {error, not_found}.
-%% -else.
+-spec fetch_cached_services(ne_binary()) -> {'ok', services()} |
+                                            {'error', 'not_found'}.
 fetch_cached_services(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    kz_cache:fetch_local(?CACHE_NAME, services_cache_key(AccountId)).
-%% -endif.
+    kz_cache:fetch_local(?CACHE_NAME, ?CACHE_KEY(AccountId)).
 
 -spec cache_services(ne_binary(), services()) -> 'ok'.
 -ifdef(TEST).
@@ -232,16 +230,12 @@ cache_services(?MATCH_ACCOUNT_RAW(_), #kz_services{}) -> ok.
 -else.
 cache_services(AccountId, Services) ->
     Options = [{'origin', [{'db', ?KZ_SERVICES_DB, AccountId}]}],
-    kz_cache:store_local(?CACHE_NAME, services_cache_key(AccountId), Services, Options).
+    kz_cache:store_local(?CACHE_NAME, ?CACHE_KEY(AccountId), Services, Options).
 -endif.
 
 -spec flush_services() -> 'ok'.
 flush_services() ->
     kz_cache:flush_local(?CACHE_NAME).
-
--spec services_cache_key(ne_binary()) -> {?MODULE, ne_binary()}.
-services_cache_key(AccountId) ->
-    {?MODULE, AccountId}.
 
 -spec fetch_services_doc(ne_binary()) ->
                                 {'ok', kz_json:object()} |
