@@ -82,7 +82,7 @@ validate(Context) ->
 
 validate(Context, ?REFRESH_PATH_TOKEN) ->
     cb_context:put_reqid(Context),
-    AuthDoc = cb_context:auth_doc(Context),
+    AuthDoc = kz_doc:public_fields(cb_context:auth_doc(Context)),
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
                        ,{fun cb_context:set_doc/2, AuthDoc}
