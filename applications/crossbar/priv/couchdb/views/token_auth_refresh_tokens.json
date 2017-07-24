@@ -1,0 +1,9 @@
+{
+    "_id": "_design/refresh_tokens",
+    "language": "javascript",
+    "views": {
+        "listing_by_account_and_owner_id": {
+            "map": "function(doc) { emit([doc.account_id, doc.owner_id], doc._id); }"
+        }
+    }
+}

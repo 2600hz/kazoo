@@ -340,6 +340,7 @@ refresh(?KZ_CCCPS_DB) ->
 refresh(?KZ_TOKEN_DB) ->
     _ = kz_datamgr:db_create(?KZ_TOKEN_DB),
     kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth_refresh_tokens.json"),
     'ok';
 refresh(?KZ_ALERTS_DB) ->
     _ = kz_datamgr:db_create(?KZ_ALERTS_DB),
