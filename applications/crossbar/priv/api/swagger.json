@@ -30714,6 +30714,14 @@
             "required": true,
             "type": "string"
         },
+        "X-Auth-Refresh-Token": {
+            "description": "authentication refresh token",
+            "in": "header",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "X-Auth-Refresh-Token",
+            "type": "string"
+        },
         "auth_token_header": {
             "description": "request authentication token",
             "in": "header",
@@ -41565,6 +41573,38 @@
                 }
             },
             "get": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/token_auth/refresh": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/token_auth/refresh_tokens": {
+            "delete": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/token_auth/refresh_tokens/{REFRESH_TOKEN}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/REFRESH_TOKEN"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "request succeeded"
