@@ -229,3 +229,19 @@ find_reseller_id_test_() ->
      ,?_assertEqual(?A_RESELLER_ACCOUNT_ID, kz_services:find_reseller_id(?B_SUB_ACCOUNT_ID))
      }
     ].
+
+new_empty_test_() ->
+    Services = kz_services:new(),
+    [?_assertEqual(undefined, kz_services:account_id(Services))
+    ,?_assertEqual(undefined, kz_services:get_billing_id(Services))
+    ,?_assertEqual(false, kz_services:is_dirty(Services))
+    ,?_assertEqual(false, kz_services:is_deleted(Services))
+    ,?_assertEqual(<<"good_standing">>, kz_services:status(Services))
+    ,?_assertEqual(kz_json:new(), kz_services:services_json(Services))
+    ,?_assertEqual([], kz_services:list_categories(Services))
+    ,?_assertEqual([]
+                  ,lists:flatmap(fun (Cat) -> kz_services:list_items(Services, Cat) end
+                                ,kz_services:list_categories(Services)
+                                )
+                  )
+    ].
