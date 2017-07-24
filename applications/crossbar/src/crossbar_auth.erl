@@ -162,7 +162,7 @@ maybe_create_auth_refresh_token(AccountId, OwnerId) ->
                                   ,{<<"owner_id">>, OwnerId}
                                   ,{<<"exp">>, Expiration}
                                   ]),
-    TokenJObj1 = kz_doc:update_pvt_parameters(TokenJObj, ?KZ_TOKEN_DB),
+    TokenJObj1 = kz_doc:update_pvt_parameters(TokenJObj, ?KZ_TOKEN_DB, [{'type', <<"refresh_token">>}]),
     case kz_datamgr:save_doc(?KZ_TOKEN_DB, TokenJObj1) of
         {'ok', Doc} ->
             AuthRefreshToken = kz_doc:id(Doc),
@@ -208,7 +208,18 @@ authorize_auth_token(Token) ->
 
 -spec maybe_db_token(map() | ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 maybe_db_token(AuthToken) ->
-    kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
+    case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
+        {'ok', Doc} -> maybe_db_auth_token(Doc);
+        Error -> Error
+    end.
+
+-spec maybe_db_auth_token(kz_json:object()) ->
+                                 kz_json:object() | {'error', 'not_found'}.
+maybe_db_auth_token(AuthDoc) ->
+    case kz_doc:type(AuthDoc) =/= <<"refresh_token">> of
+        'true' -> AuthDoc;
+        'false' -> {'error', 'not_found'}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
