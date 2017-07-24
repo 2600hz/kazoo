@@ -691,7 +691,9 @@ rehash_creds(_UserId, Username, Password, Context) ->
     JObj1 = kz_json:set_values([{<<"pvt_md5_auth">>, MD5}
                                ,{<<"pvt_sha1_auth">>, SHA1}
                                ], cb_context:doc(Context)),
-    cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1)).
+    crossbar_auth:reset_identity_secret(
+      cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1))
+     ).
 
 %%--------------------------------------------------------------------
 %% @private

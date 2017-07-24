@@ -4,6 +4,7 @@
 %%%
 %%% @end
 %%% @contributors:
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(cb_auth).
 
@@ -150,9 +151,14 @@ authorize(Context, PathToken, Id) ->
 
 %% authorize /auth
 -spec authorize_nouns(cb_context:context(), req_verb(), req_nouns()) -> boolean().
-authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}]) -> authorize_action(C, cb_context:req_value(C, <<"action">>));
 authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}, {<<"accounts">>, _}]) -> cb_context:is_account_admin(C);
-authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}, {<<"users">>, _}, {<<"accounts">>, _}]) -> cb_context:is_account_admin(C);
+authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}, {<<"users">>, [UserId]}, {<<"accounts">>, [AccountId]}]) ->
+    cb_context:is_account_admin(C)
+    %% Permit a user to reset their own signature secret
+        orelse (cb_context:auth_account_id(C) =:= AccountId
+                andalso cb_context:auth_user_id(C) =:= UserId
+               );
 authorize_nouns(C, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
 
 %% authorize /auth/{nouns}
@@ -181,6 +187,11 @@ authorize_nouns(_, ?PROVIDERS_PATH, _Id,           ?HTTP_GET,    [{<<"auth">>, _
 authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_POST,   [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(C, _, _, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
+
+-spec authorize_action(cb_context:context(), kz_json:api_json_term()) -> boolean().
+authorize_action(C, <<"reset_signature_secret">>) -> cb_context:is_superduper_admin(C);
+authorize_action(_, <<"refresh_token">>) -> 'true';
+authorize_action(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -236,6 +247,12 @@ validate_action(Context, <<"reset_signature_secret">>, ?HTTP_PUT) ->
         [{<<"auth">>, _}] -> reset_system_identity_secret(Context);
         _ -> reset_identity_secret(Context)
     end;
+validate_action(Context, <<"refresh_token">>, ?HTTP_PUT) ->
+    Doc = kz_json:from_list([{<<"account_id">>, cb_context:auth_account_id(Context)}
+                            ,{<<"owner_id">>, cb_context:auth_user_id(Context)}
+                            ]),
+    Context1 = cb_context:set_doc(Context, Doc),
+    crossbar_auth:create_auth_token(Context1, ?MODULE);
 validate_action(Context, _Action, _Method) ->
     lager:debug("unknown action ~s on ~s", [_Action, _Method]),
     cb_context:add_system_error(<<"action required">>, Context).
