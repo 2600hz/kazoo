@@ -899,8 +899,8 @@ try_parent_attachments(Context, Id, AccountId, ParentAccountId, ResellerId) ->
     ParentNotificationContext = crossbar_doc:load(Id
                                                  ,masquerade(Context, ParentAccountId)
                                                  ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())),
-    Doc = cb_context:doc(ParentNotificationContext),
-    case kz_doc:attachments(Doc) of
+    ParentDoc = cb_context:doc(ParentNotificationContext),
+    case kz_doc:attachments(ParentDoc) of
         'undefined' -> merge_ancestor_attachments(Context, Id, ParentAccountId, ResellerId);
         Attachments ->
             lager:debug("found attachments in account ~s", [ParentAccountId]),
