@@ -212,6 +212,10 @@ You can also choose to receive pages in bigger or smaller increments by specifyi
 
 If you want to disable pagination for a request, simply include `paginate=false` on the query string.
 
+#### Requesting Full Docs
+
+Full docs (as opposed to summarized docs) can be requested by adding `full_docs=true` to the query string for a fetch all request
+
 #### Pretty Printing
 
 If needed the json response to be pretty printed, the server can can do so.
