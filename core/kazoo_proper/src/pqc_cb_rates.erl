@@ -264,8 +264,10 @@ postcondition(Model
 
 matches_cost(Model, RatedeckId, PhoneNumber, APIResult) ->
     case pqc_kazoo_model:has_rate_matching(Model, RatedeckId, PhoneNumber) of
-        {'true', Cost} ->
+        {'true', Cost} when is_number(APIResult) ->
             Cost =:= wht_util:dollars_to_units(APIResult);
+        {'true', _Cost} ->
+            'false';
         'false' ->
             'undefined' =:= APIResult
     end.
