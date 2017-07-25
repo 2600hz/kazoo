@@ -388,6 +388,7 @@ create_account(AccountName, Realm, Username, Password)
     catch
         'throw':Errors ->
             io:format("failed to create '~s': ~s~n", [AccountName, kz_json:encode(Errors)]),
+            lager:error("errors thrown when creating account: ~s", [kz_json:encode(Errors)]),
             'failed';
         _E:_R ->
             ST = erlang:get_stacktrace(),
