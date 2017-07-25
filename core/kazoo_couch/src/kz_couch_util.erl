@@ -199,8 +199,9 @@ db_url(#server{}=Conn, DbName) ->
 %%------------------------------------------------------------------------------
 -spec get_db(kz_data:connection(), ne_binary()) -> db().
 -spec get_db(kz_data:connection(), ne_binary(), couch_version()) -> db().
-get_db(#server{options=Options}=Conn, DbName) ->
-    get_db(Conn, DbName, props:get_value('driver_version', Options)).
+get_db(Conn, DbName) ->
+    get_db(Conn, DbName, kazoo_couch:server_version(Conn)).
+
 get_db(Conn, DbName, Driver) ->
     ConnToUse =
         case is_admin_db(DbName, Driver) of
@@ -234,7 +235,14 @@ maybe_use_admin_port(#server{url=Host
     ConnectionMap = props:get_value('connection_map', Options, #{}),
     ConnMapOptions = maps:get('options', ConnectionMap),
     case props:get_value('admin_port', ConnMapOptions) of
-        'undefined' -> Conn;
+        'undefined' ->
+            APIPort = maps:get('port', ConnectionMap),
+            AdminPort = APIPort + 2,
+            ConnMapOptions1 = props:set_value('port', AdminPort, ConnMapOptions),
+            Options1 = props:set_value('connection_map', ConnectionMap#{'options'=>ConnMapOptions1}, Options),
+            Conn#server{url=binary:replace(Host, kz_term:to_binary(APIPort), kz_term:to_binary(AdminPort))
+                       ,options=Options1
+                       };
         AdminPort ->
             APIPort = maps:get('port', ConnectionMap),
 
