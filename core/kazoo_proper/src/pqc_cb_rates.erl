@@ -22,7 +22,7 @@
 
 -include_lib("proper/include/proper.hrl").
 -include("kazoo_proper.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -define(RATE_ID, <<"XX-1222">>).
 -define(RATEDECK_NAMES, [?KZ_RATES_DB, <<"custom">>]).

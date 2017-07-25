@@ -26,7 +26,7 @@
         ]).
 
 -include("kazoo_proper.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 %% #{"prefix" => cost}
 -type rate_data() :: #{ne_binary() => integer()}.
