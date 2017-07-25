@@ -9,6 +9,7 @@
 %% Server callbacks
 -export([server_info/1
         ,server_url/1
+        ,server_version/1
         ,get_db/2
         ,get_admin_dbs/0, get_admin_dbs/1
         ,get_admin_nodes/0, get_admin_nodes/1
@@ -79,8 +80,8 @@ get_admin_dbs() ->
     #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
     get_admin_dbs(Conn).
 
-get_admin_dbs(#server{options=Options}) ->
-    get_admin_dbs(props:get_value('driver_version', Options));
+get_admin_dbs(#server{}=Server) ->
+    get_admin_dbs(server_version(Server));
 get_admin_dbs('bigcouch') -> <<"dbs">>;
 get_admin_dbs(_Driver) -> <<"_dbs">>.
 
@@ -90,8 +91,8 @@ get_admin_nodes() ->
     #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
     get_admin_nodes(Conn).
 
-get_admin_nodes(#server{options=Options}) ->
-    get_admin_dbs(props:get_value('driver_version', Options));
+get_admin_nodes(#server{}=Server) ->
+    get_admin_dbs(server_version(Server));
 get_admin_nodes('bigcouch') -> <<"nodes">>;
 get_admin_nodes(_Driver) -> <<"_nodes">>.
 
@@ -142,7 +143,7 @@ db_import(Server, DbName, Filename) ->
 
 -spec db_list(kz_data:connection(), kz_data:options()) -> any().
 db_list(Server, Options) ->
-    db_list(version(Server), Server, Options).
+    db_list(server_version(Server), Server, Options).
 
 %%
 %% db specific
@@ -241,8 +242,8 @@ get_results_count(Server, DbName, DesignDoc, ViewOptions) ->
 all_docs(Server, DbName, Options) ->
     kz_couch_view:all_docs(Server, DbName, Options).
 
--spec version(server()) -> couch_version().
-version(#server{options=Options}) ->
+-spec server_version(server()) -> couch_version().
+server_version(#server{options=Options}) ->
     props:get_value('driver_version', Options).
 
 -spec db_local_filter(ne_binaries(), kz_data:options()) -> ne_binaries().
