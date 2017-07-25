@@ -25,6 +25,10 @@
             "description": "kazoo_endpoint default ignore completed elsewhere",
             "type": "boolean"
         },
+        "default_rtcp_mux": {
+            "description": "RTCP protocol messages mixed with RTP data",
+            "type": "boolean"
+        },
         "restrict_to_known_types": {
             "default": false,
             "description": "kazoo_endpoint restrict to known types",

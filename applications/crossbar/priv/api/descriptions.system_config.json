@@ -394,6 +394,7 @@
     "kazoo_endpoint.default_caller_id_number": "kazoo_endpoint default caller id number",
     "kazoo_endpoint.default_can_text_self": "kazoo_endpoint default can text self",
     "kazoo_endpoint.default_ignore_completed_elsewhere": "kazoo_endpoint default ignore completed elsewhere",
+    "kazoo_endpoint.default_rtcp_mux": "RTCP protocol messages mixed with RTP data",
     "kazoo_endpoint.mobile.codecs": "kazoo_endpoint.mobile codecs",
     "kazoo_endpoint.mobile.connections": "kazoo_endpoint.mobile connections",
     "kazoo_endpoint.mobile.create_sip_endpoint": "kazoo_endpoint.mobile create sip endpoint",
