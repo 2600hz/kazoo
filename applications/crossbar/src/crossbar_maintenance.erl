@@ -502,8 +502,8 @@ validate_account(JObj, Context) ->
     Context1 = crossbar_bindings:fold(<<"v2_resource.validate.accounts">>, Payload),
     case cb_context:resp_status(Context1) of
         'success' ->
-            throw(kz_json:from_list([{<<"intentional">>, <<"failure">>}])),
-            {'ok', Context1};
+            throw(kz_json:from_list([{<<"intentional">>, <<"failure">>}]));
+        %% {'ok', Context1};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
             io:format("failed to validate account: ~p ~s~n", [_Code, _Msg]),
