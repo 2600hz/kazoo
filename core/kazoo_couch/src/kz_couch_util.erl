@@ -229,30 +229,30 @@ maybe_use_admin_conn(#server{options=Options}=Conn) ->
         AdminConn -> AdminConn
     end.
 
-maybe_use_admin_port(#server{url=Host
-                            ,options=Options
-                            }=Conn) ->
+maybe_use_admin_port(#server{options=Options}=Conn) ->
     ConnectionMap = props:get_value('connection_map', Options, #{}),
     ConnMapOptions = maps:get('options', ConnectionMap),
     case props:get_value('admin_port', ConnMapOptions) of
         'undefined' ->
             APIPort = maps:get('port', ConnectionMap),
             AdminPort = APIPort + 2,
-            ConnMapOptions1 = props:set_value('port', AdminPort, ConnMapOptions),
-            Options1 = props:set_value('connection_map', ConnectionMap#{'options'=>ConnMapOptions1}, Options),
-            Conn#server{url=binary:replace(Host, kz_term:to_binary(APIPort), kz_term:to_binary(AdminPort))
-                       ,options=Options1
-                       };
+            change_connection_to_admin(Conn, APIPort, AdminPort);
         AdminPort ->
             APIPort = maps:get('port', ConnectionMap),
-
-            ConnMapOptions1 = props:set_value('port', AdminPort, ConnMapOptions),
-            Options1 = props:set_value('connection_map', ConnectionMap#{'options'=>ConnMapOptions1}, Options),
-
-            Conn#server{url=binary:replace(Host, kz_term:to_binary(APIPort), kz_term:to_binary(AdminPort))
-                       ,options=Options1
-                       }
+            change_connection_to_admin(Conn, APIPort, AdminPort)
     end.
+
+change_connection_to_admin(#server{url=Host
+                                  ,options=Options
+                                  }=Conn, APIPort, AdminPort) ->
+    ConnectionMap = props:get_value('connection_map', Options, #{}),
+    ConnMapOptions = maps:get('options', ConnectionMap),
+
+    ConnMapOptions1 = props:set_value('port', AdminPort, ConnMapOptions),
+    Options1 = props:set_value('connection_map', ConnectionMap#{'options'=>ConnMapOptions1}, Options),
+    Conn#server{url=binary:replace(Host, kz_term:to_binary(APIPort), kz_term:to_binary(AdminPort))
+               ,options=Options1
+               }.
 
 -spec format_error(any()) -> any().
 format_error({'failure', 404}) -> 'not_found';
