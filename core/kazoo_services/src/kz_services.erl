@@ -263,7 +263,10 @@ fetch_services_doc(?B_SUB_ACCOUNT_ID, _NotFromCache)
     {ok, kzd_services:set_reseller_id(ServicesJObj, undefined)};
 fetch_services_doc(?UNRELATED_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
-    {error, not_found}.
+    {error, not_found};
+fetch_services_doc(?WRONG_ACCOUNT_ID, _NotFromCache)
+  when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
+    {error, wrong}.
 -else.
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), cache_failures=Option) ->
     kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId, [Option]);
@@ -443,7 +446,7 @@ delete(Account) ->
             Values = [{?SERVICES_PVT_IS_DELETED, 'true'}
                      ,{?SERVICES_PVT_IS_DIRTY, 'true'}
                      ],
-            kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, JObj));
+            save_doc(kz_json:set_values(Values, JObj));
         {'error', 'not_found'} -> {'ok', kz_json:new()};
         {'error', _R}=E ->
             lager:debug("unable to mark service plan ~s as deleted: ~p", [AccountId, _R]),

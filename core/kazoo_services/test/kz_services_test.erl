@@ -272,6 +272,7 @@ fetch_reseller_test_() ->
     ,?_assert(not kz_services:is_dirty(Services))
     ,?_assert(not kzd_services:is_dirty(ServicesJObj))
     ,?_assert(not kz_services:is_deleted(Services))
+    ,?_assert(not kzd_services:is_deleted(ServicesJObj))
     ,?_assertEqual(<<"good_standing">>, kz_services:status(Services))
     ,?_assertEqual(kzd_services:status_good(), kzd_services:status(ServicesJObj))
     ,?_assertEqual([?A_MASTER_ACCOUNT_ID], kzd_services:tree(ServicesJObj))
@@ -313,6 +314,7 @@ new_unrelated_test_() ->
     ,?_assert(not kzd_services:is_dirty(ServicesJObj))
 
     ,?_assert(not kz_services:is_deleted(Services))
+    ,?_assert(not kzd_services:is_deleted(ServicesJObj))
     ,?_assertEqual(<<"good_standing">>, kz_services:status(Services))
     ,?_assertEqual(kzd_services:status_good(), kzd_services:status(ServicesJObj))
     ,?_assertEqual([?A_MASTER_ACCOUNT_ID], kzd_services:tree(ServicesJObj))
@@ -360,8 +362,24 @@ add_save_service_plan_test_() ->
                                ,kz_json:delete_key(?SERVICES_PVT_IS_DIRTY, kz_services:services_json(Saved1))
                                )
              )
+    ,?_assert(kzd_services:is_dirty(kz_services:services_json(Saved1)))
     ,?_assert(kz_json:are_equal(kz_services:services_json(Saved0)
                                ,kz_services:services_json(Saved2)
                                )
              )
+    ].
+
+delete_test_() ->
+    AccountId = ?A_RESELLER_ACCOUNT_ID,
+    {ok, ServicesJObj0} = kz_services:fetch_services_doc(AccountId, true),
+    {ok, ServicesJObj} = kz_services:delete(AccountId),
+    Keys = [?SERVICES_PVT_IS_DIRTY, ?SERVICES_PVT_IS_DELETED],
+    [?_assert(kz_json:are_equal(kz_json:delete_keys(Keys, ServicesJObj0)
+                               ,kz_json:delete_keys(Keys, ServicesJObj)
+                               )
+             )
+    ,?_assert(kzd_services:is_dirty(ServicesJObj))
+    ,?_assert(kzd_services:is_deleted(ServicesJObj))
+    ,?_assertEqual({ok,kz_json:new()}, kz_services:delete(?UNRELATED_ACCOUNT_ID))
+    ,?_assertMatch({error,_}, kz_services:delete(?WRONG_ACCOUNT_ID))
     ].

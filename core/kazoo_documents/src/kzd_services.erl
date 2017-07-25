@@ -11,6 +11,7 @@
         ,is_reseller/1, is_reseller/2
         ,reseller_id/1, reseller_id/2
         ,is_dirty/1, is_dirty/2
+        ,is_deleted/1, is_deleted/2
         ,status/1, status/2
         ,tree/1, tree/2
         ,reason/1, reason/2
@@ -54,6 +55,7 @@
 -define(IS_RESELLER, <<"pvt_reseller">>).
 -define(RESELLER_ID, <<"pvt_reseller_id">>).
 -define(IS_DIRTY, <<"pvt_dirty">>).
+-define(IS_DELETED, <<"pvt_deleted">>).
 -define(STATUS, <<"pvt_status">>).
 -define(TREE, <<"pvt_tree">>).
 -define(PLANS, <<"plans">>).
@@ -93,6 +95,13 @@ is_dirty(JObj) ->
     is_dirty(JObj, 'false').
 is_dirty(JObj, Default) ->
     kz_json:is_true(?IS_DIRTY, JObj, Default).
+
+-spec is_deleted(doc()) -> boolean().
+-spec is_deleted(doc(), Default) -> boolean() | Default.
+is_deleted(JObj) ->
+    is_deleted(JObj, 'false').
+is_deleted(JObj, Default) ->
+    kz_json:is_true(?IS_DELETED, JObj, Default).
 
 -spec status(doc()) -> ne_binary().
 -spec status(doc(), Default) -> ne_binary() | Default.

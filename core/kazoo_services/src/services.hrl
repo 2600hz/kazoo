@@ -47,6 +47,8 @@
 
 -define(UNRELATED_ACCOUNT_ID, <<"unrelated_29cae05bd2c7779bc706d5">>).
 -define(UNRELATED_ACCOUNT_DB, <<"account%2Fun%2Fre%2Flated_29cae05bd2c7779bc706d5">>).
+
+-define(WRONG_ACCOUNT_ID, <<"non_existing_ae05bd2c7779bc706da">>).
 -endif.
 
 -ifdef(TEST).
