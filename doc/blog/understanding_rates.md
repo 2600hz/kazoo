@@ -5,8 +5,8 @@ System administrators can create multiple ratedecks and assign them to accounts 
 
 ## High level overview
 
-1.  Admins can create ratedecks by uploading CSVs to the [Tasks API](/applications/crossbar/doc/tasks.md) and defining the \`ratedeck\_name\`. See the [Rate Task](/applications/tasks/doc/rates.md) docs for how to upload the CSV. This will be covered further down too.
-2.  Admins can then create [Service Plans](/applications/crossbar/doc/service_plans.md) that incorporate the ratedeck(s) available. You can optionally charge for access to these ratedecks as part of the service plan.
+1.  Admins can create ratedecks by uploading CSVs to the [Tasks API](file:///home/james/local/git/2600hz/kazoo/applications/crossbar/doc/tasks.md) and defining the \`ratedeck\_name\`. See the [Rate Task](file:///home/james/local/git/2600hz/kazoo/applications/tasks/doc/rates.md) docs for how to upload the CSV. This will be covered further down too.
+2.  Admins can then create [Service Plans](file:///home/james/local/git/2600hz/kazoo/applications/crossbar/doc/service_plans.md) that incorporate the ratedeck(s) available. You can optionally charge for access to these ratedecks as part of the service plan.
 3.  Now admins can assign these service plans to an account or reseller. When rating a call, the system will look at the account, then the reseller, and finally the default system ratedeck looking for what ratedeck(s) to use.
 
 The rest of this article will demonstrate the API commands necessary to configure the ratedecks, service plans, and accounts to have this all work appropriately. Hopefully someone will be inspired to create an appropriate [MonsterUI](https://docs.2600hz.com/ui) application to manage this from the browser!
@@ -34,7 +34,7 @@ echo $AUTH_TOKEN
 {ADMIN_AUTH_TOKEN}
 ```
 
-Also, be sure you've handled the [Tasks Operations](/applications/crossbar/doc/tasks.md) steps to start the tasks application and the tasks crossbar endpoint.
+Also, be sure you've handled the [Tasks Operations](file:///home/james/local/git/2600hz/kazoo/applications/crossbar/doc/tasks.md) steps to start the tasks application and the tasks crossbar endpoint.
 
 
 ## Creating Ratedecks
@@ -42,25 +42,25 @@ Also, be sure you've handled the [Tasks Operations](/applications/crossbar/doc/t
 
 ### CSV Format
 
-Looking at the [Rates Task](/applications/tasks/doc/rates.md) we see the following fields that can be defined:
+Looking at the [Rates Task](file:///home/james/local/git/2600hz/kazoo/applications/tasks/doc/rates.md) we see the following fields that can be defined:
 
-    |Name|Description|Required|
-    |`account_id`|reseller's account (see **Note 1** below)| |
-    |`description`|description for rate| |
-    |`direction`|direction of call leg ("inbound", "outbound"), if not set - rate matches both directions| |
-    |`iso_country_code`|[ISO 3166-1](https://en.wikipedia.org/wiki/ISO_3166-1#Officially_assigned_code_elements) code for prefix's country| |
-    |`prefix`|prefix for match DID number| `true` |
-    |`pvt_rate_cost`|internal rate cost, used for `weight` calculation| |
-    |`pvt_rate_surcharge`|internal rate surcharge| |
-    |`rate_cost`|per minute cost| `true` |
-    |`rate_increment`|billing "steps" for rate| |
-    |`rate_minimum`|minimum call duration| |
-    |`rate_name`|short name for rate, if this field not set it will be generated from `prefix`, `iso_country_code` and `direction` fields| |
-    |`rate_nocharge_time`|"free" call time, if call duration less then this value (seconds), then call not charged| |
-    |`rate_surcharge`|charge amount on connect (answer)| |
-    |`rate_version`|rate version| |
-    |`ratedeck_name`| ratedeck name, assigned to account via service plan| |
-    |`weight`|when found several rates with same prefix, used rate with higher weight. If not set - calculated from `prefix` length and `rate_cost` (`pvt_rate_cost`)| |
+    Name | Description | Required
+    ---- | ----------- | --------
+    `account_id`|reseller's account (see **Note 1** below)|
+    `description`|description for rate|
+    `direction`|direction of call leg ("inbound", "outbound"), if not set - rate matches both directions|
+    `iso_country_code`|[ISO 3166-1](https://en.wikipedia.org/wiki/ISO_3166-1#Officially_assigned_code_elements) code for prefix's country|
+    `prefix`|prefix for match DID number| `true`
+    `pvt_rate_cost`|internal rate cost, used for `weight` calculation|
+    `pvt_rate_surcharge`|internal rate surcharge|
+    `rate_cost`|per minute cost| `true`
+    `rate_increment`|billing "steps" for rate|
+    `rate_minimum`|minimum call duration|
+    `rate_name`|short name for rate, if this field not set it will be generated from `prefix`, `iso_country_code` and `direction` fields|
+    `rate_nocharge_time`|"free" call time, if call duration less then this value (seconds), then call not charged|
+    `rate_surcharge`|charge amount on connect (answer)|
+    `rate_version`|rate version|
+    `ratedeck_name`| ratedeck name, assigned to account via service plan|
 
 You can also query to the rates task to find this information out:
 
@@ -70,41 +70,43 @@ curl -H "X-Auth-Token: $AUTH_TOKEN" 'http://{SERVER}:8000/v2/tasks?category=rate
 
 ```json
 {
-    "auth_token": "{ADMIN_AUTH_TOKEN}",
-    "data": {
-        "tasks": {
-            "rates": {
-                "import": {
-                    "description": "Bulk-import rates",
-                    "doc": "Creates rates from file",
-                    "expected_content": "text/csv",
-                    "mandatory": [
-                        "prefix",
-                        "rate_cost"
-                    ],
-                    "optional": [
-                        "ratedeck_name",
-                        "account_id",
-                        "iso_country_code",
-                        "description",
-                        "rate_name",
-                        "rate_surcharge",
-                        "rate_increment",
-                        "rate_minimum",
-                        "direction",
-                        "pvt_rate_cost",
-                        "pvt_rate_surcharge",
-                        "rate_nocharge_time",
-                        "weight",
-                        "rate_version"
-                    ]
-                }
-            }
+  "auth_token": "{ADMIN_AUTH_TOKEN}",
+  "data": {
+    "tasks": {
+      "rates": {
+        "import": {
+          "description": "Bulk-import rates to a specified ratedeck",
+          "doc": "Creates rates from file",
+          "expected_content": "text/csv",
+          "mandatory": [
+            "prefix",
+            "rate_cost"
+          ],
+          "optional": [
+            "account_id",
+            "carrier",
+            "description",
+            "direction",
+            "internal_rate_cost",
+            "iso_country_code",
+            "options",
+            "rate_increment",
+            "rate_minimum",
+            "rate_name",
+            "rate_nocharge_time",
+            "rate_surcharge",
+            "rate_version",
+            "ratedeck_id",
+            "routes",
+            "weight"
+          ]
         }
-    },
-    "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
-    "status": "success"
+      }
+    }
+  },
+  "status": "success",
+  "timestamp": "2017-07-24T21:34:06",
+  "version": "4.0.0"
 }
 ```
 
@@ -383,7 +385,7 @@ Now that we have our ratedecks, let's create service plans that can be applied t
 
 ### Service Plan format
 
-Take a look at the [Service Plan lifecycle](/core/kazoo_services/doc/lifecycle.md) for details on how service plans work. Basically, we have a category of `ratedeck` and an item with the `ratedeck_id` as the key. You can also optionally include surcharges, activation fees, etc.
+Take a look at the [Service Plan lifecycle](file:///home/james/local/git/2600hz/kazoo/core/kazoo_services/doc/lifecycle.md) for details on how service plans work. Basically, we have a category of `ratedeck` and an item with the `ratedeck_id` as the key. You can also optionally include surcharges, activation fees, etc.
 
 
 ### Sample Service plan
