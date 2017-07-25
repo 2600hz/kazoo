@@ -28,7 +28,7 @@
     "created": 63635232676,
     "descendants_count": 43,
     "dial_plan": {},
-    "is_reseller": true,
+    "pvt_reseller": true,
     "language": "en-us",
     "music_on_hold": {},
     "name": "reseller-account",
@@ -55,7 +55,7 @@
     "pvt_type": "account",
     "pvt_vsn": "1",
     "realm": "reseller.kazoo.com",
-    "reseller_id": "master_3dd0df9f3b3940b8a972c0e43",
+    "pvt_reseller_id": "master_3dd0df9f3b3940b8a972c0e43",
     "ringtones": {},
     "timezone": "America/Los_Angeles",
     "ui_metadata": {

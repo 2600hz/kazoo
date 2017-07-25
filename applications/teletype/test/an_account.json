@@ -39,7 +39,7 @@
     "descendants_count": 6,
     "dial_plan": {},
     "id": "009afc511c97b2ae693c6cc4920988e8",
-    "is_reseller": false,
+    "pvt_reseller": false,
     "language": "en-us",
     "music_on_hold": {},
     "name": "wefwefwefwef",
@@ -76,7 +76,7 @@
     "pvt_vsn": "1",
     "pvt_wnm_allow_additions": true,
     "realm": "wefwefwefwef.app.com",
-    "reseller_id": "6b71cb72c876b5b1396a335f8f8a2594",
+    "pvt_reseller_id": "6b71cb72c876b5b1396a335f8f8a2594",
     "ringtones": {},
     "timezone": "America/Los_Angeles",
     "ui_metadata": {
