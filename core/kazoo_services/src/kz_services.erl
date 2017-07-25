@@ -1335,7 +1335,7 @@ do_cascade_quantities_fold(JObj, AccJObj) ->
           ,{<<"value">>, Quantity}
           ])).
 
-cascade_results(<<"services/cascade_quantities">>, ?UNRELATED_ACCOUNT_ID) ->
+cascade_results(<<"services/reseller_quantities">>, ?UNRELATED_ACCOUNT_ID) ->
     {ok, []};
 cascade_results(<<"services/reseller_quantities">>, ?A_RESELLER_ACCOUNT_ID) ->
     {ok, [?ITEM(<<"billing">>, <<"devices">>, 42)

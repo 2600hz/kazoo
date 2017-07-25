@@ -237,7 +237,7 @@ new_empty_test_() ->
     ,?_assertEqual(false, kz_services:is_dirty(Services))
     ,?_assertEqual(false, kz_services:is_deleted(Services))
     ,?_assertEqual(<<"good_standing">>, kz_services:status(Services))
-    ,?_assertEqual(kz_json:new(), kz_services:services_json(Services))
+    ,?_assert(kz_json:is_empty(kz_services:services_json(Services)))
     ,?_assertEqual([], kz_services:list_categories(Services))
     ,?_assertEqual([]
                   ,lists:flatmap(fun (Cat) -> kz_services:list_items(Services, Cat) end
@@ -262,12 +262,32 @@ fetch_reseller_test_() ->
              <<"devices">>,<<"dash_e911">>,<<"local">>,
              <<"failover">>,<<"mobile">>,<<"sip_device">>],
     Services = kz_services:fetch(AccountId),
+    ServicesJObj = kz_services:services_json(Services),
+    Plans = kzd_services:plans(ServicesJObj),
     [?_assertEqual(AccountId, kz_services:account_id(Services))
     ,?_assertEqual(AccountId, kz_services:get_billing_id(Services))
-    ,?_assertEqual(false, kz_services:is_dirty(Services))
-    ,?_assertEqual(false, kz_services:is_deleted(Services))
+    ,?_assertEqual(AccountId, kzd_services:billing_id(ServicesJObj))
+    ,?_assertEqual(?A_MASTER_ACCOUNT_ID, kzd_services:reseller_id(ServicesJObj))
+    ,?_assert(kzd_services:is_reseller(ServicesJObj))
+    ,?_assert(not kz_services:is_dirty(Services))
+    ,?_assert(not kzd_services:is_dirty(ServicesJObj))
+    ,?_assert(not kz_services:is_deleted(Services))
     ,?_assertEqual(<<"good_standing">>, kz_services:status(Services))
-    ,?_assert(not kz_json:is_empty(kz_services:services_json(Services)))
+    ,?_assertEqual(kzd_services:status_good(), kzd_services:status(ServicesJObj))
+    ,?_assertEqual([?A_MASTER_ACCOUNT_ID], kzd_services:tree(ServicesJObj))
+    ,?_assertEqual(undefined, kzd_services:reason(ServicesJObj))
+    ,?_assertEqual(undefined, kzd_services:reason_code(ServicesJObj))
+    ,?_assertEqual(kzd_services:type(), kzd_services:type(ServicesJObj))
+    ,?_assert(not kz_json:is_empty(Plans))
+    ,?_assertEqual([?A_MASTER_PLAN_ID], kz_json:get_keys(Plans))
+    ,?_assertEqual([?A_MASTER_PLAN_ID], kzd_services:plan_ids(ServicesJObj))
+    ,?_assert(not kz_json:is_empty(kzd_services:plan(ServicesJObj, ?A_MASTER_PLAN_ID)))
+    ,?_assertEqual(?A_MASTER_ACCOUNT_ID, kzd_services:plan_account_id(ServicesJObj, ?A_MASTER_PLAN_ID))
+    ,?_assert(kz_json:is_empty(kzd_services:plan_overrides(ServicesJObj, ?A_MASTER_PLAN_ID)))
+    ,?_assert(not kz_json:is_empty(kzd_services:quantities(ServicesJObj)))
+    ,?_assert(not kz_json:is_empty(kzd_services:category_quantities(ServicesJObj, <<"phone_numbers">>)))
+    ,?_assertEqual(9, kzd_services:item_quantity(ServicesJObj, <<"phone_numbers">>, <<"did_us">>))
+    ,?_assertEqual([], kzd_services:transactions(ServicesJObj))
     ,?_assertEqual(Categories, kz_services:list_categories(Services))
     ,?_assertEqual(Items
                   ,lists:flatmap(fun (Cat) -> kz_services:list_items(Services, Cat) end
@@ -279,12 +299,33 @@ fetch_reseller_test_() ->
 new_unrelated_test_() ->
     AccountId = ?UNRELATED_ACCOUNT_ID,
     Services = kz_services:fetch(AccountId),
+    ServicesJObj = kz_services:services_json(Services),
+    Plans = kzd_services:plans(ServicesJObj),
     [?_assertEqual(AccountId, kz_services:account_id(Services))
     ,?_assertEqual(AccountId, kz_services:get_billing_id(Services))
-    ,?_assertEqual(true, kz_services:is_dirty(Services))
-    ,?_assertEqual(false, kz_services:is_deleted(Services))
+    ,?_assertEqual(AccountId, kzd_services:billing_id(ServicesJObj))
+    ,?_assertEqual(?A_MASTER_ACCOUNT_ID, kzd_services:reseller_id(ServicesJObj))
+    ,?_assert(kzd_services:is_reseller(ServicesJObj))
+
+     %% The dirtyness need not be reflected in the JSON version,
+     %% so these 2 being different should be OK.
+    ,?_assert(kz_services:is_dirty(Services))
+    ,?_assert(not kzd_services:is_dirty(ServicesJObj))
+
+    ,?_assert(not kz_services:is_deleted(Services))
     ,?_assertEqual(<<"good_standing">>, kz_services:status(Services))
-    ,?_assert(not kz_json:is_empty(kz_services:services_json(Services)))
+    ,?_assertEqual(kzd_services:status_good(), kzd_services:status(ServicesJObj))
+    ,?_assertEqual([?A_MASTER_ACCOUNT_ID], kzd_services:tree(ServicesJObj))
+    ,?_assertEqual(undefined, kzd_services:reason(ServicesJObj))
+    ,?_assertEqual(undefined, kzd_services:reason_code(ServicesJObj))
+    ,?_assertEqual(kzd_services:type(), kzd_services:type(ServicesJObj))
+    ,?_assert(kz_json:is_empty(Plans))
+    ,?_assertEqual([], kz_json:get_keys(Plans))
+    ,?_assertEqual([], kzd_services:plan_ids(ServicesJObj))
+    ,?_assert(kz_json:is_empty(kzd_services:quantities(ServicesJObj)))
+    ,?_assert(kz_json:is_empty(kzd_services:category_quantities(ServicesJObj, <<"phone_numbers">>)))
+    ,?_assertEqual(0, kzd_services:item_quantity(ServicesJObj, <<"phone_numbers">>, <<"did_us">>))
+    ,?_assertEqual([], kzd_services:transactions(ServicesJObj))
     ,?_assertEqual([], kz_services:list_categories(Services))
     ,?_assertEqual([]
                   ,lists:flatmap(fun (Cat) -> kz_services:list_items(Services, Cat) end
