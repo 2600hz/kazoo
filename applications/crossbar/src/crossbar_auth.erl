@@ -21,9 +21,7 @@
 -define(TOKEN_AUTH_EXPIRY(Method, AuthConfig)
        ,kz_json:get_integer_value(method_config_path(Method, <<"token_auth_expiry">>), AuthConfig, ?DEFAULT_AUTH_EXPIRY)
        ).
--define(TOKEN_AUTH_REFRESH_EXPIRY, kapps_config:get_integer(?APP_NAME, <<"token_auth_refresh_expiry", ?SECONDS_IN_DAY)).
-
--define(ACCOUNT_AUTH_CONFIG_ID, <<"kazoo_auth_configs">>).
+-define(TOKEN_AUTH_REFRESH_EXPIRY, kapps_config:get_integer(?APP_NAME, <<"token_auth_refresh_expiry">>, ?SECONDS_IN_DAY)).
 
 -define(SHOULD_LOG_FAILED,
         kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_failed_attempts">>, 'false')
@@ -157,7 +155,7 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
 maybe_create_auth_refresh_token('undefined', _) -> 'undefined';
 maybe_create_auth_refresh_token(_, 'undefined') -> 'undefined';
 maybe_create_auth_refresh_token(AccountId, OwnerId) ->
-    Expiration = erlang:system_time('seconds') + ?TOKEN_AUTH_EXPIRY,
+    Expiration = erlang:system_time('seconds') + ?TOKEN_AUTH_REFRESH_EXPIRY,
     TokenJObj = kz_json:from_list([{<<"account_id">>, AccountId}
                                   ,{<<"owner_id">>, OwnerId}
                                   ,{<<"exp">>, Expiration}
