@@ -20,7 +20,6 @@
         ,correct_parallel/0
         ]).
 
-
 -include_lib("proper/include/proper.hrl").
 -include("kazoo_proper.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
@@ -32,6 +31,7 @@
 -define(GLOBAL_COST, 1).
 -define(ACCOUNT_COST, 4).
 
+-spec rate_doc(ne_binary(), number()) -> kzd_rate:doc().
 rate_doc(RatedeckId, Cost) ->
     kzd_rate:from_map(#{<<"prefix">> => <<"1222">>
                        ,<<"rate_cost">> => Cost
@@ -44,7 +44,7 @@ upload_rate(API, RateDoc) ->
     CSV = kz_csv:from_jobjs([RateDoc]),
 
     CreateResp = pqc_cb_tasks:create(API, "category=rates&action=import", CSV),
-    TaskId = kz_json:get_value([<<"data">>, <<"_read_only">>, <<"id">>], kz_json:decode(CreateResp)),
+    TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>], kz_json:decode(CreateResp)),
     _ExecResp = pqc_cb_tasks:execute(API, TaskId),
     _DelResp = wait_for_task(API, TaskId),
 
@@ -62,20 +62,22 @@ wait_for_task(API, TaskId) ->
             wait_for_task(API, TaskId)
     end.
 
--spec delete_rate(cb_pqc_api:state(), ne_binary() | kz_json:object()) -> 'ok'.
+-spec delete_rate(cb_pqc_api:state(), ne_binary() | kzd_rate:doc()) -> pqc_cb_api:response().
 delete_rate(API, <<_/binary>>=RatedeckId) ->
-    delete_rate(API, ?RATE_ID, RatedeckId).
+    delete_rate(API, ?RATE_ID, RatedeckId);
+delete_rate(API, RateDoc) ->
+    delete_rate(API, ?RATE_ID, kzd_rate:ratedeck(RateDoc)).
+
+-spec delete_rate(cb_pqc_api:state(), ne_binary(), ne_binary()) -> pqc_cb_api:response().
 delete_rate(API, ID, <<_/binary>>=RatedeckId) ->
     URL = rate_url(ID, RatedeckId),
     pqc_cb_api:make_request([200, 404]
                            ,fun kz_http:delete/2
                            ,URL ++ "&should_soft_delete=false"
                            ,pqc_cb_api:request_headers(API)
-                           );
-delete_rate(API, ID, RateDoc) ->
-    delete_rate(API, ID, kzd_rate:ratedeck(RateDoc)).
+                           ).
 
--spec get_rate(cb_pqc_api:state(), kz_json:object()) -> 'ok'.
+-spec get_rate(cb_pqc_api:state(), kzd_rate:doc()) -> pqc_cb_api:response().
 get_rate(API, RateDoc) ->
     ID = kz_doc:id(RateDoc),
     URL = rate_url(ID, kzd_rate:ratedeck(RateDoc)),

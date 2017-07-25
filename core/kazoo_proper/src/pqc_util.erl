@@ -24,7 +24,7 @@ transition_if_fold({Fun, Args}, {'true', Model}) ->
         NewModel -> {'true', NewModel}
     end.
 
--spec run_counterexample(module()) -> {module(), any()}.
+-spec run_counterexample(module()) -> {integer(), module(), any()}.
 run_counterexample(PQC) ->
     run_counterexample(PQC, proper:counterexample(), PQC:initial_state()).
 run_counterexample(PQC, [{Seq, Threads}], State) ->

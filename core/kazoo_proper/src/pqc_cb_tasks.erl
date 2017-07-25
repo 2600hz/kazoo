@@ -9,7 +9,7 @@
 
 -include("kazoo_proper.hrl").
 
--spec create(pqc_cb_api:state(), api_ne_binary(), ne_binary()) -> pqc_cb_api:response().
+-spec create(pqc_cb_api:state(), string(), iodata()) -> pqc_cb_api:response().
 create(API, QueryString, CSV) ->
     TaskURL = tasks_url(QueryString),
     RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, <<"text/csv">>}]),
@@ -59,11 +59,11 @@ query(API, Category, Action) ->
                            ,pqc_cb_api:request_headers(API)
                            ).
 
--spec task_url(string()) -> string().
+-spec task_url(ne_binary()) -> string().
 
 task_url(TaskId) ->
     string:join([pqc_cb_api:v2_base_url(), "tasks", kz_term:to_list(TaskId)], "/").
 
--spec tasks_url(string()) -> string().
+-spec tasks_url(iolist()) -> iolist().
 tasks_url(QueryString) ->
     string:join([pqc_cb_api:v2_base_url(), "tasks"], "/") ++ [$? | QueryString].
