@@ -78,7 +78,7 @@ default_request_headers() ->
                     {'error', binary()}.
 
 -spec make_request(expected_codes(), fun(), string(), kz_proplist()) -> response().
--spec make_request(expected_codes(), fun(), string(), kz_proplist(), binary()) -> response().
+-spec make_request(expected_codes(), fun(), string(), kz_proplist(), iodata()) -> response().
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders) ->
     %% io:format('user', "~p: ~p~n~p~n", [HTTP, URL, RequestHeaders]),
     handle_response(ExpectedCodes, HTTP(URL, RequestHeaders)).

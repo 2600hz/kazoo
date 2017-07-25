@@ -31,7 +31,7 @@
 -define(GLOBAL_COST, 1).
 -define(ACCOUNT_COST, 4).
 
--spec rate_doc(ne_binary(), number()) -> kzd_rate:doc().
+-spec rate_doc(ne_binary() | proper_types:type(), number() | proper_types:type()) -> kzd_rate:doc().
 rate_doc(RatedeckId, Cost) ->
     kzd_rate:from_map(#{<<"prefix">> => <<"1222">>
                        ,<<"rate_cost">> => Cost

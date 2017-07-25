@@ -9,7 +9,7 @@
 
 -include("kazoo_proper.hrl").
 
--spec create(pqc_cb_api:state(), string(), iodata()) -> pqc_cb_api:response().
+-spec create(pqc_cb_api:state(), string(), iolist()) -> pqc_cb_api:response().
 create(API, QueryString, CSV) ->
     TaskURL = tasks_url(QueryString),
     RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, <<"text/csv">>}]),
