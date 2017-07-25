@@ -1,37 +1,40 @@
 -module(kazoo_proper_maintenance).
 
--export([run_tests/0
-        ,run_test/1
+-export([run_modules/0
+        ,run_module/1
         ]).
 
 -include("kazoo_proper.hrl").
 
--spec run_tests() -> 'no_return'.
-run_tests() ->
-    _ = [run_test(M) || M <- modules()],
+-spec run_modules() -> 'no_return'.
+run_modules() ->
+    _ = [run_module(M) || M <- modules()],
     'no_return'.
 
--spec run_test(atom() | ne_binary()) -> 'no_return'.
-run_test(Module) when is_atom(Module) ->
+-spec run_module(atom() | ne_binary()) -> 'no_return'.
+run_module(Module) when is_atom(Module) ->
     Exports = Module:module_info('exports'),
     _ = quickcheck_exports(Module, Exports),
     'no_return';
-run_test(ModuleBin) ->
-    run_test(kz_term:to_atom(ModuleBin)).
+run_module(ModuleBin) ->
+    run_module(kz_term:to_atom(ModuleBin)).
 
+-spec quickcheck_exports(module(), [{function(), arity()}]) -> 'ok'.
 quickcheck_exports(Module, Exports) ->
     _ = [quickcheck_export(Module, Export) || Export <- Exports],
     'ok'.
 
+-spec quickcheck_export(module(), {function(), arity()}) -> 'true'.
 quickcheck_export(Module, {'correct', 0}) ->
     io:format("quickchecking ~s:correct/0~n", [Module]),
-    proper:quickcheck(Module:correct());
+    'true' = proper:quickcheck(Module:correct());
 quickcheck_export(Module, {'correct_parallel', 0}) ->
     io:format("quickchecking ~s:correct_parallel/0~n", [Module]),
-    proper:quickcheck(Module:correct_parallel());
+    'true' = proper:quickcheck(Module:correct_parallel());
 quickcheck_export(_Module, _FunArity) ->
-    'ok'.
+    'true'.
 
+-spec modules() -> [module()].
 modules() ->
     case application:get_key('kazoo_proper', 'modules') of
         {'ok', Modules} -> Modules;
