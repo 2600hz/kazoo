@@ -14,7 +14,9 @@
                 "    'surcharge': doc.rate_surcharge,",
                 "    'carrier': doc.carrier,",
                 "    'id': doc._id",
-                "}); }"
+                "    }",
+                "  );",
+                "}"
             ]
         },
         "lookup": {
