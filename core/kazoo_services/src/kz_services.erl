@@ -367,10 +367,10 @@ save_conflicting_as_dirty(#kz_services{account_id = AccountId}, BackOff) ->
     end.
 
 -spec save(services()) -> services().
--spec save(services(), pos_integer()) -> services().
 save(#kz_services{}=Services) ->
     save(Services, ?BASE_BACKOFF).
 
+-spec save(services(), pos_integer()) -> services().
 save(#kz_services{jobj = JObj
                  ,updates = UpdatedQuantities
                  ,account_id = AccountId
@@ -380,19 +380,18 @@ save(#kz_services{jobj = JObj
     ) ->
     CurrentQuantities = kzd_services:quantities(JObj),
 
-    Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities)
-        orelse ForceDirty,
+    Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) or ForceDirty,
 
     Props = [{fun kz_doc:set_id/2, AccountId}
             ,{fun kzd_services:set_is_dirty/2, Dirty}
             ,{fun kz_doc:set_modified/2, kz_time:current_tstamp()}
             ,{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],
-    UpdatedJObj = kz_json:set_values(props:filter_undefined(Props), JObj),
-
-    case kz_datamgr:save_doc(?KZ_SERVICES_DB, UpdatedJObj) of
+    case save_doc(kz_json:set_values(props:filter_undefined(Props), JObj)) of
         {'ok', NewJObj} ->
-            lager:debug("saved services for ~s: ~s", [AccountId, kz_json:encode(kzd_services:quantities(NewJObj))]),
+            ?LOG_DEBUG("saved services for ~s: ~s"
+                      ,[AccountId, kz_json:encode(kzd_services:quantities(NewJObj))]
+                      ),
             IsReseller = kzd_services:is_reseller(NewJObj),
             _ = maybe_clean_old_billing_id(Services),
             BillingId = case ?SUPPORT_BILLING_ID of
@@ -417,6 +416,15 @@ save(#kz_services{jobj = JObj
             {ok, Existing} = fetch_services_doc(AccountId, true),
             save(Services#kz_services{jobj = Existing}, 2 * BackOff)
     end.
+
+-ifdef(TEST).
+save_doc(JObj) ->
+    true = kz_json:is_json_object(JObj),
+    {ok, JObj}.
+-else.
+save_doc(JObj) ->
+    kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public

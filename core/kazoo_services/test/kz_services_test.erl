@@ -334,12 +334,34 @@ new_unrelated_test_() ->
                   )
     ].
 
-add_service_plan_test_() ->
+add_delete_service_plan_test_() ->
     PlanId = ?A_MASTER_PLAN_ID,
     Services0 = kz_services:fetch(?UNRELATED_ACCOUNT_ID),
     Services1 = kz_services:add_service_plan(PlanId, Services0),
-    Services2 = kz_services:delete_service_plan(PlanId, Services0),
+    Services2 = kz_services:delete_service_plan(PlanId, Services1),
     [?_assertEqual([], kzd_services:plan_ids(kz_services:services_json(Services0)))
     ,?_assertEqual([PlanId], kzd_services:plan_ids(kz_services:services_json(Services1)))
     ,?_assertEqual([], kzd_services:plan_ids(kz_services:services_json(Services2)))
+    ].
+
+add_save_service_plan_test_() ->
+    PlanId = ?A_MASTER_PLAN_ID,
+    Services0 = kz_services:fetch(?UNRELATED_ACCOUNT_ID),
+    Services1 = kz_services:add_service_plan(PlanId, Services0),
+    Services2 = kz_services:delete_service_plan(PlanId, Services1),
+    Saved0 = kz_services:save(Services0),
+    Saved1 = kz_services:save(Services1),
+    Saved2 = kz_services:save(Services2),
+    [?_assert(kz_json:are_equal(kz_services:services_json(Services0)
+                               ,kz_services:services_json(Services2)
+                               )
+             )
+    ,?_assert(kz_json:are_equal(kz_services:services_json(Services1)
+                               ,kz_json:delete_key(?SERVICES_PVT_IS_DIRTY, kz_services:services_json(Saved1))
+                               )
+             )
+    ,?_assert(kz_json:are_equal(kz_services:services_json(Saved0)
+                               ,kz_services:services_json(Saved2)
+                               )
+             )
     ].
