@@ -170,7 +170,8 @@ init() ->
         ],
     _ = [crossbar_maintenance:start_module(Mod) ||
             Mod <- ['cb_tasks', 'cb_rates', 'cb_accounts']
-        ].
+        ],
+    'ok'.
 
 cleanup(API) ->
     _Cleanup = [?MODULE:delete_rate(API, RatedeckId) || RatedeckId <- ?RATEDECK_NAMES],
