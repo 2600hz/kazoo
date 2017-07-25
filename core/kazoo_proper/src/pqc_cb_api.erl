@@ -20,13 +20,12 @@
              ,response/0
              ]).
 
--define(API_BASE, "http://localhost:8000/v2").
--define(API_KEY, <<"d056f9d536914499dd1e8cf63593be4ea333368adf630583a38db30b1877a710">>).
+-define(API_BASE, "http://" ++ net_adm:localhost() ++ ":8000/v2").
 
 -spec authenticate() -> state().
 authenticate() ->
-    URL = ?API_BASE ++ "/api_auth",
-    Data = kz_json:from_list([{<<"api_key">>, ?API_KEY}]),
+    URL =  ?API_BASE ++ "/api_auth",
+    Data = kz_json:from_list([{<<"api_key">>, api_key()}]),
     Envelope = create_envelope(Data),
     Resp = make_request([201]
                        ,fun kz_http:put/3
@@ -35,6 +34,32 @@ authenticate() ->
                        ,kz_json:encode(Envelope)
                        ),
     create_api_state(Resp).
+
+-spec api_key() -> ne_binary().
+-spec api_key(ne_binary()) -> ne_binary().
+api_key() ->
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} ->
+            api_key(MasterAccountId);
+        {'error', _} ->
+            lager:error("failed to find master account, please create an account first"),
+            throw('no_master_account')
+    end.
+
+api_key(MasterAccountId) ->
+    case kz_account:fetch(MasterAccountId) of
+        {'ok', MasterAccount} ->
+            APIKey = kz_account:api_key(MasterAccount),
+            case is_binary(APIKey) of
+                'true' -> APIKey;
+                'false' ->
+                    lager:error("failed to fetch api key for ~s", [MasterAccountId]),
+                    throw('missing_api_key')
+            end;
+        {'error', _E} ->
+            lager:error("failed to fetch master account ~s: ~p", [MasterAccountId, _E]),
+            throw('missing_master_account')
+    end.
 
 -spec create_api_state(binary()) -> map().
 create_api_state(RespJSON) ->
