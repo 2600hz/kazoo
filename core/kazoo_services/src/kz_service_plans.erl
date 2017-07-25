@@ -92,20 +92,29 @@ merge_plans(SerivcePlan, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_service_plan(ne_binary(), ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 add_service_plan(PlanId, ResellerId, ServicesJObj) ->
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
-    case kz_datamgr:open_cache_doc(ResellerDb, PlanId) of
+    ResellerDb = kz_util:format_account_db(ResellerId),
+    case open_cache_doc(ResellerDb, PlanId) of
         {'error', _R} ->
             lager:info("failed to load service plan ~s from ~s: ~p", [PlanId, ResellerDb, _R]),
-            Plan = kz_json:from_list([{<<"account_id">>, ResellerId}]),
+            Plan = kz_json:from_list(
+                     [{<<"account_id">>, ResellerId}
+                     ]),
             kzd_services:set_plan(ServicesJObj, PlanId, Plan);
         {'ok', ServicePlan} ->
-            Plan =
-                kz_json:from_list(
-                  [{<<"account_id">>, ResellerId}
-                  ,{<<"category">>, kzd_service_plan:grouping_category(ServicePlan)}
-                  ]),
+            Plan = kz_json:from_list(
+                     [{<<"account_id">>, ResellerId}
+                     ,{<<"category">>, kzd_service_plan:grouping_category(ServicePlan)}
+                     ]),
             kzd_services:set_plan(ServicesJObj, PlanId, Plan)
     end.
+
+-ifdef(TEST).
+open_cache_doc(?A_MASTER_ACCOUNT_DB, ?A_MASTER_PLAN_ID) ->
+    {ok, kz_services_test:fixture("a_master_plans.json")}.
+-else.
+open_cache_doc(Db, Id) ->
+    kz_datamgr:open_cache_doc(Db, Id).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -292,3 +292,13 @@ new_unrelated_test_() ->
                                 )
                   )
     ].
+
+add_service_plan_test_() ->
+    PlanId = ?A_MASTER_PLAN_ID,
+    Services0 = kz_services:fetch(?UNRELATED_ACCOUNT_ID),
+    Services1 = kz_services:add_service_plan(PlanId, Services0),
+    Services2 = kz_services:delete_service_plan(PlanId, Services0),
+    [?_assertEqual([], kzd_services:plan_ids(kz_services:services_json(Services0)))
+    ,?_assertEqual([PlanId], kzd_services:plan_ids(kz_services:services_json(Services1)))
+    ,?_assertEqual([], kzd_services:plan_ids(kz_services:services_json(Services2)))
+    ].

@@ -298,9 +298,10 @@ handle_fetch_result(AccountId, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_service_plan(ne_binary(), services()) -> services().
-add_service_plan(PlanId, #kz_services{jobj=JObj}=Services) ->
+add_service_plan(PlanId, #kz_services{jobj = JObj}=Services) ->
     ResellerId = kzd_services:reseller_id(JObj),
-    Services#kz_services{jobj = kz_service_plans:add_service_plan(PlanId, ResellerId, JObj)}.
+    Services#kz_services{jobj = kz_service_plans:add_service_plan(PlanId, ResellerId, JObj)
+                        }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -309,8 +310,9 @@ add_service_plan(PlanId, #kz_services{jobj=JObj}=Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_service_plan(ne_binary(), services()) -> services().
-delete_service_plan(PlanId, #kz_services{jobj=JObj}=Services) ->
-    Services#kz_services{jobj = kz_service_plans:delete_service_plan(PlanId, JObj)}.
+delete_service_plan(PlanId, #kz_services{jobj = JObj}=Services) ->
+    Services#kz_services{jobj = kz_service_plans:delete_service_plan(PlanId, JObj)
+                        }.
 
 %%--------------------------------------------------------------------
 %% @public
