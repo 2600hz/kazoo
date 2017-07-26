@@ -493,9 +493,10 @@ db_exists(Database, ShouldRetry) ->
 validate_account(JObj, Context) ->
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
-                                  ,{fun cb_context:set_req_nouns/2, [{?KZ_ACCOUNTS_DB, []}]}
+                                  ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, []}]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                  ,{fun cb_context:set_api_version/2, ?VERSION_2}
                                   ])
               ],
     Context1 = crossbar_bindings:fold(<<"v2_resource.validate.accounts">>, Payload),
@@ -518,9 +519,13 @@ validate_account(JObj, Context) ->
 validate_user(JObj, Context) ->
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
-                                  ,{fun cb_context:set_req_nouns/2, [{?KZ_ACCOUNTS_DB, []}]}
+                                  ,{fun cb_context:set_req_nouns/2, [{<<"users">>, []}
+                                                                    ,{<<"accounts">>, [cb_context:account_id(Context)]}
+                                                                    ]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                  ,{fun cb_context:set_doc/2, 'undefined'}
+                                  ,{fun cb_context:set_resp_data/2, 'undefined'}
                                   ]
                                  )
               ],
