@@ -346,7 +346,7 @@ add_delete_service_plan_test_() ->
     ,?_assertEqual([], kzd_services:plan_ids(kz_services:services_json(Services2)))
     ].
 
-add_save_service_plan_test_() ->
+add_delete_save_service_plan_test_() ->
     PlanId = ?A_MASTER_PLAN_ID,
     Services0 = kz_services:fetch(?UNRELATED_ACCOUNT_ID),
     Services1 = kz_services:add_service_plan(PlanId, Services0),
@@ -367,6 +367,42 @@ add_save_service_plan_test_() ->
                                ,kz_services:services_json(Saved2)
                                )
              )
+    ].
+
+add_delete_save_as_dirty_test_() ->
+    PlanId = ?A_MASTER_PLAN_ID,
+    AccountId = ?UNRELATED_ACCOUNT_ID,
+    Services0 = kz_services:fetch(AccountId),
+    Services1 = kz_services:add_service_plan(PlanId, Services0),
+    Services2 = kz_services:delete_service_plan(PlanId, Services1),
+    Saved0 = kz_services:save_as_dirty(AccountId),
+    Saved1 = kz_services:save_as_dirty(Services1),
+    Saved2 = kz_services:save_as_dirty(Services2),
+    [?_assert(kz_json:are_equal(kz_services:services_json(Services0)
+                               ,kz_services:services_json(Services2)
+                               )
+             )
+    ,?_assert(kz_json:are_equal(kz_services:services_json(Services1)
+                               ,kz_json:delete_key(?SERVICES_PVT_IS_DIRTY, kz_services:services_json(Saved1))
+                               )
+             )
+    ,?_assert(kzd_services:is_dirty(kz_services:services_json(Saved1)))
+    ,?_assert(kz_json:are_equal(kz_services:services_json(Saved0)
+                               ,kz_services:services_json(Saved2)
+                               )
+             )
+    ].
+
+save_as_dirty_conflict_test_() ->
+    AccountId = ?B_SUB_ACCOUNT_ID,
+    {ok, ServicesJObj0} = kz_services:fetch_services_doc(AccountId),
+    Services = kz_services:save_as_dirty(AccountId),
+    ServicesJObj = kz_services:services_json(Services),
+    [?_assert(kz_json:are_equal(kz_json:delete_key(<<"pvt_modified">>, ServicesJObj0)
+                               ,kz_json:delete_key(<<"pvt_modified">>, ServicesJObj)
+                               )
+             )
+    ,?_assert(kzd_services:is_dirty(ServicesJObj))
     ].
 
 delete_test_() ->

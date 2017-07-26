@@ -259,8 +259,10 @@ fetch_services_doc(?A_SUB_ACCOUNT_ID, _NotFromCache)
     {ok, kz_services_test:fixture("a_sub_services.json")};
 fetch_services_doc(?B_SUB_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
-    ServicesJObj = kz_services_test:fixture("a_sub_services.json"),
-    {ok, kzd_services:set_reseller_id(ServicesJObj, undefined)};
+    ServicesJObj0 = kz_services_test:fixture("a_sub_services.json"),
+    ServicesJObj1 = kzd_services:set_is_dirty(ServicesJObj0, true),
+    ServicesJObj2 = kzd_services:set_reseller_id(ServicesJObj1, undefined),
+    {ok, kz_doc:set_id(ServicesJObj2, ?B_SUB_ACCOUNT_ID)};
 fetch_services_doc(?UNRELATED_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
     {error, not_found};
@@ -324,12 +326,12 @@ delete_service_plan(PlanId, #kz_services{jobj = JObj}=Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save_as_dirty(ne_binary() | services()) -> services().
--spec save_as_dirty(ne_binary() | services(), pos_integer()) -> services().
 save_as_dirty(Account=?NE_BINARY) ->
     save_as_dirty(fetch(Account));
 save_as_dirty(#kz_services{}=Services) ->
     save_as_dirty(Services, ?BASE_BACKOFF).
 
+-spec save_as_dirty(ne_binary() | services(), pos_integer()) -> services().
 save_as_dirty(#kz_services{jobj = JObj
                            %% ,updates = _Updates
                           ,account_id = ?MATCH_ACCOUNT_RAW(AccountId)
@@ -341,7 +343,7 @@ save_as_dirty(#kz_services{jobj = JObj
               ,{fun kz_doc:set_modified/2, kz_time:current_tstamp()}
               ],
     UpdatedJObj = lists:foldl(fun({F, V}, J) -> F(J, V) end, JObj, Updates),
-    case kz_datamgr:save_doc(?KZ_SERVICES_DB, UpdatedJObj) of
+    case save_doc(UpdatedJObj) of
         {'ok', SavedJObj} ->
             lager:debug("marked services as dirty for account ~s", [AccountId]),
             from_service_json(SavedJObj);
@@ -351,7 +353,7 @@ save_as_dirty(#kz_services{jobj = JObj
             timer:sleep(BackOff),
             save_as_dirty(Services, BackOff);
         {'error', 'conflict'} ->
-            lager:debug("conflict when saving, attempting mitigation"),
+            ?LOG_DEBUG("conflict when saving, attempting mitigation"),
             save_conflicting_as_dirty(Services, BackOff)
     end.
 
@@ -361,10 +363,10 @@ save_conflicting_as_dirty(#kz_services{account_id = AccountId}, BackOff) ->
     NewServices = from_service_json(Existing),
     case is_dirty(NewServices) of
         'true' ->
-            lager:debug("services doc for ~s saved elsewhere", [AccountId]),
+            ?LOG_DEBUG("services doc for ~s saved elsewhere", [AccountId]),
             NewServices;
         'false' ->
-            lager:debug("new services doc for ~s not dirty, marking it as so", [AccountId]),
+            ?LOG_DEBUG("new services doc for ~s not dirty, marking it as so", [AccountId]),
             timer:sleep(BackOff + rand:uniform(?BASE_BACKOFF)),
             save_as_dirty(NewServices, BackOff*2)
     end.
@@ -382,7 +384,6 @@ save(#kz_services{jobj = JObj
     ,BackOff
     ) ->
     CurrentQuantities = kzd_services:quantities(JObj),
-
     Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) or ForceDirty,
 
     Props = [{fun kz_doc:set_id/2, AccountId}
@@ -423,7 +424,10 @@ save(#kz_services{jobj = JObj
 -ifdef(TEST).
 save_doc(JObj) ->
     true = kz_json:is_json_object(JObj),
-    {ok, JObj}.
+    case kz_doc:id(JObj) of
+        ?B_SUB_ACCOUNT_ID -> {error, conflict};
+        _Else -> {ok, JObj}
+    end.
 -else.
 save_doc(JObj) ->
     kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj).
@@ -1319,10 +1323,10 @@ cascade_quantities(#kz_services{cascade_quantities=JObj}) -> JObj.
 
 -spec cascade_quantities(ne_binary(), boolean()) -> kz_json:object().
 cascade_quantities(Account=?NE_BINARY, 'false') ->
-    ?LOG_DEBUG("computing cascade quantities"),
+    ?LOG_DEBUG("computing cascade quantities for ~s", [Account]),
     do_cascade_quantities(Account, <<"services/cascade_quantities">>);
 cascade_quantities(Account=?NE_BINARY, 'true') ->
-    ?LOG_DEBUG("computing reseller cascade quantities"),
+    ?LOG_DEBUG("computing reseller cascade quantities for ~s", [Account]),
     do_cascade_quantities(Account, <<"services/reseller_quantities">>).
 
 -spec do_cascade_quantities(ne_binary(), ne_binary()) -> kz_json:object().
@@ -1346,6 +1350,10 @@ do_cascade_quantities_fold(JObj, AccJObj) ->
           ,{<<"value">>, Quantity}
           ])).
 
+cascade_results(<<"services/cascade_quantities">>, ?A_SUB_ACCOUNT_ID) ->
+    {ok, []};
+cascade_results(<<"services/cascade_quantities">>, ?B_SUB_ACCOUNT_ID) ->
+    {ok, []};
 cascade_results(<<"services/reseller_quantities">>, ?UNRELATED_ACCOUNT_ID) ->
     {ok, []};
 cascade_results(<<"services/reseller_quantities">>, ?A_RESELLER_ACCOUNT_ID) ->
