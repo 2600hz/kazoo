@@ -13,19 +13,19 @@ sup() {
 }
 
 shutdown() {
-    sup -t 1000 init stop
+    sup init stop
 }
 
 script() {
-    sup -t 120000 crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' || shutdown
+    sup crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' || shutdown
     sleep 3
 #    sup kazoo_perf_maintenance json_metrics | python -m json.tool
     sleep 1
 #    sup kazoo_perf_maintenance graphite_metrics 'compte_maitre' 'clu1' 'royaume'
     sleep 1
-    sup -t 600000 kapps_maintenance migrate || shutdown
+    sup kapps_maintenance migrate || shutdown
     sleep 3
-    sup -t 600000 kapps_maintenance migrate_to_4_0 || shutdown
+    sup kapps_maintenance migrate_to_4_0 || shutdown
     sleep 9
     shutdown
 }
