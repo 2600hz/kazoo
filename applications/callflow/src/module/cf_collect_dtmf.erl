@@ -19,6 +19,10 @@
 
 -include("callflow.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
@@ -82,6 +86,16 @@ collect_more_digits(Data, Call, AlreadyCollected, MaxDigits) ->
 -spec truncate_after_terminator(binary(), ne_binaries()) -> binary().
 truncate_after_terminator(AlreadyCollected, Terminators) ->
     hd(binary:split(AlreadyCollected, Terminators)).
+
+-ifdef(TEST).
+truncate_after_terminator_test_() ->
+    [?_assertEqual(<<"1234">>, truncate_after_terminator(<<"1234#456#789">>, [<<"#">>, <<"*">>]))
+    ,?_assertEqual(<<"1234">>, truncate_after_terminator(<<"1234">>, [<<"#">>]))
+    ,?_assertEqual(<<"123">>, truncate_after_terminator(<<"123#">>, [<<"#">>, <<"*">>]))
+    ,?_assertEqual(<<"1">>, truncate_after_terminator(<<"1*2#3">>, [<<"#">>, <<"*">>]))
+    ,?_assertEqual(<<>>, truncate_after_terminator(<<"#234">>, [<<"#">>]))
+    ].
+-endif.
 
 -spec collection_name(kz_json:object()) -> ne_binary().
 collection_name(Data) ->
