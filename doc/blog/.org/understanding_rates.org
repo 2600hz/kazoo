@@ -61,41 +61,43 @@ curl -H "X-Auth-Token: $AUTH_TOKEN" 'http://{SERVER}:8000/v2/tasks?category=rate
 #+END_SRC
 #+BEGIN_SRC json
 {
-    "auth_token": "{ADMIN_AUTH_TOKEN}",
-    "data": {
-        "tasks": {
-            "rates": {
-                "import": {
-                    "description": "Bulk-import rates",
-                    "doc": "Creates rates from file",
-                    "expected_content": "text/csv",
-                    "mandatory": [
-                        "prefix",
-                        "rate_cost"
-                    ],
-                    "optional": [
-                        "ratedeck_name",
-                        "account_id",
-                        "iso_country_code",
-                        "description",
-                        "rate_name",
-                        "rate_surcharge",
-                        "rate_increment",
-                        "rate_minimum",
-                        "direction",
-                        "pvt_rate_cost",
-                        "pvt_rate_surcharge",
-                        "rate_nocharge_time",
-                        "weight",
-                        "rate_version"
-                    ]
-                }
-            }
+  "auth_token": "{ADMIN_AUTH_TOKEN}",
+  "data": {
+    "tasks": {
+      "rates": {
+        "import": {
+          "description": "Bulk-import rates to a specified ratedeck",
+          "doc": "Creates rates from file",
+          "expected_content": "text/csv",
+          "mandatory": [
+            "prefix",
+            "rate_cost"
+          ],
+          "optional": [
+            "account_id",
+            "carrier",
+            "description",
+            "direction",
+            "internal_rate_cost",
+            "iso_country_code",
+            "options",
+            "rate_increment",
+            "rate_minimum",
+            "rate_name",
+            "rate_nocharge_time",
+            "rate_surcharge",
+            "rate_version",
+            "ratedeck_id",
+            "routes",
+            "weight"
+          ]
         }
-    },
-    "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
-    "status": "success"
+      }
+    }
+  },
+  "status": "success",
+  "timestamp": "2017-07-24T21:34:06",
+  "version": "4.0.0"
 }
 #+END_SRC
 

@@ -44,11 +44,11 @@ format_ratedeck_db(?MATCH_RATEDECK_DB_ENCODED(_)=Db) -> Db;
 format_ratedeck_db(?MATCH_RATEDECK_DB_encoded(_)=Db) -> Db;
 format_ratedeck_db(?MATCH_RATEDECK_DB_UNENCODED(RatedeckId)) -> ?ENCODE_RATEDECK_DB(RatedeckId);
 format_ratedeck_db(<<_/binary>> = RatedeckId) ->
-    ?ENCODE_RATEDECK_DB(RatedeckId).
+    ?ENCODE_RATEDECK_DB(kz_http_util:urlencode(RatedeckId)).
 
 -spec format_ratedeck_id(ne_binary()) -> ne_binary().
 format_ratedeck_id(?KZ_RATES_DB) -> ?KZ_RATES_DB;
-format_ratedeck_id(?MATCH_RATEDECK_DB_ENCODED(Id)) -> Id;
-format_ratedeck_id(?MATCH_RATEDECK_DB_encoded(Id)) -> Id;
-format_ratedeck_id(?MATCH_RATEDECK_DB_UNENCODED(Id)) -> Id;
+format_ratedeck_id(?MATCH_RATEDECK_DB_ENCODED(Id)) -> kz_http_util:urldecode(Id);
+format_ratedeck_id(?MATCH_RATEDECK_DB_encoded(Id)) -> kz_http_util:urldecode(Id);
+format_ratedeck_id(?MATCH_RATEDECK_DB_UNENCODED(Id)) -> kz_http_util:urldecode(Id);
 format_ratedeck_id(<<_/binary>> = Id) -> Id.

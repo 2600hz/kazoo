@@ -11,13 +11,13 @@
        ).
 
 -define(ENCODE_RATEDECK_DB(RatedeckId)
-       ,<<"ratedeck%2F", RatedeckId/binary>>
+       ,<<"ratedeck%2F", (RatedeckId)/binary>>
        ).
 -define(encode_RATEDECK_DB(RatedeckId)
-       ,<<"ratedeck%2f", RatedeckId/binary>>
+       ,<<"ratedeck%2f", (RatedeckId)/binary>>
        ).
 -define(UNENCODED_RATEDECK_DB(RatedeckId)
-       ,<<"ratedeck/", RatedeckId/binary>>
+       ,<<"ratedeck/", (RatedeckId)/binary>>
        ).
 
 -define(KZD_RATEDECK_HRL, 'true').

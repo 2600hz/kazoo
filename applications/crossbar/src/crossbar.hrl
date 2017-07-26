@@ -106,6 +106,7 @@
                          ,'cb_services'
                          ,'cb_simple_authz'
                          ,'cb_sms'
+                         ,'cb_tasks'
                          ,'cb_templates'
                          ,'cb_temporal_rules'
                          ,'cb_temporal_rules_sets'

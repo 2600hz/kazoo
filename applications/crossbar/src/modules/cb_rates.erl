@@ -172,7 +172,9 @@ validate_rate(Context, Id, ?HTTP_POST) ->
 validate_rate(Context, Id, ?HTTP_PATCH) ->
     validate_patch(Id, cb_context:set_account_db(Context, ?KZ_RATES_DB));
 validate_rate(Context, Id, ?HTTP_DELETE) ->
-    read(Id, cb_context:set_account_db(Context, ?KZ_RATES_DB)).
+    RatedeckId = cb_context:req_value(Context, <<"ratedeck_id">>, ?KZ_RATES_DB),
+
+    read(Id, cb_context:set_account_db(Context, kzd_ratedeck:format_ratedeck_db(RatedeckId))).
 
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().

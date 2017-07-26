@@ -61,7 +61,7 @@ pad_left(Bin, _Size, _Value) -> Bin.
 %% @end
 %%--------------------------------------------------------------------
 -spec join([text() | atom(),...]) -> binary().
--spec join([text() | atom(),...], iodata()) -> binary().
+-spec join([text() | atom(),...], iodata() | char()) -> binary().
 
 join(Bins) -> join(Bins, <<", ">>).
 join([], _) -> <<>>;

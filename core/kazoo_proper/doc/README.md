@@ -16,3 +16,7 @@ Sequential tests: `proper:quickcheck(pqc_cb_phone_numbers:correct()).`
 Parallel tests: `proper:quickcheck(pqc_cb_phone_numbers:correct_parallel()).`
 
 Cleanup deleted account docs: `kt_cleanup:cleanup_soft_deletes(<<"accounts">>).`
+
+### [Ratedecks](src/pqc_cb_rates.erl)
+
+Tests the ratedeck upload task and rating a DID against account-vs-system ratedecks.

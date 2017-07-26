@@ -4,7 +4,7 @@
         ,v2_base_url/0
         ,auth_account_id/1
 
-        ,request_headers/1
+        ,request_headers/1, request_headers/2
         ,create_envelope/1, create_envelope/2
         ,make_request/4, make_request/5
         ]).
@@ -20,13 +20,12 @@
              ,response/0
              ]).
 
--define(API_BASE, "http://localhost:8000/v2").
--define(API_KEY, <<"df52943da7119a3fc901dcadba313c0689d6d883dd26f5fa84abbc44df6c30d1">>).
+-define(API_BASE, "http://" ++ net_adm:localhost() ++ ":8000/v2").
 
 -spec authenticate() -> state().
 authenticate() ->
-    URL = ?API_BASE ++ "/api_auth",
-    Data = kz_json:from_list([{<<"api_key">>, ?API_KEY}]),
+    URL =  ?API_BASE ++ "/api_auth",
+    Data = kz_json:from_list([{<<"api_key">>, api_key()}]),
     Envelope = create_envelope(Data),
     Resp = make_request([201]
                        ,fun kz_http:put/3
@@ -35,6 +34,32 @@ authenticate() ->
                        ,kz_json:encode(Envelope)
                        ),
     create_api_state(Resp).
+
+-spec api_key() -> ne_binary().
+-spec api_key(ne_binary()) -> ne_binary().
+api_key() ->
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} ->
+            api_key(MasterAccountId);
+        {'error', _} ->
+            lager:error("failed to find master account, please create an account first"),
+            throw('no_master_account')
+    end.
+
+api_key(MasterAccountId) ->
+    case kz_account:fetch(MasterAccountId) of
+        {'ok', MasterAccount} ->
+            APIKey = kz_account:api_key(MasterAccount),
+            case is_binary(APIKey) of
+                'true' -> APIKey;
+                'false' ->
+                    lager:error("failed to fetch api key for ~s", [MasterAccountId]),
+                    throw('missing_api_key')
+            end;
+        {'error', _E} ->
+            lager:error("failed to fetch master account ~s: ~p", [MasterAccountId, _E]),
+            throw('missing_master_account')
+    end.
 
 -spec create_api_state(binary()) -> map().
 create_api_state(RespJSON) ->
@@ -51,18 +76,26 @@ v2_base_url() -> ?API_BASE.
 auth_account_id(#{'account_id' := AccountId}) -> AccountId.
 
 -spec request_headers(state()) -> kz_proplist().
+-spec request_headers(state(), kz_proplist()) -> kz_proplist().
+request_headers(API) ->
+    request_headers(API, []).
+
 request_headers(#{'auth_token' := AuthToken
                  ,'request_id' := RequestId
-                 }) ->
-    [{"x-auth-token", kz_term:to_list(AuthToken)}
-    ,{"x-request-id", kz_term:to_list(RequestId) ++ pid_to_list(self())}
-     | default_request_headers()
-    ].
+                 }
+               ,RequestHeaders
+               ) ->
+    props:set_values(RequestHeaders
+                    ,[{<<"x-auth-token">>, kz_term:to_list(AuthToken)}
+                     ,{<<"x-request-id">>, kz_term:to_list(RequestId) ++ pid_to_list(self())}
+                      | default_request_headers()
+                     ]
+                    ).
 
 -spec default_request_headers() -> kz_proplist().
 default_request_headers() ->
-    [{"content-type", "application/json"}
-    ,{"accept", "application/json"}
+    [{<<"content-type">>, <<"application/json">>}
+    ,{<<"accept">>, <<"application/json">>}
     ].
 
 -type expected_codes() :: [integer()].
@@ -70,11 +103,13 @@ default_request_headers() ->
                     {'error', binary()}.
 
 -spec make_request(expected_codes(), fun(), string(), kz_proplist()) -> response().
--spec make_request(expected_codes(), fun(), string(), kz_proplist(), binary()) -> response().
+-spec make_request(expected_codes(), fun(), string(), kz_proplist(), iodata()) -> response().
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders) ->
+    %% io:format('user', "~p: ~p~n~p~n", [HTTP, URL, RequestHeaders]),
     handle_response(ExpectedCodes, HTTP(URL, RequestHeaders)).
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders, RequestBody) ->
-    handle_response(ExpectedCodes, HTTP(URL, RequestHeaders, RequestBody)).
+    %% io:format('user', "~p: ~p~n~p~n~p~n", [HTTP, URL, RequestHeaders, RequestBody]),
+    handle_response(ExpectedCodes, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
 
 -spec create_envelope(kz_json:object()) ->
                              kz_json:object().

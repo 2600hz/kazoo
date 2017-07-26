@@ -199,8 +199,9 @@ db_url(#server{}=Conn, DbName) ->
 %%------------------------------------------------------------------------------
 -spec get_db(kz_data:connection(), ne_binary()) -> db().
 -spec get_db(kz_data:connection(), ne_binary(), couch_version()) -> db().
-get_db(#server{options=Options}=Conn, DbName) ->
-    get_db(Conn, DbName, props:get_value('driver_version', Options)).
+get_db(Conn, DbName) ->
+    get_db(Conn, DbName, kazoo_couch:server_version(Conn)).
+
 get_db(Conn, DbName, Driver) ->
     ConnToUse =
         case is_admin_db(DbName, Driver) of
@@ -228,23 +229,30 @@ maybe_use_admin_conn(#server{options=Options}=Conn) ->
         AdminConn -> AdminConn
     end.
 
-maybe_use_admin_port(#server{url=Host
-                            ,options=Options
-                            }=Conn) ->
+maybe_use_admin_port(#server{options=Options}=Conn) ->
     ConnectionMap = props:get_value('connection_map', Options, #{}),
     ConnMapOptions = maps:get('options', ConnectionMap),
     case props:get_value('admin_port', ConnMapOptions) of
-        'undefined' -> Conn;
+        'undefined' ->
+            APIPort = maps:get('port', ConnectionMap),
+            AdminPort = APIPort + 2,
+            change_connection_to_admin(Conn, APIPort, AdminPort);
         AdminPort ->
             APIPort = maps:get('port', ConnectionMap),
-
-            ConnMapOptions1 = props:set_value('port', AdminPort, ConnMapOptions),
-            Options1 = props:set_value('connection_map', ConnectionMap#{'options'=>ConnMapOptions1}, Options),
-
-            Conn#server{url=binary:replace(Host, kz_term:to_binary(APIPort), kz_term:to_binary(AdminPort))
-                       ,options=Options1
-                       }
+            change_connection_to_admin(Conn, APIPort, AdminPort)
     end.
+
+change_connection_to_admin(#server{url=Host
+                                  ,options=Options
+                                  }=Conn, APIPort, AdminPort) ->
+    ConnectionMap = props:get_value('connection_map', Options, #{}),
+    ConnMapOptions = maps:get('options', ConnectionMap),
+
+    ConnMapOptions1 = props:set_value('port', AdminPort, ConnMapOptions),
+    Options1 = props:set_value('connection_map', ConnectionMap#{'options'=>ConnMapOptions1}, Options),
+    Conn#server{url=binary:replace(Host, kz_term:to_binary(APIPort), kz_term:to_binary(AdminPort))
+               ,options=Options1
+               }.
 
 -spec format_error(any()) -> any().
 format_error({'failure', 404}) -> 'not_found';
