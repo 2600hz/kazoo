@@ -45,6 +45,7 @@ status_table_opts() ->
 
 -spec agent_ready(ne_binary(), ne_binary()) -> 'ok'.
 agent_ready(AccountId, AgentId) ->
+    log_state_change(AccountId, AgentId, 'ready'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -58,6 +59,7 @@ agent_ready(AccountId, AgentId) ->
 
 -spec agent_logged_in(ne_binary(), ne_binary()) -> 'ok'.
 agent_logged_in(AccountId, AgentId) ->
+    log_agent_event(AccountId, AgentId, 'logged_in'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -71,6 +73,7 @@ agent_logged_in(AccountId, AgentId) ->
 
 -spec agent_logged_out(ne_binary(), ne_binary()) -> 'ok'.
 agent_logged_out(AccountId, AgentId) ->
+    log_agent_event(AccountId, AgentId, 'logged_out'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -85,6 +88,7 @@ agent_logged_out(AccountId, AgentId) ->
 -spec agent_pending_logged_out(ne_binary(), ne_binary()) ->
                                       'ok'.
 agent_pending_logged_out(AccountId, AgentId) ->
+    log_agent_event(AccountId, AgentId, 'pending_logged_out'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -103,6 +107,7 @@ agent_pending_logged_out(AccountId, AgentId) ->
 agent_connecting(AccountId, AgentId, CallId) ->
     agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined').
 agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
+    log_state_change(AccountId, AgentId, 'ringing'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -124,6 +129,7 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
 agent_connected(AccountId, AgentId, CallId) ->
     agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined').
 agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
+    log_state_change(AccountId, AgentId, 'answered'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -140,6 +146,7 @@ agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
 
 -spec agent_wrapup(ne_binary(), ne_binary(), integer()) -> 'ok'.
 agent_wrapup(AccountId, AgentId, WaitTime) ->
+    log_state_change(AccountId, AgentId, 'wrapup'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -156,6 +163,7 @@ agent_wrapup(AccountId, AgentId, WaitTime) ->
 agent_paused(AccountId, AgentId, 'undefined') ->
     lager:debug("undefined pause time for ~s(~s)", [AgentId, AccountId]);
 agent_paused(AccountId, AgentId, PauseTime) ->
+    log_state_change(AccountId, AgentId, 'paused', [{<<"pause_time">>, PauseTime}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -170,6 +178,7 @@ agent_paused(AccountId, AgentId, PauseTime) ->
 
 -spec agent_outbound(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 agent_outbound(AccountId, AgentId, CallId) ->
+    log_state_change(AccountId, AgentId, 'outbound', [{<<"call_id">>, CallId}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -443,3 +452,24 @@ maybe_archive_status_data(Srv, Match) ->
 archive_status_fold(#status_stat{account_id=AccountId}=Stat, Acc) ->
     Doc = status_stat_to_doc(Stat),
     dict:update(AccountId, fun(L) -> [Doc | L] end, [Doc], Acc).
+
+
+log_state_change(AccountId, AgentId, NewStateName) ->
+    log_state_change(AccountId, AgentId, NewStateName, []).
+log_state_change(AccountId, AgentId, NewStateName, ExtraProps) ->
+    Tags = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
+                                                    ,{<<"agent_id">>, AgentId}
+                                                    ,{<<"transition_to">>, NewStateName}
+                                                    %%,{<<"reason">>, Reason}
+                                                     | ExtraProps])),
+    kz_edr:log_event(<<"queue_agent">>, <<"state_transition">>, Tags, ?APP_NAME, ?APP_VERSION).
+
+log_agent_event(AccountId, AgentId, Event) ->
+    log_agent_event(AccountId, AgentId, Event, []).
+log_agent_event(AccountId, AgentId, Event, ExtraProps) ->
+    Tags = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
+                                                    ,{<<"agent_id">>, AgentId}
+                                                    ,{<<"event">>, Event}
+                                                    %%,{<<"reason">>, Reason}
+                                                     | ExtraProps])),
+    kz_edr:log_event(<<"queue_agent">>, <<"event">>, Tags, ?APP_NAME, ?APP_VERSION).

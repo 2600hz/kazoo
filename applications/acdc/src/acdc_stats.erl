@@ -71,6 +71,9 @@
                   ,api_binary()
                   ) -> 'ok' | {'error', any()}.
 call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
+    log_queue_event(AccountId, QueueId, CallId, 'call_waiting', [{<<"caller_id_name">>, CallerIdName}
+                                                                ,{<<"caller_id_number">>, CallerIdNumber}
+                                                                ]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -85,6 +88,7 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
 
 -spec call_abandoned(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_abandoned(AccountId, QueueId, CallId, Reason) ->
+    log_queue_event(AccountId, QueueId, CallId, 'abandoned', [{<<"reason">>, Reason}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -97,6 +101,7 @@ call_abandoned(AccountId, QueueId, CallId, Reason) ->
 
 -spec call_handled(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_handled(AccountId, QueueId, CallId, AgentId) ->
+    log_queue_event(AccountId, QueueId, CallId, 'answered', [{<<"agent_id">>, AgentId}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -109,6 +114,7 @@ call_handled(AccountId, QueueId, CallId, AgentId) ->
 
 -spec call_missed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
+    log_queue_event(AccountId, QueueId, CallId, 'missed', [{<<"reason">>, ErrReason}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -122,6 +128,9 @@ call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
 
 -spec call_processed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
+    log_queue_event(AccountId, QueueId, CallId, 'answered', [{<<"agent_id">>, AgentId}
+                                                            ,{<<"hung_up_by">>, Initiator}
+                                                            ]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -910,3 +919,13 @@ create_call_stat(Id, JObj, Props) ->
 -spec update_call_stat(ne_binary(), updates(), kz_proplist()) -> 'ok'.
 update_call_stat(Id, Updates, Props) ->
     gen_listener:cast(props:get_value('server', Props), {'update_call', Id, Updates}).
+
+%%log_queue_event(AccountId, QueueId, CallId, EventName) ->
+%%    log_queue_event(AccountId, QueueId, CallId, EventName, []).
+log_queue_event(AccountId, QueueId, CallId, EventName, ExtraProps) ->
+    Tags = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
+                                                    ,{<<"queue_id">>, QueueId}
+                                                    ,{<<"call_id">>, CallId}
+                                                    ,{<<"event">>, EventName}
+                                                     | ExtraProps])),
+    kz_edr:log_event(<<"queue_call">>, <<"event">>, Tags, ?APP_NAME, ?APP_VERSION).
