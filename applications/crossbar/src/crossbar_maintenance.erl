@@ -496,6 +496,7 @@ validate_account(JObj, Context) ->
                                   ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, []}]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                  ,{fun cb_context:set_api_version/2, ?VERSION_2}
                                   ])
               ],
     Context1 = crossbar_bindings:fold(<<"v2_resource.validate.accounts">>, Payload),
@@ -524,6 +525,7 @@ validate_user(JObj, Context) ->
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
                                   ,{fun cb_context:set_doc/2, 'undefined'}
+                                  ,{fun cb_context:set_resp_data/2, 'undefined'}
                                   ]
                                  )
               ],
