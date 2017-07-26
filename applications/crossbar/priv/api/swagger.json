@@ -30532,6 +30532,15 @@
             "required": true,
             "type": "string"
         },
+        "REFRESH_TOKEN": {
+            "description": "authentication refresh token",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "REFRESH_TOKEN",
+            "required": true,
+            "type": "string"
+        },
         "REPORT_ID": {
             "in": "path",
             "maxLength": 39,
@@ -41565,6 +41574,38 @@
                 }
             },
             "get": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/token_auth/refresh": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/token_auth/refresh_tokens": {
+            "delete": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/token_auth/refresh_tokens/{REFRESH_TOKEN}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/REFRESH_TOKEN"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "request succeeded"

@@ -135,6 +135,7 @@
                     ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: ne_binaries() %% gzip and identity
                     ,auth_token = 'undefined' :: api_ne_binary()
                     ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'oauth' | 'unknown'
+                    ,auth_refresh_token = 'undefined' :: api_ne_binary()
                     ,auth_account_id :: api_ne_binary()
                     ,auth_doc :: api_object()
                     ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS

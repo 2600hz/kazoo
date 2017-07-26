@@ -953,6 +953,13 @@ def_path_param(<<"{PHONE_NUMBER}">>=P) ->
      | base_path_param(P)
     ];
 
+def_path_param(<<"{REFRESH_TOKEN}">>=P) ->
+    [{<<"minLength">>, 32}
+    ,{<<"maxLength">>, 32}
+    ,{<<"description">>, <<"authentication refresh token">>}
+     | base_path_param(P)
+    ];
+
 def_path_param(<<"{SCHEMA_NAME}">>=P) ->
     [{<<"pattern">>, <<"^[a-z0-9._-]+\$">>}
      | base_path_param(P)

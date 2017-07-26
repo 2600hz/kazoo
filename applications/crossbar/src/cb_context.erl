@@ -46,6 +46,7 @@
         ,account_doc/1
         ,auth_token_type/1, set_auth_token_type/2
         ,auth_token/1, set_auth_token/2
+        ,auth_refresh_token/1, set_auth_refresh_token/2
         ,auth_doc/1, set_auth_doc/2
         ,auth_account_id/1, set_auth_account_id/2
         ,auth_account_doc/1
@@ -181,6 +182,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec is_authenticated(context()) -> boolean().
 -spec auth_token_type(context()) -> 'x-auth-token' | 'basic' | 'oauth' | 'unknown'.
 -spec auth_token(context()) -> api_ne_binary().
+-spec auth_refresh_token(context()) -> api_ne_binary().
 -spec auth_doc(context()) -> api_object().
 -spec auth_account_id(context()) -> api_ne_binary().
 -spec auth_user_id(context()) -> api_ne_binary().
@@ -274,6 +276,7 @@ is_account_admin(Context) ->
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
+auth_refresh_token(#cb_context{auth_refresh_token=AuthRefreshToken}) -> AuthRefreshToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
 auth_account_doc(Context) ->
@@ -374,6 +377,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_user_id(context(), ne_binary()) -> context().
 -spec set_device_id(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
+-spec set_auth_refresh_token(context(), ne_binary()) -> context().
 -spec set_auth_doc(context(), kz_json:object()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
 -spec set_req_verb(context(), http_method()) -> context().
@@ -443,6 +447,8 @@ set_auth_token_type(#cb_context{}=Context, AuthTokenType) ->
     Context#cb_context{auth_token_type=AuthTokenType}.
 set_auth_token(#cb_context{}=Context, AuthToken) ->
     Context#cb_context{auth_token=AuthToken}.
+set_auth_refresh_token(#cb_context{}=Context, AuthRefreshToken) ->
+    Context#cb_context{auth_refresh_token=AuthRefreshToken}.
 set_auth_doc(#cb_context{}=Context, AuthDoc) ->
     Context#cb_context{auth_doc=AuthDoc}.
 set_auth_account_id(#cb_context{}=Context, AuthBy) ->

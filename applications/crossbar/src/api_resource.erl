@@ -146,11 +146,12 @@ rest_init(Req0, Opts) ->
             {'ok', Req9, Context2};
         {Context1, Req8} ->
             {Req9, Context2} = api_util:get_auth_token(Req8, Context1),
-            {Req10, Context3} = api_util:get_pretty_print(Req9, Context2),
-            Event = api_util:create_event_name(Context3, <<"init">>),
-            {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
+            {Req10, Context3} = api_util:get_auth_refresh_token(Req9, Context2),
+            {Req11, Context4} = api_util:get_pretty_print(Req10, Context3),
+            Event = api_util:create_event_name(Context4, <<"init">>),
+            {Context5, _} = crossbar_bindings:fold(Event, {Context4, Opts}),
             lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
-            {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req10), Context4}
+            {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req11), Context5}
     end.
 
 -spec metrics() -> {non_neg_integer(), non_neg_integer()}.

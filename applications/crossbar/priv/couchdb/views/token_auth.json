@@ -7,6 +7,9 @@
         },
         "listing_by_mtime": {
             "map": "function(doc) { emit(doc.modified || doc.pvt_modified, doc._rev); }"
+        },
+        "refresh_tokens_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'refresh_token' || doc.pvt_deleted) return; emit([doc.account_id, doc.owner_id], doc._id); }"
         }
     }
 }

@@ -20,6 +20,7 @@
         ,get_req_data/2
         ,get_http_verb/2
         ,get_auth_token/2
+        ,get_auth_refresh_token/2
         ,get_pretty_print/2
         ,is_authentic/2, is_early_authentic/2
         ,is_permitted/2
@@ -812,6 +813,22 @@ get_auth_token(Req0, Context) ->
         {Token, Req1} ->
             lager:debug("using auth token from header"),
             {Req1, set_auth_context(Context, Token, 'x-auth-token')}
+    end.
+
+-spec get_auth_refresh_token(cowboy_req:req(), cb_context:context()) ->
+                                    {cowboy_req:req(), cb_context:context()}.
+get_auth_refresh_token(Req0, Context) ->
+    case cowboy_req:header(<<"x-auth-refresh-token">>, Req0) of
+        {'undefined', Req1} ->
+            case cb_context:req_value(Context, <<"auth_refresh_token">>) of
+                'undefined' -> {Req1, Context};
+                Token ->
+                    lager:debug("using refresh token from req data"),
+                    {Req1, cb_context:set_auth_refresh_token(Context, Token)}
+            end;
+        {Token, Req1} ->
+            lager:debug("using refresh token from header"),
+            {Req1, cb_context:set_auth_refresh_token(Context, Token)}
     end.
 
 -spec get_authorization_token(cowboy_req:req(), cb_context:context()) ->

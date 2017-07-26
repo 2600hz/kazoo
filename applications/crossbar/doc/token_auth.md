@@ -8,6 +8,10 @@ Once you have an authentication token, you can access various Crossbar resource 
 
 Authentication tokens refresh their pvt\_modified timestamp each time they are used in an API request. Once an authentication token's pvt\_modified timestamp has passed a configurable timeout (usually one hour), it is automatically cleaned up by the system and no longer valid.
 
+When you request an authentication token, you will also receive a refresh token. This refresh token is typically valid for a longer period (usually a day) but it only useable once. Refresh tokens can be swapped for a new, valid authentication token.
+
+Users can revoke one or all of their active refresh tokens in case of compromise. The benefit of refresh tokens is that username/password credential storage is no longer necessary on a client that needs a long-term session.
+
 #### Token Restrictions
 
 The authentication token can be created with restrictions on what resource URIs (and HTTP methods) can be accessed by the requestor. This payload is added to the authentication payload used in any of the authentication methods provided ([User](./user_authentication.md), [API](./api_authentication.md), etc).
@@ -128,6 +132,7 @@ curl -v -X GET \
         "account_name": "{ACCOUNT_NAME}",
         "apps": [
         ],
+        "auth_refresh_token": "{REFRESH_TOKEN}",
         "id": "{AUTH_TOKEN}",
         "is_reseller": false,
         "language": "en-us",
@@ -137,6 +142,86 @@ curl -v -X GET \
     },
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+#### Exchange a refresh token for an authentication token
+
+> POST /v2/token_auth/refresh
+
+This endpoint will return a brand new authentication payload in exchange for a valid refresh token (see [User Authentication](./user_authentication.md) and [API Authentication](./api_authentication.md)).
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Refresh-Token: {REFRESH_TOKEN}" \
+    http://{SERVER}:8000/v2/token_auth/refresh
+```
+
+##### Response when OK
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "account_id": "{ACCOUNT_ID}",
+        "account_name": "{ACCOUNT_NAME}",
+        "apps": [
+        ],
+        "auth_refresh_token": "{REFRESH_TOKEN}",
+        "id": "{AUTH_TOKEN}",
+        "is_reseller": false,
+        "language": "en-us",
+        "method": "cb_user_auth",
+        "owner_id": "8e248327b85591955749e53ea45b6baa",
+        "reseller_id": "6b71cb72c876b5b1396a335f8f8a2594"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+#### Revoke a refresh token
+
+> DELETE /v2/token_auth/refresh_tokens/{REFRESH_TOKEN}
+
+An authenticated user can revoke one of their access tokens with a DELETE to this endpoint - with a path parameter of the token to be deleted.
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/token_auth/refresh_tokens/{REFRESH_TOKEN}
+```
+
+##### Response when OK
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+#### Revoke all user's refresh tokens
+
+> DELETE /v2/token_auth/refresh_tokens
+
+An authenticated user can revoke all of their access tokens with a DELETE to this endpoint.
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/token_auth/refresh_tokens
+```
+
+##### Response when OK
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "request_id": "{REQUEST_ID}",
     "status": "success"
 }
 ```
