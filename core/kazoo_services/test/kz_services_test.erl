@@ -451,3 +451,13 @@ activation_charges_test_() ->
     ,?_assertEqual(0.0, kz_services:activation_charges(<<"ips">>, <<"dedicated">>, RA))
     ,?_assertEqual(0.0, kz_services:activation_charges(<<"ips">>, <<"blabla">>, RA))
     ].
+
+select_bookkeeper_test_() ->
+    Local = kz_bookkeeper_local,
+    [?_assertEqual(Local, kz_services:select_bookkeeper(?A_MASTER_ACCOUNT_ID))
+    ,?_assertEqual(Local, kz_services:select_bookkeeper(?A_RESELLER_ACCOUNT_ID))
+    ,?_assertEqual(Local, kz_services:select_bookkeeper(?A_SUB_ACCOUNT_ID))
+    ,?_assertEqual(Local, kz_services:select_bookkeeper(?UNRELATED_ACCOUNT_ID))
+    ,?_assertEqual(Local, kz_services:select_bookkeeper(kz_services:fetch(?A_SUB_ACCOUNT_ID)))
+    ,?_assertEqual(Local, kz_services:select_bookkeeper(kz_services:fetch(?UNRELATED_ACCOUNT_ID)))
+    ].

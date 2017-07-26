@@ -618,24 +618,24 @@ select_bookkeeper(#kz_services{billing_id = BillingId
                  ) ->
     BillingIdReseller = get_reseller_id(BillingId),
     {'ok', MasterAccountId} = master_account_id(),
-    case BillingIdReseller =/= MasterAccountId of
-        'true' ->
-            case BillingIdReseller == get_reseller_id(AccountId) of
+    case BillingIdReseller =:= MasterAccountId of
+        true -> ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER;
+        false ->
+            case BillingIdReseller =:= get_reseller_id(AccountId) of
                 'true' -> select_bookkeeper(AccountId);
                 'false' -> 'kz_bookkeeper_local'
-            end;
-        'false' -> ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER
+            end
     end;
 select_bookkeeper(AccountId) ->
     ResellerId = get_reseller_id(AccountId),
     {'ok', MasterAccountId} = master_account_id(),
-    case ResellerId =/= MasterAccountId of
-        'true' ->
+    case ResellerId =:= MasterAccountId of
+        true -> ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER;
+        false ->
             case ?MAYBE_RESELLER_BOOKKEEPER_LOOKUP of
                 'true' -> ?KZ_LOOKUP_BOOKKEEPER(ResellerId);
                 'false' -> 'kz_bookkeeper_local'
-            end;
-        'false' -> ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -650,7 +650,9 @@ check_bookkeeper(BillingId, Amount) ->
         'kz_bookkeeper_local' ->
             case wht_util:current_balance(BillingId) of
                 {'ok', Balance} -> Balance - Amount >= 0;
-                {'error', _} -> false
+                {'error', _R} ->
+                    ?LOG_DEBUG("error checking local bookkeeper balance: ~p", [_R]),
+                    false
             end;
         Bookkeeper ->
             CurrentStatus = current_service_status(BillingId),
