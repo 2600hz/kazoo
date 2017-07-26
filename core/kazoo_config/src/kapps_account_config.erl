@@ -193,7 +193,8 @@ get_from_strategy_cache(Strategy, AccountId, Category, false) ->
 -spec get_global_from_doc(ne_binary(), kz_json:path(), kz_json:api_json_term(), kz_json:object()) -> kz_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
     case kz_json:get_value(Key, JObj) of
-        undefined -> kapps_config:get(Category, Key, Default);
+        undefined ->
+            kapps_config:get(Category, Key, Default);
         V -> V
     end.
 
@@ -390,13 +391,13 @@ walk_the_walk(#{account_id := AccountId
                ,results := Results
                }=Map) ->
     case Fun(AccountId, Category) of
-        {ok, JObj} when ShouldMerge ->
+        {ok, JObj} when not ShouldMerge ->
             %% requester does not want merge result from ancestors and system
             %% returning the result of the first function
             walk_the_walk(Map#{results := [JObj], strategy_funs := []});
-        {ok, [JObj]} ->
+        {ok, JObjs} when is_list(JObjs) ->
             %% the function returns list (load from ancestor), forcing merge
-            walk_the_walk(Map#{results := lists:flatten([JObj|Results]), strategy_funs := Funs, merge := true});
+            walk_the_walk(Map#{results := lists:flatten([JObjs|Results]), strategy_funs := Funs, merge := true});
         {ok, JObj} ->
             %% requester wants merge result from ancestors and system
             walk_the_walk(Map#{results := [JObj|Results], strategy_funs := Funs});
@@ -410,12 +411,13 @@ maybe_merge_results(#{account_id := AccountId
                      ,category := Category
                      ,results := JObjs
                      }, true) ->
-    Result = kz_json:merge(lists:reverse(JObjs)),
+    Result = kz_json:merge([kz_doc:public_fields(J) || J <- JObjs]),
     CacheKey = strategy_cache_key(AccountId, Category, Strategy),
     Origins = lists:foldl(fun config_origins/2, [], JObjs),
-    kz_cache:store(?KAPPS_CONFIG_CACHE, CacheKey, Result, [{origin, Origins}]),
+    kz_cache:store_local(?KAPPS_CONFIG_CACHE, CacheKey, Result, [{origin, Origins}]),
     {ok, Result};
-maybe_merge_results(#{results := JObjs}, false) -> {ok, lists:last(JObjs)}.
+maybe_merge_results(#{results := JObjs}, false) ->
+    {ok, lists:last(JObjs)}.
 
 -spec config_origins(kz_json:object(), list()) -> list().
 config_origins(Doc, Acc) ->
