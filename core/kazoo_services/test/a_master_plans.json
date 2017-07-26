@@ -72,6 +72,7 @@
         },
         "phone_numbers": {
             "did_us": {
+                "activation_charge": 42,
                 "discounts": {
                     "cumulative": {
                         "maximum": 2,

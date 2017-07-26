@@ -180,7 +180,7 @@ increase_quantities(#state{account_plan = _AccountPlan
                           ,services = Services
                           }) ->
     ItemQuantity = kz_services:quantity(?CAT, ?ITEM, Services),
-    Increment = rand:uniform(10),
+    Increment = 1.0 * rand:uniform(10), %% To make sure this turns into an int
     UpdatedServices = kz_services:update(?CAT, ?ITEM, ItemQuantity + Increment, Services),
     UpdatedItemQuantity = kz_services:quantity(?CAT, ?ITEM, UpdatedServices),
     DiffItemQuantity = kz_services:diff_quantity(?CAT, ?ITEM, UpdatedServices),
@@ -188,10 +188,10 @@ increase_quantities(#state{account_plan = _AccountPlan
      ,?_assertEqual(9, ItemQuantity)
      }
     ,{"Verify incrementing the quantity"
-     ,?_assertEqual(ItemQuantity + Increment, UpdatedItemQuantity)
+     ,?_assertEqual(ItemQuantity + round(Increment), UpdatedItemQuantity)
      }
     ,{"Verify the diff of the quantity"
-     ,?_assertEqual(Increment, DiffItemQuantity)
+     ,?_assertEqual(round(Increment), DiffItemQuantity)
      }
      | category_quantities(Services, UpdatedServices, Increment)
     ].
@@ -210,7 +210,7 @@ category_quantities(CurrentServices, UpdatedServices, Increment) ->
      ,?_assertEqual(10, CategoryQuantity)
      }
     ,{"Verify updated category quantities"
-     ,?_assertEqual(CategoryQuantity + Increment, UpdatedCategoryQuantity)
+     ,?_assertEqual(CategoryQuantity + round(Increment), UpdatedCategoryQuantity)
      }
     ,{"Verify updated category quantities minus toll_free numbers"
      ,?_assertEqual(MinusTollFree, UpdatedCategoryQuantity-TollFreeQuantity)
@@ -426,7 +426,9 @@ set_billing_id_test_() ->
     SA = ?A_SUB_ACCOUNT_ID,
     ServicesReseller = kz_services:fetch(RA),
     [?_assertEqual(RA, kz_services:get_billing_id(ServicesReseller))
+    ,?_assertEqual(RA, kz_services:get_billing_id(RA))
     ,?_assertEqual(SA, kz_services:get_billing_id(SA))
+    ,?_assertEqual(MA, kz_services:get_billing_id(MA))
     ,?_assertEqual(?UNRELATED_ACCOUNT_ID, kz_services:get_billing_id(?UNRELATED_ACCOUNT_ID))
     ,?_assertEqual(undefined, kz_services:set_billing_id(undefined, ServicesReseller))
     ,?_assertEqual(undefined, kz_services:set_billing_id(RA, ServicesReseller))
@@ -440,4 +442,12 @@ set_billing_id_test_() ->
     ,?_assertThrow({'invalid_billing_id', <<"Requested billing id is not the parent of this account">>}
                   ,kz_services:set_billing_id(MA, SA)
                   )
+    ].
+
+activation_charges_test_() ->
+    RA = ?A_RESELLER_ACCOUNT_ID,
+    [?_assertEqual(42.0, kz_services:activation_charges(<<"phone_numbers">>, <<"did_us">>, RA))
+    ,?_assertEqual(10.0, kz_services:activation_charges(<<"number_services">>, <<"port">>, RA))
+    ,?_assertEqual(0.0, kz_services:activation_charges(<<"ips">>, <<"dedicated">>, RA))
+    ,?_assertEqual(0.0, kz_services:activation_charges(<<"ips">>, <<"blabla">>, RA))
     ].

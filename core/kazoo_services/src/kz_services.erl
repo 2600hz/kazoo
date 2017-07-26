@@ -564,15 +564,16 @@ update(CategoryId, ItemId, Quantity, #kz_services{updates = JObj
 %% @end
 %%--------------------------------------------------------------------
 -spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary() | kz_service_plans:plans()) ->
-                                number().
-activation_charges(CategoryId, ItemId, #kz_services{jobj = ServicesJObj}) ->
-    Plans = kz_service_plans:from_service_json(ServicesJObj),
-    kz_service_plans:activation_charges(CategoryId, ItemId, Plans);
+                                float().
 activation_charges(CategoryId, ItemId, Plans)
   when is_list(Plans) ->
     kz_service_plans:activation_charges(CategoryId, ItemId, Plans);
+activation_charges(CategoryId, ItemId, #kz_services{jobj = ServicesJObj}) ->
+    Plans = kz_service_plans:from_service_json(ServicesJObj),
+    activation_charges(CategoryId, ItemId, Plans);
 activation_charges(CategoryId, ItemId, Account=?NE_BINARY) ->
-    activation_charges(CategoryId, ItemId, fetch(Account)).
+    Services = fetch(Account),
+    activation_charges(CategoryId, ItemId, Services).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -580,12 +581,12 @@ activation_charges(CategoryId, ItemId, Account=?NE_BINARY) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(services(), kz_transactions:kz_transactions()) -> atom().
-commit_transactions(#kz_services{billing_id=BillingId}=Services, Activations) ->
+-spec commit_transactions(services(), kz_transactions:kz_transactions()) -> ok | error.
+commit_transactions(#kz_services{billing_id = BillingId}=Services, Activations) ->
     Bookkeeper = select_bookkeeper(Services),
     Transactions = [Activation
-                    || Activation <- Activations
-                           ,kz_transaction:amount(Activation) > 0
+                    || Activation <- Activations,
+                       kz_transaction:amount(Activation) > 0
                    ],
     Bookkeeper:commit_transactions(BillingId, Transactions).
 
@@ -596,11 +597,11 @@ commit_transactions(#kz_services{billing_id=BillingId}=Services, Activations) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec charge_transactions(services(), kz_transactions:kz_transactions()) -> kz_json:objects().
-charge_transactions(#kz_services{billing_id=BillingId}=Services, Activations) ->
+charge_transactions(#kz_services{billing_id = BillingId}=Services, Activations) ->
     Bookkeeper = select_bookkeeper(Services),
     Transactions = [kz_transaction:to_json(Activation)
-                    || Activation <- Activations
-                           ,kz_transaction:amount(Activation) > 0
+                    || Activation <- Activations,
+                       kz_transaction:amount(Activation) > 0
                    ],
     Bookkeeper:charge_transactions(BillingId, Transactions).
 
