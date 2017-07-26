@@ -131,14 +131,21 @@ item_check(Category, Item, Quantity, Services) ->
     ,?_assertEqual(Quantity, kz_services:quantity(Category, Item, Services))
     }.
 
+clean_discount(JObj) ->
+    Path = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>, <<"cumulative">>, <<"rate">>],
+    kz_json:delete_key(Path, JObj).
+
 service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
                                  ,account_plan = AccountPlan
                                  ,services = Services
                                  ,no_overrides = false
                                  }) ->
     [{"Verify plan from file matches services plan"
-     ,?_assertEqual(kz_doc:account_id(ServicePlan), kzd_service_plan:account_id(AccountPlan))
+     ,?_assert(kz_json:are_equal(clean_discount(ServicePlan), clean_discount(AccountPlan)))
      }
+    ,?_assertEqual(undefined, kzd_service_plan:account_id(AccountPlan))
+    ,?_assertEqual(<<"968dc36503bcb05f798d9530016f311f">>, kz_doc:id(AccountPlan))
+    ,?_assertEqual(<<"c0705d7984ea0160110a451b25a4406b">>, kz_services:account_id(Services))
     ,{"Verify cumulative discount rate from service plan"
      ,?_assertEqual(0.5, rate(cumulative_discount(did_us_item(ServicePlan))))
      }
@@ -153,9 +160,11 @@ service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
                                  ,services = Services
                                  ,no_overrides = true
                                  }) ->
+    AccountId = kz_services:account_id(Services),
     [{"Verify plan from file matches services plan"
      ,?_assertEqual(kz_doc:account_id(ServicePlan), kzd_service_plan:account_id(AccountPlan))
      }
+    ,?_assertEqual(undefined, kzd_service_plan:account_id(AccountPlan))
     ,{"Verify cumulative discount rate from service plan (set as int)"
      ,?_assertEqual(5.0, rate(cumulative_discount(did_us_item(ServicePlan))))
      }
@@ -165,6 +174,8 @@ service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
     ,{"Since ?A_RESELLER_ACCOUNT_ID does not have overrides, verify none were applied"
      ,?_assert(kz_json:are_equal(ServicePlan, kz_services:service_plan_json(Services)))
      }
+    ,?_assert(kz_json:are_equal(ServicePlan, kz_services:service_plan_json(AccountId)))
+    ,?_assertError(function_clause, kz_services:service_plan_json(undefined))
     ].
 
 did_us_item(Plan) ->
