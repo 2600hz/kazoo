@@ -255,7 +255,7 @@ import_rates_into_ratedeck(Ratedeck, {_C, Rates}) ->
     save_rates(RatedeckDb, Rates),
     import_rates_into_ratedeck(Ratedeck, {0, []}).
 
--spec maybe_plural(pos_integer()) -> [] | [$s].
+-spec maybe_plural(pos_integer()) -> string().
 maybe_plural(1) -> "";
 maybe_plural(_) -> "s".
 
