@@ -33,7 +33,7 @@
 -define(DEFAULT_OPTIONS, [{'schema_loader_fun', fun load/1}
                          ,{'allowed_errors', 'infinity'}
                          ,{'extra_validator', fun kz_json_schema_extensions:extra_validator/2}
-                         ,{'setter_fun', fun kz_json:set_value/3}
+                         ,{'setter_fun', fun set_value/3}
                          ,{'validator_options', ['use_defaults'
                                                 ,'apply_defaults_to_empty_objects'
                                                 ]}
@@ -882,3 +882,18 @@ filter(JObj, Schema) ->
                                  ,kz_json:flatten(JObj)
                                  ),
     kz_json:expand(FilteredFlat).
+
+set_value(Path, Value, JObj) ->
+    FixedPath = fix_path(Path),
+    kz_json:set_value(FixedPath, Value, JObj).
+
+-spec fix_path(kz_json:path()) -> kz_json:path().
+fix_path(Path) ->
+    [fix_el(El) || El <- Path].
+
+%% JSON array indicies are 0-indexed, Erlang's are 1-indexed
+%% If an indicie is found, convert (incr) from JSON- to Erlang-based indicie
+-spec fix_el(kz_json:key() | non_neg_integer()) -> kz_json:key() | non_neg_integer().
+fix_el(I) when is_integer(I) -> I+1;
+fix_el(El) -> El.
+

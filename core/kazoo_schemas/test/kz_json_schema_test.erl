@@ -164,3 +164,35 @@ flatten_sms_schema_test() ->
                            {[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>},
                            {[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
                          })].
+
+did_duplication_test() ->
+    SrvA = kz_json:from_list([{<<"DIDs">>,kz_json:new()}
+                             ,{<<"auth">>, kz_json:from_list([{<<"auth_method">>, <<"password">>}])}
+                             ,{<<"server_name">>,<<"AAA1">>}
+                             ]
+                            ),
+    SrvB = kz_json:from_list([{<<"DIDs">>,kz_json:new()}
+                             ,{<<"auth">>, kz_json:from_list([{<<"auth_method">>, <<"password">>}])}
+                             ,{<<"server_name">>,<<"BBB1">>}
+                             ]
+                            ),
+    SrvC = kz_json:from_list([{<<"DIDs">>,{[{<<"+78121111111">>,kz_json:new()}]}}
+                             ,{<<"auth">>, kz_json:from_list([{<<"auth_method">>, <<"password">>}])}
+                             ,{<<"server_name">>,<<"CCC1">>}
+                             ]
+                            ),
+
+    JObj = kz_json:from_list([{<<"servers">>, [SrvA, SrvB, SrvC]}]),
+
+    {'ok', Schema} = kz_json_schema:fload(<<"connectivity">>),
+
+    {'ok', Valid} = kz_json_schema:validate(Schema, JObj),
+
+    ?assertEqual(name_and_did(JObj), name_and_did(Valid)).
+
+name_and_did(JObj) ->
+    [{kz_json:get_value(<<"server_name">>, Server)
+     ,kz_json:is_empty(kz_json:get_json_value(<<"DIDs">>, Server))
+     }
+     || Server <- kz_json:get_value(<<"servers">>, JObj)
+    ].
