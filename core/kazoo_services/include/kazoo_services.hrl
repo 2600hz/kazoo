@@ -9,10 +9,10 @@
 -define(SERVICES_PVT_MODIFIED, <<"pvt_modified">>).
 -define(SERVICES_PVT_PLANS, <<"pvt_service_plans">>).
 -define(SERVICES_PVT_RESELLER_ID, <<"pvt_reseller_id">>).
--define(SERVICES_PVT_TREE, <<"pvt_tree">>).
--define(SERVICES_PVT_TREE_PREVIOUSLY, <<"pvt_previous_tree">>).
 -define(SERVICES_PVT_REV, <<"_rev">>).
 -define(SERVICES_PVT_STATUS, <<"pvt_status">>).
+-define(SERVICES_PVT_TREE, <<"pvt_tree">>).
+-define(SERVICES_PVT_TREE_PREVIOUSLY, <<"pvt_previous_tree">>).
 
 -define(KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER,
         kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>, 'kz_bookkeeper_local')).

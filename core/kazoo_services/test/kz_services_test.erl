@@ -278,8 +278,11 @@ fetch_reseller_test_() ->
     [?_assertEqual(AccountId, kz_services:account_id(Services))
     ,?_assertEqual(AccountId, kz_services:get_billing_id(Services))
     ,?_assertEqual(AccountId, kzd_services:billing_id(ServicesJObj))
+    ,?_assertEqual(AccountId, kz_services:current_billing_id(Services))
     ,?_assertEqual(?A_MASTER_ACCOUNT_ID, kzd_services:reseller_id(ServicesJObj))
     ,?_assert(kzd_services:is_reseller(ServicesJObj))
+    ,?_assert(kz_services:is_reseller(ServicesJObj))
+    ,?_assert(kz_services:is_reseller(AccountId))
     ,?_assert(not kz_services:is_dirty(Services))
     ,?_assert(not kzd_services:is_dirty(ServicesJObj))
     ,?_assert(not kz_services:is_deleted(Services))
@@ -316,8 +319,11 @@ new_unrelated_test_() ->
     [?_assertEqual(AccountId, kz_services:account_id(Services))
     ,?_assertEqual(AccountId, kz_services:get_billing_id(Services))
     ,?_assertEqual(AccountId, kzd_services:billing_id(ServicesJObj))
+    ,?_assertEqual(AccountId, kz_services:current_billing_id(Services))
     ,?_assertEqual(?A_MASTER_ACCOUNT_ID, kzd_services:reseller_id(ServicesJObj))
     ,?_assert(kzd_services:is_reseller(ServicesJObj))
+    ,?_assert(kz_services:is_reseller(ServicesJObj))
+    ,?_assert(kz_services:is_reseller(AccountId))
 
      %% The dirtyness need not be reflected in the JSON version,
      %% so these 2 being different should be OK.
@@ -471,4 +477,77 @@ select_bookkeeper_test_() ->
     ,?_assertEqual(Local, kz_services:select_bookkeeper(?UNRELATED_ACCOUNT_ID))
     ,?_assertEqual(Local, kz_services:select_bookkeeper(kz_services:fetch(?A_SUB_ACCOUNT_ID)))
     ,?_assertEqual(Local, kz_services:select_bookkeeper(kz_services:fetch(?UNRELATED_ACCOUNT_ID)))
+    ].
+
+public_private_json_test_() ->
+    test_public_private_json(?A_RESELLER_ACCOUNT_ID)
+        ++ test_public_private_json(?A_SUB_ACCOUNT_ID).
+
+test_public_private_json(AccountId) ->
+    PubJObj = kz_services:public_json(AccountId),
+    JObj = kz_services:to_json(kz_services:fetch(AccountId)),
+    [?_assert(kz_json:is_true(<<"in_good_standing">>, PubJObj))
+    ,?_assertEqual(<<"good_standing">>, kz_json:get_value(?SERVICES_PVT_STATUS, JObj))
+    ,?_assert(kz_json:is_json_object(kz_json:get_value(<<"items">>, PubJObj)))
+    ]
+        ++ [assert_same(Key, PubJObj, JObj)
+            || Key <- [{<<"account_quantities">>, <<"quantities">>}
+                      ,<<"billing_id">>
+                      ,<<"cascade_quantities">>
+                      ,<<"plans">>
+                      ,{<<"dirty">>, ?SERVICES_PVT_IS_DIRTY}
+                      ,{<<"reseller">>, ?SERVICES_PVT_IS_RESELLER}
+                      ,{<<"reseller_id">>, ?SERVICES_PVT_RESELLER_ID}
+                      ]
+           ]
+        ++ [{"Ensuring private key " ++ kz_term:to_list(Key) ++ " is set"
+            ,?_assert(kz_json:is_defined(Key, JObj))
+            }
+            || Key <- [<<"_id">>
+                      ,<<"pvt_type">>
+                      ,<<"pvt_account_id">>
+                      ,<<"pvt_account_db">>
+                      ,?SERVICES_PVT_IS_DIRTY
+                      ,?SERVICES_PVT_IS_RESELLER
+                      ,?SERVICES_PVT_MODIFIED
+                      ,?SERVICES_PVT_RESELLER_ID
+                      ,?SERVICES_PVT_REV
+                      ,?SERVICES_PVT_STATUS
+                      ,?SERVICES_PVT_TREE
+                      ]
+           ].
+
+assert_same(Key=?NE_BINARY, PubJObj, JObj) ->
+    assert_same({Key, Key}, PubJObj, JObj);
+assert_same({PubKey, Key}, PubJObj, JObj) ->
+    PubValue = kz_json:get_value(PubKey, PubJObj),
+    {"Ensure public " ++ kz_term:to_list(PubKey) ++ " matches " ++ kz_term:to_list(Key)
+    ,case kz_json:is_json_object(PubValue) of
+         true -> ?_assert(kz_json:are_equal(PubValue, kz_json:get_value(Key, JObj)));
+         false -> ?_assertEqual(PubValue, kz_json:get_value(Key, JObj))
+     end
+    }.
+
+allow_updates_test_() ->
+    [?_assert(kz_services:allow_updates(?A_MASTER_ACCOUNT_ID))
+    ,?_assert(kz_services:allow_updates(?A_RESELLER_ACCOUNT_ID))
+    ,?_assert(kz_services:allow_updates(?A_SUB_ACCOUNT_ID))
+    ,?_assert(kz_services:allow_updates(?B_SUB_ACCOUNT_ID))
+    ,?_assert(kz_services:allow_updates(?UNRELATED_ACCOUNT_ID))
+    ,?_assert(kz_services:allow_updates(kz_services:fetch(?A_RESELLER_ACCOUNT_ID)))
+    ,?_assert(kz_services:allow_updates(kz_services:fetch(?A_SUB_ACCOUNT_ID)))
+    ,?_assert(kz_services:allow_updates(kz_services:fetch(?B_SUB_ACCOUNT_ID)))
+    ,?_assert(kz_services:allow_updates(kz_services:fetch(?UNRELATED_ACCOUNT_ID)))
+    ].
+
+modules_test_() ->
+    Modules = kz_services:get_service_modules(),
+    [?_assert(lists:all(fun is_atom/1, Modules))
+    ,?_assertEqual(length(Modules), length(lists:usort(Modules)))
+    ,?_assertEqual(10, length(Modules))
+    ,?_assertEqual(kz_service_ledgers, kz_services:get_service_module(ledgers))
+     |
+     [?_assertEqual(M, kz_services:get_service_module(M))
+      || M <- Modules
+     ]
     ].

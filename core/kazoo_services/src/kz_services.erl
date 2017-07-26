@@ -53,7 +53,6 @@
 -export([cascade_quantity/3, cascade_quantities/1]).
 -export([cascade_category_quantity/2, cascade_category_quantity/3]).
 -export([reset_category/2]).
--export([get_service_module/1]).
 
 -export([is_reseller/1]).
 -export([get_reseller_id/1]).
@@ -105,6 +104,8 @@
 -export([current_billing_id/1]).
 -export([is_deleted/1]).
 -export([status/1]).
+-export([get_service_module/1]).
+-export([get_service_modules/0]).
 -endif.
 
 
@@ -688,10 +689,8 @@ public_json(#kz_services{jobj = ServicesJObj
                         ,cascade_quantities = CascadeQuantities
                         }) ->
     AccountId = kz_doc:account_id(ServicesJObj),
-    InGoodStanding = try maybe_follow_billing_id(AccountId, ServicesJObj) of
-                         'true' -> 'true'
-                     catch
-                         'throw':_ -> 'false'
+    InGoodStanding = try maybe_follow_billing_id(AccountId, ServicesJObj)
+                     catch 'throw':_ -> 'false'
                      end,
     kz_json:from_list(
       [{?QUANTITIES_ACCOUNT, kzd_services:quantities(ServicesJObj)}
@@ -713,8 +712,7 @@ to_json(#kz_services{jobj = JObj
                     ,cascade_quantities = CascadeQuantities
                     }
        ) ->
-    CurrentQuantities = kzd_services:quantities(JObj),
-    NewQuantities = kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities),
+    NewQuantities = kz_json:merge_jobjs(UpdatedQuantities, kzd_services:quantities(JObj)),
     Props = props:filter_undefined(
               [{fun kzd_services:set_quantities/2, NewQuantities}
               ,{<<"cascade_quantities">>, CascadeQuantities}
@@ -1014,30 +1012,22 @@ updated_quantity(CategoryId, ItemId, #kz_services{updates = JObj}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec category_quantity(ne_binary(), services()) -> integer().
--spec category_quantity(ne_binary(), ne_binaries(), services()) -> integer().
+-spec category_quantity(ne_binary(), services()) -> non_neg_integer().
 category_quantity(CategoryId, Services) ->
     category_quantity(CategoryId, [], Services).
 
+-spec category_quantity(ne_binary(), ne_binaries(), services()) -> non_neg_integer().
 category_quantity(_CategoryId, _ItemExceptions, #kz_services{deleted = 'true'}) -> 0;
 category_quantity(CategoryId, ItemExceptions, #kz_services{updates = UpdatedQuantities
                                                           ,jobj = JObj
                                                           }) ->
     CatQuantities = kzd_services:category_quantities(JObj, CategoryId),
     CatUpdates = kz_json:get_value(CategoryId, UpdatedQuantities, kz_json:new()),
-
     %% replaces CatQs values with CatUpdate
     Quantities = kz_json:merge(CatQuantities, CatUpdates),
-
     %% Removes ItemExceptions, if any
     QsMinusEx = kz_json:delete_keys(ItemExceptions, Quantities),
-
-    kz_json:foldl(fun(_ItemId, ItemQuantity, Sum) ->
-                          ItemQuantity + Sum
-                  end
-                 ,0
-                 ,QsMinusEx
-                 ).
+    sum_values(0, QsMinusEx).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1066,10 +1056,13 @@ cascade_category_quantity(_, _, #kz_services{deleted = 'true'}) -> 0;
 cascade_category_quantity(CategoryId, ItemExceptions, #kz_services{cascade_quantities = Quantities
                                                                   }=Services) ->
     CatQuantities = kz_json:get_value(CategoryId, Quantities, kz_json:new()),
-    kz_json:foldl(fun(_ItemId, ItemQuantity, Sum) -> ItemQuantity + Sum end
-                 ,category_quantity(CategoryId, ItemExceptions, Services)
-                 ,kz_json:delete_keys(ItemExceptions, CatQuantities)
-                 ).
+    sum_values(category_quantity(CategoryId, ItemExceptions, Services)
+              ,kz_json:delete_keys(ItemExceptions, CatQuantities)
+              ).
+
+sum_values(Acc0, JObj) ->
+    F = fun(_ItemId, ItemQuantity, Sum) -> ItemQuantity + Sum end,
+    kz_json:foldl(F, Acc0, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1278,16 +1271,10 @@ default_service_modules() ->
     ,'kz_service_ratedeck'
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec get_service_module(text()) -> atom() | 'false'.
 get_service_module(Module) when not is_binary(Module) ->
     get_service_module(kz_term:to_binary(Module));
-get_service_module(<<?SERVICE_MODULE_PREFIX, _/binary>> = Module) ->
+get_service_module(<<?SERVICE_MODULE_PREFIX,_/binary>> = Module) ->
     ServiceModules = get_service_modules(),
     case [M
           || M <- ServiceModules,
@@ -1307,7 +1294,7 @@ get_service_module(Module) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec cascade_quantities(services()) -> kz_json:object().
-cascade_quantities(#kz_services{cascade_quantities=JObj}) -> JObj.
+cascade_quantities(#kz_services{cascade_quantities = JObj}) -> JObj.
 
 -spec cascade_quantities(ne_binary(), boolean()) -> kz_json:object().
 cascade_quantities(Account=?NE_BINARY, 'false') ->
