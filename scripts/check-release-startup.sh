@@ -9,8 +9,7 @@ rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
 echo "Checking release startup with node $rel..."
 
 sup() {
-    result=$(bash -c "$PWD"/core/sup/priv/sup "$*" 2>&1)
-    echo $result
+    "$PWD"/core/sup/priv/sup "$*"
 }
 
 shutdown() {
