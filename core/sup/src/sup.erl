@@ -43,13 +43,13 @@ main(CommandLineArgs, Loops) ->
             Target = get_target(Options, IsVerbose),
             Module =
                 case props:get_value('module', Options) of
-                    'undefined' -> print_invalid_cli_args(CommandLineArgs);
+                    'undefined' -> print_invalid_cli_args();
                     M -> list_to_atom(M)
                 end,
             IsMaintenanceCommand = lists:suffix("_maintenance", props:get_value('module', Options)),
             Function =
                 case props:get_value('function', Options) of
-                    'undefined' -> print_invalid_cli_args(CommandLineArgs);
+                    'undefined' -> print_invalid_cli_args();
                     F -> list_to_atom(F)
                 end,
             Arguments = [list_to_binary(Arg) || Arg <- Args],
@@ -59,13 +59,13 @@ main(CommandLineArgs, Loops) ->
 
             case rpc:call(Target, ?MODULE, in_kazoo, [SUPName, Module, Function, Arguments], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
-                    print_invalid_cli_args(CommandLineArgs);
+                    print_invalid_cli_args();
                 {badrpc, {'EXIT', {timeout_value,[{Module,Function,_,_}|_]}}} ->
-                    stderr("Command failed: timeout~n~p", [CommandLineArgs]),
+                    stderr("Command failed: timeout~n", []),
                     halt(4);
                 {'badrpc', Reason} ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
-                    stderr("Command failed: ~s~n~p", [String, CommandLineArgs]),
+                    stderr("Command failed: ~s~n", [String]),
                     halt(3);
                 no_return when IsMaintenanceCommand ->
                     halt(0);
@@ -169,10 +169,9 @@ long_or_short_name() ->
         'false' -> 'shortnames'
     end.
 
--spec print_invalid_cli_args(string()) -> no_return().
-print_invalid_cli_args(Args) ->
-    stderr("Invalid command or wrong number of arguments, please try again:", []),
-    stderr("~p", [Args]),
+-spec print_invalid_cli_args() -> no_return().
+print_invalid_cli_args() ->
+    stderr("Invalid command or wrong number of arguments, please try again", []),
     halt(1).
 
 -spec parse_args(string()) -> {'ok', kz_proplist(), list()}.
