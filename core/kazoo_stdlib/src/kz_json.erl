@@ -39,6 +39,7 @@
         ,is_valid_json_object/1
         ,is_json_term/1
         ]).
+-export([is_defined/2]).
 
 -export([filter/2, filter/3
         ,filtermap/2
@@ -183,6 +184,10 @@ log_big_binary(<<Bin:500/binary, Rest/binary>>) ->
     log_big_binary(Rest);
 log_big_binary(Bin) ->
     lager:debug("bin: ~w", [Bin]).
+
+-spec is_defined(path(), object()) -> boolean().
+is_defined(Path, JObj) ->
+    undefined =/= get_value(Path, JObj).
 
 -spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->
