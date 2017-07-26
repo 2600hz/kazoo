@@ -152,27 +152,36 @@ get_with_strategy(Strategy, Account, Category, Key) ->
 -spec get_with_strategy(ne_binary(), api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                                kz_json:json_term().
 get_with_strategy(Strategy, Account, Category, Key, Default) ->
-    case get_from_strategy_cache(Strategy, account_id(Account), Category) of
+    ShouldMerge = is_merge_strategy(Strategy),
+    case get_from_strategy_cache(Strategy, account_id(Account), Category, ShouldMerge) of
         {ok, JObj} ->
             case kz_json:get_value(Key, JObj) of
                 undefined ->
                     _ = kapps_config:set(Category, Key, Default),
-                    Default
+                    Default;
+                V -> V
             end;
-        {error, no_account_id} -> kapps_config:get(Category, Key, Default);
-        {error, _} -> Default
+        {error, no_account_id} ->
+            kapps_config:get(Category, Key, Default);
+        {error, _} ->
+            _ = kapps_config:set(Category, Key, Default),
+            Default
     end.
 
--spec get_from_strategy_cache(ne_binary(), account_or_not(), ne_binary()) ->
+-spec get_from_strategy_cache(ne_binary(), account_or_not(), ne_binary(), boolean()) ->
                                      {ok, kz_json:object()} |
                                      {error, any()}.
-get_from_strategy_cache(_, no_account_id, _) ->
+get_from_strategy_cache(_, no_account_id, _, _) ->
     {error, no_account_id};
-get_from_strategy_cache(Strategy, AccountId, Category) ->
+get_from_strategy_cache(Strategy, AccountId, Category, true) ->
+    %% Only read from cache if it is merge strategy
     case kz_cache:fetch_local(?KAPPS_CONFIG_CACHE, strategy_cache_key(AccountId, Category, Strategy)) of
         {ok, _}=OK -> OK;
-        {error, _} -> walk_the_walk(strategy_options(Strategy, AccountId, Category))
-    end.
+        {error, _} ->
+            walk_the_walk(strategy_options(Strategy, AccountId, Category, true))
+    end;
+get_from_strategy_cache(Strategy, AccountId, Category, false) ->
+    walk_the_walk(strategy_options(Strategy, AccountId, Category, false)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -423,12 +432,8 @@ config_origins(Doc, Acc) ->
 strategy_cache_key(AccountId, Category, Strategy) ->
     {?MODULE, AccountId, Category, Strategy}.
 
--spec strategy_options(ne_binary(), ne_binary(), ne_binary()) -> map().
-strategy_options(Strategy, AccountId, Category) ->
-    ShouldMerge = case kz_binary:reverse(Strategy) of
-                      <<"egrem", _/binary>> -> true;
-                      _ -> false
-                  end,
+-spec strategy_options(ne_binary(), ne_binary(), ne_binary(), boolean()) -> map().
+strategy_options(Strategy, AccountId, Category, ShouldMerge) ->
     #{account_id => AccountId
      ,strategy => Strategy
      ,strategy_funs => strategy_funs(Strategy)
@@ -436,6 +441,13 @@ strategy_options(Strategy, AccountId, Category) ->
      ,category => Category
      ,results => []
      }.
+
+-spec is_merge_strategy(ne_binary()) -> boolean().
+is_merge_strategy(Strategy) ->
+    case kz_binary:reverse(Strategy) of
+        <<"egrem", _/binary>> -> true;
+        _ -> false
+    end.
 
 -spec strategy_funs(ne_binary()) -> [function()].
 strategy_funs(<<"global", _/binary>>) ->
