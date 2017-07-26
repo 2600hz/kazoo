@@ -122,10 +122,7 @@ new() ->
 new(?MATCH_ACCOUNT_RAW(AccountId)) ->
     AccountJObj = get_account_definition(AccountId),
     JObj = base_service_object(AccountId, AccountJObj),
-    BillingId = case ?SUPPORT_BILLING_ID of
-                    'true' -> kzd_services:billing_id(JObj);
-                    'false' -> AccountId
-                end,
+    BillingId = depreciated_billing_id(JObj, AccountId),
     IsReseller = kzd_services:is_reseller(JObj),
     #kz_services{account_id = AccountId
                 ,jobj = JObj
@@ -172,10 +169,7 @@ from_service_json(JObj) ->
 
 from_service_json(JObj, CalcUpdates) ->
     AccountId = kz_doc:account_id(JObj),
-    BillingId = case ?SUPPORT_BILLING_ID of
-                    'true' -> kzd_services:billing_id(JObj);
-                    'false' -> AccountId
-                end,
+    BillingId = depreciated_billing_id(JObj, AccountId),
     Services = #kz_services{account_id = AccountId
                            ,jobj = JObj
                            ,status = kzd_services:status(JObj)
@@ -282,10 +276,7 @@ fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), 'true') ->
 handle_fetch_result(AccountId, JObj) ->
     lager:debug("loaded account service doc ~s", [AccountId]),
     IsReseller = kzd_services:is_reseller(JObj),
-    BillingId = case ?SUPPORT_BILLING_ID of
-                    'true' -> kzd_services:billing_id(JObj);
-                    'false' -> AccountId
-                end,
+    BillingId = depreciated_billing_id(JObj, AccountId),
     #kz_services{account_id = AccountId
                 ,jobj = JObj
                 ,cascade_quantities = cascade_quantities(AccountId, IsReseller)
@@ -398,10 +389,7 @@ save(#kz_services{jobj = JObj
                       ),
             IsReseller = kzd_services:is_reseller(NewJObj),
             _ = maybe_clean_old_billing_id(Services),
-            BillingId = case ?SUPPORT_BILLING_ID of
-                            'true' -> kzd_services:billing_id(JObj);
-                            'false' -> AccountId
-                        end,
+            BillingId = depreciated_billing_id(JObj, AccountId),
             Services#kz_services{jobj = NewJObj
                                 ,cascade_quantities = cascade_quantities(AccountId, IsReseller)
                                 ,status = kzd_services:status(NewJObj)
@@ -1391,7 +1379,9 @@ cascade_results(View, AccountId) ->
 %%--------------------------------------------------------------------
 -spec depreciated_billing_id(kz_json:object()) -> ne_binary().
 depreciated_billing_id(JObj) ->
-    AccountId = kz_doc:account_id(JObj),
+    depreciated_billing_id(JObj, kz_doc:account_id(JObj)).
+
+depreciated_billing_id(JObj, AccountId) ->
     case ?SUPPORT_BILLING_ID of
         'true' -> kzd_services:billing_id(JObj, AccountId);
         'false' -> AccountId
