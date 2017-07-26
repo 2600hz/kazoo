@@ -526,16 +526,16 @@ set_billing_id(BillingId, AccountId=?NE_BINARY) ->
 get_billing_id(#kz_services{billing_id = BillingId}) -> BillingId;
 get_billing_id(Account=?NE_BINARY) ->
     AccountId = kz_util:format_account_id(Account),
-    lager:debug("determining if account ~s is able to make updates", [AccountId]),
+    ?LOG_DEBUG("determining if account ~s is able to make updates", [AccountId]),
     case fetch_services_doc(AccountId) of
         {'error', _R} ->
-            lager:debug("unable to open account ~s services: ~p", [AccountId, _R]),
+            ?LOG_DEBUG("unable to open account ~s services: ~p", [AccountId, _R]),
             AccountId;
         {'ok', ServicesJObj} ->
             case kzd_services:billing_id(ServicesJObj, AccountId) of
                 AccountId -> AccountId;
                 BillingId ->
-                    lager:debug("following billing id ~s", [BillingId]),
+                    ?LOG_DEBUG("following billing id ~s", [BillingId]),
                     get_billing_id(BillingId)
             end
     end.

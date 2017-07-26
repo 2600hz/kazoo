@@ -419,3 +419,25 @@ delete_test_() ->
     ,?_assertEqual({ok,kz_json:new()}, kz_services:delete(?UNRELATED_ACCOUNT_ID))
     ,?_assertMatch({error,_}, kz_services:delete(?WRONG_ACCOUNT_ID))
     ].
+
+set_billing_id_test_() ->
+    MA = ?A_MASTER_ACCOUNT_ID,
+    RA = ?A_RESELLER_ACCOUNT_ID,
+    SA = ?A_SUB_ACCOUNT_ID,
+    ServicesReseller = kz_services:fetch(RA),
+    [?_assertEqual(RA, kz_services:get_billing_id(ServicesReseller))
+    ,?_assertEqual(SA, kz_services:get_billing_id(SA))
+    ,?_assertEqual(?UNRELATED_ACCOUNT_ID, kz_services:get_billing_id(?UNRELATED_ACCOUNT_ID))
+    ,?_assertEqual(undefined, kz_services:set_billing_id(undefined, ServicesReseller))
+    ,?_assertEqual(undefined, kz_services:set_billing_id(RA, ServicesReseller))
+    ,?_assertEqual(MA
+                  ,kz_services:get_billing_id(kz_services:set_billing_id(MA, ServicesReseller))
+                  )
+    ,?_assertThrow({'invalid_billing_id', <<"Requested billing id is not the parent of this account">>}
+                  ,kz_services:set_billing_id(SA, ServicesReseller)
+                  )
+    ,?_assertEqual(RA, kz_services:get_billing_id(kz_services:set_billing_id(RA, SA)))
+    ,?_assertThrow({'invalid_billing_id', <<"Requested billing id is not the parent of this account">>}
+                  ,kz_services:set_billing_id(MA, SA)
+                  )
+    ].
