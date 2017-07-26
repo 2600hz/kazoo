@@ -40,13 +40,13 @@
 -define(DOLLAR_TO_UNIT, 10000).
 
 -define(REASONS, [{<<"per_minute_call">>, ?CODE_PER_MINUTE_CALL}
-                 ,{<<"sub_account_per_minute_call">>, ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}
+                 ,{<<"sub_account_per_minute_call">>, ?CODE_PER_MINUTE_CALL_SUB_ACCOUNT}
                  ,{<<"feature_activation">>, ?CODE_FEATURE_ACTIVATION}
-                 ,{<<"sub_account_feature_activation">>, ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}
+                 ,{<<"sub_account_feature_activation">>, ?CODE_FEATURE_ACTIVATION_SUB_ACCOUNT}
                  ,{<<"number_activation">>, ?CODE_NUMBER_ACTIVATION}
-                 ,{<<"sub_account_number_activation">>, ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}
+                 ,{<<"sub_account_number_activation">>, ?CODE_NUMBER_ACTIVATION_SUB_ACCOUNT}
                  ,{<<"manual_addition">>, ?CODE_MANUAL_ADDITION}
-                 ,{<<"sub_account_manual_addition">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+                 ,{<<"sub_account_manual_addition">>, ?CODE_MANUAL_ADDITION_SUB_ACCOUNT}
                  ,{<<"auto_addition">>, ?CODE_AUTO_ADDITION}
                  ,{<<"sub_account_auto_addition">>, ?CODE_SUB_ACCOUNT_AUTO_ADDITION}
                  ,{<<"admin_discretion">>, ?CODE_ADMIN_DISCRETION}

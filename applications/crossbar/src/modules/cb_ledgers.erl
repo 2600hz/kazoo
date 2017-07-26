@@ -373,7 +373,7 @@ normalize_view_result(Context, _DocType, JObj) ->
                                  [{<<"id">>, kz_transaction:account_id(Transaction)}
                                  ,{<<"name">>, cb_context:account_name(Context)}
                                  ];
-                             Code when Code =:= ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL ->
+                             Code when Code =:= ?CODE_PER_MINUTE_CALL_SUB_ACCOUNT ->
                                  [{<<"id">>, kz_transaction:sub_account_id(Transaction)}
                                  ,{<<"name">>, kz_transaction:sub_account_name(Transaction)}
                                  ]

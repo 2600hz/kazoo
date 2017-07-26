@@ -170,7 +170,7 @@ filter_for_per_minute(Transactions) ->
 is_per_minute(Transaction) ->
     case kz_transaction:code(Transaction) of
         ?CODE_PER_MINUTE_CALL -> 'true';
-        ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL -> 'true';
+        ?CODE_PER_MINUTE_CALL_SUB_ACCOUNT -> 'true';
         _Code -> 'false'
     end.
 

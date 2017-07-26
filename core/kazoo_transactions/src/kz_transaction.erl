@@ -364,7 +364,7 @@ set_order_id(OrderId, Transaction) ->
 is_per_minute(Transaction) ->
     case code(Transaction) of
         ?CODE_PER_MINUTE_CALL -> 'true';
-        ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL -> 'true';
+        ?CODE_PER_MINUTE_CALL_SUB_ACCOUNT -> 'true';
         _Code -> 'false'
     end.
 
@@ -580,9 +580,8 @@ service_save(#kz_transaction{}=Transaction) ->
             service_save_transaction(T)
     end.
 
--spec service_save_transaction(transaction()) ->
-                                      {'ok', transaction()} |
-                                      {'error', any()}.
+-spec service_save_transaction(transaction()) -> {'ok', transaction()} |
+                                                 {'error', any()}.
 service_save_transaction(#kz_transaction{pvt_account_id = AccountId}=Transaction) ->
     TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified = kz_time:current_tstamp()
                                                         }),
@@ -604,40 +603,34 @@ service_save_transaction(#kz_transaction{pvt_account_id = AccountId}=Transaction
             end
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec prepare_transaction(transaction()) -> transaction() |
-                                            {'error', any()}.
-prepare_transaction(#kz_transaction{id='undefined'}=Transaction) ->
-    prepare_transaction(Transaction#kz_transaction{id=modb_doc_id()});
-prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
-  when ?CODE_PER_MINUTE_CALL =:= Code
-       orelse ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL =:= Code ->
+-spec prepare_transaction(transaction()) -> transaction() | {'error', any()}.
+prepare_transaction(#kz_transaction{id = 'undefined'}=Transaction) ->
+    prepare_transaction(Transaction#kz_transaction{id = modb_doc_id()});
+prepare_transaction(#kz_transaction{pvt_code = Code}=Transaction)
+  when ?CODE_PER_MINUTE_CALL =:= Code;
+       ?CODE_PER_MINUTE_CALL_SUB_ACCOUNT =:= Code ->
     prepare_call_transaction(Transaction);
-prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
-  when ?CODE_FEATURE_ACTIVATION =:= Code
-       orelse ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION =:= Code ->
+prepare_transaction(#kz_transaction{pvt_code = Code}=Transaction)
+  when ?CODE_FEATURE_ACTIVATION =:= Code;
+       ?CODE_FEATURE_ACTIVATION_SUB_ACCOUNT =:= Code ->
     prepare_feature_activation_transaction(Transaction);
-prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
-  when ?CODE_NUMBER_ACTIVATION =:= Code
-       orelse ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION =:= Code ->
+prepare_transaction(#kz_transaction{pvt_code = Code}=Transaction)
+  when ?CODE_NUMBER_ACTIVATION =:= Code;
+       ?CODE_NUMBER_ACTIVATION_SUB_ACCOUNT =:= Code ->
     prepare_number_activation_transaction(Transaction);
-prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
+prepare_transaction(#kz_transaction{pvt_code = Code}=Transaction)
   when ?CODE_NUMBERS_ACTIVATION =:= Code;
-       ?CODE_SUB_ACCOUNT_NUMBERS_ACTIVATION =:= Code ->
+       ?CODE_NUMBERS_ACTIVATION_SUB_ACCOUNT =:= Code ->
     prepare_numbers_activation_transaction(Transaction);
-prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
-  when ?CODE_MANUAL_ADDITION =:= Code
-       orelse ?CODE_SUB_ACCOUNT_MANUAL_ADDITION =:= Code ->
+prepare_transaction(#kz_transaction{pvt_code = Code}=Transaction)
+  when ?CODE_MANUAL_ADDITION =:= Code;
+       ?CODE_MANUAL_ADDITION_SUB_ACCOUNT =:= Code ->
     prepare_manual_addition_transaction(Transaction);
-prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
+prepare_transaction(#kz_transaction{pvt_code = Code}=Transaction)
   when ?CODE_DATABASE_ROLLUP =:= Code ->
     prepare_rollup_transaction(Transaction);
-prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
+prepare_transaction(#kz_transaction{pvt_code = Code}=Transaction)
   when ?CODE_TOPUP =:= Code ->
     prepare_topup_transaction(Transaction);
 prepare_transaction(Transaction=#kz_transaction{pvt_account_id = AccountId
@@ -655,7 +648,7 @@ prepare_transaction(Transaction=#kz_transaction{pvt_account_id = AccountId
 prepare_call_transaction(#kz_transaction{call_id='undefined'}) ->
     {'error', 'call_id_missing'};
 prepare_call_transaction(#kz_transaction{sub_account_id='undefined'
-                                        ,pvt_code=?CODE_SUB_ACCOUNT_PER_MINUTE_CALL
+                                        ,pvt_code=?CODE_PER_MINUTE_CALL_SUB_ACCOUNT
                                         }) ->
     {'error', 'sub_account_id_missing'};
 prepare_call_transaction(#kz_transaction{event='undefined'}) ->
@@ -677,7 +670,7 @@ prepare_feature_activation_transaction(#kz_transaction{feature='undefined'}) ->
 prepare_feature_activation_transaction(#kz_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
 prepare_feature_activation_transaction(#kz_transaction{sub_account_id='undefined'
-                                                      ,pvt_code=?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION
+                                                      ,pvt_code=?CODE_FEATURE_ACTIVATION_SUB_ACCOUNT
                                                       }) ->
     {'error', 'sub_account_id_missing'};
 prepare_feature_activation_transaction(Transaction) ->
@@ -689,7 +682,7 @@ prepare_feature_activation_transaction(Transaction) ->
 prepare_number_activation_transaction(#kz_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
 prepare_number_activation_transaction(#kz_transaction{sub_account_id='undefined'
-                                                     ,pvt_code=?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION
+                                                     ,pvt_code=?CODE_NUMBER_ACTIVATION_SUB_ACCOUNT
                                                      }) ->
     {'error', 'sub_account_id_missing'};
 prepare_number_activation_transaction(Transaction) ->
@@ -701,7 +694,7 @@ prepare_number_activation_transaction(Transaction) ->
 prepare_numbers_activation_transaction(#kz_transaction{numbers='undefined'}) ->
     {'error', 'numbers_missing'};
 prepare_numbers_activation_transaction(#kz_transaction{sub_account_id='undefined'
-                                                      ,pvt_code=?CODE_SUB_ACCOUNT_NUMBERS_ACTIVATION
+                                                      ,pvt_code=?CODE_NUMBERS_ACTIVATION_SUB_ACCOUNT
                                                       }) ->
     {'error', 'sub_account_id_missing'};
 prepare_numbers_activation_transaction(Transaction) ->
@@ -713,7 +706,7 @@ prepare_numbers_activation_transaction(Transaction) ->
 prepare_manual_addition_transaction(#kz_transaction{bookkeeper_info='undefined'}) ->
     {'error', 'bookkeeper_info_missing'};
 prepare_manual_addition_transaction(#kz_transaction{sub_account_id='undefined'
-                                                   ,pvt_code=?CODE_SUB_ACCOUNT_MANUAL_ADDITION
+                                                   ,pvt_code=?CODE_MANUAL_ADDITION_SUB_ACCOUNT
                                                    }) ->
     {'error', 'sub_account_id_missing'};
 prepare_manual_addition_transaction(Transaction) ->

@@ -527,7 +527,7 @@ charge_billing_id(Amount, Context) ->
                     ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
                     ];
                 _Id ->
-                    [{<<"purchase_order">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+                    [{<<"purchase_order">>, ?CODE_MANUAL_ADDITION_SUB_ACCOUNT}
                     ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
                     ]
             end,
