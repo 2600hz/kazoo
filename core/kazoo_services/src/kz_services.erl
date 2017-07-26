@@ -1045,7 +1045,7 @@ category_quantity(CategoryId, ItemExceptions, #kz_services{updates = UpdatedQuan
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cascade_quantity(ne_binary(), ne_binary(), services()) -> integer().
+-spec cascade_quantity(ne_binary(), ne_binary(), services()) -> non_neg_integer().
 cascade_quantity(_, _, #kz_services{deleted = 'true'}) -> 0;
 cascade_quantity(CategoryId, ItemId, #kz_services{cascade_quantities = JObj}=Services) ->
     kz_json:get_integer_value([CategoryId, ItemId], JObj, 0)
@@ -1057,11 +1057,11 @@ cascade_quantity(CategoryId, ItemId, #kz_services{cascade_quantities = JObj}=Ser
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cascade_category_quantity(ne_binary(), services()) -> integer().
--spec cascade_category_quantity(ne_binary(), ne_binaries(), services()) -> integer().
+-spec cascade_category_quantity(ne_binary(), services()) -> non_neg_integer().
 cascade_category_quantity(CategoryId, Services) ->
     cascade_category_quantity(CategoryId, [], Services).
 
+-spec cascade_category_quantity(ne_binary(), ne_binaries(), services()) -> non_neg_integer().
 cascade_category_quantity(_, _, #kz_services{deleted = 'true'}) -> 0;
 cascade_category_quantity(CategoryId, ItemExceptions, #kz_services{cascade_quantities = Quantities
                                                                   }=Services) ->
@@ -1092,12 +1092,9 @@ reset_category(CategoryId, #kz_services{updates = JObj}=Services) ->
 %%--------------------------------------------------------------------
 -spec is_reseller(ne_binary() | services() | kz_json:object()) -> boolean().
 is_reseller(#kz_services{jobj = ServicesJObj}) ->
-    kzd_services:is_reseller(ServicesJObj);
+    is_reseller(ServicesJObj);
 is_reseller(Account=?NE_BINARY) ->
-    case fetch_services_doc(Account) of
-        {'ok', ServicesJObj} -> kzd_services:is_reseller(ServicesJObj);
-        _ -> 'false'
-    end;
+    is_reseller(fetch(Account));
 is_reseller(ServicesJObj) ->
     kzd_services:is_reseller(ServicesJObj).
 
