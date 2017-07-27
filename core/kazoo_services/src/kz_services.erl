@@ -651,7 +651,7 @@ select_bookkeeper(AccountId) ->
 check_bookkeeper(BillingId, Amount) ->
     case select_bookkeeper(BillingId) of
         'kz_bookkeeper_local' ->
-            case wht_util:current_balance(BillingId) of
+            case current_balance(BillingId) of
                 {'ok', Balance} -> Balance - Amount >= 0;
                 {'error', _R} ->
                     ?LOG_DEBUG("error checking local bookkeeper balance: ~p", [_R]),
@@ -666,6 +666,13 @@ check_bookkeeper(BillingId, Amount) ->
 current_service_status(AccountId) ->
     {'ok', ServicesJObj} = fetch_services_doc(AccountId),
     kzd_services:status(ServicesJObj).
+
+-ifdef(TEST).
+current_balance(?UNRELATED_ACCOUNT_ID) -> {ok, 100}.
+-else.
+current_balance(AccountId) ->
+    wht_util:current_balance(AccountId).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public

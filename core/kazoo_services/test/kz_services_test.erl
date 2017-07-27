@@ -613,3 +613,7 @@ is_of_behaviour(Behaviour, Module) ->
     {behaviour, Behaviours} =
         lists:keyfind(behaviour, 1, Module:module_info(attributes)),
     lists:member(Behaviour, Behaviours).
+
+check_bookkeeper_test_() ->
+    [?_assert(kz_services:check_bookkeeper(?UNRELATED_ACCOUNT_ID, 10))
+    ].
