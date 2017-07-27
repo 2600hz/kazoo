@@ -351,7 +351,7 @@ should_paginate(#cb_context{should_paginate=Should}) -> Should.
 
 -spec should_soft_delete(context()) -> boolean().
 should_soft_delete(#cb_context{}=Context) ->
-    kz_term:is_true(req_value(Context, <<"should_soft_delete">>, 'false')).
+    kz_term:is_true(req_value(Context, <<"should_soft_delete">>, ?SOFT_DELETE)).
 
 req_json(#cb_context{req_json=RJ}) -> RJ.
 content_types_accepted(#cb_context{content_types_accepted=CTAs}) -> CTAs.

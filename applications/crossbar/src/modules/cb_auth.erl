@@ -137,7 +137,7 @@ authorize_nouns(Context, ?LINKS_PATH, _Id, ?HTTP_DELETE, [{<<"auth">>, _}]) ->
 authenticate(Context, PathToken) ->
     authenticate_nouns(PathToken, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authenticate_nouns(cb_context:context(), path_token(), req_nouns()) -> boolean().
+-spec authenticate_nouns(path_token(), http_method(), req_nouns()) -> boolean().
 authenticate_nouns(?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';

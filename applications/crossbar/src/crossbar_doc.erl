@@ -753,14 +753,14 @@ maybe_delete_doc(Context, DocId) ->
 delete(Context) ->
     delete(Context, cb_context:should_soft_delete(Context)).
 
-delete(Context, 'true') ->
+delete(Context, ?SOFT_DELETE) ->
     Doc = cb_context:doc(Context),
     lager:info("soft-deleting doc ~s", [kz_doc:id(Doc)]),
     case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), kz_doc:id(Doc)) of
         {'ok', Rev}   -> soft_delete(Context, Rev);
         {'error', _E} -> soft_delete(Context, kz_doc:revision(Doc))
     end;
-delete(Context, 'false') ->
+delete(Context, ?HARD_DELETE) ->
     Doc = cb_context:doc(Context),
     lager:info("hard-deleting doc ~s", [kz_doc:id(Doc)]),
     do_delete(Context, Doc, fun kz_datamgr:del_doc/2).

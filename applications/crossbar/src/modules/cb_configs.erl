@@ -99,7 +99,7 @@ post(Context, ConfigId) ->
 delete(Context, _ConfigId) ->
     case strip_id(cb_context:doc(Context)) of
         ?EMPTY_JSON_OBJECT -> Context;
-        _ -> crossbar_doc:delete(Context, permanent)
+        _ -> crossbar_doc:delete(Context, ?HARD_DELETE)
     end.
 
 -spec set_config_to_context(ne_binary(), cb_context:context()) -> cb_context:context().

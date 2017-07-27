@@ -52,7 +52,7 @@
 
 -record(state, {config = 'undefined' :: api_binary()
                ,is_running = 'false' :: boolean()
-               ,monitor :: reference()
+               ,monitor :: api_reference()
                ,hourly_timer = hourly_timer() :: reference()
                }).
 -type state() :: #state{}.

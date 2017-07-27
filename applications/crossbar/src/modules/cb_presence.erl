@@ -239,11 +239,11 @@ process_responses(JObjs, SearchType, Timeout) ->
 extract_subscriptions(JObjs, Fun) ->
     lists:foldl(fun(JObj, Acc) -> Fun(kz_api:remove_defaults(JObj), Acc) end, kz_json:new(), JObjs).
 
--type on_success_fun() :: fun((cb_context:context()) -> cb_context:context()).
-
--spec validate_presence_thing(cb_context:context(), on_success_fun()) -> cb_context:context().
+-spec validate_presence_thing(cb_context:context()) -> cb_context:context().
+-spec validate_presence_thing(cb_context:context(), req_nouns()) -> cb_context:context().
 validate_presence_thing(Context) ->
     validate_presence_thing(Context, cb_context:req_nouns(Context)).
+
 validate_presence_thing(Context, [{<<"presence">>, _}
                                  ,{<<"devices">>, [DeviceId]}
                                  ,{<<"accounts">>, [_AccountId]}
