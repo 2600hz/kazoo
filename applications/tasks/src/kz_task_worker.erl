@@ -205,6 +205,8 @@ is_task_successful(MappedRow
                 [{#{}=NewMappedRowOrMappedRows, NewIterValue}] ->
                     {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
                     {'true', Columns, Written, NewIterValue};
+                [{'ok', NewIterValue}] ->
+                    {'true', State#state.columns, 1, NewIterValue};
                 [{Error, NewIterValue}] ->
                     lager:error("~p", [Error]),
                     {Columns,Written} = store_return(State, MappedRow, Error),

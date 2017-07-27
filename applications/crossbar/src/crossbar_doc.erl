@@ -303,7 +303,7 @@ load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
         true ->
             lager:debug("loaded doc ~s(~s), merging", [DocId, kz_doc:revision(cb_context:doc(Context1))]),
             Merged = kz_json:merge_jobjs(kz_doc:private_fields(cb_context:doc(Context1)), DataJObj),
-            handle_datamgr_success(Merged, Context)
+            handle_datamgr_success(Merged, Context1)
     end;
 load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
     handle_datamgr_success(BypassJObj, Context).
@@ -748,19 +748,22 @@ maybe_delete_doc(Context, DocId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
--spec delete(cb_context:context(), 'permanent' | 'soft') -> cb_context:context().
+-spec delete(cb_context:context(), boolean()) -> cb_context:context().
 
 delete(Context) ->
-    delete(Context, 'soft').
+    delete(Context, cb_context:should_soft_delete(Context)).
 
-delete(Context, 'soft') ->
+delete(Context, ?SOFT_DELETE) ->
     Doc = cb_context:doc(Context),
+    lager:info("soft-deleting doc ~s", [kz_doc:id(Doc)]),
     case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), kz_doc:id(Doc)) of
         {'ok', Rev}   -> soft_delete(Context, Rev);
         {'error', _E} -> soft_delete(Context, kz_doc:revision(Doc))
     end;
-delete(Context, 'permanent') ->
-    do_delete(Context, cb_context:doc(Context), fun kz_datamgr:del_doc/2).
+delete(Context, ?HARD_DELETE) ->
+    Doc = cb_context:doc(Context),
+    lager:info("hard-deleting doc ~s", [kz_doc:id(Doc)]),
+    do_delete(Context, Doc, fun kz_datamgr:del_doc/2).
 
 -spec soft_delete(cb_context:context(), api_binary()) -> cb_context:context().
 soft_delete(Context, Rev) ->

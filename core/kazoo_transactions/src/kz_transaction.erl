@@ -261,7 +261,7 @@ set_sub_account_name(AccountName, Transaction) when is_binary(AccountName) ->
 
 -spec set_sub_account_info(ne_binary(), transaction()) -> transaction().
 set_sub_account_info(AccountId, Transaction) when is_binary(AccountId) ->
-    case kz_datamgr:open_cache_doc(<<"accounts">>, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _R} ->
             lager:error("failed to open account ~s : ~p", [AccountId, _R]),
             Transaction#kz_transaction{sub_account_id=AccountId};
@@ -455,7 +455,7 @@ maybe_add_sub_account_name(JObj) ->
 
 -spec add_sub_account_name(ne_binary(), kz_json:object()) -> kz_json:object().
 add_sub_account_name(AccountId, JObj) ->
-    case kz_datamgr:open_cache_doc(<<"accounts">>, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _R} ->
             lager:error("failed to open account doc ~s : ~p", [AccountId, _R]),
             JObj;

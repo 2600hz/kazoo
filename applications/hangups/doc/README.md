@@ -2,7 +2,7 @@
 
 ## About Hangups
 
-Most of the time, calls end in a handful of expected ways that are considered 'normal'. Rarely seen hangup causes are typically not relevant in isolation but when spikes of the same abnormal hangup cause(s) occur,
+Most of the time, calls end in a handful of expected ways that are considered 'normal'. Rarely seen hangup causes are typically not relevant in isolation but when spikes of the same abnormal hangup cause(s) occur, it can be beneficial to respond appropriately.
 
 Just as most computers show you metrics related to CPU usage over time (one, five and fifteen minutes typically), the hangups app tracks hangup causes and gives you the tools to send alerts when thresholds are exceeded.
 
@@ -12,13 +12,20 @@ Other hangup causes can imply other failure scenarios worth investigating. The t
 
 ## Typical Abnormal Hangup Causes
 
-||Hangup State||Possible Causes||
-|`WRONG_CALL_STATE`|We see these sometimes when ACLs are out of sorts|
-|`NO_ROUTE_DESTINATION`|This could mean there is no callflow defined for the number, or the number is unassigned to a PBX in PBX Connector. You'll have to figure out which side of the dialog is hanging up first though.|
-|`CALL_REJECTED`|The side sending this hangup isn't going to route the call.|
-|`MANDATORY_IE_MISSING`|This might be because the leg was challenged for authentication and was unable to comply. Another cause could be no codec was negotiated between the two sides. Check the SDP codec listings for both sides.|
-|`PROGRESS_TIMEOUT`|The endpoint (carrier or device) failed to progress to early media, ringing, or answering the call within the allotted time. May be indicative of errors on the endpoint's side. If a carrier, consider removing them from the offnet/account routing until you can discover the issue. These hangups impact PDD (post-dial delay) and are quite noticable to the caller.|
-``RECOVERY_ON_TIMER_EXPIRE`|Often seen when NAT is interfering with receiving responses from the endpoint. Check the firewall at the customer's site for SIP ALG (and turn it off), try port 7000 or TCP as necessary.|
+Hangup State | Possible Causes |
+------------ | --------------- |
+`WRONG_CALL_STATE` | We see these sometimes when ACLs are out of sorts
+`NO_ROUTE_DESTINATION` | This could mean there is no callflow defined for the number, or the number is unassigned to a PBX in PBX Connector. You'll have to figure out which side of the dialog is hanging up first though.
+`CALL_REJECTED` | The side sending this hangup isn't going to route the call.
+`MANDATORY_IE_MISSING` | This might be because the leg was challenged for authentication and was unable to comply. Another cause could be no codec was negotiated between the two sides. Check the SDP codec listings for both sides.
+`PROGRESS_TIMEOUT` | The endpoint (carrier or device) failed to progress to early media, ringing, or answering the call within the allotted time. May be indicative of errors on the endpoint's side. If a carrier, consider removing them from the offnet/account routing until you can discover the issue. These hangups impact PDD (post-dial delay) and are quite noticable to the caller.
+``RECOVERY_ON_TIMER_EXPIRE` | Often seen when NAT is interfering with receiving responses from the endpoint. Check the firewall at the customer's site for SIP ALG (and turn it off), try port 7000 or TCP as necessary.
+
+## Configuring Hangup Causes
+
+In the `system_config` database there is a `hangups` document that includes a list of hangup causes that are ignored (deemed 'normal') and a list to explicitly monitor.
+
+Update `ignore_hangup_causes` with additional hangup causes you'd like to *not* receive alerts about.
 
 ## Setting up monitors
 

@@ -61,11 +61,11 @@ main(CommandLineArgs, Loops) ->
                 {'badrpc', {'EXIT',{'undef', _}}} ->
                     print_invalid_cli_args();
                 {badrpc, {'EXIT', {timeout_value,[{Module,Function,_,_}|_]}}} ->
-                    stderr("Command failed: timeout", []),
+                    stderr("Command failed: timeout~n", []),
                     halt(4);
                 {'badrpc', Reason} ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
-                    stderr("Command failed: ~s", [String]),
+                    stderr("Command failed: ~s~n", [String]),
                     halt(3);
                 no_return when IsMaintenanceCommand ->
                     halt(0);
@@ -77,9 +77,6 @@ main(CommandLineArgs, Loops) ->
                            end,
                     halt(Code);
                 'no_return' ->
-                    halt(0);
-                Result when IsVerbose ->
-                    print_result(Result, IsVerbose),
                     halt(0);
                 Result ->
                     print_result(Result, IsVerbose),

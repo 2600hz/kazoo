@@ -158,15 +158,25 @@ handle_bypass_media(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     end.
 
 -spec maybe_bypass_endpoint_media(kz_json:objects(), ne_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
-maybe_bypass_endpoint_media([Endpoint], BridgeProfile, ChannelProfile, DP) ->
-    EndpointProfile = kz_json:get_value(<<"SIP-Interface">>, Endpoint, BridgeProfile),
-    case kz_json:is_true(<<"Bypass-Media">>, Endpoint)
-        andalso EndpointProfile =:= ChannelProfile of
+maybe_bypass_endpoint_media(Endpoints, BridgeProfile, ChannelProfile, DP) ->
+    ShouldBypass = lists:all(fun(Endpoint) ->
+                                     bypass_endpoint_media_enabled(Endpoint
+                                                                  ,BridgeProfile
+                                                                  ,ChannelProfile
+                                                                  )
+                             end
+                            ,Endpoints
+                            ),
+    case ShouldBypass of
         'true' -> [{"application", "set bypass_media=true"}|DP];
         'false' -> DP
-    end;
-maybe_bypass_endpoint_media(_, _, _, DP) ->
-    DP.
+    end.
+
+-spec bypass_endpoint_media_enabled(kz_json:object(), ne_binary(), ne_binary()) -> boolean().
+bypass_endpoint_media_enabled(Endpoint, BridgeProfile, ChannelProfile) ->
+    EndpointProfile = kz_json:get_ne_binary_value(<<"SIP-Interface">>, Endpoint, BridgeProfile),
+    kz_json:is_true(<<"Bypass-Media">>, Endpoint)
+        andalso EndpointProfile =:= ChannelProfile.
 
 -spec handle_ccvs(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 handle_ccvs(DP, Node, UUID, _Channel, JObj) ->

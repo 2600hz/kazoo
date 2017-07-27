@@ -15,6 +15,7 @@
         ,head/1, head/2, head/3
         ,trace/1, trace/2, trace/3
         ,post/1, post/2, post/3, post/4
+        ,patch/1, patch/2, patch/3, patch/4
         ,put/1, put/2, put/3, put/4
         ,delete/1, delete/2, delete/3, delete/4
         ]).
@@ -26,6 +27,7 @@
                   'head' |
                   'options' |
                   'post' |
+                  'patch' |
                   'put' |
                   'trace'.
 
@@ -128,6 +130,19 @@ post(Url, Headers, Body) ->
     req('post', Url, Headers, Body, []).
 post(Url, Headers, Body, Options) ->
     req('post', Url, Headers, Body, Options).
+
+-spec patch(string()) -> ret().
+-spec patch(string(), kz_proplist()) -> ret().
+-spec patch(string(), kz_proplist(), http_body()) -> ret().
+-spec patch(string(), kz_proplist(), http_body(), kz_proplist()) -> ret().
+patch(Url) ->
+    req('patch', Url, [], [], []).
+patch(Url, Headers) ->
+    req('patch', Url, Headers, [], []).
+patch(Url, Headers, Body) ->
+    req('patch', Url, Headers, Body, []).
+patch(Url, Headers, Body, Options) ->
+    req('patch', Url, Headers, Body, Options).
 
 -spec put(string()) -> ret().
 -spec put(string(), kz_proplist()) -> ret().
@@ -278,7 +293,8 @@ build_request(Method, Url, Headers, Body) when Method =:= 'post';
                                           ,<<"content_type">>
                                           ]
                                          ,Headers
-                                         ,""),
+                                         ,""
+                                         ),
     {kz_term:to_list(Url)
     ,ensure_string_headers(Headers)
     ,kz_term:to_list(ContentType)

@@ -44,23 +44,23 @@ Also, be sure you've handled the [Tasks Operations](/applications/crossbar/doc/t
 
 Looking at the [Rates Task](/applications/tasks/doc/rates.md) we see the following fields that can be defined:
 
-    |Name|Description|Required|
-    |`account_id`|reseller's account (see **Note 1** below)| |
-    |`description`|description for rate| |
-    |`direction`|direction of call leg ("inbound", "outbound"), if not set - rate matches both directions| |
-    |`iso_country_code`|[ISO 3166-1](https://en.wikipedia.org/wiki/ISO_3166-1#Officially_assigned_code_elements) code for prefix's country| |
-    |`prefix`|prefix for match DID number| `true` |
-    |`pvt_rate_cost`|internal rate cost, used for `weight` calculation| |
-    |`pvt_rate_surcharge`|internal rate surcharge| |
-    |`rate_cost`|per minute cost| `true` |
-    |`rate_increment`|billing "steps" for rate| |
-    |`rate_minimum`|minimum call duration| |
-    |`rate_name`|short name for rate, if this field not set it will be generated from `prefix`, `iso_country_code` and `direction` fields| |
-    |`rate_nocharge_time`|"free" call time, if call duration less then this value (seconds), then call not charged| |
-    |`rate_surcharge`|charge amount on connect (answer)| |
-    |`rate_version`|rate version| |
-    |`ratedeck_name`| ratedeck name, assigned to account via service plan| |
-    |`weight`|when found several rates with same prefix, used rate with higher weight. If not set - calculated from `prefix` length and `rate_cost` (`pvt_rate_cost`)| |
+    Name | Description | Required
+    ---- | ----------- | --------
+    `account_id`|reseller's account (see **Note 1** below)|
+    `description`|description for rate|
+    `direction`|direction of call leg ("inbound", "outbound"), if not set - rate matches both directions|
+    `iso_country_code`|[ISO 3166-1](https://en.wikipedia.org/wiki/ISO_3166-1#Officially_assigned_code_elements) code for prefix's country|
+    `prefix`|prefix for match DID number| `true`
+    `pvt_rate_cost`|internal rate cost, used for `weight` calculation|
+    `pvt_rate_surcharge`|internal rate surcharge|
+    `rate_cost`|per minute cost| `true`
+    `rate_increment`|billing "steps" for rate|
+    `rate_minimum`|minimum call duration|
+    `rate_name`|short name for rate, if this field not set it will be generated from `prefix`, `iso_country_code` and `direction` fields|
+    `rate_nocharge_time`|"free" call time, if call duration less then this value (seconds), then call not charged|
+    `rate_surcharge`|charge amount on connect (answer)|
+    `rate_version`|rate version|
+    `ratedeck_name`| ratedeck name, assigned to account via service plan|
 
 You can also query to the rates task to find this information out:
 
@@ -70,41 +70,43 @@ curl -H "X-Auth-Token: $AUTH_TOKEN" 'http://{SERVER}:8000/v2/tasks?category=rate
 
 ```json
 {
-    "auth_token": "{ADMIN_AUTH_TOKEN}",
-    "data": {
-        "tasks": {
-            "rates": {
-                "import": {
-                    "description": "Bulk-import rates",
-                    "doc": "Creates rates from file",
-                    "expected_content": "text/csv",
-                    "mandatory": [
-                        "prefix",
-                        "rate_cost"
-                    ],
-                    "optional": [
-                        "ratedeck_name",
-                        "account_id",
-                        "iso_country_code",
-                        "description",
-                        "rate_name",
-                        "rate_surcharge",
-                        "rate_increment",
-                        "rate_minimum",
-                        "direction",
-                        "pvt_rate_cost",
-                        "pvt_rate_surcharge",
-                        "rate_nocharge_time",
-                        "weight",
-                        "rate_version"
-                    ]
-                }
-            }
+  "auth_token": "{ADMIN_AUTH_TOKEN}",
+  "data": {
+    "tasks": {
+      "rates": {
+        "import": {
+          "description": "Bulk-import rates to a specified ratedeck",
+          "doc": "Creates rates from file",
+          "expected_content": "text/csv",
+          "mandatory": [
+            "prefix",
+            "rate_cost"
+          ],
+          "optional": [
+            "account_id",
+            "carrier",
+            "description",
+            "direction",
+            "internal_rate_cost",
+            "iso_country_code",
+            "options",
+            "rate_increment",
+            "rate_minimum",
+            "rate_name",
+            "rate_nocharge_time",
+            "rate_surcharge",
+            "rate_version",
+            "ratedeck_id",
+            "routes",
+            "weight"
+          ]
         }
-    },
-    "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
-    "status": "success"
+      }
+    }
+  },
+  "status": "success",
+  "timestamp": "2017-07-24T21:34:06",
+  "version": "4.0.0"
 }
 ```
 

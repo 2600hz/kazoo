@@ -167,14 +167,18 @@ worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, CSVPath=?NE_BINA
 try_maybe_strip_columns(Columns, CSVPath) ->
     try maybe_strip_columns(Columns, CSVPath)
     catch _E:_R ->
-            kz_util:log_stacktrace(),
-            lager:warning("stripping empty columns failed: ~p:~p", [_E, _R])
+            ST = erlang:get_stacktrace(),
+            lager:warning("stripping empty columns failed: ~p:~p", [_E, _R]),
+            kz_util:log_stacktrace(ST)
     end.
 
 maybe_strip_columns(Columns, CSVPath) ->
-    ColumnsWritten = sets:size(Columns),
+    maybe_strip_columns(Columns, CSVPath, sets:size(Columns)).
+
+maybe_strip_columns(_Columns, _CSVPath, 0) ->
+    lager:info("no columns written, nothing to strip");
+maybe_strip_columns(Columns, CSVPath, ColumnsWritten) ->
     lager:debug("attempting to strip empty columns, keeping only ~p", [ColumnsWritten]),
-    true = ColumnsWritten > 0,
     {ok, Bin} = file:read_file(CSVPath),
     {FullHeader, CSV} = kz_csv:take_row(Bin),
     lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),

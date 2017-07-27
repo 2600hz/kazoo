@@ -678,6 +678,7 @@ gateway_to_endpoint(DestinationNumber
     CCVs = props:filter_undefined(
              [{<<"Emergency-Resource">>, IsEmergency}
              ,{<<"Matched-Number">>, DestinationNumber}
+             ,{<<"Resource-Type">>, <<"offnet-termination">>}
              ,{<<"RTCP-MUX">>, RTCP_MUX}
               | gateway_from_uri_settings(Gateway)
              ]),

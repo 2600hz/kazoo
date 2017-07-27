@@ -623,7 +623,7 @@ post(Context, ?DOMAINS_REQ) ->
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
-    maybe_cleanup_account_definition(crossbar_doc:delete(Context, 'permanent')).
+    maybe_cleanup_account_definition(crossbar_doc:delete(Context, ?HARD_DELETE)).
 
 %%--------------------------------------------------------------------
 %% @private
