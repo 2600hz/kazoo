@@ -10,7 +10,9 @@
 -define(CONFIG_FILE, "/etc/kazoo/config.ini").
 -define(V4_CONFIG_FILE, "/etc/kazoo/core/config.ini").
 
--define(APP_NAME_ATOM, 'kazoo_config').
+-define(APP, kazoo_config).
+-define(APP_NAME, (atom_to_binary(?APP, utf8))).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(SETTINGS_KEY, '$_App_Settings').
 
@@ -42,6 +44,32 @@
                    'log' |
                    'kazoo_apps' |
                    'zone'.
+
+-ifdef(TEST).
+-define(TEST_CAT, <<"test_cat">>).
+
+-define(NO_ACCOUNT, <<"087ca0424ec8acf3acc1f87ac81f28e1">>).
+-define(A_MASTER_ACCOUNT_ID, <<"6b71cb72c876b5b1396a335f8f8a2594">>).
+-define(A_MASTER_ACCOUNT_DB, <<"account%2F6b%2F71%2Fcb72c876b5b1396a335f8f8a2594">>).
+
+-define(AN_ACCOUNT_ID, <<"009afc511c97b2ae693c6cc4920988e8">>).
+-define(AN_ACCOUNT_DB, <<"account%2F00%2F9a%2Ffc511c97b2ae693c6cc4920988e8">>).
+
+-define(AN_ACCOUNT_USER_ID, <<"8e248327b85591955749e53ea45b6baa">>).
+
+-endif.
+
+-ifdef(TEST).
+-define(LOG_ERROR(F,A), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_WARN(F,A), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F,A), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
+-else.
+-define(LOG_ERROR(F,A), lager:error(F,A)).
+-define(LOG_WARN(F,A), lager:warning(F,A)).
+-define(LOG_DEBUG(F,A), lager:debug(F,A)).
+-define(LOG_DEBUG(F), lager:debug(F)).
+-endif.
 
 -define(KAZOO_CONFIG_HRL, 'true').
 -endif.

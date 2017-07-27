@@ -425,9 +425,6 @@ get(Category, Key) ->
 get(Category, Key, Default) ->
     get(Category, Key, Default, node()).
 
--ifdef(TEST).
-get(_, _, Default, _) -> Default.
--else.
 get(Category, Key, Default, 'undefined') ->
     get(Category, Key, Default, ?KEY_DEFAULT);
 get(Category, Key, Default, Node) when not is_list(Key) ->
@@ -447,7 +444,6 @@ get(Category, Keys, Default, Node) ->
             lager:debug("error ~p getting  category ~s(default) ~p: ~p", [Error, Category, Keys, Default]),
             Default
     end.
--endif.
 
 -spec get_current(config_category(), config_key()) -> any() | 'undefined'.
 -spec get_current(config_category(), config_key(), Default) -> any() | Default.
@@ -458,9 +454,6 @@ get_current(Category, Key) ->
 get_current(Category, Key, Default) ->
     get_current(Category, Key, Default, node()).
 
--ifdef(TEST).
-get_current(_, _, Default, _) -> Default.
--else.
 get_current(Category, Key, Default, 'undefined') ->
     get_current(Category, Key, Default, ?KEY_DEFAULT);
 get_current(Category, Key, Default, Node) when not is_list(Key) ->
@@ -510,8 +503,6 @@ get_default_value(Category, Keys, Default, JObj) ->
             Default;
         Else -> Else
     end.
-
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -615,6 +606,9 @@ set_node(Category, Key, Value, Node) ->
                              'ok' |
                              {'ok', kz_json:object()} |
                              {'error', any()}.
+-ifdef(TEST).
+update_category(_, _, _, _, _) -> 'ok'.
+-else.
 update_category('undefined', _, _, _, _) -> 'ok';
 update_category(_, 'undefined', _, _, _) -> 'ok';
 update_category(_, _, 'undefined', _, _) -> 'ok';
@@ -724,6 +718,7 @@ update_pvt_fields(Category, JObj, 'undefined') ->
 update_pvt_fields(Category, JObj, PvtFields) ->
     Base = update_pvt_fields(Category, JObj, 'undefined'),
     kz_json:merge_jobjs(Base, PvtFields).
+-endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -811,10 +806,17 @@ flush(Category, Keys, Node) ->
 get_category(Category) ->
     get_category(Category, 'true').
 
+-ifdef(TEST).
+get_category(?TEST_CAT, _) ->
+    {'ok', kapps_config_util:fixture("test_cat_system")};
+get_category(_, _) ->
+    {'error', 'not_found'}.
+-else.
 get_category(Category, 'true') ->
     kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]);
 get_category(Category, 'false') ->
     kz_datamgr:open_doc(?KZ_CONFIG_DB, Category).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public

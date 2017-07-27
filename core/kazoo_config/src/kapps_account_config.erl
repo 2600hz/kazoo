@@ -155,15 +155,21 @@ get_with_strategy(Strategy, Account, Category, Key, Default) ->
     ShouldMerge = is_merge_strategy(Strategy),
     case get_from_strategy_cache(Strategy, account_id(Account), Category, ShouldMerge) of
         {ok, JObj} ->
+            ?LOG_DEBUG("strategy ok"),
             case kz_json:get_value(Key, JObj) of
                 undefined ->
+                    ?LOG_DEBUG("strategy ok undefined"),
                     _ = kapps_config:set(Category, Key, Default),
                     Default;
-                V -> V
+                V ->
+                    ?LOG_DEBUG("strategy ok value"),
+                    V
             end;
         {error, no_account_id} ->
+            ?LOG_DEBUG("strategy no_account_id"),
             kapps_config:get(Category, Key, Default);
         {error, _} ->
+            ?LOG_DEBUG("strategy error"),
             _ = kapps_config:set(Category, Key, Default),
             Default
     end.
@@ -172,15 +178,20 @@ get_with_strategy(Strategy, Account, Category, Key, Default) ->
                                      {ok, kz_json:object()} |
                                      {error, any()}.
 get_from_strategy_cache(_, no_account_id, _, _) ->
+    ?LOG_DEBUG("cache no_account_id"),
     {error, no_account_id};
 get_from_strategy_cache(Strategy, AccountId, Category, true) ->
     %% Only read from cache if it is merge strategy
     case kz_cache:fetch_local(?KAPPS_CONFIG_CACHE, strategy_cache_key(AccountId, Category, Strategy)) of
-        {ok, _}=OK -> OK;
+        {ok, _}=OK ->
+            ?LOG_DEBUG("cache ok"),
+            OK;
         {error, _} ->
+            ?LOG_DEBUG("cache error"),
             walk_the_walk(strategy_options(Strategy, AccountId, Category, true))
     end;
 get_from_strategy_cache(Strategy, AccountId, Category, false) ->
+    ?LOG_DEBUG("no cache for you"),
     walk_the_walk(strategy_options(Strategy, AccountId, Category, false)).
 
 %%--------------------------------------------------------------------
@@ -192,10 +203,14 @@ get_from_strategy_cache(Strategy, AccountId, Category, false) ->
 %%--------------------------------------------------------------------
 -spec get_global_from_doc(ne_binary(), kz_json:path(), kz_json:api_json_term(), kz_json:object()) -> kz_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
+    ?LOG_DEBUG("get global doc"),
     case kz_json:get_value(Key, JObj) of
         undefined ->
+            ?LOG_DEBUG("get global doc undefined"),
             kapps_config:get(Category, Key, Default);
-        V -> V
+        V ->
+            ?LOG_DEBUG("get global doc defined"),
+            V
     end.
 
 -spec get(api_account(), ne_binary()) -> kz_json:object().
@@ -216,6 +231,7 @@ get(Account, Category) ->
 
 -spec load_config_from_system(api_binary(), ne_binary()) -> {ok, kz_json:object()}.
 load_config_from_system(_Account, Category) ->
+    ?LOG_DEBUG("load_system"),
     case kapps_config:get_category(Category) of
         {ok, JObj} ->
             Default = kz_json:get_value(<<"default">>, JObj),
@@ -227,6 +243,7 @@ load_config_from_system(_Account, Category) ->
     end.
 
 load_config_from_reseller(AccountId, Category) ->
+    ?LOG_DEBUG("load_reseller"),
     case kz_services:find_reseller_id(AccountId) of
         undefined -> {error, not_found};
         AccountId -> {error, not_found}; %% should get from direct reseller only
@@ -241,6 +258,7 @@ load_config_from_account(_AccountId, _Category) ->
 load_config_from_account(no_account_id, _Category) ->
     {error, no_account_id};
 load_config_from_account(AccountId, Category) ->
+    ?LOG_DEBUG("load_account"),
     DocId = kapps_config_util:account_doc_id(Category),
     AccountDb = kz_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, DocId, [{cache_failures, [not_found]}]).
@@ -259,6 +277,7 @@ load_config_from_account(AccountId, Category) ->
 %% @end
 %%--------------------------------------------------------------------
 load_config_from_ancestors(AccountId, Category) ->
+    ?LOG_DEBUG("init load_ancestores"),
     ParentId = kz_account:get_parent_account_id(AccountId),
     load_config_from_ancestors_fold(ParentId, master_account_id(), Category, []).
 
@@ -271,25 +290,32 @@ load_config_from_ancestors(AccountId, Category) ->
 -spec load_config_from_ancestors_fold(api_ne_binary(), api_ne_binary(), ne_binary(), kz_json:objects()) ->
                                              kz_json:object().
 load_config_from_ancestors_fold(undefined, _MasterId, _Category, JObjs) ->
+    ?LOG_DEBUG("ancestors parent undefined"),
     {ok, JObjs};
 load_config_from_ancestors_fold(MasterId, ?MATCH_ACCOUNT_RAW(MasterId), _Category, JObjs) ->
+    ?LOG_DEBUG("ancestors master"),
     lager:debug("reached to the master account (for category ~s)", [_Category]),
     {ok, JObjs};
 load_config_from_ancestors_fold(AccountId, MasterId, Category, JObjs) ->
+    ?LOG_DEBUG("ancestors run"),
     IsReseller = kz_services:is_reseller(AccountId),
     ParentId = kz_account:get_parent_account_id(AccountId),
     case load_config_from_account(AccountId, Category) of
         {ok, JObj} when IsReseller ->
+            ?LOG_DEBUG("ancestors ok reseller"),
             lager:debug("reached to the reseller account ~s (for category ~s)", [AccountId, Category]),
             {ok, [JObj|JObjs]};
         {ok, JObj} ->
+            ?LOG_DEBUG("ancestors ok account"),
             load_config_from_ancestors_fold(ParentId, MasterId, Category, [JObj|JObjs]);
         {error, _Reason} when IsReseller ->
+            ?LOG_DEBUG("ancestors nok reseller"),
             lager:debug("reached to the reseller account ~s (failed to get category ~s: ~p)"
                        ,[AccountId, Category, _Reason]
                        ),
             {ok, JObjs};
         {error, _Reason} ->
+            ?LOG_DEBUG("ancestors nok account"),
             lager:debug("failed to get category ~s for account ~s: ~p", [Category, AccountId, _Reason]),
             load_config_from_ancestors_fold(ParentId, MasterId, Category, JObjs)
         end.
@@ -375,14 +401,17 @@ flush(Account, Category) ->
 
 -spec walk_the_walk(map()) -> {ok, kz_json:object()} | {error, any()}.
 walk_the_walk(#{account_id := no_account_id}) ->
+    ?LOG_DEBUG("walk no_account_id"),
     {error, no_account_id};
 walk_the_walk(#{strategy_funs := []
                ,results := []
                }) ->
+    ?LOG_DEBUG("walk not_found"),
     {error, not_found};
 walk_the_walk(#{strategy_funs := []
                ,merge := ShouldMerge
                }=Map) ->
+    ?LOG_DEBUG("walk done"),
     maybe_merge_results(Map, ShouldMerge);
 walk_the_walk(#{account_id := AccountId
                ,strategy_funs := [Fun|Funs]
@@ -390,18 +419,23 @@ walk_the_walk(#{account_id := AccountId
                ,category := Category
                ,results := Results
                }=Map) ->
+    ?LOG_DEBUG("walk run"),
     case Fun(AccountId, Category) of
         {ok, JObj} when not ShouldMerge ->
             %% requester does not want merge result from ancestors and system
             %% returning the result of the first function
+            ?LOG_DEBUG("walk run ok merge"),
             walk_the_walk(Map#{results := [JObj], strategy_funs := []});
         {ok, JObjs} when is_list(JObjs) ->
             %% the function returns list (load from ancestor), forcing merge
+            ?LOG_DEBUG("walk run ok list"),
             walk_the_walk(Map#{results := lists:flatten([JObjs|Results]), strategy_funs := Funs, merge := true});
         {ok, JObj} ->
             %% requester wants merge result from ancestors and system
+            ?LOG_DEBUG("walk run ok normal"),
             walk_the_walk(Map#{results := [JObj|Results], strategy_funs := Funs});
         {error, _} ->
+            ?LOG_DEBUG("walk run error"),
             walk_the_walk(Map#{strategy_funs := Funs})
     end.
 
@@ -411,12 +445,14 @@ maybe_merge_results(#{account_id := AccountId
                      ,category := Category
                      ,results := JObjs
                      }, true) ->
-    Result = kz_json:merge([kz_doc:public_fields(J) || J <- JObjs]),
+    Js = [kz_doc:public_fields(J) || J <- JObjs],
+    Result = kz_json:merge(Js),
     CacheKey = strategy_cache_key(AccountId, Category, Strategy),
     Origins = lists:foldl(fun config_origins/2, [], JObjs),
     kz_cache:store_local(?KAPPS_CONFIG_CACHE, CacheKey, Result, [{origin, Origins}]),
     {ok, Result};
 maybe_merge_results(#{results := JObjs}, false) ->
+    ?LOG_DEBUG("5 no merge"),
     {ok, lists:last(JObjs)}.
 
 -spec config_origins(kz_json:object(), list()) -> list().

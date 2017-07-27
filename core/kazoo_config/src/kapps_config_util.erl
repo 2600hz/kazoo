@@ -7,8 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kapps_config_util).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
--include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include("kazoo_config.hrl").
 
 -export([get_config/2
         ,get_reseller_config/2
@@ -21,6 +20,11 @@
 
         ,account_doc_id/1
         ]).
+
+
+-ifdef(TEST).
+-export([fixture/1]).
+-endif.
 
 -spec account_doc_id(ne_binary()) -> ne_binary().
 account_doc_id(Category) -> <<(?KZ_ACCOUNT_CONFIGS)/binary, Category/binary>>.
@@ -35,7 +39,7 @@ get_config(Account, Config) ->
     Schema = account_schema(Config),
     kz_json_schema:filter(get_config(Account, Config, Programm), Schema).
 
--spec get_config(ne_binary(), ne_binary(), [fun()]) -> kz_json:object().
+-spec get_config(ne_binary(), ne_binary(), functions()) -> kz_json:object().
 get_config(Account, Config, Programm) ->
     Confs = [maybe_new(P(Account, Config)) || P <- Programm],
     kz_json:merge(lists:reverse(Confs)).
@@ -109,3 +113,12 @@ system_config_document_schema(Id) ->
            ,{[<<"type">>], <<"object">>}
            ],
     kz_json:expand(kz_json:from_list(Flat)).
+
+-ifdef(TEST).
+-spec fixture(nonempty_string()) -> kz_json:object().
+fixture(JSONFileName) ->
+    Path = filename:join([code:lib_dir(?APP), "test/fixture", JSONFileName ++ ".json"]),
+    ?LOG_DEBUG("loading fixture: ~s", [Path]),
+    {ok, Bin} = file:read_file(Path),
+    kz_json:decode(Bin).
+-endif.

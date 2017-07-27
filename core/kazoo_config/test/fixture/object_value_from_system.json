@@ -1,0 +1,13 @@
+{
+    "b_key": "binary",
+    "b_keys": [
+        "One",
+        "Two"
+    ],
+    "i_key": 123456,
+    "f_key": 1.2,
+    "bol_key": true,
+    "obj_key": {
+        "from": "system"
+    }
+}
