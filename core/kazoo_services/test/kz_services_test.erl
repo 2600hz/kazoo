@@ -515,7 +515,14 @@ test_public_private_json(AccountId) ->
                       ,?SERVICES_PVT_STATUS
                       ,?SERVICES_PVT_TREE
                       ]
-           ].
+           ]
+        ++ case AccountId =:= ?A_RESELLER_ACCOUNT_ID of
+               false -> [];
+               true ->
+                   [?_assert(kz_json:are_equal(kz_json:get_value([<<"items">>, <<"billing">>, <<"_all">>], PubJObj), items_billing_all()))
+                   ,?_assert(kz_json:are_equal(kz_json:get_value([<<"items">>, <<"phone_numbers">>, <<"did_us">>], PubJObj), items_phone_numbers_did_us()))
+                   ]
+           end.
 
 assert_same(Key=?NE_BINARY, PubJObj, JObj) ->
     assert_same({Key, Key}, PubJObj, JObj);
@@ -527,6 +534,43 @@ assert_same({PubKey, Key}, PubJObj, JObj) ->
          false -> ?_assertEqual(PubValue, kz_json:get_value(Key, JObj))
      end
     }.
+
+items_billing_all() ->
+    kz_json:decode(
+      <<"{"
+        "\"activation_charge\": 0.0,"
+        "\"category\": \"billing\","
+        "\"cumulative_discount\": 0,"
+        "\"cumulative_discount_rate\": 0.0,"
+        "\"exceptions\": ["
+        "],"
+        "\"item\": \"_all\","
+        "\"minimum\": 0,"
+        "\"quantity\": 50,"
+        "\"rate\": 24.99,"
+        "\"single_discount\": true,"
+        "\"single_discount_rate\": 0.0"
+        "}"
+      >>).
+
+items_phone_numbers_did_us() ->
+    kz_json:decode(
+      <<"{"
+        "\"activation_charge\": 42.0,"
+        "\"category\": \"phone_numbers\","
+        "\"cumulative_discount\": 2,"
+        "\"cumulative_discount_rate\": 5.0,"
+        "\"exceptions\": ["
+        "],"
+        "\"item\": \"did_us\","
+        "\"minimum\": 0,"
+        "\"name\": \"US DID\","
+        "\"quantity\": 9,"
+        "\"rate\": 3.0,"
+        "\"single_discount\": true,"
+        "\"single_discount_rate\": 3.0"
+        "}"
+      >>).
 
 allow_updates_test_() ->
     [?_assert(kz_services:allow_updates(?A_MASTER_ACCOUNT_ID))
