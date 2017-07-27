@@ -13,7 +13,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3
-        ,public_fields/1, get_public_keys/1
+        ,public_fields/1, public_fields/2, get_public_keys/1
         ,private_fields/1, is_private_key/1
 
         ,attachments/1, attachments/2
@@ -197,10 +197,17 @@ add_pvt_document_hash(JObj, _, _) ->
 %%--------------------------------------------------------------------
 -spec public_fields(kz_json:object() | kz_json:objects()) ->
                            kz_json:object() | kz_json:objects().
-public_fields(JObjs) when is_list(JObjs) ->
-    [public_fields(J) || J <- JObjs];
-public_fields(JObj) ->
-    kz_json:set_value(<<"id">>, id(JObj, 'null'), filter_public_fields(JObj)).
+public_fields(Thing) ->
+    public_fields(Thing, 'true').
+
+-spec public_fields(kz_json:object() | kz_json:objects(), boolean()) ->
+                           kz_json:object() | kz_json:objects().
+public_fields(JObjs, IncludeId) when is_list(JObjs) ->
+    [public_fields(J, IncludeId) || J <- JObjs];
+public_fields(JObj, 'true') ->
+    kz_json:set_value(<<"id">>, id(JObj, 'null'), filter_public_fields(JObj));
+public_fields(JObj, 'false') ->
+    filter_public_fields(JObj).
 
 -spec filter_public_fields(kz_json:object()) -> kz_json:object().
 filter_public_fields(JObj) ->
@@ -234,7 +241,7 @@ is_private_key(_) -> 'false'.
 -spec private_fields(kz_json:object() | kz_json:objects()) ->
                             kz_json:object() | kz_json:objects().
 private_fields(JObjs) when is_list(JObjs) ->
-    [public_fields(JObj) || JObj <- JObjs];
+    [private_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) ->
     kz_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
