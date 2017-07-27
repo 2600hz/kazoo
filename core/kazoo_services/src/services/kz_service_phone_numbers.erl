@@ -6,6 +6,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_phone_numbers).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 -export([feature_activation_charge/2]).

@@ -7,6 +7,7 @@
 %%% Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(kz_service_ledgers).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 

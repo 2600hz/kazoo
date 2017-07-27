@@ -6,6 +6,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_ips).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 

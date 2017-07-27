@@ -59,6 +59,8 @@
 
 -export([dry_run/1]).
 
+-export([is_services/1]).
+
 -include("services.hrl").
 
 -define(QUANTITIES_ACCOUNT, <<"account_quantities">>).
@@ -859,9 +861,15 @@ reconcile_only(#kz_services{account_id=AccountId}=Services) ->
     Modules = get_service_modules(),
     lists:foldl(fun reconcile_module/2, Services, Modules).
 
--spec reconcile_module(atom(), services()) -> services().
+-spec reconcile_module(module(), services()) -> services().
+-ifdef(TEST).
+reconcile_module(M, Services) ->
+    {reconcile,1} = lists:keyfind(reconcile, 1, M:module_info(exports)),
+    Services.
+-else.
 reconcile_module(M, Services) ->
     M:reconcile(Services).
+-endif.
 
 reconcile('undefined') -> 'false';
 reconcile(Account=?NE_BINARY) ->
@@ -922,6 +930,10 @@ services_json(#kz_services{jobj = JObj}) ->
 -spec is_dirty(services()) -> boolean().
 is_dirty(#kz_services{dirty = IsDirty}) ->
     kz_term:is_true(IsDirty).
+
+-spec is_services(any()) -> boolean().
+is_services(#kz_services{}) -> true;
+is_services(_) -> false.
 
 -ifdef(TEST).
 -spec current_billing_id(services()) -> api_ne_binary().

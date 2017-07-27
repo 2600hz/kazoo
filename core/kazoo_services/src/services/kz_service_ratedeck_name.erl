@@ -7,6 +7,7 @@
 %%%     Sergey Korobkov
 %%%-------------------------------------------------------------------
 -module(kz_service_ratedeck_name).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 -export([get_ratedeck_name/1]).

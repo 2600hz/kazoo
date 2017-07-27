@@ -6,6 +6,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_users).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1]).
 -export([reconcile/2]).

@@ -6,6 +6,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_http).
+-behaviour(kz_gen_bookkeeper).
 
 -export([is_good_standing/2]).
 -export([sync/2]).
@@ -56,7 +57,7 @@ is_good_standing(_AccountId, Status) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(kz_service_items:items(), any()) -> bookkeeper_sync_result().
+-spec sync(kz_service_items:items(), ne_binary()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
     Sync = #sync{id = get_sync_id(AccountId)
                 ,account_id = AccountId
@@ -132,7 +133,7 @@ to_list(Value) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(ne_binary(), kz_transactions:kz_transactions()) -> 'ok'.
+-spec commit_transactions(ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
 commit_transactions(_BillingId, Transactions) ->
     kz_transactions:save(Transactions),
     'ok'.
@@ -154,7 +155,7 @@ charge_transactions(_BillingId, _Transactions) -> [].
 %%--------------------------------------------------------------------
 -spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
-                          {'error', any()}.
+                          {'error', atom()}.
 transactions(AccountId, From, To) ->
     case kz_transactions:fetch_local(AccountId, From, To) of
         {'error', _Reason}=Error -> Error;

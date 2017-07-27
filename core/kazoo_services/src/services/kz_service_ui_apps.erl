@@ -7,6 +7,7 @@
 %%% Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(kz_service_ui_apps).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 -export([is_in_use/1]).

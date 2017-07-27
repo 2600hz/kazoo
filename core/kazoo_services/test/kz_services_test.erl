@@ -584,14 +584,32 @@ allow_updates_test_() ->
     ,?_assert(kz_services:allow_updates(kz_services:fetch(?UNRELATED_ACCOUNT_ID)))
     ].
 
+reconcile_test_() ->
+    [?_assert(not kz_services:reconcile_only(undefined))
+    ,?_assert(kz_services:is_services(kz_services:reconcile_only(?A_RESELLER_ACCOUNT_ID)))
+    ,?_assert(kz_services:is_services(kz_services:reconcile_only(?A_SUB_ACCOUNT_ID)))
+    ,?_assert(kz_services:is_services(kz_services:reconcile_only(?B_SUB_ACCOUNT_ID)))
+    ,?_assert(kz_services:is_services(kz_services:reconcile_only(?UNRELATED_ACCOUNT_ID)))
+    ,?_assert(not kz_services:reconcile(undefined))
+    ,?_assert(kz_services:is_services(kz_services:reconcile(?A_RESELLER_ACCOUNT_ID)))
+    ,?_assert(kz_services:is_services(kz_services:reconcile(?A_SUB_ACCOUNT_ID)))
+    ,?_assert(kz_services:is_services(kz_services:reconcile(?UNRELATED_ACCOUNT_ID)))
+    ].
+
 modules_test_() ->
     Modules = kz_services:get_service_modules(),
     [?_assert(lists:all(fun is_atom/1, Modules))
     ,?_assertEqual(length(Modules), length(lists:usort(Modules)))
     ,?_assertEqual(10, length(Modules))
     ,?_assertEqual(kz_service_ledgers, kz_services:get_service_module(ledgers))
-     |
-     [?_assertEqual(M, kz_services:get_service_module(M))
-      || M <- Modules
-     ]
-    ].
+    ]
+        ++ [[?_assertEqual(M, kz_services:get_service_module(M))
+            ,?_assert(is_of_behaviour(kz_gen_service, M))
+            ]
+            || M <- Modules
+           ].
+
+is_of_behaviour(Behaviour, Module) ->
+    {behaviour, Behaviours} =
+        lists:keyfind(behaviour, 1, Module:module_info(attributes)),
+    lists:member(Behaviour, Behaviours).
