@@ -204,8 +204,8 @@ search_req(Context, SearchType, Username) ->
                                     )
     of
         {'error', _R}=Err -> Err;
-        {'ok', JObjs} -> process_responses(JObjs, SearchType, 'null');
-        {'timeout', JObjs} -> process_responses(JObjs, SearchType, 'true')
+        {'ok', JObjs} when is_list(JObjs) -> process_responses(JObjs, SearchType, 'null');
+        {'timeout', JObjs} when is_list(JObjs) -> process_responses(JObjs, SearchType, 'true')
     end.
 
 -type collect_params() :: {integer(), integer()}.
@@ -233,7 +233,6 @@ process_responses(JObjs, SearchType, Timeout) ->
     Fun = accumulator_fun(SearchType),
     Subscriptions = extract_subscriptions(JObjs, Fun),
     {'ok', kz_json:set_value(<<"timeout">>, Timeout, Subscriptions)}.
-
 
 -spec extract_subscriptions(kz_json:objects(), acc_function()) -> kz_json:object().
 extract_subscriptions(JObjs, Fun) ->
