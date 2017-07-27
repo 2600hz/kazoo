@@ -118,7 +118,7 @@ system_config_document_schema(Id) ->
 -spec fixture(nonempty_string()) -> kz_json:object().
 fixture(JSONFileName) ->
     Path = filename:join([code:lib_dir(?APP), "test/fixture", JSONFileName ++ ".json"]),
-    ?LOG_DEBUG("loading fixture: ~s", [Path]),
+    %% ?LOG_DEBUG("loading fixture: ~s", [Path]),
     {ok, Bin} = file:read_file(Path),
     kz_json:decode(Bin).
 -endif.

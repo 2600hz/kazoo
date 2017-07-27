@@ -809,6 +809,8 @@ get_category(Category) ->
 -ifdef(TEST).
 get_category(?TEST_CAT, _) ->
     {'ok', kapps_config_util:fixture("test_cat_system")};
+get_category(?TEST_CAT_EMPTY, _) ->
+    {'ok', kz_json:new()};
 get_category(_, _) ->
     {'error', 'not_found'}.
 -else.

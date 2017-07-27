@@ -12,13 +12,17 @@
 -include("kazoo_config.hrl").
 
 -export([get/2, get/3, get/4
+
         ,get_ne_binary/3, get_ne_binary/4
         ,get_ne_binaries/3, get_ne_binaries/4
+
         ,get_global/2, get_global/3, get_global/4
         ,get_from_reseller/3, get_from_reseller/4
         ,get_with_strategy/4, get_with_strategy/5
+
         ,set/4
         ,set_global/4
+
         ,flush/2
         ,migrate/1
         ]).
@@ -77,25 +81,25 @@ get_global(Account, Category, Key) ->
 
 get_global(Account, Category, Key, Default) ->
     case load_config_from_account(account_id(Account), Category) of
-        {ok, JObj} -> get_global_from_doc(Category, Key, Default, JObj);
-        {error, no_account_id} -> kapps_config:get(Category, Key, Default);
-        {error, _} -> get_from_reseller(Account, Category, Key, Default)
+        {ok, JObj} ->
+            ?LOG_DEBUG("get_global ok"),
+            get_global_from_doc(Category, Key, Default, JObj);
+        {error, _} ->
+            ?LOG_DEBUG("get_global error, getting from reseller"),
+            get_from_reseller(Account, Category, Key, Default)
     end.
 
 -spec get_global(api_account(), ne_binary()) -> kz_json:object().
 get_global(Account, Category) ->
-    AccountId = account_id(Account),
-
-    case AccountId =/= no_account_id
-        andalso load_config_from_account(AccountId, Category)
-    of
-        false -> maybe_new(load_config_from_system(AccountId, Category));
+    case load_config_from_account(account_id(Account), Category) of
         {ok, JObj} -> JObj;
-        {error, no_account_id} -> maybe_new(load_config_from_system(AccountId, Category));
+        {error, no_account_id} -> maybe_new(load_config_from_system(Account, Category));
         {error, _} ->
-            case load_config_from_reseller(AccountId, Category) of
+            case load_config_from_reseller(Account, Category) of
                 {ok, JObj} -> JObj;
-                {error, _} -> maybe_new(load_config_from_system(AccountId, Category))
+                {error, _} ->
+                    ?LOG_DEBUG("get_global/2 error reseller, getting system_config"),
+                    maybe_new(load_config_from_system(Account, Category))
             end
     end.
 
@@ -111,20 +115,22 @@ get_from_reseller(Account, Category, Key) ->
     get_from_reseller(Account, Category, Key, undefined).
 
 -spec get_from_reseller(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:api_json_term().
--ifdef(TEST).
-get_from_reseller(_, _, _, Default) -> Default.
--else.
 get_from_reseller(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
 
     case AccountId =/= no_account_id
         andalso load_config_from_reseller(AccountId, Category)
     of
-        false -> kapps_config:get(Category, Key, Default);
-        {ok, JObj} -> get_global_from_doc(Category, Key, Default, JObj);
-        {error, _} -> kapps_config:get(Category, Key, Default)
+        false ->
+            ?LOG_DEBUG("get_from_reseller no_account_id, getting system_configs"),
+            kapps_config:get(Category, Key, Default);
+        {ok, JObj} ->
+            ?LOG_DEBUG("get_from_reseller ok"),
+            get_global_from_doc(Category, Key, Default, JObj);
+        {error, _} ->
+            ?LOG_DEBUG("get_from_reseller error, getting system_configs"),
+            kapps_config:get(Category, Key, Default)
     end.
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -206,7 +212,7 @@ get_global_from_doc(Category, Key, Default, JObj) ->
     ?LOG_DEBUG("get global doc"),
     case kz_json:get_value(Key, JObj) of
         undefined ->
-            ?LOG_DEBUG("get global doc undefined"),
+            ?LOG_DEBUG("get global doc undefined, getting system_configs"),
             kapps_config:get(Category, Key, Default);
         V ->
             ?LOG_DEBUG("get global doc defined"),
@@ -231,18 +237,32 @@ get(Account, Category) ->
 
 -spec load_config_from_system(api_binary(), ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_system(_Account, Category) ->
-    ?LOG_DEBUG("load_system"),
+    ?LOG_DEBUG("load_system ~s", [Category]),
     case kapps_config:get_category(Category) of
         {ok, JObj} ->
+            ?LOG_DEBUG("load_system ok ~s", [Category]),
             Default = kz_json:get_value(<<"default">>, JObj),
-            case kz_json:is_empty(Default) of
-                true -> {error, not_found};
-                false -> {ok, Default}
+            case kz_json:is_json_object(Default)
+                andalso not kz_json:is_empty(Default)
+            of
+                true ->
+                    ?LOG_DEBUG("load_system value ~s", [Category]),
+                    ?LOG_DEBUG("load_system value ~s", [Category]),
+                    {ok, Default};
+                false ->
+                    ?LOG_DEBUG("load_system undefined ~s", [Category]),
+                    {error, not_found}
             end;
         {error, _}=Error -> Error
     end.
 
 -spec load_config_from_reseller(ne_binary(), ne_binary()) -> kazoo_data:get_results_return().
+-ifdef(TEST).
+load_config_from_reseller(?NOT_CUSTOMIZED_ALL_ACCOUNTS, _) ->
+    ?LOG_DEBUG("load_reseller NOT_CUSTOMIZED_ALL_ACCOUNTS"),
+    {error, not_found};
+load_config_from_reseller(?CUSTOMIZED_RESELLER, _) ->
+    {ok, kapps_config_util:fixture("test_cat_reseller")};
 load_config_from_reseller(AccountId, Category) ->
     ?LOG_DEBUG("load_reseller"),
     case kz_services:find_reseller_id(AccountId) of
@@ -250,10 +270,37 @@ load_config_from_reseller(AccountId, Category) ->
         AccountId -> {error, not_found}; %% should get from direct reseller only
         ResellerId -> load_config_from_account(ResellerId, Category)
     end.
+-else.
+load_config_from_reseller(AccountId, Category) ->
+    ?LOG_DEBUG("load_reseller"),
+    case kz_services:find_reseller_id(AccountId) of
+        undefined -> {error, not_found};
+        AccountId -> {error, not_found}; %% should get from direct reseller only
+        ResellerId -> load_config_from_account(ResellerId, Category)
+    end.
+-endif.
 
 -spec load_config_from_account(account_or_not(), ne_binary()) -> kazoo_data:get_results_return().
 -ifdef(TEST).
+load_config_from_account(no_account_id, _) ->
+    ?LOG_DEBUG("load_account no_account_id"),
+    {error, no_account_id};
+load_config_from_account(?NOT_CUSTOMIZED_ALL_ACCOUNTS, _) ->
+    {error, not_found};
+load_config_from_account(?CUSTOMIZED_RESELLER, _) ->
+    ?LOG_DEBUG("load_account CUSTOMIZED_RESELLER"),
+    {error, not_found};
+load_config_from_account(?CUSTOMIZED_RESELLER_UNDEFINED, _) ->
+    ?LOG_DEBUG("load_account CUSTOMIZED_RESELLER_UNDEFINED"),
+    {ok, kz_json:new()};
+load_config_from_account(?CUSTOMIZED_SUBACCOUNT_UNDEFINED, _) ->
+    ?LOG_DEBUG("load_account CUSTOMIZED_SUBACCOUNT_UNDEFINED"),
+    {ok, kz_json:new()};
+load_config_from_account(?CUSTOMIZED_SUBACCOUNT, _) ->
+    ?LOG_DEBUG("load_account CUSTOMIZED_SUBACCOUNT"),
+    {ok, kapps_config_util:fixture("test_cat_subaccount2")};
 load_config_from_account(_AccountId, _Category) ->
+    ?LOG_DEBUG("load_account"),
     {error, not_found}.
 -else.
 load_config_from_account(no_account_id, _Category) ->
@@ -423,7 +470,7 @@ walk_the_walk(#{account_id := AccountId
         {ok, JObj} when not ShouldMerge ->
             %% requester does not want merge result from ancestors and system
             %% returning the result of the first function
-            ?LOG_DEBUG("walk run ok merge"),
+            ?LOG_DEBUG("walk run ok not merge"),
             walk_the_walk(Map#{results := [JObj], strategy_funs := []});
         {ok, JObjs} when is_list(JObjs) ->
             %% the function returns list (load from ancestor), forcing merge

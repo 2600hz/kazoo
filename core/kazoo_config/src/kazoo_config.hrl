@@ -46,9 +46,16 @@
                    'zone'.
 
 -ifdef(TEST).
--define(TEST_CAT, <<"test_cat">>).
+-define(TEST_CAT, <<"test_category">>).
+-define(TEST_CAT_EMPTY, <<"test_category_empty">>).
 
--define(NO_ACCOUNT, <<"087ca0424ec8acf3acc1f87ac81f28e1">>).
+%% AccountIds for different test situation
+-define(NOT_CUSTOMIZED_ALL_ACCOUNTS, <<"087ca0424ec8acf3acc1f87ac81f28e1">>).
+-define(CUSTOMIZED_RESELLER, <<"123ca0424ec8acf3acc1f87ac81f2123">>).
+-define(CUSTOMIZED_RESELLER_UNDEFINED, <<"7cc16a9cd8bcfeea4732986790e930a4">>).
+-define(CUSTOMIZED_SUBACCOUNT_UNDEFINED, <<"ce22d0d38c8b1e16e4e68ec941eed319">>).
+-define(CUSTOMIZED_SUBACCOUNT, <<"5bb4a2b6323bd02a77f1049669073643">>).
+
 -define(A_MASTER_ACCOUNT_ID, <<"6b71cb72c876b5b1396a335f8f8a2594">>).
 -define(A_MASTER_ACCOUNT_DB, <<"account%2F6b%2F71%2Fcb72c876b5b1396a335f8f8a2594">>).
 
