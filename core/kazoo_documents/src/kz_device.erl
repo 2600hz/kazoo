@@ -17,6 +17,8 @@
         ,sip_route/1, sip_route/2, set_sip_route/2
         ,custom_sip_headers_inbound/1, custom_sip_headers_inbound/2, set_custom_sip_headers_inbound/2
         ,custom_sip_headers_outbound/1, custom_sip_headers_outbound/2, set_custom_sip_headers_outbound/2
+        ,custom_sip_header_inbound/2, custom_sip_header_inbound/3
+        ,custom_sip_header_outbound/2, custom_sip_header_outbound/3
 
         ,sip_settings/1, sip_settings/2, set_sip_settings/2
 
@@ -145,6 +147,20 @@ custom_sip_headers_inbound(DeviceJObj, Default) ->
         'false' -> CustomHeaders;
         'true' -> Default
     end.
+
+-spec custom_sip_header_inbound(doc(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec custom_sip_header_inbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
+custom_sip_header_inbound(DeviceJObj, Name) ->
+    custom_sip_header_inbound(DeviceJObj, Name, 'undefined').
+custom_sip_header_inbound(DeviceJObj, Name, Default) ->
+    kz_json:get_ne_value(Name, custom_sip_headers_inbound(DeviceJObj), Default).
+
+-spec custom_sip_header_outbound(doc(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec custom_sip_header_outbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
+custom_sip_header_outbound(DeviceJObj, Name) ->
+    custom_sip_header_outbound(DeviceJObj, Name, 'undefined').
+custom_sip_header_outbound(DeviceJObj, Name, Default) ->
+    kz_json:get_ne_value(Name, custom_sip_headers_outbound(DeviceJObj), Default).
 
 -spec filter_custom_sip_headers({ne_binary(), any()}) -> boolean().
 filter_custom_sip_headers({<<"in">>, _}) -> 'false';
