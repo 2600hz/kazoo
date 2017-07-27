@@ -74,7 +74,7 @@ number_tree(DID, AccountDoc) ->
 -spec print_tree(ne_binaries()) -> 'ok'.
 print_tree([]) -> 'ok';
 print_tree([AccountId|Tree]) ->
-    {'ok', AccountDoc} = kz_datamgr:open_cache_doc(<<"accounts">>, AccountId),
+    {'ok', AccountDoc} = kz_account:fetch(AccountId),
     io:format(" ~s(~s) ->", [kz_account:name(AccountDoc), kz_doc:id(AccountDoc)]),
     print_tree(Tree).
 

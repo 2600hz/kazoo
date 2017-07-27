@@ -269,7 +269,7 @@ find_notification_settings(_, []) ->
     lager:debug("unable to get service props, pvt_tree for the account was empty", []),
     kz_json:new();
 find_notification_settings([_, Module], Tree) ->
-    case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, lists:last(Tree)) of
+    case kz_account:fetch(lists:last(Tree)) of
         {'error', _} -> kz_json:new();
         {'ok', JObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s"
