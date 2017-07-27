@@ -292,7 +292,7 @@ user_summary(Context, UserId) ->
 
 -spec maybe_get_user_channels(cb_context:context(), kz_json:objects()) -> cb_context:context().
 maybe_get_user_channels(Context, Endpoints) ->
-    case kz_term:is_empty(Endpoints) of
+    case kz_util:is_empty(Endpoints) of
         'true' -> crossbar_util:response([], Context);
         'false' ->
             get_channels(Context
