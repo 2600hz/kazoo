@@ -70,7 +70,8 @@ Key | Description | Type | Default | Required
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false`
-`sip.custom_sip_headers` | A property list of SIP headers beging with the prefix 'X-' | `object()` |   | `false`
+`sip.custom_sip_headers./^[a-zA-z0-9_]+$/` | The SIP header to add | `string()` |   | `false`
+`sip.custom_sip_headers` | A property list of SIP headers beginning with the prefix 'X-' or 'P-' | `object()` |   | `false`
 `sip.expire_seconds` | The time, in seconds, sent to the provisioner for the registration period that the device should be configured with. | `integer()` | `300` | `false`
 `sip.ignore_completed_elsewhere` | When set to false the phone should not consider ring group calls answered elsewhere as missed | `boolean()` |   | `false`
 `sip.invite_format` | The SIP request URI invite format | `string('username' | 'npan' | '1npan' | 'e164' | 'route' | 'contact')` | `contact` | `false`
