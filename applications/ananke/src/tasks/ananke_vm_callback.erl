@@ -66,7 +66,7 @@ handle_req(JObj, Props) ->
         UserId ->
             lager:debug("voicemail owner is ~p", [UserId]),
             {'ok', UserJObj} = kz_datamgr:open_cache_doc(AccountDb, UserId),
-            {'ok', AccountJObj} = kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId),
+            {'ok', AccountJObj} = kz_account:fetch(AccountId),
 
             OptionsPath = [<<"notify">>, <<"callback">>],
             VMBoxNotifyJObj = kz_json:get_value(OptionsPath, VMBoxJObj),

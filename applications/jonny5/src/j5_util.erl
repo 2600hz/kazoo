@@ -107,7 +107,7 @@ add_limit_details(Account, Prefix, Props) ->
 get_account_name('undefined') -> <<"unknown">>;
 get_account_name(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _} -> AccountId;
         {'ok', JObj} -> kz_json:get_ne_value(<<"name">>, JObj, AccountId)
     end.
