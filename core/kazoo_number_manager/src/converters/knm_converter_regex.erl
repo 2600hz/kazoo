@@ -18,12 +18,21 @@
         ,get_e164_converters/1
         ]).
 
+
 -define(DEFAULT_E164_CONVERTERS
        ,kz_json:from_list_recursive(
           [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{<<"prefix">>, <<"+1">>}]}
           ,{<<"^011(\\d*)$|^00(\\d*)\$">>, [{<<"prefix">>, <<"+">>}]}
           ,{<<"^[2-9]\\d{7,}\$">>, [{<<"prefix">>, <<"+">>}]}
           ])).
+
+-ifdef(TEST).
+-define(SYSTEM_E164_CONVERTERS, ?DEFAULT_E164_CONVERTERS).
+-else.
+-define(SYSTEM_E164_CONVERTERS
+       ,kapps_config:get_json(?KNM_CONFIG_CAT, ?KEY_E164_CONVERTERS, ?DEFAULT_E164_CONVERTERS)
+       ).
+-endif.
 
 -define(KEY_E164_CONVERTERS, <<"e164_converters">>).
 
@@ -138,7 +147,7 @@ apply_dialplan(Number, DialPlan, [Regex|Rs]) ->
 %%--------------------------------------------------------------------
 -spec get_e164_converters() -> kz_json:object().
 get_e164_converters() ->
-    try kapps_config:get_json(?KNM_CONFIG_CAT, ?KEY_E164_CONVERTERS, ?DEFAULT_E164_CONVERTERS)
+    try ?SYSTEM_E164_CONVERTERS
     catch
         _:_ -> ?DEFAULT_E164_CONVERTERS
     end.

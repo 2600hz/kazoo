@@ -26,7 +26,9 @@
         ]).
 
 -export([notify_new_account/1]).
--export([is_unique_realm/2]).
+-export([is_unique_realm/2
+        ,is_unique_account_name/2
+        ]).
 
 %% needed for API docs in cb_api_endpoints
 -export([allowed_methods_on_account/2]).
@@ -1493,7 +1495,7 @@ maybe_is_unique_account_name(AccountId, Name) ->
         'false' -> 'true'
     end.
 
--spec is_unique_account_name(api_binary(), ne_binary()) -> boolean().
+-spec is_unique_account_name(api_ne_binary(), ne_binary()) -> boolean().
 is_unique_account_name(AccountId, Name) ->
     AccountName = kz_util:normalize_account_name(Name),
     ViewOptions = [{'key', AccountName}],
@@ -1567,7 +1569,9 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
 delete_remove_services(Context) ->
     case kz_services:delete(cb_context:account_id(Context)) of
         {'ok', _} -> delete_free_numbers(Context);
-        _ -> crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
+        _Err ->
+            lager:error("failed to delete services: ~p", [_Err]),
+            crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
     end.
 
 -spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().

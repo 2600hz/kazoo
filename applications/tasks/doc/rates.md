@@ -6,7 +6,7 @@ Only superadmin can use this module.
 
 ## About rates
 
-Rates are stored in a database named after the `ratedeck_name` attribute. This defaults to `ratedeck` if not supplied.
+Rates are stored in a database named after the `ratedeck_id` attribute. This defaults to `ratedeck` if not supplied.
 
 An account can be assigned a ratedeck; if no ratedeck is assigned, the default ratedeck database is used. The account will be queried first, then the reseller, before selecting the default ratedeck.
 
@@ -28,7 +28,7 @@ Name | Description | Required
 `rate_nocharge_time`|"free" call time, if call duration less then this value (seconds), then call not charged|
 `rate_surcharge`|charge amount on connect (answer)|
 `rate_version`|rate version|
-`ratedeck_name`| ratedeck name, assigned to account via service plan|
+`ratedeck_id`| ratedeck name, assigned to account via service plan|
 `weight`|when found several rates with same prefix, used rate with higher weight. If not set - calculated from `prefix` length and `rate_cost` (`pvt_rate_cost`)|
 
 CSV files for all actions use the same list of fields. Names of fields match the names of keys in the CouchDB [rate document](../../crossbar/doc/rates.md#schema).

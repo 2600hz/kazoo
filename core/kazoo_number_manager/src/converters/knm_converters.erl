@@ -24,23 +24,8 @@
 -define(DEFAULT_CONVERTER_B, <<"regex">>).
 -define(DEFAULT_CONVERTERS, [?DEFAULT_CONVERTER_B]).
 
--ifdef(TEST).
--define(DEFAULT_CONVERTER, ?DEFAULT_CONVERTER_B).
--else.
--define(DEFAULT_CONVERTER
-       ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)
-       ).
--endif.
-
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*\$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
-
--define(RECONCILE_REGEX,
-        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
--define(RECONCILE_REGEX(AccountId),
-        kapps_account_config:get_global(AccountId, ?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
-
--define(CONVERTER_MOD, kz_term:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(CLASSIFIER_TOLLFREE_US,
         kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})\$">>}
@@ -91,7 +76,31 @@
                           ,{<<"international">>, ?CLASSIFIER_INTERNATIONAL}
                           ,{<<"unknown">>, ?CLASSIFIER_UNKNOWN}
                           ])).
--define(CLASSIFIERS, kapps_config:get_json(?KNM_CONFIG_CAT, <<"classifiers">>, ?DEFAULT_CLASSIFIERS)).
+
+-ifdef(TEST).
+-define(DEFAULT_CONVERTER, ?DEFAULT_CONVERTER_B).
+-define(RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX).
+-define(CLASSIFIERS, ?DEFAULT_CLASSIFIERS).
+
+-else.
+
+-define(DEFAULT_CONVERTER
+       ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)
+       ).
+-define(RECONCILE_REGEX
+       ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)
+       ).
+
+-define(CLASSIFIERS
+       ,kapps_config:get_json(?KNM_CONFIG_CAT, <<"classifiers">>, ?DEFAULT_CLASSIFIERS)
+       ).
+-endif.
+
+-define(RECONCILE_REGEX(AccountId)
+       ,kapps_account_config:get_global(AccountId, ?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)
+       ).
+
+-define(CONVERTER_MOD, kz_term:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 %%--------------------------------------------------------------------
 %% @public

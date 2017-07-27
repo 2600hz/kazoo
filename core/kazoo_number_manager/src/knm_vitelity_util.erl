@@ -34,16 +34,22 @@
 
 -export_type([query_options/0]).
 
+-ifdef(TEST).
+-define(API_URL, <<"http://api.vitelity.net/api.php">>).
+-else.
+-define(API_URL
+       ,kapps_config:get_ne_binary(?KNM_VITELITY_CONFIG_CAT
+                                  ,<<"api_uri">>
+                                  ,<<"http://api.vitelity.net/api.php">>
+                                  )
+       ).
+-endif.
+
 -spec api_uri() -> ne_binary().
-api_uri() ->
-    kapps_config:get_ne_binary(?KNM_VITELITY_CONFIG_CAT
-                              ,<<"api_uri">>
-                              ,<<"http://api.vitelity.net/api.php">>
-                              ).
+api_uri() -> ?API_URL.
 
 -spec config_cat() -> ne_binary().
-config_cat() ->
-    ?KNM_VITELITY_CONFIG_CAT.
+config_cat() -> ?KNM_VITELITY_CONFIG_CAT.
 
 -spec add_options_fold({atom(), api_binary()}, query_options()) ->
                               query_options().
@@ -51,11 +57,15 @@ add_options_fold({_K, 'undefined'}, Options) -> Options;
 add_options_fold({K, V}, Options) ->
     props:insert_value(K, V, Options).
 
+-ifdef(TEST).
+-define(QUERY_VALUE(Key, Options), props:get_value(Key, Options)).
+-else.
 -define(QUERY_VALUE(Key, Options),
         case props:get_value(Key, Options) of
             undefined -> kapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
             Value -> Value
         end).
+-endif.
 
 -spec get_query_value(ne_binary(), knm_carriers:options()) -> any().
 get_query_value(<<"cnam">>=Key, Options) -> ?QUERY_VALUE(Key, Options);

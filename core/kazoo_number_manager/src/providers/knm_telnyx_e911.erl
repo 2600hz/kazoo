@@ -20,8 +20,13 @@
 
 -define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".telnyx">>).
 
--define(IS_SANDBOX_PROVISIONING_TRUE,
-        kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
+-ifdef(TEST).
+-define(IS_SANDBOX_PROVISIONING_TRUE, 'false').
+-else.
+-define(IS_SANDBOX_PROVISIONING_TRUE
+       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')
+       ).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -82,7 +87,8 @@ feature(Number) ->
 maybe_update_e911(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     maybe_update_e911(Number, (IsDryRun
-                               orelse ?IS_SANDBOX_PROVISIONING_TRUE)).
+                               orelse ?IS_SANDBOX_PROVISIONING_TRUE
+                              )).
 
 maybe_update_e911(Number, 'true') ->
     CurrentE911 = feature(Number),

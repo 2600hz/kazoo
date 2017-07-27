@@ -87,7 +87,8 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, _ItemId, 'undefine
             AccountId = kzd_service_plan:account_id(ServicePlan),
             ServicePlanId = kz_doc:id(ServicePlan),
             lager:warning("unable to create service plan item ~s/~s from ~s/~s for bookkeeper ~s"
-                         ,[CategoryId, _ItemId, AccountId, ServicePlanId, _Bookkeeper]),
+                         ,[CategoryId, _ItemId, AccountId, ServicePlanId, _Bookkeeper]
+                         ),
             ServiceItems
     end;
 create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan) ->

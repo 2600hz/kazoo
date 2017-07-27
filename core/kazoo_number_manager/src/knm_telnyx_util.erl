@@ -19,6 +19,17 @@
 
 -define(CARRIER, 'knm_telnyx').
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-define(DEBUG_WRITE(Format, Args), ?debugFmt(Format, Args)).
+-define(DEBUG_APPEND(Format, Args), ?debugFmt(Format, Args)).
+-define(SHOULD_KEEP_BEST_EFFORT, 'false').
+-define(SHOULD_FILTER_RATES, 'false').
+-define(USER, <<"user">>).
+-define(TOKEN, <<"token">>).
+
+-else.
+
 -define(DEBUG, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"debug">>, 'false')).
 -define(DEBUG_FILE, "/tmp/telnyx.json").
 -define(DEBUG_WRITE(Format, Args),
@@ -30,18 +41,21 @@
         andalso file:write_file(?DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
 
+-define(SHOULD_KEEP_BEST_EFFORT
+       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, 'false')
+       ).
+
+-define(SHOULD_FILTER_RATES
+       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_filter_rates">>, 'false')
+       ).
+
 -define(USER, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"user">>)).
 -define(TOKEN, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"token">>)).
 
+-endif.
+
 -define(DOMAIN, "api.telnyx.com").
 -define(URL(Path), "https://" ?DOMAIN "/origination/" ++ filename:join(Path)).
-
--define(SHOULD_KEEP_BEST_EFFORT,
-        kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, 'false')).
-
--define(SHOULD_FILTER_RATES,
-        kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_filter_rates">>, 'false')).
-
 
 %%--------------------------------------------------------------------
 %% @public

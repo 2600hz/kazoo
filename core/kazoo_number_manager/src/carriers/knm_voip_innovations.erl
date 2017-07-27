@@ -27,6 +27,26 @@
 -include("knm.hrl").
 
 -define(KNM_VI_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".voip_innovations">>).
+-define(VI_DEFAULT_NAMESPACE, "http://tempuri.org/").
+
+%% (XML POST)
+-define(VI_URL_V2, "https://backoffice.voipinnovations.com/api2.pl").
+%% (Web Service)
+-define(VI_URL_V3, "https://backoffice.voipinnovations.com/Services/APIService.asmx").
+-define(VI_URL_V3_SANDBOX, "http://dev.voipinnovations.com/VOIP/Services/APIService.asmx").
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-define(DEBUG_WRITE(Format, Args), ?debugFmt(Format, Args)).
+-define(DEBUG_APPEND(Format, Args), ?debugFmt(Format, Args)).
+-define(IS_SANDBOX_PROVISIONING_TRUE, 'false').
+-define(IS_PROVISIONING_ENABLED, 'true').
+
+-define(VI_LOGIN, <<>>).
+-define(VI_PASSWORD, <<>>).
+-define(VI_ENDPOINT_GROUP, <<>>).
+
+-else.
 
 -define(VI_DEBUG, kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"debug">>, 'false')).
 -define(VI_DEBUG_FILE, "/tmp/voipinnovations.xml").
@@ -39,25 +59,25 @@
         andalso file:write_file(?VI_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
 
--define(VI_DEFAULT_NAMESPACE, "http://tempuri.org/").
-
--define(IS_SANDBOX_PROVISIONING_TRUE,
-        kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
--define(IS_PROVISIONING_ENABLED,
-        kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
-
--define(VI_URL_V2, %% (XML POST)
-        "https://backoffice.voipinnovations.com/api2.pl").
--define(VI_URL_V3, %% (Web Service)
-        "https://backoffice.voipinnovations.com/Services/APIService.asmx").
--define(VI_URL_V3_SANDBOX,
-        "http://dev.voipinnovations.com/VOIP/Services/APIService.asmx").
--define(URL_IN_USE,
-        case ?IS_SANDBOX_PROVISIONING_TRUE of 'true' -> ?VI_URL_V3_SANDBOX; 'false' -> ?VI_URL_V3 end).
+-define(IS_SANDBOX_PROVISIONING_TRUE
+       ,kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')
+       ).
+-define(IS_PROVISIONING_ENABLED
+       ,kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"enable_provisioning">>, 'true')
+       ).
 
 -define(VI_LOGIN, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"login">>, <<>>)).
 -define(VI_PASSWORD, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"password">>, <<>>)).
 -define(VI_ENDPOINT_GROUP, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"endpoint_group">>, <<>>)).
+
+-endif.
+
+-define(URL_IN_USE
+       ,case ?IS_SANDBOX_PROVISIONING_TRUE of
+            'true' -> ?VI_URL_V3_SANDBOX;
+            'false' -> ?VI_URL_V3
+        end
+       ).
 
 -define(API_SUCCESS, <<"100">>).
 

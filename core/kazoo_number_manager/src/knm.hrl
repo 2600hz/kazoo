@@ -2,17 +2,18 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include("knm_phone_number.hrl").
 
--define(APP, kazoo_number_manager).
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+-define(APP, 'kazoo_number_manager').
 -define(APP_VERSION, <<"4.0.0">>).
--define(APP_NAME, atom_to_binary(?APP, utf8)).
+-define(APP_NAME, atom_to_binary(?APP, 'utf8')).
 
 -define(CACHE_NAME, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
-
--define(PORT_IN_MODULE_NAME,
-        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)).
 
 -define(IS_US_TOLLFREE(Prefix)
        ,Prefix == <<"800">>
@@ -43,23 +44,34 @@
             orelse Prefix == <<"88*">>
        ).
 
-
 -define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
 -define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
 
--define(LOCAL_FEATURE_OVERRIDE,
-        kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"local_feature_override">>, 'false')).
-
--define(FEATURES_ALLOWED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)).
-
--define(FEATURES_DENIED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)).
-
 -define(DEFAULT_FEATURES_ALLOWED_SYSTEM, ?ALL_KNM_FEATURES).
--define(FEATURES_ALLOWED_SYSTEM(Default),
-        kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
 
+-ifdef(TEST).
+-define(PORT_IN_MODULE_NAME, ?CARRIER_LOCAL).
+-define(FEATURES_ALLOWED_RESELLER(_AccountId), 'undefined').
+-define(FEATURES_DENIED_RESELLER(_AccountId), 'undefined').
+-define(FEATURES_ALLOWED_SYSTEM(Default), Default).
+-define(LOCAL_FEATURE_OVERRIDE, 'false').
+-else.
+-define(PORT_IN_MODULE_NAME
+       ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)
+       ).
+-define(FEATURES_ALLOWED_RESELLER(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)
+       ).
+-define(FEATURES_DENIED_RESELLER(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)
+       ).
+-define(FEATURES_ALLOWED_SYSTEM(Default)
+       ,kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)
+       ).
+-define(LOCAL_FEATURE_OVERRIDE
+       ,kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"local_feature_override">>, 'false')
+       ).
+-endif.
 
 -ifdef(TEST).
 -define(START_BLOCK, <<"+14158867900">>).
@@ -424,10 +436,10 @@
            }])
        ).
 
--define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
+-define(LOG_ERROR(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_WARN(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
 -else.
 -define(LOG_ERROR(F,A), lager:error(F,A)).
 -define(LOG_WARN(F,A), lager:warning(F,A)).

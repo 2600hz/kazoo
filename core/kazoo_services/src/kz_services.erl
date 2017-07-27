@@ -68,7 +68,9 @@
 -define(PLANS, <<"plans">>).
 -define(DEFAULT_PLAN, <<"default_service_plan">>).
 -define(SERVICE_MODULE_PREFIX, "kz_service_").
--define(SERVICE_MODULES, application:get_env(?APP, 'service_modules', default_service_modules())).
+-define(SERVICE_MODULES
+       ,application:get_env(?APP, 'service_modules', default_service_modules())
+       ).
 
 -record(kz_services, {account_id :: api_binary()
                      ,billing_id :: api_binary()
@@ -96,10 +98,12 @@
              ]).
 
 -define(SHOULD_ALLOW_UPDATES
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_updates">>, 'true')).
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_updates">>, 'true')
+       ).
 
 -define(DEFAULT_SERVICE_MODULES
-       ,kapps_config:get_ne_binaries(?CONFIG_CAT, <<"modules">>)).
+       ,kapps_config:get_ne_binaries(?CONFIG_CAT, <<"modules">>)
+       ).
 
 
 -ifdef(TEST).
@@ -222,7 +226,7 @@ fetch_cached_services(?MATCH_ACCOUNT_RAW(AccountId)) ->
 
 -spec cache_services(ne_binary(), services()) -> 'ok'.
 -ifdef(TEST).
-cache_services(?MATCH_ACCOUNT_RAW(_), #kz_services{}) -> ok.
+cache_services(?MATCH_ACCOUNT_RAW(_), #kz_services{}) -> 'ok'.
 -else.
 cache_services(AccountId, Services) ->
     Options = [{'origin', [{'db', ?KZ_SERVICES_DB, AccountId}]}],
@@ -298,8 +302,8 @@ handle_fetch_result(AccountId, JObj) ->
 -spec add_service_plan(ne_binary(), services()) -> services().
 add_service_plan(PlanId, #kz_services{jobj = JObj}=Services) ->
     ResellerId = kzd_services:reseller_id(JObj),
-    Services#kz_services{jobj = kz_service_plans:add_service_plan(PlanId, ResellerId, JObj)
-                        }.
+    UpdatedJObj = kz_service_plans:add_service_plan(PlanId, ResellerId, JObj),
+    Services#kz_services{jobj = UpdatedJObj}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -384,7 +388,9 @@ save(#kz_services{jobj = JObj
             ,{fun kz_doc:set_modified/2, kz_time:current_tstamp()}
             ,{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],
-    case save_doc(kz_json:set_values(props:filter_undefined(Props), JObj)) of
+
+    UpdatedJObj = kz_json:set_values(props:filter_undefined(Props), JObj),
+    case save_doc(UpdatedJObj) of
         {'ok', NewJObj} ->
             ?LOG_DEBUG("saved services for ~s: ~s"
                       ,[AccountId, kz_json:encode(kzd_services:quantities(NewJObj))]
@@ -1273,10 +1279,14 @@ get_item_plan(CategoryId, ItemId, ServicePlan) ->
 -spec get_service_modules() -> atoms().
 get_service_modules() ->
     case ?DEFAULT_SERVICE_MODULES of
-        'undefined' -> ?SERVICE_MODULES;
-        ConfModules ->
+        [_|_]=ConfModules ->
             lager:debug("configured service modules: ~p", [ConfModules]),
-            [kz_term:to_atom(Mod, 'true') || Mod <- ConfModules]
+            [kz_term:to_atom(Mod, 'true') || Mod <- ConfModules];
+        _ ->
+            ConfModules = ?SERVICE_MODULES,
+            kapps_config:set_default(?CONFIG_CAT, <<"modules">>, ConfModules),
+            lager:info("set default service modules: ~p", [ConfModules]),
+            ConfModules
     end.
 
 -spec default_service_modules() -> atoms().

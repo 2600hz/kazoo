@@ -152,7 +152,7 @@ plans(JObj, Default) ->
 
 -spec plan_ids(doc()) -> ne_binaries().
 plan_ids(JObj) ->
-    kz_json:get_keys(plans(JObj)).
+    kz_json:get_keys(?PLANS, JObj).
 
 -spec plan(doc(), ne_binary()) -> kz_json:object().
 -spec plan(doc(), ne_binary(), Default) -> kz_json:object() | Default.

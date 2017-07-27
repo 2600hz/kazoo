@@ -11,7 +11,9 @@
 -export([credit/2]).
 -export([debit/2]).
 -export([refresh/0]).
--export([reconcile/0, reconcile/1]).
+-export([reconcile/0, reconcile/1
+        ,remove_orphaned_services/0
+        ]).
 -export([sync/1]).
 -export([make_reseller/1]).
 -export([demote_reseller/1]).
@@ -305,3 +307,25 @@ not_design_doc(JObj) ->
 prepare_service_doc(JObj) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
     kz_json:delete_key(<<"_rev">>, Doc).
+
+-spec remove_orphaned_services() -> 'no_return'.
+remove_orphaned_services() ->
+    {'ok', ServiceDocs} = kz_datamgr:all_docs(?KZ_SERVICES_DB),
+    Count = lists:foldl(fun maybe_remove_orphan/2, 0, ServiceDocs),
+    Count > 0
+        andalso io:format("removed ~p service docs~n", [Count]),
+    'no_return'.
+
+-spec maybe_remove_orphan(kz_json:object() | ne_binary(), non_neg_integer()) ->
+                                 non_neg_integer().
+maybe_remove_orphan(<<"_design/", _/binary>>, Count) -> Count;
+maybe_remove_orphan(<<_/binary>> = AccountId, Count) ->
+    case kz_account:fetch(AccountId) of
+        {'ok', _AccountDoc} -> Count;
+        {'error', 'not_found'} ->
+            {'ok', _} = kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),
+            io:format("account ~s not found, removing services~n", [AccountId]),
+            Count+1
+    end;
+maybe_remove_orphan(ViewResult, Count) ->
+    maybe_remove_orphan(kz_doc:id(ViewResult), Count).

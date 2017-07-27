@@ -25,13 +25,14 @@
 
 -define(KNM_OTHER_CONFIG_CAT, <<?KNM_CONFIG_CAT/binary, ".other">>).
 
--define(COUNTRY, kapps_config:get_ne_binary(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY)).
-
--define(PHONEBOOK_URL, kapps_config:get_ne_binary(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
 -ifdef(TEST).
--define(PHONEBOOK_URL(Options), props:get_value(phonebook_url, Options)).
+-define(PHONEBOOK_URL, 'undefined').
+-define(PHONEBOOK_URL(Options), props:get_value('phonebook_url', Options)).
+-define(COUNTRY, ?KNM_DEFAULT_COUNTRY).
 -else.
+-define(PHONEBOOK_URL, kapps_config:get_ne_binary(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
 -define(PHONEBOOK_URL(_Options), ?PHONEBOOK_URL).
+-define(COUNTRY, kapps_config:get_ne_binary(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY)).
 -endif.
 
 -ifdef(TEST).
@@ -44,19 +45,21 @@
                             ])
                          ]
                         }
-                       ])).
-
+                       ])
+       ).
 
 -define(NUMBERS_DATA, kz_json:from_list(
                         [{<<"+1415886790", (D + $0)>>, Ext}
                          || D <- lists:seq(0, 9),
                             Ext <- [kz_json:from_list([{<<"extension">>, D}])]
-                        ])).
+                        ])
+       ).
 
 -define(NUMBERS_RESPONSE
        ,kz_json:from_list([{<<"status">>, <<"success">>}
                           ,{<<"data">>, ?NUMBERS_DATA}
-                          ])).
+                          ])
+       ).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -248,7 +251,8 @@ get_numbers(Url, Prefix, Quantity, Options) ->
 
 -spec query_for_numbers(ne_binary()) -> kz_http:http_ret().
 -ifdef(TEST).
-query_for_numbers(<<?NUMBER_PHONEBOOK_URL_L, _/binary>>) ->
+query_for_numbers(<<?NUMBER_PHONEBOOK_URL_L, _/binary>>=URI) ->
+    ?LOG_DEBUG("number pb url ~s resp: ~s", [URI, kz_json:encode(?NUMBERS_RESPONSE)]),
     {'ok', 200, [], kz_json:encode(?NUMBERS_RESPONSE)}.
 -else.
 query_for_numbers(Uri) ->

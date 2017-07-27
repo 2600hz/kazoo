@@ -275,7 +275,7 @@ add_plans(Context, Services) ->
     ReqData = cb_context:req_data(Context),
     lists:foldl(fun kz_services:add_service_plan/2
                ,Services
-               ,kz_json:get_value(<<"add">>, ReqData, [])
+               ,kz_json:get_list_value(<<"add">>, ReqData, [])
                ).
 
 %%--------------------------------------------------------------------

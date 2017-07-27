@@ -21,17 +21,12 @@
 -export([features_denied/1]).
 -export([system_allowed_features/0]).
 
--define(CNAM_PROVIDER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, <<"knm_cnam_notifier">>)).
-
--define(E911_PROVIDER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, <<"knm_dash_e911">>)).
-
--define(SYSTEM_PROVIDERS, kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"providers">>)).
-
 -define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 
 -ifdef(TEST).
+-define(CNAM_PROVIDER(_AccountId), <<"knm_cnam_notifier">>).
+-define(E911_PROVIDER(_AccountId), <<"knm_dash_e911">>).
+-define(SYSTEM_PROVIDERS, 'undefined').
 -record(feature_parameters, {is_local = false :: boolean()
                             ,is_admin = false :: boolean()
                             ,assigned_to :: api_ne_binary()
@@ -41,6 +36,15 @@
                             ,num :: ne_binary() %% TEST-only
                             }).
 -else.
+-define(CNAM_PROVIDER(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, <<"knm_cnam_notifier">>)
+       ).
+
+-define(E911_PROVIDER(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, <<"knm_dash_e911">>)
+       ).
+
+-define(SYSTEM_PROVIDERS, kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"providers">>)).
 -record(feature_parameters, {is_local = false :: boolean()
                             ,is_admin = false :: boolean()
                             ,assigned_to :: api_ne_binary()
@@ -90,12 +94,21 @@ available_features(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec service_name(ne_binary(), ne_binary()) -> ne_binary().
+-ifdef(TEST).
+service_name(?FEATURE_E911, _AccountId) ->
+    service_name(?E911_PROVIDER(_AccountId));
+service_name(?FEATURE_CNAM, _AccountId) ->
+    service_name(?CNAM_PROVIDER(_AccountId));
+service_name(Feature, _) ->
+    service_name(Feature).
+-else.
 service_name(?FEATURE_E911, AccountId) ->
     service_name(?E911_PROVIDER(AccountId));
 service_name(?FEATURE_CNAM, AccountId) ->
     service_name(?CNAM_PROVIDER(AccountId));
 service_name(Feature, _) ->
     service_name(Feature).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -209,7 +222,7 @@ system_allowed_features() ->
     Features =
         lists:usort(
           case ?SYSTEM_PROVIDERS of
-              undefined -> ?FEATURES_ALLOWED_SYSTEM(?DEFAULT_FEATURES_ALLOWED_SYSTEM);
+              'undefined' -> ?FEATURES_ALLOWED_SYSTEM(?DEFAULT_FEATURES_ALLOWED_SYSTEM);
               Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
           end
          ),
@@ -397,14 +410,14 @@ provider_module(Other, _) ->
 
 -ifdef(TEST).
 e911_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_e911">>;
-e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
+e911_provider(_AccountId) -> ?E911_PROVIDER(AccountId).
 -else.
 e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
 -endif.
 
 -ifdef(TEST).
 cnam_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_cnam">>;
-cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
+cnam_provider(_AccountId) -> ?CNAM_PROVIDER(AccountId).
 -else.
 cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 -endif.

@@ -33,26 +33,31 @@
         ,is_local/1
         ]).
 
--define(DEFAULT_CARRIER_MODULE
-       ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
-
--define(DEFAULT_CARRIER_MODULES, [?DEFAULT_CARRIER_MODULE]).
-
--define(CARRIER_MODULES
-       ,kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
-
 -ifdef(TEST).
+-define(DEFAULT_CARRIER_MODULE, ?CARRIER_LOCAL).
+-define(CARRIER_MODULES, ?DEFAULT_CARRIER_MODULES).
 -define(CARRIER_MODULES(AccountId)
        ,(fun (?CHILD_ACCOUNT_ID) ->
                  %% CHILD_ACCOUNT_ID is not a reseller but that's okay
                  [?CARRIER_LOCAL, <<"knm_bandwidth2">>];
-             (_) ->
-                 kapps_account_config:get_ne_binaries(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
+             (_) -> ?CARRIER_MODULES
          end)(AccountId)).
 -else.
+
+-define(DEFAULT_CARRIER_MODULE
+       ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)
+       ).
+
+-define(CARRIER_MODULES
+       ,kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)
+       ).
+
 -define(CARRIER_MODULES(AccountId)
-       ,kapps_account_config:get_ne_binaries(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
+       ,kapps_account_config:get_ne_binaries(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
+       ).
 -endif.
+
+-define(DEFAULT_CARRIER_MODULES, [?DEFAULT_CARRIER_MODULE]).
 
 -ifdef(TEST).
 -type option() :: {'quantity', pos_integer()} |
@@ -135,8 +140,8 @@ get_available_carriers(Options) ->
     case account_id(Options) =:= undefined
         orelse reseller_id(Options) =:= undefined
     of
-        true -> keep_only_reachable(?CARRIER_MODULES);
-        false ->
+        'true' -> keep_only_reachable(?CARRIER_MODULES);
+        'false' ->
             ResellerId = reseller_id(Options),
             First = [?CARRIER_RESERVED, ?CARRIER_RESERVED_RESELLER, ?CARRIER_LOCAL],
             keep_only_reachable(First ++ (?CARRIER_MODULES(ResellerId) -- First))
@@ -327,7 +332,6 @@ account_id(Options) ->
 reseller_id(Options) ->
     props:get_value('reseller_id', Options).
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -337,7 +341,7 @@ reseller_id(Options) ->
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(PhoneNumber) ->
     Carrier = knm_phone_number:module_name(PhoneNumber),
-    try apply(Carrier, is_number_billable, [PhoneNumber])
+    try apply(Carrier, 'is_number_billable', [PhoneNumber])
     catch
         'error':_R -> 'true'
     end.
@@ -385,7 +389,7 @@ apply(Number, FName, Args) ->
 %%--------------------------------------------------------------------
 -spec keep_only_reachable([ne_binary()]) -> atoms().
 keep_only_reachable(ModuleNames) ->
-    lager:debug("resolving carrier modules: ~p", [ModuleNames]),
+    ?LOG_DEBUG("resolving carrier modules: ~p", [ModuleNames]),
     [Module
      || M <- ModuleNames,
         (Module = kz_util:try_load_module(M)) =/= 'false'

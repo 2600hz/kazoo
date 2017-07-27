@@ -19,7 +19,6 @@
         ,code_change/3
         ]).
 
-
 -export([find/1
         ,next/1
         ,discovery/1, discovery/2
@@ -34,9 +33,7 @@
         ,query_id/1
         ,account_id/1
         ,reseller_id/1
-
         ]).
-
 
 -include("knm.hrl").
 
@@ -52,12 +49,17 @@
 -type options() :: [option()].
 -export_type([option/0, options/0]).
 
+-ifdef(TEST).
+-define(MAX_SEARCH, 500).
+-define(NUMBER_SEARCH_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
+-else.
 -define(MAX_SEARCH, kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 500)).
+-define(NUMBER_SEARCH_TIMEOUT
+       ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"number_search_timeout_ms">>, 5 * ?MILLISECONDS_IN_SECOND)
+       ).
+-endif.
 
 -define(POLLING_INTERVAL, 5000).
-
--define(NUMBER_SEARCH_TIMEOUT
-       ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"number_search_timeout_ms">>, 5 * ?MILLISECONDS_IN_SECOND)).
 
 -define(EOT, '$end_of_table').
 
@@ -262,14 +264,14 @@ do_find(Options, 'false') ->
     of
         {'ok', JObj} -> kapi_discovery:results(JObj);
         {'error', _Error} ->
-            lager:debug("error requesting search from amqp: ~p", [_Error]),
+            ?LOG_DEBUG("error requesting search from amqp: ~p", [_Error]),
             []
     end.
 
 -spec first(options()) -> kz_json:objects().
 first(Options) ->
     Carriers = knm_carriers:available_carriers(Options),
-    lager:debug("contacting, in order: ~p", [Carriers]),
+    ?LOG_DEBUG("contacting, in order: ~p", [Carriers]),
     QID = query_id(Options),
     gen_listener:cast(?MODULE, {'reset_search', QID}),
     Self = self(),
