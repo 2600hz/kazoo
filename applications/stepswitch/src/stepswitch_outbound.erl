@@ -248,8 +248,10 @@ create_loopback_endpoint(Props, JObj) ->
              [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, "true"}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
              ,{<<"Resource-ID">>, AccountId}
              ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
+             ,{<<"Resource-Type">>, <<"onnet-termination">>}
              ]),
     kz_json:from_list(
       [{<<"Invite-Format">>, <<"loopback">>}
