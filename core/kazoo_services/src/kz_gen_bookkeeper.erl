@@ -17,8 +17,8 @@
     bookkeeper_sync_result().
 
 -callback transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
-                          {ok, kz_transaction:transactions()} |
-                          {error, atom()}.
+    {ok, kz_transaction:transactions()} |
+    {error, atom()}.
 
 -callback commit_transactions(ne_binary(), kz_transactions:kz_transactions()) ->
     ok | error.
