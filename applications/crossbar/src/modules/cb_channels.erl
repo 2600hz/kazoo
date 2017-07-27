@@ -284,12 +284,19 @@ device_summary(Context, DeviceId) ->
 
 -spec user_summary(cb_context:context(), ne_binary()) -> cb_context:context().
 user_summary(Context, UserId) ->
-    {UserEndpoints, Context1} = user_endpoints(Context, UserId),
+    {Endpoints, Context1} = user_endpoints(Context, UserId),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
+        'false' -> maybe_get_user_channels(Context1, Endpoints)
+    end.
+
+-spec maybe_get_user_channels(cb_context:context(), kz_json:objects()) -> cb_context:context().
+maybe_get_user_channels(Context, Endpoints) ->
+    case kz_term:is_empty(Endpoints) of
+        'true' -> crossbar_util:response([], Context);
         'false' ->
             get_channels(Context
-                        ,UserEndpoints
+                        ,Endpoints
                         ,fun kapi_call:publish_query_user_channels_req/1
                         )
     end.
