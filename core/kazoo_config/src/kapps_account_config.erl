@@ -229,7 +229,7 @@ get(Account, Category) ->
         {error, _} -> kz_doc:set_id(kz_json:new(), kapps_config_util:account_doc_id(Category))
     end.
 
--spec load_config_from_system(api_binary(), ne_binary()) -> {ok, kz_json:object()}.
+-spec load_config_from_system(api_binary(), ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_system(_Account, Category) ->
     ?LOG_DEBUG("load_system"),
     case kapps_config:get_category(Category) of
@@ -242,6 +242,7 @@ load_config_from_system(_Account, Category) ->
         {error, _}=Error -> Error
     end.
 
+-spec load_config_from_reseller(ne_binary(), ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_reseller(AccountId, Category) ->
     ?LOG_DEBUG("load_reseller"),
     case kz_services:find_reseller_id(AccountId) of
@@ -276,6 +277,7 @@ load_config_from_account(AccountId, Category) ->
 %%          2.2.2. If not reseller, get parents AccountId and go to (1)
 %% @end
 %%--------------------------------------------------------------------
+-spec load_config_from_ancestors(ne_binary(), ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(AccountId, Category) ->
     ?LOG_DEBUG("init load_ancestores"),
     ParentId = kz_account:get_parent_account_id(AccountId),
@@ -288,7 +290,7 @@ load_config_from_ancestors(AccountId, Category) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_config_from_ancestors_fold(api_ne_binary(), api_ne_binary(), ne_binary(), kz_json:objects()) ->
-                                             kz_json:object().
+                                             kazoo_data:get_results_return().
 load_config_from_ancestors_fold(undefined, _MasterId, _Category, JObjs) ->
     ?LOG_DEBUG("ancestors parent undefined"),
     {ok, JObjs};
@@ -318,7 +320,7 @@ load_config_from_ancestors_fold(AccountId, MasterId, Category, JObjs) ->
             ?LOG_DEBUG("ancestors nok account"),
             lager:debug("failed to get category ~s for account ~s: ~p", [Category, AccountId, _Reason]),
             load_config_from_ancestors_fold(ParentId, MasterId, Category, JObjs)
-        end.
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -352,11 +354,11 @@ maybe_set_account(AccountId, Category, Key, Value) ->
 %% system_config value then save in account db.
 %% @end
 %%--------------------------------------------------------------------
+-spec set_global(api_account(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
 -ifdef(TEST).
 set_global(_, _, Key, Value) ->
     kz_json:set_value(Key, Value, kz_json:new()).
 -else.
--spec set_global(api_account(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
 set_global(Account, Category, Key, Value) ->
     set_account_or_merge_global(account_id(Account), Category, Key, Value).
 
@@ -399,10 +401,7 @@ flush(Account, Category) ->
 %% ====================================================================
 
 
--spec walk_the_walk(map()) -> {ok, kz_json:object()} | {error, any()}.
-walk_the_walk(#{account_id := no_account_id}) ->
-    ?LOG_DEBUG("walk no_account_id"),
-    {error, no_account_id};
+-spec walk_the_walk(map()) -> {ok, kz_json:object()} | {error, not_found}.
 walk_the_walk(#{strategy_funs := []
                ,results := []
                }) ->

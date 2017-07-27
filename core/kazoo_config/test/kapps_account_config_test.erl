@@ -13,7 +13,7 @@
 
 get_with_strategy_test_() ->
     [strategy_no_account_id()
-    % ,get_startegy_global_from_account()
+    %% ,get_startegy_global_from_account()
     ].
 
 strategy_no_account_id() ->
@@ -29,9 +29,9 @@ strategy_no_account_id() ->
      }
     ].
 
-% get_startegy_global_from_account() ->
-%     Value = ?JOBJ_VALUE_FROM_SYSTEM,
-%     [{"get config global strategy from a sub-account"
-%      ,?_assertEqual(Value, kapps_account_config:get_with_strategy(<<"global">>, 'undefined', ?TEST_CAT, <<"root_obj_key">>, Value))
-%      }
-%     ].
+%% get_startegy_global_from_account() ->
+%%     Value = ?JOBJ_VALUE_FROM_SYSTEM,
+%%     [{"get config global strategy from a sub-account"
+%%      ,?_assertEqual(Value, kapps_account_config:get_with_strategy(<<"global">>, 'undefined', ?TEST_CAT, <<"root_obj_key">>, Value))
+%%      }
+%%     ].

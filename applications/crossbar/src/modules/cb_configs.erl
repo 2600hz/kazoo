@@ -108,7 +108,7 @@ set_config_to_context(ConfigId, Context) ->
     crossbar_doc:handle_datamgr_success(set_id(ConfigId, Config), Context).
 
 -spec doc_id(ne_binary()) -> ne_binary().
-doc_id(ConfigId) -> kapps_account_config:config_doc_id(ConfigId).
+doc_id(ConfigId) -> kapps_account_config:account_doc_id(ConfigId).
 
 -spec set_id(ne_binary(), kz_json:object()) -> kz_json:object().
 set_id(ConfigId, JObj) -> kz_json:set_value(<<"id">>, doc_id(ConfigId), JObj).
