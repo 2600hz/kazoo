@@ -3540,6 +3540,10 @@
                 }
             }
         },
+        "custom_sip_headers": {
+            "description": "Custom SIP headers applied to an INVITE",
+            "type": "object"
+        },
         "device_rate_limits": {
             "description": "describe limits for SIP requests",
             "properties": {
@@ -3944,13 +3948,15 @@
                     "properties": {
                         "custom_sip_headers": {
                             "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
-                            "in": {
-                                "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device",
-                                "type": "object"
-                            },
-                            "out": {
-                                "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device",
-                                "type": "object"
+                            "properties": {
+                                "in": {
+                                    "$ref": "#/definitions/custom_sip_headers",
+                                    "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                                },
+                                "out": {
+                                    "$ref": "#/definitions/custom_sip_headers",
+                                    "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                                }
                             },
                             "type": "object"
                         },
