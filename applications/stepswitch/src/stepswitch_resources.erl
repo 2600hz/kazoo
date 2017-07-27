@@ -618,6 +618,7 @@ gateway_to_endpoint(DestinationNumber
     CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, IsEmergency}
              ,{<<"Matched-Number">>, DestinationNumber}
+             ,{<<"Resource-Type">>, <<"offnet-termination">>}
               | gateway_from_uri_settings(Gateway)
              ]),
     kz_json:from_list(
