@@ -204,8 +204,8 @@ search_req(Context, SearchType, Username) ->
                                     )
     of
         {'error', _R}=Err -> Err;
-        {'ok', JObjs} -> process_responses(JObjs, SearchType, 'null');
-        {'timeout', JObjs} -> process_responses(JObjs, SearchType, 'true')
+        {'ok', JObjs} when is_list(JObjs) -> process_responses(JObjs, SearchType, 'null');
+        {'timeout', JObjs} when is_list(JObjs) -> process_responses(JObjs, SearchType, 'true')
     end.
 
 -type collect_params() :: {integer(), integer()}.
@@ -234,16 +234,15 @@ process_responses(JObjs, SearchType, Timeout) ->
     Subscriptions = extract_subscriptions(JObjs, Fun),
     {'ok', kz_json:set_value(<<"timeout">>, Timeout, Subscriptions)}.
 
-
 -spec extract_subscriptions(kz_json:objects(), acc_function()) -> kz_json:object().
 extract_subscriptions(JObjs, Fun) ->
     lists:foldl(fun(JObj, Acc) -> Fun(kz_api:remove_defaults(JObj), Acc) end, kz_json:new(), JObjs).
 
--type on_success_fun() :: fun((cb_context:context()) -> cb_context:context()).
-
--spec validate_presence_thing(cb_context:context(), on_success_fun()) -> cb_context:context().
+-spec validate_presence_thing(cb_context:context()) -> cb_context:context().
+-spec validate_presence_thing(cb_context:context(), req_nouns()) -> cb_context:context().
 validate_presence_thing(Context) ->
     validate_presence_thing(Context, cb_context:req_nouns(Context)).
+
 validate_presence_thing(Context, [{<<"presence">>, _}
                                  ,{<<"devices">>, [DeviceId]}
                                  ,{<<"accounts">>, [_AccountId]}

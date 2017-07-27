@@ -126,7 +126,7 @@ post(Context) ->
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
-    crossbar_doc:delete(Context, 'permanent').
+    crossbar_doc:delete(Context, ?HARD_DELETE).
 
 %%--------------------------------------------------------------------
 %% @public

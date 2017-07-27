@@ -70,19 +70,23 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context()) ->
+                       boolean() |
+                       {'halt', cb_context:context()}.
 authorize(Context) ->
     authorize_list_available_module(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
--spec authorize(cb_context:context(), path_token()) -> boolean().
+-spec authorize(cb_context:context(), path_token()) -> 'true'.
 authorize(_Context, _) ->
     'true'.
 
--spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+-spec authorize(cb_context:context(), path_token(), path_token()) -> 'true'.
 authorize(_Context, _, _) ->
     'true'.
 
--spec authorize_list_available_module(cb_context:context(), req_nouns(), http_methods()) -> boolean().
+-spec authorize_list_available_module(cb_context:context(), req_nouns(), http_method()) ->
+                                             boolean() |
+                                             {'halt', cb_context:context()}.
 authorize_list_available_module(Context, [{<<"security">>, []}], ?HTTP_GET) ->
     cb_simple_authz:authorize(Context);
 authorize_list_available_module(Context, [{<<"security">>, []}], _) ->
@@ -252,7 +256,7 @@ patch(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
-    crossbar_doc:delete(Context, 'permanent').
+    crossbar_doc:delete(Context, ?HARD_DELETE).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Id) ->
