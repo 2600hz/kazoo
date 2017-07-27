@@ -19,10 +19,6 @@ shutdown() {
 script() {
     sup crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' || shutdown
     sleep 3
-#    sup kazoo_perf_maintenance json_metrics | python -m json.tool
-    sleep 1
-#    sup kazoo_perf_maintenance graphite_metrics 'compte_maitre' 'clu1' 'royaume'
-    sleep 1
     sup kapps_maintenance migrate || shutdown
     sleep 3
     sup kapps_maintenance migrate_to_4_0 || shutdown
