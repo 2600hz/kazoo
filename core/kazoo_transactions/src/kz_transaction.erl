@@ -23,7 +23,7 @@
 -export([metadata/1, set_metadata/2]).
 -export([reason/1, set_reason/2]).
 -export([code/1, set_code/2]).
--export([amount/1, set_amount/2]).
+-export([amount/1, set_amount_and_type/2]).
 -export([type/1, set_type/2]).
 -export([created/1]).
 -export([modified/1]).
@@ -261,21 +261,17 @@ set_code(Code, T)
                     ,pvt_code = Code
                     }.
 
--spec set_amount(integer(), transaction()) -> transaction().
-set_amount(Amount, T)
+-spec set_amount_and_type(integer(), transaction()) -> transaction().
+set_amount_and_type(Amount, T)
   when is_integer(Amount), Amount > 0 ->
     T#kz_transaction{pvt_amount = Amount
                     ,pvt_type = <<"credit">>
                     };
-set_amount(Amount, T)
+set_amount_and_type(Amount, T)
   when is_integer(Amount), Amount < 0 ->
     T#kz_transaction{pvt_amount = abs(Amount)
                     ,pvt_type = <<"debit">>
-                    };
-set_amount(Amount=?NE_BINARY, T) ->
-    set_amount(kz_term:to_integer(Amount), T);
-set_amount(Amount, T) ->
-    T#kz_transaction{pvt_amount = Amount}.
+                    }.
 
 -spec set_type(ne_binary(), transaction()) -> transaction().
 set_type(Type, T) ->

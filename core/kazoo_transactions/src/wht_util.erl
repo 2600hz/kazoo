@@ -575,7 +575,7 @@ update_rollup(Account, Balance, JObj) ->
 
 -spec update_existing_rollup(ne_binary(), integer(), kz_transaction:transaction()) -> 'ok'.
 update_existing_rollup(_Account, Balance, Transaction) ->
-    {'ok', _} = kz_transaction:save(kz_transaction:set_amount(abs(Balance), Transaction)),
+    {'ok', _} = kz_transaction:save(kz_transaction:set_amount_and_type(Balance, Transaction)),
     lager:debug("updated rollup in ~s with new balance ~p", [_Account, Balance]).
 
 %%--------------------------------------------------------------------
