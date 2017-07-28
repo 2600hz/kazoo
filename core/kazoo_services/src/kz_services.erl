@@ -858,8 +858,6 @@ move_to_good_standing(?MATCH_ACCOUNT_RAW(AccountId)) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_only(api_ne_binary() | services()) -> 'false' | services().
--spec reconcile(api_ne_binary() | services()) -> 'false' | services().
-
 reconcile_only('undefined') -> 'false';
 reconcile_only(Account=?NE_BINARY) ->
     reconcile_only(fetch(Account));
@@ -878,6 +876,7 @@ reconcile_module(M, Services) ->
     M:reconcile(Services).
 -endif.
 
+-spec reconcile(api_ne_binary() | services()) -> 'false' | services().
 reconcile('undefined') -> 'false';
 reconcile(Account=?NE_BINARY) ->
     save(reconcile_only(Account));
@@ -894,12 +893,11 @@ reconcile(#kz_services{}=Services) ->
 reconcile_only('undefined', _Module) -> 'false';
 reconcile_only(Account=?NE_BINARY, Module) ->
     reconcile_only(fetch(Account), Module);
-reconcile_only(#kz_services{account_id=AccountId}=CurrentServices, Module) ->
-    lager:debug("reconcile ~s services for ~s", [Module, AccountId]),
+reconcile_only(#kz_services{account_id = _AccountId}=CurrentServices, Module) ->
+    lager:debug("reconcile ~s services for ~s", [Module, _AccountId]),
     case get_service_module(Module) of
         'false' -> 'false';
-        ServiceModule ->
-            ServiceModule:reconcile(CurrentServices)
+        ServiceModule -> reconcile_module(ServiceModule, CurrentServices)
     end.
 
 -spec reconcile(api_binary() | services(), text()) -> 'false' | services().
@@ -1290,7 +1288,7 @@ default_service_modules() ->
     ,'kz_service_ratedeck'
     ].
 
--spec get_service_module(text()) -> atom() | 'false'.
+-spec get_service_module(text()) -> module() | 'false'.
 get_service_module(Module) when not is_binary(Module) ->
     get_service_module(kz_term:to_binary(Module));
 get_service_module(<<?SERVICE_MODULE_PREFIX,_/binary>> = Module) ->
