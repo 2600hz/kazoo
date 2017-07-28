@@ -370,7 +370,7 @@ handle_topup_transactions(Account, [JObj|JObjs]=List, Retry) when Retry > 0 ->
         ?CODE_TOPUP ->
             Amount = kz_json:get_value(<<"pvt_amount">>, JObj),
             Transaction = kz_transaction:credit(Account, Amount),
-            Transaction1 = kz_transaction:set_reason(<<"topup">>, Transaction),
+            Transaction1 = kz_transaction:set_reason(wht_util:topup(), Transaction),
             case kz_transaction:save(Transaction1) of
                 {'ok', _} -> 'ok';
                 {'error', 'conflict'} ->

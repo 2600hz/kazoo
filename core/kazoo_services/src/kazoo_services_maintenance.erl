@@ -88,7 +88,7 @@ create_transaction(Transaction) ->
 -spec admin_discretion(kz_transaction:kz_transaction()) ->
                               kz_transaction:kz_transaction().
 admin_discretion(T) ->
-    kz_transaction:set_reason(<<"admin_discretion">>, T).
+    kz_transaction:set_reason(wht_util:admin_discretion(), T).
 
 -spec admin_description(kz_transaction:kz_transaction()) ->
                                kz_transaction:kz_transaction().
