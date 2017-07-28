@@ -431,6 +431,7 @@ delete_test_() ->
     AccountId = ?A_RESELLER_ACCOUNT_ID,
     {ok, ServicesJObj0} = kz_services:fetch_services_doc(AccountId, true),
     {ok, ServicesJObj} = kz_services:delete(AccountId),
+    Services = kz_services:from_service_json(ServicesJObj),
     Keys = [?SERVICES_PVT_IS_DIRTY, ?SERVICES_PVT_IS_DELETED],
     [?_assert(kz_json:are_equal(kz_json:delete_keys(Keys, ServicesJObj0)
                                ,kz_json:delete_keys(Keys, ServicesJObj)
@@ -440,16 +441,54 @@ delete_test_() ->
     ,?_assert(kzd_services:is_deleted(ServicesJObj))
     ,?_assertEqual({ok,kz_json:new()}, kz_services:delete(?UNRELATED_ACCOUNT_ID))
     ,?_assertMatch({error,_}, kz_services:delete(?WRONG_ACCOUNT_ID))
-     | quantity_checks(ServicesJObj, kz_services:from_service_json(ServicesJObj), true)
+    ,?_assertEqual(undefined, kz_services:diff_quantities(Services))
+    ,?_assertEqual(0, kz_services:category_quantity(?CAT, Services))
+    ,?_assertEqual(0, kz_services:cascade_quantity(?CAT, ?ITEM, Services))
+    ,?_assertEqual(0, kz_services:cascade_category_quantity(?CAT, Services))
+     | quantity_checks(ServicesJObj, Services, true)
     ].
 
 reset_category_test_() ->
     Services = kz_services:fetch(?A_RESELLER_ACCOUNT_ID),
-    ServicesWithNewQ = kz_services:update(?CAT, ?ITEM, 0 + 42, Services),
+    ServicesWithNewQ = kz_services:update(?CAT, ?ITEM, 42, Services),
     ServicesNowReset = kz_services:reset_category(?CAT, ServicesWithNewQ),
-    [?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, Services))
+    ServicesWithZeroQ = kz_services:update(?CAT, ?ITEM, 0, ServicesNowReset),
+    [?_assertEqual(9, kz_services:quantity(?CAT, ?ITEM, Services))
+    ,?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, Services))
+    ,?_assert(kz_json:are_equal(kz_json:new(), kz_services:diff_quantities(Services)))
+    ,?_assertEqual(10, kz_services:category_quantity(?CAT, Services))
+    ,?_assertEqual(16, kz_services:cascade_quantity(?CAT, ?ITEM, Services))
+    ,?_assertEqual(17, kz_services:cascade_category_quantity(?CAT, Services))
+     %% ServicesWithNewQ
+    ,?_assertEqual(42, kz_services:quantity(?CAT, ?ITEM, ServicesWithNewQ))
     ,?_assertEqual(42, kz_services:updated_quantity(?CAT, ?ITEM, ServicesWithNewQ))
+    ,?_assert(kz_json:are_equal(kz_json:decode(<<"{\"phone_numbers\":{\"did_us\":33}}">>)
+                               ,kz_services:diff_quantities(ServicesWithNewQ)
+                               )
+             )
+    ,?_assertEqual(43, kz_services:category_quantity(?CAT, ServicesWithNewQ))
+    ,?_assertEqual(49, kz_services:cascade_quantity(?CAT, ?ITEM, ServicesWithNewQ))
+    ,?_assertEqual(50, kz_services:cascade_category_quantity(?CAT, ServicesWithNewQ))
+     %% ServicesNowReset
+    ,?_assertEqual(9, kz_services:quantity(?CAT, ?ITEM, ServicesNowReset))
     ,?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, ServicesNowReset))
+    ,?_assert(kz_json:are_equal(kz_json:decode(<<"{\"phone_numbers\":{}}">>)
+                               ,kz_services:diff_quantities(ServicesNowReset)
+                               )
+             )
+    ,?_assertEqual(10, kz_services:category_quantity(?CAT, ServicesNowReset))
+    ,?_assertEqual(16, kz_services:cascade_quantity(?CAT, ?ITEM, ServicesNowReset))
+    ,?_assertEqual(17, kz_services:cascade_category_quantity(?CAT, ServicesNowReset))
+     %% ServicesWithZeroQ
+    ,?_assertEqual(0, kz_services:quantity(?CAT, ?ITEM, ServicesWithZeroQ))
+    ,?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, ServicesWithZeroQ))
+    ,?_assert(kz_json:are_equal(kz_json:decode(<<"{\"phone_numbers\":{\"did_us\":-9}}">>)
+                               ,kz_services:diff_quantities(ServicesWithZeroQ)
+                               )
+             )
+    ,?_assertEqual(1, kz_services:category_quantity(?CAT, ServicesWithZeroQ))
+    ,?_assertEqual(7, kz_services:cascade_quantity(?CAT, ?ITEM, ServicesWithZeroQ))
+    ,?_assertEqual(8, kz_services:cascade_category_quantity(?CAT, ServicesWithZeroQ))
     ].
 
 set_billing_id_test_() ->
