@@ -568,8 +568,7 @@ update_rollup(Account, Balance, JObj) ->
         <<"debit">> when Balance < 0 ->
             update_existing_rollup(Account, Balance, Transaction);
         _Else ->
-            AccountMODb = kazoo_modb:get_modb(Account),
-            EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+            EncodedMODb = kz_util:format_account_modb(kazoo_modb:get_modb(Account), 'encoded'),
             {'ok', _} = kz_datamgr:del_doc(EncodedMODb, JObj),
             rollup(Account, abs(Balance))
     end.
@@ -614,8 +613,7 @@ collapse_call_transaction(JObj, Calls) ->
 collapse_call_transaction(CallId, JObj, Calls) ->
     case dict:find(CallId, Calls) of
         'error' ->
-            Amount = get_amount(JObj),
-            NJObj = kz_json:set_value(<<"amount">>, Amount, JObj),
+            NJObj = kz_json:set_value(<<"amount">>, get_amount(JObj), JObj),
             dict:store(CallId, NJObj, Calls);
         {'ok', Call} ->
             Routines = [fun(C) -> collapse_created_time(C, JObj) end
@@ -650,9 +648,9 @@ collapse_ended_time(Call, JObj) ->
 -spec collapse_amount(kz_json:object(), kz_json:object()) ->
                              kz_json:object().
 collapse_amount(Call, JObj) ->
-    CurrentAmount = kz_json:get_value(<<"amount">>, Call, 0),
+    CurrentAmount = kz_json:get_integer_value(<<"amount">>, Call, 0),
     MaybeAmount = get_amount(JObj),
-    kz_json:set_value(<<"amount">>, MaybeAmount+CurrentAmount, Call).
+    kz_json:set_value(<<"amount">>, MaybeAmount + CurrentAmount, Call).
 
 -spec collapse_metadata(kz_json:object(), kz_json:object()) ->
                                kz_json:object().
@@ -668,7 +666,7 @@ collapse_metadata(Call, JObj) ->
 
 -spec get_amount(kz_json:object()) -> dollars().
 get_amount(Call) ->
-    Amount = kz_json:get_value(<<"amount">>, Call, 0),
+    Amount = kz_json:get_integer_value(<<"amount">>, Call, 0),
     case <<"debit">> =:= kz_json:get_value(<<"type">>, Call) of
         true -> -1 * Amount;
         false -> Amount

@@ -8,12 +8,12 @@
 %%%-------------------------------------------------------------------
 -module(kz_transaction).
 
--export([id/1, set_id/2]).
--export([rev/1, set_rev/2]).
+-export([id/1]).
+-export([rev/1]).
 -export([description/1, set_description/2]).
--export([call_id/1, set_call_id/2]).
--export([sub_account_id/1, set_sub_account_id/2]).
--export([sub_account_name/1, set_sub_account_name/2]).
+-export([call_id/1]).
+-export([sub_account_id/1]).
+-export([sub_account_name/1]).
 -export([set_sub_account_info/2]).
 -export([event/1, set_event/2]).
 -export([number/1, set_number/2]).
@@ -25,12 +25,12 @@
 -export([code/1, set_code/2]).
 -export([amount/1, set_amount/2]).
 -export([type/1, set_type/2]).
--export([created/1, set_created/2]).
--export([modified/1, set_modified/2]).
--export([account_id/1, set_account_id/2]).
--export([account_db/1, set_account_db/2]).
--export([version/1, set_version/2]).
--export([status/1, set_status/2]).
+-export([created/1]).
+-export([modified/1]).
+-export([account_id/1]).
+-export([account_db/1]).
+-export([version/1]).
+-export([status/1]).
 -export([order_id/1, set_order_id/2]).
 
 -export([new/1]).
@@ -117,21 +117,14 @@ reason(#kz_transaction{pvt_reason = Reason}) -> Reason.
 status(#kz_transaction{pvt_status = Status}) -> Status.
 -spec code(transaction()) -> api_integer().
 code(#kz_transaction{pvt_code = Code}) -> Code.
--spec amount(transaction()) -> non_neg_integer().
+-spec amount(transaction()) -> units().
 amount(#kz_transaction{pvt_amount = Amount}) -> Amount.
 -spec type(transaction()) -> ne_binary().
 type(#kz_transaction{pvt_type = Type}) -> Type.
-
 -spec created(transaction()) -> gregorian_seconds().
-created(#kz_transaction{pvt_created = 'undefined'}) ->
-    kz_time:current_tstamp();
 created(#kz_transaction{pvt_created = Created}) -> Created.
-
 -spec modified(transaction()) -> gregorian_seconds().
-modified(#kz_transaction{pvt_modified = 'undefined'}) ->
-    kz_time:current_tstamp();
 modified(#kz_transaction{pvt_modified = Modified}) -> Modified.
-
 -spec account_id(transaction()) -> ne_binary().
 account_id(#kz_transaction{pvt_account_id = AccountId}) -> AccountId.
 -spec account_db(transaction()) -> ne_binary().
@@ -183,7 +176,7 @@ new(#{account_id := AccountId
                    }.
 
 %% @private
--spec new(ne_binary(), non_neg_integer(), ne_binary()) -> transaction().
+-spec new(ne_binary(), units(), ne_binary()) -> transaction().
 new(Ledger, Amount, Type) ->
     #kz_transaction{pvt_type = Type
                    ,pvt_amount = abs(Amount)
@@ -199,7 +192,7 @@ new(Ledger, Amount, Type) ->
 %% Create transaction record of type credit (with Amount & Reason)
 %% @end
 %%--------------------------------------------------------------------
--spec credit(ne_binary(), integer()) -> transaction().
+-spec credit(ne_binary(), units()) -> transaction().
 credit(Ledger, Amount) ->
     new(Ledger, Amount, <<"credit">>).
 
@@ -209,7 +202,7 @@ credit(Ledger, Amount) ->
 %% Create transaction record of type debit (with Amount & Reason)
 %% @end
 %%--------------------------------------------------------------------
--spec debit(ne_binary(), integer()) -> transaction().
+-spec debit(ne_binary(), units()) -> transaction().
 debit(Ledger, Amount) ->
     new(Ledger, Amount, <<"debit">>).
 
@@ -218,24 +211,9 @@ debit(Ledger, Amount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_id(ne_binary(), transaction()) -> transaction().
-set_id(Id, T) ->
-    T#kz_transaction{id = Id}.
--spec set_rev(ne_binary(), transaction()) -> transaction().
-set_rev(Rev, T) ->
-    T#kz_transaction{rev = Rev}.
 -spec set_description(ne_binary(), transaction()) -> transaction().
 set_description(Desc=?NE_BINARY, T) ->
     T#kz_transaction{description = Desc}.
--spec set_call_id(ne_binary(), transaction()) -> transaction().
-set_call_id(CallId=?NE_BINARY, T) ->
-    T#kz_transaction{call_id = CallId}.
--spec set_sub_account_id(ne_binary(), transaction()) -> transaction().
-set_sub_account_id(?MATCH_ACCOUNT_RAW(AccountId), T) ->
-    T#kz_transaction{sub_account_id = AccountId}.
--spec set_sub_account_name(ne_binary(), transaction()) -> transaction().
-set_sub_account_name(AccountName=?NE_BINARY, T) ->
-    T#kz_transaction{sub_account_name = AccountName}.
 
 -spec set_sub_account_info(ne_binary(), transaction()) -> transaction().
 set_sub_account_info(?MATCH_ACCOUNT_RAW(AccountId), T) ->
@@ -276,10 +254,6 @@ set_reason(Reason, T) ->
                     ,pvt_code = wht_util:reason_code(Reason)
                     }.
 
--spec set_status(ne_binary(), transaction()) -> transaction().
-set_status(Status, T) ->
-    T#kz_transaction{pvt_status = Status}.
-
 -spec set_code(pos_integer(), transaction()) -> transaction().
 set_code(Code, T)
   when is_integer(Code), Code > 0 ->
@@ -295,7 +269,7 @@ set_amount(Amount, T)
                     };
 set_amount(Amount, T)
   when is_integer(Amount), Amount < 0 ->
-    T#kz_transaction{pvt_amount = Amount
+    T#kz_transaction{pvt_amount = abs(Amount)
                     ,pvt_type = <<"debit">>
                     };
 set_amount(Amount=?NE_BINARY, T) ->
@@ -306,21 +280,6 @@ set_amount(Amount, T) ->
 -spec set_type(ne_binary(), transaction()) -> transaction().
 set_type(Type, T) ->
     T#kz_transaction{pvt_type = Type}.
--spec set_created(gregorian_seconds(), transaction()) -> transaction().
-set_created(Created, T) ->
-    T#kz_transaction{pvt_created = Created}.
--spec set_modified(gregorian_seconds(), transaction()) -> transaction().
-set_modified(Modified, T) ->
-    T#kz_transaction{pvt_modified = Modified}.
--spec set_account_id(ne_binary(), transaction()) -> transaction().
-set_account_id(AccountId, T) ->
-    T#kz_transaction{pvt_account_id = AccountId}.
--spec set_account_db(ne_binary(), transaction()) -> transaction().
-set_account_db(AccountDb, T) ->
-    T#kz_transaction{pvt_account_db = AccountDb}.
--spec set_version(integer(), transaction()) -> transaction().
-set_version(Vsn, T) ->
-    T#kz_transaction{pvt_vsn = Vsn}.
 -spec set_order_id(api_binary(), transaction()) -> transaction().
 set_order_id(OrderId, T) ->
     T#kz_transaction{order_id = OrderId}.
