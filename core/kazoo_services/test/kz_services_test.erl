@@ -649,3 +649,25 @@ is_of_behaviour(Behaviour, Module) ->
 check_bookkeeper_test_() ->
     [?_assert(kz_services:check_bookkeeper(?UNRELATED_ACCOUNT_ID, 10))
     ].
+
+transactions_test_() ->
+    AccountId = ?A_RESELLER_ACCOUNT_ID,
+    Services = kz_services:fetch(AccountId),
+    Cost = kz_services:activation_charges(<<"number_services">>, <<"port">>, Services),
+    Transaction0 = kz_transaction:debit(AccountId, wht_util:dollars_to_units(Cost)),
+    Transaction = kz_transaction:set_reason(wht_util:number_activation(), Transaction0),
+    JObj = kz_transaction:to_json(Transaction),
+    PubJObj = kz_transaction:to_public_json(Transaction),
+    [?_assertEqual(ok, kz_services:commit_transactions(Services, [Transaction]))
+    ,?_assertEqual([], kz_services:charge_transactions(Services, [Transaction]))
+    ,?_assertEqual(10.0, kz_json:get_value(<<"amount">>, PubJObj))
+    ,?_assertEqual(100000, kz_json:get_value(<<"pvt_amount">>, JObj))
+    ]
+        ++ [assert_same(Key, PubJObj, JObj)
+            || Key <- [{<<"code">>, <<"pvt_code">>}
+                      ,{<<"created">>, <<"pvt_created">>}
+                      ,{<<"reason">>, <<"pvt_reason">>}
+                      ,{<<"type">>, <<"pvt_type">>}
+                      ,{<<"version">>, <<"pvt_vsn">>}
+                      ]
+           ].
