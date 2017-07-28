@@ -29,7 +29,4 @@ handle(Data, Call) ->
 
 -spec collection_name(kz_json:object()) -> ne_binary().
 collection_name(Data) ->
-    case kz_json:get_ne_binary_value(<<"collection_name">>, Data) of
-        <<_/binary>> = Name -> Name;
-        'undefined' -> <<"default">>
-    end.
+    kz_json:get_ne_binary_value(<<"collection_name">>, Data, <<"default">>).
