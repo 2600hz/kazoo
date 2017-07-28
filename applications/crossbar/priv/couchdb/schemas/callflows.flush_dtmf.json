@@ -4,6 +4,7 @@
     "description": "Validator for the flush_dtmf callflow's data object",
     "properties": {
         "collection_name": {
+            "default": "default",
             "description": "Flush collected DTMF in a named key",
             "type": "string"
         }
