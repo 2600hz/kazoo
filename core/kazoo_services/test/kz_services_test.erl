@@ -443,6 +443,15 @@ delete_test_() ->
      | quantity_checks(ServicesJObj, kz_services:from_service_json(ServicesJObj), true)
     ].
 
+reset_category_test_() ->
+    Services = kz_services:fetch(?A_RESELLER_ACCOUNT_ID),
+    ServicesWithNewQ = kz_services:update(?CAT, ?ITEM, 0 + 42, Services),
+    ServicesNowReset = kz_services:reset_category(?CAT, ServicesWithNewQ),
+    [?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, Services))
+    ,?_assertEqual(42, kz_services:updated_quantity(?CAT, ?ITEM, ServicesWithNewQ))
+    ,?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, ServicesNowReset))
+    ].
+
 set_billing_id_test_() ->
     MA = ?A_MASTER_ACCOUNT_ID,
     RA = ?A_RESELLER_ACCOUNT_ID,
