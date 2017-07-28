@@ -683,6 +683,9 @@ prepare_topup_transaction(Transaction) ->
 
 -spec modb_doc_id() -> ne_binary().
 modb_doc_id() ->
-    ?MATCH_MODB_SUFFIX_RAW(Id, Year, Month) =
-        kz_util:format_account_mod_id(kz_binary:rand_hex(16)),
-    ?MATCH_MODB_PREFIX(Year, Month, Id).
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:current_tstamp()),
+    <<(kz_term:to_binary(Year))/binary
+      ,(kz_time:pad_month(Month))/binary
+      ,"-"
+      ,(kz_binary:rand_hex(16))/binary
+    >>.
