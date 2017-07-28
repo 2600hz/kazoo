@@ -183,11 +183,10 @@ from_service_json(JObj, CalcUpdates) ->
                            },
     maybe_calc_updates(Services, CalcUpdates).
 
+maybe_calc_updates(Services, 'false') -> Services;
 maybe_calc_updates(Services, 'true') ->
     Qs = cascade_quantities(account_id(Services), is_reseller(Services)),
-    Services#kz_services{cascade_quantities = Qs};
-maybe_calc_updates(Services, 'false') ->
-    Services.
+    Services#kz_services{cascade_quantities = Qs}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -903,11 +902,17 @@ reconcile_only(#kz_services{account_id = _AccountId}=CurrentServices, Module) ->
 -spec reconcile(api_binary() | services(), text()) -> 'false' | services().
 reconcile('undefined', _Module) -> 'false';
 reconcile(Account=?NE_BINARY, Module) ->
-    timer:sleep(?MILLISECONDS_IN_SECOND),
     maybe_save(reconcile_only(Account, Module));
 reconcile(#kz_services{}=Services, Module) ->
-    timer:sleep(?MILLISECONDS_IN_SECOND),
+    pause_between_service_reconciliation(),
     maybe_save(reconcile_only(Services, Module)).
+
+-ifdef(TEST).
+pause_between_service_reconciliation() -> ok.
+-else.
+pause_between_service_reconciliation() ->
+    timer:sleep(?MILLISECONDS_IN_SECOND).
+-endif.
 
 %%%===================================================================
 %%% Access functions

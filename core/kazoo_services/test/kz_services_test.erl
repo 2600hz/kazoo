@@ -99,41 +99,46 @@ services_json_to_record(#state{services = Services
     ,{"Verify the billing id"
      ,?_assertEqual(kzd_services:billing_id(JObj), kz_services:get_billing_id(Services))
      }
-     | quantity_checks(JObj, Services)
+     | quantity_checks(JObj, Services, false)
     ].
 
 services_record_to_json(#state{services = Services}) ->
-    JObj = kz_services:to_json(Services),
+    ServicesJObj = kz_services:to_json(Services),
     [{"Verify account id is set properly"
-     ,?_assertEqual(kz_doc:account_id(JObj), kz_services:account_id(Services))
+     ,?_assertEqual(kz_doc:account_id(ServicesJObj), kz_services:account_id(Services))
      }
     ,{"Verify the dirty flag is set properly"
-     ,?_assertEqual(kzd_services:is_dirty(JObj), kz_services:is_dirty(Services))
+     ,?_assertEqual(kzd_services:is_dirty(ServicesJObj), kz_services:is_dirty(Services))
      }
     ,{"Verify the billing id"
-     ,?_assertEqual(kzd_services:billing_id(JObj), kz_services:get_billing_id(Services))
+     ,?_assertEqual(kzd_services:billing_id(ServicesJObj), kz_services:get_billing_id(Services))
      }
-     | quantity_checks(JObj, Services)
+     | quantity_checks(ServicesJObj, Services, false)
     ].
 
-quantity_checks(JObj, Services) ->
-    [category_checks(Category, CategoryJObj, Services)
-     || {Category, CategoryJObj} <- kz_json:to_proplist(kzd_services:quantities(JObj))
+quantity_checks(ServicesJObj, Services, IsTestingDeleted) ->
+    [category_checks(Category, CategoryJObj, Services, IsTestingDeleted)
+     || {Category, CategoryJObj} <- kz_json:to_proplist(kzd_services:quantities(ServicesJObj))
     ].
 
-category_checks(Category, CategoryJObj, Services) ->
-    [item_check(Category, Item, Quantity, Services)
+category_checks(Category, CategoryJObj, Services, IsTestingDeleted) ->
+    [item_check(Category, Item, Quantity, Services, IsTestingDeleted)
      || {Item, Quantity} <- kz_json:to_proplist(CategoryJObj)
     ].
 
-item_check(Category, Item, Quantity, Services) ->
+item_check(Category, Item, Quantity, Services, false) ->
     {iolist_to_binary(io_lib:format("Verify ~s.~s is ~p", [Category, Item, Quantity]))
     ,?_assertEqual(Quantity, kz_services:quantity(Category, Item, Services))
+    };
+item_check(Category, Item, _, Services, true) ->
+    {iolist_to_binary(io_lib:format("Verify ~s.~s is ~p", [Category, Item, 0]))
+    ,?_assertEqual(0, kz_services:quantity(Category, Item, Services))
     }.
 
-clean_discount(JObj) ->
-    Path = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>, <<"cumulative">>, <<"rate">>],
-    kz_json:delete_key(Path, JObj).
+clean_discount(PlanJObj) ->
+    Path = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>
+           ,<<"cumulative">>, <<"rate">>],
+    kz_json:delete_key(Path, PlanJObj).
 
 service_plan_json_to_plans(#state{service_plan_jobj = ServicePlan
                                  ,account_plan = AccountPlan
@@ -435,6 +440,7 @@ delete_test_() ->
     ,?_assert(kzd_services:is_deleted(ServicesJObj))
     ,?_assertEqual({ok,kz_json:new()}, kz_services:delete(?UNRELATED_ACCOUNT_ID))
     ,?_assertMatch({error,_}, kz_services:delete(?WRONG_ACCOUNT_ID))
+     | quantity_checks(ServicesJObj, kz_services:from_service_json(ServicesJObj), true)
     ].
 
 set_billing_id_test_() ->
@@ -610,6 +616,7 @@ reconcile_test_() ->
     ,?_assert(kz_services:is_services(kz_services:reconcile(?A_RESELLER_ACCOUNT_ID, kz_service_devices)))
     ,?_assert(not kz_services:reconcile(?UNRELATED_ACCOUNT_ID, not_a_service_module))
     ,?_assert(not kz_services:reconcile(?UNRELATED_ACCOUNT_ID, <<"not_a_service_module">>))
+    ,?_assert(not kz_services:is_services(kz_json:new()))
     ].
 
 modules_test_() ->
