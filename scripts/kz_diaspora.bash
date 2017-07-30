@@ -215,7 +215,22 @@ function kz_media_recording_to_kzc_recording {
     TO="kzc_recording"
     for FILE in `grep -rl "$FROM:" $ROOT/{core,applications}`; do
             replace_call $FROM $TO "" "" $FILE
+    done
+}
+
+function kz_includes {
+    INCLUDES=(kz_databases.hrl
+              kz_log.hrl
+              kz_types.hrl
+             )
+    FROM="kazoo\/include"
+    TO="kazoo_stdlib\/include"
+
+    for FILE in `grep -rl "$FROM\/" $ROOT/{core,applications}`; do
+        for INCLUDE in "${INCLUDES[@]}"; do
+            $(sed -i "s/$FROM\/$INCLUDE/$TO\/$INCLUDE/g" $FILE)
         done
+    done
 }
 
 echo "ensuring kz_term is used"
@@ -234,5 +249,7 @@ echo "ensuring kapps_speech to kazoo_speech"
 kapps_speech_to_kazoo_speech
 echo "ensuring kz_media_recording to kzc_recording"
 kz_media_recording_to_kzc_recording
+echo "ensuring includes from kazoo are moved to kazoo_stdlib"
+kz_includes
 
 popd > /dev/null

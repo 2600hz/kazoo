@@ -516,12 +516,12 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
 maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
     Context.
 
--spec delete_type(boolean() | cb_context:context()) -> 'permanent' | 'soft'.
+-spec delete_type(boolean() | cb_context:context()) -> ?HARD_DELETE | ?SOFT_DELETE.
 delete_type('true') ->
-    'permanent';
+    ?HARD_DELETE;
 
 delete_type('false') ->
-    'soft';
+    ?SOFT_DELETE;
 
 delete_type(Context) ->
     Prompt = kzd_media:is_prompt(cb_context:resp_data(Context)),

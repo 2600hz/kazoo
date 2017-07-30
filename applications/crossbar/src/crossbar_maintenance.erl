@@ -384,10 +384,11 @@ create_account(AccountName, Realm, Username, Password)
                              ]),
 
     try create_account_and_user(Account, User) of
-        {'ok', Context} -> maybe_promote_account(Context)
+        {'ok', _Context} -> 'ok'
     catch
         'throw':Errors ->
             io:format("failed to create '~s': ~s~n", [AccountName, kz_json:encode(Errors)]),
+            lager:error("errors thrown when creating account: ~s", [kz_json:encode(Errors)]),
             'failed';
         _E:_R ->
             ST = erlang:get_stacktrace(),
@@ -404,7 +405,7 @@ create_account(AccountName, Realm, Username, Password) ->
                   ,kz_term:to_binary(Password)
                   ).
 
--spec maybe_promote_account(cb_context:context()) -> 'ok'.
+-spec maybe_promote_account(cb_context:context()) -> {'ok', cb_context:context()}.
 maybe_promote_account(Context) ->
     AccountDb = cb_context:account_db(Context),
     AccountId = cb_context:account_id(Context),
@@ -414,8 +415,9 @@ maybe_promote_account(Context) ->
             'ok' = promote_account(AccountId),
             'ok' = allow_account_number_additions(AccountId),
             'ok' = whs_account_conversion:force_promote(AccountId),
-            update_system_config(AccountId);
-        _Else -> 'ok'
+            'ok' = update_system_config(AccountId),
+            {'ok', Context};
+        _Else -> {'ok', Context}
     end.
 
 -spec create_account_and_user(kz_json:object(), kz_json:object()) ->
@@ -426,6 +428,7 @@ create_account_and_user(Account, User) ->
            ,fun create_account/1
            ,{fun validate_user/2, User}
            ,fun create_user/1
+           ,fun maybe_promote_account/1
            ],
     lists:foldl(fun create_fold/2
                ,{'ok', cb_context:new()}
@@ -488,19 +491,20 @@ db_exists(Database, ShouldRetry) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account(kz_json:object(), cb_context:context()) ->
-                              {'ok', cb_context:context()}.
+-spec validate_account(kz_json:object(), cb_context:context()) -> {'ok', cb_context:context()}.
 validate_account(JObj, Context) ->
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
-                                  ,{fun cb_context:set_req_nouns/2, [{?KZ_ACCOUNTS_DB, []}]}
+                                  ,{fun cb_context:set_req_nouns/2, [{<<"accounts">>, []}]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                  ,{fun cb_context:set_api_version/2, ?VERSION_2}
                                   ])
               ],
     Context1 = crossbar_bindings:fold(<<"v2_resource.validate.accounts">>, Payload),
     case cb_context:resp_status(Context1) of
-        'success' -> {'ok', Context1};
+        'success' ->
+            {'ok', Context1};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
             io:format("failed to validate account: ~p ~s~n", [_Code, _Msg]),
@@ -513,14 +517,17 @@ validate_account(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user(kz_json:object(), cb_context:context()) ->
-                           {'ok', cb_context:context()}.
+-spec validate_user(kz_json:object(), cb_context:context()) -> {'ok', cb_context:context()}.
 validate_user(JObj, Context) ->
     Payload = [cb_context:setters(Context
                                  ,[{fun cb_context:set_req_data/2, JObj}
-                                  ,{fun cb_context:set_req_nouns/2, [{?KZ_ACCOUNTS_DB, []}]}
+                                  ,{fun cb_context:set_req_nouns/2, [{<<"users">>, []}
+                                                                    ,{<<"accounts">>, [cb_context:account_id(Context)]}
+                                                                    ]}
                                   ,{fun cb_context:set_req_verb/2, ?HTTP_PUT}
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
+                                  ,{fun cb_context:set_doc/2, 'undefined'}
+                                  ,{fun cb_context:set_resp_data/2, 'undefined'}
                                   ]
                                  )
               ],
@@ -539,16 +546,16 @@ validate_user(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_account(cb_context:context()) ->
-                            {'ok', cb_context:context()} |
-                            {'error', kz_json:object()}.
+-spec create_account(cb_context:context()) -> {'ok', cb_context:context()}.
 create_account(Context) ->
     Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.accounts">>, [Context]),
     case cb_context:resp_status(Context1) of
         'success' ->
-            io:format("created new account '~s' in db '~s'~n", [cb_context:account_id(Context1)
-                                                               ,cb_context:account_db(Context1)
-                                                               ]),
+            io:format("created new account '~s' in db '~s'~n"
+                     ,[cb_context:account_id(Context1)
+                      ,cb_context:account_db(Context1)
+                      ]
+                     ),
             {'ok', Context1};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
@@ -556,7 +563,6 @@ create_account(Context) ->
             kz_datamgr:db_delete(kz_util:format_account_db(AccountId)),
 
             io:format("failed to create the account: ~p ~s", [_Code, _Msg]),
-
             throw(Errors)
     end.
 
@@ -566,9 +572,7 @@ create_account(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_user(cb_context:context()) ->
-                         {'ok', cb_context:context()} |
-                         {'error', kz_json:object()}.
+-spec create_user(cb_context:context()) -> {'ok', cb_context:context()}.
 create_user(Context) ->
     Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.users">>, [Context]),
     case cb_context:resp_status(Context1) of

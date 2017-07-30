@@ -717,7 +717,7 @@ log_undefined(M, F, Length, ST) ->
     kz_util:log_stacktrace(ST).
 
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
-    lager:error("unable to find function clause for ~s:~s/~b", [M, F, Length]);
+    lager:info("unable to find function clause for ~s:~s/~b", [M, F, Length]);
 log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
     lager:error("unable to find function clause for ~s:~s(~s) in ~s:~p"
                ,[RealM, RealF

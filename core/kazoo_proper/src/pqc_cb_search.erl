@@ -14,7 +14,7 @@ search_account_by_name(API, Name) ->
                     ,{<<"v">>, Name}
                     ]
                    ),
-    pqc_cb_api:make_request([200], fun kz_http:get/2, URL ++ ["?" | Querystring], RequestHeaders).
+    pqc_cb_api:make_request([200], fun kz_http:get/2, URL ++ [$? | Querystring], RequestHeaders).
 
 -spec search_url(pqc_cb_api:state()) -> string().
 search_url(API) ->

@@ -601,7 +601,7 @@ maybe_delete(Context, Id, [?MEDIA_VALUE(Type, SubType, _, _, _)]) ->
 
 -spec delete_doc(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_doc(Context, Id) ->
-    Context1 = crossbar_doc:delete(Context, 'permanent'),
+    Context1 = crossbar_doc:delete(Context, ?HARD_DELETE),
     case cb_context:resp_status(Context1) of
         'success' ->
             kz_datamgr:flush_cache_doc(cb_context:account_db(Context), Id),

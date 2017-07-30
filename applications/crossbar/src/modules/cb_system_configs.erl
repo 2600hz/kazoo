@@ -254,7 +254,7 @@ patch(Context, Id, Node) ->
 -spec delete(cb_context:context(), path_token(), path_token(), api_object() | kz_json:objects()) ->
                     cb_context:context().
 delete(Context, _Id) ->
-    crossbar_doc:delete(Context, 'permanent').
+    crossbar_doc:delete(Context, ?HARD_DELETE).
 
 delete(Context, Id, Node) ->
     delete(Context, Id, Node, cb_context:doc(Context)).

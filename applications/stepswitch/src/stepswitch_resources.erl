@@ -676,9 +676,10 @@ gateway_to_endpoint(DestinationNumber
     {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency, PrivacyMode),
 
     CCVs = [{<<"Emergency-Resource">>, IsEmergency}
-            ,{<<"Matched-Number">>, DestinationNumber}
-            ,{<<"RTCP-MUX">>, RTCP_MUX}
-             | gateway_from_uri_settings(Gateway)
+           ,{<<"Matched-Number">>, DestinationNumber}
+           ,{<<"Resource-Type">>, <<"offnet-termination">>}
+           ,{<<"RTCP-MUX">>, RTCP_MUX}
+            | gateway_from_uri_settings(Gateway)
            ]),
     kz_json:from_list(
       props:filter_empty(

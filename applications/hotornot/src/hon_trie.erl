@@ -200,15 +200,15 @@ code_change(_Vsn, State, _Extra) ->
 handle_db_update(ConfUpdate, _Props) ->
     'true' = kapi_conf:doc_update_v(ConfUpdate),
 
-    lager:debug("conf update: ~p", [ConfUpdate]),
     process_conf_update(ConfUpdate, kapi_conf:get_type(ConfUpdate)).
 
 process_conf_update(ConfUpdate, <<"database">>) ->
+    lager:debug("conf update: ~p", [ConfUpdate]),
     process_db_update(kapi_conf:get_database(ConfUpdate)
                      ,kz_api:event_name(ConfUpdate)
                      );
 process_conf_update(_ConfUpdate, _Type) ->
-    'ok'.
+    lager:debug("ignoring conf update to ~s: ~p", [_Type, _ConfUpdate]).
 
 -spec process_db_update(ne_binary(), ne_binary()) -> 'ok'.
 process_db_update(?KZ_RATES_DB=RatedeckId, ?DB_EDITED) ->

@@ -163,16 +163,16 @@ import(_ExtraArgs, Dict, Args) ->
 
     case dict:find(Db, Dict) of
         'error' ->
-            lager:debug("adding prefix ~s to ~s", [kzd_rate:prefix(Rate), Db]),
-            {[], dict:store(Db, {1, [Rate]}, Dict)};
+            lager:debug("adding prefix ~s to ratedeck '~s'", [kzd_rate:prefix(Rate), Db]),
+            {'ok', dict:store(Db, {1, [Rate]}, Dict)};
         {'ok', {BulkLimit, Rates}} ->
-            lager:info("saving ~b rates to ~s", [BulkLimit, Db]),
+            lager:info("saving ~b rates to '~s'", [BulkLimit, Db]),
             kz_datamgr:suppress_change_notice(),
             save_rates(Db, [Rate | Rates]),
             kz_datamgr:enable_change_notice(),
-            {[], dict:store(Db, {0, []}, Dict)};
+            {'ok', dict:store(Db, {0, []}, Dict)};
         {'ok', {Size, Rates}} ->
-            {[], dict:store(Db, {Size+1, [Rate | Rates]}, Dict)}
+            {'ok', dict:store(Db, {Size+1, [Rate | Rates]}, Dict)}
     end.
 
 -spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:iterator().
@@ -228,6 +228,8 @@ delete(_ExtraArgs, State, Args) ->
 
 -spec cleanup(ne_binary(), any()) -> any().
 cleanup(<<"import">>, Dict) ->
+    _Size = dict:size(Dict),
+    lager:debug("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),
     _ = dict:map(fun import_rates_into_ratedeck/2, Dict);
 cleanup(<<"delete">>, State) ->
     Db = props:get_value('db', State),
@@ -241,11 +243,21 @@ cleanup(<<"delete">>, State) ->
 import_rates_into_ratedeck(Ratedeck, {0, []}) ->
     RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
     kz_datamgr:enable_change_notice(),
+    lager:debug("importing into ratedeck '~s' complete", [RatedeckDb]),
     kzs_publish:publish_db(RatedeckDb, <<"edited">>);
-import_rates_into_ratedeck(Ratedeck, {_, Rates}) ->
+import_rates_into_ratedeck(Ratedeck, {_C, Rates}) ->
+    RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
+    lager:debug("importing ~p rate~s into ratedeck '~s'"
+               ,[_C, maybe_plural(_C), RatedeckDb]
+               ),
+
     kz_datamgr:suppress_change_notice(),
-    save_rates(kzd_ratedeck:format_ratedeck_db(Ratedeck), Rates),
+    save_rates(RatedeckDb, Rates),
     import_rates_into_ratedeck(Ratedeck, {0, []}).
+
+-spec maybe_plural(pos_integer()) -> string().
+maybe_plural(1) -> "";
+maybe_plural(_) -> "s".
 
 %%%===================================================================
 %%% Internal functions
@@ -288,6 +300,7 @@ to_csv_row(Row) ->
 generate_row(Args) ->
     RateJObj = kzd_rate:from_map(Args),
     Prefix = kzd_rate:prefix(RateJObj),
+    lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
 
     Update = props:filter_undefined(
                [{fun kzd_rate:set_name/2, maybe_generate_name(RateJObj)}
