@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # The file to copy/symlink under /usr/bin or similar
 DEFAULT_ROOT=${KAZOO_ROOT:-_rel/kazoo}
