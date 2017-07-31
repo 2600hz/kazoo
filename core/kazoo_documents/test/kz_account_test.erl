@@ -60,5 +60,5 @@ trial_time_test_() ->
     ].
 
 fetch_realm_test_() ->
-    [?_assertEqual(undefined, kz_account:fetch_realm(?AN_ACCOUNT_ID))
+    [?_assertEqual(undefined, kz_account:fetch_realm(undefined))
     ].
