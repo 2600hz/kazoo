@@ -92,11 +92,9 @@ maybe_add_number_info(JObj) ->
 -spec build_account_tree(ne_binary()) -> kz_proplist().
 build_account_tree(AccountId) ->
     {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    [account_id_name(AncestorId) || AncestorId <- kz_account:tree(AccountDoc)].
-
--spec account_id_name(ne_binary()) -> {ne_binary(), ne_binary()}.
-account_id_name(AccountId) ->
-    ?NE_BINARY = kz_account:fetch_name(AccountId).
+    [{AncestorId, ?NE_BINARY=kz_account:fetch_name(AncestorId)}
+     || AncestorId <- kz_account:tree(AccountDoc)
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
