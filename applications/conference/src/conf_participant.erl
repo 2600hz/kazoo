@@ -331,7 +331,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
                                ,server=Srv
                                }) ->
     CallId = kapps_call:call_id(Call),
-    case {kapps_util:get_event_type(JObj)
+    case {kz_util:get_event_type(JObj)
          ,kz_json:get_value(<<"Call-ID">>, JObj)
          }
     of

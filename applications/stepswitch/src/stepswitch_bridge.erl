@@ -601,5 +601,5 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
 
 -spec get_event_type(kz_json:object()) -> {ne_binary(), ne_binary(), ne_binary()}.
 get_event_type(JObj) ->
-    {C, E} = kapps_util:get_event_type(JObj),
+    {C, E} = kz_util:get_event_type(JObj),
     {C, E, kz_call_event:call_id(JObj)}.

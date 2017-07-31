@@ -38,7 +38,6 @@
         ]).
 -export([get_account_name/1]).
 -export([find_oldest_doc/1]).
--export([get_event_type/1]).
 -export([get_call_termination_reason/1]).
 -export([get_view_json/1, get_view_json/2]).
 -export([get_views_json/2]).
@@ -470,16 +469,6 @@ do_get_accounts_by(What, CacheKey, View) ->
 -spec cache(tuple(), ne_binaries()) -> 'ok'.
 cache(Key, AccountDbs) ->
     kz_cache:store_local(?KAPPS_GETBY_CACHE, Key, AccountDbs, ?GET_BY_CACHE_ORIGIN).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given an API JSON object extract the category and name into a
-%% tuple for easy processing
-%% @end
-%%--------------------------------------------------------------------
--spec get_event_type(kz_json:object()) -> {ne_binary(), ne_binary()}.
-get_event_type(JObj) -> kz_util:get_event_type(JObj).
 
 %%--------------------------------------------------------------------
 %% @public

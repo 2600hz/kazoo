@@ -2492,7 +2492,7 @@ wait_for_dtmf(Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
         {'ok', JObj} ->
-            case kapps_util:get_event_type(JObj) of
+            case kz_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
                     {'error', 'channel_hungup'};
@@ -2599,7 +2599,7 @@ wait_for_noop(Call, NoopId) ->
 wait_for_channel_unbridge() ->
     receive
         {'amqp_msg', JObj} ->
-            case kapps_util:get_event_type(JObj) of
+            case kz_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>} -> {'ok', JObj};
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
                 _ -> wait_for_channel_unbridge()
@@ -2617,7 +2617,7 @@ wait_for_channel_unbridge() ->
 wait_for_channel_bridge() ->
     case receive_event('infinity') of
         {'ok', JObj}=Ok ->
-            case kapps_util:get_event_type(JObj) of
+            case kz_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>} -> Ok;
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> Ok;
                 _ -> wait_for_channel_bridge()
@@ -2643,7 +2643,7 @@ wait_for_hangup(Timeout) ->
     Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
-            case kapps_util:get_event_type(JObj) of
+            case kz_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     {'ok', 'channel_hungup'};
                 _Evt ->
@@ -2675,7 +2675,7 @@ wait_for_unbridge(Timeout) ->
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj} ->
-            case kapps_util:get_event_type(JObj) of
+            case kz_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"LEG_DESTROYED">>} -> {'ok', 'leg_hungup'};
                 _ -> wait_for_unbridge(kz_time:decr_timeout(Timeout, Start))
             end
