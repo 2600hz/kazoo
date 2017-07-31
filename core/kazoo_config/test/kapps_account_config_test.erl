@@ -15,9 +15,9 @@ get_ne_binary_test_() ->
      ,[{"get a key with binary value"
        ,?_assertEqual(true, is_ne_binary(kapps_account_config:get_ne_binary(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>])))
        }
-      %% ,{"get a non castable to binary value should crash"
-      %%  ,?_assertEqual(undefined, is_ne_binary(kapps_account_config:get_ne_binary(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"obj_key">>])))
-      %%  }
+       %% ,{"get a non castable to binary value should crash"
+       %%  ,?_assertEqual(undefined, is_ne_binary(kapps_account_config:get_ne_binary(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"obj_key">>])))
+       %%  }
       ,{"get a castable to binary value should it as binary"
        ,?_assertEqual(true, is_ne_binary(kapps_account_config:get_ne_binary(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"i_key">>])))
        }
@@ -48,7 +48,7 @@ get_test_() ->
      ,[{"customized account should result in account"
        ,?_assertEqual(SubAccountValue, kapps_account_config:get(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, <<"root_obj_key">>))
        }
-       ,{"not customized account should result in Default"
+      ,{"not customized account should result in Default"
        ,?_assertEqual(Default, kapps_account_config:get(?NOT_CUSTOMIZED_ALL_ACCOUNTS, ?TEST_CAT, <<"udon_me">>, Default))
        }
       ]

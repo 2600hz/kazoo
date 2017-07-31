@@ -734,11 +734,12 @@ give_me_something(<<"account">>, AccountId, _)
        AccountId =:= ?CUSTOMIZED_SUBACCOUNT_1_UNDEFINED ->
     {ok, kz_json:new()};
 give_me_something(<<"account">>, AccountId, _)
-  when AccountId =:= ?CUSTOMIZED_RESELLER_HIER;
+  when AccountId =:= ?CUSTOMIZED_RESELLER_HIER; %%only load_from_ancestors
        AccountId =:= ?SELF_RESELLER ->
     {ok, kapps_config_util:fixture("test_cat_reseller")};
 give_me_something(<<"account">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
     {ok, kapps_config_util:fixture("test_cat_subaccount_1")};
+%% only load_from_ancestors (clause below)
 give_me_something(<<"account">>, AccountId, _)
   when AccountId =:= ?CUST_A_CUST_P_CUST_R;
        AccountId =:= ?CUST_A_CUST_P_404_R;
@@ -749,7 +750,7 @@ give_me_something(<<"account">>, AccountId, _)
 give_me_something(<<"account">>, _AccountId, _) ->
     {error, not_found};
 
-%% Reseller Id
+%% Reseller Id (load_from_reseller, load_from_ancestors when account tree is empty)
 give_me_something(<<"reseller_id">>, ?CUSTOMIZED_RESELLER, _) ->
     [?SELF_RESELLER];
 give_me_something(<<"reseller_id">>, ?SELF_RESELLER, _) ->
@@ -757,11 +758,11 @@ give_me_something(<<"reseller_id">>, ?SELF_RESELLER, _) ->
 give_me_something(<<"reseller_id">>, _AccountId, _) ->
     [];
 
-%% A Reseller Config
+%% A Reseller Config (only load_from_reseller)
 give_me_something(<<"reseller_jobj">>, ?SELF_RESELLER, _) ->
     {ok, kapps_config_util:fixture("test_cat_reseller")};
 
-%% A Parent AccountId
+%% Account Tree (only load_from_ancestors)
 give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_CUST_R, _) ->
     [?A_MASTER_ACCOUNT_ID
     ,?CUSTOMIZED_RESELLER_HIER
@@ -794,14 +795,12 @@ give_me_something(<<"parent_id">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
 give_me_something(<<"parent_id">>, _AccountId, _) ->
     [];
 
-%% Is Reseller
+%% Is Reseller (only load_from_ancestors)
 give_me_something(<<"is_reseller">>, AccountId, _)
   when AccountId =:= ?SELF_RESELLER;
-       AccountId =:= ?CUSTOMIZED_RESELLER;
        AccountId =:= ?CUSTOMIZED_RESELLER_UNDEFINED;
        AccountId =:= ?CUSTOMIZED_RESELLER_HIER;
-       AccountId =:= ?NOT_CUSTOMIZED_RESELLER;
-       AccountId =:= ?A_MASTER_ACCOUNT_ID ->
+       AccountId =:= ?NOT_CUSTOMIZED_RESELLER ->
     true;
 give_me_something(<<"is_reseller">>, _AccountId, _) ->
     false.
