@@ -180,7 +180,7 @@ fetch(AccountId, 'accounts') ->
 %%--------------------------------------------------------------------
 -spec fetch_name(ne_binary()) -> api_ne_binary().
 fetch_name(Account) ->
-    case kz_account:fetch(Account) of
+    case fetch(Account) of
         {ok, JObj} -> name(JObj);
         {error, _R} ->
             lager:error("error opening account doc ~p", [Account]),
