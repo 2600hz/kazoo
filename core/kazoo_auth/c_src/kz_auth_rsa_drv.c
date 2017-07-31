@@ -186,7 +186,7 @@ static void ready_async(ErlDrvData edd, ErlDrvThreadData async_data) {
   if (job->cmd == CUTKEY_CMD_RSA) {
     if (job->rsa != NULL) {
       CUTKEY_SILENCE_DEPRECATED_ON_OSX_START
-#if OPENSSL_VERSION_NUMBER > 0x1010000fL
+#if OPENSSL_VERSION_NUMBER > 0x1010000fL && !defined LIBRESSL_VERSION_NUMBER
       const BIGNUM *bn_e, *bn_n, *bn_d, *bn_p, *bn_q;
       const BIGNUM *bn_dmp1, *bn_dmq1, *bn_iqmp;
       RSA_get0_factors(job->rsa, &bn_p, &bn_q);
@@ -222,7 +222,7 @@ static void ready_async(ErlDrvData edd, ErlDrvThreadData async_data) {
       unsigned char *dmq1 = driver_alloc(dmq1size);
       unsigned char *iqmp = driver_alloc(iqmpsize);
       CUTKEY_SILENCE_DEPRECATED_ON_OSX_START
-#if OPENSSL_VERSION_NUMBER > 0x1010000fL
+#if OPENSSL_VERSION_NUMBER > 0x1010000fL && !defined LIBRESSL_VERSION_NUMBER
       esize = BN_bn2mpi(bn_e, e);
       nsize = BN_bn2mpi(bn_n, n);
       dsize = BN_bn2mpi(bn_d, d);
