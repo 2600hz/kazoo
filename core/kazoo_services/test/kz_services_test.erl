@@ -459,6 +459,7 @@ reset_category_test_() ->
     ,?_assertEqual(10, kz_services:category_quantity(?CAT, Services))
     ,?_assertEqual(16, kz_services:cascade_quantity(?CAT, ?ITEM, Services))
     ,?_assertEqual(17, kz_services:cascade_category_quantity(?CAT, Services))
+    ,?_assertEqual(kz_json:new(), kz_services:dry_run(Services))
      %% ServicesWithNewQ
     ,?_assertEqual(42, kz_services:quantity(?CAT, ?ITEM, ServicesWithNewQ))
     ,?_assertEqual(42, kz_services:updated_quantity(?CAT, ?ITEM, ServicesWithNewQ))
@@ -469,6 +470,7 @@ reset_category_test_() ->
     ,?_assertEqual(43, kz_services:category_quantity(?CAT, ServicesWithNewQ))
     ,?_assertEqual(49, kz_services:cascade_quantity(?CAT, ?ITEM, ServicesWithNewQ))
     ,?_assertEqual(50, kz_services:cascade_category_quantity(?CAT, ServicesWithNewQ))
+    ,?_assert(kz_json:are_equal(dry_run(newq), kz_services:dry_run(ServicesWithNewQ)))
      %% ServicesNowReset
     ,?_assertEqual(9, kz_services:quantity(?CAT, ?ITEM, ServicesNowReset))
     ,?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, ServicesNowReset))
@@ -479,6 +481,7 @@ reset_category_test_() ->
     ,?_assertEqual(10, kz_services:category_quantity(?CAT, ServicesNowReset))
     ,?_assertEqual(16, kz_services:cascade_quantity(?CAT, ?ITEM, ServicesNowReset))
     ,?_assertEqual(17, kz_services:cascade_category_quantity(?CAT, ServicesNowReset))
+    ,?_assertEqual(kz_json:new(), kz_services:dry_run(ServicesNowReset))
      %% ServicesWithZeroQ
     ,?_assertEqual(0, kz_services:quantity(?CAT, ?ITEM, ServicesWithZeroQ))
     ,?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, ServicesWithZeroQ))
@@ -489,7 +492,45 @@ reset_category_test_() ->
     ,?_assertEqual(1, kz_services:category_quantity(?CAT, ServicesWithZeroQ))
     ,?_assertEqual(7, kz_services:cascade_quantity(?CAT, ?ITEM, ServicesWithZeroQ))
     ,?_assertEqual(8, kz_services:cascade_category_quantity(?CAT, ServicesWithZeroQ))
+    ,?_assert(kz_json:are_equal(dry_run(zeroq), kz_services:dry_run(ServicesWithZeroQ)))
     ].
+
+dry_run(newq) ->
+    kz_json:decode(
+      <<"{"
+        "\"phone_numbers\": {"
+        "\"did_us\": {"
+        "\"category\": \"phone_numbers\","
+        "\"item\": \"did_us\","
+        "\"name\": \"US DID\","
+        "\"quantity\": 42,"
+        "\"rate\": 3.0,"
+        "\"single_discount\": true,"
+        "\"single_discount_rate\": 3.0,"
+        "\"cumulative_discount\": 2,"
+        "\"cumulative_discount_rate\": 5.0,"
+        "\"activation_charge\": 42.0,"
+        "\"minimum\": 0,"
+        "\"exceptions\": [],"
+        "\"activate_quantity\": 33,"
+        "\"activation_charges\": 42.0"
+        "}"
+        "},"
+        "\"activation_charges\": 1386.0"
+        "}"
+      >>);
+dry_run(zeroq) ->
+    kz_json:decode(
+      <<"{"
+        "\"phone_numbers\": {"
+        "\"did_us\": {"
+        "\"activate_quantity\": -9,"
+        "\"activation_charges\": 42.0"
+        "}"
+        "},"
+        "\"activation_charges\": -378.0"
+        "}"
+      >>).
 
 set_billing_id_test_() ->
     MA = ?A_MASTER_ACCOUNT_ID,
