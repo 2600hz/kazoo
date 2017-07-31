@@ -496,27 +496,20 @@ get_call_termination_reason(JObj) ->
 %%--------------------------------------------------------------------
 -spec get_views_json(atom(), string()) -> kz_datamgr:views_listing().
 get_views_json(App, Folder) ->
-    Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
+    Pattern = filename:join([code:priv_dir(App), "couchdb", Folder, "*.json"]),
     [ViewListing
-     || File <- Files,
+     || File <- filelib:wildcard(Pattern),
         {?NE_BINARY,_}=ViewListing <- [catch get_view_json(File)]
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec get_view_json(atom(), text()) -> kz_datamgr:view_listing().
--spec get_view_json(text()) -> kz_datamgr:view_listing().
-
 get_view_json(App, File) ->
-    Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
+    Path = filename:join([code:priv_dir(App), "couchdb", File]),
     get_view_json(Path).
 
+-spec get_view_json(text()) -> kz_datamgr:view_listing().
 get_view_json(Path) ->
-    lager:debug("fetch view from ~s", [Path]),
+    lager:debug("fetching view from ~s", [Path]),
     {'ok', Bin} = file:read_file(Path),
     JObj = kz_json:decode(Bin),
     {kz_doc:id(JObj), JObj}.
@@ -528,11 +521,10 @@ get_view_json(Path) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_views(ne_binary(), kz_datamgr:views_listing()) -> boolean().
--spec update_views(ne_binary(), kz_datamgr:views_listing(), boolean()) -> boolean().
-
 update_views(Db, Views) ->
     update_views(Db, Views, 'false').
 
+-spec update_views(ne_binary(), kz_datamgr:views_listing(), boolean()) -> boolean().
 update_views(Db, Views, ShouldRemove) ->
     kz_term:is_true(kz_datamgr:db_view_update(Db, Views, ShouldRemove)).
 
@@ -655,8 +647,8 @@ get_destination(JObj, Cat, Key) ->
 -spec get_destination(kz_json:object(), ne_binaries()) ->
                              {ne_binary(), ne_binary()}.
 get_destination(JObj, [Key|Keys]) ->
-    case try_split(Key, JObj) of
-        {_,_}=UserRealm -> UserRealm;
+    case maybe_split(Key, JObj) of
+        [User,Realm] -> {User,Realm};
         'undefined' -> get_destination(JObj, Keys)
     end;
 get_destination(JObj, []) ->
@@ -664,20 +656,12 @@ get_destination(JObj, []) ->
     ,kz_json:get_value(<<"To-Realm">>, JObj)
     }.
 
--spec try_split(api_binary()) ->
-                       {ne_binary(), ne_binary()} |
-                       'undefined'.
--spec try_split(ne_binary(), kz_json:object()) ->
-                       {ne_binary(), ne_binary()} |
-                       'undefined'.
-try_split(Key, JObj) ->
-    try_split(kz_json:get_value(Key, JObj)).
-
-try_split('undefined') -> 'undefined';
-try_split(<<"nouser@", _/binary>>) -> 'undefined';
-try_split(<<_/binary>> = Bin) ->
-    [_, _] = Dest = binary:split(Bin, <<"@">>),
-    list_to_tuple(Dest).
+maybe_split(Key, JObj) ->
+    case kz_json:get_ne_binary_value(Key, JObj) of
+        undefined -> undefined;
+        <<"nouser@",_/binary>> -> undefined;
+        Bin -> binary:split(Bin, <<"@">>)
+    end.
 
 -spec write_tts_file(ne_binary(), ne_binary()) ->
                             'ok' |
