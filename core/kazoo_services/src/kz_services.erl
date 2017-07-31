@@ -1310,7 +1310,7 @@ get_service_module(Module) ->
     get_service_module(<<?SERVICE_MODULE_PREFIX, Module/binary>>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end

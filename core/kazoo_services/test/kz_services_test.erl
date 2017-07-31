@@ -442,9 +442,12 @@ delete_test_() ->
     ,?_assertEqual({ok,kz_json:new()}, kz_services:delete(?UNRELATED_ACCOUNT_ID))
     ,?_assertMatch({error,_}, kz_services:delete(?WRONG_ACCOUNT_ID))
     ,?_assertEqual(undefined, kz_services:diff_quantities(Services))
+    ,?_assertEqual(0, kz_services:diff_quantity(?CAT, ?ITEM, Services))
+    ,?_assertEqual(0, kz_services:updated_quantity(?CAT, ?ITEM, Services))
     ,?_assertEqual(0, kz_services:category_quantity(?CAT, Services))
     ,?_assertEqual(0, kz_services:cascade_quantity(?CAT, ?ITEM, Services))
     ,?_assertEqual(0, kz_services:cascade_category_quantity(?CAT, Services))
+    ,?_assert(not kz_json:is_empty(kz_services:cascade_quantities(Services)))
      | quantity_checks(ServicesJObj, Services, true)
     ].
 
