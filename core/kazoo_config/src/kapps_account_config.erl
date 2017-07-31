@@ -116,14 +116,7 @@ get_from_reseller(Account, Category, Key) ->
 
 -spec get_from_reseller(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:api_json_term().
 get_from_reseller(Account, Category, Key, Default) ->
-    AccountId = account_id(Account),
-
-    case AccountId =/= no_account_id
-        andalso load_config_from_reseller(AccountId, Category)
-    of
-        false ->
-            %% ?LOG_DEBUG("get_from_reseller no_account_id, getting system_configs"),
-            kapps_config:get(Category, Key, Default);
+    case load_config_from_reseller(Account, Category) of
         {ok, JObj} ->
             %% ?LOG_DEBUG("get_from_reseller ok"),
             get_global_from_doc(Category, Key, Default, JObj);
@@ -244,30 +237,38 @@ load_config_from_system(_Account, Category) ->
             {ok, kz_json:get_value(<<"default">>, JObj, kz_json:new())};
         {error, _}=Error -> Error
     end.
-
--spec load_config_from_reseller(ne_binary(), ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_reseller(api_account(), ne_binary()) -> kazoo_data:get_results_return().
 -ifdef(TEST).
-%% load_config_from_reseller(AccountId, Category) ->
-%%     %% ?LOG_DEBUG("load_reseller"),
-%%     case kz_services:find_reseller_id(AccountId) of
-%%         undefined -> {error, not_found};
-%%         AccountId -> {error, not_found}; %% should get from direct reseller only
-%%         ResellerId -> load_config_from_account(ResellerId, Category)
-%%     end.
-load_config_from_reseller(AccountId, Category) ->
-    give_me_something(<<"reseller">>, AccountId, Category).
--else.
-load_config_from_reseller(AccountId, Category) ->
+load_config_from_reseller(Account, Category) ->
     %% ?LOG_DEBUG("load_reseller"),
-    case kz_services:find_reseller_id(AccountId) of
-        undefined -> {error, not_found};
-        AccountId -> {error, not_found}; %% should get from direct reseller only
-        ResellerId -> load_config_from_account(ResellerId, Category)
+    AccountId = account_id(Account),
+
+    case AccountId =/= no_account_id
+        andalso find_reseller_account(AccountId)
+    of
+        false -> {error, not_found};
+        [] -> {error, not_found};
+        [ResellerId] ->
+            give_me_something(<<"reseller_jobj">>, ResellerId, Category)
+    end.
+-else.
+load_config_from_reseller(Account, Category) ->
+    %% ?LOG_DEBUG("load_reseller"),
+    AccountId = account_id(Account),
+
+    case AccountId =/= no_account_id
+        andalso find_reseller_account(AccountId)
+    of
+        false -> {error, not_found};
+        [] -> {error, not_found};
+        [ResellerId] -> load_config_from_account(ResellerId, Category)
     end.
 -endif.
 
 -spec load_config_from_account(account_or_not(), ne_binary()) -> kazoo_data:get_results_return().
 -ifdef(TEST).
+load_config_from_account(no_account_id, _Category) ->
+    {error, no_account_id};
 load_config_from_account(AccountId, Category) ->
     give_me_something(<<"account">>, AccountId, Category).
 -else.
@@ -284,26 +285,35 @@ load_config_from_account(AccountId, Category) ->
 %% @private
 %% @doc
 %%  Get Accounts parent configuration for the Category
-%%  1. If the account is Master Account, return accumulator
-%%  2. Read config document from parent account db:
-%%      2.1. If document exists add to accumulator and go to parent
+%%  1. Read account definition
+%%      1.1. If failed to read account definiation, find its reseller
+%%  2. Fold over ancestor Ids and fetch config doc from thier db
+%%      2.1. If document exists and the account is reseller, return
 %%      2.2. If document does not exists:
 %%          2.2.1. If the account is reseller return accumulator
-%%          2.2.2. If not reseller, get parents AccountId and go to (1)
+%%          2.2.2. If not reseller, continue the fold
 %% @end
 %%--------------------------------------------------------------------
 -spec load_config_from_ancestors(ne_binary(), ne_binary()) -> kazoo_data:get_results_return().
--ifdef(TEST).
 load_config_from_ancestors(AccountId, Category) ->
     %% ?LOG_DEBUG("init load_ancestores"),
-    ParentId = give_me_something(<<"parent_id">>, AccountId, undefined),
-    MasterId = master_account_id(AccountId),
-    load_config_from_ancestors_fold(ParentId, MasterId, Category, []).
--else.
-load_config_from_ancestors(AccountId, Category) ->
-    %% ?LOG_DEBUG("init load_ancestores"),
-    load_config_from_ancestors_fold(parent_account_id(AccountId), master_account_id(), Category, []).
--endif.
+    load_config_from_ancestors(AccountId, Category, is_reseller_account(AccountId)).
+
+-spec load_config_from_ancestors(ne_binary(), ne_binary(), boolean()) -> kazoo_data:get_results_return().
+load_config_from_ancestors(_, _, true) ->
+    %% ?LOG_DEBUG("init load_ancestores account_is_reseller"),
+    {error, <<"account_is_reseller">>};
+load_config_from_ancestors(AccountId, Category, false) ->
+    %% ?LOG_DEBUG("init load_ancestores not reseller"),
+    Tree = get_account_ancestors_or_reseller(AccountId),
+    load_config_from_ancestors_fold(Tree, Category, []).
+
+-spec get_account_ancestors_or_reseller(ne_binary()) -> ne_binaries().
+get_account_ancestors_or_reseller(AccountId) ->
+    case get_account_tree(AccountId) of
+        [] -> find_reseller_account(AccountId);
+        Tree -> lists:reverse(Tree)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -311,55 +321,69 @@ load_config_from_ancestors(AccountId, Category) ->
 %% Get accounts config and walk the account up to accounts reseller
 %% @end
 %%--------------------------------------------------------------------
--spec load_config_from_ancestors_fold(api_ne_binary(), api_ne_binary(), ne_binary(), kz_json:objects()) ->
+-spec load_config_from_ancestors_fold(ne_binaries(), ne_binary(), kz_json:objects()) ->
                                              kazoo_data:get_results_return().
-load_config_from_ancestors_fold(undefined, _MasterId, _Category, JObjs) ->
+load_config_from_ancestors_fold([], _Category, JObjs) ->
     %% ?LOG_DEBUG("ancestors parent undefined"),
     {ok, JObjs};
-load_config_from_ancestors_fold(MasterId, ?MATCH_ACCOUNT_RAW(MasterId), _Category, JObjs) ->
-    %% ?LOG_DEBUG("ancestors master"),
-    lager:debug("reached to the master account (for category ~s)", [_Category]),
-    {ok, JObjs};
-load_config_from_ancestors_fold(AccountId, MasterId, Category, JObjs) ->
+load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
     %% ?LOG_DEBUG("ancestors run"),
-    IsReseller = is_reseller_account(AccountId),
-    case load_config_from_account(AccountId, Category) of
-        {ok, JObj} when IsReseller ->
+    case {load_config_from_account(ParentId, Category)
+         ,is_reseller_account(ParentId)
+         }
+    of
+        {{ok, JObj}, true} ->
             %% ?LOG_DEBUG("ancestors ok reseller"),
-            lager:debug("reached to the reseller account ~s (for category ~s)", [AccountId, Category]),
+            lager:debug("reached to the reseller account ~s (for category ~s)", [ParentId, Category]),
             {ok, [JObj|JObjs]};
-        {ok, JObj} ->
+        {{ok, JObj}, _} ->
             %% ?LOG_DEBUG("ancestors ok account"),
-            ParentId = find_parent_id(AccountId, IsReseller),
-            load_config_from_ancestors_fold(ParentId, MasterId, Category, [JObj|JObjs]);
-        {error, _Reason} when IsReseller ->
+            load_config_from_ancestors_fold(AncestorIds, Category, [JObj|JObjs]);
+        {{error, _Reason}, true} ->
             %% ?LOG_DEBUG("ancestors nok reseller"),
             lager:debug("reached to the reseller account ~s (failed to get category ~s: ~p)"
-                       ,[AccountId, Category, _Reason]
+                       ,[ParentId, Category, _Reason]
                        ),
             {ok, JObjs};
-        {error, _Reason} ->
+        {{error, _Reason}, _} ->
             %% ?LOG_DEBUG("ancestors nok account"),
-            lager:debug("failed to get category ~s for account ~s: ~p", [Category, AccountId, _Reason]),
-            ParentId = find_parent_id(AccountId, IsReseller),
-            load_config_from_ancestors_fold(ParentId, MasterId, Category, JObjs)
+            lager:debug("failed to get category ~s for account ~s: ~p", [Category, ParentId, _Reason]),
+            load_config_from_ancestors_fold(AncestorIds, Category, JObjs)
     end.
 
 -ifdef(TEST).
 is_reseller_account(AccountId) ->
     give_me_something(<<"is_reseller">>, AccountId, undefined).
-find_parent_id(AccountId, IsChildReseller) ->
-    give_me_something(<<"parent_id">>, AccountId, IsChildReseller).
+find_reseller_account(AccountId) ->
+    case give_me_something(<<"reseller_id">>, AccountId, undefined) of
+        [AccountId] -> [];
+        Other -> Other
+    end.
+get_account_tree(AccountId) ->
+    give_me_something(<<"parent_id">>, AccountId, undefined).
 -else.
 -spec is_reseller_account(ne_binary()) -> boolean().
 is_reseller_account(AccountId) ->
     kz_services:is_reseller(AccountId).
 
--spec find_parent_id(ne_binary(), boolean()) -> api_ne_binary().
-find_parent_id(_AccountId, true) ->
-    undefined;
-find_parent_id(AccountId, false) ->
-    kz_account:get_parent_account_id(AccountId).
+-spec find_reseller_account(ne_binary()) -> ne_binaries().
+find_reseller_account(AccountId) ->
+    case kz_services:find_reseller_id(AccountId) of
+        undefined ->
+            lager:debug("failed to find accout ~s parents and reseller"),
+            [];
+        AccountId -> []; %% should get from direct reseller only
+        ResellerId -> [ResellerId]
+    end.
+
+-spec get_account_tree(ne_binary()) -> ne_binaries().
+get_account_tree(AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {ok , JObj} -> kz_account:tree(JObj);
+        {error, _Reason} ->
+            lager:debug("failed to find account ~p parents: ~p", [AccountId, _Reason]),
+            []
+    end.
 -endif.
 
 %%--------------------------------------------------------------------
@@ -471,7 +495,7 @@ walk_the_walk(#{account_id := AccountId
                 false ->
                     %% ?LOG_DEBUG("walk run ok not merge no key"),
                     walk_the_walk(Map#{results := [JObj], strategy_funs := []});
-                'undefined' ->
+                undefined ->
                     %% key is not defined, continuing the walk
                     %% ?LOG_DEBUG("walk run ok not merge undefined"),
                     walk_the_walk(Map#{results := [JObj|Results], strategy_funs := Funs});
@@ -536,7 +560,7 @@ config_origins(Doc, Acc) ->
 strategy_cache_key(AccountId, Category, Strategy) ->
     {?MODULE, AccountId, Category, Strategy}.
 
--spec strategy_options(ne_binary(), ne_binary(), ne_binary(), boolean(), 'undefined' | kz_json:path()) -> map().
+-spec strategy_options(ne_binary(), ne_binary(), ne_binary(), boolean(), undefined | kz_json:path()) -> map().
 strategy_options(Strategy, AccountId, Category, ShouldMerge, Key) ->
     #{account_id => AccountId
      ,strategy => Strategy
@@ -603,21 +627,6 @@ account_id_from_jobj(_Obj, false) ->
 -spec maybe_format_account_id(api_ne_binary()) -> account_or_not().
 maybe_format_account_id(undefined) -> no_account_id;
 maybe_format_account_id(Account) -> kz_util:format_account_id(Account).
-
--ifdef(TEST).
--spec master_account_id(ne_binary()) -> api_ne_binary().
-master_account_id(_) ->
-    'undefined'.
--else.
--spec master_account_id() -> api_ne_binary().
-master_account_id() ->
-    case kapps_util:get_master_account_id() of
-        {ok, Id} -> Id;
-        {error, _R} ->
-            lager:debug("failed to find master account id: ~p", [_R]),
-            undefined
-    end.
--endif.
 
 -spec maybe_new({ok, kz_json:object()} | {error, any()}) -> kz_json:object().
 maybe_new({ok, JObj}) -> JObj;
@@ -770,19 +779,14 @@ config_setting_key(Node, Setting) ->
                                {ok, kz_json:object()} |
                                {error, not_found | no_account_id}.
 %% An Account Config
-give_me_something(<<"account">>, no_account_id, _) ->
-    %% ?LOG_DEBUG("load_account no_account_id"),
-    {error, no_account_id};
-give_me_something(<<"account">>, ?NOT_CUSTOMIZED_ALL_ACCOUNTS, _) ->
-    {error, not_found};
-give_me_something(<<"account">>, ?CUSTOMIZED_RESELLER, _) ->
-    %% ?LOG_DEBUG("load_account CUSTOMIZED_RESELLER"),
-    {error, not_found};
 give_me_something(<<"account">>, ?CUSTOMIZED_RESELLER_UNDEFINED, _) ->
     %% ?LOG_DEBUG("load_account CUSTOMIZED_RESELLER_UNDEFINED"),
     {ok, kz_json:new()};
 give_me_something(<<"account">>, ?CUSTOMIZED_RESELLER_HIER, _) ->
     %% ?LOG_DEBUG("load_account CUSTOMIZED_RESELLER_HIER"),
+    {ok, kapps_config_util:fixture("test_cat_reseller")};
+give_me_something(<<"account">>, ?SELF_RESELLER, _) ->
+    %% ?LOG_DEBUG("load_account SELF_RESELLER"),
     {ok, kapps_config_util:fixture("test_cat_reseller")};
 give_me_something(<<"account">>, ?CUSTOMIZED_SUBACCOUNT_1_UNDEFINED, _) ->
     %% ?LOG_DEBUG("load_account CUSTOMIZED_SUBACCOUNT_1_UNDEFINED"),
@@ -793,41 +797,105 @@ give_me_something(<<"account">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
 give_me_something(<<"account">>, ?CUST_A_CUST_P_CUST_R, _) ->
     %% ?LOG_DEBUG("load_account CUST_A_CUST_P_CUST_R"),
     {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
-give_me_something(<<"account">>, _, _) ->
-    %% ?LOG_DEBUG("load_account"),
+give_me_something(<<"account">>, ?CUST_A_CUST_P_404_R, _) ->
+    %% ?LOG_DEBUG("load_account CUST_A_CUST_P_404_R"),
+    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
+give_me_something(<<"account">>, ?CUST_A_CUST_P_EMPTY_R, _) ->
+    %% ?LOG_DEBUG("load_account CUST_A_CUST_P_EMPTY_R"),
+    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
+give_me_something(<<"account">>, ?CUST_A_404_P_CUST_R, _) ->
+    %% ?LOG_DEBUG("load_account CUST_A_404_P_CUST_R"),
+    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
+give_me_something(<<"account">>, ?CUST_A_404_P_404_R, _) ->
+    %% ?LOG_DEBUG("load_account CUST_A_404_P_404_R"),
+    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
+give_me_something(<<"account">>, _AccountId, _) ->
+    %% ?LOG_DEBUG("load_account ~s", [_AccountId]),
     {error, not_found};
 
+%% Reseller Id
+give_me_something(<<"reseller_id">>, ?CUSTOMIZED_RESELLER, _) ->
+    %% ?LOG_DEBUG("reseller_id CUSTOMIZED_RESELLER"),
+    [?SELF_RESELLER];
+give_me_something(<<"reseller_id">>, ?SELF_RESELLER, _) ->
+    %% ?LOG_DEBUG("reseller_id SELF_RESELLER"),
+    [?SELF_RESELLER];
+give_me_something(<<"reseller_id">>, _AccountId, _) ->
+    %% ?LOG_DEBUG("reseller_id ~s", [_AccountId]),
+    [];
+
 %% A Reseller Config
-give_me_something(<<"reseller">>, ?NOT_CUSTOMIZED_ALL_ACCOUNTS, _) ->
-    %% ?LOG_DEBUG("load_reseller NOT_CUSTOMIZED_ALL_ACCOUNTS"),
-    {error, not_found};
-give_me_something(<<"reseller">>, ?CUSTOMIZED_RESELLER, _) ->
+give_me_something(<<"reseller_jobj">>, ?CUSTOMIZED_RESELLER, _) ->
     %% ?LOG_DEBUG("load_reseller CUSTOMIZED_RESELLER"),
     {ok, kapps_config_util:fixture("test_cat_reseller")};
-give_me_something(<<"reseller">>, _, _) ->
+give_me_something(<<"reseller_jobj">>, ?SELF_RESELLER, _) ->
+    %% ?LOG_DEBUG("load_reseller SELF_RESELLER"),
+    {ok, kapps_config_util:fixture("test_cat_reseller")};
+give_me_something(<<"reseller_jobj">>, _AccountId, _) ->
+    %% ?LOG_DEBUG("load_reseller ~s", [_AccountId]),
     {error, not_found};
 
 %% A Parent AccountId
 give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_CUST_R, _) ->
-    %% ?LOG_DEBUG("parent_id CUST_A_CUST_P_CUST_R -> CUSTOMIZED_SUBACCOUNT_1"),
-    ?CUSTOMIZED_SUBACCOUNT_1;
+    %% ?LOG_DEBUG("parent_id CUST_A_CUST_P_CUST_R -> master, cust_reseller_hier, cust_sub1"),
+    [?A_MASTER_ACCOUNT_ID
+    ,?CUSTOMIZED_RESELLER_HIER
+    ,?CUSTOMIZED_SUBACCOUNT_1
+    ];
+give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_404_R, _) ->
+    %% ?LOG_DEBUG("parent_id CUST_A_CUST_P_404_R -> master, not_exists_reseller, cust_sub1"),
+    [?A_MASTER_ACCOUNT_ID
+    ,?NOT_CUSTOMIZED_RESELLER
+    ,?CUSTOMIZED_SUBACCOUNT_1
+    ];
+give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_EMPTY_R, _) ->
+    %% ?LOG_DEBUG("parent_id CUST_A_CUST_P_EMPTY_R -> master, empty_reseller, cust_sub1"),
+    [?A_MASTER_ACCOUNT_ID
+    ,?CUSTOMIZED_RESELLER_UNDEFINED
+    ,?CUSTOMIZED_SUBACCOUNT_1
+    ];
+give_me_something(<<"parent_id">>, ?CUST_A_404_P_CUST_R, _) ->
+    %% ?LOG_DEBUG("parent_id CUST_A_404_P_CUST_R -> master, cust_reseller_hier, not_exists_sub1"),
+    [?A_MASTER_ACCOUNT_ID
+    ,?CUSTOMIZED_RESELLER_HIER
+    ,?NOT_CUSTOMIZED_ALL_ACCOUNTS
+    ];
+give_me_something(<<"parent_id">>, ?CUST_A_404_P_404_R, _) ->
+    %% ?LOG_DEBUG("parent_id CUST_A_404_P_CUST_R -> master, not_exists_reseller, not_exists_sub1"),
+    [?A_MASTER_ACCOUNT_ID
+    ,?NOT_CUSTOMIZED_RESELLER
+    ,?NOT_CUSTOMIZED_ALL_ACCOUNTS
+    ];
 give_me_something(<<"parent_id">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
-    %% ?LOG_DEBUG("parent_id CUSTOMIZED_SUBACCOUNT_1 -> CUSTOMIZED_RESELLER_HIER"),
-    ?CUSTOMIZED_RESELLER_HIER;
-give_me_something(<<"parent_id">>, _, _) ->
-    'undefined';
+    %% ?LOG_DEBUG("parent_id CUSTOMIZED_SUBACCOUNT_1 -> master, cust_reseller_hier"),
+    [?A_MASTER_ACCOUNT_ID
+    ,?CUSTOMIZED_RESELLER_HIER
+    ];
+give_me_something(<<"parent_id">>, _AccountId, _) ->
+    %% ?LOG_DEBUG("parent_id empty: ~s", [_AccountId]),
+    [];
 
 %% Is Reseller
-give_me_something(<<"is_reseller">>, ?CUST_A_CUST_P_CUST_R, _) ->
-    %% ?LOG_DEBUG("is_reseller CUST_A_CUST_P_CUST_R"),
-    false;
-give_me_something(<<"is_reseller">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
-    %% ?LOG_DEBUG("is_reseller CUSTOMIZED_SUBACCOUNT_1"),
-    false;
+give_me_something(<<"is_reseller">>, ?SELF_RESELLER, _) ->
+    %% ?LOG_DEBUG("is_reseller SELF_RESELLER"),
+    true;
+give_me_something(<<"is_reseller">>, ?CUSTOMIZED_RESELLER, _) ->
+    %% ?LOG_DEBUG("is_reseller CUSTOMIZED_RESELLER"),
+    true;
+give_me_something(<<"is_reseller">>, ?CUSTOMIZED_RESELLER_UNDEFINED, _) ->
+    %% ?LOG_DEBUG("is_reseller CUSTOMIZED_RESELLER_UNDEFINED"),
+    true;
 give_me_something(<<"is_reseller">>, ?CUSTOMIZED_RESELLER_HIER, _) ->
     %% ?LOG_DEBUG("is_reseller CUSTOMIZED_RESELLER_HIER"),
     true;
-give_me_something(<<"is_reseller">>, _, _) ->
+give_me_something(<<"is_reseller">>, ?NOT_CUSTOMIZED_RESELLER, _) ->
+    %% ?LOG_DEBUG("is_reseller NOT_CUSTOMIZED_RESELLER"),
+    true;
+give_me_something(<<"is_reseller">>, ?A_MASTER_ACCOUNT_ID, _) ->
+    %% ?LOG_DEBUG("is_reseller A_MASTER_ACCOUNT_ID"),
+    true;
+give_me_something(<<"is_reseller">>, _AccountId, _) ->
+    %% ?LOG_DEBUG("is_reseller ~s", [_AccountId]),
     false.
 
 -endif.

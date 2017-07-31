@@ -132,6 +132,9 @@ common_get_from_reseller_tests(FunToTest) ->
       ,{"customized reseller should result in reseller"
        ,?_assertEqual(ResellerValue, FunToTest([?CUSTOMIZED_RESELLER, ?TEST_CAT, <<"root_obj_key">>, Default]))
        }
+      ,{"only get from direct reseller"
+       ,?_assertEqual(SysValue, FunToTest([?SELF_RESELLER, ?TEST_CAT, <<"root_obj_key">>, Default]))
+       }
       ]
      }
     ].
@@ -149,12 +152,42 @@ get_with_strategy_test_() ->
 get_startegy_hierarchy_merge() ->
     DummyAccountId = kz_binary:rand_hex(16),
     SysValue = get_fixture_value([<<"default">>, <<"root_obj_key">>], "test_cat_system"),
-    % SubAccountValue = get_fixture_value(<<"root_obj_key">>, "test_cat_subaccount_1"),
+    SubAccount1Value = get_fixture_value(<<"root_obj_key">>, "test_cat_subaccount_1"),
+    SubAccount2Value = get_fixture_value(<<"root_obj_key">>, "test_cat_subaccount_2"),
+    CusResellerHierValue = get_fixture_value(<<"root_obj_key">>, "test_cat_reseller"),
 
+    % ?LOG_DEBUG("merged ~p", [kz_json:merge([SysValue, SubAccount1Value, SubAccount2Value])]),
+    % ?LOG_DEBUG("get ~p", [kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_CUST_P_404_R, ?TEST_CAT, <<"root_obj_key">>)]),
     [{"Testing get config hierarchy_merge strategy"
-     ,[{"customized account"
-       ,?_assertEqual(ok
-        ,io:format(user, "\n" ++ "~p~n", [kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_CUST_P_CUST_R, ?TEST_CAT, <<"root_obj_key">>)]))
+     ,[{"customized account where account is reseller itself should result in merged value of account and system"
+       ,?_assertEqual(kz_json:merge([SysValue, CusResellerHierValue])
+                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?SELF_RESELLER, ?TEST_CAT, <<"root_obj_key">>)
+                     )
+       }
+      ,{"customized account, system and empty/not_exists parent, reseller should result in merged value of account and system"
+       ,?_assertEqual(kz_json:merge([SysValue, SubAccount2Value])
+                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_404_P_404_R, ?TEST_CAT, <<"root_obj_key">>)
+                     )
+       }
+      ,{"customized account, reseller, system and empty/not_exists parent should result in merged value of all customized and system"
+       ,?_assertEqual(kz_json:merge([SysValue, CusResellerHierValue, SubAccount2Value])
+                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_404_P_CUST_R, ?TEST_CAT, <<"root_obj_key">>)
+                     )
+       }
+      ,{"customized account, parent, system and empty reseller should result in merged value of all customized and system"
+       ,?_assertEqual(kz_json:merge([SysValue, SubAccount1Value, SubAccount2Value])
+                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_CUST_P_EMPTY_R, ?TEST_CAT, <<"root_obj_key">>)
+                     )
+       }
+      ,{"customized account, parent, system and not customized reseller should result in merged value of all customized and system"
+       ,?_assertEqual(kz_json:merge([SysValue, SubAccount1Value, SubAccount2Value])
+                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_CUST_P_404_R, ?TEST_CAT, <<"root_obj_key">>)
+                     )
+       }
+      ,{"customized account, parents and system should result in merged value of all"
+       ,?_assertEqual(kz_json:merge([SysValue, CusResellerHierValue, SubAccount1Value, SubAccount2Value])
+                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_CUST_P_CUST_R, ?TEST_CAT, <<"root_obj_key">>)
+                     )
        }
       ,{"not customized account with undefined parent account id and no reseller should result in system_config"
        ,?_assertEqual(SysValue, kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, DummyAccountId, ?TEST_CAT, <<"root_obj_key">>))
