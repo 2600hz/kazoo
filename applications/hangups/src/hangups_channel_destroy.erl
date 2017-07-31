@@ -77,10 +77,8 @@ maybe_add_number_info(JObj) ->
             Tree = build_account_tree(AccountId),
             props:set_value(<<"Account-Tree">>, Tree, Props);
         {'error', _} ->
-            props:set_value(<<"Hangups-Message">>
-                           ,<<"Destination was not found in numbers DBs">>
-                           ,Props
-                           )
+            Msg = <<"Destination was not found in numbers DBs">>,
+            props:set_value(<<"Hangups-Message">>, Msg, Props)
     catch
         _:_ -> Props
     end.
@@ -92,14 +90,13 @@ maybe_add_number_info(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_account_tree(ne_binary()) -> kz_proplist().
-build_account_tree(<<_/binary>> = AccountId) ->
+build_account_tree(AccountId) ->
     {'ok', AccountDoc} = kz_account:fetch(AccountId),
     [account_id_name(AncestorId) || AncestorId <- kz_account:tree(AccountDoc)].
 
 -spec account_id_name(ne_binary()) -> {ne_binary(), ne_binary()}.
 account_id_name(AccountId) ->
-    {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    {AccountId, kz_account:name(AccountDoc)}.
+    ?NE_BINARY = kz_account:fetch_name(AccountId).
 
 %%--------------------------------------------------------------------
 %% @private

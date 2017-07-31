@@ -16,7 +16,7 @@
         ,get_inherited_value/2
         ,get_inherited_value/3
 
-        ,name/1, name/2, set_name/2
+        ,fetch_name/1, name/1, name/2, set_name/2
         ,realm/1, realm/2, set_realm/2
         ,language/1, language/2, set_language/2
         ,timezone/1, timezone/2, set_timezone/2, default_timezone/0
@@ -178,7 +178,16 @@ fetch(AccountId, 'accounts') ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec name(doc()) -> api_binary().
+-spec fetch_name(ne_binary()) -> api_ne_binary().
+fetch_name(Account) ->
+    case kz_account:fetch(Account) of
+        {ok, JObj} -> name(JObj);
+        {error, _R} ->
+            lager:error("error opening account doc ~p", [Account]),
+            undefined
+    end.
+
+-spec name(doc()) -> api_ne_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(JObj) ->
     name(JObj, 'undefined').
@@ -199,7 +208,7 @@ set_name(JObj, Name) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec realm(doc()) -> api_binary().
+-spec realm(doc()) -> api_ne_binary().
 -spec realm(doc(), Default) -> ne_binary() | Default.
 realm(JObj) ->
     realm(JObj, 'undefined').

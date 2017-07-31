@@ -711,7 +711,7 @@ populate_resp(JObj, AccountId, UserId) ->
     Props = props:filter_undefined(
               [{<<"apps">>, load_apps(AccountId, UserId)}
               ,{<<"language">>, get_language(AccountId, UserId)}
-              ,{<<"account_name">>, kapps_util:get_account_name(AccountId)}
+              ,{<<"account_name">>, kz_account:fetch_name(AccountId)}
               ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
               ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
               ]),

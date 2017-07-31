@@ -36,7 +36,6 @@
 -export([account_has_descendants/1
         ,account_descendants/1
         ]).
--export([get_account_name/1]).
 -export([find_oldest_doc/1]).
 -export([get_call_termination_reason/1]).
 -export([get_view_json/1, get_view_json/2]).
@@ -228,18 +227,6 @@ account_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
 account_has_descendants(Account) ->
     AccountId = kz_util:format_account_id(Account),
     [] =/= (account_descendants(AccountId) -- [AccountId]).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_account_name(ne_binary()) -> ne_binary().
-get_account_name(Account) ->
-    case kz_account:fetch(Account) of
-        {'error', _} -> 'undefined';
-        {'ok', JObj} -> kz_account:name(JObj)
-    end.
 
 %%--------------------------------------------------------------------
 %% @public

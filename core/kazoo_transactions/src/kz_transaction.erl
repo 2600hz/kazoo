@@ -443,10 +443,9 @@ maybe_correct_transaction(JObj) ->
 
 -spec maybe_add_sub_account_name(kz_json:object()) -> kz_json:object().
 maybe_add_sub_account_name(JObj) ->
-    case
-        {kz_json:get_value(<<"sub_account_name">>, JObj)
-        ,kz_json:get_value(<<"sub_account_id">>, JObj)
-        }
+    case {kz_json:get_value(<<"sub_account_name">>, JObj)
+         ,kz_json:get_value(<<"sub_account_id">>, JObj)
+         }
     of
         {'undefined', 'undefined'} -> JObj;
         {'undefined', AccountId} -> add_sub_account_name(AccountId, JObj);
@@ -455,12 +454,9 @@ maybe_add_sub_account_name(JObj) ->
 
 -spec add_sub_account_name(ne_binary(), kz_json:object()) -> kz_json:object().
 add_sub_account_name(AccountId, JObj) ->
-    case kz_account:fetch(AccountId) of
-        {'error', _R} ->
-            lager:error("failed to open account doc ~s : ~p", [AccountId, _R]),
-            JObj;
-        {'ok', Doc} ->
-            AccountName = kz_json:get_value(<<"name">>, Doc),
+    case kz_account:fetch_name(AccountId) of
+        undefined -> JObj;
+        AccountName ->
             kz_json:set_value(<<"sub_account_name">>, AccountName, JObj)
     end.
 

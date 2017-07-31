@@ -39,7 +39,6 @@
 -export([find_reseller_id/1]).
 
 -export([account_id/1
-        ,account_name/1
         ,services_json/1
         ]).
 -export([is_dirty/1]).
@@ -339,13 +338,6 @@ save_conflicting_as_dirty(#kz_services{account_id=AccountId}, BackOff) ->
             lager:debug("new services doc for ~s not dirty, marking it as so", [AccountId]),
             timer:sleep(BackOff + rand:uniform(?BASE_BACKOFF)),
             save_as_dirty(NewServices, BackOff*2)
-    end.
-
--spec account_name(ne_binary()) -> api_binary().
-account_name(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:name(JObj);
-        {'error', _} -> 'undefined'
     end.
 
 -spec save(services()) -> services().

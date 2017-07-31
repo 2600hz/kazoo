@@ -97,10 +97,9 @@ max_postpay(Limits) ->
 -spec get_account_name(api_binary()) -> ne_binary().
 get_account_name('undefined') -> <<"unknown">>;
 get_account_name(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_account:fetch(AccountId) of
-        {'error', _} -> AccountId;
-        {'ok', JObj} -> kz_json:get_ne_value(<<"name">>, JObj, AccountId)
+    case kz_account:fetch_name(Account) of
+        undefined -> kz_util:format_account_id(Account);
+        Name -> Name
     end.
 
 -spec current_balance(ne_binary()) -> ne_binary().
