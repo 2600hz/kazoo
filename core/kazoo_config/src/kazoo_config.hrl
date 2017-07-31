@@ -57,9 +57,9 @@
 -define(NOT_CUSTOMIZED_ALL_ACCOUNTS, <<"087ca0424ec8acf3acc1f87ac81f28e1">>).
 
 %% AccountIds for different reseller scenario
--define(CUSTOMIZED_RESELLER, <<"123ca0424ec8acf3acc1f87ac81f2123">>).
--define(CUSTOMIZED_RESELLER_UNDEFINED, <<"7cc16a9cd8bcfeea4732986790e930a4">>). %% for hierarchy_merge tests
--define(CUSTOMIZED_RESELLER_HIER, <<"f3b9104a6dc3ab36fbcf413444c30a12">>).
+-define(CUSTOMIZED_RESELLER, <<"123ca0424ec8acf3acc1f87ac81f2123">>). %% do not use this for hierarchy_merge
+-define(CUSTOMIZED_RESELLER_UNDEFINED, <<"7cc16a9cd8bcfeea4732986790e930a4">>).
+-define(CUSTOMIZED_RESELLER_HIER, <<"f3b9104a6dc3ab36fbcf413444c30a12">>). %% for hierarchy_merge tests only
 -define(NOT_CUSTOMIZED_RESELLER, <<"7714f8d8936380295c0129c9351a2038">>).
 -define(SELF_RESELLER, <<"62135a704ba5401c85ce549933340c17">>).
 
@@ -84,6 +84,10 @@
 -define(CUSTOMIZED_SUBACCOUNT_2, <<"94b2fdbd4b92c8c1d3c3331aff97e16a">>).
 
 -define(A_MASTER_ACCOUNT_ID, <<"6b71cb72c876b5b1396a335f8f8a2594">>).
+
+-define(AN_ACCOUNT_ID, <<"009afc511c97b2ae693c6cc4920988e8">>).
+
+-define(AN_ACCOUNT_USER_ID, <<"8e248327b85591955749e53ea45b6baa">>).
 
 -define(LOG_DEBUG(F,A), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
 -define(LOG_DEBUG(F), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).

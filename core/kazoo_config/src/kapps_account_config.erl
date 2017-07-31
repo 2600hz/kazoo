@@ -82,10 +82,8 @@ get_global(Account, Category, Key) ->
 get_global(Account, Category, Key, Default) ->
     case load_config_from_account(account_id(Account), Category) of
         {ok, JObj} ->
-            %% ?LOG_DEBUG("get_global ok"),
             get_global_from_doc(Category, Key, Default, JObj);
         {error, _} ->
-            %% ?LOG_DEBUG("get_global error, getting from reseller"),
             get_from_reseller(Account, Category, Key, Default)
     end.
 
@@ -98,7 +96,6 @@ get_global(Account, Category) ->
             case load_config_from_reseller(Account, Category) of
                 {ok, JObj} -> JObj;
                 {error, _} ->
-                    %% ?LOG_DEBUG("get_global/2 error reseller, getting system_config"),
                     maybe_new(load_config_from_system(Account, Category))
             end
     end.
@@ -118,10 +115,8 @@ get_from_reseller(Account, Category, Key) ->
 get_from_reseller(Account, Category, Key, Default) ->
     case load_config_from_reseller(Account, Category) of
         {ok, JObj} ->
-            %% ?LOG_DEBUG("get_from_reseller ok"),
             get_global_from_doc(Category, Key, Default, JObj);
         {error, _} ->
-            %% ?LOG_DEBUG("get_from_reseller error, getting system_configs"),
             kapps_config:get(Category, Key, Default)
     end.
 
@@ -154,21 +149,16 @@ get_with_strategy(Strategy, Account, Category, Key, Default) ->
     ShouldMerge = is_merge_strategy(Strategy),
     case get_from_strategy_cache(Strategy, account_id(Account), Category, Key, ShouldMerge) of
         {ok, JObj} ->
-            %% ?LOG_DEBUG("strategy ok"),
             case kz_json:get_value(Key, JObj) of
                 undefined ->
-                    %% ?LOG_DEBUG("strategy ok undefined"),
                     _ = kapps_config:set(Category, Key, Default),
                     Default;
-                V ->
-                    %% ?LOG_DEBUG("strategy ok value"),
-                    V
+                Value ->
+                    Value
             end;
         {error, no_account_id} ->
-            %% ?LOG_DEBUG("strategy no_account_id"),
             kapps_config:get(Category, Key, Default);
         {error, _} ->
-            %% ?LOG_DEBUG("strategy error"),
             _ = kapps_config:set(Category, Key, Default),
             Default
     end.
@@ -177,20 +167,16 @@ get_with_strategy(Strategy, Account, Category, Key, Default) ->
                                      {ok, kz_json:object()} |
                                      {error, any()}.
 get_from_strategy_cache(_, no_account_id, _, _, _) ->
-    %% ?LOG_DEBUG("cache no_account_id"),
     {error, no_account_id};
 get_from_strategy_cache(Strategy, AccountId, Category, Key, true) ->
     %% Only read from cache if it is merge strategy
     case kz_cache:fetch_local(?KAPPS_CONFIG_CACHE, strategy_cache_key(AccountId, Category, Strategy)) of
         {ok, _}=OK ->
-            %% ?LOG_DEBUG("cache ok"),
             OK;
         {error, _} ->
-            %% ?LOG_DEBUG("cache error"),
             walk_the_walk(strategy_options(Strategy, AccountId, Category, true, Key))
     end;
 get_from_strategy_cache(Strategy, AccountId, Category, Key, false) ->
-    %% ?LOG_DEBUG("no cache for you"),
     walk_the_walk(strategy_options(Strategy, AccountId, Category, false, Key)).
 
 %%--------------------------------------------------------------------
@@ -202,14 +188,11 @@ get_from_strategy_cache(Strategy, AccountId, Category, Key, false) ->
 %%--------------------------------------------------------------------
 -spec get_global_from_doc(ne_binary(), kz_json:path(), kz_json:api_json_term(), kz_json:object()) -> kz_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
-    %% ?LOG_DEBUG("get global doc"),
     case kz_json:get_value(Key, JObj) of
         undefined ->
-            %% ?LOG_DEBUG("get global doc undefined, getting system_configs"),
             kapps_config:get(Category, Key, Default);
-        V ->
-            %% ?LOG_DEBUG("get global doc defined"),
-            V
+        Value ->
+            Value
     end.
 
 -spec get(api_account(), ne_binary()) -> kz_json:object().
@@ -230,19 +213,15 @@ get(Account, Category) ->
 
 -spec load_config_from_system(api_binary(), ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_system(_Account, Category) ->
-    %% ?LOG_DEBUG("load_system ~s", [Category]),
     case kapps_config:get_category(Category) of
         {ok, JObj} ->
-            %% ?LOG_DEBUG("load_system ok ~s", [Category]),
             {ok, kz_json:get_value(<<"default">>, JObj, kz_json:new())};
         {error, _}=Error -> Error
     end.
 -spec load_config_from_reseller(api_account(), ne_binary()) -> kazoo_data:get_results_return().
 -ifdef(TEST).
 load_config_from_reseller(Account, Category) ->
-    %% ?LOG_DEBUG("load_reseller"),
     AccountId = account_id(Account),
-
     case AccountId =/= no_account_id
         andalso find_reseller_account(AccountId)
     of
@@ -253,9 +232,7 @@ load_config_from_reseller(Account, Category) ->
     end.
 -else.
 load_config_from_reseller(Account, Category) ->
-    %% ?LOG_DEBUG("load_reseller"),
     AccountId = account_id(Account),
-
     case AccountId =/= no_account_id
         andalso find_reseller_account(AccountId)
     of
@@ -275,7 +252,6 @@ load_config_from_account(AccountId, Category) ->
 load_config_from_account(no_account_id, _Category) ->
     {error, no_account_id};
 load_config_from_account(AccountId, Category) ->
-    %% ?LOG_DEBUG("load_account"),
     DocId = kapps_config_util:account_doc_id(Category),
     AccountDb = kz_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, DocId, [{cache_failures, [not_found]}]).
@@ -296,15 +272,12 @@ load_config_from_account(AccountId, Category) ->
 %%--------------------------------------------------------------------
 -spec load_config_from_ancestors(ne_binary(), ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(AccountId, Category) ->
-    %% ?LOG_DEBUG("init load_ancestores"),
     load_config_from_ancestors(AccountId, Category, is_reseller_account(AccountId)).
 
 -spec load_config_from_ancestors(ne_binary(), ne_binary(), boolean()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(_, _, true) ->
-    %% ?LOG_DEBUG("init load_ancestores account_is_reseller"),
     {error, <<"account_is_reseller">>};
 load_config_from_ancestors(AccountId, Category, false) ->
-    %% ?LOG_DEBUG("init load_ancestores not reseller"),
     Tree = get_account_ancestors_or_reseller(AccountId),
     load_config_from_ancestors_fold(Tree, Category, []).
 
@@ -324,29 +297,23 @@ get_account_ancestors_or_reseller(AccountId) ->
 -spec load_config_from_ancestors_fold(ne_binaries(), ne_binary(), kz_json:objects()) ->
                                              kazoo_data:get_results_return().
 load_config_from_ancestors_fold([], _Category, JObjs) ->
-    %% ?LOG_DEBUG("ancestors parent undefined"),
     {ok, JObjs};
 load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
-    %% ?LOG_DEBUG("ancestors run"),
     case {load_config_from_account(ParentId, Category)
          ,is_reseller_account(ParentId)
          }
     of
         {{ok, JObj}, true} ->
-            %% ?LOG_DEBUG("ancestors ok reseller"),
             lager:debug("reached to the reseller account ~s (for category ~s)", [ParentId, Category]),
             {ok, [JObj|JObjs]};
         {{ok, JObj}, _} ->
-            %% ?LOG_DEBUG("ancestors ok account"),
             load_config_from_ancestors_fold(AncestorIds, Category, [JObj|JObjs]);
         {{error, _Reason}, true} ->
-            %% ?LOG_DEBUG("ancestors nok reseller"),
             lager:debug("reached to the reseller account ~s (failed to get category ~s: ~p)"
                        ,[ParentId, Category, _Reason]
                        ),
             {ok, JObjs};
         {{error, _Reason}, _} ->
-            %% ?LOG_DEBUG("ancestors nok account"),
             lager:debug("failed to get category ~s for account ~s: ~p", [Category, ParentId, _Reason]),
             load_config_from_ancestors_fold(AncestorIds, Category, JObjs)
     end.
@@ -469,12 +436,10 @@ flush(Account, Category) ->
 walk_the_walk(#{strategy_funs := []
                ,results := []
                }) ->
-    %% ?LOG_DEBUG("walk not_found"),
     {error, not_found};
 walk_the_walk(#{strategy_funs := []
                ,merge := ShouldMerge
                }=Map) ->
-    %% ?LOG_DEBUG("walk done"),
     maybe_merge_results(Map, ShouldMerge);
 walk_the_walk(#{account_id := AccountId
                ,strategy_funs := [Fun|Funs]
@@ -483,36 +448,24 @@ walk_the_walk(#{account_id := AccountId
                ,key := Key
                ,results := Results
                }=Map) ->
-    %% ?LOG_DEBUG("walk run"),
     case Fun(AccountId, Category) of
         {ok, JObj} when not ShouldMerge ->
             %% requester does not want merge result from ancestors and system
             %% returning the result of the first function if defined
-            %% ?LOG_DEBUG("walk run ok not merge"),
-            case kz_term:is_not_empty(Key)
-                andalso kz_json:get_value(Key, JObj)
-            of
-                false ->
-                    %% ?LOG_DEBUG("walk run ok not merge no key"),
-                    walk_the_walk(Map#{results := [JObj], strategy_funs := []});
+            case kz_json:get_value(Key, JObj) of
                 undefined ->
                     %% key is not defined, continuing the walk
-                    %% ?LOG_DEBUG("walk run ok not merge undefined"),
                     walk_the_walk(Map#{results := [JObj|Results], strategy_funs := Funs});
                 _Value ->
-                    %% ?LOG_DEBUG("walk run ok not merge value"),
                     walk_the_walk(Map#{results := [JObj], strategy_funs := []})
             end;
         {ok, JObjs} when is_list(JObjs) ->
             %% the function returns list (load from ancestor), forcing merge
-            %% ?LOG_DEBUG("walk run ok list"),
             walk_the_walk(Map#{results := lists:flatten([JObjs|Results]), strategy_funs := Funs, merge := true});
         {ok, JObj} ->
             %% requester wants merge result from ancestors and system
-            %% ?LOG_DEBUG("walk run ok normal"),
             walk_the_walk(Map#{results := [JObj|Results], strategy_funs := Funs});
         {error, _} ->
-            %% ?LOG_DEBUG("walk run error"),
             walk_the_walk(Map#{strategy_funs := Funs})
     end.
 
@@ -520,7 +473,6 @@ walk_the_walk(#{account_id := AccountId
 maybe_merge_results(#{results := JObjs}=Map, true) ->
     store_in_strategy_cache(Map, kz_json:merge([kz_doc:public_fields(J) || J <- JObjs]));
 maybe_merge_results(#{results := JObjs}, false) ->
-    %% ?LOG_DEBUG("5 no merge"),
     {ok, lists:last(JObjs)}.
 
 -spec store_in_strategy_cache(map(), kz_json:object()) -> {ok, kz_json:object()}.
@@ -560,7 +512,7 @@ config_origins(Doc, Acc) ->
 strategy_cache_key(AccountId, Category, Strategy) ->
     {?MODULE, AccountId, Category, Strategy}.
 
--spec strategy_options(ne_binary(), ne_binary(), ne_binary(), boolean(), undefined | kz_json:path()) -> map().
+-spec strategy_options(ne_binary(), ne_binary(), ne_binary(), boolean(), kz_json:path()) -> map().
 strategy_options(Strategy, AccountId, Category, ShouldMerge, Key) ->
     #{account_id => AccountId
      ,strategy => Strategy
@@ -592,9 +544,7 @@ strategy_funs(<<"hierarchy_merge">>) ->
     [fun load_config_from_account/2
     ,fun load_config_from_ancestors/2
     ,fun load_config_from_system/2
-    ];
-strategy_funs(_) ->
-    [].
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -779,123 +729,81 @@ config_setting_key(Node, Setting) ->
                                {ok, kz_json:object()} |
                                {error, not_found | no_account_id}.
 %% An Account Config
-give_me_something(<<"account">>, ?CUSTOMIZED_RESELLER_UNDEFINED, _) ->
-    %% ?LOG_DEBUG("load_account CUSTOMIZED_RESELLER_UNDEFINED"),
+give_me_something(<<"account">>, AccountId, _)
+  when AccountId =:= ?CUSTOMIZED_RESELLER_UNDEFINED;
+       AccountId =:= ?CUSTOMIZED_SUBACCOUNT_1_UNDEFINED ->
     {ok, kz_json:new()};
-give_me_something(<<"account">>, ?CUSTOMIZED_RESELLER_HIER, _) ->
-    %% ?LOG_DEBUG("load_account CUSTOMIZED_RESELLER_HIER"),
+give_me_something(<<"account">>, AccountId, _)
+  when AccountId =:= ?CUSTOMIZED_RESELLER_HIER;
+       AccountId =:= ?SELF_RESELLER ->
     {ok, kapps_config_util:fixture("test_cat_reseller")};
-give_me_something(<<"account">>, ?SELF_RESELLER, _) ->
-    %% ?LOG_DEBUG("load_account SELF_RESELLER"),
-    {ok, kapps_config_util:fixture("test_cat_reseller")};
-give_me_something(<<"account">>, ?CUSTOMIZED_SUBACCOUNT_1_UNDEFINED, _) ->
-    %% ?LOG_DEBUG("load_account CUSTOMIZED_SUBACCOUNT_1_UNDEFINED"),
-    {ok, kz_json:new()};
 give_me_something(<<"account">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
-    %% ?LOG_DEBUG("load_account CUSTOMIZED_SUBACCOUNT_1"),
     {ok, kapps_config_util:fixture("test_cat_subaccount_1")};
-give_me_something(<<"account">>, ?CUST_A_CUST_P_CUST_R, _) ->
-    %% ?LOG_DEBUG("load_account CUST_A_CUST_P_CUST_R"),
-    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
-give_me_something(<<"account">>, ?CUST_A_CUST_P_404_R, _) ->
-    %% ?LOG_DEBUG("load_account CUST_A_CUST_P_404_R"),
-    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
-give_me_something(<<"account">>, ?CUST_A_CUST_P_EMPTY_R, _) ->
-    %% ?LOG_DEBUG("load_account CUST_A_CUST_P_EMPTY_R"),
-    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
-give_me_something(<<"account">>, ?CUST_A_404_P_CUST_R, _) ->
-    %% ?LOG_DEBUG("load_account CUST_A_404_P_CUST_R"),
-    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
-give_me_something(<<"account">>, ?CUST_A_404_P_404_R, _) ->
-    %% ?LOG_DEBUG("load_account CUST_A_404_P_404_R"),
+give_me_something(<<"account">>, AccountId, _)
+  when AccountId =:= ?CUST_A_CUST_P_CUST_R;
+       AccountId =:= ?CUST_A_CUST_P_404_R;
+       AccountId =:= ?CUST_A_CUST_P_EMPTY_R;
+       AccountId =:= ?CUST_A_404_P_CUST_R;
+       AccountId =:= ?CUST_A_404_P_404_R ->
     {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
 give_me_something(<<"account">>, _AccountId, _) ->
-    %% ?LOG_DEBUG("load_account ~s", [_AccountId]),
     {error, not_found};
 
 %% Reseller Id
 give_me_something(<<"reseller_id">>, ?CUSTOMIZED_RESELLER, _) ->
-    %% ?LOG_DEBUG("reseller_id CUSTOMIZED_RESELLER"),
     [?SELF_RESELLER];
 give_me_something(<<"reseller_id">>, ?SELF_RESELLER, _) ->
-    %% ?LOG_DEBUG("reseller_id SELF_RESELLER"),
     [?SELF_RESELLER];
 give_me_something(<<"reseller_id">>, _AccountId, _) ->
-    %% ?LOG_DEBUG("reseller_id ~s", [_AccountId]),
     [];
 
 %% A Reseller Config
-give_me_something(<<"reseller_jobj">>, ?CUSTOMIZED_RESELLER, _) ->
-    %% ?LOG_DEBUG("load_reseller CUSTOMIZED_RESELLER"),
-    {ok, kapps_config_util:fixture("test_cat_reseller")};
 give_me_something(<<"reseller_jobj">>, ?SELF_RESELLER, _) ->
-    %% ?LOG_DEBUG("load_reseller SELF_RESELLER"),
     {ok, kapps_config_util:fixture("test_cat_reseller")};
-give_me_something(<<"reseller_jobj">>, _AccountId, _) ->
-    %% ?LOG_DEBUG("load_reseller ~s", [_AccountId]),
-    {error, not_found};
 
 %% A Parent AccountId
 give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_CUST_R, _) ->
-    %% ?LOG_DEBUG("parent_id CUST_A_CUST_P_CUST_R -> master, cust_reseller_hier, cust_sub1"),
     [?A_MASTER_ACCOUNT_ID
     ,?CUSTOMIZED_RESELLER_HIER
     ,?CUSTOMIZED_SUBACCOUNT_1
     ];
 give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_404_R, _) ->
-    %% ?LOG_DEBUG("parent_id CUST_A_CUST_P_404_R -> master, not_exists_reseller, cust_sub1"),
     [?A_MASTER_ACCOUNT_ID
     ,?NOT_CUSTOMIZED_RESELLER
     ,?CUSTOMIZED_SUBACCOUNT_1
     ];
 give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_EMPTY_R, _) ->
-    %% ?LOG_DEBUG("parent_id CUST_A_CUST_P_EMPTY_R -> master, empty_reseller, cust_sub1"),
     [?A_MASTER_ACCOUNT_ID
     ,?CUSTOMIZED_RESELLER_UNDEFINED
     ,?CUSTOMIZED_SUBACCOUNT_1
     ];
 give_me_something(<<"parent_id">>, ?CUST_A_404_P_CUST_R, _) ->
-    %% ?LOG_DEBUG("parent_id CUST_A_404_P_CUST_R -> master, cust_reseller_hier, not_exists_sub1"),
     [?A_MASTER_ACCOUNT_ID
     ,?CUSTOMIZED_RESELLER_HIER
     ,?NOT_CUSTOMIZED_ALL_ACCOUNTS
     ];
 give_me_something(<<"parent_id">>, ?CUST_A_404_P_404_R, _) ->
-    %% ?LOG_DEBUG("parent_id CUST_A_404_P_CUST_R -> master, not_exists_reseller, not_exists_sub1"),
     [?A_MASTER_ACCOUNT_ID
     ,?NOT_CUSTOMIZED_RESELLER
     ,?NOT_CUSTOMIZED_ALL_ACCOUNTS
     ];
 give_me_something(<<"parent_id">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
-    %% ?LOG_DEBUG("parent_id CUSTOMIZED_SUBACCOUNT_1 -> master, cust_reseller_hier"),
     [?A_MASTER_ACCOUNT_ID
     ,?CUSTOMIZED_RESELLER_HIER
     ];
 give_me_something(<<"parent_id">>, _AccountId, _) ->
-    %% ?LOG_DEBUG("parent_id empty: ~s", [_AccountId]),
     [];
 
 %% Is Reseller
-give_me_something(<<"is_reseller">>, ?SELF_RESELLER, _) ->
-    %% ?LOG_DEBUG("is_reseller SELF_RESELLER"),
-    true;
-give_me_something(<<"is_reseller">>, ?CUSTOMIZED_RESELLER, _) ->
-    %% ?LOG_DEBUG("is_reseller CUSTOMIZED_RESELLER"),
-    true;
-give_me_something(<<"is_reseller">>, ?CUSTOMIZED_RESELLER_UNDEFINED, _) ->
-    %% ?LOG_DEBUG("is_reseller CUSTOMIZED_RESELLER_UNDEFINED"),
-    true;
-give_me_something(<<"is_reseller">>, ?CUSTOMIZED_RESELLER_HIER, _) ->
-    %% ?LOG_DEBUG("is_reseller CUSTOMIZED_RESELLER_HIER"),
-    true;
-give_me_something(<<"is_reseller">>, ?NOT_CUSTOMIZED_RESELLER, _) ->
-    %% ?LOG_DEBUG("is_reseller NOT_CUSTOMIZED_RESELLER"),
-    true;
-give_me_something(<<"is_reseller">>, ?A_MASTER_ACCOUNT_ID, _) ->
-    %% ?LOG_DEBUG("is_reseller A_MASTER_ACCOUNT_ID"),
+give_me_something(<<"is_reseller">>, AccountId, _)
+  when AccountId =:= ?SELF_RESELLER;
+       AccountId =:= ?CUSTOMIZED_RESELLER;
+       AccountId =:= ?CUSTOMIZED_RESELLER_UNDEFINED;
+       AccountId =:= ?CUSTOMIZED_RESELLER_HIER;
+       AccountId =:= ?NOT_CUSTOMIZED_RESELLER;
+       AccountId =:= ?A_MASTER_ACCOUNT_ID ->
     true;
 give_me_something(<<"is_reseller">>, _AccountId, _) ->
-    %% ?LOG_DEBUG("is_reseller ~s", [_AccountId]),
     false.
 
 -endif.
