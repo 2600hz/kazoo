@@ -3,11 +3,13 @@
   "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
   "one_root_key": "reseller",
   "root_obj_key": {
+    "reseller": "reseller_only",
     "b_key": "reseller",
     "b_keys": [
         "OneReseller",
         "TwoResellers"
     ],
+    "b_empty_list": [],
     "i_key": 98765,
     "f_key": 1.3,
     "bol_key": false,

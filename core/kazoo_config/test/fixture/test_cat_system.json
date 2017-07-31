@@ -2,7 +2,8 @@
     "_id": "hestest",
     "_rev": "1-2acb7ba4044ffb510cb85034455de2a4",
     "default": {
-        "root_b_key": "binary",
+        "system": "system_only",
+        "root_b_key": "root_system",
         "root_b_keys": [
             "One",
             "Two"
@@ -11,11 +12,13 @@
         "root_f_key": 1.2,
         "root_bol_key": true,
         "root_obj_key": {
-            "b_key": "binary",
+            "system_key": "system_only",
+            "b_key": "obj_system",
             "b_keys": [
                 "One",
                 "Two"
             ],
+            "b_empty_list": [],
             "i_key": 123456,
             "f_key": 1.2,
             "bol_key": true,

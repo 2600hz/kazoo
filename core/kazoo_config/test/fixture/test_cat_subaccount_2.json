@@ -3,11 +3,13 @@
   "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
   "one_root_key": "subaccount2",
   "root_obj_key": {
+    "2subaccount": "2subaccount_only",
     "b_key": "subaccount2",
     "b_keys": [
         "OneSubAccount2",
         "TwoSubAccount2"
     ],
+    "b_empty_list": [],
     "i_key": 3456,
     "f_key": 1.5,
     "bol_key": false,

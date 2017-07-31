@@ -46,15 +46,36 @@
                    'zone'.
 
 -ifdef(TEST).
+
 -define(TEST_CAT, <<"test_category">>).
 -define(TEST_CAT_EMPTY, <<"test_category_empty">>).
 
 %% AccountIds for different test situation
+%% -define(EMPTY_ALL, <<"2e7e4bdf5eff5d04b8153fa7d81f0168">>).
+-define(NO_CONFIG, <<"175d1885aa75d6f243e5f1c57c5b3e9b">>).
 -define(NOT_CUSTOMIZED_ALL_ACCOUNTS, <<"087ca0424ec8acf3acc1f87ac81f28e1">>).
+
 -define(CUSTOMIZED_RESELLER, <<"123ca0424ec8acf3acc1f87ac81f2123">>).
+-define(CUSTOMIZED_RESELLER_HIER, <<"f3b9104a6dc3ab36fbcf413444c30a12">>).
 -define(CUSTOMIZED_RESELLER_UNDEFINED, <<"7cc16a9cd8bcfeea4732986790e930a4">>).
--define(CUSTOMIZED_SUBACCOUNT_UNDEFINED, <<"ce22d0d38c8b1e16e4e68ec941eed319">>).
--define(CUSTOMIZED_SUBACCOUNT, <<"5bb4a2b6323bd02a77f1049669073643">>).
+
+-define(CUSTOMIZED_SUBACCOUNT_1_UNDEFINED, <<"ce22d0d38c8b1e16e4e68ec941eed319">>).
+-define(CUSTOMIZED_SUBACCOUNT_1, <<"5bb4a2b6323bd02a77f1049669073643">>).
+
+
+-define(CUST_A_CUST_P_CUST_R, <<"94b2fdbd4b92c8c1d3c3331aff97e16a">>).
+-define(CUST_A_CUST_P_404_R, <<"">>).
+-define(CUST_A_CUST_P_EMPTY_R, <<"">>).
+
+-define(CUST_A_404_P_CUST_R, <<"">>).
+-define(CUST_A_404_P_404_R, <<"">>).
+-define(CUST_A_404_P_EMPTY_R, <<"">>).
+
+-define(CUST_A_EMPTY_P_CUST_R, <<"">>).
+-define(CUST_A_EMPTY_P_404_R, <<"">>).
+-define(CUST_A_EMPTY_P_EMPTY_R, <<"">>).
+
+-define(CUSTOMIZED_SUBACCOUNT_2, <<"94b2fdbd4b92c8c1d3c3331aff97e16a">>).
 
 -define(A_MASTER_ACCOUNT_ID, <<"6b71cb72c876b5b1396a335f8f8a2594">>).
 -define(A_MASTER_ACCOUNT_DB, <<"account%2F6b%2F71%2Fcb72c876b5b1396a335f8f8a2594">>).
@@ -64,16 +85,11 @@
 
 -define(AN_ACCOUNT_USER_ID, <<"8e248327b85591955749e53ea45b6baa">>).
 
--endif.
-
--ifdef(TEST).
--define(LOG_ERROR(F,A), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_WARN(F,A), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
 -define(LOG_DEBUG(F,A), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
 -define(LOG_DEBUG(F), io:format(user, "\n" ++ "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
+
 -else.
--define(LOG_ERROR(F,A), lager:error(F,A)).
--define(LOG_WARN(F,A), lager:warning(F,A)).
+
 -define(LOG_DEBUG(F,A), lager:debug(F,A)).
 -define(LOG_DEBUG(F), lager:debug(F)).
 -endif.
