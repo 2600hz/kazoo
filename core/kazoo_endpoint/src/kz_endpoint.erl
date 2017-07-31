@@ -1825,15 +1825,12 @@ get_sip_realm(SIPJObj, AccountId) ->
 -spec get_sip_realm(kz_json:object(), ne_binary(), Default) -> Default | ne_binary().
 get_sip_realm(SIPJObj, AccountId, Default) ->
     case kz_device:sip_realm(SIPJObj) of
-        'undefined' -> get_account_realm(AccountId, Default);
+        'undefined' ->
+            case kz_account:fetch_realm(AccountId) of
+                undefined -> Default;
+                Realm -> Realm
+            end;
         Realm -> Realm
-    end.
-
--spec get_account_realm(ne_binary(), api_binary()) -> api_binary().
-get_account_realm(AccountId, Default) ->
-    case kz_util:get_account_realm(AccountId) of
-        'undefined' -> Default;
-        Else -> Else
     end.
 
 %%--------------------------------------------------------------------

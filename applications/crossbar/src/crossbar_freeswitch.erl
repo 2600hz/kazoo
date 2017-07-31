@@ -391,7 +391,7 @@ process_callflow(_, _, _, _) -> 'ok'.
 
 -spec process_device(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 process_device(Number, AccountId, JObj) ->
-    AccountRealm = kz_util:get_account_realm(AccountId),
+    AccountRealm = kz_account:fetch_realm(AccountId),
     Realm = kz_device:sip_realm(JObj, AccountRealm),
     Username = kz_device:sip_username(JObj),
     case query_registrar(Realm, Username) of

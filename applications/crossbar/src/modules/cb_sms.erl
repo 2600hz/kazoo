@@ -163,7 +163,7 @@ on_successful_validation(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_modb(Context),
     ResellerId = cb_context:reseller_id(Context),
-    Realm = kz_util:get_account_realm(AccountId),
+    Realm = kz_account:fetch_realm(AccountId),
 
     {AuthorizationType, Authorization, OwnerId} =
         case {cb_context:user_id(Context), cb_context:auth_user_id(Context)} of

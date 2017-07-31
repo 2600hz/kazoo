@@ -321,14 +321,11 @@ patch(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context()) -> cb_context:context().
 get_channels(Context) ->
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
     Usernames = [Username
                  || JObj <- cb_context:doc(Context),
-                    (Username = kz_device:sip_username(
-                                  kz_json:get_value(<<"doc">>, JObj)
-                                 )
-                    )
-                        =/= 'undefined'
+                    Username <- [kz_device:sip_username(kz_json:get_value(<<"doc">>, JObj))],
+                    Username =/= undefined
                 ],
     Req = [{<<"Realm">>, Realm}
           ,{<<"Usernames">>, Usernames}

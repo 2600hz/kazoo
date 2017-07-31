@@ -17,7 +17,7 @@
         ,get_inherited_value/3
 
         ,fetch_name/1, name/1, name/2, set_name/2
-        ,realm/1, realm/2, set_realm/2
+        ,fetch_realm/1, realm/1, realm/2, set_realm/2
         ,language/1, language/2, set_language/2
         ,timezone/1, timezone/2, set_timezone/2, default_timezone/0
         ,parent_account_id/1
@@ -202,6 +202,20 @@ name(JObj, Default) ->
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(JObj, Name) ->
     kz_json:set_value(?NAME, Name, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_realm(ne_binary()) -> api_ne_binary().
+fetch_realm(Account) ->
+    case kz_account:fetch(Account) of
+        {ok, JObj} -> realm(JObj);
+        {error, _R} ->
+            lager:error("error opening account doc ~p", [Account]),
+            undefined
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

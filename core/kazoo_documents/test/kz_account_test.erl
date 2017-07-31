@@ -58,3 +58,7 @@ trial_time_test_() ->
      ,?_assertEqual(-10000, kz_account:trial_time_left(Passed, Now))
      }
     ].
+
+fetch_realm_test_() ->
+    [?_assertEqual(undefined, kz_account:fetch_realm(?AN_ACCOUNT_ID))
+    ].

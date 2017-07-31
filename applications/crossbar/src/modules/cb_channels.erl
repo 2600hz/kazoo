@@ -355,18 +355,14 @@ account_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context(), kz_json:objects(), function()) -> cb_context:context().
 get_channels(Context, Devices, PublisherFun) ->
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
-
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Paths = [[<<"doc">>, <<"sip">>, <<"username">>]
+            ,[<<"sip">>, <<"username">>]
+            ],
     Usernames = [Username
                  || JObj <- Devices,
-                    (Username = kz_json:get_first_defined(
-                                  [[<<"doc">>, <<"sip">>, <<"username">>]
-                                  ,[<<"sip">>, <<"username">>]
-                                  ]
-                                                         ,JObj
-                                 )
-                    )
-                        =/= 'undefined'
+                    Username <- [kz_json:get_first_defined(Paths, JObj)],
+                    Username =/= undefined
                 ],
 
     Req = props:filter_undefined(

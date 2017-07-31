@@ -107,16 +107,12 @@ account_id_name(AccountId) ->
 -spec find_realm(kz_call_event:doc(), ne_binary()) -> ne_binary().
 find_realm(JObj, <<_/binary>> = AccountId) ->
     case kz_call_event:account_id(JObj) of
-        'undefined' -> get_account_realm(AccountId);
+        undefined ->
+            case kz_account:fetch_realm(AccountId) of
+                undefined -> <<"unknown">>;
+                Realm -> Realm
+            end;
         Realm -> Realm
-    end.
-
--spec get_account_realm(ne_binary()) -> ne_binary().
-get_account_realm(<<"unknown">>) -> <<"unknown">>;
-get_account_realm(<<_/binary>> = AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:realm(JObj, <<"unknown">>);
-        {'error', _} -> <<"unknown">>
     end.
 
 %%--------------------------------------------------------------------

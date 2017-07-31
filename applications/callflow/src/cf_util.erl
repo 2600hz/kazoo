@@ -706,7 +706,7 @@ find_user_endpoints(UserIds, DeviceIds, Call) ->
 
 -spec find_channels(ne_binaries(), kapps_call:call()) -> kz_json:objects().
 find_channels(Usernames, Call) ->
-    Realm = kz_util:get_account_realm(kapps_call:account_id(Call)),
+    Realm = kz_account:fetch_realm(kapps_call:account_id(Call)),
     lager:debug("finding channels for realm ~p, usernames ~p", [Realm, Usernames]),
     Req = [{<<"Realm">>, Realm}
           ,{<<"Usernames">>, Usernames}
