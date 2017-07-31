@@ -210,7 +210,7 @@ set_name(JObj, Name) ->
 %%--------------------------------------------------------------------
 -spec fetch_realm(ne_binary()) -> api_ne_binary().
 fetch_realm(Account) ->
-    case kz_account:fetch(Account) of
+    case fetch(Account) of
         {ok, JObj} -> realm(JObj);
         {error, _R} ->
             lager:error("error opening account doc ~p", [Account]),
