@@ -9,7 +9,7 @@
 -module(teletype_fax_inbound_to_email).
 
 -export([init/0
-        ,handle_fax_inbound/1
+        ,handle_req/1
         ]).
 
 -include("teletype.hrl").
@@ -49,12 +49,18 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"inbound_fax">>, ?MODULE, 'handle_fax_inbound').
+    teletype_bindings:bind(<<"inbound_fax">>, ?MODULE, 'handle_req').
 
--spec handle_fax_inbound(kz_json:object()) -> 'ok'.
-handle_fax_inbound(JObj) ->
-    'true' = kapi_notifications:fax_inbound_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:fax_inbound_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     lager:debug("processing fax inbound to email"),
 

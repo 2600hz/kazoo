@@ -16,7 +16,7 @@
         ,category/0
         ,friendly_name/0
         ]).
--export([handle_new_voicemail/1]).
+-export([handle_req/1]).
 
 -include("teletype.hrl").
 
@@ -55,12 +55,18 @@ friendly_name() ->
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
-    teletype_bindings:bind(id(), ?MODULE, 'handle_new_voicemail').
+    teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
--spec handle_new_voicemail(kz_json:object()) -> 'ok'.
-handle_new_voicemail(JObj) ->
-    'true' = kapi_notifications:voicemail_new_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:voicemail_new_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [id()]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [id()]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -68,11 +74,11 @@ handle_new_voicemail(JObj) ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
         'false' -> teletype_util:notification_disabled(DataJObj, id());
-        'true' -> handle_req(DataJObj, AccountId)
+        'true' -> process_req(DataJObj, AccountId)
     end.
 
--spec handle_req(kz_json:object(), ne_binary()) -> 'ok'.
-handle_req(DataJObj, AccountId) ->
+-spec process_req(kz_json:object(), ne_binary()) -> 'ok'.
+process_req(DataJObj, AccountId) ->
     VMBoxId = kz_json:get_value(<<"voicemail_box">>, DataJObj),
     {'ok', VMBox} = teletype_util:open_doc(<<"vmbox">>, VMBoxId, DataJObj),
     {'ok', UserJObj} = get_owner(VMBox, DataJObj),

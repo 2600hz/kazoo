@@ -45,7 +45,7 @@ add_attachments(DataJObj, Macros, ShouldTerminate) ->
 -spec maybe_terminate(kz_json:object(), kz_proplist(), boolean()) -> {kz_proplist(), attachments()}.
 maybe_terminate(DataJObj, _, 'true') ->
     lager:debug("No attachments were found for this fax"),
-    teletype_util:send_update(DataJObj, <<"failed">>, <<"No attachments were found for this fax">>),
+    teletype_util:send_update(DataJObj, <<"failed">>, <<"no_fax_attachment">>),
     throw({'error', 'no_attachment'});
 maybe_terminate(_, Macros, 'false') ->
     lager:debug("No attachments were found for this fax"),

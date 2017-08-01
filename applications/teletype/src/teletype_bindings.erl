@@ -36,6 +36,7 @@ flush_mod(Module) ->
 
 -spec notification(kz_json:object()) -> 'ok'.
 notification(JObj) ->
+    kz_util:put_callid(JObj),
     {EventCategory, EventName} = kz_util:get_event_type(JObj),
     RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
     lager:debug("dispatching notification ~s", [RoutingKey]),
