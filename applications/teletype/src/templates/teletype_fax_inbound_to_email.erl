@@ -62,8 +62,6 @@ handle_req(JObj, 'false') ->
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
-    lager:debug("processing fax inbound to email"),
-
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),

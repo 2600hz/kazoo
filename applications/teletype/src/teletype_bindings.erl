@@ -40,8 +40,18 @@ notification(JObj) ->
     {EventCategory, EventName} = kz_util:get_event_type(JObj),
     RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
     lager:debug("dispatching notification ~s", [RoutingKey]),
-    _ = kazoo_bindings:map(RoutingKey, JObj, []),
-    'ok'.
+    Res = kazoo_bindings:map(RoutingKey, JObj, []),
+    case kazoo_bindings:succeeded(Res, fun filter_out_failed/1) of
+        [] ->
+            lager:debug("notification ~s did not result in successes", [RoutingKey]),
+            teletype_util:send_update(JObj, <<"failed">>, <<"not_succeeded">>);
+        _Successes ->
+            lager:debug("notification ~s result in some successes", [RoutingKey])
+    end.
+
+-spec filter_out_failed({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+filter_out_failed('ok') -> 'true';
+filter_out_failed(_) -> 'false'.
 
 -spec start_modules() -> 'ok'.
 start_modules() ->
