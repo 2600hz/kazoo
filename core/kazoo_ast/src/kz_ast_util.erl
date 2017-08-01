@@ -222,7 +222,6 @@ schema_description(<<>>) -> <<>>;
 schema_description(Description) -> [Description, "\n\n"].
 
 include_sub_refs(Refs) ->
-    io:format("sub refs: ~p~n", [Refs]),
     lists:usort(lists:foldl(fun include_sub_ref/2, [], Refs)).
 
 include_sub_ref(?NE_BINARY = Ref, Acc) ->
@@ -276,7 +275,6 @@ one_of_to_row(Option, Refs) ->
     maybe_add_ref(Refs, Option).
 
 any_of_to_row(Option, Refs) ->
-    io:format("any of ~p: ~p~n", [Option, Refs]),
     maybe_add_ref(Refs, Option).
 
 -spec property_to_row(kz_json:object(), ne_binary() | ne_binaries(), kz_json:object(), {iodata(), ne_binaries()}) ->
@@ -293,7 +291,6 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
                 cell_wrap('undefined')
         end,
 
-    io:format("building row for ~s: ~p: ~p~n", [kz_doc:id(SchemaJObj), Names, Settings]),
     maybe_sub_properties_to_row(SchemaJObj
                                ,kz_json:get_ne_value(<<"type">>, Settings)
                                ,Names
@@ -506,7 +503,6 @@ maybe_any_of_to_row(SchemaJObj, Names, Settings, Acc0) ->
                                          ,get_properties(SubSchema)
                                          ),
     F = fun (K, V, Acc) ->
-                io:format("prop to row ~p ++ ~s~n", [Names, K]),
                 property_to_row(SchemaJObj, Names ++ [K], V, Acc)
         end,
     kz_json:foldl(F, Acc0, PlusPatternProperties).
