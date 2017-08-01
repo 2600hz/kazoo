@@ -36,18 +36,23 @@ add_data(DataJObj) ->
 add_attachments(DataJObj, Macros, ShouldTerminate) ->
     IsPreview = teletype_util:is_preview(DataJObj),
     FaxDoc = props:get_value(<<"fax">>, Macros),
-    case maybe_fetch_attachments(FaxDoc, Macros, IsPreview) of
-        [] when IsPreview -> {Macros, []};
-        [] -> maybe_terminate(DataJObj, Macros, ShouldTerminate);
+    case kz_json:is_json_object(FaxDoc)
+        andalso kz_json:is_empty(FaxDoc)
+        andalso maybe_fetch_attachments(FaxDoc, Macros, IsPreview)
+    of
+        'false' -> maybe_terminate(Macros, ShouldTerminate, IsPreview);
+        [] -> maybe_terminate(Macros, ShouldTerminate, IsPreview);
         Attachments -> {add_document_data(Macros, Attachments), Attachments}
     end.
 
--spec maybe_terminate(kz_json:object(), kz_proplist(), boolean()) -> {kz_proplist(), attachments()}.
-maybe_terminate(DataJObj, _, 'true') ->
+-spec maybe_terminate(kz_proplist(), boolean(), boolean()) -> {kz_proplist(), attachments()}.
+maybe_terminate(Macros, _, 'true') ->
+    lager:debug("this is a preview, no attachments"),
+    {Macros, []};
+maybe_terminate(_, 'true', 'false') ->
     lager:debug("No attachments were found for this fax"),
-    teletype_util:send_update(DataJObj, <<"failed">>, <<"no_fax_attachment">>),
     throw({'error', 'no_attachment'});
-maybe_terminate(_, Macros, 'false') ->
+maybe_terminate(Macros, 'false', 'false') ->
     lager:debug("No attachments were found for this fax"),
     {Macros, []}.
 
@@ -185,10 +190,6 @@ fax_db(DataJObj) ->
 
 -spec maybe_fetch_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
 maybe_fetch_attachments(_, _, 'true') ->
-    lager:debug("this is a preview, no attachments"),
-    [];
-maybe_fetch_attachments('undefined', _, 'false') ->
-    lager:debug("no fax document, no attachments"),
     [];
 maybe_fetch_attachments(FaxJObj, Macros, 'false') ->
     FaxId = props:get_first_defined([<<"id">>, <<"fax_jobid">>, <<"fax_id">>], FaxJObj),

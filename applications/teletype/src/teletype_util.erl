@@ -454,7 +454,7 @@ render(TemplateId, Template, Macros) ->
         {'ok', IOData} -> iolist_to_binary(IOData);
         {'error', _E} ->
             lager:debug("failed to render '~s': ~p '~s'", [TemplateId, _E, Template]),
-            throw({'error', 'template_error'})
+            throw({'error', 'template_error', <<"failed to render template ", TemplateId/binary>>})
     end.
 
 -spec sort_templates(rendered_templates()) -> rendered_templates().

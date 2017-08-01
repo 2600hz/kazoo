@@ -161,7 +161,7 @@ get_topup_amount(DataJObj) ->
         'undefined' when IsPreview -> 20.0;
         'undefined' ->
             lager:warning("failed to get topup amount from data: ~p", [DataJObj]),
-            throw({'error', 'no_topup_amount'});
+            throw({'error', 'missing_data', <<"no topup amount">>});
         Amount -> Amount
     end.
 

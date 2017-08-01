@@ -130,9 +130,10 @@ get_user(DataJObj) ->
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
-            lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
+            Msg = io_lib:format("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
+            lager:debug(Msg),
             case teletype_util:is_preview(DataJObj) of
-                'false' -> throw({'error', 'not_found'});
+                'false' -> throw({'error', 'missing_data', Msg});
                 'true' -> kz_json:new()
             end
     end.
