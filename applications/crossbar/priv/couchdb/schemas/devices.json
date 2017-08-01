@@ -417,12 +417,7 @@
                 "custom_sip_headers": {
                     "anyOf": [
                         {
-                            "patternProperties": {
-                                "^[a-zA-z0-9_\\-]+$": {
-                                    "description": "The X- SIP header to add",
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "custom_sip_headers"
                         },
                         {
                             "properties": {

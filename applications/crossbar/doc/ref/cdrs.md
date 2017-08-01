@@ -20,7 +20,7 @@ Key | Description | Type | Default | Required
 `caller_id_name` | The indicated name of the caller | `string()` |   | `false`
 `caller_id_number` | The indicated number of the caller | `string()` |   | `false`
 `custom_channel_vars` | Kazoo-specific key/value pairs set on the channel | `object()` |   | `false`
-`custom_sip_headers` | A property list of SIP headers beginning with the prefix 'X-' or 'P-' | `object()` |   | `false`
+`custom_sip_headers` | A property list of SIP headers | `object()` |   | `false`
 `digits_dialed` | All the DTMF tones detected on this leg of the call | `string()` |   | `false`
 `disposition` | Who sent the SIP BYE message | `string()` |   | `false`
 `duration_seconds` | The duration of the call leg, in seconds | `string()` |   | `false`

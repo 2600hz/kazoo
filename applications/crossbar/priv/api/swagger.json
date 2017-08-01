@@ -1955,12 +1955,7 @@
                 "custom_sip_headers": {
                     "anyOf": [
                         {
-                            "patternProperties": {
-                                "^[a-zA-z0-9_\\-]+$": {
-                                    "description": "The X- SIP header to add",
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "custom_sip_headers"
                         },
                         {
                             "properties": {
@@ -2413,12 +2408,7 @@
                 "custom_sip_headers": {
                     "anyOf": [
                         {
-                            "patternProperties": {
-                                "^[a-zA-z0-9_\\-]+$": {
-                                    "description": "The X- SIP header to add",
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "custom_sip_headers"
                         },
                         {
                             "properties": {
@@ -3032,12 +3022,7 @@
                 "custom_sip_headers": {
                     "anyOf": [
                         {
-                            "patternProperties": {
-                                "^[a-zA-z0-9_\\-]+$": {
-                                    "description": "The X- SIP header to add",
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "custom_sip_headers"
                         },
                         {
                             "properties": {
@@ -3052,7 +3037,7 @@
                             }
                         }
                     ],
-                    "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
+                    "description": "A property list of SIP headers",
                     "type": "object"
                 },
                 "digits_dialed": {
@@ -4012,12 +3997,7 @@
                         "custom_sip_headers": {
                             "anyOf": [
                                 {
-                                    "patternProperties": {
-                                        "^[a-zA-z0-9_\\-]+$": {
-                                            "description": "The X- SIP header to add",
-                                            "type": "string"
-                                        }
-                                    }
+                                    "$ref": "custom_sip_headers"
                                 },
                                 {
                                     "properties": {
@@ -23301,12 +23281,7 @@
                             "custom_sip_headers": {
                                 "anyOf": [
                                     {
-                                        "patternProperties": {
-                                            "^[a-zA-z0-9_\\-]+$": {
-                                                "description": "The X- SIP header to add",
-                                                "type": "string"
-                                            }
-                                        }
+                                        "$ref": "custom_sip_headers"
                                     },
                                     {
                                         "properties": {
@@ -23321,7 +23296,7 @@
                                         }
                                     }
                                 ],
-                                "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
+                                "description": "A property list of SIP headers",
                                 "type": "object"
                             },
                             "custom_sip_interface": {

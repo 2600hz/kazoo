@@ -38,7 +38,7 @@ Key | Description | Type | Default | Required
 `gateways.[].channel_selection` | Automatic selection of the channel within the span: ascending starts at 1 and moves up; descending is the opposite | `string('ascending' | 'descending')` | `ascending` | `false`
 `gateways.[].codecs.[]` |   | `string()` |   | `false`
 `gateways.[].codecs` | A list of single list codecs supported by this gateway (to support backward compatibilty) | `array(string('G729' | 'PCMU' | 'PCMA' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'GSM' | 'OPUS' | 'H261' | 'H263' | 'H264' | 'VP8'))` |   | `false`
-`gateways.[].custom_sip_headers` | A property list of SIP headers beginning with the prefix 'X-' or 'P-' | `object()` |   | `false`
+`gateways.[].custom_sip_headers` | A property list of SIP headers | `object()` |   | `false`
 `gateways.[].custom_sip_interface` | The name of a custom SIP interface | `string()` |   | `false`
 `gateways.[].enabled` | Determines if the resource gateway is currently enabled | `boolean()` | `true` | `false`
 `gateways.[].endpoint_type` | What type of endpoint is this gateway | `string('sip' | 'freetdm' | 'skype' | 'amqp')` | `sip` | `false`
