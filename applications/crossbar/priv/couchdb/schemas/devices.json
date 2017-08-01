@@ -415,23 +415,29 @@
             "description": "SIP Parameters",
             "properties": {
                 "custom_sip_headers": {
-                    "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
-                    "patternProperties": {
-                        "^[a-zA-z0-9_\\-]+$": {
-                            "description": "The X- SIP header to add",
-                            "type": "string"
-                        }
-                    },
-                    "properties": {
-                        "in": {
-                            "$ref": "custom_sip_headers",
-                            "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                    "anyOf": [
+                        {
+                            "patternProperties": {
+                                "^[a-zA-z0-9_\\-]+$": {
+                                    "description": "The X- SIP header to add",
+                                    "type": "string"
+                                }
+                            }
                         },
-                        "out": {
-                            "$ref": "custom_sip_headers",
-                            "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                        {
+                            "properties": {
+                                "in": {
+                                    "$ref": "custom_sip_headers",
+                                    "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                                },
+                                "out": {
+                                    "$ref": "custom_sip_headers",
+                                    "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                                }
+                            }
                         }
-                    },
+                    ],
+                    "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
                     "type": "object"
                 },
                 "expire_seconds": {
