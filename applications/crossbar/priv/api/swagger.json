@@ -1961,11 +1961,11 @@
                             "properties": {
                                 "in": {
                                     "$ref": "custom_sip_headers",
-                                    "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                                    "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint"
                                 },
                                 "out": {
                                     "$ref": "custom_sip_headers",
-                                    "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                                    "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint"
                                 }
                             }
                         }
@@ -2414,11 +2414,11 @@
                             "properties": {
                                 "in": {
                                     "$ref": "custom_sip_headers",
-                                    "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                                    "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint"
                                 },
                                 "out": {
                                     "$ref": "custom_sip_headers",
-                                    "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                                    "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint"
                                 }
                             }
                         }
@@ -3028,11 +3028,11 @@
                             "properties": {
                                 "in": {
                                     "$ref": "custom_sip_headers",
-                                    "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                                    "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint"
                                 },
                                 "out": {
                                     "$ref": "custom_sip_headers",
-                                    "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                                    "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint"
                                 }
                             }
                         }
@@ -4003,11 +4003,11 @@
                                     "properties": {
                                         "in": {
                                             "$ref": "custom_sip_headers",
-                                            "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                                            "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint"
                                         },
                                         "out": {
                                             "$ref": "custom_sip_headers",
-                                            "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                                            "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint"
                                         }
                                     }
                                 }
@@ -23287,11 +23287,11 @@
                                         "properties": {
                                             "in": {
                                                 "$ref": "custom_sip_headers",
-                                                "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                                                "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint"
                                             },
                                             "out": {
                                                 "$ref": "custom_sip_headers",
-                                                "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                                                "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint"
                                             }
                                         }
                                     }
