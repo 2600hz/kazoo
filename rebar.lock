@@ -157,7 +157,7 @@
   1},
  {<<"wsock">>,
   {git,"https://github.com/madtrick/wsock.git",
-       {ref,"251e18b80c018bb5a6e2f1bbd9bcfcc92e1d9383"}},
+       {ref,"8ab26bff7736458b73db954e8ad25394478ea706"}},
   0},
  {<<"zucchini">>,
   {git,"https://github.com/devinus/zucchini.git",
