@@ -1970,7 +1970,7 @@
                             }
                         }
                     ],
-                    "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
+                    "description": "A property list of SIP headers",
                     "type": "object"
                 },
                 "do_not_normalize": {
@@ -2423,7 +2423,7 @@
                             }
                         }
                     ],
-                    "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
+                    "description": "A property list of SIP headers",
                     "type": "object"
                 },
                 "do_not_normalize": {
@@ -4012,7 +4012,7 @@
                                     }
                                 }
                             ],
-                            "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
+                            "description": "A property list of SIP headers",
                             "type": "object"
                         },
                         "expire_seconds": {

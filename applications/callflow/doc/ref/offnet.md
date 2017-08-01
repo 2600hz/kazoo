@@ -12,7 +12,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bypass_e164` | Use the original requested number instead of normalizing to E164 | `boolean()` |   | `false`
 `caller_id_type` | Which configured caller-id to use (key in the 'caller_id' object) | `string()` | `external` | `false`
-`custom_sip_headers` | A property list of SIP headers beginning with the prefix 'X-' or 'P-' | `object()` |   | `false`
+`custom_sip_headers` | A property list of SIP headers | `object()` |   | `false`
 `do_not_normalize` | Use the original requested number instead of normalizing; otherwise try to apply the endpoint's dialplan to the requested number | `boolean()` |   | `false`
 `dynamic_flags.[]` |   | `string()` |   | `false`
 `dynamic_flags` | List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching | `array(string())` |   | `false`
