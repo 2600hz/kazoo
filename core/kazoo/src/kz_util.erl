@@ -406,13 +406,16 @@ normalize_account_name(AccountName) ->
           is_alphanumeric(Char)
     >>.
 
-is_alphanumeric(Char) ->
-    (Char >= $a
-     andalso Char =< $z
-    )
-        orelse (Char >= $0
-                andalso Char =< $9
-               ).
+is_alphanumeric(Char)
+  when Char >= $a,
+       Char =< $z ->
+    true;
+is_alphanumeric(Char)
+  when Char >= $0,
+       Char =< $9 ->
+    true;
+is_alphanumeric(_) ->
+    false.
 
 %%--------------------------------------------------------------------
 %% @public
