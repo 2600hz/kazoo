@@ -15,10 +15,10 @@
 
 -include_lib("amqp_util.hrl").
 
--define(EDR_REQ_HEADERS, [<<"Timestamp">>, <<"Tags">>]).
--define(OPTIONAL_EDR_HEADERS, []).
+-define(EDR_REQ_HEADERS, [<<"Body">>, <<"Level">>]).
+-define(OPTIONAL_EDR_HEADERS, [<<"Account-ID"]).
 -define(EDR_REQ_VALUES, []).
--define(EDR_REQ_TYPES, [{<<"Tags">>, fun kz_json:is_json_object/1}]).
+-define(EDR_REQ_TYPES, [{<<"Body">>, fun kz_json:is_json_object/1}]).
 
 %%--------------------------------------------------------------------
 %% @doc

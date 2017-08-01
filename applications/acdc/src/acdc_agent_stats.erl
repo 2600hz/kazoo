@@ -457,19 +457,19 @@ archive_status_fold(#status_stat{account_id=AccountId}=Stat, Acc) ->
 log_state_change(AccountId, AgentId, NewStateName) ->
     log_state_change(AccountId, AgentId, NewStateName, []).
 log_state_change(AccountId, AgentId, NewStateName, ExtraProps) ->
-    Tags = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
+    Body = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
                                                     ,{<<"agent_id">>, AgentId}
                                                     ,{<<"transition_to">>, NewStateName}
                                                     %%,{<<"reason">>, Reason}
                                                      | ExtraProps])),
-    kz_edr:log_event(<<"queue_agent">>, <<"state_transition">>, Tags, ?APP_NAME, ?APP_VERSION).
+    kz_edr:log_event(?APP_NAME, ?APP_VERSION, 'info', Body, AccountId).
 
 log_agent_event(AccountId, AgentId, Event) ->
     log_agent_event(AccountId, AgentId, Event, []).
 log_agent_event(AccountId, AgentId, Event, ExtraProps) ->
-    Tags = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
+    Body = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
                                                     ,{<<"agent_id">>, AgentId}
                                                     ,{<<"event">>, Event}
                                                     %%,{<<"reason">>, Reason}
                                                      | ExtraProps])),
-    kz_edr:log_event(<<"queue_agent">>, <<"event">>, Tags, ?APP_NAME, ?APP_VERSION).
+    kz_edr:log_event(?APP_NAME, ?APP_VERSION, 'info', Body, AccountId).

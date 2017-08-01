@@ -6,7 +6,7 @@
 %%% @contributors
 %%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
 %%%-------------------------------------------------------------------
--module(edr_elasticsearch).
+-module(edr_be_elasticsearch).
 
 -behaviour(gen_backend).
 
@@ -14,7 +14,7 @@
 
 -export([start_link/1]).
 
--export([push/3
+-export([push/2
         ,init/1
         ,stop/2
         ,async_response_handler/1
@@ -46,8 +46,8 @@ init(_Other)->
     'ignore'.
 
 
--spec push(state(), non_neg_integer(), kz_json:object()) -> work_result().
-push(#state{options=Opts, url=Url}, Timestamp, Data)->
+-spec push(state(), event()) -> work_result().
+push(#state{options=Opts, url=Url}, #event{timestamp=Timestamp, body=Data})->
     RawBody = kz_json:from_list([{<<"Timestamp">>, Timestamp}
                                 ,{<<"Edr">>, Data}
                                 ]),

@@ -6,7 +6,7 @@
 %%% @contributors
 %%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
 %%%-------------------------------------------------------------------
--module(edr_skel).
+-module(edr_be_skel).
 
 -behaviour(gen_backend).
 
@@ -14,7 +14,7 @@
 
 -export([start_link/1]).
 
--export([push/3
+-export([push/2
         ,init/1
         ,stop/2
         ,async_response_handler/1
@@ -33,8 +33,8 @@ init(#backend{})->
 init(_Other)->
     'ignore'.
 
--spec push(state(), non_neg_integer(), kz_json:object()) -> 'ok'.
-push(_State, _Timestamp, _Data)->
+-spec push(state(), event()) -> 'ok'.
+push(_State, _Event)->
     'ok'.
 
 -spec stop(state(), any()) -> 'ok'.

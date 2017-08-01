@@ -11,17 +11,23 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 
--export([log_event/5]).
+-export([log_event/4, log_event/5]).
 
 -type log_event_return() :: 'ok' |
                             {'error', any()} |
                             {'returned', kz_json:object(), kz_json:object()}.
 
--spec log_event(binary(), binary(), kz_json:object(), binary(), binary()) -> log_event_return().
-log_event(EventCategory, EventName, Tags, AppName, AppVersion) ->
-    Timestamp = kz_time:now_s(kz_time:now()),
-    Req = [{<<"Timestamp">>, Timestamp}
-          ,{<<"Tags">>, Tags}
-           | kz_api:default_headers(EventCategory, EventName, AppName, AppVersion)
+%% TODO: Decide on how log levels will work
+-type log_level() :: atom().
+
+-spec log_event(binary(), binary(), log_level(), kz_json:object()) -> log_event_return().
+-spec log_event(binary(), binary(), log_level(), kz_json:object(), api_binary()) -> log_event_return().
+log_event(AppName, AppVersion, LogLevel, Body) ->
+    log_event(AppName, AppVersion, LogLevel, Body, 'undefined').
+log_event(AppName, AppVersion, LogLevel, Body, AccountId) ->
+    Req = [{<<"Account-ID">>, AccountId}
+          ,{<<"Level">>, LogLevel}
+          ,{<<"Body">>, Body}
+           | kz_api:default_headers(AppName, AppVersion)
           ],
     kz_amqp_worker:cast(Req, fun kapi_edr:publish/1).

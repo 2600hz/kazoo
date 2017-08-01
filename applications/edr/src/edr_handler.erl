@@ -14,6 +14,4 @@
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props)->
-    Timestamp = kz_json:get_value(<<"Timestamp">>, JObj),
-    Tags = kz_json:get_value(<<"Tags">>, JObj),
-    edr_utils:distribute_event(Timestamp, Tags).
+    edr_utils:distribute_event(edr_utils:event_from_kapi(JObj)).

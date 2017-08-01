@@ -5,8 +5,9 @@
 %%% @end
 %%% @contributors
 %%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
+%%%    Max Lay
 %%%-------------------------------------------------------------------
--module(edr_file).
+-module(edr_be_file).
 
 -behaviour(gen_backend).
 
@@ -14,13 +15,16 @@
 
 -export([start_link/1]).
 
--export([push/3
+-export([push/2
         ,init/1
         ,stop/2
         ,async_response_handler/1
         ]).
 
--record(state, {pid :: pid()}).
+-record(state, {pid :: pid()
+               ,formatter :: module()
+               ,formatter_options :: module()
+               }).
 -type state() :: #state{}.
 
 -spec start_link(backend()) -> startlink_ret().
@@ -28,18 +32,21 @@ start_link(Args) ->
     gen_backend:start_link(?MODULE, Args, []).
 
 -spec init(backend())-> init_ret(state()).
-init(#backend{options = ConnectionInfo})->
-    case kz_json:get_value(<<"Path">>, ConnectionInfo) of
+init(#backend{options=Options})->
+    %% Default to JSON formatter
+    Formatter = gen_backend:formatter(Options, 'edr_fmt_json'),
+    FormatterOptions = gen_backend:formatter_options(Options),
+    case kz_json:get_value(<<"Path">>, Options) of
         'undefined' -> {'stop', 'no_path'};
         Path -> {'ok', Pid} = file:open(Path, ['append', 'delayed_write', 'raw']),
-                {'ok', #state{pid = Pid}}
+                {'ok', #state{pid=Pid, formatter=Formatter, formatter_options=FormatterOptions}}
     end;
 init(_Other)->
     'ignore'.
 
--spec push(state(), non_neg_integer(), kz_json:object()) -> 'ok' | {'error', any()}.
-push(#state{pid = Pid}, Timestamp, Data)->
-    case file:write(Pid, io_lib:format("~B: ~p~n", [Timestamp, Data])) of
+-spec push(state(), event()) -> 'ok' | {'error', any()}.
+push(#state{pid=Pid, formatter=Formatter, formatter_options=FormatterOptions}, Event)->
+    case file:write(Pid, Formatter:format_event(FormatterOptions, Event)) of
         'ok' -> 'ok';
         {'error', Reason} -> error(Reason)
     end.

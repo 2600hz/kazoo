@@ -923,9 +923,9 @@ update_call_stat(Id, Updates, Props) ->
 %%log_queue_event(AccountId, QueueId, CallId, EventName) ->
 %%    log_queue_event(AccountId, QueueId, CallId, EventName, []).
 log_queue_event(AccountId, QueueId, CallId, EventName, ExtraProps) ->
-    Tags = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
+    Body = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
                                                     ,{<<"queue_id">>, QueueId}
                                                     ,{<<"call_id">>, CallId}
                                                     ,{<<"event">>, EventName}
                                                      | ExtraProps])),
-    kz_edr:log_event(<<"queue_call">>, <<"event">>, Tags, ?APP_NAME, ?APP_VERSION).
+    kz_edr:log_event(?APP_NAME, ?APP_VERSION, 'info', Body, AccountId).
