@@ -968,6 +968,7 @@ existing_or_new_registration(Username, Realm) ->
 -spec initial_registration(registration()) -> 'ok'.
 initial_registration(#registration{}=Reg) ->
     Routines = [fun maybe_query_authn/1
+               ,fun maybe_send_register_notice/1
                ,fun maybe_registration_notify/1
                ],
     _ = lists:foldl(fun(F, R) -> F(R) end, Reg, Routines),
@@ -1088,6 +1089,24 @@ update_registration(#registration{authorizing_id=AuthorizingId
             ],
     _ = gen_server:cast(?SERVER, {'update_registration', Id, Props}),
     Reg.
+
+-spec maybe_send_register_notice(registration()) -> registration().
+maybe_send_register_notice(#registration{username=Username
+                                        ,realm=Realm
+                                        }=Reg) ->
+    case oldest_registrar() of
+        'false' -> Reg;
+        'true' ->
+            lager:debug("sending register notice for ~s@~s", [Username, Realm]),
+            _ = send_register_notice(Reg),
+            Reg
+    end.
+
+-spec send_register_notice(registration()) -> 'ok'.
+send_register_notice(Reg) ->
+    Props = to_props(Reg)
+        ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION),
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_register/1).
 
 -spec maybe_send_deregister_notice(registration()) -> 'ok'.
 maybe_send_deregister_notice(#registration{username=Username

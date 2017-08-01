@@ -20,6 +20,7 @@
         ,fax_outbound/1, fax_outbound_v/1
         ,fax_outbound_error/1, fax_outbound_error_v/1
         ,fax_outbound_smtp_error/1, fax_outbound_smtp_error_v/1
+        ,register/1, register_v/1
         ,deregister/1, deregister_v/1
         ,first_occurrence/1, first_occurrence_v/1
         ,password_recovery/1, password_recovery_v/1
@@ -60,6 +61,7 @@
         ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
         ,publish_fax_outbound_error/1, publish_fax_outbound_error/2
         ,publish_fax_outbound_smtp_error/1, publish_fax_outbound_smtp_error/2
+        ,publish_register/1, publish_register/2
         ,publish_deregister/1, publish_deregister/2
         ,publish_first_occurrence/1, publish_first_occurrence/2
         ,publish_password_recovery/1, publish_password_recovery/2
@@ -109,10 +111,13 @@
 -define(NOTIFY_FAX_OUTBOUND_SMTP_ERROR, <<"notifications.fax.outbound_smtp_error">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
 -define(NOTIFY_FIRST_OCCURRENCE, <<"notifications.sip.first_occurrence">>).
+%%-define(NOTIFY_REGISTER_OVERWRITE, <<"notifications.sip.register_overwrite">>).
+-define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PASSWORD_RECOVERY, <<"notifications.user.password_recovery">>).
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
 -define(NOTIFY_ACCOUNT_ZONE_CHANGE, <<"notifications.account.zone_change">>).
 -define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
+%% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
 -define(NOTIFY_PORT_UNCONFIRMED, <<"notifications.number.port_unconfirmed">>).
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
 -define(NOTIFY_PORT_PENDING, <<"notifications.number.port_pending">>).
@@ -263,6 +268,23 @@
                            ,{<<"Event-Name">>, <<"deregister">>}
                            ]).
 -define(DEREGISTER_TYPES, []).
+
+%% Notify Register
+-define(REGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
+-define(OPTIONAL_REGISTER_HEADERS, [<<"Owner-ID">>, <<"User-Agent">>, <<"Call-ID">>
+                                   ,<<"From-User">>, <<"From-Host">>
+                                   ,<<"To-User">>, <<"To-Host">>
+                                   ,<<"Network-IP">>, <<"Network-Port">>
+                                   ,<<"Event-Timestamp">>, <<"Contact">>
+                                   ,<<"Expires">>, <<"Account-DB">>
+                                   ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
+                                   ,<<"Suppress-Unregister-Notify">>
+                                        | ?DEFAULT_OPTIONAL_HEADERS
+                                   ]).
+-define(REGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                         ,{<<"Event-Name">>, <<"register">>}
+                         ]).
+-define(REGISTER_TYPES, []).
 
 %% Notify First Occurrence
 -define(FIRST_OCCURRENCE_HEADERS, [<<"Account-ID">>, <<"Occurrence">>]).
@@ -786,6 +808,24 @@ fax_outbound_smtp_error_v(Prop) when is_list(Prop) ->
 fax_outbound_smtp_error_v(JObj) -> fax_outbound_smtp_error_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Register (unregister is a key word) - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec register(api_terms()) -> api_formatter_return().
+register(Prop) when is_list(Prop) ->
+    case register_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?REGISTER_HEADERS, ?OPTIONAL_REGISTER_HEADERS);
+        'false' -> {'error', "Proplist failed validation for register"}
+    end;
+register(JObj) -> register(kz_json:to_proplist(JObj)).
+
+-spec register_v(api_terms()) -> boolean().
+register_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?REGISTER_HEADERS, ?REGISTER_VALUES, ?REGISTER_TYPES);
+register_v(JObj) -> register_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Deregister (unregister is a key word) - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1277,6 +1317,7 @@ skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
                        'outbound_fax_error' |
                        'outbound_smtp_fax_error' |
                        'fax_error' |
+                       'register' |
                        'deregister' |
                        'password_recovery' |
                        'first_occurrence' |
@@ -1344,6 +1385,9 @@ bind_to_q(Q, ['outbound_smtp_fax_error'|T]) ->
 bind_to_q(Q, ['fax_error'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_INBOUND_ERROR),
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_OUTBOUND_ERROR),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['register'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_REGISTER),
     bind_to_q(Q, T);
 bind_to_q(Q, ['deregister'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
@@ -1461,6 +1505,9 @@ unbind_q_from(Q, ['outbound_smtp_fax_error'|T]) ->
 unbind_q_from(Q, ['fax_error'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND_ERROR),
     'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_INBOUND_ERROR),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['register'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_REGISTER),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['deregister'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
@@ -1607,6 +1654,13 @@ publish_fax_outbound_smtp_error(JObj) -> publish_fax_outbound_smtp_error(JObj, ?
 publish_fax_outbound_smtp_error(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_OUTBOUND_SMTP_ERROR_VALUES, fun fax_outbound_smtp_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_SMTP_ERROR, Payload, ContentType).
+
+-spec publish_register(api_terms()) -> 'ok'.
+-spec publish_register(api_terms(), ne_binary()) -> 'ok'.
+publish_register(JObj) -> publish_register(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_register(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?REGISTER_VALUES, fun register/1),
+    amqp_util:notifications_publish(?NOTIFY_REGISTER, Payload, ContentType).
 
 -spec publish_deregister(api_terms()) -> 'ok'.
 -spec publish_deregister(api_terms(), ne_binary()) -> 'ok'.
