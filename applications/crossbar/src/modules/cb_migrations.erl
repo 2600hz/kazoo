@@ -21,8 +21,7 @@
 -define(MIGRATIONS_DOC, <<"migrations">>).
 
 %% Id, Description, Callback Module
--define(MIGRATIONS_LIST, [
-                          {<<"notify_to_teletype">>, <<"Migrate account and all sub accounts to Teletype">>, 'cb_migration_disable_notify'}
+-define(MIGRATIONS_LIST, [{<<"notify_to_teletype">>, <<"Migrate account and all sub accounts to Teletype">>, 'cb_migration_disable_notify'}
                          ]).
 
 -spec init() -> ok.
@@ -247,8 +246,8 @@ mark_migration_complete(MigId, AccountId, Context) ->
     kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"migrations_performed">>, NewMigs, Doc)).
 
 -spec get_user_name(ne_binary(), ne_binary()) -> api_ne_binary().
-get_user_name(AcctId, UserId) ->
-    case kzd_user:fetch(AcctId, UserId) of
+get_user_name(AccountId, UserId) ->
+    case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserDoc} -> kzd_user:name(UserDoc);
         _ -> undefined
     end.
