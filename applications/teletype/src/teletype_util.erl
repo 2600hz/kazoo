@@ -380,13 +380,14 @@ find_account_params('undefined') -> [];
 find_account_params(AccountId) ->
     case fetch_account_for_params(AccountId) of
         {'ok', AccountJObj} ->
-            props:filter_undefined([{<<"name">>, kz_account:name(AccountJObj)}
-                                   ,{<<"realm">>, kz_account:realm(AccountJObj)}
-                                   ,{<<"id">>, kz_account:id(AccountJObj)}
-                                   ,{<<"language">>, kz_account:language(AccountJObj)}
-                                   ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-                                    | maybe_add_parent_params(AccountId, AccountJObj)
-                                   ]);
+            props:filter_undefined(
+              [{<<"name">>, kz_account:name(AccountJObj)}
+              ,{<<"realm">>, kz_account:realm(AccountJObj)}
+              ,{<<"id">>, kz_account:id(AccountJObj)}
+              ,{<<"language">>, kz_account:language(AccountJObj)}
+              ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+               | maybe_add_parent_params(AccountId, AccountJObj)
+              ]);
         {'error', _E} ->
             ?LOG_DEBUG("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []

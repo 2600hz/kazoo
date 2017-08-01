@@ -195,7 +195,7 @@ send_mwi_update(BoxId, AccountId) ->
 
 -spec send_mwi_update(non_neg_integer(), non_neg_integer(), ne_binary(), ne_binary()) -> 'ok'.
 send_mwi_update(New, Saved, BoxNumber, AccountId) ->
-    Realm = kz_util:get_account_realm(AccountId),
+    Realm = kz_account:fetch_realm(AccountId),
     To = <<BoxNumber/binary, "@", Realm/binary>>,
     Command = [{<<"To">>, To}
               ,{<<"Messages-New">>, New}
@@ -293,7 +293,7 @@ build_number_uri(Context, Number) ->
                     FilterRegex -> filter_number_regex(Number, FilterRegex)
                 end,
 
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
     <<UseNumber/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(kapps_call:call(), cb_context:context()) -> kz_json:objects().

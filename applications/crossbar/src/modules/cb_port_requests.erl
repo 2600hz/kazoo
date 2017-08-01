@@ -807,12 +807,14 @@ run_comment_filter(JObj) ->
 
 -spec normalize_summary_results(cb_context:context()) -> cb_context:context().
 normalize_summary_results(Context) ->
-    Dict = lists:foldl(
-             fun(JObj, D) ->
-                     AccountId = kz_json:get_value(<<"account_id">>, JObj),
-                     NewJObj   = filter_private_comments(Context, JObj),
-                     dict:append_list(AccountId, [NewJObj], D)
-             end, dict:new(), cb_context:resp_data(Context)),
+    Dict = lists:foldl(fun(JObj, D) ->
+                               AccountId = kz_json:get_value(<<"account_id">>, JObj),
+                               NewJObj   = filter_private_comments(Context, JObj),
+                               dict:append_list(AccountId, [NewJObj], D)
+                       end
+                      ,dict:new()
+                      ,cb_context:resp_data(Context)
+                      ),
     Names = get_account_names(dict:fetch_keys(Dict)),
     JObj = [kz_json:from_list(
               [{<<"account_id">>, AccountId}

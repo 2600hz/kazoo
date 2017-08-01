@@ -191,7 +191,7 @@ cccp_allowed_callee(Number) ->
 
 -spec build_request(api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), ne_binary(),binary(),binary()) -> kz_proplist().
 build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainCID, RetainName, RetainNumber) ->
-    Realm = kz_util:get_account_realm(AccountId),
+    Realm = kz_account:fetch_realm(AccountId),
     CCVs = props:filter_undefined([{<<"Account-ID">>, AccountId}
                                   ,{<<"Authorizing-ID">>, AuthorizingId}
                                   ,{<<"Authorizing-Type">>, <<"user">>}
@@ -295,7 +295,7 @@ is_user_channel(Channel, UserId) ->
 
 -spec current_account_channels(ne_binary()) -> kz_proplist().
 current_account_channels(AccountId) ->
-    Req = [{<<"Realm">>, kz_util:get_account_realm(AccountId)}
+    Req = [{<<"Realm">>, kz_account:fetch_realm(AccountId)}
           ,{<<"Usernames">>, []}
           ,{<<"Account-ID">>, AccountId}
           ,{<<"Active-Only">>, 'false'}

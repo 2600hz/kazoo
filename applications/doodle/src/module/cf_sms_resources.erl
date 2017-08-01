@@ -124,18 +124,11 @@ get_from_uri_realm(Data, Call) ->
         Realm -> Realm
     end.
 
--spec maybe_get_call_from_realm(kapps_call:call()) -> api_binary().
+-spec maybe_get_call_from_realm(kapps_call:call()) -> api_ne_binary().
 maybe_get_call_from_realm(Call) ->
     case kapps_call:from_realm(Call) of
-        <<"norealm">> -> get_account_realm(Call);
+        <<"norealm">> -> kz_account:fetch_realm(kapps_call:account_id(Call));
         Realm -> Realm
-    end.
-
--spec get_account_realm(kapps_call:call()) -> api_binary().
-get_account_realm(Call) ->
-    case kz_account:fetch(kapps_call:account_id(Call)) of
-        {'ok', JObj} -> kz_json:get_value(<<"realm">>, JObj);
-        {'error', _} -> 'undefined'
     end.
 
 -spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> api_binary().
@@ -243,11 +236,7 @@ get_endpoint_dynamic_flags(_, Call, Flags) ->
 
 -spec get_account_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) -> ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
-    DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
-                                           ,<<"callflow">>
-                                           ,<<"dynamic_flags">>
-                                           ,[]
-                                           ),
+    DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call), <<"callflow">>, <<"dynamic_flags">>, []),
     process_dynamic_flags(DynamicFlags, Flags, Call).
 
 -spec process_dynamic_flags(ne_binaries(), ne_binaries(), kapps_call:call()) -> ne_binaries().

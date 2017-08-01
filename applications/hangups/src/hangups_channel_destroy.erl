@@ -77,10 +77,8 @@ maybe_add_number_info(JObj) ->
             Tree = build_account_tree(AccountId),
             props:set_value(<<"Account-Tree">>, Tree, Props);
         {'error', _} ->
-            props:set_value(<<"Hangups-Message">>
-                           ,<<"Destination was not found in numbers DBs">>
-                           ,Props
-                           )
+            Msg = <<"Destination was not found in numbers DBs">>,
+            props:set_value(<<"Hangups-Message">>, Msg, Props)
     catch
         _:_ -> Props
     end.
@@ -92,14 +90,11 @@ maybe_add_number_info(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_account_tree(ne_binary()) -> kz_proplist().
-build_account_tree(<<_/binary>> = AccountId) ->
+build_account_tree(AccountId) ->
     {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    [account_id_name(AncestorId) || AncestorId <- kz_account:tree(AccountDoc)].
-
--spec account_id_name(ne_binary()) -> {ne_binary(), ne_binary()}.
-account_id_name(AccountId) ->
-    {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    {AccountId, kz_account:name(AccountDoc)}.
+    [{AncestorId, ?NE_BINARY=kz_account:fetch_name(AncestorId)}
+     || AncestorId <- kz_account:tree(AccountDoc)
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,16 +105,12 @@ account_id_name(AccountId) ->
 -spec find_realm(kz_call_event:doc(), ne_binary()) -> ne_binary().
 find_realm(JObj, <<_/binary>> = AccountId) ->
     case kz_call_event:account_id(JObj) of
-        'undefined' -> get_account_realm(AccountId);
+        undefined ->
+            case kz_account:fetch_realm(AccountId) of
+                undefined -> <<"unknown">>;
+                Realm -> Realm
+            end;
         Realm -> Realm
-    end.
-
--spec get_account_realm(ne_binary()) -> ne_binary().
-get_account_realm(<<"unknown">>) -> <<"unknown">>;
-get_account_realm(<<_/binary>> = AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:realm(JObj, <<"unknown">>);
-        {'error', _} -> <<"unknown">>
     end.
 
 %%--------------------------------------------------------------------

@@ -142,10 +142,11 @@ get_from_uri_realm(Data, Call) ->
         Realm -> Realm
     end.
 
--spec maybe_get_call_from_realm(kapps_call:call()) -> api_binary().
+-spec maybe_get_call_from_realm(kapps_call:call()) -> api_ne_binary().
 maybe_get_call_from_realm(Call) ->
     case kapps_call:from_realm(Call) of
-        <<"norealm">> -> get_account_realm(Call);
+        <<"norealm">> ->
+            kz_account:fetch_realm(kapps_call:account_id(Call));
         Realm -> Realm
     end.
 
@@ -164,13 +165,6 @@ maybe_has_comfort_noise_option_enabled(Endpoint, Acc) ->
     case kz_json:is_true([<<"media">>, <<"bridge_generate_comfort_noise">>], Endpoint) of
         'true' -> [{<<"Bridge-Generate-Comfort-Noise">>, 'true'} | Acc];
         'false' -> Acc
-    end.
-
--spec get_account_realm(kapps_call:call()) -> api_binary().
-get_account_realm(Call) ->
-    case kz_account:fetch(kapps_call:account_id(Call)) of
-        {'ok', JObj} -> kz_account:realm(JObj);
-        {'error', _} -> 'undefined'
     end.
 
 -spec get_caller_id(kz_json:object(), kapps_call:call()) -> {api_binary(), api_binary()}.

@@ -58,3 +58,9 @@ trial_time_test_() ->
      ,?_assertEqual(-10000, kz_account:trial_time_left(Passed, Now))
      }
     ].
+
+fetch_test_() ->
+    [?_assertEqual({error,invalid_db_name}, kz_account:fetch(undefined))
+    ,?_assertEqual(undefined, kz_account:fetch_realm(undefined))
+    ,?_assertEqual(undefined, kz_account:fetch_name(undefined))
+    ].

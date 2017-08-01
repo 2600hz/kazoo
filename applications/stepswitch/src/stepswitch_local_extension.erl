@@ -343,9 +343,9 @@ build_local_extension(#state{number_props=Props
 
 -spec get_account_realm(ne_binary()) -> ne_binary().
 get_account_realm(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:realm(JObj, AccountId);
-        _ -> AccountId
+    case kz_account:fetch_realm(AccountId) of
+        undefined -> AccountId;
+        Realm -> Realm
     end.
 
 -spec local_extension_caller_id(kz_json:object()) -> {api_binary(), api_binary()}.
@@ -416,5 +416,5 @@ local_extension_failure(JObj, OffnetReq) ->
 
 -spec get_event_type(kz_json:object()) -> {ne_binary(), ne_binary(), ne_binary()}.
 get_event_type(JObj) ->
-    {C, E} = kapps_util:get_event_type(JObj),
+    {C, E} = kz_util:get_event_type(JObj),
     {C, E, kz_call_event:call_id(JObj)}.

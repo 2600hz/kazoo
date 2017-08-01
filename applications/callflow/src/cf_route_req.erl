@@ -191,7 +191,7 @@ send_route_response(Flow, JObj, Call) ->
              ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
              ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
              ,{<<"Pre-Park">>, pre_park_action(Call)}
-             ,{<<"From-Realm">>, kz_util:get_account_realm(AccountId)}
+             ,{<<"From-Realm">>, kz_account:fetch_realm(AccountId)}
              ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),

@@ -39,9 +39,6 @@
         ,response_auth/2
         ,response_auth/3
         ]).
--export([get_account_realm/1, get_account_realm/2
-        ,get_account_doc/1, get_account_doc/2
-        ]).
 -export([flush_registrations/1
         ,flush_registration/1, flush_registration/2
         ]).
@@ -335,44 +332,6 @@ response_db_missing(Context) ->
 response_db_fatal(Context) ->
     response('fatal', <<"datastore fatal error">>, 503, Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Retrieves the account realm
-%% @end
-%%--------------------------------------------------------------------
--spec get_account_realm(ne_binary() | cb_context:context()) -> api_binary().
--spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
-
-get_account_realm(AccountId) when is_binary(AccountId) ->
-    get_account_realm(kz_util:format_account_id(AccountId, 'encoded'), AccountId);
-get_account_realm(Context) ->
-    Db = cb_context:account_db(Context),
-    AccountId = cb_context:account_id(Context),
-    get_account_realm(Db, AccountId).
-
-get_account_realm('undefined', _) -> 'undefined';
-get_account_realm(Db, AccountId) ->
-    case get_account_doc(Db, AccountId) of
-        'undefined' -> 'undefined';
-        JObj -> kz_account:realm(JObj)
-    end.
-
--spec get_account_doc(ne_binary()) -> api_object().
--spec get_account_doc(ne_binary(), ne_binary()) -> api_object().
-get_account_doc(<<_/binary>> = Id) ->
-    get_account_doc(kz_util:format_account_id(Id, 'encoded')
-                   ,kz_util:format_account_id(Id, 'raw')
-                   ).
-
-get_account_doc(<<_/binary>> = Db, <<_/binary>> = Id) ->
-    case kz_datamgr:open_cache_doc(Db, Id) of
-        {'ok', JObj} -> JObj;
-        {'error', R} ->
-            lager:warning("error while looking up account realm: ~p", [R]),
-            'undefined'
-    end.
-
 -spec flush_registrations(ne_binary() | cb_context:context()) -> 'ok'.
 flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
@@ -380,7 +339,7 @@ flush_registrations(<<_/binary>> = Realm) ->
                ],
     kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registrations(Context) ->
-    flush_registrations(kz_util:get_account_realm(cb_context:account_id(Context))).
+    flush_registrations(kz_account:fetch_realm(cb_context:account_id(Context))).
 
 -spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
 flush_registration('undefined', _Realm) ->
@@ -393,7 +352,7 @@ flush_registration(Username, <<_/binary>> = Realm) ->
     kapps_util:amqp_pool_send(FlushCmd, fun kapi_switch:publish_check_sync/1),
     kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registration(Username, Context) ->
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
     flush_registration(Username, Realm).
 
 %% @public
@@ -402,7 +361,7 @@ flush_registration(Context) ->
     OldDevice = cb_context:fetch(Context, 'db_doc'),
     NewDevice = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
-    Realm = kz_util:get_account_realm(AccountId),
+    Realm = kz_account:fetch_realm(AccountId),
     maybe_flush_registration_on_password(Realm, OldDevice, NewDevice).
 
 -spec maybe_flush_registration_on_password(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
@@ -711,7 +670,7 @@ populate_resp(JObj, AccountId, UserId) ->
     Props = props:filter_undefined(
               [{<<"apps">>, load_apps(AccountId, UserId)}
               ,{<<"language">>, get_language(AccountId, UserId)}
-              ,{<<"account_name">>, kapps_util:get_account_name(AccountId)}
+              ,{<<"account_name">>, kz_account:fetch_name(AccountId)}
               ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
               ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
               ]),
@@ -833,28 +792,27 @@ get_language(AccountId, UserId) ->
 
 -spec get_user_lang(ne_binary(), ne_binary()) -> 'error' | {'ok', ne_binary()}.
 get_user_lang(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
-        {'ok', JObj} ->
-            case kz_json:get_value(<<"language">>, JObj) of
+    case kzd_user:fetch(AccountId, UserId) of
+        {'ok', UserJObj} ->
+            case kz_json:get_value(<<"language">>, UserJObj) of
                 'undefined' -> 'error';
                 Lang -> {'ok', Lang}
             end;
         {'error', _E} ->
-            lager:error("failed to lookup user ~p in ~p : ~p", [UserId, AccountId, _E]),
+            lager:error("failed to lookup user ~p in ~p: ~p", [UserId, AccountId, _E]),
             'error'
     end.
 
 -spec get_account_lang(ne_binary()) -> 'error' | {'ok', ne_binary()}.
 get_account_lang(AccountId) ->
     case kz_account:fetch(AccountId) of
-        {'ok', JObj} ->
-            case kz_json:get_value(<<"language">>, JObj) of
-                'undefined' -> 'error';
+        {'ok', AccountJObj} ->
+            case kz_account:language(AccountJObj) of
+                undefined -> error;
                 Lang -> {'ok', Lang}
             end;
         {'error', _E} ->
-            lager:error("failed to lookup account ~p : ~p", [AccountId, _E]),
+            lager:error("failed to lookup account ~p: ~p", [AccountId, _E]),
             'error'
     end.
 
@@ -1110,7 +1068,7 @@ maybe_refresh_fs_xml('user', _Context, 'false') -> 'ok';
 maybe_refresh_fs_xml('user', Context, 'true') ->
     Doc = cb_context:doc(Context),
     AccountDb = cb_context:account_db(Context),
-    Realm = kz_util:get_account_realm(AccountDb),
+    Realm = kz_account:fetch_realm(AccountDb),
     Id = kz_doc:id(Doc),
     Devices = get_devices_by_owner(AccountDb, Id),
     lists:foreach(fun (DevDoc) -> refresh_fs_xml(Realm, DevDoc) end, Devices);
@@ -1126,7 +1084,7 @@ maybe_refresh_fs_xml('device', Context, Precondition) ->
           andalso not kz_json:is_true(<<"enabled">>, Doc)
          )
     )
-        andalso refresh_fs_xml(kz_util:get_account_realm(cb_context:account_db(Context))
+        andalso refresh_fs_xml(kz_account:fetch_realm(cb_context:account_db(Context))
                               ,DbDoc
                               ),
     'ok';
@@ -1189,7 +1147,7 @@ map_server(Server, Acc) ->
 %% @public
 -spec refresh_fs_xml(cb_context:context()) -> 'ok'.
 refresh_fs_xml(Context) ->
-    Realm = kz_util:get_account_realm(cb_context:account_db(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_db(Context)),
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     refresh_fs_xml(Realm, DbDoc).
 

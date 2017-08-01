@@ -149,10 +149,6 @@ is_account_expired_test_() ->
     [?_assertEqual(false, kz_util:is_account_expired(undefined))
     ].
 
-get_account_realm_test_() ->
-    [?_assertEqual(undefined, kz_util:get_account_realm(undefined, ?AN_ACCOUNT_ID))
-    ].
-
 try_load_module_test_() ->
     [?_assertEqual(false, kz_util:try_load_module(undefined))
     ,?_assertEqual(false, kz_util:try_load_module("undefined"))

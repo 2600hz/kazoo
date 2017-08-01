@@ -232,9 +232,9 @@ local_originate_caller_id(JObj) ->
 
 -spec get_account_realm(ne_binary()) -> ne_binary().
 get_account_realm(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:realm(JObj, AccountId);
-        _ -> AccountId
+    case kz_account:fetch_realm(AccountId) of
+        undefined -> AccountId;
+        Realm -> Realm
     end.
 
 -spec create_loopback_endpoint(knm_number_options:extra_options(), kz_json:object()) -> kz_json:object().
