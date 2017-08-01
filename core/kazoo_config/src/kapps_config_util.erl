@@ -1,5 +1,14 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2017, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%-------------------------------------------------------------------
 -module(kapps_config_util).
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+
+-include("kazoo_config.hrl").
+
 -export([get_config/2
         ,get_reseller_config/2
         ,load_config_from_account/2
@@ -8,10 +17,17 @@
         ,account_schema/1
         ,system_schema/1
         ,system_config_document_schema/1
+
+        ,account_doc_id/1
         ]).
 
--spec doc_id(ne_binary()) -> ne_binary().
-doc_id(Config) -> kapps_account_config:config_doc_id(Config).
+
+-ifdef(TEST).
+-export([fixture/1]).
+-endif.
+
+-spec account_doc_id(ne_binary()) -> ne_binary().
+account_doc_id(Category) -> <<(?KZ_ACCOUNT_CONFIGS)/binary, Category/binary>>.
 
 -spec get_config(ne_binary(), ne_binary()) -> kz_json:object().
 get_config(Account, Config) ->
@@ -23,7 +39,7 @@ get_config(Account, Config) ->
     Schema = account_schema(Config),
     kz_json_schema:filter(get_config(Account, Config, Programm), Schema).
 
--spec get_config(ne_binary(), ne_binary(), [fun()]) -> kz_json:object().
+-spec get_config(ne_binary(), ne_binary(), functions()) -> kz_json:object().
 get_config(Account, Config, Programm) ->
     Confs = [maybe_new(P(Account, Config)) || P <- Programm],
     kz_json:merge(lists:reverse(Confs)).
@@ -38,16 +54,21 @@ get_reseller_config(Account, Config) ->
     kz_json_schema:filter(get_config(Account, Config, Programm), Schema).
 
 -spec load_config_from_account(api_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
-load_config_from_account(undefined, _Config) -> kz_json:new();
+load_config_from_account(undefined, _Config) -> {ok, kz_json:new()};
 load_config_from_account(Account, Config) ->
-    AccountDb = kz_util:format_account_id(Account, encoded),
-    kz_datamgr:open_cache_doc(AccountDb, doc_id(Config), [{cache_failures, [not_found]}]).
+    AccountDb = kz_util:format_account_db(Account),
+    kz_datamgr:open_cache_doc(AccountDb, account_doc_id(Config), [{cache_failures, [not_found]}]).
 
 -spec load_config_from_reseller(api_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
-load_config_from_reseller(undefined, _Config) -> kz_json:new();
+load_config_from_reseller(undefined, _Config) -> {error, not_found};
 load_config_from_reseller(Account, Config) ->
-    ResellerId = kz_services:find_reseller_id(Account),
-    load_config_from_account(ResellerId, Config).
+    case kz_services:find_reseller_id(Account) of
+        undefined -> {error, not_found};
+        %% should get from direct reseller only
+        %% same logic as kapps_account_config:get_from_reseller
+        Account -> {error, not_found};
+        ResellerId -> load_config_from_account(ResellerId, Config)
+    end.
 
 -spec load_config_from_system(api_binary(), ne_binary()) -> {ok, kz_json:object()}.
 load_config_from_system(_Account, Config) ->
@@ -56,7 +77,7 @@ load_config_from_system(_Account, Config) ->
 -spec load_default_config(api_binary(), ne_binary()) -> {ok, kz_json:object()}.
 load_default_config(_Account, Config) ->
     Schema = system_schema(Config),
-    {'ok', kz_doc:set_id(kz_json_schema:default_object(Schema), doc_id(Config))}.
+    {'ok', kz_doc:set_id(kz_json_schema:default_object(Schema), account_doc_id(Config))}.
 
 -spec maybe_new({'ok', kz_json:object()} | {'error', any()}) -> kz_json:object().
 maybe_new({'ok', JObj}) -> JObj;
@@ -92,3 +113,12 @@ system_config_document_schema(Id) ->
            ,{[<<"type">>], <<"object">>}
            ],
     kz_json:expand(kz_json:from_list(Flat)).
+
+-ifdef(TEST).
+-spec fixture(nonempty_string()) -> kz_json:object().
+fixture(JSONFileName) ->
+    Path = filename:join([code:lib_dir(?APP), "test/fixture", JSONFileName ++ ".json"]),
+    %% ?LOG_DEBUG("loading fixture: ~s", [Path]),
+    {ok, Bin} = file:read_file(Path),
+    kz_json:decode(Bin).
+-endif.

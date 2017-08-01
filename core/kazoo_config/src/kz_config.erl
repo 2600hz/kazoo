@@ -158,7 +158,7 @@ set(Section, Key, Value) ->
 
 set(NewSection, Props) ->
     NewProps = props:insert_value(NewSection, Props),
-    application:set_env(?APP_NAME_ATOM, ?MODULE, NewProps).
+    application:set_env(?APP, ?MODULE, NewProps).
 
 -spec unset(section(), atom()) -> 'ok'.
 unset(Section, Key) ->
@@ -310,7 +310,7 @@ get_values([{_, Values} | T], Key, Acc) ->
 load() ->
     case erlang:get(?SETTINGS_KEY) of
         'undefined' ->
-            case application:get_env(?APP_NAME_ATOM, ?MODULE) of
+            case application:get_env(?APP, ?MODULE) of
                 'undefined' -> ?SECTION_DEFAULTS;
                 {'ok', Settings} -> Settings
             end;
@@ -321,11 +321,11 @@ load() ->
 
 -spec zone() -> atom().
 zone() ->
-    case application:get_env(?APP_NAME_ATOM, 'zone') of
+    case application:get_env(?APP, 'zone') of
         'undefined' ->
             [Local] = get(get_node_section_name(), 'zone', ['local']),
             Zone = kz_term:to_atom(Local, 'true'),
-            application:set_env(?APP_NAME_ATOM, 'zone', Zone),
+            application:set_env(?APP, 'zone', Zone),
             Zone;
         {'ok', Zone} -> Zone
     end.
