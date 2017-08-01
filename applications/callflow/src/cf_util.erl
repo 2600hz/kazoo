@@ -13,7 +13,6 @@
 
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
--export([notification_register/2]).
 -export([unsolicited_owner_mwi_update/2]).
 -export([unsolicited_endpoint_mwi_update/2]).
 -export([alpha_to_dialpad/1]).
@@ -165,12 +164,6 @@ manual_presence_resp(Username, Realm, JObj) ->
 -spec presence_mwi_query(kz_json:object(), kz_proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) ->
     'true' = kapi_presence:mwi_query_v(JObj),
-    _ = kz_util:put_callid(JObj),
-    mwi_query(JObj).
-
--spec notification_register(kz_json:object(), kz_proplist()) -> 'ok'.
-notification_register(JObj, _Props) ->
-    'true' = kapi_notifications:register_v(JObj),
     _ = kz_util:put_callid(JObj),
     mwi_query(JObj).
 

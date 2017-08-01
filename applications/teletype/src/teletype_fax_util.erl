@@ -278,19 +278,19 @@ convert(FromFormat0, ToFormat0, Bin) ->
 run_convert_command(Cmd, FromFile, ToFile) ->
     lager:debug("running conversion command: ~s", [Cmd]),
     case os:cmd(Cmd) of
-       "success" ->
-           case file:read_file(ToFile) of
-               {'ok', PDF} ->
-                   lager:debug("convert file ~s to ~s succeeded", [FromFile, ToFile]),
-                   {'ok', PDF};
-               {'error', _R}=E ->
-                   lager:debug("unable to read converted file ~s : ~p", [ToFile, _R]),
-                   E
-           end;
-       Else ->
-           lager:debug("could not convert file ~s : ~p", [FromFile, Else]),
-           {'error', Else}
-   end.
+        "success" ->
+            case file:read_file(ToFile) of
+                {'ok', PDF} ->
+                    lager:debug("convert file ~s to ~s succeeded", [FromFile, ToFile]),
+                    {'ok', PDF};
+                {'error', _R}=E ->
+                    lager:debug("unable to read converted file ~s : ~p", [ToFile, _R]),
+                    E
+            end;
+        Else ->
+            lager:debug("could not convert file ~s : ~p", [FromFile, Else]),
+            {'error', Else}
+    end.
 
 -spec valid_format(ne_binary()) -> ne_binary().
 valid_format(<<"tiff">>) -> <<"tif">>;
