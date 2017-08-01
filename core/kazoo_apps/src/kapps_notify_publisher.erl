@@ -163,7 +163,7 @@ maybe_ignore_failure(<<"missing_from">>) -> 'true';
 maybe_ignore_failure(<<"invalid_to_addresses">>) -> 'true';
 maybe_ignore_failure(<<"no_to_addresses">>) -> 'true';
 maybe_ignore_failure(<<"email_encoding_failed">>) -> 'true';
-maybe_ignore_failure(<<"validation_failed">>) -> 'true'.
+maybe_ignore_failure(<<"validation_failed">>) -> 'true';
 maybe_ignore_failure(_) -> 'false'.
 
 %% @private
