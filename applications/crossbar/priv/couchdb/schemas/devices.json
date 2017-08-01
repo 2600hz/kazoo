@@ -417,7 +417,7 @@
                 "custom_sip_headers": {
                     "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
                     "patternProperties": {
-                        "^[xX]-[a-zA-z0-9_\\-]+$": {
+                        "^[a-zA-z0-9_\\-]+$": {
                             "description": "The X- SIP header to add",
                             "type": "string"
                         }

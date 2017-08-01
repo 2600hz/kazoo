@@ -73,7 +73,7 @@ Key | Description | Type | Default | Required
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false`
-`sip.custom_sip_headers./^[xX]-[a-zA-z0-9_\-]+$/` | The X- SIP header to add | `string()` |   | `false`
+`sip.custom_sip_headers./^[a-zA-z0-9_\-]+$/` | The X- SIP header to add | `string()` |   | `false`
 `sip.custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the device | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
 `sip.custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the device | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
 `sip.custom_sip_headers` | A property list of SIP headers beginning with the prefix 'X-' or 'P-' | `object()` |   | `false`
@@ -157,7 +157,7 @@ Custom SIP headers applied to an INVITE
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`^[xX]-[a-zA-z0-9_\-]+$` | The X- SIP header to add | `string()` |   | `false`
+`^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`
 
 ##### dialplans
 

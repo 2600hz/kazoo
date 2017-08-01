@@ -85,7 +85,23 @@
                         "uniqueItems": true
                     },
                     "custom_sip_headers": {
-                        "default": {},
+                        "description": "A property list of SIP headers beginning with the prefix 'X-' or 'P-'",
+                        "patternProperties": {
+                            "^[a-zA-z0-9_\\-]+$": {
+                                "description": "The X- SIP header to add",
+                                "type": "string"
+                            }
+                        },
+                        "properties": {
+                            "in": {
+                                "$ref": "custom_sip_headers",
+                                "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the device"
+                            },
+                            "out": {
+                                "$ref": "custom_sip_headers",
+                                "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the device"
+                            }
+                        },
                         "type": "object"
                     },
                     "custom_sip_interface": {

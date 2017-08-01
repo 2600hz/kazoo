@@ -4,8 +4,8 @@
     "additionalProperties": false,
     "description": "Custom SIP headers applied to an INVITE",
     "patternProperties": {
-        "^[xX]-[a-zA-z0-9_\\-]+$": {
-            "description": "The X- SIP header to add",
+        "^[a-zA-z0-9_\\-]+$": {
+            "description": "The SIP header to add",
             "type": "string"
         }
     },
