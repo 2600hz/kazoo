@@ -70,8 +70,7 @@ handle_fax_outbound(JObj) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     TemplateData = build_template_data(DataJObj),
-    EmailAttachements = teletype_fax_util:get_attachments(DataJObj, TemplateData),
-    Macros = teletype_fax_util:maybe_add_document_data(TemplateData, EmailAttachements),
+    {Macros, EmailAttachements} = teletype_fax_util:add_attachments(DataJObj, TemplateData, 'true'),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),

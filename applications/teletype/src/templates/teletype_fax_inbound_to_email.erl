@@ -70,8 +70,7 @@ handle_fax_inbound(JObj) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     TemplateData = build_template_data(DataJObj),
-    EmailAttachements = teletype_fax_util:get_attachments(DataJObj, TemplateData),
-    Macros = teletype_fax_util:maybe_add_document_data(TemplateData, EmailAttachements),
+    {Macros, EmailAttachements} = teletype_fax_util:add_attachments(DataJObj, TemplateData, 'true'),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -91,10 +90,7 @@ process_req(DataJObj) ->
                 kz_json:set_value(<<"to">>, teletype_fax_util:to_email_addresses(DataJObj, ?MOD_CONFIG_CAT), DataJObj)
         end,
 
-    Emails = teletype_util:find_addresses(EmailsJObj
-                                         ,TemplateMetaJObj
-                                         ,?MOD_CONFIG_CAT
-                                         ),
+    Emails = teletype_util:find_addresses(EmailsJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);

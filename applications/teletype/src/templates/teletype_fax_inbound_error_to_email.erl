@@ -127,8 +127,7 @@ is_true_fax_error(AccountId, JObj) ->
 -spec handle_fax_inbound(kz_json:object(), ne_binary()) -> send_email_return().
 handle_fax_inbound(DataJObj, TemplateId) ->
     TemplateData = build_template_data(DataJObj),
-    EmailAttachements = teletype_fax_util:get_attachments(DataJObj, TemplateData),
-    Macros = teletype_fax_util:maybe_add_document_data(TemplateData, EmailAttachements),
+    {Macros, EmailAttachements} = teletype_fax_util:add_attachments(DataJObj, TemplateData, 'false'),
 
     %% Populate templates
     RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
