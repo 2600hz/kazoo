@@ -330,28 +330,26 @@ maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper) ->
 
 -spec maybe_delete_topup_transaction(ne_binary(), kz_json:objects()) -> kz_json:objects().
 maybe_delete_topup_transaction(AccountId, Transactions) ->
-    case [JObj
-          || JObj <- Transactions,
-             ?CODE_TOPUP =/= kz_json:get_integer_value(<<"pvt_code">>, JObj)
-         ]
-    of
-        Transactions -> Transactions;
-        NonTopup ->
-            case kz_topup:should_topup(AccountId) of
+    case lists:partition(fun is_topup_transaction/1, Transactions) of
+        {_, []} -> Transactions;
+        {_, NonTopup} ->
+           case kz_topup:should_topup(AccountId) of
                 true -> Transactions;
                 false -> NonTopup
             end
     end.
 
--spec sync_transactions(ne_binary(), kzd_services:doc(), atom(), kz_json:objects()) ->
+-spec is_topup_transaction(kz_json:object()) -> boolean().
+is_topup_transaction(JObj) ->
+    ?CODE_TOPUP =:= kz_json:get_integer_value(<<"pvt_code">>, JObj).
+
+-spec sync_transactions(ne_binary(), kzd_services:doc(), module(), kz_json:objects()) ->
                                'ok'.
 sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions) ->
     BillingId = kzd_services:billing_id(ServicesJObj),
     FailedTransactions = Bookkeeper:charge_transactions(BillingId, Transactions),
-    case kz_datamgr:save_doc(?KZ_SERVICES_DB
-                            ,kzd_services:set_transactions(ServicesJObj, FailedTransactions)
-                            )
-    of
+    NewServicesJObj = kzd_services:set_transactions(ServicesJObj, FailedTransactions),
+    case kz_datamgr:save_doc(?KZ_SERVICES_DB, NewServicesJObj) of
         {'error', _E} ->
             lager:warning("failed to clean pending transactions ~p", [_E]);
         {'ok', _} ->
@@ -359,15 +357,19 @@ sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions) ->
     end.
 
 -spec handle_topup_transactions(ne_binary(), kz_json:objects(), kz_json:objects() | integer()) -> 'ok'.
-handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
-    case did_topup_failed(Failed) of
-        'true' -> 'ok';
-        'false' -> handle_topup_transactions(Account, JObjs, 3)
+handle_topup_transactions(Account, JObjs, Failed)
+  when is_list(Failed) ->
+    DidTopUpFail = lists:any(fun is_topup_transaction/1, Failed),
+    case DidTopUpFail of
+        true -> ok;
+        false -> handle_topup_transactions(Account, JObjs, 3)
     end;
 handle_topup_transactions(_, [], _) -> 'ok';
-handle_topup_transactions(Account, [JObj|JObjs]=List, Retry) when Retry > 0 ->
-    case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
-        ?CODE_TOPUP ->
+handle_topup_transactions(Account, [JObj|JObjs]=List, Retry)
+  when Retry > 0 ->
+    case is_topup_transaction(JObj) of
+        false -> handle_topup_transactions(Account, JObjs, 3);
+        true ->
             Amount = kz_json:get_value(<<"pvt_amount">>, JObj),
             Transaction = kz_transaction:credit(Account, Amount),
             Transaction1 = kz_transaction:set_reason(wht_util:topup(), Transaction),
@@ -377,27 +379,12 @@ handle_topup_transactions(Account, [JObj|JObjs]=List, Retry) when Retry > 0 ->
                     lager:warning("did not write top up transaction for account ~s already exist for today", [Account]);
                 {'error', _E} ->
                     lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p), retrying ~p..."
-                               ,[_E, Account, Amount, Retry]
-                               ),
-                    handle_topup_transactions(Account, List, Retry-1)
-            end;
-        _ -> handle_topup_transactions(Account, JObjs, 3)
+                               ,[_E, Account, Amount, Retry]),
+                    handle_topup_transactions(Account, List, Retry - 1)
+            end
     end;
 handle_topup_transactions(Account, _, _) ->
     lager:error("failed to write top up transaction for account ~s too many retries", [Account]).
-
--spec did_topup_failed(kz_json:objects()) -> boolean().
-did_topup_failed(JObjs) ->
-    lists:foldl(
-      fun(JObj, Acc) ->
-              case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
-                  ?CODE_TOPUP -> 'true';
-                  _ -> Acc
-              end
-      end
-               ,'false'
-               ,JObjs
-     ).
 
 -spec maybe_sync_reseller(ne_binary(), kzd_services:doc()) -> kz_std_return().
 maybe_sync_reseller(AccountId, ServicesJObj) ->
