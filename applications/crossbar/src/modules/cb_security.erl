@@ -22,18 +22,19 @@
 
 -include("crossbar.hrl").
 
--define(DEFAULT_AUTH_MODULES, [<<"cb_user_auth">>
+-define(DEFAULT_AUTH_METHODS, [<<"cb_user_auth">>
                               ,<<"cb_api_auth">>
+                              ,<<"cb_auth">>
                               ,<<"cb_ip_auth">>
                               ,<<"cb_ubiquiti_auth">>
                               ]).
 
--define(SYSTEM_AUTH_MODULES
-       ,kapps_config:get_ne_binaries(?AUTH_CONFIG_CAT, <<"available_auth_modules">>, ?DEFAULT_AUTH_MODULES)
+-define(SYSTEM_AUTH_METHODS
+       ,kapps_config:get_ne_binaries(?AUTH_CONFIG_CAT, <<"available_auth_methods">>, ?DEFAULT_AUTH_METHODS)
        ).
 
--define(AVAILABLE_AUTH_MODULES
-       ,kz_json:from_list([{<<"available_auth_modules">>, ?SYSTEM_AUTH_MODULES}])
+-define(AVAILABLE_AUTH_METHODS
+       ,kz_json:from_list([{<<"available_auth_methods">>, ?SYSTEM_AUTH_METHODS}])
        ).
 
 -define(CB_LIST_ATTEMPT_LOG, <<"auth/login_attempt_by_time">>).
@@ -103,7 +104,7 @@ authorize_list_available_module(Context, _Nouns, _Verb) ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?ATTEMPTS) ->
@@ -151,9 +152,9 @@ validate(Context) ->
 validate(Context, ?ATTEMPTS) ->
     crossbar_view:load(Context, ?CB_LIST_ATTEMPT_LOG, [{mapper, fun normalize_attempt_view_result/1}]);
 validate(Context, Id) ->
-    case lists:member(Id, ?SYSTEM_AUTH_MODULES) of
+    case lists:member(Id, ?SYSTEM_AUTH_METHODS) of
         'true' -> validate_module_configs(Context, Id, cb_context:req_verb(Context));
-        'false' -> not_found(Context, Id)
+        'false' -> crossbar_doc:handle_datamgr_errors('not_found', Id, Context)
     end.
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -168,14 +169,18 @@ validate_auth_configs(Context, ?HTTP_GET) ->
         [{<<"security">>, []}, {<<"accounts">>, [?NE_BINARY=_Id]}] -> read(Context);
         _Nouns -> Context
     end;
-validate_auth_configs(Context, ?HTTP_PUT) ->
-    create(Context);
 validate_auth_configs(Context, ?HTTP_POST) ->
     update(?ACCOUNT_AUTH_CONFIG_ID, Context);
 validate_auth_configs(Context, ?HTTP_PATCH) ->
     validate_patch(?ACCOUNT_AUTH_CONFIG_ID, Context);
 validate_auth_configs(Context, ?HTTP_DELETE) ->
-    read(Context).
+    C1 = crossbar_doc:load(?ACCOUNT_AUTH_CONFIG_ID, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
+    case cb_context:resp_status(C1) of
+        'success' -> C1;
+        _ ->
+            Msg = <<"account does not have customize auth configuration">>,
+            cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Msg}]),  Context)
+    end.
 
 %% validats /security/{PATH_TOKEN}
 -spec validate_module_configs(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
@@ -278,7 +283,7 @@ delete(Context, Id) ->
 -spec summary_available(cb_context:context()) -> cb_context:context().
 summary_available(Context) ->
     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                ,{fun cb_context:set_resp_data/2, ?AVAILABLE_AUTH_MODULES}
+                                ,{fun cb_context:set_resp_data/2, ?AVAILABLE_AUTH_METHODS}
                                 ]).
 
 %%--------------------------------------------------------------------
@@ -289,19 +294,35 @@ summary_available(Context) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
-    crossbar_doc:load(?ACCOUNT_AUTH_CONFIG_ID, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)).
+    Config = crossbar_auth:get_auth_config(cb_context:account_id(Context)),
+    crossbar_doc:handle_json_success(Config, Context).
 
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    C1 = crossbar_doc:load(?ACCOUNT_AUTH_CONFIG_ID, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
-    case cb_context:resp_status(C1) of
-        'success' ->
-            case kz_json:get_value(module_config_path(Id), cb_context:doc(C1)) of
-                'undefined' -> not_found(Context, Id);
-                ModConfig ->crossbar_doc:handle_json_success(ModConfig, Context)
-            end;
-        _ -> not_found(Context, Id)
-    end.
+    Config = crossbar_auth:get_auth_config(cb_context:account_id(Context)),
+    MethodAccountConfig = kz_json:get_json_value(account_config_path(Id), Config),
+    MethodSystemConfig = kz_json:get_json_value(system_config_path(Id), Config),
+    SystemDefault = kz_json:get_json_value(<<"system">>, Config),
+    Doc = kz_json:from_list(
+            [{<<"account">>, MethodAccountConfig}
+            ,{<<"system">>, kz_json:set_value([<<"auth_modules">>, Id], MethodSystemConfig, SystemDefault)}
+            ]
+           ),
+    crossbar_doc:handle_json_success(Doc, Context).
+
+account_config_path(Id) -> [<<"account">>, <<"auth_modules">>, Id].
+system_config_path(Id) -> [<<"system">>, <<"auth_modules">>, Id].
+
+%% @private
+%% @doc
+%% Accessor to get account's method config if available
+%% or system if not available
+% -spec get_method_config(ne_binary(), kz_json:object()) -> any().
+% get_method_config(Id, AuthConfig) ->
+%     Paths = [[<<"account">>, <<"auth_modules">>, Id]
+%             ,[<<"system">>, <<"auth_modules">>, Id]
+%             ],
+%     kz_json:get_first_defined(Paths, AuthConfig).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -309,10 +330,10 @@ read(Id, Context) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(cb_context:context()) -> cb_context:context().
-create(Context) ->
-    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    cb_context:validate_request_data(<<"auth_config_account">>, Context, OnSuccess).
+% -spec create(cb_context:context()) -> cb_context:context().
+% create(Context) ->
+%     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
+%     cb_context:validate_request_data(<<"auth_config_account">>, Context, OnSuccess).
 
 -spec create(ne_binary(), cb_context:context()) -> cb_context:context().
 create(Id, Context) ->
@@ -355,11 +376,13 @@ validate_patch(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_delete(Id, Context) ->
-    C1 = read(Context),
-    case cb_context:resp_status(C1) =:= 'success'
+    C1 = crossbar_doc:load(?ACCOUNT_AUTH_CONFIG_ID, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
+    case cb_context:resp_status(C1)
         andalso kz_json:is_json_object(module_config_path(Id), cb_context:doc(C1))
     of
-        'false' -> not_found(Context, Id);
+        'false' ->
+            Msg = kz_term:to_binary(io_lib:format("account does not have customization for ~s", [Id])),
+            cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Msg}]),  Context);
         'true' ->
             cb_context:set_doc(C1, kz_json:delete_key(module_config_path(Id), cb_context:doc(C1)))
     end.
@@ -393,21 +416,21 @@ handle_singularity_update(Context, ?HTTP_PUT, _Id, _OrigModId, 'success') -> Con
 handle_singularity_update(Context, ?HTTP_PUT, _Id, _OrigModId, _) -> on_successful_validation('undefined', Context);
 %% PATCH on /security
 handle_singularity_update(Context, ?HTTP_PATCH, _Id, 'undefined', 'success') -> Context;
-handle_singularity_update(Context, ?HTTP_PATCH, Id, 'undefined', _) -> not_found(Context, Id);
+handle_singularity_update(Context, ?HTTP_PATCH, Id, 'undefined', _) -> create_and_merge(Id, Context);
 %% PATCH on /security/{MOD_ID}
 handle_singularity_update(Context, ?HTTP_PATCH, _Id, OrigModId, 'success') -> check_mod_config_exists(Context, OrigModId);
-handle_singularity_update(Context, ?HTTP_PATCH, _id, OrigModId, _) -> not_found(Context, OrigModId);
+handle_singularity_update(Context, ?HTTP_PATCH, _id, OrigModId, _) -> create_and_merge(OrigModId, Context);
 %% POST on /security
 handle_singularity_update(Context, ?HTTP_POST, ?ACCOUNT_AUTH_CONFIG_ID, 'undefined', 'success') -> Context;
-handle_singularity_update(Context, ?HTTP_POST, ?ACCOUNT_AUTH_CONFIG_ID=Id, 'undefined', _) -> not_found(Context, Id);
+handle_singularity_update(Context, ?HTTP_POST, ?ACCOUNT_AUTH_CONFIG_ID=Id, 'undefined', _) -> create_and_merge(Id, Context);
 %% POST on /security/{MOD_ID}
 handle_singularity_update(Context, ?HTTP_POST, Id, 'undefined', 'success') -> check_mod_config_exists(Context, Id);
-handle_singularity_update(Context, ?HTTP_POST, Id, 'undefined', _) -> not_found(Context, Id).
+handle_singularity_update(Context, ?HTTP_POST, Id, 'undefined', _) -> create_and_merge(Id, Context).
 
 -spec check_mod_config_exists(cb_context:context(), ne_binary()) -> cb_context:context().
 check_mod_config_exists(Context, Id) ->
     case kz_json:get_value(module_config_path(Id), cb_context:fetch(Context, 'db_doc')) of
-        'undefined' -> not_found(Context, Id);
+        'undefined' -> create_and_merge(Id, Context);
         _ModConfig -> Context
     end.
 
@@ -423,9 +446,15 @@ fix_config_object(Id, JObj, Context) ->
 -spec module_config_path(ne_binary()) -> ne_binaries().
 module_config_path(Id) -> [<<"auth_modules">>, Id].
 
--spec not_found(cb_context:context(), ne_binary()) -> cb_context:context().
-not_found(Context, Id) ->
-    crossbar_doc:handle_datamgr_errors('not_found', Id, Context).
+-spec create_and_merge(ne_binary(), cb_context:context()) -> cb_context:context().
+create_and_merge(?ACCOUNT_AUTH_CONFIG_ID=Id, Context) ->
+    Config = crossbar_auth:get_auth_config(cb_context:account_id(Context)),
+    SystemDefault = kz_json:get_json_value([<<"system">>, <<"auth_modules">>], Config),
+    AccountConfig = kz_json:get_json_value([<<"account">>, <<"auth_modules">>], Config, SystemDefault),
+
+    Doc0 = kz_json:merge_jobjs(AccountConfig, SystemDefault),
+    Doc = kz_doc:set_id(Doc0, Id),
+    cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"account_config">>)).
 
 %%--------------------------------------------------------------------
 %% @private
