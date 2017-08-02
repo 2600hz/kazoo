@@ -19,6 +19,7 @@
         ,get_global/2, get_global/3, get_global/4
         ,get_from_reseller/3, get_from_reseller/4
         ,get_with_strategy/4, get_with_strategy/5
+        ,get_hierarchy/3, get_hierarchy/4
 
         ,set/4
         ,set_global/4
@@ -119,6 +120,26 @@ get_from_reseller(Account, Category, Key, Default) ->
         {error, _} ->
             kapps_config:get(Category, Key, Default)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Same as get_hierarchy/4 with Default set to undefined
+%% @end
+%%--------------------------------------------------------------------
+-spec get_hierarchy(api_account(), ne_binary(), kz_json:path()) -> kz_json:json_term().
+get_hierarchy(Account, Category, Key) ->
+    get_hierarchy(Account, Category, Key, undefined).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Same as get_with_strategy/5 with Strategy "hierarchy_merge"
+%% @end
+%%--------------------------------------------------------------------
+-spec get_hierarchy(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:json_term().
+get_hierarchy(Account, Category, Key, Default) ->
+    get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -471,7 +492,7 @@ walk_the_walk(#{account_id := AccountId
 
 -spec maybe_merge_results(map(), boolean()) -> {ok, kz_json:object()}.
 maybe_merge_results(#{results := JObjs}=Map, true) ->
-    store_in_strategy_cache(Map, kz_json:merge([kz_doc:public_fields(J) || J <- JObjs]));
+    store_in_strategy_cache(Map, kz_json:merge([kz_doc:public_fields(J, false) || J <- JObjs]));
 maybe_merge_results(#{results := JObjs}, false) ->
     {ok, lists:last(JObjs)}.
 
