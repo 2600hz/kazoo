@@ -18,25 +18,27 @@
 -include("crossbar.hrl").
 
 -define(DEFAULT_METHOD_CONFIG,
-        [{<<"enabled">>, 'true'}
-        ,{<<"token_auth_expiry">>, ?SECONDS_IN_HOUR}
-        ,{<<"log_failed_attempts">>, 'true'}
-        ,{<<"log_successful_attempts">>, 'true'}
-        ]
-       ).
-
--define(DEFAULT_AUTH_CONFIG,
         kz_json:from_list(
-          [{<<"cb_user_auth">>, kz_json:from_list(?DEFAULT_METHOD_CONFIG)}
-          ,{<<"cb_api_auth">>, kz_json:from_list(?DEFAULT_METHOD_CONFIG)}
-          ,{<<"cb_auth">>, kz_json:from_list(?DEFAULT_METHOD_CONFIG)}
-          ,{<<"cb_ip_auth">>, kz_json:from_list(?DEFAULT_METHOD_CONFIG)}
-          ,{<<"cb_ubiquiti_auth">>, kz_json:from_list(?DEFAULT_METHOD_CONFIG)}
+          [{<<"enabled">>, 'true'}
+          ,{<<"token_auth_expiry_s">>, ?SECONDS_IN_HOUR}
+          ,{<<"log_failed_attempts">>, 'true'}
+          ,{<<"log_successful_attempts">>, 'true'}
           ]
          )
        ).
 
--define(DEFAULT_AUTH_EXPIRY, kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
+-define(DEFAULT_AUTH_CONFIG,
+        kz_json:from_list(
+          [{<<"cb_user_auth">>, ?DEFAULT_METHOD_CONFIG}
+          ,{<<"cb_api_auth">>, ?DEFAULT_METHOD_CONFIG}
+          ,{<<"cb_auth">>, ?DEFAULT_METHOD_CONFIG}
+          ,{<<"cb_ip_auth">>, ?DEFAULT_METHOD_CONFIG}
+          ,{<<"cb_ubiquiti_auth">>, ?DEFAULT_METHOD_CONFIG}
+          ]
+         )
+       ).
+
+-define(DEFAULT_AUTH_EXPIRY, kapps_config:get_integer(?AUTH_CONFIG_CAT, <<"token_auth_expiry_s">>, ?SECONDS_IN_HOUR)).
 -define(SHOULD_LOG_FAILED, kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_failed_attempts">>, 'true')).
 -define(SHOULD_LOG_SUCCESS, kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_successful_attempts">>, 'true')).
 
@@ -65,11 +67,7 @@ create_auth_token(Context, Method, JObj) ->
     OwnerId = kz_json:get_first_defined([<<"owner_id">>, [<<"Claims">>, <<"owner_id">>]], JObj),
 
     AuthConfig = get_auth_config(AccountId),
-
-    Expiration = case get_method_config(Method, <<"token_auth_expiry">>, AuthConfig) of
-                     TokenExp when TokenExp > 0 -> erlang:system_time('seconds') + TokenExp;
-                     _ -> ?DEFAULT_AUTH_EXPIRY
-                 end,
+    Expiration = token_auth_expiry(Method, AuthConfig),
 
     Claims = props:filter_undefined(
                [{<<"account_id">>, AccountId}
@@ -134,8 +132,9 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
     lager:debug("auth module ~s is configured to use multi factor", [Method]),
 
     AccountId = props:get_value(<<"account_id">>, Claims),
+    MultiFactorOpts = kz_json:get_json_value(method_config_path(Method, <<"multi_factor">>), AuthConfig),
     NewClaims = props:filter_undefined(
-                  [{<<"mfa_options">>, get_method_config(Method, <<"multi_factor">>, AuthConfig)}
+                  [{<<"mfa_options">>, MultiFactorOpts}
                    | Claims
                   ]),
 
@@ -188,17 +187,6 @@ maybe_db_token(AuthToken) ->
 get_auth_config(AccountId) ->
     kapps_account_config:get_hierarchy(AccountId, ?AUTH_CONFIG_CAT, <<"auth_modules">>, ?DEFAULT_AUTH_CONFIG).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Accessor to get value of a key in method's config if available
-%% or system if not available
-%% @end
-%%--------------------------------------------------------------------
--spec get_method_config(ne_binary(), ne_binary(), kz_json:object()) -> any().
-get_method_config(Method, Key, AuthConfig) ->
-    kz_json:get_first_defined(method_config_path(Method, Key), AuthConfig).
-
 %% @private
 %% Utility func to generate method's config path
 -spec method_config_path(ne_binary(), ne_binary()) -> ne_binaries().
@@ -210,6 +198,20 @@ method_config_path(Method, Key) ->
 -spec method_mfa_path(ne_binary(), ne_binary()) -> ne_binaries().
 method_mfa_path(Method, Key) ->
     [<<"auth_modules">>, Method, <<"multi_factor">>, Key].
+
+-spec token_auth_expiry(ne_binary(), kz_json:object()) -> non_neg_integer().
+token_auth_expiry(Method, AuthConfig) ->
+    Path = method_config_path(Method, <<"token_auth_expiry_s">>),
+    case kz_json:get_integer_value(Path, AuthConfig, 0) of
+        TokenExp when TokenExp > 0 ->
+            erlang:system_time('seconds') + TokenExp;
+        _ ->
+            case ?DEFAULT_AUTH_EXPIRY of
+                TokenExp when TokenExp > 0 ->
+                    erlang:system_time('seconds') + TokenExp;
+                _ -> 'undefined'
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -329,9 +331,9 @@ log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) ->
 
 -spec is_log_type_enabled(ne_binary(), ne_binary(), kz_json:object()) -> boolean().
 is_log_type_enabled(<<"failed">>, Method, AuthConfig) ->
-    kz_term:is_true(get_method_config(Method, <<"log_failed_attempts">>, AuthConfig));
+    kz_json:is_true(method_config_path(Method, <<"log_failed_attempts">>), AuthConfig);
 is_log_type_enabled(<<"success">>, Method, AuthConfig) ->
-    kz_term:is_true(get_method_config(Method, <<"log_successful_attempts">>, AuthConfig)).
+    kz_json:is_true(method_config_path(Method, <<"log_successful_attempts">>), AuthConfig).
 
 -spec log_attempts(cb_context:context(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 log_attempts(Context, AccountId, Method, Status, AuthType, Reason) ->
