@@ -3,8 +3,9 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_ledgers/include/kazoo_ledger.hrl").
 
+-define(APP, kazoo_ledgers).
+-define(APP_NAME, (atom_to_binary(kazoo_ledgers, utf8))).
 -define(APP_VERSION, <<"4.0.1">>).
--define(APP_NAME, <<"kazoo_ledgers">>).
 
 -define(LIST_BY_SERVICE, <<"ledgers/listing_by_service">>).
 -define(LIST_BY_SERVICE_LEGACY, <<"ledgers/listing_by_service_legacy">>).

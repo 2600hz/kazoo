@@ -21,7 +21,6 @@
                  'topup_daily_limit' |
                  atom().
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -49,13 +48,19 @@ init(Account, CurrentBalance) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec should_topup(ne_binary()) -> boolean().
--spec should_topup(ne_binary(), integer()) -> boolean().
 should_topup(AccountId) ->
     case wht_util:current_balance(AccountId) of
         {'ok', CurrentBalance} -> should_topup(AccountId, CurrentBalance);
         {'error', _} -> 'false'
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec should_topup(ne_binary(), integer()) -> boolean().
 should_topup(AccountId, CurrentBalance) ->
     Balance = wht_util:units_to_dollars(CurrentBalance),
     case get_top_up(AccountId) of
@@ -66,12 +71,6 @@ should_topup(AccountId, CurrentBalance) ->
             should_topup(AccountId, Balance, Threshold) =:= 'true'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec should_topup(ne_binary(), number(), integer()) ->
                           'true' |
                           {'error', error()}.
@@ -79,8 +78,8 @@ should_topup(AccountId, Balance, Threshold) when Balance =< Threshold ->
     To = kz_time:current_tstamp(),
     From = To - ?SECONDS_IN_DAY,
     case kz_transactions:fetch_local(AccountId, From, To) of
-        {'error', _Reason} = Error ->
-            lager:warning("failed to fetch recent transactions for ~s: ~p", [AccountId, _Reason]),
+        {'error', _R}=Error ->
+            lager:warning("failed fetching recent transactions for ~s: ~p", [AccountId, _R]),
             Error;
         {'ok', Transactions} ->
             TopupTransactions = kz_transactions:filter_by_reason(wht_util:topup(), Transactions),

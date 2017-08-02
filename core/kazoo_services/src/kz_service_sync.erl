@@ -329,17 +329,16 @@ maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper) ->
 
 -spec maybe_delete_topup_transaction(ne_binary(), kz_json:objects()) -> kz_json:objects().
 maybe_delete_topup_transaction(AccountId, Transactions) ->
-    NonTopup = lists:filter(
-                 fun(J) ->
-                         kz_json:get_integer_value(<<"pvt_code">>, J) =/= ?CODE_TOPUP
-                 end, Transactions
-                ),
-    case NonTopup of
+    case [JObj
+          || JObj <- Transactions,
+             ?CODE_TOPUP =/= kz_json:get_integer_value(<<"pvt_code">>, JObj)
+         ]
+    of
         Transactions -> Transactions;
-        _Other ->
+        NonTopup ->
             case kz_topup:should_topup(AccountId) of
-                'true' -> Transactions;
-                'false' -> NonTopup
+                true -> Transactions;
+                false -> NonTopup
             end
     end.
 
