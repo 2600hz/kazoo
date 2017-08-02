@@ -37,7 +37,7 @@ add_attachments(DataJObj, Macros, ShouldTerminate) ->
     IsPreview = teletype_util:is_preview(DataJObj),
     FaxDoc = props:get_value(<<"fax">>, Macros),
     case kz_json:is_json_object(FaxDoc)
-        andalso kz_json:is_empty(FaxDoc)
+        andalso not kz_json:is_empty(FaxDoc)
         andalso maybe_fetch_attachments(FaxDoc, Macros, IsPreview)
     of
         'false' -> maybe_terminate(Macros, ShouldTerminate, IsPreview);
