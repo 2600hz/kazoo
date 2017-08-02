@@ -300,8 +300,9 @@ sync_services(AccountId, ServicesJObj, ServiceItems) ->
             _ = mark_clean_and_status(kz_term:to_binary(Reason), ServicesJObj),
             maybe_sync_reseller(AccountId, ServicesJObj);
         _E:R ->
+            ST = erlang:get_stacktrace(),
             lager:info("unable to sync services(~p): ~p", [_E, R]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             {'error', R}
     end.
 

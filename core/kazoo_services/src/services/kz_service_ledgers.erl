@@ -26,9 +26,9 @@ reconcile(Services) ->
 
 -spec reconcile(kz_services:services(), ne_binary()) -> kz_services:services().
 reconcile(Services, Type=?NE_BINARY) ->
-    Services1 = reconcile(Services),
-    Quantity = kz_services:updated_quantity(category(), Type, Services1),
-    kz_services:update(category(), Type, Quantity + 1, Services1);
+    NewServices = reconcile(Services),
+    Quantity = kz_services:updated_quantity(category(), Type, NewServices),
+    kz_services:update(category(), Type, Quantity + 1, NewServices);
 reconcile(Services, Props) ->
     NewServices = reconcile(Services),
     lists:foldl(fun reconcile_foldl/2, NewServices, Props).
