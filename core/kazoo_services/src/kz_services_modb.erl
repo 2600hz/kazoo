@@ -15,7 +15,7 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
--include_lib("kazoo_services/include/kz_service.hrl").
+-include_lib("kazoo_services/include/kazoo_services.hrl").
 
 -spec start_link() -> startlink_ret().
 start_link() ->

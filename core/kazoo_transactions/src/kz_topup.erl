@@ -10,9 +10,7 @@
 -export([init/2]).
 -export([should_topup/1, should_topup/2]).
 
--include("include/kazoo_transactions.hrl").
-
--define(KZ_SERVICES_DB, <<"services">>).
+-include("transactions.hrl").
 
 -type error() :: 'topup_disabled' |
                  'topup_undefined' |
@@ -85,7 +83,7 @@ should_topup(AccountId, Balance, Threshold) when Balance =< Threshold ->
             lager:warning("failed to fetch recent transactions for ~s: ~p", [AccountId, _Reason]),
             Error;
         {'ok', Transactions} ->
-            TopupTransactions = kz_transactions:filter_by_reason(<<"topup">>, Transactions),
+            TopupTransactions = kz_transactions:filter_by_reason(wht_util:topup(), Transactions),
             is_topup_today(AccountId, TopupTransactions)
     end;
 should_topup(_AccountId, _Balance, _Threshold) ->
@@ -160,7 +158,7 @@ maybe_top_up(AccountId, Balance, Amount, Threshold) ->
 top_up(AccountId, Amount) ->
     Services = kz_services:fetch(AccountId),
     Transaction = kz_transaction:debit(AccountId, wht_util:dollars_to_units(Amount)),
-    Transaction1 = kz_transaction:set_reason(<<"topup">>, Transaction),
+    Transaction1 = kz_transaction:set_reason(wht_util:topup(), Transaction),
 
     lager:info("attemptting to top up account ~s for ~p", [AccountId, Amount]),
     case kz_services:charge_transactions(Services, [Transaction1]) of

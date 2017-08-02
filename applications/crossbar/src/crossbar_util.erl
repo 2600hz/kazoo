@@ -79,6 +79,7 @@
 -export([trunkstore_servers_changed/2]).
 -endif.
 
+-include_lib("kazoo_services/include/kazoo_services.hrl").
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE
@@ -418,7 +419,7 @@ maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
 -spec move_account(ne_binary(), kz_json:object(), ne_binary(), ne_binaries()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
-move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
+move_account(?MATCH_ACCOUNT_RAW(AccountId), ToAccount=?NE_BINARY) ->
     case validate_move(AccountId, ToAccount) of
         {'error', _E}=Error -> Error;
         {'ok', JObj, ToTree} ->
@@ -426,35 +427,21 @@ move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
     end.
 
 move_account(AccountId, JObj, ToAccount, ToTree) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_db(AccountId),
     PreviousTree = kz_account:tree(JObj),
-    JObj1 = kz_json:set_values([{<<"pvt_tree">>, ToTree}
-                               ,{<<"pvt_previous_tree">>, PreviousTree}
-                               ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+    JObj1 = kz_json:set_values([{?SERVICES_PVT_TREE, ToTree}
+                               ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
+                               ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
                                ], JObj),
     case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
         {'ok', _} ->
-            NewResellerId = find_reseller_id(ToAccount),
+            NewResellerId = kz_services:find_reseller_id(ToAccount),
             {'ok', _} = replicate_account_definition(JObj1),
             {'ok', _} = move_descendants(AccountId, ToTree, NewResellerId),
-            {'ok', _} = mark_dirty(AccountId),
+            {'ok', _} = kz_service_sync:mark_dirty(AccountId),
             move_service(AccountId, ToTree, NewResellerId, 'true')
     end.
-
--spec find_reseller_id(ne_binary()) -> ne_binary().
--spec find_reseller_id(ne_binary(), boolean()) -> ne_binary().
-find_reseller_id(ToAccount) ->
-    case kz_services:fetch_services_doc(ToAccount, 'false') of
-        {'error', _} -> kz_services:get_reseller_id(ToAccount);
-        {'ok', JObj} ->
-            find_reseller_id(ToAccount, kzd_services:is_reseller(JObj))
-    end.
-
-find_reseller_id(ToAccount, 'true') ->
-    ToAccount;
-find_reseller_id(ToAccount, 'false') ->
-    kz_services:get_reseller_id(ToAccount).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -483,7 +470,7 @@ validate_move(AccountId, ToAccount) ->
 -spec move_descendants(ne_binary(), ne_binaries(), ne_binary()) ->
                               {'ok', 'done'} |
                               {'error', any()}.
-move_descendants(<<_/binary>> = AccountId, Tree, NewResellerId) ->
+move_descendants(?MATCH_ACCOUNT_RAW(AccountId), Tree, NewResellerId) ->
     update_descendants_tree(get_descendants(AccountId), Tree, NewResellerId, AccountId).
 
 -spec update_descendants_tree(ne_binaries(), ne_binaries(), ne_binary(), ne_binary()) ->
@@ -491,23 +478,23 @@ move_descendants(<<_/binary>> = AccountId, Tree, NewResellerId) ->
                                      {'error', any()}.
 update_descendants_tree([], _, _, _) -> {'ok', 'done'};
 update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAccountId) ->
-    AccountId = kz_util:format_account_id(Descendant, 'raw'),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Descendant) of
         {'error', _E}=Error -> Error;
-        {'ok', JObj} ->
-            PreviousTree = kz_account:tree(JObj),
+        {'ok', AccountJObj} ->
+            PreviousTree = kz_account:tree(AccountJObj),
             %% Preserve tree below and including common ancestor
             {_, Tail} = lists:splitwith(fun(X) -> X =/= MovedAccountId end, PreviousTree),
             ToTree = Tree ++ Tail,
-            JObj1 = kz_json:set_values([{<<"pvt_tree">>, ToTree}
-                                       ,{<<"pvt_previous_tree">>, PreviousTree}
-                                       ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                                       ], JObj),
-            case kz_datamgr:save_doc(AccountDb, JObj1) of
+            Values = [{?SERVICES_PVT_TREE, ToTree}
+                     ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
+                     ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                     ],
+            AccountDb = kz_util:format_account_db(Descendant),
+            case kz_datamgr:save_doc(AccountDb, kz_json:set_values(Values, AccountJObj)) of
                 {'error', _E}=Error -> Error;
-                {'ok', _} ->
-                    {'ok', _} = replicate_account_definition(JObj1),
+                {'ok', NewAccountJObj} ->
+                    {'ok', _} = replicate_account_definition(NewAccountJObj),
+                    AccountId = kz_util:format_account_id(Descendant),
                     {'ok', _} = move_service(AccountId, ToTree, NewResellerId, 'undefined'),
                     update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
             end
@@ -522,26 +509,17 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 move_service(AccountId, NewTree, NewResellerId, Dirty) ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+    case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
-            move_service_doc(NewTree, NewResellerId, Dirty, JObj)
-    end.
-
--spec move_service_doc(ne_binaries(), ne_binary(), api_boolean(), kz_json:object()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', any()}.
-move_service_doc(NewTree, NewResellerId, Dirty, JObj) ->
-    PreviousTree = kz_account:tree(JObj),
-    Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
-                                   ,{<<"pvt_dirty">>, Dirty}
-                                   ,{<<"pvt_previous_tree">>, PreviousTree}
-                                   ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                                   ,{<<"pvt_reseller_id">>, NewResellerId}
-                                   ]),
-    case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj)) of
-        {'error', _E}=Error -> Error;
-        {'ok', _R}=Ok -> Ok
+            Props = props:filter_undefined(
+                      [{?SERVICES_PVT_TREE, NewTree}
+                      ,{?SERVICES_PVT_TREE_PREVIOUSLY, kz_account:tree(JObj)}
+                      ,{?SERVICES_PVT_IS_DIRTY, Dirty}
+                      ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                      ,{?SERVICES_PVT_RESELLER_ID, NewResellerId}
+                      ]),
+            kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -553,20 +531,6 @@ move_service_doc(NewTree, NewResellerId, Dirty, JObj) ->
 -spec get_descendants(ne_binary()) -> ne_binaries().
 get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
     kapps_util:account_descendants(AccountId) -- [AccountId].
-
--spec mark_dirty(ne_binary() | kz_json:object()) -> kz_std_return().
-mark_dirty(AccountId) when is_binary(AccountId) ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
-        {'error', _}=E -> E;
-        {'ok', JObj} -> mark_dirty(JObj)
-    end;
-mark_dirty(JObj) ->
-    kz_datamgr:save_doc(?KZ_SERVICES_DB
-                       ,kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                           ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                                           ], JObj
-                                          )
-                       ).
 
 %%--------------------------------------------------------------------
 %% @public

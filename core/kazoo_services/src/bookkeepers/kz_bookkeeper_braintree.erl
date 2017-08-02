@@ -6,6 +6,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_braintree).
+-behaviour(kz_gen_bookkeeper).
 
 -export([sync/2]).
 -export([is_good_standing/2]).
@@ -17,7 +18,7 @@
 -export([timestamp_to_braintree/1]).
 
 -include_lib("braintree/include/braintree.hrl").
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
@@ -26,7 +27,7 @@
                            }).
 
 -record(kz_service_updates, {bt_subscriptions = [] :: [update()]
-                            ,account_id :: api_binary()
+                            ,account_id :: api_ne_binary()
                             ,bt_customer :: braintree_customer:customer()
                             }).
 
@@ -156,21 +157,21 @@ commit_transactions(BillingId, Transactions) ->
     commit_transactions(BillingId, Transactions, 3).
 
 commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, BillingId) of
+    case kz_services:fetch_services_doc(BillingId, true) of
         {'error', _E} ->
-            lager:error("could not open services for ~p : ~p retrying...", [BillingId, _E]),
-            commit_transactions(BillingId, Transactions, Try-1);
-        {'ok', JObj} ->
-            NewTransactions = kz_json:get_value(<<"transactions">>, JObj, [])
+            lager:error("could not open services for ~p: ~p retrying...", [BillingId, _E]),
+            commit_transactions(BillingId, Transactions, Try - 1);
+        {'ok', ServicesJObj} ->
+            NewTransactions = kz_json:get_list_value(<<"transactions">>, ServicesJObj, [])
                 ++ kz_transactions:to_json(Transactions),
-            JObj1 = kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                       ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                                       ,{<<"transactions">>, NewTransactions}
-                                       ], JObj),
-            case kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1) of
+            Values = [{?SERVICES_PVT_IS_DIRTY, 'true'}
+                     ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                     ,{<<"transactions">>, NewTransactions}
+                     ],
+            case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)) of
                 {'error', _E} ->
-                    lager:error("could not save services for ~p : ~p retrying...", [BillingId, _E]),
-                    commit_transactions(BillingId, Transactions, Try-1);
+                    lager:error("could not save services for ~p: ~p retrying...", [BillingId, _E]),
+                    commit_transactions(BillingId, Transactions, Try - 1);
                 {'ok', _} -> 'ok'
             end
     end;
@@ -211,10 +212,8 @@ charge_transactions(BillingId, [], Dict) ->
      );
 charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     Code = kz_json:get_value(<<"pvt_code">>, Transaction),
-    charge_transactions(BillingId
-                       ,Transactions
-                       ,dict:append(Code, Transaction, Dict)
-                       ).
+    NewDict = dict:append(Code, Transaction, Dict),
+    charge_transactions(BillingId, Transactions, NewDict).
 
 -spec handle_charged_transactions(ne_binary(), pos_integer(), kz_json:objects()) -> boolean().
 handle_charged_transactions(BillingId, Code, []) ->
@@ -243,7 +242,7 @@ handle_topup(BillingId, JObjs) ->
 
 
 -spec braintree_quick_sale(ne_binary(), number() | ne_binary(), kz_proplist()) ->
-                                  {boolean(), bt_transaction() | 'undefined'}.
+                                  {boolean(), api_bt_transaction()}.
 braintree_quick_sale(BillingId, Amount, Props) ->
     try braintree_transaction:quick_sale(BillingId
                                         ,wht_util:units_to_dollars(Amount)
@@ -272,14 +271,14 @@ handle_quick_sale_response(BtTransaction) ->
     kz_term:to_integer(RespCode) < 2000.
 
 
--spec send_topup_notification(boolean(), ne_binary(), integer(), bt_transaction() | 'undefined' | ne_binary()) ->
+-spec send_topup_notification(boolean(), ne_binary(), integer(), api_bt_transaction() | ne_binary()) ->
                                      {boolean(), ne_binary()}.
 send_topup_notification(Success, BillingId, Amount, BraintreeTransaction) ->
     Props = notification_data(Success, BillingId, Amount, BraintreeTransaction),
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_topup/1),
     {Success, props:get_value(<<"Response">>, Props)}.
 
--spec notification_data(boolean(), ne_binary(), integer(), bt_transaction() | 'undefined') -> kz_proplist().
+-spec notification_data(boolean(), ne_binary(), integer(), api_bt_transaction()) -> kz_proplist().
 notification_data(Success, BillingId, Amount, 'undefined') ->
     [{<<"Account-ID">>, BillingId}
     ,{<<"Amount">>, Amount}
@@ -291,9 +290,9 @@ notification_data(Success, BillingId, Amount, 'undefined') ->
 notification_data(_Success, BillingId, _Amount, BraintreeTransaction) ->
     props:filter_empty(
       [{<<"Account-ID">>, BillingId}
-       | braintree_transaction:record_to_notification_props(BraintreeTransaction) ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-      ]
-     ).
+       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+       ++ braintree_transaction:record_to_notification_props(BraintreeTransaction)
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -307,69 +306,53 @@ convert_transactions(BTTransactions) ->
 
 -spec convert_transaction(kz_json:object()) -> kz_transaction:transaction().
 convert_transaction(BTTransaction) ->
-    Transaction = kz_transaction:new(#{account_id => account_id(BTTransaction)
-                                      ,account_db => account_db(BTTransaction)
-                                      ,amount => amount(BTTransaction)
-                                      ,type => type(BTTransaction)
-                                      }),
-    Routines = [fun set_description/2
-               ,fun set_bookkeeper_info/2
-               ,fun set_metadata/2
-               ,fun set_reason/2
-               ,fun set_status/2
-               ,fun set_created/2
-               ,fun set_modified/2
-               ],
-    lists:foldl(fun(F, T) -> F(BTTransaction, T) end, Transaction, Routines).
+    Transaction = kz_transaction:new(
+                    #{account_id => account_id(BTTransaction)
+                     ,account_db => account_db(BTTransaction)
+                     ,amount => amount(BTTransaction)
+                     ,type => type(BTTransaction)
+                     ,description => ?TR_DESCRIPTION
+                     ,bookkeeper_info => bookkeeper_info(BTTransaction)
+                     ,metadata => BTTransaction
+                     ,status => status(BTTransaction)
+                     ,created => created(BTTransaction)
+                     ,modified => modified(BTTransaction)
+                     }),
+    set_reason_and_code(BTTransaction, Transaction).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec set_description(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
-set_description(_BTTransaction, Transaction) ->
-    kz_transaction:set_description(?TR_DESCRIPTION, Transaction).
-
--spec set_bookkeeper_info(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
-set_bookkeeper_info(BTTransaction, Transaction) ->
-    kz_transaction:set_bookkeeper_info(
-      kz_json:from_list([
-                         {<<"id">>, kz_doc:id(BTTransaction)}
-                        ,{<<"merchant_account_id">>, kz_json:get_value(<<"merchant_account_id">>, BTTransaction)}
-                        ])
-                                      ,Transaction
-     ).
-
--spec set_metadata(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
-set_metadata(BTTransaction, Transaction) ->
-    kz_transaction:set_metadata(BTTransaction, Transaction).
-
--spec set_reason(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
--spec set_reason(kz_json:object(), kz_transaction:transaction(), pos_integer() | 'undefined') -> kz_transaction:transaction().
-set_reason(BTTransaction, Transaction) ->
+-spec set_reason_and_code(kz_json:object(), kz_transaction:transaction()) ->
+                                 kz_transaction:transaction().
+-spec set_reason_and_code(kz_json:object(), kz_transaction:transaction(), api_pos_integer()) ->
+                                 kz_transaction:transaction().
+set_reason_and_code(BTTransaction, Transaction) ->
     Code = kz_json:get_integer_value(<<"purchase_order">>, BTTransaction),
-    set_reason(BTTransaction, Transaction, Code).
+    set_reason_and_code(BTTransaction, Transaction, Code).
 
-set_reason(BTTransaction, Transaction, 'undefined') ->
+set_reason_and_code(BTTransaction, Transaction, 'undefined') ->
     IsApi = kz_json:is_true(<<"is_api">>, BTTransaction),
     IsRecurring = kz_json:is_true(<<"is_recurring">>, BTTransaction),
     IsProrated = transaction_is_prorated(BTTransaction),
     case {IsProrated, IsRecurring, IsApi} of
         {'true', 'true', _} ->
-            kz_transaction:set_reason(<<"recurring_prorate">>, Transaction);
+            kz_transaction:set_reason(wht_util:recurring_prorate(), Transaction);
         {_, 'true', 'true'} ->
-            kz_transaction:set_reason(<<"recurring_prorate">>, Transaction);
+            kz_transaction:set_reason(wht_util:recurring_prorate(), Transaction);
         {_, 'true', _} ->
-            kz_transaction:set_reason(<<"monthly_recurring">>, Transaction);
+            kz_transaction:set_reason(wht_util:monthly_recurring(), Transaction);
         {_, _, 'true'} ->
-            kz_transaction:set_reason(<<"manual_addition">>, Transaction);
+            kz_transaction:set_reason(wht_util:manual_addition(), Transaction);
         _ ->
-            kz_transaction:set_reason(<<"unknown">>, Transaction)
+            kz_transaction:set_reason(wht_util:default_reason(), Transaction)
     end;
-set_reason(_BTTransaction, Transaction, Code) ->
+set_reason_and_code(_BTTransaction, Transaction, Code) ->
     kz_transaction:set_code(Code, Transaction).
+
+-spec bookkeeper_info(kz_json:object()) -> kz_json:object().
+bookkeeper_info(BTTransaction) ->
+    kz_json:from_list(
+      [{<<"id">>, kz_doc:id(BTTransaction)}
+      ,{<<"merchant_account_id">>, kz_json:get_value(<<"merchant_account_id">>, BTTransaction)}
+      ]).
 
 -spec type(kz_json:object()) -> ne_binary().
 type(BTTransaction) ->
@@ -378,25 +361,22 @@ type(BTTransaction) ->
         'false' -> <<"credit">>
     end.
 
--spec set_status(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
-set_status(BTTransaction, Transaction) ->
-    Status = kz_json:get_value(<<"status">>, BTTransaction),
-    kz_transaction:set_status(Status, Transaction).
+-spec status(kz_json:object()) -> ne_binary().
+status(BTTransaction) ->
+    kz_json:get_ne_binary_value(<<"status">>, BTTransaction).
 
 -spec amount(kz_json:object()) -> units().
 amount(BTTransaction) ->
     Amount = kz_json:get_integer_value(<<"amount">>, BTTransaction),
     wht_util:dollars_to_units(Amount).
 
--spec set_created(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
-set_created(BTTransaction, Transaction) ->
-    Created = utc_to_gregorian_seconds(kz_json:get_value(<<"created_at">>, BTTransaction)),
-    kz_transaction:set_created(Created, Transaction).
+-spec created(kz_json:object()) -> gregorian_seconds().
+created(BTTransaction) ->
+    utc_to_gregorian_seconds(kz_json:get_value(<<"created_at">>, BTTransaction)).
 
--spec set_modified(kz_json:object(), kz_transaction:transaction()) -> kz_transaction:transaction().
-set_modified(BTTransaction, Transaction) ->
-    Modified = utc_to_gregorian_seconds(kz_json:get_value(<<"update_at">>, BTTransaction)),
-    kz_transaction:set_modified(Modified, Transaction).
+-spec modified(kz_json:object()) -> gregorian_seconds().
+modified(BTTransaction) ->
+    utc_to_gregorian_seconds(kz_json:get_value(<<"update_at">>, BTTransaction)).
 
 -spec account_id(kz_json:object()) -> ne_binary().
 account_id(BTTransaction) ->

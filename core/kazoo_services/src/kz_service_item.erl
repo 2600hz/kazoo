@@ -50,7 +50,7 @@
         ]).
 
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -record(kz_service_item, {category :: api_binary()
                          ,item :: api_binary()

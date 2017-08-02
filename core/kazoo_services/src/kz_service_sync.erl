@@ -18,14 +18,25 @@
         ,terminate/2
         ,code_change/3
         ]).
+-export([mark_dirty/1]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(SERVER, ?MODULE).
 -define(SCAN_MSG, {'try_sync_service'}).
 
 -record(state, {}).
 -type state() :: #state{}.
+
+-define(SHOULD_SYNC_SERVICES
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"sync_services">>, 'false')).
+
+-define(SCAN_RATE
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND)).
+
+-define(SYNC_BUFFER_PERIOD
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"sync_buffer_period">>, 600)).
+
 
 %%%===================================================================
 %%% API
@@ -50,8 +61,8 @@ sync(Account) ->
 
 -spec clean(ne_binary()) -> kz_std_return().
 clean(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+    AccountId = kz_util:format_account_id(Account),
+    case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} ->
             immediate_sync(AccountId, kz_doc:set_soft_deleted(ServicesJObj, 'true'))
@@ -74,9 +85,9 @@ clean(Account) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
-    io:format("getting ~s sync_services~n", [?WHS_CONFIG_CAT]),
-    lager:debug("getting ~s sync_services", [?WHS_CONFIG_CAT]),
-    case kapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, 'false') of
+    io:format("getting ~s sync_services~n", [?CONFIG_CAT]),
+    lager:debug("getting ~s sync_services", [?CONFIG_CAT]),
+    case ?SHOULD_SYNC_SERVICES of
         'false' ->
             io:format("not starting sync services~n"),
             lager:debug("not starting sync services"),
@@ -90,8 +101,7 @@ init([]) ->
 
 -spec start_sync_service_timer() -> reference().
 start_sync_service_timer() ->
-    ScanRate = kapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND),
-    erlang:send_after(ScanRate, self(), ?SCAN_MSG).
+    erlang:send_after(?SCAN_RATE, self(), ?SCAN_MSG).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -198,10 +208,9 @@ sync(AccountId, ServicesJObj) ->
 
 -spec maybe_sync_service() -> kz_std_return().
 maybe_sync_service() ->
-    SyncBufferPeriod = kapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
     ViewOptions = [{'limit', 1}
                   ,'include_docs'
-                  ,{'endkey', kz_time:current_tstamp() - SyncBufferPeriod}
+                  ,{'endkey', kz_time:current_tstamp() - ?SYNC_BUFFER_PERIOD}
                   ],
     case kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
         {'error', _}=E -> E;
@@ -215,12 +224,10 @@ bump_modified(JObj) ->
     Services = kz_services:reconcile_only(AccountId),
     'true' = (Services =/= 'false'),
 
-    UpdatedServicesJObj =
-        kz_json:set_values([{<<"pvt_modified">>, kz_time:current_tstamp()}
-                           ,{<<"_rev">>, kz_doc:revision(JObj)}
-                           ]
-                          ,kz_services:to_json(Services)
-                          ),
+    Values = [{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+             ,{?SERVICES_PVT_REV, kz_doc:revision(JObj)}
+             ],
+    UpdatedServicesJObj = kz_json:set_values(Values, kz_services:to_json(Services)),
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, UpdatedServicesJObj) of
         {'error', _}=E ->
             %% If we conflict or cant save the doc with a new modified timestamp
@@ -363,7 +370,7 @@ handle_topup_transactions(Account, [JObj|JObjs]=List, Retry) when Retry > 0 ->
         ?CODE_TOPUP ->
             Amount = kz_json:get_value(<<"pvt_amount">>, JObj),
             Transaction = kz_transaction:credit(Account, Amount),
-            Transaction1 = kz_transaction:set_reason(<<"topup">>, Transaction),
+            Transaction1 = kz_transaction:set_reason(wht_util:topup(), Transaction),
             case kz_transaction:save(Transaction1) of
                 {'ok', _} -> 'ok';
                 {'error', 'conflict'} ->
@@ -413,36 +420,28 @@ get_billing_id(AccountId, ServicesJObj) ->
     end.
 
 -spec mark_dirty(ne_binary() | kzd_services:doc()) -> kz_std_return().
-mark_dirty(AccountId) when is_binary(AccountId) ->
-    case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+mark_dirty(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} -> mark_dirty(ServicesJObj)
     end;
 mark_dirty(ServicesJObj) ->
-    kz_datamgr:save_doc(?KZ_SERVICES_DB
-                       ,kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                           ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                                           ]
-                                          ,ServicesJObj
-                                          )
-                       ).
+    Values = [{?SERVICES_PVT_IS_DIRTY, 'true'}
+             ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+             ],
+    kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)).
 
 -spec mark_clean(kzd_services:doc()) -> kz_std_return().
 mark_clean(ServicesJObj) ->
-    kz_datamgr:save_doc(?KZ_SERVICES_DB
-                       ,kzd_services:set_is_dirty(ServicesJObj, 'false')
-                       ).
+    kz_datamgr:save_doc(?KZ_SERVICES_DB, kzd_services:set_is_dirty(ServicesJObj, 'false')).
 
 -spec mark_clean_and_status(ne_binary(), kzd_services:doc()) -> kz_std_return().
 mark_clean_and_status(Status, ServicesJObj) ->
     lager:debug("marking services clean with status ~s", [Status]),
-    kz_datamgr:save_doc(?KZ_SERVICES_DB
-                       ,kz_json:set_values([{<<"pvt_dirty">>, 'false'}
-                                           ,{<<"pvt_status">>, Status}
-                                           ]
-                                          ,ServicesJObj
-                                          )
-                       ).
+    Values = [{?SERVICES_PVT_IS_DIRTY, 'false'}
+             ,{?SERVICES_PVT_STATUS, Status}
+             ],
+    kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)).
 
 -spec maybe_update_billing_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->

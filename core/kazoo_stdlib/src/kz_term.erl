@@ -113,7 +113,7 @@ to_float(X, notstrict) when is_binary(X) ->
 to_float(X, S) when is_list(X) ->
     try list_to_float(X)
     catch
-        'error':'badarg' when S =:= 'notstrict' -> list_to_integer(X)*1.0 %% "500" -> 500.0
+        'error':'badarg' when S =:= 'notstrict' -> 1.0 * list_to_integer(X)
     end;
 to_float(X, 'strict') when is_integer(X) -> erlang:error('badarg');
 to_float(X, 'notstrict') when is_integer(X) -> X * 1.0.
@@ -213,7 +213,7 @@ always_false(_) -> 'false'.
 -spec is_ne_binary(any()) -> boolean().
 is_ne_binary(V) ->
     is_binary(V)
-        andalso is_not_empty(V).
+        andalso not is_empty(V).
 
 -spec is_api_ne_binary(any()) -> boolean().
 is_api_ne_binary(undefined) -> true;
@@ -258,7 +258,7 @@ is_empty(MaybeJObj) ->
     end.
 
 -spec is_not_empty(any()) -> boolean().
-is_not_empty(Term) -> (not is_empty(Term)).
+is_not_empty(Term) -> not is_empty(Term).
 
 -spec is_proplist(any()) -> boolean().
 is_proplist(Term) when is_list(Term) ->
@@ -271,25 +271,25 @@ identity(X) -> X.
 -spec to_lower_binary(any()) -> api_binary().
 to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
-to_lower_binary(Else) -> to_lower_binary(?MODULE:to_binary(Else)).
+to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
 
 -spec to_lower_string(any()) -> 'undefined' | list().
 to_lower_string('undefined') -> 'undefined';
 to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
 to_lower_string(Else) ->
-    to_lower_string(?MODULE:to_list(Else)).
+    to_lower_string(to_list(Else)).
 
 
 -spec to_upper_binary(any()) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
-to_upper_binary(Else) -> to_upper_binary(?MODULE:to_binary(Else)).
+to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).
 
 -spec to_upper_string(any()) -> 'undefined' | list().
 to_upper_string('undefined') -> 'undefined';
 to_upper_string(L) when is_list(L) -> [to_upper_char(C) || C <- L];
-to_upper_string(Else) -> to_upper_string(?MODULE:to_list(Else)).
+to_upper_string(Else) -> to_upper_string(to_list(Else)).
 
 -spec to_upper_char(char()) -> char().
 to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
@@ -306,7 +306,7 @@ to_lower_char(C) -> C.
 
 -spec a1hash(ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
-    ?MODULE:to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
+    to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
 %% found via trapexit
 -spec floor(integer() | float()) -> integer().

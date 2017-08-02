@@ -247,6 +247,7 @@
                         }).
 -type bt_transaction() :: #bt_transaction{}.
 -type bt_transactions() :: [bt_transaction()].
+-type api_bt_transaction() :: undefined | bt_transaction().
 
 -record(bt_error, {code :: api_binary()
                   ,message :: api_binary()

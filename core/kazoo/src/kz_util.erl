@@ -345,6 +345,7 @@ format_account_id(Account, Year, Month) when is_integer(Year),
 -spec format_account_mod_id(api_binary(), gregorian_seconds() | kz_now()) -> api_binary().
 -spec format_account_mod_id(api_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
                                    api_binary().
+
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
 

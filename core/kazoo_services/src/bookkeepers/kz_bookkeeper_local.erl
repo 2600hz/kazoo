@@ -6,6 +6,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_local).
+-behaviour(kz_gen_bookkeeper).
 
 -export([is_good_standing/2]).
 -export([sync/2]).
@@ -13,7 +14,7 @@
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -21,7 +22,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_good_standing(ne_binary(), ne_binary()) -> 'true'.
+-spec is_good_standing(ne_binary(), ne_binary()) -> boolean().
 is_good_standing(_AccountId, _Status) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -30,7 +31,7 @@ is_good_standing(_AccountId, _Status) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(any(), any()) -> bookkeeper_sync_result().
+-spec sync(kz_service_item:items(), ne_binary()) -> bookkeeper_sync_result().
 sync(_Items, _AccountId) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -39,7 +40,7 @@ sync(_Items, _AccountId) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(ne_binary(), kz_transactions:kz_transactions()) -> 'ok'.
+-spec commit_transactions(ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
 commit_transactions(_BillingId, Transactions) ->
     kz_transactions:save(Transactions),
     'ok'.
@@ -50,7 +51,7 @@ commit_transactions(_BillingId, Transactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), kz_json:objects()) -> [].
+-spec charge_transactions(ne_binary(), kz_json:objects()) -> kz_json:objects().
 charge_transactions(_BillingId, _Transactions) -> [].
 
 %%--------------------------------------------------------------------
@@ -61,7 +62,7 @@ charge_transactions(_BillingId, _Transactions) -> [].
 %%--------------------------------------------------------------------
 -spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
-                          {'error', any()}.
+                          {'error', atom()}.
 transactions(AccountId, From, To) ->
     case kz_transactions:fetch_local(AccountId, From, To) of
         {'error', _Reason}=Error -> Error;

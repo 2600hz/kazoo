@@ -28146,7 +28146,11 @@
                     "type": "string"
                 },
                 "modules": {
-                    "description": "services modules"
+                    "description": "services modules",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "reseller_bookkeeper_lookup": {
                     "default": false,
@@ -28156,6 +28160,7 @@
                 "scan_rate": {
                     "default": 20000,
                     "description": "services scan rate",
+                    "minimum": 0,
                     "type": "integer"
                 },
                 "should_save_master_audit_logs": {
@@ -28171,6 +28176,7 @@
                 "sync_buffer_period": {
                     "default": 600,
                     "description": "services sync buffer period",
+                    "minimum": 0,
                     "type": "integer"
                 },
                 "sync_services": {

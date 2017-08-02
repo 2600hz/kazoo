@@ -6,12 +6,13 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_transactions).
+-behaviour(kz_gen_service).
 
 -export([current_billing_period/2]).
 -export([current_billing_period/3]).
 -export([reconcile/1]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

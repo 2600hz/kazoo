@@ -17,7 +17,7 @@
 -type items() :: dict:dict().
 -export_type([items/0]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

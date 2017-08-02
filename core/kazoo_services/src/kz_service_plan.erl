@@ -11,7 +11,7 @@
 -export([activation_charges/3]).
 -export([create_items/3]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -22,15 +22,23 @@
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), ne_binary()) -> kzd_service_plan:api_doc().
 fetch(PlanId, VendorId) ->
-    VendorDb = kz_util:format_account_id(VendorId, 'encoded'),
-    case kz_datamgr:open_cache_doc(VendorDb, PlanId) of
+    VendorDb = kz_util:format_account_db(VendorId),
+    case fetch_plan(VendorDb, PlanId) of
         {'ok', ServicePlan} ->
-            lager:debug("found service plan ~s/~s", [VendorDb, PlanId]),
+            ?LOG_DEBUG("found service plan ~s/~s", [VendorDb, PlanId]),
             ServicePlan;
         {'error', _R} ->
             lager:debug("unable to open service plan ~s/~s: ~p", [VendorDb, PlanId, _R]),
             'undefined'
     end.
+
+-ifdef(TEST).
+fetch_plan(?A_MASTER_ACCOUNT_DB, ?A_MASTER_PLAN_ID) ->
+    {ok, kz_services_test:fixture("a_master_plans.json")}.
+-else.
+fetch_plan(VendorDb, PlanId) ->
+    kz_datamgr:open_cache_doc(VendorDb, PlanId).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public

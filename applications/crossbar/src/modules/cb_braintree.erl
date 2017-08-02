@@ -527,7 +527,7 @@ charge_billing_id(Amount, Context) ->
                     ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
                     ];
                 _Id ->
-                    [{<<"purchase_order">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+                    [{<<"purchase_order">>, ?CODE_MANUAL_ADDITION_SUB_ACCOUNT}
                     ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
                     ]
             end,
@@ -559,10 +559,10 @@ add_credit_to_account(BraintreeData, Units, LedgerId, AccountId, OrderId) ->
     Routines = [fun(T) ->
                         case LedgerId =/= AccountId of
                             'false' ->
-                                kz_transaction:set_reason(<<"manual_addition">>, T);
+                                kz_transaction:set_reason(wht_util:manual_addition(), T);
                             'true'  ->
                                 T1 = kz_transaction:set_sub_account_info(AccountId, T),
-                                kz_transaction:set_reason(<<"sub_account_manual_addition">>, T1)
+                                kz_transaction:set_reason(wht_util:sub_account_manual_addition(), T1)
                         end
                 end
                ,fun(T) -> kz_transaction:set_bookkeeper_info(BraintreeData, T) end

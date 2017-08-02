@@ -6,6 +6,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_http).
+-behaviour(kz_gen_bookkeeper).
 
 -export([is_good_standing/2]).
 -export([sync/2]).
@@ -13,7 +14,7 @@
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(DEFAULT_SYNC_CONTENT_TYPE, ?DEFAULT_CONTENT_TYPE).
 
@@ -26,7 +27,7 @@
               }).
 -type sync() :: #sync{}.
 
--define(MOD_CONFIG_CAT, <<(?WHS_CONFIG_CAT)/binary, ".http_sync">>).
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".http_sync">>).
 
 -define(CONNECT_TIMEOUT_MS
        ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"connect_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
@@ -56,7 +57,7 @@ is_good_standing(_AccountId, Status) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(kz_service_items:items(), any()) -> bookkeeper_sync_result().
+-spec sync(kz_service_items:items(), ne_binary()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
     Sync = #sync{id = get_sync_id(AccountId)
                 ,account_id = AccountId
@@ -96,18 +97,18 @@ handle_resp({'error', _E}, _Sync) ->
 
 -spec get_sync_id(ne_binary()) -> ne_binary().
 get_sync_id(AccountId) ->
-    {'ok', JObj} = kz_services:fetch_services_doc(AccountId, 'false'),
+    {'ok', JObj} = kz_services:fetch_services_doc(AccountId),
     kz_doc:revision(JObj).
 
 -spec http_payload(sync()) -> iolist().
 http_payload(#sync{content_type = <<"application/json">>} = Sync) ->
     lager:debug("creating application/json payload for http billing sync"),
-    JObj = kz_json:from_list([
-                              {<<"account_id">>, Sync#sync.account_id}
-                             ,{<<"sync_id">>, Sync#sync.id}
-                             ,{<<"items">>, kz_service_items:public_json(Sync#sync.items)}
-                             ]),
-    kz_json:encode(JObj).
+    kz_json:encode(
+      kz_json:from_list(
+        [{<<"account_id">>, Sync#sync.account_id}
+        ,{<<"sync_id">>, Sync#sync.id}
+        ,{<<"items">>, kz_service_items:public_json(Sync#sync.items)}
+        ])).
 
 -spec http_headers(sync()) -> kz_proplist().
 http_headers(Sync) ->
@@ -132,7 +133,7 @@ to_list(Value) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(ne_binary(), kz_transactions:kz_transactions()) -> 'ok'.
+-spec commit_transactions(ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
 commit_transactions(_BillingId, Transactions) ->
     kz_transactions:save(Transactions),
     'ok'.
@@ -154,7 +155,7 @@ charge_transactions(_BillingId, _Transactions) -> [].
 %%--------------------------------------------------------------------
 -spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
-                          {'error', any()}.
+                          {'error', atom()}.
 transactions(AccountId, From, To) ->
     case kz_transactions:fetch_local(AccountId, From, To) of
         {'error', _Reason}=Error -> Error;

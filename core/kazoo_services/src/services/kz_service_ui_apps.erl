@@ -7,6 +7,7 @@
 %%% Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(kz_service_ui_apps).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 -export([is_in_use/1]).
@@ -14,7 +15,7 @@
 -define(ACCOUNTS_DB, <<"accounts">>).
 -define(CATEGORY, <<"ui_apps">>).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

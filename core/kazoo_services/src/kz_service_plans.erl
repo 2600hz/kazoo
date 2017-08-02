@@ -23,7 +23,7 @@
 -export([append_vendor_plan/3]).
 -endif.
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -record(kz_service_plans, {vendor_id :: api_binary()
                           ,plans = [] :: kzd_service_plan:docs()
@@ -52,6 +52,7 @@ empty() -> [].
 -spec from_service_json(kzd_services:doc()) -> plans().
 from_service_json(ServicesJObj) ->
     PlanIds = kzd_services:plan_ids(ServicesJObj),
+    ?LOG_DEBUG("found plans: ~s", [kz_util:iolist_join($,, PlanIds)]),
     ResellerId = find_reseller_id(ServicesJObj),
     get_plans(PlanIds, ResellerId, ServicesJObj).
 
@@ -75,7 +76,7 @@ public_json(ServicePlans) ->
 -spec public_json(plans(), kz_json:object()) -> kzd_service_plan:doc().
 public_json([], JObj) ->
     kzd_service_plan:set_plan(kzd_service_plan:new(), JObj);
-public_json([#kz_service_plans{plans=Plans}|ServicePlans], JObj) ->
+public_json([#kz_service_plans{plans = Plans}|ServicePlans], JObj) ->
     NewJObj = lists:foldl(fun merge_plans/2, JObj, Plans),
     public_json(ServicePlans, NewJObj).
 
@@ -91,20 +92,29 @@ merge_plans(SerivcePlan, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_service_plan(ne_binary(), ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 add_service_plan(PlanId, ResellerId, ServicesJObj) ->
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
-    case kz_datamgr:open_cache_doc(ResellerDb, PlanId) of
+    ResellerDb = kz_util:format_account_db(ResellerId),
+    case open_cache_doc(ResellerDb, PlanId) of
         {'error', _R} ->
             lager:info("failed to load service plan ~s from ~s: ~p", [PlanId, ResellerDb, _R]),
-            Plan = kz_json:from_list([{<<"account_id">>, ResellerId}]),
+            Plan = kz_json:from_list(
+                     [{<<"account_id">>, ResellerId}
+                     ]),
             kzd_services:set_plan(ServicesJObj, PlanId, Plan);
         {'ok', ServicePlan} ->
-            Plan =
-                kz_json:from_list(
-                  [{<<"account_id">>, ResellerId}
-                  ,{<<"category">>, kzd_service_plan:grouping_category(ServicePlan)}
-                  ]),
+            Plan = kz_json:from_list(
+                     [{<<"account_id">>, ResellerId}
+                     ,{<<"category">>, kzd_service_plan:grouping_category(ServicePlan)}
+                     ]),
             kzd_services:set_plan(ServicesJObj, PlanId, Plan)
     end.
+
+-ifdef(TEST).
+open_cache_doc(?A_MASTER_ACCOUNT_DB, ?A_MASTER_PLAN_ID) ->
+    {ok, kz_services_test:fixture("a_master_plans.json")}.
+-else.
+open_cache_doc(Db, Id) ->
+    kz_datamgr:open_cache_doc(Db, Id).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -192,10 +202,8 @@ create_items(ServiceJObj, ServicePlans) ->
 -spec public_json_items(kzd_services:doc()) -> kz_json:object().
 public_json_items(ServiceJObj) ->
     case create_items(ServiceJObj) of
-        {'ok', Items} ->
-            kz_service_items:public_json(Items);
-        {'error', _} ->
-            kz_json:new()
+        {'ok', Items} -> kz_service_items:public_json(Items);
+        {'error', _} -> kz_json:new()
     end.
 
 %%--------------------------------------------------------------------
@@ -219,7 +227,6 @@ get_plans(PlanIds, ResellerId, Services) ->
 get_plan(PlanId, ResellerId, Services, ServicePlans) ->
     VendorId = kzd_services:plan_account_id(Services, PlanId, ResellerId),
     Overrides = kzd_services:plan_overrides(Services, PlanId),
-
     case maybe_fetch_vendor_plan(PlanId, VendorId, ResellerId, Overrides) of
         'undefined' -> ServicePlans;
         Plan -> append_vendor_plan(Plan, VendorId, ServicePlans)
@@ -256,14 +263,14 @@ maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
 append_vendor_plan(Plan, VendorId, ServicePlans) ->
     case lists:keyfind(VendorId, #kz_service_plans.vendor_id, ServicePlans) of
         'false' ->
-            ServicePlan = #kz_service_plans{vendor_id=VendorId
-                                           ,plans=[Plan]
+            ServicePlan = #kz_service_plans{vendor_id = VendorId
+                                           ,plans = [Plan]
                                            },
             [ServicePlan|ServicePlans];
-        #kz_service_plans{plans=Plans}=ServicePlan ->
+        #kz_service_plans{plans = Plans}=ServicePlan ->
             lists:keyreplace(VendorId
                             ,#kz_service_plans.vendor_id
                             ,ServicePlans
-                            ,ServicePlan#kz_service_plans{plans=[Plan|Plans]}
+                            ,ServicePlan#kz_service_plans{plans = [Plan|Plans]}
                             )
     end.
