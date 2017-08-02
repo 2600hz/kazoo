@@ -18,10 +18,10 @@
 -spec format_event(kz_json:object(), event(), boolean()) -> ne_binary().
 -spec format_event(kz_json:object(), event(), boolean(), boolean()) -> ne_binary().
 format_event(Opts, Event) ->
-    JObj = format_event(Opts, Event, props:get_is_true(<<"include_metadata">>, Opts, 'true')),
-    kz_json:encode(JObj).
-format_event(_Opts, #event{body=JObj}, 'false') ->
-    kz_json:encode(JObj);
+    JObj = format_event(Opts, Event, kz_json:is_true(<<"include_metadata">>, Opts, 'true')),
+    encode(Opts, JObj).
+format_event(Opts, #event{body=JObj}, 'false') ->
+    encode(Opts, JObj);
 format_event(Opts, Event, 'true') ->
     format_event(Opts, Event, 'true', kz_json:get_value(<<"normalize">>, Opts, 'true')).
 format_event(_Opts, Event, _IncludeMeta, 'false') ->
@@ -36,3 +36,10 @@ format_event(_Opts, Event, _IncludeMeta, 'false') ->
     kz_json:from_list(Props);
 format_event(Opts, Event, IncludeMeta, 'true') ->
     kz_json:normalize(format_event(Opts, Event, IncludeMeta, 'false')).
+
+-spec encode(kz_json:object(), kz_json:object()) -> ne_binary().
+encode(Opts, JObj) ->
+    case kz_json:is_true(<<"pretty">>, Opts, 'false') of
+        'true' -> kz_json:encode(JObj, ['pretty']);
+        'false' -> kz_json:encode(JObj)
+    end.

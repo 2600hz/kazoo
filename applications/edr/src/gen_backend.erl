@@ -97,6 +97,7 @@ handle_call(_Request, _From, _State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'push', Event=#event{}}, State=#state{module_state=ModState, module=Mod}) ->
+    lager:error("push"),
     WorkResult = case should_push(State, Event) of
                      'true' -> Mod:push(ModState, Event);
                      _False -> 'ok'
@@ -131,7 +132,7 @@ handle_info(Info, #state{module=Mod}=State) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(Reason, #state{module_state=ModState, module=Mod}) ->
-    Mod:stop_backend(ModState, Reason),
+    Mod:stop(ModState, Reason),
     'ok'.
 
 %%--------------------------------------------------------------------
