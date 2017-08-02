@@ -675,13 +675,12 @@ gateway_to_endpoint(DestinationNumber
     IsEmergency = gateway_emergency_resource(Gateway),
     {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency, PrivacyMode),
 
-    CCVs = props:filter_undefined(
-             [{<<"Emergency-Resource">>, IsEmergency}
-             ,{<<"Matched-Number">>, DestinationNumber}
-             ,{<<"Resource-Type">>, <<"offnet-termination">>}
-             ,{<<"RTCP-MUX">>, RTCP_MUX}
-              | gateway_from_uri_settings(Gateway)
-             ]),
+    CCVs = [{<<"Emergency-Resource">>, IsEmergency}
+           ,{<<"Matched-Number">>, DestinationNumber}
+           ,{<<"Resource-Type">>, <<"offnet-termination">>}
+           ,{<<"RTCP-MUX">>, RTCP_MUX}
+            | gateway_from_uri_settings(Gateway)
+           ],
     kz_json:from_list(
       props:filter_empty(
         [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
