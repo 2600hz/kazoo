@@ -38,7 +38,10 @@ Key | Description | Type | Default | Required
 `gateways.[].channel_selection` | Automatic selection of the channel within the span: ascending starts at 1 and moves up; descending is the opposite | `string('ascending' | 'descending')` | `ascending` | `false`
 `gateways.[].codecs.[]` |   | `string()` |   | `false`
 `gateways.[].codecs` | A list of single list codecs supported by this gateway (to support backward compatibilty) | `array(string('G729' | 'PCMU' | 'PCMA' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'GSM' | 'OPUS' | 'H261' | 'H263' | 'H264' | 'VP8'))` |   | `false`
-`gateways.[].custom_sip_headers` |   | `object()` | `{}` | `false`
+`gateways.[].custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
+`gateways.[].custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
+`gateways.[].custom_sip_headers.^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`
+`gateways.[].custom_sip_headers` | A property list of SIP headers | `object()` |   | `false`
 `gateways.[].custom_sip_interface` | The name of a custom SIP interface | `string()` |   | `false`
 `gateways.[].enabled` | Determines if the resource gateway is currently enabled | `boolean()` | `true` | `false`
 `gateways.[].endpoint_type` | What type of endpoint is this gateway | `string('sip' | 'freetdm' | 'skype' | 'amqp')` | `sip` | `false`
@@ -77,6 +80,15 @@ Key | Description | Type | Default | Required
 `rules.[]` |   | `string()` |   | `false`
 `rules` | A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups | `array(string())` | `[]` | `false`
 `weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer()` | `50` | `false`
+
+##### custom_sip_headers
+
+Custom SIP headers applied to an INVITE
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`
 
 ##### formatters
 

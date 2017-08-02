@@ -17,6 +17,8 @@
         ,sip_route/1, sip_route/2, set_sip_route/2
         ,custom_sip_headers_inbound/1, custom_sip_headers_inbound/2, set_custom_sip_headers_inbound/2
         ,custom_sip_headers_outbound/1, custom_sip_headers_outbound/2, set_custom_sip_headers_outbound/2
+        ,custom_sip_header_inbound/2, custom_sip_header_inbound/3
+        ,custom_sip_header_outbound/2, custom_sip_header_outbound/3
 
         ,sip_settings/1, sip_settings/2, set_sip_settings/2
 
@@ -51,10 +53,7 @@
 -define(IP, [?SIP, <<"ip">>]).
 -define(INVITE_FORMAT, [?SIP, <<"invite_format">>]).
 -define(ROUTE, [?SIP, <<"route">>]).
--define(CUSTOM_SIP_HEADERS, <<"custom_sip_headers">>).
--define(CUSTOM_SIP_HEADERS_KV_ONLY, [?SIP, ?CUSTOM_SIP_HEADERS]).
--define(CUSTOM_SIP_HEADERS_IN, [?SIP, ?CUSTOM_SIP_HEADERS, <<"in">>]).
--define(CUSTOM_SIP_HEADERS_OUT, [?SIP, ?CUSTOM_SIP_HEADERS, <<"out">>]).
+-define(CUSTOM_SIP_HEADERS, [?SIP, <<"custom_sip_headers">>]).
 
 -define(PRESENCE_ID, <<"presence_id">>).
 -define(NAME, <<"name">>).
@@ -131,25 +130,34 @@ sip_route(DeviceJObj) ->
 sip_route(DeviceJObj, Default) ->
     kz_json:get_value(?ROUTE, DeviceJObj, Default).
 
+-spec custom_sip_headers(doc()) -> kz_json:object().
+custom_sip_headers(DeviceJObj) ->
+    kz_json:get_json_value(?CUSTOM_SIP_HEADERS, DeviceJObj, kz_json:new()).
+
 -spec custom_sip_headers_inbound(doc()) -> api_object().
 -spec custom_sip_headers_inbound(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers_inbound(DeviceJObj) ->
     custom_sip_headers_inbound(DeviceJObj, 'undefined').
 
 custom_sip_headers_inbound(DeviceJObj, Default) ->
-    LegacyCSH = kz_json:filter(fun filter_custom_sip_headers/1
-                              ,kz_json:get_value(?CUSTOM_SIP_HEADERS_KV_ONLY, DeviceJObj, kz_json:new())),
-    InCSH = kz_json:get_value(?CUSTOM_SIP_HEADERS_IN, DeviceJObj, kz_json:new()),
-    CustomHeaders = kz_json:merge_jobjs(InCSH, LegacyCSH),
-    case kz_json:is_empty(CustomHeaders) of
-        'false' -> CustomHeaders;
-        'true' -> Default
-    end.
+    CSH = custom_sip_headers(DeviceJObj),
+    kz_custom_sip_headers:inbound(CSH, Default).
 
--spec filter_custom_sip_headers({ne_binary(), any()}) -> boolean().
-filter_custom_sip_headers({<<"in">>, _}) -> 'false';
-filter_custom_sip_headers({<<"out">>, _}) -> 'false';
-filter_custom_sip_headers(_) -> 'true'.
+-spec custom_sip_header_inbound(doc(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec custom_sip_header_inbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
+custom_sip_header_inbound(DeviceJObj, Name) ->
+    custom_sip_header_inbound(DeviceJObj, Name, 'undefined').
+custom_sip_header_inbound(DeviceJObj, Name, Default) ->
+    CSH = custom_sip_headers(DeviceJObj),
+    kz_custom_sip_headers:inbound_header(CSH, Name, Default).
+
+-spec custom_sip_header_outbound(doc(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec custom_sip_header_outbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
+custom_sip_header_outbound(DeviceJObj, Name) ->
+    custom_sip_header_outbound(DeviceJObj, Name, 'undefined').
+custom_sip_header_outbound(DeviceJObj, Name, Default) ->
+    CSH = custom_sip_headers(DeviceJObj),
+    kz_custom_sip_headers:outbound_header(CSH, Name, Default).
 
 -spec custom_sip_headers_outbound(doc()) -> api_object().
 -spec custom_sip_headers_outbound(doc(), Default) -> kz_json:object() | Default.
@@ -157,7 +165,8 @@ custom_sip_headers_outbound(DeviceJObj) ->
     custom_sip_headers_outbound(DeviceJObj, 'undefined').
 
 custom_sip_headers_outbound(DeviceJObj, Default) ->
-    kz_json:get_value(?CUSTOM_SIP_HEADERS_OUT, DeviceJObj, Default).
+    CSH = custom_sip_headers(DeviceJObj),
+    kz_custom_sip_headers:outbound(CSH, Default).
 
 -spec sip_settings(doc()) -> api_object().
 -spec sip_settings(doc(), Default) -> kz_json:object() | Default.
@@ -197,11 +206,13 @@ set_sip_route(DeviceJObj, Route) ->
 
 -spec set_custom_sip_headers_inbound(doc(), kz_json:object()) -> doc().
 set_custom_sip_headers_inbound(Device, Headers) ->
-    kz_json:set_value(?CUSTOM_SIP_HEADERS_IN, Headers, Device).
+    CSH = custom_sip_headers(Device),
+    kz_custom_sip_headers:set_inbound(CSH, Headers).
 
 -spec set_custom_sip_headers_outbound(doc(), kz_json:object()) -> doc().
 set_custom_sip_headers_outbound(Device, Headers) ->
-    kz_json:set_value(?CUSTOM_SIP_HEADERS_OUT, Headers, Device).
+    CSH = custom_sip_headers(Device),
+    kz_custom_sip_headers:set_outbound(CSH, Headers).
 
 -spec set_sip_settings(doc(), kz_json:object()) -> doc().
 set_sip_settings(DeviceJObj, SipJObj) ->
