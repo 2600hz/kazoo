@@ -20,7 +20,10 @@ Key | Description | Type | Default | Required
 `caller_id_name` | The indicated name of the caller | `string()` |   | `false`
 `caller_id_number` | The indicated number of the caller | `string()` |   | `false`
 `custom_channel_vars` | Kazoo-specific key/value pairs set on the channel | `object()` |   | `false`
-`custom_sip_headers` | A property list of SIP headers beging with the prefix 'X-' | `object()` |   | `false`
+`custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
+`custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
+`custom_sip_headers.^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`
+`custom_sip_headers` | A property list of SIP headers | `object()` |   | `false`
 `digits_dialed` | All the DTMF tones detected on this leg of the call | `string()` |   | `false`
 `disposition` | Who sent the SIP BYE message | `string()` |   | `false`
 `duration_seconds` | The duration of the call leg, in seconds | `string()` |   | `false`
@@ -52,6 +55,15 @@ Key | Description | Type | Default | Required
 `to` | Built by Kazoo, depending on direction, to represent the To user | `string()` |   | `false`
 `to_uri` | The To SIP URI | `string()` |   | `false`
 `user_agent` | User agent header from SIP packet | `string()` |   | `false`
+
+##### custom_sip_headers
+
+Custom SIP headers applied to an INVITE
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`
 
 
 
