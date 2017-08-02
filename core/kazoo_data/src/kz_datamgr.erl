@@ -780,6 +780,9 @@ maybe_revert_publish('false') ->
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
+save_docs(DbName, []=Docs, _)
+  when ?VALID_DBNAME ->
+    {ok, Docs};
 save_docs(DbName, [Doc|_]=Docs, Options) when is_list(Docs)
                                               andalso ?VALID_DBNAME ->
     OldSetting = maybe_toggle_publish(Options),
