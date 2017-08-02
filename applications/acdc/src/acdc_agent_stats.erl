@@ -462,7 +462,7 @@ log_state_change(AccountId, AgentId, NewStateName, ExtraProps) ->
                                                     ,{<<"transition_to">>, NewStateName}
                                                     %%,{<<"reason">>, Reason}
                                                      | ExtraProps])),
-    kz_edr:log_event(?APP_NAME, ?APP_VERSION, 'info', Body, AccountId).
+    kz_edr:info(?APP_NAME, ?APP_VERSION, Body, AccountId).
 
 log_agent_event(AccountId, AgentId, Event) ->
     log_agent_event(AccountId, AgentId, Event, []).
@@ -472,4 +472,4 @@ log_agent_event(AccountId, AgentId, Event, ExtraProps) ->
                                                     ,{<<"event">>, Event}
                                                     %%,{<<"reason">>, Reason}
                                                      | ExtraProps])),
-    kz_edr:log_event(?APP_NAME, ?APP_VERSION, 'info', Body, AccountId).
+    kz_edr:info(?APP_NAME, ?APP_VERSION, Body, AccountId).

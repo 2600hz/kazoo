@@ -38,5 +38,5 @@ handle(Data, Call) ->
                      ,{<<"Callflow-ID">>, props:get_value([<<"Key-Value-Store">>, <<"cf_flow_id">>], CallProps)}
                      ],
     JTags = kz_json:from_list(props:filter_undefined(Tags ++ AdditionalTags)),
-    kz_edr:log_event(<<"application">>, ?APP_NAME, JTags),
+    kz_edr:info(?APP_NAME, ?APP_VERSION, JTags, kapps_call:account_id(Call)),
     cf_exe:continue(Call).

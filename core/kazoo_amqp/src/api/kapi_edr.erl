@@ -16,7 +16,7 @@
 -include_lib("amqp_util.hrl").
 
 -define(EDR_REQ_HEADERS, [<<"Body">>, <<"Level">>]).
--define(OPTIONAL_EDR_HEADERS, [<<"Account-ID"]).
+-define(OPTIONAL_EDR_HEADERS, [<<"Account-ID">>]).
 -define(EDR_REQ_VALUES, []).
 -define(EDR_REQ_TYPES, [{<<"Body">>, fun kz_json:is_json_object/1}]).
 
@@ -29,7 +29,7 @@
 build_msg(Prop) when is_list(Prop) ->
     case validate(Prop) of
         'true' -> kz_api:build_message(Prop, ?EDR_REQ_HEADERS, ?OPTIONAL_EDR_HEADERS);
-        'false' -> {error, "Proplist failed validation for edr_build_msg"}
+        'false' -> {'error', "Proplist failed validation for edr_build_msg"}
     end;
 build_msg(JObj) ->
     build_msg(kz_json:to_proplist(JObj)).

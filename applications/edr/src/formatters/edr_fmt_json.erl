@@ -30,6 +30,7 @@ format_event(_Opts, Event, _IncludeMeta, 'false') ->
             ,{<<"app_name">>, Event#event.app_name}
             ,{<<"app_version">>, Event#event.app_version}
             ,{<<"body">>, Event#event.body}
+            ,{<<"level">>, kz_term:to_binary(Event#event.level)}
             ,{<<"timestamp">>, Event#event.timestamp}
             ],
     kz_json:from_list(Props);

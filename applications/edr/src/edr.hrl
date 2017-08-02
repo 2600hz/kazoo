@@ -13,6 +13,7 @@
                  ,enabled      :: boolean()
                  ,options      :: kz_json:object()
                  }).
+
 -type backend() :: #backend{}.
 -type work_result() :: 'ok' | {'error', Info :: any()} | {'exit', Reason ::any()}.
 -type init_ret(S) :: {'ok', S} |
@@ -20,11 +21,14 @@
                      {'stop', any()} |
                      'ignore'.
 
+-define(EDR_LEVELS, ['fatal', 'error', 'warn', 'info', 'debug', 'trace']).
+-type edr_level() :: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace'.
+
 -record(event, {account_id     :: api_binary()
                ,account_tree   :: api_ne_binaries()
                ,app_name       :: ne_binary()
                ,app_version    :: ne_binary()
-               ,level          :: ne_binary()
+               ,level          :: edr_level()
                ,body           :: ne_binary()
                ,timestamp      :: ne_binary()
                ,gregorian_time :: pos_integer()

@@ -87,7 +87,7 @@ event_from_kapi(JObj) ->
           ,account_tree=account_tree(AccountId)
           ,app_name=kz_json:get_value(<<"App-Name">>, JObj)
           ,app_version=kz_json:get_value(<<"App-Version">>, JObj)
-          ,level=kz_json:get_value(<<"Level">>, JObj)
+          ,level=kz_util:to_atom(kz_json:get_value(<<"Level">>, JObj))
           ,body=kz_json:get_value(<<"Body">>, JObj)
           ,timestamp=kz_time:iso_8601(GregorianTime)
           ,gregorian_time=GregorianTime
