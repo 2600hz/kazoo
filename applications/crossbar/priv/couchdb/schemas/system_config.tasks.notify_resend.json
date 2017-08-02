@@ -18,6 +18,12 @@
             "description": "Default max retries to re-publish",
             "type": "integer"
         },
+        "publish_timeout_ms": {
+            "default": 10000,
+            "description": "Timeout in milliseconds for publishing notification",
+            "minimum": 1,
+            "type": "integer"
+        },
         "reschedule_rules": {
             "default": {
                 "voicemail_new": {

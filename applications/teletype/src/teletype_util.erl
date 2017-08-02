@@ -455,7 +455,7 @@ render(TemplateId, Template, Macros) ->
         {'ok', IOData} -> iolist_to_binary(IOData);
         {'error', _E} ->
             lager:debug("failed to render '~s': ~p '~s'", [TemplateId, _E, Template]),
-            throw({'error', 'template_error'})
+            throw({'error', 'template_error', <<"failed to render template ", TemplateId/binary>>})
     end.
 
 -spec sort_templates(rendered_templates()) -> rendered_templates().
@@ -523,7 +523,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 
 -spec find_account_rep_email(api_object() | ne_binary()) -> api_binaries().
 find_account_rep_email('undefined') -> 'undefined';
-find_account_rep_email(<<_/binary>> = AccountId) ->
+find_account_rep_email(?NE_BINARY=AccountId) ->
     case kz_services:is_reseller(AccountId) of
         'true' ->
             lager:debug("finding admin email for reseller account ~s", [AccountId]),
@@ -533,9 +533,7 @@ find_account_rep_email(<<_/binary>> = AccountId) ->
             find_account_admin_email(find_reseller_id(AccountId))
     end;
 find_account_rep_email(AccountJObj) ->
-    find_account_rep_email(
-      find_account_id(AccountJObj)
-     ).
+    find_account_rep_email(find_account_id(AccountJObj)).
 
 -spec find_account_admin_email(api_binary()) -> api_binaries().
 -spec find_account_admin_email(api_binary(), api_binary()) -> api_binaries().

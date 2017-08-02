@@ -711,6 +711,7 @@
     "tasks.notify_resend.cycle_delay_time_ms": "Timeout in milliseconds between each cycle",
     "tasks.notify_resend.max_doc_read": "Max number of notifications to read from database for each cycle",
     "tasks.notify_resend.max_retries": "Default max retries to re-publish",
+    "tasks.notify_resend.publish_timeout_ms": "Timeout in milliseconds for publishing notification",
     "tasks.notify_resend.reschedule_rules": "Re-schedule rules for each notification type to apply",
     "tasks.notify_resend.retry_after_fudge_s": "Constant time in seconds which would be multipy with attemtps to set retry time",
     "tasks.numbers.db_page_size": "maximum count of numbers read from db at once",

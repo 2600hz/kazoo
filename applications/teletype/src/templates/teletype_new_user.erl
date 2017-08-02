@@ -52,8 +52,14 @@ init() ->
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(JObj) ->
-    'true' = kapi_notifications:new_user_v(JObj),
-    kz_util:put_callid(JObj),
+    handle_req(JObj, kapi_notifications:new_user_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [id()]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [id()]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),

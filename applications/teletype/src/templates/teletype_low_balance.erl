@@ -16,7 +16,7 @@
         ,category/0
         ,friendly_name/0
         ]).
--export([handle_low_balance/1]).
+-export([handle_req/1]).
 
 -include("teletype.hrl").
 
@@ -48,12 +48,18 @@ friendly_name() ->
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
-    teletype_bindings:bind(id(), ?MODULE, 'handle_low_balance').
+    teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
--spec handle_low_balance(kz_json:object()) -> 'ok'.
-handle_low_balance(JObj) ->
-    'true' = kapi_notifications:low_balance_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:low_balance_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [id()]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [id()]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -61,11 +67,11 @@ handle_low_balance(JObj) ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
         'false' -> teletype_util:notification_disabled(DataJObj, id());
-        'true' -> handle_req(DataJObj)
+        'true' -> process_req(DataJObj)
     end.
 
--spec handle_req(kz_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
+-spec process_req(kz_json:object()) -> 'ok'.
+process_req(DataJObj) ->
     Macros = macros(DataJObj),
 
     %% Load templates

@@ -51,8 +51,14 @@ init() ->
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(JObj) ->
-    'true' = kapi_notifications:skel_v(JObj),
-    kz_util:put_callid(JObj),
+    handle_req(JObj, kapi_notifications:skel_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -124,9 +130,10 @@ get_user(DataJObj) ->
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
-            lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
+            Msg = io_lib:format("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
+            lager:debug(Msg),
             case teletype_util:is_preview(DataJObj) of
-                'false' -> throw({'error', 'not_found'});
+                'false' -> throw({'error', 'missing_data', Msg});
                 'true' -> kz_json:new()
             end
     end.

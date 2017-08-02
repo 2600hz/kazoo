@@ -9,7 +9,7 @@
 -module(teletype_password_recovery).
 
 -export([init/0
-        ,handle_password_recovery/1
+        ,handle_req/1
         ]).
 
 -include("teletype.hrl").
@@ -49,12 +49,18 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"password_recovery">>, ?MODULE, 'handle_password_recovery').
+    teletype_bindings:bind(<<"password_recovery">>, ?MODULE, 'handle_req').
 
--spec handle_password_recovery(kz_json:object()) -> 'ok'.
-handle_password_recovery(JObj) ->
-    'true' = kapi_notifications:password_recovery_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:password_recovery_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),

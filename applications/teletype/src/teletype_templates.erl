@@ -93,7 +93,9 @@ build_renderer(TemplateId, ContentType, Template) ->
     ModuleName = renderer_name(TemplateId, ContentType),
     case kz_template:compile(Template, ModuleName,[{'auto_escape', 'false'}]) of
         {'ok', _} -> 'ok';
-        {'error', _} -> throw({'error', 'failed_template', ModuleName})
+        {'error', _E} ->
+            lager:debug("failed to render '~s': ~p", [TemplateId, _E]),
+            throw({'error', 'failed_template', ModuleName})
     end.
 
 -type template_attachment() :: {ne_binary(), binary()}.
@@ -296,7 +298,8 @@ render_master(?NE_BINARY=TemplateId, ?NE_BINARY=ContentType, Macros) ->
         {'ok', IOList} ->
             iolist_to_binary(IOList);
         {'error', _R} ->
-            throw({'error', 'template_error'})
+            lager:debug("failed to render '~s': ~p", [TemplateId, _R]),
+            throw({'error', 'template_error', <<"failed to render template ", TemplateId/binary>>})
     end.
 
 -spec render_accounts(ne_binary(), ne_binary(), macros()) -> kz_proplist().
