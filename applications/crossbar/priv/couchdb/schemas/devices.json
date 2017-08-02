@@ -410,6 +410,11 @@
             },
             "type": "object"
         },
+        "rtcp_mux": {
+            "default": true,
+            "description": "RTCP protocol messages mixed with RTP data",
+            "type": "boolean"
+        },
         "sip": {
             "default": {},
             "description": "SIP Parameters",
