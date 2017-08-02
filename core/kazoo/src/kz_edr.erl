@@ -75,6 +75,7 @@ log_event(AppName, AppVersion, LogLevel, Body, AccountId) ->
     Req = [{<<"Account-ID">>, AccountId}
           ,{<<"Level">>, LogLevel}
           ,{<<"Body">>, Body}
-           | kz_api:default_headers(AppName, AppVersion)
+          ,{<<"Timestamp">>, kz_time:now_s(kz_time:now())}
+           | kz_api:default_headers(<<"edr">>, <<"event">>, AppName, AppVersion)
           ],
     kz_amqp_worker:cast(Req, fun kapi_edr:publish/1).

@@ -103,11 +103,11 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('start_backends', _State) ->
     kz_json:foreach(fun ({Name, JBackend})->
-                            case  kz_json:is_true(<<"Enabled">>, JBackend) of
+                            case  kz_json:is_true(<<"enabled">>, JBackend) of
                                 'true' -> edr_backend_sup:start_backend(Name);
                                 _False -> 'ok'
                             end
-                    end, edr_utils:registred_backends()),
+                    end, edr_utils:registered_backends()),
     {'noreply', _State};
 handle_cast(_Msg, _State) ->
     {'noreply', _State}.

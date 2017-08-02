@@ -55,9 +55,9 @@ start_link(_Module,_Other,_Opts) ->
     'ignore'.
 
 -spec init({module(), backend()})-> init_ret(state()).
-init({Mod, #backend{enabled='true', tags=Tags, name=Name} = Backend})->
+init({Mod, #backend{enabled='true', name=Name} = Backend})->
     case Mod:init(Backend) of
-        {'ok', ModState} -> {'ok', #state{module_state=ModState, tags=Tags, module=Mod, name=Name}};
+        {'ok', ModState} -> {'ok', #state{module_state=ModState, module=Mod, name=Name}};
         _ -> 'ignore'
     end;
 init(_Other) ->
@@ -96,7 +96,7 @@ handle_call(_Request, _From, _State) ->
 %% Returns: {noreply, State}
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
-handle_cast({'push', Event=#event{}}, State=#state{module_state=ModState, tags=_Tags, module=Mod}) ->
+handle_cast({'push', Event=#event{}}, State=#state{module_state=ModState, module=Mod}) ->
     WorkResult = case should_push(State, Event) of
                      'true' -> Mod:push(ModState, Event);
                      _False -> 'ok'

@@ -7,8 +7,7 @@
 
 -define(APP_NAME, <<"edr">>).
 -define(APP_VERSION, <<"4.0.0">>).
--record(backend, {tags         :: kz_json:object()
-                 ,name         :: ne_binary()
+-record(backend, {name         :: ne_binary()
                  ,type         :: ne_binary()
                  ,enabled      :: boolean()
                  ,options      :: kz_json:object()

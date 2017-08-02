@@ -12,7 +12,7 @@
 
 -export([init/1
         ,start_link/0
-        ,start_backend/1, start_backend/4
+        ,start_backend/1, start_backend/3
         ,stop_backend/1
         ,get_running_backends/0
         ]).
@@ -30,25 +30,24 @@ get_running_backends()->
     [{Id, Pid, Module} || {Id, Pid, _Type, Module} <- supervisor:which_children(?SERVER), Pid =/= 'undefined'].
 
 -spec start_backend(ne_binary()) -> {'error', 'not_registred'} | sup_startchild_ret().
--spec start_backend(ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) -> sup_startchild_ret().
+-spec start_backend(ne_binary(), ne_binary(), kz_json:object()) -> sup_startchild_ret().
 start_backend(Name)->
     Backends = kapps_config:get(<<"edr">>, <<"backends">>, kz_json:new()),
     case kz_json:get_value(Name, Backends) of
         'undefined' -> {'error', 'not_registred'};
         JBackend ->
-            Type=kz_json:get_value(<<"Type">>, JBackend),
-            JTags=kz_json:get_value(<<"Tags">>, JBackend),
-            JOpts=kz_json:get_value(<<"Options">>, JBackend),
-            start_backend(Name, Type, JTags, JOpts)
+            Type = kz_json:get_value(<<"type">>, JBackend),
+            JOpts = kz_json:get_value(<<"options">>, JBackend),
+            start_backend(Name, Type, JOpts)
     end.
-start_backend(Name, Type, Tags, Opts)->
-    Module = kz_term:to_atom("edr_" ++ binary_to_list(Type)),
+start_backend(Name, Type, Opts)->
+    Module = kz_term:to_atom("edr_be_" ++ binary_to_list(Type)),
     Backend = #backend{name=Name
                       ,type=Type
-                      ,tags=Tags
                       ,options=Opts
                       ,enabled='true'
                       },
+    lager:info("starting backend ~s", [Module]),
     supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(Name, Module, [Backend], 'transient')).
 
 -spec stop_backend(ne_binary()) -> 'ok' | {'error', any()}.

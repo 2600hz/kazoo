@@ -36,10 +36,13 @@ init(#backend{options=Options})->
     %% Default to JSON formatter
     Formatter = gen_backend:formatter(Options, 'edr_fmt_json'),
     FormatterOptions = gen_backend:formatter_options(Options),
-    case kz_json:get_value(<<"Path">>, Options) of
-        'undefined' -> {'stop', 'no_path'};
-        Path -> {'ok', Pid} = file:open(Path, ['append', 'delayed_write', 'raw']),
-                {'ok', #state{pid=Pid, formatter=Formatter, formatter_options=FormatterOptions}}
+    case kz_json:get_value(<<"path">>, Options) of
+        'undefined' ->
+            lager:error("no path, stopping backend"),
+            {'stop', 'no_path'};
+        Path ->
+            {'ok', Pid} = file:open(Path, ['append', 'delayed_write', 'raw']),
+            {'ok', #state{pid=Pid, formatter=Formatter, formatter_options=FormatterOptions}}
     end;
 init(_Other)->
     'ignore'.

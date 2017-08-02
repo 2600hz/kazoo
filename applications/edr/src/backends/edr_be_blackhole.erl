@@ -29,6 +29,9 @@ start_link(Args) ->
 
 -spec init(backend())-> init_ret(state()).
 init(#backend{})->
+    %% Do not persist
+    lager:info("starting bh_edr"),
+    'ok' = blackhole_maintenance:start_module(<<"bh_edr">>, 'false'),
     {'ok', #state{}};
 init(_Other)->
     'ignore'.
@@ -41,7 +44,7 @@ push(_State, Event)->
                                          ,{<<"normalize">>, 'false'}
                                          ]),
     Formatted = edr_fmt_json:format_event(FormatterOptions, Event),
-    kapi_edr_blackhole:publish_event(Formatted).
+    kapi_edr_blackhole:publish_event(Formatted ++ kz_api:default_headers(<<"edr">>, <<"event">>, ?APP_NAME, ?APP_VERSION)).
 
 -spec stop(state(), any()) -> 'ok'.
 stop(_State, _Reason)->

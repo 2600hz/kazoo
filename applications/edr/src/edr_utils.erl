@@ -11,29 +11,28 @@
 -include("edr.hrl").
 
 -export([distribute_event/1
-        ,registred_backends/0
-        ,register_backend/5
+        ,registered_backends/0
+        ,register_backend/4
         ,delete_backend/1
         ,enable_backend/1
         ,disable_backend/1
         ,event_from_kapi/1
         ]).
 
--spec register_backend(ne_binary(), ne_binary(), kz_json:object(), kz_json:object(), boolean())-> 'ok' | {'error', 'already_registred'}.
-register_backend(Name, Type, Tags, Opts, IsEnable)->
+-spec register_backend(ne_binary(), ne_binary(), kz_json:object(), boolean())-> 'ok' | {'error', 'already_registered'}.
+register_backend(Name, Type, Opts, IsEnable)->
     JBackends = kapps_config:get(<<"edr">>, <<"backends">>, kz_json:new()),
     case kz_json:get_value(Name, JBackends) of
         'undefined' ->
-            Backend = kz_json:from_list([{<<"Name">>, Name}
-                                        ,{<<"Options">>, Opts}
-                                        ,{<<"Tags">>, Tags}
-                                        ,{<<"Type">>, Type}
-                                        ,{<<"Enabled">>, IsEnable}
+            Backend = kz_json:from_list([{<<"name">>, Name}
+                                        ,{<<"options">>, Opts}
+                                        ,{<<"type">>, Type}
+                                        ,{<<"enabled">>, IsEnable}
                                         ]),
             NewBackends = kz_json:set_value(Name, Backend, JBackends),
             {'ok', _} = kapps_config:set(<<"edr">>, <<"backends">>, NewBackends),
             'ok';
-        _V -> {'error', 'already_registred'}
+        _V -> {'error', 'already_registered'}
     end.
 
 -spec delete_backend(ne_binary())-> 'ok'.
@@ -43,13 +42,13 @@ delete_backend(Name)->
     {'ok', _} = kapps_config:set(<<"edr">>, <<"backends">>, NewBackends),
     'ok'.
 
--spec enable_backend(ne_binary())-> 'ok' | {'error', 'not_registred'}.
+-spec enable_backend(ne_binary())-> 'ok' | {'error', 'not_registered'}.
 enable_backend(Name)->
     Backends = kapps_config:get(<<"edr">>, <<"backends">>, kz_json:new()),
     case kz_json:get_value(Name, Backends) of
-        'undefined' -> {'error', 'not_registred'};
+        'undefined' -> {'error', 'not_registered'};
         Backend ->
-            NewBackend = kz_json:set_value(<<"Enabled">>, 'true', Backend),
+            NewBackend = kz_json:set_value(<<"enabled">>, 'true', Backend),
             NewBackends = kz_json:set_value(Name, NewBackend, Backends),
             {'ok', _} = kapps_config:set(<<"edr">>, <<"backends">>, NewBackends),
             'ok'
@@ -59,23 +58,22 @@ enable_backend(Name)->
 disable_backend(Name)->
     Backends = kapps_config:get(<<"edr">>, <<"backends">>, kz_json:new()),
     case kz_json:get_value(Name, Backends) of
-        'undefined' -> {'error', 'not_registred'};
+        'undefined' -> {'error', 'not_registered'};
         Backend ->
-            NewBackend = kz_json:set_value(<<"Enabled">>, 'false', Backend),
+            NewBackend = kz_json:set_value(<<"enabled">>, 'false', Backend),
             NewBackends = kz_json:set_value(Name, NewBackend, Backends),
             {'ok', _} = kapps_config:set(<<"edr">>, <<"backends">>, NewBackends),
             'ok'
     end.
 
-
--spec registred_backends()-> kz_json:object().
-registred_backends()->
+-spec registered_backends()-> kz_json:object().
+registered_backends()->
     kapps_config:get(<<"edr">>, <<"backends">>, kz_json:new()).
-
 
 -spec distribute_event(event())-> 'ok'.
 distribute_event(Event)->
     lists:foreach(fun ({_,Pid,_})->
+                          lager:debug("push pid ~p", [Pid]),
                           gen_backend:push(Pid, Event)
                   end, edr_backend_sup:get_running_backends()).
 
@@ -87,9 +85,9 @@ event_from_kapi(JObj) ->
           ,account_tree=account_tree(AccountId)
           ,app_name=kz_json:get_value(<<"App-Name">>, JObj)
           ,app_version=kz_json:get_value(<<"App-Version">>, JObj)
-          ,level=kz_util:to_atom(kz_json:get_value(<<"Level">>, JObj))
+          ,level=kz_json:get_atom_value(<<"Level">>, JObj)
           ,body=kz_json:get_value(<<"Body">>, JObj)
-          ,timestamp=kz_time:iso_8601(GregorianTime)
+          ,timestamp=kz_time:iso8601(GregorianTime)
           ,gregorian_time=GregorianTime
           }.
 
