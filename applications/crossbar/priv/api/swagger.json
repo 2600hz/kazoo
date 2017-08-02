@@ -86,6 +86,48 @@
             },
             "type": "object"
         },
+        "account_config.crossbar.auth": {
+            "description": "Schema for crossbar.auth account_config",
+            "properties": {
+                "auth_modules": {
+                    "default": {
+                        "cb_api_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        },
+                        "cb_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        },
+                        "cb_ip_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        },
+                        "cb_ubiquiti_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        },
+                        "cb_user_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        }
+                    },
+                    "description": "Default crossbar authentication modules configuration",
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
         "account_config.crossbar.sms": {
             "description": "Schema for crossbar.sms account_config",
             "properties": {
@@ -693,7 +735,7 @@
                     "type": "boolean"
                 },
                 "log_successful_attempts": {
-                    "default": false,
+                    "default": true,
                     "description": "should log successful logging attempts",
                     "type": "boolean"
                 },
@@ -25059,14 +25101,48 @@
             "description": "Schema for crossbar.auth system_config",
             "properties": {
                 "auth_modules": {
-                    "default": {},
+                    "default": {
+                        "cb_api_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        },
+                        "cb_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        },
+                        "cb_ip_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        },
+                        "cb_ubiquiti_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        },
+                        "cb_user_auth": {
+                            "enabled": true,
+                            "log_failed_attempts": true,
+                            "log_successful_attempts": true,
+                            "token_auth_expiry": 3600
+                        }
+                    },
                     "description": "Default crossbar authentication modules configuration",
                     "type": "object"
                 },
-                "available_auth_modules": {
+                "available_auth_methods": {
                     "default": [
                         "cb_user_auth",
-                        "cb_api_auth"
+                        "cb_api_auth",
+                        "cb_auth",
+                        "cb_ip_auth",
+                        "cb_ubiquiti_auth"
                     ],
                     "description": "List of crossbar auth configurable modules",
                     "items": {
@@ -38349,21 +38425,6 @@
                 }
             },
             "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"

@@ -14,7 +14,7 @@
             "type": "boolean"
         },
         "log_successful_attempts": {
-            "default": false,
+            "default": true,
             "description": "should log successful logging attempts",
             "type": "boolean"
         },

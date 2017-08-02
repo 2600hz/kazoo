@@ -138,7 +138,7 @@
     "crossbar.allow_tracing": "crossbar allow tracing",
     "crossbar.api_auth_tokens": "crossbar api auth tokens",
     "crossbar.auth.auth_modules": "Default crossbar authentication modules configuration",
-    "crossbar.auth.available_auth_modules": "List of crossbar auth configurable modules",
+    "crossbar.auth.available_auth_methods": "List of crossbar auth configurable modules",
     "crossbar.auth.basic_auth_type": "crossbar.auth basic auth type",
     "crossbar.auth.kazoo_auth_configs": "Kazoo Auth modules' configurations",
     "crossbar.auth.log_failed_attempts": "Should log failed login attempts",
