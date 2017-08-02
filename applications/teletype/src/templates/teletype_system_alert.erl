@@ -16,7 +16,7 @@
         ,category/0
         ,friendly_name/0
         ]).
--export([handle_system_alert/1]).
+-export([handle_req/1]).
 
 -include("teletype.hrl").
 
@@ -56,12 +56,18 @@ friendly_name() ->
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
-    teletype_bindings:bind(id(), ?MODULE, 'handle_system_alert').
+    teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
--spec handle_system_alert(kz_json:object()) -> 'ok'.
-handle_system_alert(JObj) ->
-    'true' = kapi_notifications:system_alert_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:system_alert_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [id()]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [id()]),
 
     case kz_json:get_value([<<"Details">>, <<"Format">>], JObj) of
         'undefined' -> handle_req_as_email(JObj, 'true');

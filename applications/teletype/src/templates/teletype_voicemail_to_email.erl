@@ -16,7 +16,7 @@
         ,category/0
         ,friendly_name/0
         ]).
--export([handle_new_voicemail/1]).
+-export([handle_req/1]).
 
 -include("teletype.hrl").
 
@@ -55,12 +55,18 @@ friendly_name() ->
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
-    teletype_bindings:bind(id(), ?MODULE, 'handle_new_voicemail').
+    teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
--spec handle_new_voicemail(kz_json:object()) -> 'ok'.
-handle_new_voicemail(JObj) ->
-    'true' = kapi_notifications:voicemail_new_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:voicemail_new_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [id()]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [id()]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -68,11 +74,11 @@ handle_new_voicemail(JObj) ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
         'false' -> teletype_util:notification_disabled(DataJObj, id());
-        'true' -> handle_req(DataJObj, AccountId)
+        'true' -> process_req(DataJObj, AccountId)
     end.
 
--spec handle_req(kz_json:object(), ne_binary()) -> 'ok'.
-handle_req(DataJObj, AccountId) ->
+-spec process_req(kz_json:object(), ne_binary()) -> 'ok'.
+process_req(DataJObj, AccountId) ->
     VMBoxId = kz_json:get_value(<<"voicemail_box">>, DataJObj),
     {'ok', VMBox} = teletype_util:open_doc(<<"vmbox">>, VMBoxId, DataJObj),
     {'ok', UserJObj} = get_owner(VMBox, DataJObj),
@@ -117,7 +123,8 @@ maybe_process_req(DataJObj, true) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
-    Macros = macros(DataJObj),
+    Macros0 = macros(DataJObj),
+    Macros = props:delete(<<"file_binary">>, Macros0),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
@@ -128,7 +135,7 @@ process_req(DataJObj) ->
     Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, teletype_util:mod_config_cat(id())),
 
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates, email_attachments(DataJObj)) of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates, props:get_value(<<"file_binary">>, Macros0)) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
@@ -145,15 +152,11 @@ template_data(DataJObj) ->
      | build_template_data(DataJObj)
     ].
 
--spec email_attachments(kz_json:object()) -> attachments().
 -spec email_attachments(kz_json:object(), kz_proplist()) -> attachments().
--spec email_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
-email_attachments(DataJObj) ->
-    email_attachments(DataJObj, template_data(DataJObj)).
-
 email_attachments(DataJObj, Macros) ->
     email_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).
 
+-spec email_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
 email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->
     VMId = kz_json:get_value(<<"voicemail_id">>, DataJObj),
@@ -237,4 +240,4 @@ maybe_add_file_data(Macros, [{ContentType, Filename, Bin}]) ->
               ,{<<"file_size">>, erlang:size(Bin)}
               ]),
     VMF = props:set_values(Props, props:get_value(<<"voicemail">>, Macros, [])),
-    props:set_value(<<"voicemail">>, VMF, Macros).
+    props:set_value(<<"voicemail">>, VMF, [{<<"file_binary">>, Bin}|Macros]).

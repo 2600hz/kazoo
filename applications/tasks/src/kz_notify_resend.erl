@@ -31,6 +31,7 @@
 -define(SERVER, {'via', 'kz_globals', ?NAME}).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".notify_resend">>).
+-define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
 
 %% notify resned crawler settungs
 -define(NOTIFY_RESEND_ENABLED,
@@ -39,7 +40,8 @@
         kapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time_ms">>, 5 * ?MILLISECONDS_IN_MINUTE)).
 -define(READ_LIMIT,
         kapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_doc_read">>, 20)).
--define(PUBLISH_TIMEOUT, 2 * ?MILLISECONDS_IN_SECOND).
+-define(PUBLISH_TIMEOUT,
+        kapps_config:get_pos_integer(?MOD_CONFIG_CAT, <<"publish_timeout_ms">>, ?DEFAULT_TIMEOUT)).
 
 %% default reschedule rules
 -define(DEFAULT_RETRY_COUNT,
