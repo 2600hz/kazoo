@@ -680,7 +680,7 @@ gateway_to_endpoint(DestinationNumber
            ,{<<"Resource-Type">>, <<"offnet-termination">>}
            ,{<<"RTCP-MUX">>, RTCP_MUX}
             | gateway_from_uri_settings(Gateway)
-           ]),
+           ],
     kz_json:from_list(
       props:filter_empty(
         [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
