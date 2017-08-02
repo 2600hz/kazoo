@@ -15,6 +15,8 @@
         ,debit/1, debit/2, debit/4, debit/5, debit/6
         ]).
 
+-export_type([save_return/0]).
+
 -type save_return() :: {'ok', ledger()} | {'error', any()}.
 
 -define(CREDIT, <<"credit">>).
@@ -26,9 +28,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary(), ne_binary()) ->
-                 {'ok', integer()} |
-                 {'error', any()}.
+-spec get(ne_binary(), ne_binary()) -> {'ok', integer()} |
+                                       {'error', any()}.
 get(Account, Name) ->
     Options = [{'key', Name}],
     case kazoo_modb:get_results(Account, ?LIST_BY_SERVICE_LEGACY, Options) of
@@ -97,16 +98,10 @@ debit(LedgerId, SrcService, SrcId, Usage, Props) ->
 debit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
     create(LedgerId, ?DEBIT, SrcService, SrcId, Usage, Props, AccountId).
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
 
-%%--------------------------------------------------------------------
+%%% Internals
+
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec create(ne_binary(), ne_binary(), ne_binary(), ne_binary()
             ,kz_proplist(), kz_proplist(),ne_binary()) -> save_return().
 create(LedgerId, Type, SrcService, SrcId, Usage, Props, AccountId) ->
@@ -116,7 +111,8 @@ create(LedgerId, Type, SrcService, SrcId, Usage, Props, AccountId) ->
                ,{fun set_usage/2, Usage}
                ,{fun set_extra/2, Props}
                ],
-    create(LedgerId, Type, lists:foldl(fun apply_routine/2, kazoo_ledger:new(), Routines)).
+    Ledger = lists:foldl(fun apply_routine/2, kazoo_ledger:new(), Routines),
+    create(LedgerId, Type, Ledger).
 
 -spec create(ne_binary(), ne_binary(), ledger()) -> save_return().
 create(LedgerId, Type, Ledger) ->
@@ -125,26 +121,16 @@ create(LedgerId, Type, Ledger) ->
                ],
     lists:foldl(fun apply_routine/2, Ledger, Routines).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec set_account(ledger(), ne_binary()) -> ledger().
 set_account(Ledger, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account),
     Routines = [{fun kazoo_ledger:set_account_id/2, AccountId}
                ,{fun kazoo_ledger:set_account_name/2, kz_account:fetch_name(AccountId)}
                ],
     lists:foldl(fun apply_routine/2, Ledger, Routines).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec set_usage(ledger(), kz_proplist()) -> ledger().
 set_usage(Ledger, []) -> Ledger;
 set_usage(Ledger, [{<<"type">>, Val}|Usage]) ->
@@ -156,12 +142,7 @@ set_usage(Ledger, [{<<"unit">>, Val}|Usage]) ->
 set_usage(Ledger, [_|Usage]) ->
     set_usage(Ledger, Usage).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec set_extra(ledger(), kz_proplist()) -> ledger().
 set_extra(Ledger, []) -> Ledger;
 set_extra(Ledger, [{<<"amount">>, Val}|Props]) ->
@@ -177,12 +158,7 @@ set_extra(Ledger, [{<<"metadata">>, Val}|Props]) ->
 set_extra(Ledger, [_ | Props]) ->
     set_extra(Ledger, Props).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec apply_routine(function() | {function(), any()}, ledger()) -> ledger().
 apply_routine({F, V}, L) -> F(L, V);
 apply_routine(F, L) -> F(L).

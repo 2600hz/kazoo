@@ -4,7 +4,7 @@
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -type units() :: non_neg_integer().
--type dollars() :: number().
+-type dollars() :: float().
 
 -define(TOPUP_CONFIG, <<"topup">>).
 
