@@ -61,6 +61,7 @@
           ])).
 -define(DEFAULT_MOBILE_AMQP_CONNECTIONS,
         kz_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])).
+-define(DEFAULT_RTCP_MUX, kapps_config:get_is_true(?CONFIG_CAT, <<"default_rtcp_mux">>)).
 
 -define(CONFIRM_FILE(Call)
        ,kapps_call:get_prompt(Call, <<"ivr-group_confirm">>)
@@ -1469,6 +1470,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
               ,fun maybe_set_account_id/1
               ,fun maybe_set_call_forward/1
               ,fun maybe_set_confirm_properties/1
+              ,fun maybe_set_rtcp_mux/1
               ,fun maybe_enable_fax/1
               ,fun maybe_enforce_security/1
               ,fun maybe_set_encryption_flags/1
@@ -1551,6 +1553,11 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
                        ,CCVs
                        )
     }.
+
+-spec maybe_set_rtcp_mux(ccv_acc()) -> ccv_acc().
+maybe_set_rtcp_mux({Endpoint, Call, CallFwd, CCVs}) ->
+    RTCP_MUX = kz_json:is_true([<<"media">>, <<"rtcp_mux">>], Endpoint, ?DEFAULT_RTCP_MUX),
+    {Endpoint, Call, CallFwd, kz_json:set_value(<<"RTCP-MUX">>, RTCP_MUX, CCVs)}.
 
 -spec bowout_settings(boolean()) -> kz_proplist().
 bowout_settings('true') ->
