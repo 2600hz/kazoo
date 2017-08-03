@@ -250,9 +250,9 @@ add_inherited_config(Context) ->
                     end,
 
     Doc = kz_json:from_list(
-             [{<<"account">>, AccountConfig}
-             ,{<<"inherited_config">>, InheritedConfig}
-             ]
+            [{<<"account">>, AccountConfig}
+            ,{<<"inherited_config">>, InheritedConfig}
+            ]
            ),
     crossbar_doc:handle_json_success(Doc, Context).
 
