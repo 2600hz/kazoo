@@ -52,7 +52,7 @@ init(_Other)->
 
 -spec push(state(), event()) -> 'ok' | {'error', any()}.
 push(#state{pid=Pid, formatter=Formatter, formatter_options=FormatterOptions}, Event)->
-    case file:write(Pid, Formatter:format_event(FormatterOptions, Event)) of
+    case file:write(Pid, io_lib:format("~s~n", [Formatter:format_event(FormatterOptions, Event)])) of
         'ok' -> 'ok';
         {'error', Reason} -> error(Reason)
     end.

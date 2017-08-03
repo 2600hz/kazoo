@@ -22,6 +22,8 @@ init() ->
     blackhole_bindings:bind(<<"blackhole.events.bindings.edr">>, ?MODULE, 'bindings').
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
+validate(Context, #{keys := [<<"*">>]}) ->
+    Context;
 validate(Context, #{keys := [Level]}) ->
     EdrLevels = [kz_term:to_binary(L) || L <- ?EDR_LEVELS],
     case lists:member(Level, EdrLevels) of
@@ -37,9 +39,9 @@ validate(Context, #{keys := Keys}) ->
 bindings(_Context, #{account_id := AccountId
                     ,keys := [Level]
                     }=Map) ->
-    Requested = <<"edr.", Level/binary>>,
-    Subscribed = [<<"edr.", Level/binary, ".", AccountId/binary>>],
-    Listeners = [{'amqp', 'kapi_edr', edr_bind_options(AccountId, Level)}],
+    Requested = <<"edr_blackhole.", Level/binary>>,
+    Subscribed = [<<"edr_blackhole.", Level/binary, ".", AccountId/binary>>],
+    Listeners = [{'amqp', 'edr_blackhole', edr_bind_options(AccountId, Level)}],
     Map#{requested => Requested
         ,subscribed => Subscribed
         ,listeners => Listeners

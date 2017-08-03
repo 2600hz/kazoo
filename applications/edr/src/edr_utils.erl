@@ -79,7 +79,7 @@ distribute_event(Event)->
 
 -spec event_from_kapi(kz_json:object()) -> event().
 event_from_kapi(JObj) ->
-    AccountId = kz_json:get_value(<<"Account-Id">>, JObj),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     GregorianTime = kz_json:get_value(<<"Timestamp">>, JObj),
     #event{account_id=AccountId
           ,account_tree=account_tree(AccountId)
