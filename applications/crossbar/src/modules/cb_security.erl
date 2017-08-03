@@ -276,7 +276,8 @@ update(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Id, Context) ->
-    crossbar_doc:patch_and_validate(Id, Context, fun update/2).
+    C1 = cb_context:store(Context, <<"orig_req_data">>, cb_context:req_data(Context)),
+    crossbar_doc:patch_and_validate(Id, C1, fun update/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -287,8 +288,8 @@ validate_patch(Id, Context) ->
 on_successful_validation(Id, Context) ->
     C1 = crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
     case {cb_context:resp_status(C1), cb_context:resp_error_code(C1)} of
-        {'success', _} -> C1;
-        {'error', 404} -> create_config_document(C1);
+        {'success', _} -> check_multi_factor_setting(C1);
+        {'error', 404} -> create_config_document(check_multi_factor_setting(C1));
         _ -> C1
     end.
 
@@ -297,6 +298,61 @@ create_config_document(Context) ->
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
     Doc = kz_doc:set_id(cb_context:doc(Context), ConfigId),
     crossbar_doc:handle_json_success(kz_doc:set_type(Doc, <<"account_config">>), cb_context:store(Context, flush, true)).
+
+check_multi_factor_setting(Context) ->
+    ReqData = cb_context:fetch(Context, <<"orig_req_data">>, cb_context:req_data(Context)),
+    kz_json:foldl(fun check_multi_factor_setting/3, Context, kz_json:get_value(<<"auth_modules">>, ReqData)).
+
+check_multi_factor_setting(AuthModule, JObj, Context) ->
+    case has_configuration_id(JObj)
+        andalso has_account_id_or_db(JObj)
+    of
+        'false' -> Context;
+        'true' -> check_account_hierarchy(AuthModule, JObj, Context);
+        ErrMsg -> failed_multi_factor_validation(AuthModule, ErrMsg, Context)
+    end.
+
+-spec has_configuration_id(kz_json:object()) -> boolean().
+has_configuration_id(JObj) ->
+    case kz_json:get_ne_binary_value([<<"multi_factor">>, <<"configuration_id">>], JObj) of
+        'undefined' -> 'false';
+        _ -> 'true'
+    end.
+
+-spec has_account_id_or_db(kz_json:object()) -> boolean() | ne_binary().
+has_account_id_or_db(JObj) ->
+    case kz_json:get_ne_binary_value([<<"multi_factor">>, <<"account_id">>], JObj) of
+        'undefined' -> <<"setting multi-factor configuration_id needs setting account_id">>;
+        _AccountId -> 'true'
+    end.
+
+-spec check_account_hierarchy(ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
+check_account_hierarchy(AuthModule, JObj, Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsSysAdmin = cb_context:is_superduper_admin(AuthAccountId),
+    AccountId = kz_json:get_ne_binary_value([<<"multi_factor">>, <<"account_id">>], JObj),
+
+    case IsSysAdmin
+        orelse kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
+    of
+        'true' -> Context;
+        'false' ->
+            ErrMsg = kz_term:to_binary(io_lib:format("multi-factor account_id ~s is not a descendant of yours", [AccountId])),
+            failed_multi_factor_validation(AuthModule, ErrMsg, Context)
+    end.
+
+-spec failed_multi_factor_validation(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+failed_multi_factor_validation(AuthModule, ErrMsg, Context) ->
+    KeyPath = <<"auth_modules.", AuthModule/binary, ".account_id">>,
+    JObj = cb_context:validation_errors(Context),
+    ErrorJObj = kz_json:from_list_recursive([{KeyPath, [{<<"required">>, [{<<"message">>, ErrMsg}]}]}]),
+    Setters = [{fun cb_context:set_resp_error_code/2, 400}
+              ,{fun cb_context:set_resp_status/2, 'error'}
+              ,{fun cb_context:set_resp_error_msg/2, <<"validation failed">>}
+              ,{fun cb_context:set_resp_data/2, kz_json:new()}
+              ,{fun cb_context:set_validation_errors/2, kz_json:merge_jobjs(ErrorJObj, JObj)}
+              ],
+    cb_context:setters(Context, Setters).
 
 %%--------------------------------------------------------------------
 %% @private

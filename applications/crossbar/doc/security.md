@@ -16,6 +16,10 @@ Configuration is the merged result of the account's configuration and all its pa
 
 If you want to use multi factor authentication for a module, set the `multi_factor.enabled` to `true`. You can control if the multi factor settings can be applied to the account's children by `multi_factor.include_subaccounts`.
 
+When setting `configuration_id` of the multi-factor, you have to set the Account ID which contains the that configuration too.
+
+Only a parent Account or the same Account can set `configuration_id` and `account_id`.
+
 #### Account Auth Configuration Schema
 
 Key | Description | Type | Default | Required
@@ -34,8 +38,8 @@ Key | Description | Type | Default | Required
 `log_failed_attempts` | should log failed logging attempts | `boolean` | `true` | `false`
 `log_successful_attempts` | should log successful logging attempts | `boolean` | `false` | `false`
 `multi_factor` | control multi factor authentications for this module | `object` |   | `false`
-`multi_factor.account_db` | account DB that contains the multi factor configuration | `string` |  | `false`
-`multi_factor.account_id` | account ID that multi factor is configured for | `string` |  | `false`
+`multi_factor.account_id` | ID of the account that contains the multi factor configuration | `string` |  | `false`
+`multi_factor.configuration_id` | document ID contains the multi factor configuration | `string` |  | `false`
 `multi_factor.enabled` | turn on/off multi factor authentications for this module | `boolean` |  | `true`
 `multi_factor.include_subaccounts` | should this multi factor authentication settings be applied when used by sub-accounts | `boolean` | `false` | `false`
 `token_auth_expiry_s` | expiration period of the JWT token (seconds) | `integer` |  | `false`

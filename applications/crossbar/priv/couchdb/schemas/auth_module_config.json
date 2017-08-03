@@ -22,12 +22,8 @@
             "additionalProperties": false,
             "description": "control multi factor authentications for this module",
             "properties": {
-                "account_db": {
-                    "description": "account DB that contains the multi factor configuration",
-                    "type": "string"
-                },
                 "account_id": {
-                    "description": "account ID that multi factor is configured for",
+                    "description": "ID of the account that contains the multi factor configuration",
                     "type": "string"
                 },
                 "configuration_id": {
