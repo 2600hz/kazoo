@@ -92,12 +92,13 @@ get_global(Account, Category, Key, Default) ->
 get_global(Account, Category) ->
     case load_config_from_account(account_id(Account), Category) of
         {ok, JObj} -> JObj;
-        {error, no_account_id} -> maybe_new(load_config_from_system(Account, Category));
+        {error, no_account_id} ->
+            maybe_new_system_doc(load_config_from_system(Account, Category), Category);
         {error, _} ->
             case load_config_from_reseller(Account, Category) of
                 {ok, JObj} -> JObj;
                 {error, _} ->
-                    maybe_new(load_config_from_system(Account, Category))
+                    maybe_new_system_doc(load_config_from_system(Account, Category), Category)
             end
     end.
 
@@ -237,7 +238,7 @@ load_config_from_system(_Account, Category) ->
     case kapps_config:get_category(Category) of
         {ok, JObj} ->
             Doc = kz_json:get_value(<<"default">>, JObj, kz_json:new()),
-            {ok, kz_doc:set_id(kz_doc:set_account_db(Doc, ?KZ_CONFIG_DB), Category)};
+            {ok, Doc};
         {error, _}=Error -> Error
     end.
 
@@ -618,9 +619,11 @@ account_id_from_jobj(_Obj, false) ->
 maybe_format_account_id(undefined) -> no_account_id;
 maybe_format_account_id(Account) -> kz_util:format_account_id(Account).
 
--spec maybe_new({ok, kz_json:object()} | {error, any()}) -> kz_json:object().
-maybe_new({ok, JObj}) -> JObj;
-maybe_new({error, _}) -> kz_json:new().
+-spec maybe_new_system_doc({ok, kz_json:object()} | {error, any()}, ne_binary()) -> kz_json:object().
+maybe_new_system_doc({ok, JObj}, Category) ->
+    kz_doc:set_id(kz_doc:set_account_db(JObj, ?KZ_CONFIG_DB), Category);
+maybe_new_system_doc({error, _}, Category) ->
+    kz_doc:set_id(kz_doc:set_account_db(kz_json:new(), ?KZ_CONFIG_DB), Category).
 
 
 %% ====================================================================
