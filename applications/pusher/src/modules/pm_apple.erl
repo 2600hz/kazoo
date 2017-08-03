@@ -4,6 +4,7 @@
 -include("pusher.hrl").
 
 -define(SERVER, ?MODULE).
+-define(DEFAULT_HOST, <<"api.push.apple.com">>).
 
 -export([start_link/0]).
 
@@ -58,6 +59,7 @@ maybe_send_push_notification(Pid, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
     Sender = kz_json:get_value(<<"Alert-Body">>, JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    APNsTopic = apns_topic(JObj),
     apns:push_notification(Pid
                           ,TokenID
                           ,#{aps => #{alert => #{'loc-key' => <<"IC_MSG">>
@@ -67,6 +69,7 @@ maybe_send_push_notification(Pid, JObj) ->
                                      }
                             ,'call-id' => CallId
                             }
+                          ,#{apns_topic => APNsTopic}
                           ).
 
 -spec get_apns(api_binary(), ets:tid()) -> api_pid().
@@ -79,16 +82,26 @@ get_apns(App, ETS) ->
 
 -spec maybe_load_apns(api_binary(), ets:tid()) -> api_pid().
 maybe_load_apns(App, ETS) ->
-    maybe_load_apns(App, ETS, kapps_config:get_binary(?CONFIG_CAT, <<"apple">>, 'undefined', App)).
+    Config = kapps_config:get_json(?CONFIG_CAT, <<"apple">>, kz_json:new(), App),
+    CertBin = kz_json:get_ne_binary_value(<<"certificate">>, Config),
+    Host = kz_json:get_ne_binary_value(<<"host">>, Config, ?DEFAULT_HOST),
+    maybe_load_apns(App, ETS, CertBin, Host).
 
--spec maybe_load_apns(api_binary(), ets:tid(), api_binary()) -> api_pid().
-maybe_load_apns(App, _, 'undefined') ->
+-spec maybe_load_apns(api_binary(), ets:tid(), api_ne_binary(), ne_binary()) -> api_pid().
+maybe_load_apns(App, _, 'undefined', _) ->
     lager:debug("apple pusher certificate for app ~s not found", [App]),
     'undefined';
-maybe_load_apns(App, ETS, CertBin) ->
+maybe_load_apns(App, ETS, CertBin, Host) ->
     {Key, Cert} = pusher_util:binary_to_keycert(CertBin),
-    Connection = apns_connection:default_connection('certdata', 'undefined'),
-    case apns:connect(set_key_and_cert({Key, Cert}, Connection)) of
+    Connection = #{name => 'undefined'
+                  ,apple_host => kz_term:to_list(Host)
+                  ,apple_port => 443
+                  ,certdata => Cert
+                  ,keydata => Key
+                  ,timeout => 10000
+                  ,type => 'certdata'
+                  },
+    case apns:connect(Connection) of
         {'ok', Pid} ->
             ets:insert(ETS, {App, Pid}),
             Pid;
@@ -100,8 +113,7 @@ maybe_load_apns(App, ETS, CertBin) ->
             'undefined'
     end.
 
--spec set_key_and_cert(pusher_util:keycert(), apns_connection:connection()) -> apns_connection:connection().
-set_key_and_cert({Key, Cert}, Connection) ->
-    Connection#{keydata := Key
-               ,certdata := Cert
-               }.
+-spec apns_topic(kz_json:object()) -> binary().
+apns_topic(JObj) ->
+    TokenApp = kz_json:get_ne_binary_value(<<"Token-App">>, JObj),
+    re:replace(TokenApp, <<"\.(?:dev|prod)$">>, <<>>, [{'return', 'binary'}]).

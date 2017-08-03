@@ -9,8 +9,19 @@
             "type": "object"
         },
         "apple": {
+            "default": {},
             "description": "pusher apple",
-            "type": "string"
+            "properties": {
+                "certificate": {
+                    "description": "PEM-encoded key and certificate",
+                    "type": "string"
+                },
+                "host": {
+                    "description": "APNs server host",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         },
         "google": {
             "description": "pusher google",
