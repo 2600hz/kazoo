@@ -10,7 +10,9 @@
 
 -include("pusher.hrl").
 
--export([add_google_app/2, add_apple_app/2]).
+-export([add_google_app/2
+        ,add_apple_app/2, add_apple_app/3
+        ]).
 
 -spec add_google_app(binary(), binary()) -> 'ok'.
 add_google_app(AppId, Secret) ->
@@ -18,10 +20,17 @@ add_google_app(AppId, Secret) ->
     'ok'.
 
 -spec add_apple_app(binary(), binary()) -> 'ok' | {'error', any()}.
+-spec add_apple_app(binary(), binary(), binary()) -> 'ok' | {'error', any()}.
 add_apple_app(AppId, Certfile) ->
+    add_apple_app(AppId, Certfile, ?DEFAULT_APNS_HOST).
+
+add_apple_app(AppId, Certfile, Host) ->
     case file:read_file(Certfile) of
         {'ok', Binary} ->
-            kapps_config:set_node(?CONFIG_CAT, <<"apple">>, Binary, AppId),
+            Config = kz_json:from_list([{<<"certificate">>, Binary}
+                                       ,{<<"host">>, Host}
+                                       ]),
+            kapps_config:set_node(?CONFIG_CAT, <<"apple">>, Config, AppId),
             'ok';
         {'error', _} = Err -> Err
     end.

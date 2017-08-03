@@ -4,7 +4,6 @@
 -include("pusher.hrl").
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_HOST, <<"api.push.apple.com">>).
 
 -export([start_link/0]).
 
@@ -84,7 +83,7 @@ get_apns(App, ETS) ->
 maybe_load_apns(App, ETS) ->
     Config = kapps_config:get_json(?CONFIG_CAT, <<"apple">>, kz_json:new(), App),
     CertBin = kz_json:get_ne_binary_value(<<"certificate">>, Config),
-    Host = kz_json:get_ne_binary_value(<<"host">>, Config, ?DEFAULT_HOST),
+    Host = kz_json:get_ne_binary_value(<<"host">>, Config, ?DEFAULT_APNS_HOST),
     maybe_load_apns(App, ETS, CertBin, Host).
 
 -spec maybe_load_apns(api_binary(), ets:tid(), api_ne_binary(), ne_binary()) -> api_pid().
