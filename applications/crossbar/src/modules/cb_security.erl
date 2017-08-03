@@ -14,7 +14,6 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate/1, validate/2, validate/3
-        ,put/1
         ,post/1
         ,patch/1
         ,delete/1
@@ -22,11 +21,11 @@
 
 -include("crossbar.hrl").
 
--define(DEFAULT_AUTH_METHODS, [<<"cb_user_auth">>
-                              ,<<"cb_api_auth">>
+-define(DEFAULT_AUTH_METHODS, [<<"cb_api_auth">>
                               ,<<"cb_auth">>
                               ,<<"cb_ip_auth">>
                               ,<<"cb_ubiquiti_auth">>
+                              ,<<"cb_user_auth">>
                               ]).
 
 -define(SYSTEM_AUTH_METHODS
@@ -102,7 +101,7 @@ authorize_list_available_module(_Context, _Nouns, _Verb) ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?ATTEMPTS) ->
@@ -160,8 +159,6 @@ validate_auth_configs(Context, ?HTTP_GET) ->
         [{<<"security">>, []}, {<<"accounts">>, [?NE_BINARY=_Id]}] -> read(Context);
         _Nouns -> Context
     end;
-validate_auth_configs(Context, ?HTTP_PUT) ->
-    create(Context);
 validate_auth_configs(Context, ?HTTP_POST) ->
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
     update(ConfigId, Context);
@@ -169,23 +166,14 @@ validate_auth_configs(Context, ?HTTP_PATCH) ->
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
     validate_patch(ConfigId, Context);
 validate_auth_configs(Context, ?HTTP_DELETE) ->
-    C1 = crossbar_doc:load(?ACCOUNT_AUTH_CONFIG_ID, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
+    ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
+    C1 = crossbar_doc:load(ConfigId, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
     case cb_context:resp_status(C1) of
         'success' -> C1;
         _ ->
             Msg = <<"account does not have customize auth configuration">>,
             cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Msg}]),  Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
-%% @end
-%%--------------------------------------------------------------------
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
-    crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -241,31 +229,23 @@ summary_available(Context) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
-    InheritedConfig = crossbar_auth:get_inherited_auth_config(cb_context:account_id(Context)),
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
+    add_inherited_config(crossbar_doc:load(ConfigId, Context, ?TYPE_CHECK_OPTION(<<"account_config">>))).
 
-    Doc = kz_json:from_list([{<<"inherited_config">>, InheritedConfig}]),
+-spec add_inherited_config(cb_context:context()) -> cb_context:context().
+add_inherited_config(Context) ->
+    InheritedConfig = crossbar_auth:get_inherited_auth_config(cb_context:account_id(Context)),
+    AccountConfig = case cb_context:resp_status(Context) of
+                        'success' -> kz_json:delete_key(<<"id">>, cb_context:resp_data(Context));
+                        _ -> kz_json:new()
+                    end,
 
-    C1 = crossbar_doc:load(ConfigId, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
-    case cb_context:resp_status(C1) of
-        'success' ->
-            NewDoc = kz_json:set_value(<<"account">>, cb_context:doc(C1), Doc),
-            cb_context:set_resp_data(Context, NewDoc);
-        _ ->
-            crossbar_doc:handle_json_success(kz_json:set_value(<<"account">>, kz_json:new(), Doc), Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create(cb_context:context()) -> cb_context:context().
-create(Context) ->
-    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    SchemaName = kapps_config_util:account_schema_name(?AUTH_CONFIG_CAT),
-    cb_context:validate_request_data(SchemaName, Context, OnSuccess).
+    Doc = kz_json:from_list(
+             [{<<"account">>, AccountConfig}
+             ,{<<"inherited_config">>, InheritedConfig}
+             ]
+           ),
+    crossbar_doc:handle_json_success(Doc, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -297,13 +277,19 @@ validate_patch(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', Context) ->
+on_successful_validation(Id, Context) ->
+    C1 = crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
+    case {cb_context:resp_status(C1), cb_context:resp_error_code(C1)} of
+        {'success', _} -> C1;
+        {'error', 404} -> create_config_document(C1);
+        _ -> C1
+    end.
+
+-spec create_config_document(cb_context:context()) -> cb_context:context().
+create_config_document(Context) ->
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
     Doc = kz_doc:set_id(cb_context:doc(Context), ConfigId),
-    cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"account_config">>));
-on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)).
+    crossbar_doc:handle_json_success(kz_doc:set_type(Doc, <<"account_config">>), Context).
 
 %%--------------------------------------------------------------------
 %% @private
