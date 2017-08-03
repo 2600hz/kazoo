@@ -69,8 +69,8 @@ release_in_service_mdn_number_test_() ->
 
 release_in_service_numbers_test_() ->
     DefaultAuth = knm_number_options:default(),
-    ResellerAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}|DefaultAuth],
-    MasterAuth = [{auth_by, ?MASTER_ACCOUNT_ID}|DefaultAuth],
+    ResellerAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}],
+    MasterAuth = [{auth_by, ?MASTER_ACCOUNT_ID}],
     SimpleHistory = [?RESELLER_ACCOUNT_ID],
     DeeperHistory = [?RESELLER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID],
     [release_in_service(?TEST_IN_SERVICE_NUM, DefaultAuth, SimpleHistory)

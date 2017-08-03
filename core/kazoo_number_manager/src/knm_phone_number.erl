@@ -387,7 +387,7 @@ release(PN, FromState) ->
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
 authorize_release(PN) ->
-    is_admin_or_in_account_hierarchy(auth_by(PN), assigned_to(PN))
+    is_authorized(PN)
         orelse knm_errors:unauthorized(),
     Routines = [fun reset_features/1
                ,fun reset_doc/1
