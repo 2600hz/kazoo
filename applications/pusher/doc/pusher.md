@@ -10,29 +10,6 @@ if the device is already registered, and the client is alive, kamailio will allo
 
 ## Configuration
 
-### Erlang VM
-
-For APNs (Apple Push Notification service), the configuration file for the Erlang VM running the pusher application must include some configuration parameters. These parameters are required by the apns4erl dependency. See the [apns4erl Github](https://github.com/inaka/apns4erl).
-
-```
-[
- {apns, [{apple_host,       "api.development.push.apple.com"} %% or "api.push.apple.com" for production
-        ,{apple_port,       443}
-        ,{certdata,         <<"">>} %% blank default required, loaded on-the-fly in pm_apple
-        ,{keydata,          <<"">>} %% blank default required, loaded on-the-fly in pm_apple
-        ,{timeout,          10000}
-
-        ,{apns_id,          'undefined'}
-        ,{apns_expiration,  0}
-        ,{apns_priority,    10}
-        ,{apns_topic,       "com.example.app.voip"} %% app bundle ID + .voip (PushKit)
-        ,{apns_collapse_id, 'undefined'}
-        ]
- }
- ,...
-]
-```
-
 ### System Config
 
 * `modules` : list of modules to load on app start.
@@ -64,4 +41,5 @@ For APNs (Apple Push Notification service), the configuration file for the Erlan
 in order for the push services from apple / google to work they need to be configured with application secrets / certificates. the app used in the push message is taken from Token-App.
 
 * `sup pusher_maintenance add_google_app(AppId, Secret)`
-* `sup pusher_maintenance add_apple_app(AppId, CertFile)`
+* `sup pusher_maintenance add_apple_app(AppId, CertFile)` (uses the default APNs host: api.push.apple.com)
+* `sup pusher_maintenance add_apple_app(AppId, CertFile, Host)` (uses a custom APNs host, i.e. api.development.push.apple.com)
