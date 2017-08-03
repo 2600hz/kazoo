@@ -44,6 +44,7 @@ Key | Description | Type | Default | Required
 `media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
 `media.ignore_early_media` | The option to determine if early media from the device should always be ignored | `boolean()` |   | `false`
 `media.progress_timeout` | The progress timeout to apply to the device (seconds) | `integer()` |   | `false`
+`media.rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` |   | `false`
 `media.video.codecs.[]` |   | `string()` |   | `false`
 `media.video.codecs` | A list of video codecs the device supports | `array(string('VP8' | 'H264' | 'H263' | 'H261'))` | `[]` | `false`
 `media.video` | The video media parameters | `object()` | `{}` | `false`
