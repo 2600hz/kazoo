@@ -90,6 +90,7 @@
             "description": "Schema for crossbar.auth account_config",
             "properties": {
                 "auth_modules": {
+                    "additionalProperties": false,
                     "default": {
                         "cb_api_auth": {
                             "enabled": true,
@@ -125,19 +126,19 @@
                     "description": "Default crossbar authentication modules configuration",
                     "properties": {
                         "cb_api_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         },
                         "cb_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         },
                         "cb_ip_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         },
                         "cb_ubiquiti_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         },
                         "cb_user_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         }
                     },
                     "type": "object"
@@ -760,6 +761,7 @@
                     "type": "boolean"
                 },
                 "multi_factor": {
+                    "additionalProperties": false,
                     "description": "control multi factor authentications for this module",
                     "properties": {
                         "account_db": {
@@ -24871,27 +24873,6 @@
                     "description": "crossbar api auth tokens",
                     "type": "integer"
                 },
-                "auth_modules": {
-                    "description": "Default crossbar authentication modules configuration",
-                    "properties": {
-                        "cb_api_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        },
-                        "cb_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        },
-                        "cb_ip_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        },
-                        "cb_ubiquiti_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        },
-                        "cb_user_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        }
-                    },
-                    "type": "object"
-                },
                 "autoload_modules": {
                     "description": "crossbar autoload modules"
                 },
@@ -25122,6 +25103,7 @@
             "description": "Schema for crossbar.auth system_config",
             "properties": {
                 "auth_modules": {
+                    "additionalProperties": false,
                     "default": {
                         "cb_api_auth": {
                             "enabled": true,
@@ -25157,19 +25139,19 @@
                     "description": "Default crossbar authentication modules configuration",
                     "properties": {
                         "cb_api_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         },
                         "cb_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         },
                         "cb_ip_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         },
                         "cb_ubiquiti_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         },
                         "cb_user_auth": {
-                            "$ref": "#/definitions/auth_config"
+                            "$ref": "#/definitions/auth_module_config"
                         }
                     },
                     "type": "object"
