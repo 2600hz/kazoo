@@ -333,7 +333,7 @@ maybe_delete_topup_transaction(AccountId, Transactions) ->
     case lists:partition(fun is_topup_transaction/1, Transactions) of
         {_, []} -> Transactions;
         {_, NonTopup} ->
-           case kz_topup:should_topup(AccountId) of
+            case kz_topup:should_topup(AccountId) of
                 true -> Transactions;
                 false -> NonTopup
             end
