@@ -335,11 +335,11 @@ check_account_hierarchy(AuthModule, JObj, Context) ->
     AccountId = kz_json:get_ne_binary_value([<<"multi_factor">>, <<"account_id">>], JObj),
 
     case IsSysAdmin
-        orelse kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
+        orelse kz_util:is_in_account_hierarchy(AccountId, AuthAccountId, 'true')
     of
         'true' -> Context;
         'false' ->
-            ErrMsg = kz_term:to_binary(io_lib:format("multi-factor account_id ~s is not a descendant of yours", [AccountId])),
+            ErrMsg = kz_term:to_binary(io_lib:format("multi-factor account_id ~s is not in your account tree", [AccountId])),
             failed_multi_factor_validation(AuthModule, ErrMsg, Context)
     end.
 
