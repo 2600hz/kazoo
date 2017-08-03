@@ -17,8 +17,13 @@
 -export([demote_reseller/1]).
 -export([cascade_reseller_id/2]).
 -export([set_reseller_id/2]).
+-export([rebuild_services_db/0
+        ,attempt_services_recovery/0
+        ]).
 
 -include("kazoo_services.hrl").
+
+-define(KZ_SERVICES_DB_TMP, <<"services_backup">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -204,3 +209,99 @@ make_reseller(Account) when not is_binary(Account) ->
     make_reseller(kz_term:to_binary(Account));
 make_reseller(Account) ->
     whs_account_conversion:promote(Account).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec attempt_services_recovery() -> 'ok'.
+attempt_services_recovery() ->
+    JObjs = fetch_all_service_docs(?KZ_SERVICES_DB_TMP),
+    _ = kapps_maintenance:refresh(?KZ_SERVICES_DB),
+    {'ok', Results} = kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
+    log_services_recovery_results(Results).
+
+-spec log_services_recovery_results(kz_json:objects()) -> 'ok'.
+log_services_recovery_results([]) -> 'ok';
+log_services_recovery_results([JObj|JObjs]) ->
+    Id = kz_doc:id(JObj),
+    _ = case kz_json:get_value(<<"reason">>, JObj) of
+            'undefined' -> io:format("  restored document ~s~n", [Id]);
+            Reason -> io:format("  failed to restore ~s: ~s~n", [Id, Reason])
+        end,
+    log_services_recovery_results(JObjs).
+
+-spec rebuild_services_db() -> 'ok'.
+rebuild_services_db() ->
+    JObjs = fetch_all_service_docs(?KZ_SERVICES_DB),
+    'ok' = backup_service_docs(JObjs),
+    'true' = compare_services_backup(),
+    _ = rebuild_services_db(JObjs),
+    case compare_services_backup() of
+        'true' -> io:format("rebuild completed successfully~n", []);
+        'false' ->
+            io:format("discrepancies found between restored and backed up service documents!~n", []),
+            io:format("try: sup kazoo_services_maintenance attempt_services_recovery~n", [])
+    end.
+
+-spec rebuild_services_db(kz_json:objects()) -> 'ok'.
+rebuild_services_db(JObjs) ->
+    io:format("removing services database~n", []),
+    kz_datamgr:db_delete(?KZ_SERVICES_DB),
+    timer:sleep(5000),
+    io:format("rebuilding services database views~n", []),
+    kapps_maintenance:refresh(?KZ_SERVICES_DB),
+    io:format("restoring service documents~n", []),
+    kz_datamgr:save_docs(?KZ_SERVICES_DB, JObjs),
+    io:format("rebuild complete~n", []).
+
+-spec compare_services_backup() -> boolean().
+compare_services_backup() ->
+    _ = io:format("comparing original and backed up service documents~n", []),
+    Originals = [{kz_doc:id(JObj), JObj} || JObj <- fetch_all_service_docs(?KZ_SERVICES_DB)],
+    Backups = [{kz_doc:id(JObj), JObj} || JObj <- fetch_all_service_docs(?KZ_SERVICES_DB_TMP)],
+    lists:all(fun({Id, Original}) -> kz_json:are_equal(props:get_value(Id, Backups), Original) end, Originals).
+
+-spec backup_service_docs(kz_json:objects()) -> 'ok' | 'error'.
+backup_service_docs(JObjs) ->
+    _ = io:format("saving all service documents to ~s~n", [?KZ_SERVICES_DB_TMP]),
+    'true' = kz_datamgr:db_create(?KZ_SERVICES_DB_TMP),
+    {'ok', Results} = kz_datamgr:save_docs(?KZ_SERVICES_DB_TMP, JObjs),
+    case find_services_backup_failures(Results) of
+        [] -> 'ok';
+        Errors -> log_services_backup_failures(Errors)
+    end.
+
+-spec log_services_backup_failures(kz_json:objects()) -> 'error'.
+log_services_backup_failures([]) -> 'error';
+log_services_backup_failures([JObj|JObjs]) ->
+    _ = io:format("  failed to backup ~s: ~s~n"
+                 ,[kz_doc:id(JObj)
+                  ,kz_json:get_value(<<"reason">>, JObj)
+                  ]
+                 ),
+    log_services_backup_failures(JObjs).
+
+-spec find_services_backup_failures(kz_json:objects()) -> kz_json:objects().
+find_services_backup_failures(JObjs) ->
+    [JObj || JObj <- JObjs, kz_json:get_ne_value(<<"error">>, JObj) =/= 'undefined'].
+
+-spec fetch_all_service_docs(ne_binary()) -> kz_json:objects().
+fetch_all_service_docs(Database) ->
+    _ = io:format("fetching all service docs from '~s'~n", [Database]),
+    {'ok', JObjs} = kz_datamgr:all_docs(Database, ['include_docs']),
+    [prepare_service_doc(JObj) || JObj <- JObjs, not_design_doc(JObj)].
+
+-spec not_design_doc(kz_json:object()) -> boolean().
+not_design_doc(JObj) ->
+    case kz_doc:id(JObj) of
+        <<"_design", _/binary>> -> 'false';
+        _Else -> 'true'
+    end.
+
+-spec prepare_service_doc(kz_json:object()) -> kz_json:object().
+prepare_service_doc(JObj) ->
+    Doc = kz_json:get_value(<<"doc">>, JObj),
+    kz_json:delete_key(<<"_rev">>, Doc).
