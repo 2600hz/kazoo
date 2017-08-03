@@ -387,25 +387,14 @@ release(PN, FromState) ->
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
 authorize_release(PN) ->
-    authorize_release(PN, auth_by(PN)).
-
-authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) ->
-    lager:info("bypassing auth"),
-    authorized_release(PN);
-authorize_release(PN, AuthBy) ->
-    case is_admin_or_in_account_hierarchy(AuthBy, assigned_to(PN)) of
-        false -> knm_errors:unauthorized();
-        true -> authorized_release(PN)
-    end.
-
--spec authorized_release(knm_phone_number()) -> knm_phone_number().
-authorized_release(PN) ->
+    is_admin_or_in_account_hierarchy(auth_by(PN), assigned_to(PN))
+        orelse knm_errors:unauthorized(),
     Routines = [fun reset_features/1
                ,fun reset_doc/1
                ,{fun set_assigned_to/2, undefined}
                ,{fun set_state/2, knm_config:released_state()}
                ],
-    {'ok', NewPN} = setters(PN, Routines),
+    {ok, NewPN} = setters(PN, Routines),
     NewPN.
 
 %%--------------------------------------------------------------------
@@ -1413,7 +1402,7 @@ private_to_public() ->
 list_attachments(PN, AuthBy) ->
     AssignedTo = assigned_to(PN),
     case state(PN) =:= ?NUMBER_STATE_PORT_IN
-        andalso kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true')
+        andalso is_admin_or_in_account_hierarchy(AuthBy, AssignedTo)
     of
         'true' -> {'ok', kz_doc:attachments(doc(PN), kz_json:new())};
         'false' -> {'error', 'unauthorized'}
@@ -1468,18 +1457,18 @@ is_admin_or_in_account_hierarchy(AuthBy, AccountId) ->
             true;
         false ->
             ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AccountId]),
-            is_in_account_hierarchy(AuthBy, AccountId, true)
+            is_in_account_hierarchy(AuthBy, AccountId)
     end.
 
--spec is_in_account_hierarchy(ne_binary(), ne_binary(), boolean()) -> boolean().
+-spec is_in_account_hierarchy(ne_binary(), ne_binary()) -> boolean().
 -ifdef(TEST).
-is_in_account_hierarchy(AccountId, AccountId, true) -> true;
-is_in_account_hierarchy(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID, _) -> true;
-is_in_account_hierarchy(?RESELLER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, _) -> true;
-is_in_account_hierarchy(_, _, _) -> false.
+is_in_account_hierarchy(AccountId, AccountId) -> true;
+is_in_account_hierarchy(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID) -> true;
+is_in_account_hierarchy(?RESELLER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID) -> true;
+is_in_account_hierarchy(_, _) -> false.
 -else.
-is_in_account_hierarchy(AuthBy, AccountId, ShouldIncludeSelf) ->
-    kz_util:is_in_account_hierarchy(AuthBy, AccountId, ShouldIncludeSelf).
+is_in_account_hierarchy(AuthBy, AccountId) ->
+    kz_util:is_in_account_hierarchy(AuthBy, AccountId, true).
 -endif.
 
 %%--------------------------------------------------------------------
