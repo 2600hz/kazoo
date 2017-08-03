@@ -69,14 +69,16 @@ release_in_service_mdn_number_test_() ->
 
 release_in_service_numbers_test_() ->
     DefaultAuth = knm_number_options:default(),
-    %% ResellerAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}|DefaultAuth],
+    ResellerAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}|DefaultAuth],
     MasterAuth = [{auth_by, ?MASTER_ACCOUNT_ID}|DefaultAuth],
     SimpleHistory = [?RESELLER_ACCOUNT_ID],
     DeeperHistory = [?RESELLER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID],
     [release_in_service(?TEST_IN_SERVICE_NUM, DefaultAuth, SimpleHistory)
     ,release_in_service(?TEST_IN_SERVICE_NUM, MasterAuth, SimpleHistory)
+    ,release_in_service(?TEST_IN_SERVICE_NUM, ResellerAuth, SimpleHistory)
     ,release_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, DefaultAuth, DeeperHistory)
     ,release_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, MasterAuth, DeeperHistory)
+    ,release_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, ResellerAuth, DeeperHistory)
     ].
 
 release_in_service(Num, Options, PreHistory) ->
