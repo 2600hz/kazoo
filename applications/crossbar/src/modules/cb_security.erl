@@ -208,10 +208,12 @@ delete(Context) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
 
 maybe_flush_config(Context) ->
-    case cb_context:resp_status(Context) of
-        'success' ->
+    case cb_context:resp_status(Context) =:= 'success'
+        andalso cb_context:fetch(Context, 'flush', 'false')
+    of
+        'true' ->
             kapps_account_config:flush(cb_context:account_id(Context), ?AUTH_CONFIG_CAT, <<"hierarchy_merge">>);
-        _ -> Context
+        'false' -> Context
     end.
 
 %%--------------------------------------------------------------------
