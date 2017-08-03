@@ -95,37 +95,57 @@
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         },
                         "cb_auth": {
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         },
                         "cb_ip_auth": {
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         },
                         "cb_ubiquiti_auth": {
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         },
                         "cb_user_auth": {
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         }
                     },
                     "description": "Default crossbar authentication modules configuration",
+                    "properties": {
+                        "cb_api_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_ip_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_ubiquiti_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_user_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        }
+                    },
                     "type": "object"
                 }
             },
+            "required": [
+                "auth_modules"
+            ],
             "type": "object"
         },
         "account_config.crossbar.sms": {
@@ -722,11 +742,11 @@
             ],
             "type": "object"
         },
-        "auth_config": {
-            "description": "crossbar authentication module configuration",
+        "auth_module_config": {
+            "description": "crossbar authenticator module configuration",
             "properties": {
                 "enabled": {
-                    "description": "whether or not this authentication module is enabled",
+                    "description": "whether or not this authenticator module is enabled",
                     "type": "boolean"
                 },
                 "log_failed_attempts": {
@@ -740,11 +760,18 @@
                     "type": "boolean"
                 },
                 "multi_factor": {
-                    "additionalProperties": true,
                     "description": "control multi factor authentications for this module",
                     "properties": {
+                        "account_db": {
+                            "description": "account DB that contains the multi factor configuration",
+                            "type": "string"
+                        },
+                        "account_id": {
+                            "description": "account ID that multi factor is configured for",
+                            "type": "string"
+                        },
                         "configuration_id": {
-                            "description": "document ID contains the multi factor configuration",
+                            "description": "document ID that contains the multi factor configuration",
                             "type": "string"
                         },
                         "enabled": {
@@ -762,41 +789,14 @@
                     ],
                     "type": "object"
                 },
-                "token_auth_expiry": {
+                "token_auth_expiry_s": {
+                    "default": 3600,
                     "description": "expiration period of the JWT token (seconds)",
                     "type": "integer"
                 }
             },
             "required": [
                 "enabled"
-            ],
-            "type": "object"
-        },
-        "auth_config_account": {
-            "description": "crossbar account authentication modules configuration",
-            "properties": {
-                "auth_modules": {
-                    "additionalProperties": true,
-                    "description": "crossbar authentication modules configuration",
-                    "properties": {
-                        "cb_api_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        },
-                        "cb_ip_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        },
-                        "cb_ubiquiti_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        },
-                        "cb_user_auth": {
-                            "$ref": "#/definitions/auth_config"
-                        }
-                    },
-                    "type": "object"
-                }
-            },
-            "required": [
-                "auth_modules"
             ],
             "type": "object"
         },
@@ -24871,6 +24871,27 @@
                     "description": "crossbar api auth tokens",
                     "type": "integer"
                 },
+                "auth_modules": {
+                    "description": "Default crossbar authentication modules configuration",
+                    "properties": {
+                        "cb_api_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_ip_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_ubiquiti_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_user_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        }
+                    },
+                    "type": "object"
+                },
                 "autoload_modules": {
                     "description": "crossbar autoload modules"
                 },
@@ -24994,7 +25015,7 @@
                 },
                 "token_auth_expiry": {
                     "default": 3600,
-                    "description": "crossbar token auth expiry",
+                    "description": "crossbar token auth expiry in seconds",
                     "type": "integer"
                 },
                 "token_costs": {
@@ -25106,34 +25127,51 @@
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         },
                         "cb_auth": {
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         },
                         "cb_ip_auth": {
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         },
                         "cb_ubiquiti_auth": {
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         },
                         "cb_user_auth": {
                             "enabled": true,
                             "log_failed_attempts": true,
                             "log_successful_attempts": true,
-                            "token_auth_expiry": 3600
+                            "token_auth_expiry_s": 3600
                         }
                     },
                     "description": "Default crossbar authentication modules configuration",
+                    "properties": {
+                        "cb_api_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_ip_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_ubiquiti_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        },
+                        "cb_user_auth": {
+                            "$ref": "#/definitions/auth_config"
+                        }
+                    },
                     "type": "object"
                 },
                 "available_auth_methods": {
@@ -25173,6 +25211,11 @@
                     "default": false,
                     "description": "Should log successful login attempts",
                     "type": "boolean"
+                },
+                "token_auth_expiry_s": {
+                    "default": 3600,
+                    "description": "crossbar token auth expiry in seconds",
+                    "type": "integer"
                 }
             },
             "type": "object"
@@ -38438,6 +38481,21 @@
                         "description": "request succeeded"
                     }
                 }
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
             }
         },
         "/accounts/{ACCOUNT_ID}/security/attempts": {
@@ -38465,98 +38523,6 @@
                     },
                     {
                         "$ref": "#/parameters/ATTEMPT_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/security/{CONFIG_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/CONFIG_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/CONFIG_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "patch": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/CONFIG_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/CONFIG_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/CONFIG_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

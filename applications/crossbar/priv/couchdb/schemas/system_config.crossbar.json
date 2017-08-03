@@ -136,7 +136,7 @@
         },
         "token_auth_expiry": {
             "default": 3600,
-            "description": "crossbar token auth expiry",
+            "description": "crossbar token auth expiry in seconds",
             "type": "integer"
         },
         "token_costs": {

@@ -4,39 +4,57 @@
     "description": "Schema for crossbar.auth system_config",
     "properties": {
         "auth_modules": {
+            "additionalProperties": false,
             "default": {
                 "cb_api_auth": {
                     "enabled": true,
                     "log_failed_attempts": true,
                     "log_successful_attempts": true,
-                    "token_auth_expiry": 3600
+                    "token_auth_expiry_s": 3600
                 },
                 "cb_auth": {
                     "enabled": true,
                     "log_failed_attempts": true,
                     "log_successful_attempts": true,
-                    "token_auth_expiry": 3600
+                    "token_auth_expiry_s": 3600
                 },
                 "cb_ip_auth": {
                     "enabled": true,
                     "log_failed_attempts": true,
                     "log_successful_attempts": true,
-                    "token_auth_expiry": 3600
+                    "token_auth_expiry_s": 3600
                 },
                 "cb_ubiquiti_auth": {
                     "enabled": true,
                     "log_failed_attempts": true,
                     "log_successful_attempts": true,
-                    "token_auth_expiry": 3600
+                    "token_auth_expiry_s": 3600
                 },
                 "cb_user_auth": {
                     "enabled": true,
                     "log_failed_attempts": true,
                     "log_successful_attempts": true,
-                    "token_auth_expiry": 3600
+                    "token_auth_expiry_s": 3600
                 }
             },
             "description": "Default crossbar authentication modules configuration",
+            "properties": {
+                "cb_api_auth": {
+                    "$ref": "auth_module_config"
+                },
+                "cb_auth": {
+                    "$ref": "auth_module_config"
+                },
+                "cb_ip_auth": {
+                    "$ref": "auth_module_config"
+                },
+                "cb_ubiquiti_auth": {
+                    "$ref": "auth_module_config"
+                },
+                "cb_user_auth": {
+                    "$ref": "auth_module_config"
+                }
+            },
             "type": "object"
         },
         "available_auth_methods": {
@@ -76,6 +94,11 @@
             "default": false,
             "description": "Should log successful login attempts",
             "type": "boolean"
+        },
+        "token_auth_expiry_s": {
+            "default": 3600,
+            "description": "crossbar token auth expiry in seconds",
+            "type": "integer"
         }
     },
     "type": "object"

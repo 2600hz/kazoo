@@ -1,11 +1,11 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "auth_config",
-    "additionalProperties": true,
-    "description": "crossbar authentication module configuration",
+    "_id": "auth_module_config",
+    "additionalProperties": false,
+    "description": "crossbar authenticator module configuration",
     "properties": {
         "enabled": {
-            "description": "whether or not this authentication module is enabled",
+            "description": "whether or not this authenticator module is enabled",
             "type": "boolean"
         },
         "log_failed_attempts": {
@@ -19,11 +19,19 @@
             "type": "boolean"
         },
         "multi_factor": {
-            "additionalProperties": true,
+            "additionalProperties": false,
             "description": "control multi factor authentications for this module",
             "properties": {
+                "account_db": {
+                    "description": "account DB that contains the multi factor configuration",
+                    "type": "string"
+                },
+                "account_id": {
+                    "description": "account ID that multi factor is configured for",
+                    "type": "string"
+                },
                 "configuration_id": {
-                    "description": "document ID contains the multi factor configuration",
+                    "description": "document ID that contains the multi factor configuration",
                     "type": "string"
                 },
                 "enabled": {
@@ -41,7 +49,8 @@
             ],
             "type": "object"
         },
-        "token_auth_expiry": {
+        "token_auth_expiry_s": {
+            "default": 3600,
             "description": "expiration period of the JWT token (seconds)",
             "type": "integer"
         }
