@@ -12,7 +12,7 @@
         ,authorize_auth_token/1
         ,log_success_auth/4, log_success_auth/5, log_success_auth/6
         ,log_failed_auth/4, log_failed_auth/5, log_failed_auth/6
-        ,get_auth_config/1
+        ,get_inherited_auth_config/1
         ]).
 
 -include("crossbar.hrl").
@@ -66,7 +66,7 @@ create_auth_token(Context, Method, JObj) ->
     AccountId = kz_json:get_first_defined([<<"account_id">>, [<<"Claims">>, <<"account_id">>]], JObj),
     OwnerId = kz_json:get_first_defined([<<"owner_id">>, [<<"Claims">>, <<"owner_id">>]], JObj),
 
-    AuthConfig = get_auth_config(AccountId),
+    AuthConfig = get_inherited_auth_config(AccountId),
     Expiration = token_auth_expiry(Method, AuthConfig),
 
     Claims = props:filter_undefined(
@@ -183,8 +183,8 @@ maybe_db_token(AuthToken) ->
 %% authentication configuration
 %% @end
 %%--------------------------------------------------------------------
--spec get_auth_config(api_ne_binary()) -> kz_json:object().
-get_auth_config(AccountId) ->
+-spec get_inherited_auth_config(api_ne_binary()) -> kz_json:object().
+get_inherited_auth_config(AccountId) ->
     kapps_account_config:get_hierarchy(AccountId, ?AUTH_CONFIG_CAT, <<"auth_modules">>, ?DEFAULT_AUTH_CONFIG).
 
 %% @private
@@ -290,7 +290,7 @@ log_success_auth(AuthModule, AuthType, Reason, Context, 'undefined', AuthConfig)
         AccountId -> log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig)
     end;
 log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, 'undefined') ->
-    log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, get_auth_config(AccountId));
+    log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, get_inherited_auth_config(AccountId));
 log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) ->
     Method = kz_term:to_binary(AuthModule),
     case is_log_type_enabled(<<"success">>, Method, AuthConfig) of
@@ -320,7 +320,7 @@ log_failed_auth(AuthModule, AuthType, Reason, Context, 'undefined', AuthConfig) 
         AccountId -> log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig)
     end;
 log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, 'undefined') ->
-    log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, get_auth_config(AccountId));
+    log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, get_inherited_auth_config(AccountId));
 log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) ->
     Method = kz_term:to_binary(AuthModule),
     case is_log_type_enabled(<<"failed">>, Method, AuthConfig) of
