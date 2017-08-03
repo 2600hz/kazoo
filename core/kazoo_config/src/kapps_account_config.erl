@@ -24,7 +24,7 @@
         ,set/4
         ,set_global/4
 
-        ,flush/2
+        ,flush/2, flush_all_strategies/2, flush/3
         ,migrate/1
         ]).
 
@@ -236,9 +236,11 @@ get(Account, Category) ->
 load_config_from_system(_Account, Category) ->
     case kapps_config:get_category(Category) of
         {ok, JObj} ->
-            {ok, kz_json:get_value(<<"default">>, JObj, kz_json:new())};
+            Doc = kz_json:get_value(<<"default">>, JObj, kz_json:new()),
+            {ok, kz_doc:set_id(kz_doc:set_account_db(Doc, ?KZ_CONFIG_DB), Category)};
         {error, _}=Error -> Error
     end.
+
 -spec load_config_from_reseller(api_account(), ne_binary()) -> kazoo_data:get_results_return().
 -ifdef(TEST).
 load_config_from_reseller(Account, Category) ->
@@ -444,8 +446,25 @@ update_config_for_saving(AccountId, JObj) ->
 %%--------------------------------------------------------------------
 -spec flush(ne_binary(), ne_binary()) -> ok.
 flush(Account, Category) ->
-    AccountDb = kz_util:format_account_id(Account, encoded),
-    kz_datamgr:flush_cache_doc(AccountDb, kapps_config_util:account_doc_id(Category)).
+    AccountDb = kz_util:format_account_db(Account),
+    kz_datamgr:flush_cache_doc(AccountDb, kapps_config_util:account_doc_id(Category)),
+    flush_all_strategies(Account, Category).
+
+-spec flush_all_strategies(ne_binary(), ne_binary()) -> ok.
+flush_all_strategies(Account, Category) ->
+    Strategies = [<<"hierarchy_merge">>
+                 ,<<"global">>
+                 ,<<"reseller">>
+                 ,<<"global_merge">>
+                 ,<<"reseller_merge">>
+                 ],
+    lists:foreach(fun(Strategy) -> flush(Account, Category, Strategy) end, Strategies).
+
+-spec flush(ne_binary(), ne_binary(), ne_binary()) -> ok.
+flush(Account, Category, Strategy) ->
+    AccountId = kz_util:format_account_id(Account),
+    CacheKey = strategy_cache_key(AccountId, Category, Strategy),
+    kz_cache:erase_local(?KAPPS_CONFIG_CACHE, CacheKey).
 
 
 %% ====================================================================

@@ -184,7 +184,7 @@ validate_auth_configs(Context, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    crossbar_doc:save(Context).
+    maybe_flush_config(crossbar_doc:save(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -195,7 +195,7 @@ post(Context) ->
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context()) -> cb_context:context().
 patch(Context) ->
-    crossbar_doc:save(Context).
+    maybe_flush_config(crossbar_doc:save(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -206,6 +206,13 @@ patch(Context) ->
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
+
+maybe_flush_config(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            kapps_account_config:flush(cb_context:account_id(Context), ?AUTH_CONFIG_CAT, <<"hierarchy_merge">>);
+        _ -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -289,7 +296,7 @@ on_successful_validation(Id, Context) ->
 create_config_document(Context) ->
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
     Doc = kz_doc:set_id(cb_context:doc(Context), ConfigId),
-    crossbar_doc:handle_json_success(kz_doc:set_type(Doc, <<"account_config">>), Context).
+    crossbar_doc:handle_json_success(kz_doc:set_type(Doc, <<"account_config">>), cb_context:store(Context, flush, true)).
 
 %%--------------------------------------------------------------------
 %% @private
