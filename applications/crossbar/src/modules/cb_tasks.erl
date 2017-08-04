@@ -191,16 +191,19 @@ to_csv({Req, Context}) ->
                                ]
                               ,cowboy_req:get('resp_headers', Req)
                               ),
-    {'ok', Req1} = cowboy_req:reply(200, Headers, cb_context:resp_data(Context), Req),
-    {Req1, Context}.
+    {Req, cb_context:set_resp_headers(Context, Headers)}.
 
 -spec download_filename(cb_context:context(), ne_binary()) -> ne_binary().
 download_filename(Context, ?KZ_TASKS_ANAME_OUT) ->
-    RD = kz_json:get_value(<<"_read_only">>, cb_context:resp_data(Context)),
-    [TaskId|_] = props:get_value(<<"tasks">>, cb_context:req_nouns(Context)),
-    <<(kz_json:get_value(?QS_CATEGORY, RD))/binary, "_",
-      (kz_json:get_value(?QS_ACTION, RD))/binary, "_",
-      TaskId/binary, ".csv"
+    TaskJObj = cb_context:doc(Context),
+
+    Category = kzd_task:category(TaskJObj),
+    Action = kzd_task:action(TaskJObj),
+    TaskId = kz_doc:id(TaskJObj),
+
+    <<Category/binary, "_"
+      ,Action/binary, "_"
+      ,TaskId/binary, ".csv"
     >>;
 download_filename(_Context, Name) ->
     Name.
@@ -470,9 +473,12 @@ handle_read_result(TaskId, OrigContext, ReadContext) ->
     case cb_context:resp_data(ReadContext) of
         [] -> crossbar_util:response_bad_identifier(TaskId, OrigContext);
         [TaskJObj] ->
-            lager:debug("task: ~p", [TaskJObj]),
             JObj = kz_json:set_value(<<"_read_only">>, TaskJObj, kz_json:new()),
-            cb_context:set_resp_data(ReadContext, JObj)
+            cb_context:setters(ReadContext
+                              ,[{fun cb_context:set_doc/2, JObj}
+                               ,{fun cb_context:set_resp_data/2, JObj}
+                               ]
+                              )
     end.
 
 read_attachment(TaskId, Context, AccountId) ->
