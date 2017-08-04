@@ -890,7 +890,7 @@ remove_if_mobile(MDN, Context) ->
                 Mobile ->
                     lager:debug("hard removing old mdn ~s with mobile properties ~s"
                                ,[Normalized, kz_json:encode(Mobile)]),
-                    _ = knm_number:release(Normalized, knm_number_options:mdn_options()),
+                    _ = knm_number:delete(Normalized, knm_number_options:mdn_options()),
                     Context
             end;
         {'error', _R} ->
