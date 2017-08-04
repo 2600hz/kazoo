@@ -71,6 +71,8 @@ release_in_service_numbers_test_() ->
     DefaultAuth = knm_number_options:default(),
     ResellerAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}],
     MasterAuth = [{auth_by, ?MASTER_ACCOUNT_ID}],
+    ResellerMDNAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}|knm_number_options:mdn_options()],
+    MasterMDNAuth = [{auth_by, ?MASTER_ACCOUNT_ID}|knm_number_options:mdn_options()],
     SimpleHistory = [?RESELLER_ACCOUNT_ID],
     DeeperHistory = [?RESELLER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID],
     [release_in_service(?TEST_IN_SERVICE_NUM, DefaultAuth, SimpleHistory)
@@ -79,6 +81,9 @@ release_in_service_numbers_test_() ->
     ,release_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, DefaultAuth, DeeperHistory)
     ,release_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, MasterAuth, DeeperHistory)
     ,release_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, ResellerAuth, DeeperHistory)
+    ,release_in_service(?TEST_IN_SERVICE_MDN, DefaultAuth, SimpleHistory)
+    ,release_in_service(?TEST_IN_SERVICE_MDN, MasterMDNAuth, SimpleHistory)
+    ,release_in_service(?TEST_IN_SERVICE_MDN, ResellerMDNAuth, SimpleHistory)
     ].
 
 release_in_service(Num, Options, PreHistory) ->
@@ -117,4 +122,30 @@ release_in_service(Num, Options, PreHistory) ->
               }
              ]
      end
+    ].
+
+delete_in_service_test_() ->
+    DefaultAuth = knm_number_options:default(),
+    MasterAuth = [{auth_by, ?MASTER_ACCOUNT_ID}],
+    MasterMDNAuth = [{auth_by, ?MASTER_ACCOUNT_ID}|knm_number_options:mdn_options()],
+    [delete_in_service(?TEST_IN_SERVICE_NUM, DefaultAuth)
+    ,delete_in_service(?TEST_IN_SERVICE_NUM, MasterAuth)
+    ,delete_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, DefaultAuth)
+    ,delete_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, MasterAuth)
+    ,delete_in_service(?TEST_IN_SERVICE_MDN, DefaultAuth)
+    ,delete_in_service(?TEST_IN_SERVICE_MDN, MasterMDNAuth)
+    ].
+
+delete_in_service(Num, Options) ->
+    {ok, N0} = knm_number:get(Num, Options),
+    PN0 = knm_number:phone_number(N0),
+    {ok, N} = knm_number:delete(Num, Options),
+    PN = knm_number:phone_number(N),
+    [?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN0))
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
+    ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN0))
+    ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN))
+    ,{"verify number state is changed"
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
+     }
     ].
