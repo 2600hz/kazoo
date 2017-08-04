@@ -885,10 +885,12 @@ to_csv(Req, Context) ->
     case cb_context:fetch(Context1, 'is_chunked') of
         'true' -> {'halt', Req1, Context1};
         _ ->
-            RespHeaders = [{<<"Content-Type">>, <<"application/octet-stream">>}
-                          ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
-                           | cb_context:resp_headers(Context1)
-                          ],
+            RespHeaders =
+                props:insert_values([{<<"content-type">>, <<"application/octet-stream">>}
+                                    ,{<<"content-disposition">>, <<"attachment; filename=\"data.csv\"">>}
+                                    ]
+                                   ,cb_context:resp_headers(Context1)
+                                   ),
             {csv_body(cb_context:resp_data(Context))
             ,api_util:set_resp_headers(Req1, cb_context:set_resp_headers(Context1, RespHeaders))
             ,Context1

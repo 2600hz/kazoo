@@ -185,14 +185,39 @@ ctp(Context) ->
 -spec to_csv({cowboy_req:req(), cb_context:context()}) ->
                     {cowboy_req:req(), cb_context:context()}.
 to_csv({Req, Context}) ->
-    Filename = requested_attachment_name(Context),
+    Filename = download_filename(Context, requested_attachment_name(Context)),
     Headers = props:set_values([{<<"content-type">>, <<"text/csv">>}
                                ,{<<"content-disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
                                ]
                               ,cowboy_req:get('resp_headers', Req)
                               ),
-    {'ok', Req1} = cowboy_req:reply(200, Headers, cb_context:resp_data(Context), Req),
-    {Req1, Context}.
+    {Req, cb_context:set_resp_headers(Context, Headers)}.
+
+-spec download_filename(cb_context:context(), ne_binary()) -> ne_binary().
+download_filename(Context, ?KZ_TASKS_ANAME_OUT) ->
+    TaskJObj = cb_context:doc(Context),
+
+    Category = kzd_task:category(TaskJObj),
+    Action = kzd_task:action(TaskJObj),
+    TaskId = kz_doc:id(TaskJObj),
+
+    <<Category/binary, "_"
+      ,Action/binary, "_"
+      ,TaskId/binary, "_out.csv"
+    >>;
+download_filename(Context, ?KZ_TASKS_ANAME_IN) ->
+    TaskJObj = cb_context:doc(Context),
+
+    Category = kzd_task:category(TaskJObj),
+    Action = kzd_task:action(TaskJObj),
+    TaskId = kz_doc:id(TaskJObj),
+
+    <<Category/binary, "_"
+      ,Action/binary, "_"
+      ,TaskId/binary, "_in.csv"
+    >>;
+download_filename(_Context, Name) ->
+    Name.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -459,9 +484,12 @@ handle_read_result(TaskId, OrigContext, ReadContext) ->
     case cb_context:resp_data(ReadContext) of
         [] -> crossbar_util:response_bad_identifier(TaskId, OrigContext);
         [TaskJObj] ->
-            lager:debug("task: ~p", [TaskJObj]),
             JObj = kz_json:set_value(<<"_read_only">>, TaskJObj, kz_json:new()),
-            cb_context:set_resp_data(ReadContext, JObj)
+            cb_context:setters(ReadContext
+                              ,[{fun cb_context:set_doc/2, JObj}
+                               ,{fun cb_context:set_resp_data/2, JObj}
+                               ]
+                              )
     end.
 
 read_attachment(TaskId, Context, AccountId) ->
