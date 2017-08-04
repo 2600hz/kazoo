@@ -266,7 +266,7 @@ delete(K, Props) ->
 delete_keys([], Props) -> Props;
 delete_keys([_|_]=Ks, Props) -> lists:foldl(fun delete/2, Props, Ks).
 
--spec is_defined(kz_proplist_property(), kz_proplist()) -> boolean().
+-spec is_defined(kz_proplist_property() | kz_proplist_key(), kz_proplist()) -> boolean().
 is_defined({Key, _}, Props) -> get_value(Key, Props) =/= 'undefined';
 is_defined(Key, Props) -> get_value(Key, Props) =/= 'undefined'.
 
