@@ -53,11 +53,11 @@ params(Module)
     ,{subject, Module:subject()}
     ,{category, Module:category()}
     ,{friendly_name, Module:friendly_name()}
-    ,{to, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
-    ,{from, teletype_util:default_from_address(ModConfigCat)}
-    ,{cc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-    ,{bcc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-    ,{reply_to, teletype_util:default_reply_to(ModConfigCat)}
+    ,{to, Module:to(ModConfigCat)}
+    ,{from, Module:from(ModConfigCat)}
+    ,{cc, Module:cc(ModConfigCat)}
+    ,{bcc, Module:bcc(ModConfigCat)}
+    ,{reply_to, Module:reply_to(ModConfigCat)}
     ,{html, TemplateId}
     ,{text, TemplateId}
     ].

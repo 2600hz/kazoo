@@ -15,6 +15,7 @@
         ,subject/0
         ,category/0
         ,friendly_name/0
+        ,to/1, from/1, cc/1, bcc/1, reply_to/1
         ]).
 -export([handle_req/1]).
 
@@ -40,22 +41,34 @@ macros() ->
       ]).
 
 -spec subject() -> ne_binary().
-subject() ->
-    <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>.
+subject() -> <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>.
 
 -spec category() -> ne_binary().
-category() ->
-    <<"voicemail">>.
+category() -> <<"voicemail">>.
 
 -spec friendly_name() -> ne_binary().
-friendly_name() ->
-    <<"Voicemail To Email">>.
+friendly_name() -> <<"Voicemail To Email">>.
+
+-spec to(ne_binary()) -> kz_json:object().
+to(_) -> ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL).
+
+-spec from(ne_binary()) -> api_ne_binary().
+from(ModConfigCat) -> teletype_util:default_from_address(ModConfigCat).
+
+-spec cc(ne_binary()) -> kz_json:object().
+cc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec bcc(ne_binary()) -> kz_json:object().
+bcc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec reply_to(ne_binary()) -> api_ne_binary().
+reply_to(ModConfigCat) -> teletype_util:default_reply_to(ModConfigCat).
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
-    teletype_bindings:bind(id(), ?MODULE, 'handle_req').
+    teletype_bindings:bind(<<"voicemail_new">>, ?MODULE, 'handle_req').
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(JObj) ->
