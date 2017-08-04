@@ -173,6 +173,7 @@ maybe_ignore_failure(<<"validation_failed">>) -> 'true';
 maybe_ignore_failure(<<"missing_data:", _/binary>>) -> 'true';
 maybe_ignore_failure(<<"failed_template:", _/binary>>) -> 'true'; %% rendering problems
 maybe_ignore_failure(<<"template_error:", _/binary>>) -> 'true'; %% rendering problems
+maybe_ignore_failure(<<"no teletype template was found">>) -> 'true'; %% rendering problems
 
 %% explicitly not ignoring these below:
 maybe_ignore_failure(<<"unknown_template_error">>) -> 'false'; %% maybe something went wrong with template, trying later?

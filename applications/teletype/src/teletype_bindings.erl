@@ -95,5 +95,9 @@ build_failure_message([{'EXIT', {'error', {'badmatch',  _}}}|_]) ->
 build_failure_message([{'EXIT', {_Exp, _ST}}|_]) ->
     <<"template_error: crashed with exception">>;
 
-build_failure_message(_) ->
+build_failure_message([]) ->
+    <<"no teletype template was found">>;
+
+build_failure_message(_Other) ->
+    lager:debug("template failed with unknown reasons: ~p", [_Other]),
     <<"unknown_template_error">>.
