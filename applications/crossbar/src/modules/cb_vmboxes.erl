@@ -57,7 +57,7 @@
 
 -spec init() -> ok.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.content_types_accpeted.vmboxes">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.vmboxes">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.vmboxes">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.vmboxes">>, ?MODULE, 'resource_exists'),
@@ -1018,7 +1018,12 @@ create_new_message_document(Context, BoxJObj) ->
 load_message_binary(BoxId, MediaId, Context) ->
     case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
         {'ok', JObj} ->
-            case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
+            case kz_util:is_not_empty(kz_doc:attachment_names(JObj))
+                andalso kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId)
+            of
+                'false' ->
+                    Msg = <<"voicemail message does not have any audio file">>,
+                    cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Msg}]), Context);
                 {'error', Error} ->
                     crossbar_doc:handle_datamgr_errors(Error, BoxId, Context);
                 {'ok', BoxJObj} ->
