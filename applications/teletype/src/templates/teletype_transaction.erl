@@ -9,7 +9,7 @@
 -module(teletype_transaction).
 
 -export([init/0
-        ,handle_transaction/1
+        ,handle_req/1
         ]).
 
 -include("teletype.hrl").
@@ -64,7 +64,7 @@ init() ->
                    ],
     teletype_templates:init(?SUCCESS_TEMPLATE_ID, SucessParams),
     teletype_templates:init(?FAILED_TEMPLATE_ID, FailedParams),
-    teletype_bindings:bind(<<"transaction">>, ?MODULE, 'handle_transaction').
+    teletype_bindings:bind(<<"transaction">>, ?MODULE, 'handle_req').
 
 -spec transaction_template_id(kz_json:object()) -> ne_binary().
 transaction_template_id(DataJObj) ->
@@ -73,8 +73,17 @@ transaction_template_id(DataJObj) ->
         'false' -> ?FAILED_TEMPLATE_ID
     end.
 
--spec handle_transaction(kz_json:object()) -> 'ok'.
-handle_transaction(JObj) ->
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:transaction_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?SUCCESS_TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?SUCCESS_TEMPLATE_ID]),
+
     'true' = kapi_notifications:transaction_v(JObj),
     kz_util:put_callid(JObj),
 
@@ -88,11 +97,11 @@ handle_transaction(JObj) ->
     TemplateId = transaction_template_id(DataJObj),
     case teletype_util:is_notice_enabled(AccountId, JObj, TemplateId) of
         'false' -> teletype_util:notification_disabled(DataJObj, TemplateId);
-        'true' -> handle_req(kz_json:merge_jobjs(DataJObj, ReqData))
+        'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec handle_req(kz_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
+-spec process_req(kz_json:object()) -> 'ok'.
+process_req(DataJObj) ->
     TemplateId = transaction_template_id(DataJObj),
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -104,7 +113,7 @@ handle_req(DataJObj) ->
     %% Load templates
     RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
 
-    AccountId = teletype_util:find_account_id(DataJObj),
+    AccountId = kapi_notifications:account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(TemplateId, AccountId),
 
     Subject = teletype_util:render_subject(
@@ -174,7 +183,7 @@ get_transaction_amount(DataJObj) ->
         'undefined' when IsPreview -> 20.0;
         'undefined' ->
             lager:warning("failed to get topup amount from data: ~p", [DataJObj]),
-            throw({'error', 'no_topup_amount'});
+            throw({'error', 'missing_data',  <<"no transaction amount">>});
         Amount -> Amount
     end.
 

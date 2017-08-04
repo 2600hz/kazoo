@@ -15,8 +15,9 @@
         ,subject/0
         ,category/0
         ,friendly_name/0
+        ,to/1, from/1, cc/1, bcc/1, reply_to/1
         ]).
--export([handle_new_voicemail/1]).
+-export([handle_req/1]).
 
 -include("teletype.hrl").
 
@@ -40,27 +41,45 @@ macros() ->
       ]).
 
 -spec subject() -> ne_binary().
-subject() ->
-    <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>.
+subject() -> <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>.
 
 -spec category() -> ne_binary().
-category() ->
-    <<"voicemail">>.
+category() -> <<"voicemail">>.
 
 -spec friendly_name() -> ne_binary().
-friendly_name() ->
-    <<"Voicemail To Email">>.
+friendly_name() -> <<"Voicemail To Email">>.
+
+-spec to(ne_binary()) -> kz_json:object().
+to(_) -> ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL).
+
+-spec from(ne_binary()) -> api_ne_binary().
+from(ModConfigCat) -> teletype_util:default_from_address(ModConfigCat).
+
+-spec cc(ne_binary()) -> kz_json:object().
+cc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec bcc(ne_binary()) -> kz_json:object().
+bcc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec reply_to(ne_binary()) -> api_ne_binary().
+reply_to(ModConfigCat) -> teletype_util:default_reply_to(ModConfigCat).
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
-    teletype_bindings:bind(id(), ?MODULE, 'handle_new_voicemail').
+    teletype_bindings:bind(<<"voicemail_new">>, ?MODULE, 'handle_req').
 
--spec handle_new_voicemail(kz_json:object()) -> 'ok'.
-handle_new_voicemail(JObj) ->
-    'true' = kapi_notifications:voicemail_new_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:voicemail_new_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [id()]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [id()]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -68,30 +87,46 @@ handle_new_voicemail(JObj) ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
         'false' -> teletype_util:notification_disabled(DataJObj, id());
-        'true' -> handle_req(DataJObj, AccountId)
+        'true' -> process_req(DataJObj)
     end.
 
--spec handle_req(kz_json:object(), ne_binary()) -> 'ok'.
-handle_req(DataJObj, AccountId) ->
-    VMBoxId = kz_json:get_value(<<"voicemail_box">>, DataJObj),
-    {'ok', VMBox} = teletype_util:open_doc(<<"vmbox">>, VMBoxId, DataJObj),
-    {'ok', UserJObj} = get_owner(VMBox, DataJObj),
-    BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
+-spec process_req(kz_json:object()) -> 'ok'.
+process_req(DataJObj) ->
+    VMBoxJObj = get_vmbox(DataJObj),
+    UserJObj = get_owner(VMBoxJObj, DataJObj),
+    BoxEmails = kzd_voicemail_box:notification_emails(VMBoxJObj),
     Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
-    Values = [{<<"vmbox">>, VMBox}
+    Values = [{<<"vmbox_doc">>, VMBoxJObj}
              ,{<<"user">>, UserJObj}
-             ,{<<"account">>, AccountJObj}
              ,{<<"to">>, Emails}
              ],
     ReqData = kz_json:set_values(Values, DataJObj),
 
-    HasEmails = Emails =/= [],
     case teletype_util:is_preview(DataJObj) of
-        'false' -> maybe_process_req(ReqData, HasEmails);
+        'false' -> maybe_process_req(ReqData);
         'true' ->
-            maybe_process_req(kz_json:merge_jobjs(DataJObj, ReqData), HasEmails)
+            maybe_process_req(kz_json:merge_jobjs(DataJObj, ReqData))
+    end.
+
+-spec get_vmbox(kz_json:object()) -> kz_json:object().
+get_vmbox(DataJObj) ->
+    VMBoxId = kz_json:get_value(<<"voicemail_box">>, DataJObj),
+    case teletype_util:open_doc(<<"vmbox">>, VMBoxId, DataJObj) of
+        {'ok', JObj} -> JObj;
+        {'error', _Reason} ->
+            lager:debug("failed to open vmbox ~s: ~p", [VMBoxId, _Reason]),
+            kz_json:new()
+    end.
+
+-spec get_owner(kzd_voicemail_box:doc(), kz_json:object()) -> {'ok', kz_json:object()}.
+get_owner(VMBoxJObj, DataJObj) ->
+    OwnerId = kzd_voicemail_box:owner_id(VMBoxJObj),
+    case teletype_util:open_doc(<<"user">>, OwnerId, DataJObj) of
+        {'ok', JObj} -> JObj;
+        {'error', _Reason} ->
+            lager:debug("failed to open user ~s: ~p", [OwnerId, _Reason]),
+            kz_json:new()
     end.
 
 -spec maybe_add_user_email(ne_binaries(), api_binary(), boolean()) -> ne_binaries().
@@ -99,25 +134,27 @@ maybe_add_user_email(BoxEmails, 'undefined', _) -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail, 'false') -> lists:delete(UserEmail, BoxEmails);
 maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
 
--spec get_owner(kzd_voicemail_box:doc(), kz_json:object()) -> {'ok', kz_json:object()}.
-get_owner(VMBox, DataJObj) ->
-    case teletype_util:open_doc(<<"user">>, kzd_voicemail_box:owner_id(VMBox), DataJObj) of
-        {'ok', _}=OK -> OK;
-        {'error', 'empty_doc_id'} -> {'ok', kz_json:new()}
-    end.
+
+-spec maybe_process_req(kz_json:object()) -> 'ok'.
+maybe_process_req(DataJObj) ->
+    HasEmail = kz_term:is_not_empty(kz_json:get_value(<<"to">>, DataJObj)),
+    maybe_process_req(DataJObj, HasEmail).
 
 -spec maybe_process_req(kz_json:object(), boolean()) -> 'ok'.
 maybe_process_req(DataJObj, false) ->
-    lager:debug("box ~s has no emails or owner doesn't want emails"
-               ,[kz_json:get_value(<<"voicemail_box">>, DataJObj)]),
-    teletype_util:send_update(DataJObj, <<"completed">>);
+    Msg = io_lib:format("request or box ~s has no emails or owner doesn't want emails"
+                       ,[kz_json:get_value(<<"voicemail_box">>, DataJObj)]
+                       ),
+    lager:debug(Msg),
+    teletype_util:send_update(DataJObj, <<"completed">>, kz_term:to_binary(Msg));
 maybe_process_req(DataJObj, true) ->
-    process_req(DataJObj).
+    do_process_req(DataJObj).
 
--spec process_req(kz_json:object()) -> 'ok'.
-process_req(DataJObj) ->
+-spec do_process_req(kz_json:object()) -> 'ok'.
+do_process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
-    Macros = macros(DataJObj),
+    Macros0 = macros(DataJObj),
+    Macros = props:delete(<<"attachments">>, Macros0),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
@@ -128,7 +165,7 @@ process_req(DataJObj) ->
     Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, teletype_util:mod_config_cat(id())),
 
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates, email_attachments(DataJObj)) of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates, props:get_value(<<"attachments">>, Macros0)) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
@@ -137,7 +174,8 @@ process_req(DataJObj) ->
 macros(DataJObj) ->
     TemplateData = template_data(DataJObj),
     EmailAttachements = email_attachments(DataJObj, TemplateData),
-    maybe_add_file_data(TemplateData, EmailAttachements).
+    Macros = maybe_add_file_data(TemplateData, EmailAttachements),
+    props:set_value(<<"attachments">>, EmailAttachements, Macros).
 
 -spec template_data(kz_json:object()) -> kz_proplist().
 template_data(DataJObj) ->
@@ -145,29 +183,46 @@ template_data(DataJObj) ->
      | build_template_data(DataJObj)
     ].
 
--spec email_attachments(kz_json:object()) -> attachments().
 -spec email_attachments(kz_json:object(), kz_proplist()) -> attachments().
--spec email_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
-email_attachments(DataJObj) ->
-    email_attachments(DataJObj, template_data(DataJObj)).
-
 email_attachments(DataJObj, Macros) ->
     email_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).
 
+-spec email_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
 email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->
     VMId = kz_json:get_value(<<"voicemail_id">>, DataJObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    DB = kvm_util:get_db(AccountId, VMId),
-    {'ok', VMJObj} = kvm_message:fetch(AccountId, VMId),
+    Db = kvm_util:get_db(AccountId, VMId),
+    VMJObj = case kvm_message:fetch(AccountId, VMId) of
+                 {'ok', JObj} -> JObj;
+                 {'error', _} ->
+                     throw({'error', 'no_attachment'})
+             end,
 
-    {[AttachmentMeta], [AttachmentId]} = kz_json:get_values(kz_doc:attachments(VMJObj)),
-    {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(DB, VMId, AttachmentId),
+    maybe_fetch_attachments(Db, VMId, get_file_name(VMJObj, Macros), kz_doc:attachments(VMJObj)).
 
-    [{kz_json:get_value(<<"content_type">>, AttachmentMeta)
-     ,get_file_name(VMJObj, Macros)
-     ,AttachmentBin
-     }].
+-spec maybe_fetch_attachments(ne_binary(), ne_binary(), ne_binary(), api_object()) -> attachments().
+maybe_fetch_attachments(_, _, _, 'undefined') ->
+    throw({'error', 'no_attachment'});
+maybe_fetch_attachments(Db, VMId, FileName, Attachments) ->
+    case kz_json:is_empty(Attachments) of
+        'true' -> throw({'error', 'no_attachment'});
+        'false' -> fetch_attachments(Db, VMId, FileName, Attachments)
+    end.
+
+-spec fetch_attachments(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> attachments().
+fetch_attachments(Db, VMId, FileName, Attachments) ->
+    {[AttachmentMeta], [AttachmentId]} = kz_json:get_values(Attachments),
+    ContentType = kz_json:get_value(<<"content_type">>, AttachmentMeta),
+
+    lager:debug("accessing voicemail attachment ~s at ~s / ~s", [AttachmentId, Db, VMId]),
+
+    case kz_datamgr:fetch_attachment(Db, {kzd_box_message:type(), VMId}, AttachmentId) of
+        {'ok', Bin} -> [{ContentType, FileName, Bin}];
+        {'error', _E} ->
+            lager:debug("failed to fetch attachment ~s: ~p", [AttachmentId, _E]),
+            throw({'error', 'no_attachment'})
+    end.
 
 -spec get_file_name(kz_json:object(), kz_proplist()) -> ne_binary().
 get_file_name(MediaJObj, Macros) ->
@@ -177,9 +232,9 @@ get_file_name(MediaJObj, Macros) ->
              ,props:get_value([<<"caller_id">>, <<"number">>], Macros)
              }
         of
-            {'undefined', 'undefined'} -> <<"Unknown">>;
-            {'undefined', Num} -> knm_util:pretty_print(kz_term:to_binary(Num));
-            {Name, _} -> knm_util:pretty_print(kz_term:to_binary(Name))
+            {'undefined', 'undefined'} -> props:get_value([<<"from">>, <<"user">>], Macros, <<"Unknown">>);
+            {'undefined', Num} -> Num;
+            {Name, _} -> Name
         end,
 
     LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros),
@@ -197,7 +252,8 @@ get_extension(MediaJObj) ->
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
-    Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"vmbox">>, DataJObj)),
+    Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"vmbox_doc">>, DataJObj)),
+    io:format("~n UserJObj ~p~n user_params ~p~n", [kz_json:get_value(<<"user">>, DataJObj), teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))]),
     [{<<"voicemail">>, build_voicemail_data(DataJObj)}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
@@ -210,8 +266,8 @@ build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"vmbox_id">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
       ,{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)} %% backward compatibility
-      ,{<<"vmbox_name">>, kz_json:get_value([<<"vmbox">>, <<"name">>], DataJObj)}
-      ,{<<"vmbox_number">>, kz_json:get_value([<<"vmbox">>, <<"mailbox">>], DataJObj)}
+      ,{<<"vmbox_name">>, kz_json:get_value([<<"vmbox_doc">>, <<"name">>], DataJObj)}
+      ,{<<"vmbox_number">>, kz_json:get_value([<<"vmbox_doc">>, <<"mailbox">>], DataJObj)}
       ,{<<"msg_id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
       ,{<<"name">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)} %% backward compatibility
       ,{<<"transcription">>, kz_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
@@ -230,9 +286,9 @@ pretty_print_length(JObj) ->
 
 -spec maybe_add_file_data(kz_proplist(), attachments()) -> kz_proplist().
 maybe_add_file_data(Macros, []) -> Macros;
-maybe_add_file_data(Macros, [{ContentType, Filename, Bin}]) ->
+maybe_add_file_data(Macros, [{ContentType, FileName, Bin}]) ->
     Props = props:filter_undefined(
-              [{<<"file_name">>, Filename}
+              [{<<"file_name">>, FileName}
               ,{<<"file_type">>, kz_mime:to_extension(ContentType)}
               ,{<<"file_size">>, erlang:size(Bin)}
               ]),

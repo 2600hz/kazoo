@@ -15,14 +15,14 @@
         ,subject/0
         ,category/0
         ,friendly_name/0
+        ,to/1, from/1, cc/1, bcc/1, reply_to/1
         ]).
 -export([handle_req/1]).
 
 -include("teletype.hrl").
 
 -spec id() -> ne_binary().
-id() ->
-    <<"new_user">>.
+id() -> <<"new_user">>.
 
 -spec macros() -> kz_json:object().
 macros() ->
@@ -33,16 +33,28 @@ macros() ->
       ]).
 
 -spec subject() -> ne_binary().
-subject() ->
-    <<"Your new VoIP services user profile has been created">>.
+subject() -> <<"Your new VoIP services user profile has been created">>.
 
 -spec category() -> ne_binary().
-category() ->
-    <<"user">>.
+category() -> <<"user">>.
 
 -spec friendly_name() -> ne_binary().
-friendly_name() ->
-    <<"New User">>.
+friendly_name() -> <<"New User">>.
+
+-spec to(ne_binary()) -> kz_json:object().
+to(_) -> ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL).
+
+-spec from(ne_binary()) -> api_ne_binary().
+from(ModConfigCat) -> teletype_util:default_from_address(ModConfigCat).
+
+-spec cc(ne_binary()) -> kz_json:object().
+cc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec bcc(ne_binary()) -> kz_json:object().
+bcc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec reply_to(ne_binary()) -> api_ne_binary().
+reply_to(ModConfigCat) -> teletype_util:default_reply_to(ModConfigCat).
 
 -spec init() -> 'ok'.
 init() ->
@@ -52,8 +64,14 @@ init() ->
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(JObj) ->
-    'true' = kapi_notifications:new_user_v(JObj),
-    kz_util:put_callid(JObj),
+    handle_req(JObj, kapi_notifications:new_user_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [id()]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [id()]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -87,7 +105,7 @@ process_req(DataJObj) ->
     %% Load templates
     RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
-    AccountId = teletype_util:find_account_id(DataJObj),
+    AccountId = kapi_notifications:account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),

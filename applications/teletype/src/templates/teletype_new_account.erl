@@ -15,14 +15,14 @@
         ,subject/0
         ,category/0
         ,friendly_name/0
+        ,to/1, from/1, cc/1, bcc/1, reply_to/1
         ]).
--export([handle_new_account/1]).
+-export([handle_req/1]).
 
 -include("teletype.hrl").
 
 -spec id() -> ne_binary().
-id() ->
-    <<"new_account">>.
+id() -> <<"new_account">>.
 
 -spec macros() -> kz_json:object().
 macros() ->
@@ -35,27 +35,45 @@ macros() ->
       ]).
 
 -spec subject() -> ne_binary().
-subject() ->
-    <<"Your new VoIP services account '{{account.name}}' has been created">>.
+subject() -> <<"Your new VoIP services account '{{account.name}}' has been created">>.
 
 -spec category() -> ne_binary().
-category() ->
-    <<"account">>.
+category() -> <<"account">>.
 
 -spec friendly_name() -> ne_binary().
-friendly_name() ->
-    <<"New Account">>.
+friendly_name() -> <<"New Account">>.
+
+-spec to(ne_binary()) -> kz_json:object().
+to(_) -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
+
+-spec from(ne_binary()) -> api_ne_binary().
+from(ModConfigCat) -> teletype_util:default_from_address(ModConfigCat).
+
+-spec cc(ne_binary()) -> kz_json:object().
+cc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec bcc(ne_binary()) -> kz_json:object().
+bcc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec reply_to(ne_binary()) -> api_ne_binary().
+reply_to(ModConfigCat) -> teletype_util:default_reply_to(ModConfigCat).
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
-    teletype_bindings:bind(id(), ?MODULE, 'handle_new_account').
+    teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
--spec handle_new_account(kz_json:object()) -> 'ok'.
-handle_new_account(JObj) ->
-    'true' = kapi_notifications:new_account_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:new_account_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [id()]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [id()]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -73,7 +91,7 @@ process_req(DataJObj) ->
     %% Load templates
     RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
-    AccountId = teletype_util:find_account_id(DataJObj),
+    AccountId = kapi_notifications:account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),

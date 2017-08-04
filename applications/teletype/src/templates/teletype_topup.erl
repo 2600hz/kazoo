@@ -9,7 +9,7 @@
 -module(teletype_topup).
 
 -export([init/0
-        ,handle_topup/1
+        ,handle_req/1
         ]).
 
 -ifdef(TEST).
@@ -54,12 +54,18 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"topup">>, ?MODULE, 'handle_topup').
+    teletype_bindings:bind(<<"topup">>, ?MODULE, 'handle_req').
 
--spec handle_topup(kz_json:object()) -> 'ok'.
-handle_topup(JObj) ->
-    'true' = kapi_notifications:topup_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:topup_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -70,7 +76,7 @@ handle_topup(JObj) ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
-        'true' -> handle_req(kz_json:merge_jobjs(DataJObj, ReqData))
+        'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec macros(kz_json:object()) -> kz_proplist().
@@ -86,12 +92,12 @@ macros(DataJObj) ->
     ,{<<"success">>, props:get_value(<<"success">>, TransactionProps)} %% backward compatibility
     ].
 
--spec handle_req(kz_json:object()) -> 'ok'.
-handle_req(DataJObj) ->
+-spec process_req(kz_json:object()) -> 'ok'.
+process_req(DataJObj) ->
     Macros = macros(DataJObj),
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, kapi_notifications:account_id(DataJObj)),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj]),
     Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
@@ -155,7 +161,7 @@ get_topup_amount(DataJObj) ->
         'undefined' when IsPreview -> 20.0;
         'undefined' ->
             lager:warning("failed to get topup amount from data: ~p", [DataJObj]),
-            throw({'error', 'no_topup_amount'});
+            throw({'error', 'missing_data', <<"no topup amount">>});
         Amount -> Amount
     end.
 

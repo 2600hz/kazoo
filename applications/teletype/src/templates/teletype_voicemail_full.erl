@@ -9,7 +9,7 @@
 -module(teletype_voicemail_full).
 
 -export([init/0
-        ,handle_full_voicemail/1
+        ,handle_req/1
         ]).
 
 -include("teletype.hrl").
@@ -53,12 +53,18 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"voicemail_full">>, ?MODULE, 'handle_full_voicemail').
+    teletype_bindings:bind(<<"voicemail_full">>, ?MODULE, 'handle_req').
 
--spec handle_full_voicemail(kz_json:object()) -> 'ok'.
-handle_full_voicemail(JObj) ->
-    'true' = kapi_notifications:voicemail_full_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:voicemail_full_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -66,11 +72,11 @@ handle_full_voicemail(JObj) ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
-        'true' -> handle_req(DataJObj, AccountId)
+        'true' -> process_req(DataJObj, AccountId)
     end.
 
--spec handle_req(kz_json:object(), ne_binary()) -> 'ok'.
-handle_req(DataJObj, AccountId) ->
+-spec process_req(kz_json:object(), ne_binary()) -> 'ok'.
+process_req(DataJObj, AccountId) ->
     VMBox = get_vm_box(AccountId, DataJObj),
     User = get_vm_box_owner(VMBox, DataJObj),
 
@@ -124,7 +130,7 @@ process_req(DataJObj) ->
 
     {'ok', TemplateMetaJObj} =
         teletype_templates:fetch_notification(?TEMPLATE_ID
-                                             ,teletype_util:find_account_id(DataJObj)
+                                             ,kapi_notifications:account_id(DataJObj)
                                              ),
 
     Subject = teletype_util:render_subject(

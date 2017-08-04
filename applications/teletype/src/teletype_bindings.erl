@@ -36,11 +36,19 @@ flush_mod(Module) ->
 
 -spec notification(kz_json:object()) -> 'ok'.
 notification(JObj) ->
+    kz_util:put_callid(JObj),
     {EventCategory, EventName} = kz_util:get_event_type(JObj),
     RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
     lager:debug("dispatching notification ~s", [RoutingKey]),
-    _ = kazoo_bindings:map(RoutingKey, JObj, []),
-    'ok'.
+    Res = kazoo_bindings:map(RoutingKey, JObj),
+    case kazoo_bindings:succeeded(Res, fun filter_out_failed/1) of
+        [] ->
+            FailureMsg = build_failure_message(Res),
+            lager:debug("notification ~s did not result in successes: ~s", [RoutingKey, FailureMsg]),
+            teletype_util:send_update(JObj, <<"failed">>, FailureMsg);
+        _Successes ->
+            lager:debug("notification ~s result in some successes", [RoutingKey])
+    end.
 
 -spec start_modules() -> 'ok'.
 start_modules() ->
@@ -52,3 +60,44 @@ start_modules([Module | Remaining]) ->
     start_modules(Remaining);
 start_modules([]) ->
     lager:info("started all teletype modules").
+
+
+-spec filter_out_failed(any()) -> boolean().
+filter_out_failed('ok') -> 'true';
+filter_out_failed(_) -> 'false'.
+
+-spec build_failure_message(any()) -> ne_binary().
+build_failure_message([{'EXIT', {'error', 'no_attachment'}}|_]) ->
+    <<"no_attachment">>;
+
+build_failure_message([{'EXIT', {'error', 'missing_data',  Missing}}|_]) ->
+    <<"missing_data: ", (kz_term:to_binary(Missing))/binary>>;
+
+build_failure_message([{'EXIT', {'error', 'failed_template',  ModuleName}}|_]) ->
+    %% teletype_templates:build_renderer, probably it's only for teletype startup
+    <<"failed_template: ", (kz_term:to_binary(ModuleName))/binary>>;
+
+build_failure_message([{'EXIT',{'error', 'template_error',  Reason}}|_]) ->
+    <<"template_error: ", (kz_term:to_binary(Reason))/binary>>;
+
+build_failure_message([{'EXIT', {'function_clause', _ST}}|_]) ->
+    <<"template_error: crashed with function_clause">>;
+
+build_failure_message([{'EXIT', {'undef', _ST}}|_]) ->
+    <<"template_error: crashed with undef">>;
+
+build_failure_message([{'EXIT', {'error', {'badmatch',  _}}}|_]) ->
+    %% Some templates (like voicemail_new) is matching agianst successful open_doc
+    %% maybe because the document or attachment is not stored yet.
+    %% Let the publisher save the payload to load later
+    <<"badmatch">>;
+
+build_failure_message([{'EXIT', {_Exp, _ST}}|_]) ->
+    <<"template_error: crashed with exception">>;
+
+build_failure_message([]) ->
+    <<"no teletype template modules responded">>;
+
+build_failure_message(_Other) ->
+    lager:debug("template failed with unknown reasons: ~p", [_Other]),
+    <<"unknown_template_error">>.

@@ -57,10 +57,16 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"customer_update">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> kz_proplist()|'ok'.
+-spec handle_req(kz_json:object()) -> kz_proplist() | 'ok'.
 handle_req(JObj) ->
-    'true' = kapi_notifications:customer_update_v(JObj),
-    kz_util:put_callid(JObj),
+    handle_req(JObj, kapi_notifications:customer_update_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> kz_proplist() | 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -70,7 +76,7 @@ handle_req(JObj) ->
         'true' -> process_req(DataJObj, teletype_util:is_preview(DataJObj))
     end.
 
--spec process_req(kz_json:object(), boolean()) -> kz_proplist()|'ok'.
+-spec process_req(kz_json:object(), boolean()) -> kz_proplist() | 'ok'.
 process_req(DataJObj, 'true') ->
     send_update_to_user(kz_json:new(), DataJObj);
 process_req(DataJObj, 'false') ->
@@ -79,7 +85,7 @@ process_req(DataJObj, 'false') ->
         'undefined' -> process_accounts(DataJObj)
     end.
 
--spec process_accounts(kz_json:object()) -> kz_proplist()|'ok'.
+-spec process_accounts(kz_json:object()) -> kz_proplist() | 'ok'.
 process_accounts(DataJObj) ->
     SenderId = kz_json:get_value(<<"account_id">>, DataJObj),
     ViewOpts = [{'startkey', [SenderId]}
@@ -94,7 +100,7 @@ process_accounts(DataJObj) ->
             teletype_util:send_update(DataJObj, <<"failed">>, kz_term:to_binary(Msg))
     end.
 
--spec process_account(ne_binary(), kz_json:object()) -> kz_proplist()|'ok'.
+-spec process_account(ne_binary(), kz_json:object()) -> kz_proplist() | 'ok'.
 process_account(AccountId, DataJObj) ->
     case kz_json:get_value(<<"user_type">>, DataJObj) of
         <<UserId:32/binary>> ->
@@ -126,7 +132,7 @@ send_update_to_user(UserJObj, DataJObj) ->
     RenderedTemplates =
         teletype_templates:render(maybe_expand_template_id(DataJObj), Macros, DataJObj, maybe_tpls_provided(DataJObj)),
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_notification(maybe_expand_template_id(DataJObj), teletype_util:find_account_id(DataJObj)),
+        teletype_templates:fetch_notification(maybe_expand_template_id(DataJObj), kapi_notifications:account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])

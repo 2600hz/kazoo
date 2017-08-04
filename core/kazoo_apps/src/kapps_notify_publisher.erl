@@ -8,6 +8,7 @@
 
 -export([call_collect/2
         ,cast/2
+        ,is_completed/1
         ]).
 
 -include_lib("kazoo_apps.hrl").
@@ -152,7 +153,12 @@ is_completed([JObj|_]) ->
         andalso kz_json:get_ne_binary_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
-        <<"failed">> -> maybe_ignore_failure(kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj));
+        <<"failed">> ->
+            FailureMsg = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj),
+            ShouldIgnore = maybe_ignore_failure(FailureMsg),
+            ShouldIgnore
+                andalso lager:debug("teletype failed with reason ~s, ignoring", [FailureMsg]),
+            ShouldIgnore;
         %% FIXME: Is pending enough to consider publish was successful? at least teletype recieved the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
@@ -163,6 +169,16 @@ maybe_ignore_failure(<<"missing_from">>) -> 'true';
 maybe_ignore_failure(<<"invalid_to_addresses">>) -> 'true';
 maybe_ignore_failure(<<"no_to_addresses">>) -> 'true';
 maybe_ignore_failure(<<"email_encoding_failed">>) -> 'true';
+maybe_ignore_failure(<<"validation_failed">>) -> 'true';
+maybe_ignore_failure(<<"missing_data:", _/binary>>) -> 'true';
+maybe_ignore_failure(<<"failed_template:", _/binary>>) -> 'true'; %% rendering problems
+maybe_ignore_failure(<<"template_error:", _/binary>>) -> 'true'; %% rendering problems
+maybe_ignore_failure(<<"no teletype template modules responded">>) -> 'true'; %% rendering problems
+
+%% explicitly not ignoring these below:
+maybe_ignore_failure(<<"unknown_template_error">>) -> 'false'; %% maybe something went wrong with template, trying later?
+maybe_ignore_failure(<<"no_attachment">>) -> 'false'; %% probably fax or voicemail is not stored in storage yet, retry later
+maybe_ignore_failure(<<"badmatch">>) -> 'false'; %% not ignoring it yet (voicemail_new)
 maybe_ignore_failure(_) -> 'false'.
 
 %% @private

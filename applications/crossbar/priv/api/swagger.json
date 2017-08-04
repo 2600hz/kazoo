@@ -14388,6 +14388,9 @@
                 "Fax-Notifications": {
                     "type": "string"
                 },
+                "Fax-Result-Code": {
+                    "type": "string"
+                },
                 "Fax-Timestamp": {
                     "type": "string"
                 },
@@ -28709,6 +28712,12 @@
                 "max_retries": {
                     "default": 3,
                     "description": "Default max retries to re-publish",
+                    "type": "integer"
+                },
+                "publish_timeout_ms": {
+                    "default": 10000,
+                    "description": "Timeout in milliseconds for publishing notification",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "reschedule_rules": {

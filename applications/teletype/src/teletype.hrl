@@ -58,8 +58,8 @@
 -define(EMAIL_ORIGINAL, <<"original">>).
 -define(EMAIL_ADMINS, <<"admins">>).
 
--define(CONFIGURED_EMAILS(Type, Addresses)
-       ,kz_json:from_list(
+-define(CONFIGURED_EMAILS(Type, Addresses),
+        kz_json:from_list(
           [{<<"type">>, Type}
           ,{<<"email_addresses">>, Addresses}
           ])
