@@ -180,82 +180,6 @@ do_new(DID, Setters) ->
 fetch(Num) ->
     fetch(Num, knm_number_options:default()).
 
--ifdef(TEST).
-fetch(?TEST_CREATE_NUM, _Options) ->
-    {'error', 'not_found'};
-fetch(?TEST_AVAILABLE_NUM, Options) ->
-    handle_fetch(?AVAILABLE_NUMBER, Options);
-fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM, Options) ->
-    handle_fetch(?IN_SERVICE_BAD_CARRIER_NUMBER, Options);
-fetch(?TEST_IN_SERVICE_MDN, Options) ->
-    handle_fetch(?IN_SERVICE_MDN, Options);
-fetch(?TEST_IN_SERVICE_NUM, Options) ->
-    handle_fetch(?IN_SERVICE_NUMBER, Options);
-fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
-    handle_fetch(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
-fetch(?BW_EXISTING_DID, Options) ->
-    handle_fetch(?BW_EXISTING_JSON, Options);
-fetch(?TEST_EXISTING_TOLL, Options) ->
-    handle_fetch(?EXISTING_TOLL, Options);
-fetch(?TEST_AVAILABLE_NON_LOCAL_NUM, Options) ->
-    handle_fetch(?AVAILABLE_NON_LOCAL_NUMBER, Options);
-fetch(?TEST_TELNYX_NUM, Options) ->
-    handle_fetch(?TELNYX_NUMBER, Options);
-fetch(?TEST_VITELITY_NUM, Options) ->
-    handle_fetch(?VITELITY_NUMBER, Options);
-fetch(?TEST_OLD1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD1_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD2_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD2_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.1.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD2_2_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.2_in.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD3_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD3_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3.1.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD4_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD4_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4.1.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD5_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD5_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5.1.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD6_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD7_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_7_in.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_OLD7_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_7.1.json"))),
-    handle_fetch(JObj, Options);
-fetch(?TEST_PORT_IN_NUM, Options) ->
-    handle_fetch(?PORT_IN_NUMBER, Options);
-fetch(?TEST_PORT_IN2_NUM, Options) ->
-    handle_fetch(?PORT_IN2_NUMBER, Options);
-fetch(?TEST_PORT_IN3_NUM, Options) ->
-    handle_fetch(?PORT_IN3_NUMBER, Options);
-fetch(?TEST_RESERVED_NUMBER, Options) ->
-    handle_fetch(?RESERVED_NUMBER, Options);
-fetch(_DID, _Options) ->
-    {'error', 'not_found'}.
--else.
 fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
@@ -266,6 +190,68 @@ fetch(Num, Options) ->
             Error
     end.
 
+-ifdef(TEST).
+fetch(_, ?TEST_CREATE_NUM, _) ->
+    {error, not_found};
+fetch(_, ?TEST_AVAILABLE_NUM, _) ->
+    {ok, ?AVAILABLE_NUMBER};
+fetch(_, ?TEST_IN_SERVICE_BAD_CARRIER_NUM, _) ->
+    {ok, ?IN_SERVICE_BAD_CARRIER_NUMBER};
+fetch(_, ?TEST_IN_SERVICE_MDN, _) ->
+    {ok, ?IN_SERVICE_MDN};
+fetch(_, ?TEST_IN_SERVICE_NUM, _) ->
+    {ok, ?IN_SERVICE_NUMBER};
+fetch(_, ?TEST_IN_SERVICE_WITH_HISTORY_NUM, _) ->
+    {ok, ?IN_SERVICE_WITH_HISTORY_NUMBER};
+fetch(_, ?BW_EXISTING_DID, _) ->
+    {ok, ?BW_EXISTING_JSON};
+fetch(_, ?TEST_EXISTING_TOLL, _) ->
+    {ok, ?EXISTING_TOLL};
+fetch(_, ?TEST_AVAILABLE_NON_LOCAL_NUM, _) ->
+    {ok, ?AVAILABLE_NON_LOCAL_NUMBER};
+fetch(_, ?TEST_TELNYX_NUM, _) ->
+    {ok, ?TELNYX_NUMBER};
+fetch(_, ?TEST_VITELITY_NUM, _) ->
+    {ok, ?VITELITY_NUMBER};
+fetch(_, ?TEST_OLD1_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json")))};
+fetch(_, ?TEST_OLD1_1_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1.json")))};
+fetch(_, ?TEST_OLD2_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json")))};
+fetch(_, ?TEST_OLD2_1_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.1.json")))};
+fetch(_, ?TEST_OLD2_2_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.2_in.json")))};
+fetch(_, ?TEST_OLD3_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json")))};
+fetch(_, ?TEST_OLD3_1_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3.1.json")))};
+fetch(_, ?TEST_OLD4_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json")))};
+fetch(_, ?TEST_OLD4_1_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4.1.json")))};
+fetch(_, ?TEST_OLD5_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json")))};
+fetch(_, ?TEST_OLD5_1_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5.1.json")))};
+fetch(_, ?TEST_OLD6_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json")))};
+fetch(_, ?TEST_OLD7_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_7_in.json")))};
+fetch(_, ?TEST_OLD7_1_NUM, _) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_7.1.json")))};
+fetch(_, ?TEST_PORT_IN_NUM, _) ->
+    {ok, ?PORT_IN_NUMBER};
+fetch(_, ?TEST_PORT_IN2_NUM, _) ->
+    {ok, ?PORT_IN2_NUMBER};
+fetch(_, ?TEST_PORT_IN3_NUM, _) ->
+    {ok, ?PORT_IN3_NUMBER};
+fetch(_, ?TEST_RESERVED_NUMBER, _) ->
+    {ok, ?RESERVED_NUMBER};
+fetch(_, _, _) ->
+    {error, not_found}.
+-else.
 fetch(NumberDb, NormalizedNum, Options) ->
     case knm_number_options:batch_run(Options) of
         'true' -> kz_datamgr:open_doc(NumberDb, NormalizedNum);
@@ -387,31 +373,14 @@ release(PN, FromState) ->
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
 authorize_release(PN) ->
-    authorize_release(PN, auth_by(PN)).
-
--ifdef(TEST).
-authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) -> authorized_release(PN);
-authorize_release(PN, ?MASTER_ACCOUNT_ID) -> authorized_release(PN);
-authorize_release(_, _) -> knm_errors:unauthorized().
--else.
-authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) ->
-    lager:info("bypassing auth"),
-    authorized_release(PN);
-authorize_release(PN, AuthBy) ->
-    case is_admin_or_in_account_hierarchy(AuthBy, assigned_to(PN)) of
-        false -> knm_errors:unauthorized();
-        true -> authorized_release(PN)
-    end.
--endif.
-
--spec authorized_release(knm_phone_number()) -> knm_phone_number().
-authorized_release(PN) ->
+    is_authorized(PN)
+        orelse knm_errors:unauthorized(),
     Routines = [fun reset_features/1
                ,fun reset_doc/1
                ,{fun set_assigned_to/2, undefined}
                ,{fun set_state/2, knm_config:released_state()}
                ],
-    {'ok', NewPN} = setters(PN, Routines),
+    {ok, NewPN} = setters(PN, Routines),
     NewPN.
 
 %%--------------------------------------------------------------------
@@ -1419,7 +1388,7 @@ private_to_public() ->
 list_attachments(PN, AuthBy) ->
     AssignedTo = assigned_to(PN),
     case state(PN) =:= ?NUMBER_STATE_PORT_IN
-        andalso kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true')
+        andalso is_admin_or_in_account_hierarchy(AuthBy, AssignedTo)
     of
         'true' -> {'ok', kz_doc:attachments(doc(PN), kz_json:new())};
         'false' -> {'error', 'unauthorized'}
@@ -1474,18 +1443,18 @@ is_admin_or_in_account_hierarchy(AuthBy, AccountId) ->
             true;
         false ->
             ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AccountId]),
-            is_in_account_hierarchy(AuthBy, AccountId, true)
+            is_in_account_hierarchy(AuthBy, AccountId)
     end.
 
--spec is_in_account_hierarchy(ne_binary(), ne_binary(), boolean()) -> boolean().
+-spec is_in_account_hierarchy(ne_binary(), ne_binary()) -> boolean().
 -ifdef(TEST).
-is_in_account_hierarchy(AccountId, AccountId, true) -> true;
-is_in_account_hierarchy(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID, _) -> true;
-is_in_account_hierarchy(?RESELLER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, _) -> true;
-is_in_account_hierarchy(_, _, _) -> false.
+is_in_account_hierarchy(AccountId, AccountId) -> true;
+is_in_account_hierarchy(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID) -> true;
+is_in_account_hierarchy(?RESELLER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID) -> true;
+is_in_account_hierarchy(_, _) -> false.
 -else.
-is_in_account_hierarchy(AuthBy, AccountId, ShouldIncludeSelf) ->
-    kz_util:is_in_account_hierarchy(AuthBy, AccountId, ShouldIncludeSelf).
+is_in_account_hierarchy(AuthBy, AccountId) ->
+    kz_util:is_in_account_hierarchy(AuthBy, AccountId, true).
 -endif.
 
 %%--------------------------------------------------------------------
