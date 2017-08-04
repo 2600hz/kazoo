@@ -20934,6 +20934,54 @@
             ],
             "type": "object"
         },
+        "kapi.tasks.stop_req": {
+            "description": "AMQP API for tasks.stop_req",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "tasks"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "stop_req"
+                    ],
+                    "type": "string"
+                },
+                "Task-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Task-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.tasks.stop_resp": {
+            "description": "AMQP API for tasks.stop_resp",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "tasks"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "stop_resp"
+                    ],
+                    "type": "string"
+                },
+                "Reply": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Reply"
+            ],
+            "type": "object"
+        },
         "kapi.xmpp.event": {
             "description": "AMQP API for xmpp.event",
             "properties": {
@@ -39391,6 +39439,26 @@
         },
         "/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output": {
             "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/TASK_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/stop": {
+            "patch": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"

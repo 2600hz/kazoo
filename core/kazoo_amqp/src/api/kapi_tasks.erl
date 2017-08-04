@@ -11,6 +11,7 @@
 -export([category/1
         ,action/1
         ,task_id/1
+        ,reply/1
         ]).
 
 -export([bind_q/2, unbind_q/2]).
@@ -25,6 +26,11 @@
 -export([start_resp/1, start_resp_v/1]).
 -export([publish_start_req/1, publish_start_req/2]).
 -export([publish_start_resp/2, publish_start_resp/3]).
+
+-export([stop_req/1, stop_req_v/1]).
+-export([stop_resp/1, stop_resp_v/1]).
+-export([publish_stop_req/1, publish_stop_req/2]).
+-export([publish_stop_resp/2, publish_stop_resp/3]).
 
 -export([remove_req/1, remove_req_v/1]).
 -export([remove_resp/1, remove_resp_v/1]).
@@ -65,6 +71,21 @@
 -define(START_RESP_TYPES, []).
 
 
+-define(STOP_REQ_HEADERS, [<<"Task-ID">>]).
+-define(OPTIONAL_STOP_REQ_HEADERS, []).
+-define(STOP_REQ_VALUES, [{<<"Event-Category">>, <<"tasks">>}
+                         ,{<<"Event-Name">>, <<"stop_req">>}
+                         ]).
+-define(STOP_REQ_TYPES, []).
+
+-define(STOP_RESP_HEADERS, [<<"Reply">>]).
+-define(OPTIONAL_STOP_RESP_HEADERS, []).
+-define(STOP_RESP_VALUES, [{<<"Event-Category">>, <<"tasks">>}
+                          ,{<<"Event-Name">>, <<"stop_resp">>}
+                          ]).
+-define(STOP_RESP_TYPES, []).
+
+
 -define(REMOVE_REQ_HEADERS, [<<"Task-ID">>]).
 -define(OPTIONAL_REMOVE_REQ_HEADERS, []).
 -define(REMOVE_REQ_VALUES, [{<<"Event-Category">>, <<"tasks">>}
@@ -94,6 +115,10 @@ action(JObj) ->
 -spec task_id(kz_json:object()) -> kz_tasks:id().
 task_id(JObj) ->
     kz_json:get_value(<<"Task-ID">>, JObj).
+
+-spec reply(kz_json:object()) -> kz_json:object() | ne_binary().
+reply(JObj) ->
+    kz_json:get_value(<<"Reply">>, JObj).
 
 
 -spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
@@ -212,6 +237,53 @@ publish_start_resp(RespQ, JObj) ->
     publish_start_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_start_resp(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?START_RESP_VALUES, fun start_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+
+-spec stop_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+stop_req(Prop) when is_list(Prop) ->
+    case stop_req_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?STOP_REQ_HEADERS, ?OPTIONAL_STOP_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for stop req"}
+    end;
+stop_req(JObj) ->
+    stop_req(kz_json:to_proplist(JObj)).
+
+-spec stop_req_v(api_terms()) -> boolean().
+stop_req_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?STOP_REQ_HEADERS, ?STOP_REQ_VALUES, ?STOP_REQ_TYPES);
+stop_req_v(JObj) ->
+    stop_req_v(kz_json:to_proplist(JObj)).
+
+-spec stop_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+stop_resp(Prop) when is_list(Prop) ->
+    case stop_resp_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?STOP_RESP_HEADERS, ?OPTIONAL_STOP_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for stop resp"}
+    end;
+stop_resp(JObj) ->
+    stop_resp(kz_json:to_proplist(JObj)).
+
+-spec stop_resp_v(api_terms()) -> boolean().
+stop_resp_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?STOP_RESP_HEADERS, ?STOP_RESP_VALUES, ?STOP_RESP_TYPES);
+stop_resp_v(JObj) ->
+    stop_resp_v(kz_json:to_proplist(JObj)).
+
+-spec publish_stop_req(api_terms()) -> 'ok'.
+-spec publish_stop_req(api_terms(), binary()) -> 'ok'.
+publish_stop_req(JObj) ->
+    publish_stop_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_stop_req(Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?STOP_REQ_VALUES, fun stop_req/1),
+    amqp_util:tasks_publish(?TASKS_AMQP_KEY("stop"), Payload, ContentType).
+
+-spec publish_stop_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_stop_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+publish_stop_resp(RespQ, JObj) ->
+    publish_stop_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_stop_resp(RespQ, JObj, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?STOP_RESP_VALUES, fun stop_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 
