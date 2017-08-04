@@ -185,7 +185,7 @@ ctp(Context) ->
 -spec to_csv({cowboy_req:req(), cb_context:context()}) ->
                     {cowboy_req:req(), cb_context:context()}.
 to_csv({Req, Context}) ->
-    Filename = requested_attachment_name(Context),
+    Filename = download_filename(Context, requested_attachment_name(Context)),
     Headers = props:set_values([{<<"content-type">>, <<"text/csv">>}
                                ,{<<"content-disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
                                ]
@@ -193,6 +193,17 @@ to_csv({Req, Context}) ->
                               ),
     {'ok', Req1} = cowboy_req:reply(200, Headers, cb_context:resp_data(Context), Req),
     {Req1, Context}.
+
+-spec download_filename(cb_context:context(), ne_binary()) -> ne_binary().
+download_filename(Context, ?KZ_TASKS_ANAME_OUT) ->
+    RD = kz_json:get_value(<<"_read_only">>, cb_context:resp_data(Context)),
+    [TaskId|_] = props:get_value(<<"tasks">>, cb_context:req_nouns(Context)),
+    <<(kz_json:get_value(?QS_CATEGORY, RD))/binary, "_",
+      (kz_json:get_value(?QS_ACTION, RD))/binary, "_",
+      TaskId/binary, ".csv"
+    >>;
+download_filename(_Context, Name) ->
+    Name.
 
 %%--------------------------------------------------------------------
 %% @public
