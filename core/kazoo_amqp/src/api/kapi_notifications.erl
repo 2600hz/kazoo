@@ -596,7 +596,7 @@ account_id(JObj) ->
             ],
     kz_json:get_first_defined(Paths, JObj).
 
--spec account_db(kz_json:object()) -> api_binary().
+-spec account_db(kz_json:object()) -> api_ne_binary().
 account_db(JObj) ->
     Paths = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
     case kz_json:get_first_defined(Paths, JObj) of
@@ -608,7 +608,8 @@ account_db(JObj) ->
         ?MATCH_MODB_SUFFIX_RAW(_, _, _)=Db -> kz_util:format_account_modb(Db, 'encoded');
         ?MATCH_MODB_SUFFIX_UNENCODED(_, _, _)=Db -> kz_util:format_account_modb(Db, 'encoded');
         ?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db -> Db;
-        Db -> kz_util:format_account_db(Db)
+        ?NE_BINARY=Db -> kz_util:format_account_db(Db);
+        _ -> 'undefined'
     end.
 
 -spec headers(ne_binary()) -> ne_binaries().

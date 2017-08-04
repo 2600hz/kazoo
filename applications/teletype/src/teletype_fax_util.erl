@@ -154,12 +154,9 @@ maybe_get_fax_doc(DataJObj, 'false') ->
         {'error', _} -> kz_json:new()
     end.
 
--spec get_fax_doc(api_binary(), api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec get_fax_doc(ne_binary(), api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_fax_doc(_, 'undefined') ->
     lager:debug("undefined fax_id"),
-    {'error', 'not_found'};
-get_fax_doc('undefined', _) ->
-    lager:debug("undefined db for fax"),
     {'error', 'not_found'};
 get_fax_doc(Db, Id) ->
     case kz_datamgr:open_cache_doc(Db, {kzd_fax:type(), Id}) of
