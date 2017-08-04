@@ -96,8 +96,6 @@ process_req(DataJObj) ->
     UserJObj = get_owner(VMBoxJObj, DataJObj),
     BoxEmails = kzd_voicemail_box:notification_emails(VMBoxJObj),
     Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
-    io:format("~n Emails ~p~n", [Emails]),
-
     Values = [{<<"vmbox_doc">>, VMBoxJObj}
              ,{<<"user">>, UserJObj}
              ,{<<"to">>, Emails}
@@ -254,7 +252,6 @@ get_extension(MediaJObj) ->
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
     Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"vmbox_doc">>, DataJObj)),
-    io:format("~n UserJObj ~p~n user_params ~p~n", [kz_json:get_value(<<"user">>, DataJObj), teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))]),
     [{<<"voicemail">>, build_voicemail_data(DataJObj)}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
