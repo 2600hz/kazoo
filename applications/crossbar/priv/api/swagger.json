@@ -3877,6 +3877,10 @@
                             "description": "The progress timeout to apply to the device (seconds)",
                             "type": "integer"
                         },
+                        "rtcp_mux": {
+                            "description": "RTCP protocol messages mixed with RTP data",
+                            "type": "boolean"
+                        },
                         "video": {
                             "default": {},
                             "description": "The video media parameters",
