@@ -70,7 +70,6 @@ cast(Req, PublishFun) ->
 %% @private
 %% @doc handle amqp worker responses
 -spec handle_resp(api_ne_binary(), api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
-handle_resp(_NotifyType, _Req, 'ok') -> 'ok';
 handle_resp(NotifyType, Req, {'ok', _}=Resp) -> check_for_failure(NotifyType, Req, Resp);
 handle_resp(NotifyType, Req, {'error', Error}) -> maybe_handle_error(NotifyType, Req, error_to_failure_reason(Error));
 handle_resp(NotifyType, Req, {'returned', _, Resp}) -> check_for_failure(NotifyType, Req, {'returned', Resp});
