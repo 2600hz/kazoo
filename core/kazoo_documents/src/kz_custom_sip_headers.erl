@@ -62,10 +62,10 @@ outbound(CSH, Default) ->
         'true' -> Default
     end.
 
--spec set_inbound(kz_json:object(), kz_proplist()) -> kz_json:object().
+-spec set_inbound(kz_json:object(), kz_json:object()) -> kz_json:object().
 set_inbound(CSH, Headers) ->
     kz_json:set_value(?IN, Headers, CSH).
 
--spec set_outbound(kz_json:object(), kz_proplist()) -> kz_json:object().
+-spec set_outbound(kz_json:object(), kz_json:object()) -> kz_json:object().
 set_outbound(CSH, Headers) ->
     kz_json:set_value(?OUT, Headers, CSH).
