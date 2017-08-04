@@ -96,6 +96,7 @@ process_req(DataJObj) ->
     UserJObj = get_owner(VMBoxJObj, DataJObj),
     BoxEmails = kzd_voicemail_box:notification_emails(VMBoxJObj),
     Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
+    io:format("~n Emails ~p~n", [Emails]),
 
     Values = [{<<"vmbox_doc">>, VMBoxJObj}
              ,{<<"user">>, UserJObj}
