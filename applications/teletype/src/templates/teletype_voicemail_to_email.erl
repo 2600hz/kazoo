@@ -120,7 +120,7 @@ get_vmbox(DataJObj) ->
             kz_json:new()
     end.
 
--spec get_owner(kzd_voicemail_box:doc(), kz_json:object()) -> {'ok', kz_json:object()}.
+-spec get_owner(kzd_voicemail_box:doc(), kz_json:object()) -> kz_json:object().
 get_owner(VMBoxJObj, DataJObj) ->
     OwnerId = kzd_voicemail_box:owner_id(VMBoxJObj),
     case teletype_util:open_doc(<<"user">>, OwnerId, DataJObj) of
