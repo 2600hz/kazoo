@@ -422,7 +422,6 @@ maybe_add_parent_params(AccountId, AccountJObj) ->
             ]
     end.
 
-
 -spec default_from_address(ne_binary()) -> ne_binary().
 -spec default_from_address(kz_json:object(), ne_binary()) -> ne_binary().
 default_from_address(ConfigCat) ->
@@ -860,15 +859,15 @@ build_call_data(DataJObj, Timezone) ->
 -spec build_caller_id_data(kz_json:object()) -> kz_proplist().
 build_caller_id_data(DataJObj) ->
     props:filter_undefined(
-      [{<<"name">>, kz_json:get_value(<<"caller_id_name">>, DataJObj)}
-      ,{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"caller_id_number">>, DataJObj))}
+      [{<<"name">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_name">>, DataJObj))}
+      ,{<<"number">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"caller_id_number">>, DataJObj))}
       ]).
 
 -spec build_callee_id_data(kz_json:object()) -> kz_proplist().
 build_callee_id_data(DataJObj) ->
     props:filter_undefined(
-      [{<<"name">>, kz_json:get_value(<<"callee_id_name">>, DataJObj)}
-      ,{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"callee_id_number">>, DataJObj))}
+      [{<<"name">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_name">>, DataJObj))}
+      ,{<<"number">>, knm_util:pretty_print(kz_json:get_ne_binary_value(<<"callee_id_number">>, DataJObj))}
       ]).
 
 -spec build_date_called_data(kz_json:object(), api_ne_binary()) -> kz_proplist().
@@ -893,7 +892,7 @@ build_from_data(DataJObj) ->
     FromE164 = kz_json:get_first_defined([<<"from_user">>, <<"caller_id_number">>], DataJObj),
     props:filter_undefined(
       [{<<"user">>, knm_util:pretty_print(FromE164)}
-      ,{<<"realm">>, kz_json:get_value(<<"from_realm">>, DataJObj)}
+      ,{<<"realm">>, kz_json:get_ne_binary_value(<<"from_realm">>, DataJObj)}
       ]).
 
 -spec build_to_data(kz_json:object()) -> kz_proplist().
@@ -901,7 +900,7 @@ build_to_data(DataJObj) ->
     ToE164 = kz_json:get_first_defined([<<"to_user">>, <<"callee_id_number">>], DataJObj),
     props:filter_undefined(
       [{<<"user">>, knm_util:pretty_print(ToE164)}
-      ,{<<"realm">>, kz_json:get_value(<<"to_realm">>, DataJObj)}
+      ,{<<"realm">>, kz_json:get_ne_binary_value(<<"to_realm">>, DataJObj)}
       ]).
 
 -spec public_proplist(kz_json:path(), kz_json:object()) -> kz_proplist().
