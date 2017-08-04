@@ -150,7 +150,7 @@
           [{<<"_id">>, ?TEST_IN_SERVICE_MDN}
           ,{<<"_rev">>, <<"4-7dd6a1523e81a4e3c2689140ed3a8e69">>}
           ,{?PVT_MODIFIED, 63565934349}
-          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, ?CARRIER_MDN}
