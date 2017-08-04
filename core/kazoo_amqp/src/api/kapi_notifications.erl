@@ -200,7 +200,7 @@
                                             ,<<"Call-ID">>, <<"Fax-Info">>, <<"Fax-ID">>
                                             ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                             ,<<"Fax-Notifications">>, <<"Fax-Error">>
-                                            ,<<"Fax-Timestamp">>
+                                            ,<<"Fax-Timestamp">>, <<"Fax-Result-Code">>
                                                  | ?DEFAULT_OPTIONAL_HEADERS
                                             ]).
 -define(FAX_INBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}

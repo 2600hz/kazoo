@@ -122,12 +122,12 @@ get_faxbox_doc(DataJObj, FaxDoc) ->
     end.
 
 -spec error_data(kz_json:object(), boolean()) -> kz_json:object().
-error_data(DataJObj, 'true') ->
+error_data(DataJObj, 'false') ->
     kz_json:from_list(
       [{<<"call_info">>, kz_json:get_value(<<"fax_error">>, DataJObj)}
       ,{<<"fax_info">>, kz_json:get_value([<<"fax_info">>, <<"fax_result_text">>], DataJObj)}
       ]);
-error_data(_, 'false') ->
+error_data(_, 'true') ->
     kz_json:from_list(
       [{<<"call_info">>, <<"CALL_INFO">>}
       ,{<<"fax_info">>, <<"FAX_INFO">>}

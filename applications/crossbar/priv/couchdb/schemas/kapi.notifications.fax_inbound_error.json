@@ -57,6 +57,9 @@
         "Fax-Notifications": {
             "type": "string"
         },
+        "Fax-Result-Code": {
+            "type": "string"
+        },
         "Fax-Timestamp": {
             "type": "string"
         },
