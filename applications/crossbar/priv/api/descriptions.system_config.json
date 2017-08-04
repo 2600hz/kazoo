@@ -210,7 +210,6 @@
     "crossbar.ssl_password": "crossbar ssl password",
     "crossbar.ssl_port": "crossbar ssl port",
     "crossbar.ssl_workers": "crossbar ssl workers",
-    "crossbar.token_auth_expiry": "crossbar token auth expiry in seconds",
     "crossbar.token_costs": "crossbar token costs",
     "crossbar.token_restrictions._": "crossbar.token_restrictions  ",
     "crossbar.token_restrictions.default_priv_level": "crossbar.token_restrictions default priv level",

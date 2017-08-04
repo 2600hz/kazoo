@@ -747,6 +747,7 @@
             "description": "crossbar authenticator module configuration",
             "properties": {
                 "enabled": {
+                    "default": true,
                     "description": "whether or not this authenticator module is enabled",
                     "type": "boolean"
                 },
@@ -773,6 +774,7 @@
                             "type": "string"
                         },
                         "enabled": {
+                            "default": false,
                             "description": "turn on/off multi factor authentications for this module",
                             "type": "boolean"
                         },
@@ -782,9 +784,6 @@
                             "type": "boolean"
                         }
                     },
-                    "required": [
-                        "enabled"
-                    ],
                     "type": "object"
                 },
                 "token_auth_expiry_s": {
@@ -793,9 +792,6 @@
                     "type": "integer"
                 }
             },
-            "required": [
-                "enabled"
-            ],
             "type": "object"
         },
         "auth_provider": {
@@ -24988,11 +24984,6 @@
                 "ssl_workers": {
                     "default": 100,
                     "description": "crossbar ssl workers",
-                    "type": "integer"
-                },
-                "token_auth_expiry": {
-                    "default": 3600,
-                    "description": "crossbar token auth expiry in seconds",
                     "type": "integer"
                 },
                 "token_costs": {

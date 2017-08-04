@@ -147,7 +147,7 @@ Customize modules config for the account. Set what settings you want here, cross
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "data": { "auth_modules" :{ "cb_user_auth": { "enabled": true, "token_auth_expiry": 604800}, "cb_api_auth": { "enabled": true } } } }'
+    -d '{ "data": { "auth_modules" :{ "cb_user_auth": { "enabled": true, "token_auth_expiry_s": 604800}, "cb_api_auth": { "enabled": true } } } }'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
