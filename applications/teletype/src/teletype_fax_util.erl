@@ -21,13 +21,14 @@
 -spec add_data(kz_json:object()) -> kz_json:object().
 add_data(DataJObj) ->
     IsPreview = teletype_util:is_preview(DataJObj),
-    FaxBoxJObj = get_faxbox_doc(DataJObj),
+    FaxDoc = maybe_get_fax_doc(DataJObj, IsPreview),
+    FaxBoxJObj = get_faxbox_doc(DataJObj, FaxDoc),
     Values =
         props:filter_empty(
           [{<<"error">>, error_data(DataJObj, IsPreview)}
           ,{<<"faxbox">>, FaxBoxJObj}
           ,{<<"owner">>, get_owner_doc(DataJObj, FaxBoxJObj)}
-          ,{<<"fax">>, maybe_get_fax_doc(DataJObj, IsPreview)}
+          ,{<<"fax_doc">>, FaxDoc}
           ,{<<"timezone">>, find_timezone(DataJObj, FaxBoxJObj)}
           ]),
     kz_json:set_values(Values, DataJObj).
@@ -35,14 +36,14 @@ add_data(DataJObj) ->
 -spec add_attachments(kz_json:object(), kz_proplist(), boolean()) -> {kz_proplist(), attachments()}.
 add_attachments(DataJObj, Macros, ShouldTerminate) ->
     IsPreview = teletype_util:is_preview(DataJObj),
-    FaxDoc = props:get_value(<<"fax">>, Macros),
+    FaxDoc = kz_json:get_value(<<"fax_doc">>, DataJObj),
     case kz_json:is_json_object(FaxDoc)
         andalso not kz_json:is_empty(FaxDoc)
         andalso maybe_fetch_attachments(FaxDoc, Macros, IsPreview)
     of
         'false' -> maybe_terminate(Macros, ShouldTerminate, IsPreview);
         [] -> maybe_terminate(Macros, ShouldTerminate, IsPreview);
-        Attachments -> {add_document_data(Macros, Attachments), Attachments}
+        Attachments -> {add_document_data(FaxDoc, Macros, Attachments), Attachments}
     end.
 
 -spec maybe_terminate(kz_proplist(), boolean(), boolean()) -> {kz_proplist(), attachments()}.
@@ -56,16 +57,18 @@ maybe_terminate(Macros, 'false', 'false') ->
     lager:debug("No attachments were found for this fax"),
     {Macros, []}.
 
--spec add_document_data(kz_proplist(), attachments()) -> kz_proplist().
-add_document_data(Macros, [{ContentType, Filename, Bin}]) ->
+-spec add_document_data(kz_json:object(), kz_proplist(), attachments()) -> kz_proplist().
+add_document_data(FaxDoc, Macros, [{ContentType, Filename, Bin}]) ->
+    FaxDocProps = kz_json:to_proplist(kz_doc:public_fields(FaxDoc)),
     Values =
         props:filter_undefined(
           [{<<"media">>, Filename}
           ,{<<"document_type">>, kz_mime:to_extension(ContentType)}
           ,{<<"document_size">>, erlang:size(Bin)}
+           | FaxDocProps
           ]),
-    Fax = props:set_values(Values, props:get_value(<<"fax">>, Macros, [])),
-    props:set_value(<<"fax">>, kz_doc:public_fields(Fax), Macros).
+    FaxMacros = props:set_values(Values, props:get_value(<<"fax">>, Macros, [])),
+    props:set_value(<<"fax">>, FaxMacros, Macros).
 
 -spec to_email_addresses(kz_json:object(), ne_binary()) -> api_binaries().
 to_email_addresses(DataJObj, ModConfigCat) ->
@@ -107,9 +110,13 @@ maybe_using_default_to_addresses(Emails, _) ->
 %%% Build data functions
 %%%===================================================================
 
--spec get_faxbox_doc(kz_json:object()) -> kz_json:object().
-get_faxbox_doc(DataJObj) ->
-    case teletype_util:open_doc(<<"faxbox">>, kz_json:get_value(<<"faxbox_id">>, DataJObj), DataJObj) of
+-spec get_faxbox_doc(kz_json:object(), kz_json:object()) -> kz_json:object().
+get_faxbox_doc(DataJObj, FaxDoc) ->
+    BoxId = kz_json:find(<<"faxbox_id">>, [DataJObj, FaxDoc]),
+    case kz_term:is_ne_binary(BoxId)
+        andalso teletype_util:open_doc(<<"faxbox">>, BoxId, DataJObj)
+    of
+        'false' -> kz_json:new();
         {'ok', J} -> J;
         {'error', _} -> kz_json:new()
     end.
@@ -141,8 +148,8 @@ maybe_get_fax_doc(DataJObj, 'true') ->
         {'error', _E} -> kz_json:new()
     end;
 maybe_get_fax_doc(DataJObj, 'false') ->
-    FaxId = kz_json:get_ne_value(<<"fax_id">>, DataJObj),
-    case get_fax_doc(fax_db(DataJObj), FaxId) of
+    FaxId = kz_json:get_ne_binary_value(<<"fax_id">>, DataJObj),
+    case get_fax_doc(fax_db(DataJObj, FaxId), FaxId) of
         {'ok', JObj} -> JObj;
         {'error', _} -> kz_json:new()
     end.
@@ -160,7 +167,7 @@ get_fax_doc(Db, Id) ->
         {'error', 'not_found'} when Db =/= ?KZ_FAXES_DB ->
             get_fax_doc(?KZ_FAXES_DB, Id);
         {'error', _Reason}=Error ->
-            lager:debug("failed to open fax ~s document: ~p", [Id, _Reason]),
+            lager:debug("failed to open fax ~s/~s document: ~p", [Db, Id, _Reason]),
             Error
     end.
 
@@ -181,18 +188,27 @@ find_timezone(DataJObj, FaxBoxJObj) ->
 %%% Attachment Utilites
 %%%===================================================================
 
--spec fax_db(kz_json:object()) -> api_binary().
-fax_db(DataJObj) ->
+-spec fax_db(kz_json:object(), api_ne_binary()) -> ne_binary().
+fax_db(DataJObj, FaxId) ->
     case kapi_notifications:account_db(DataJObj) of
-        'undefined' -> ?KZ_FAXES_DB;
-        Db -> Db
+        'undefined' ->
+            maybe_get_fax_db_from_id(kz_json:get_ne_binary_value(<<"account_id">>, DataJObj), FaxId);
+        Db -> maybe_get_fax_db_from_id(Db, FaxId)
     end.
+
+-spec maybe_get_fax_db_from_id(api_ne_binary(), api_ne_binary()) -> ne_binary().
+maybe_get_fax_db_from_id(_, 'undefined') ->
+    ?KZ_FAXES_DB;
+maybe_get_fax_db_from_id(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
+    kazoo_modb:get_modb(kz_util:format_account_id(AccountId), Year, Month);
+maybe_get_fax_db_from_id(AccountId, _) ->
+    kz_util:format_account_id(AccountId).
 
 -spec maybe_fetch_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
 maybe_fetch_attachments(_, _, 'true') ->
     [];
 maybe_fetch_attachments(FaxJObj, Macros, 'false') ->
-    FaxId = props:get_first_defined([<<"id">>, <<"fax_jobid">>, <<"fax_id">>], FaxJObj),
+    FaxId = kz_doc:id(FaxJObj),
     Db = kz_doc:account_db(FaxJObj),
     [AttachmentName] = kz_doc:attachment_names(FaxJObj),
 
