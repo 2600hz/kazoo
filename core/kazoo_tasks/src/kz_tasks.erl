@@ -12,6 +12,7 @@
         ,all/1
         ,read/1
         ,new/7
+        ,new_id/0
         ]).
 
 -export([mandatory/1
@@ -27,12 +28,12 @@
         ]).
 
 -export([is_processing/1
+        ,status/1
         ]).
 
 -include("kazoo_tasks.hrl").
 
 -define(TASK_ID_SIZE, 15).
--define(A_TASK_ID, kz_binary:rand_hex(?TASK_ID_SIZE)).
 -type id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -type task() :: #{worker_pid => api_pid()
@@ -172,7 +173,7 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                                 end,
                     lager:debug("creating ~s.~s task (~p)", [Category, Action, TotalRows]),
                     lager:debug("using auth ~s and account ~s", [AuthAccountId, AccountId]),
-                    TaskId = ?A_TASK_ID,
+                    TaskId = new_id(),
                     Task = #{worker_pid => 'undefined'
                             ,worker_node => 'undefined'
                             ,account_id => AccountId
@@ -193,6 +194,10 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                     Ok
             end
     end.
+
+-spec new_id() -> id().
+new_id() ->
+    kz_binary:rand_hex(?TASK_ID_SIZE).
 
 %%%===================================================================
 %%% Internal functions
@@ -401,8 +406,8 @@ to_public_json(Task) ->
 is_processing(#{started := Started
                ,finished := Finished
                })
-  when Started  /= 'undefined',
-       Finished == 'undefined' ->
+  when Started  =/= 'undefined',
+       Finished =:= 'undefined' ->
     'true';
 is_processing(_Task) ->
     'false'.
