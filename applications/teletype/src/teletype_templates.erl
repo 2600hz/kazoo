@@ -186,7 +186,7 @@ templates_source(TemplateId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     ResellerId = teletype_util:find_reseller_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
-    case teletype_util:find_account_id(DataJObj) of
+    case kapi_notifications:account_id(DataJObj) of
         'undefined' -> ?KZ_CONFIG_DB;
         AccountId -> templates_source(TemplateId, AccountId)
     end.

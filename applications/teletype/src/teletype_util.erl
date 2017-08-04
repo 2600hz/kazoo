@@ -19,7 +19,6 @@
         ,find_account_rep_email/1
         ,find_account_admin_email/1
         ,find_account_admin/1
-        ,find_account_id/1
         ,find_account_db/2
         ,find_reseller_id/1
         ,find_account_params/1
@@ -366,7 +365,7 @@ timezone(UserJObj) -> kzd_user:timezone(UserJObj).
 
 -spec account_params(kz_json:object()) -> kz_proplist().
 account_params(DataJObj) ->
-    case find_account_id(DataJObj) of
+    case kapi_notifications:account_id(DataJObj) of
         'undefined' ->
             put('account_id', 'undefined'),
             [];
@@ -467,35 +466,13 @@ sort_templates({K1, _}, {K2, _}) ->
     props:get_value(K1, ?TEMPLATE_RENDERING_ORDER, 1) =<
         props:get_value(K2, ?TEMPLATE_RENDERING_ORDER, 1).
 
--spec find_account_id(kz_json:object()) -> api_binary().
-find_account_id(JObj) ->
-    kz_json:get_first_defined([<<"account_id">>
-                              ,[<<"account">>, <<"_id">>]
-                              ,<<"pvt_account_id">>
-                              ,<<"_id">>, <<"id">>
-                              ,<<"Account-ID">>
-                              ,[<<"details">>, <<"account_id">>]
-                              ,[<<"Details">>, <<"Account-ID">>]
-                              ,[<<"details">>, <<"custom_channel_vars">>, <<"account_id">>]
-                              ,[<<"Details">>, <<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                              ]
-                             ,JObj
-                             ).
-
 -spec find_account_db(ne_binary(), kz_json:object()) -> api_binary().
-find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
-find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
+find_account_db(<<"account">>, JObj) -> kapi_notifications:account_db(JObj);
+find_account_db(<<"user">>, JObj) -> kapi_notifications:account_db(JObj);
 find_account_db(<<"fax">>, JObj) -> kapi_notifications:account_db(JObj);
 find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
 find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
-find_account_db(_, JObj) -> find_account_db_from_id(JObj).
-
--spec find_account_db_from_id(kz_json:object()) -> api_binary().
-find_account_db_from_id(JObj) ->
-    case find_account_id(JObj) of
-        'undefined' -> 'undefined';
-        Id -> kz_util:format_account_id(Id, 'encoded')
-    end.
+find_account_db(_, JObj) -> kapi_notifications:account_db(JObj).
 
 -spec send_update(kz_json:object(), ne_binary()) -> 'ok'.
 -spec send_update(kz_json:object(), ne_binary(), api_binary()) -> 'ok'.
@@ -533,7 +510,7 @@ find_account_rep_email(?NE_BINARY=AccountId) ->
             find_account_admin_email(find_reseller_id(AccountId))
     end;
 find_account_rep_email(AccountJObj) ->
-    find_account_rep_email(find_account_id(AccountJObj)).
+    find_account_rep_email(kapi_notifications:account_id(AccountJObj)).
 
 -spec find_account_admin_email(api_binary()) -> api_binaries().
 -spec find_account_admin_email(api_binary(), api_binary()) -> api_binaries().
@@ -643,7 +620,7 @@ should_handle_notification(_JObj, 'true') ->
     'true';
 
 should_handle_notification(JObj, 'false') ->
-    Account = find_account_id(JObj),
+    Account = kapi_notifications:account_id(JObj),
 
     Config = kz_account:get_inherited_value(Account
                                            ,fun kz_account:notification_preference/1
@@ -770,7 +747,7 @@ check_address_value(JObj) ->
 -spec find_admin_emails(kz_json:object(), ne_binary(), kz_json:path()) ->
                                api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
-    case find_account_rep_email(find_account_id(DataJObj)) of
+    case find_account_rep_email(kapi_notifications:account_id(DataJObj)) of
         'undefined' ->
             lager:debug("didn't find account rep for '~s'", [Key]),
             find_default(ConfigCat, Key);
@@ -902,15 +879,14 @@ build_date_called_data(DataJObj, Timezone) ->
 
 -spec find_date_called(kz_json:object()) -> gregorian_seconds().
 find_date_called(DataJObj) ->
-    kz_term:to_integer(
-      kz_json:get_first_defined([<<"voicemail_timestamp">>
-                                ,<<"fax_timestamp">>
-                                ,<<"timestamp">>
-                                ]
-                               ,DataJObj
-                               ,kz_time:current_tstamp()
-                               )
-     ).
+    Paths = [<<"voicemail_timestamp">>
+            ,<<"fax_timestamp">>
+            ,<<"timestamp">>
+            ],
+    Timestamp = kz_json:get_first_defined(Paths, DataJObj, kz_time:current_tstamp()),
+    try kz_term:to_integer(Timestamp)
+    catch _:_ -> kz_time:current_tstamp()
+    end.
 
 -spec build_from_data(kz_json:object()) -> kz_proplist().
 build_from_data(DataJObj) ->
@@ -938,7 +914,7 @@ public_proplist(Key, JObj) ->
 
 -spec notification_disabled(kz_json:object(), ne_binary()) -> 'ok'.
 notification_disabled(DataJObj, TemplateId) ->
-    AccountId = find_account_id(DataJObj),
+    AccountId = kapi_notifications:account_id(DataJObj),
     lager:debug("notification ~s handling not configured for account ~s", [TemplateId, AccountId]),
     send_update(DataJObj, <<"completed">>).
 

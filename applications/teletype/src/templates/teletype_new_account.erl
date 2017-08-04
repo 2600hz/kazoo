@@ -79,7 +79,7 @@ process_req(DataJObj) ->
     %% Load templates
     RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
-    AccountId = teletype_util:find_account_id(DataJObj),
+    AccountId = kapi_notifications:account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),

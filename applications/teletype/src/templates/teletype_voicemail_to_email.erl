@@ -84,11 +84,9 @@ process_req(DataJObj, AccountId) ->
     {'ok', UserJObj} = get_owner(VMBox, DataJObj),
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
     Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
-    {'ok', AccountJObj} = teletype_util:open_doc(<<"account">>, AccountId, DataJObj),
 
     Values = [{<<"vmbox">>, VMBox}
              ,{<<"user">>, UserJObj}
-             ,{<<"account">>, AccountJObj}
              ,{<<"to">>, Emails}
              ],
     ReqData = kz_json:set_values(Values, DataJObj),

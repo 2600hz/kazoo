@@ -118,7 +118,7 @@ process_req(DataJObj) ->
     %% Populate templates
     RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
-    AccountId = teletype_util:find_account_id(DataJObj),
+    AccountId = kapi_notifications:account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:get_ne_binary_value(<<"subject">>, TemplateMetaJObj, subject()),
     Subject = try kz_json:get_ne_binary_value(<<"subject">>, DataJObj) of
@@ -223,7 +223,7 @@ request_macros(DataJObj) ->
 
 -spec admin_user_data(kz_json:object()) -> kz_proplist().
 admin_user_data(DataJObj) ->
-    AccountId = teletype_util:find_account_id(DataJObj),
+    AccountId = kapi_notifications:account_id(DataJObj),
     case teletype_util:find_account_admin(AccountId) of
         'undefined' -> [];
         UserDoc -> teletype_util:user_params(UserDoc)
