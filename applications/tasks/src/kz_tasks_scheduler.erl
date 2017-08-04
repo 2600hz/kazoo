@@ -418,7 +418,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
             %% Note: setting total_rows_failed to undefined here will change
             %%  status to ?STATUS_BAD but will not update total_rows_failed value in doc.
             Task1 = Task#{finished => kz_time:current_tstamp()
-                         ,total_rows_failed := 'undefined'
+                         ,total_rows_failed => 'undefined'
                          },
             {'ok', _JObj} = update_task(Task1),
             State1 = remove_task(TaskId, State),
