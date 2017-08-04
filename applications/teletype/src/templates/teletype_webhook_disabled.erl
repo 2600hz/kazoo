@@ -98,7 +98,7 @@ process_req(DataJObj) ->
 
     {'ok', TemplateMetaJObj} =
         teletype_templates:fetch_notification(?TEMPLATE_ID
-                                             ,teletype_util:find_account_id(DataJObj)
+                                             ,kapi_notifications:account_id(DataJObj)
                                              ),
 
     Subject = teletype_util:render_subject(

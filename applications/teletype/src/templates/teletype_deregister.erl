@@ -15,14 +15,14 @@
         ,subject/0
         ,category/0
         ,friendly_name/0
+        ,to/1, from/1, cc/1, bcc/1, reply_to/1
         ]).
 -export([handle_req/1]).
 
 -include("teletype.hrl").
 
 -spec id() -> ne_binary().
-id() ->
-    <<"deregister">>.
+id() -> <<"deregister">>.
 
 -spec macros() -> kz_json:object().
 macros() ->
@@ -47,16 +47,28 @@ macros() ->
       ]).
 
 -spec subject() -> ne_binary().
-subject() ->
-    <<"Loss of Registration for '{{last_registration.username}}'">>.
+subject() -> <<"Loss of Registration for '{{last_registration.username}}'">>.
 
 -spec category() -> ne_binary().
-category() ->
-    <<"registration">>.
+category() -> <<"registration">>.
 
 -spec friendly_name() -> ne_binary().
-friendly_name() ->
-    <<"Deregister Notice">>.
+friendly_name() -> <<"Deregister Notice">>.
+
+-spec to(ne_binary()) -> kz_json:object().
+to(_) -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
+
+-spec from(ne_binary()) -> api_ne_binary().
+from(ModConfigCat) -> teletype_util:default_from_address(ModConfigCat).
+
+-spec cc(ne_binary()) -> kz_json:object().
+cc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec bcc(ne_binary()) -> kz_json:object().
+bcc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+
+-spec reply_to(ne_binary()) -> api_ne_binary().
+reply_to(ModConfigCat) -> teletype_util:default_reply_to(ModConfigCat).
 
 -spec init() -> 'ok'.
 init() ->
@@ -91,7 +103,7 @@ process_req(DataJObj) ->
     %% Load templates
     RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
 
-    AccountId = teletype_util:find_account_id(DataJObj),
+    AccountId = kapi_notifications:account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),

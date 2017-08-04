@@ -137,7 +137,7 @@ handle_fax_inbound(DataJObj, TemplateId) ->
     RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
     lager:debug("rendered templates"),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(TemplateId, teletype_util:find_account_id(DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(TemplateId, kapi_notifications:account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
@@ -176,7 +176,7 @@ build_template_data(DataJObj) ->
 
 -spec build_fax_template_data(kz_json:object()) -> kz_proplist().
 build_fax_template_data(DataJObj) ->
-    FaxJObj = kz_json:get_value(<<"fax">>, DataJObj),
+    FaxJObj = kz_json:get_value(<<"fax_doc">>, DataJObj),
     FaxBoxJObj = kz_json:get_value(<<"faxbox">>, DataJObj),
     props:filter_undefined(
       [{<<"info">>, kz_json:to_proplist(<<"fax_info">>, DataJObj)}

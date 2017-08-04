@@ -53,11 +53,11 @@ params(Module)
     ,{subject, Module:subject()}
     ,{category, Module:category()}
     ,{friendly_name, Module:friendly_name()}
-    ,{to, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
-    ,{from, teletype_util:default_from_address(ModConfigCat)}
-    ,{cc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-    ,{bcc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-    ,{reply_to, teletype_util:default_reply_to(ModConfigCat)}
+    ,{to, Module:to(ModConfigCat)}
+    ,{from, Module:from(ModConfigCat)}
+    ,{cc, Module:cc(ModConfigCat)}
+    ,{bcc, Module:bcc(ModConfigCat)}
+    ,{reply_to, Module:reply_to(ModConfigCat)}
     ,{html, TemplateId}
     ,{text, TemplateId}
     ].
@@ -186,7 +186,7 @@ templates_source(TemplateId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     ResellerId = teletype_util:find_reseller_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
-    case teletype_util:find_account_id(DataJObj) of
+    case kapi_notifications:account_id(DataJObj) of
         'undefined' -> ?KZ_CONFIG_DB;
         AccountId -> templates_source(TemplateId, AccountId)
     end.

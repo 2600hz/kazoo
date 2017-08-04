@@ -132,7 +132,7 @@ send_update_to_user(UserJObj, DataJObj) ->
     RenderedTemplates =
         teletype_templates:render(maybe_expand_template_id(DataJObj), Macros, DataJObj, maybe_tpls_provided(DataJObj)),
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_notification(maybe_expand_template_id(DataJObj), teletype_util:find_account_id(DataJObj)),
+        teletype_templates:fetch_notification(maybe_expand_template_id(DataJObj), kapi_notifications:account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])

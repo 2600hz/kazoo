@@ -40,7 +40,7 @@ notification(JObj) ->
     {EventCategory, EventName} = kz_util:get_event_type(JObj),
     RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
     lager:debug("dispatching notification ~s", [RoutingKey]),
-    Res = kazoo_bindings:map(RoutingKey, JObj, []),
+    Res = kazoo_bindings:map(RoutingKey, JObj),
     case kazoo_bindings:succeeded(Res, fun filter_out_failed/1) of
         [] ->
             FailureMsg = build_failure_message(Res),
@@ -95,5 +95,9 @@ build_failure_message([{'EXIT', {'error', {'badmatch',  _}}}|_]) ->
 build_failure_message([{'EXIT', {_Exp, _ST}}|_]) ->
     <<"template_error: crashed with exception">>;
 
-build_failure_message(_) ->
+build_failure_message([]) ->
+    <<"no teletype template modules responded">>;
+
+build_failure_message(_Other) ->
+    lager:debug("template failed with unknown reasons: ~p", [_Other]),
     <<"unknown_template_error">>.

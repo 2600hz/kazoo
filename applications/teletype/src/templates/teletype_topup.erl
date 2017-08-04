@@ -97,7 +97,7 @@ process_req(DataJObj) ->
     Macros = macros(DataJObj),
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, kapi_notifications:account_id(DataJObj)),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj]),
     Subject = teletype_util:render_subject(Subject0, Macros),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
