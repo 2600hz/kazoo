@@ -70,10 +70,9 @@ cast(Req, PublishFun) ->
 %% @private
 %% @doc handle amqp worker responses
 -spec handle_resp(api_ne_binary(), api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
-handle_resp(_NotifyType, _Req, 'ok') -> 'ok';
 handle_resp(NotifyType, Req, {'ok', _}=Resp) -> check_for_failure(NotifyType, Req, Resp);
 handle_resp(NotifyType, Req, {'error', Error}) -> maybe_handle_error(NotifyType, Req, error_to_failure_reason(Error));
-handle_resp(NotifyType, Req, {'returned', _, Resp}) -> check_for_failure(NotifyType, Req, {'returned', Resp});
+handle_resp(NotifyType, Req, {'returned', _, Resp}) -> check_for_failure(NotifyType, Req, {'returned', [Resp]});
 handle_resp(NotifyType, Req, {'timeout', _}=Resp) -> check_for_failure(NotifyType, Req, Resp).
 
 %% @private
@@ -106,12 +105,13 @@ handle_error(NotifyType, Req, Error) ->
               ,{<<"payload">>, Req}
               ,{<<"attempts">>, 1}
               ]),
-    JObj = kz_doc:update_pvt_parameters(
-             kz_json:from_list_recursive(Props), 'undefined', [{'type', <<"failed_notify">>}
-                                                              ,{'account_id', find_account_id(Req)}
-                                                              ,{'account_db', ?KZ_PENDING_NOTIFY_DB}
-                                                              ]
-            ),
+    JObj = kz_doc:update_pvt_parameters(kz_json:from_list_recursive(Props)
+                                       ,'undefined'
+                                       , [{'type', <<"failed_notify">>}
+                                         ,{'account_id', find_account_id(Req)}
+                                         ,{'account_db', ?KZ_PENDING_NOTIFY_DB}
+                                         ]
+                                       ),
     save_pending_notification(NotifyType, JObj, 2).
 
 -spec save_pending_notification(ne_binary(), kz_json:object(), integer()) -> 'ok'.
@@ -183,20 +183,25 @@ maybe_ignore_failure(_) -> 'false'.
 
 %% @private
 %% @doc try to find account id in different part of payload(copied from teletype_util)
--spec find_account_id(api_terms()) -> api_binary().
+-spec find_account_id(api_terms()) -> api_ne_binary().
+find_account_id(Req) when is_list(Req) ->
+    find_account_id(Req, fun props:get_first_defined/2);
 find_account_id(Req) ->
-    props:get_first_defined([<<"account_id">>
-                            ,[<<"account">>, <<"_id">>]
-                            ,<<"pvt_account_id">>
-                            ,<<"_id">>, <<"id">>
-                            ,<<"Account-ID">>
-                            ,[<<"details">>, <<"account_id">>]
-                            ,[<<"Details">>, <<"Account-ID">>]
-                            ,[<<"details">>, <<"custom_channel_vars">>, <<"account_id">>]
-                            ,[<<"Details">>, <<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                            ]
-                           ,Req
-                           ).
+    find_account_id(Req, fun kz_json:get_first_defined/2).
+
+find_account_id(Req, Get) ->
+    Get([<<"account_id">>
+        ,[<<"account">>, <<"_id">>]
+        ,<<"pvt_account_id">>
+        ,<<"_id">>, <<"id">>
+        ,<<"Account-ID">>
+        ,[<<"details">>, <<"account_id">>]
+        ,[<<"Details">>, <<"Account-ID">>]
+        ,[<<"details">>, <<"custom_channel_vars">>, <<"account_id">>]
+        ,[<<"Details">>, <<"Custom-Channel-Vars">>, <<"Account-ID">>]
+        ]
+       ,Req
+       ).
 
 %% @private
 %% @doc convert error to human understandable string
