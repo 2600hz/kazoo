@@ -184,7 +184,6 @@ maybe_ignore_failure(_) -> 'false'.
 %% @private
 %% @doc try to find account id in different part of payload(copied from teletype_util)
 -spec find_account_id(api_terms()) -> api_ne_binary().
-find_account_id('undefined') -> 'undefined';
 find_account_id(Req) when is_list(Req) ->
     find_account_id(Req, fun props:get_first_defined/2);
 find_account_id(Req) ->
