@@ -316,10 +316,7 @@ check_multi_factor_setting(AuthModule, JObj, Context) ->
 
 -spec has_configuration_id(kz_json:object()) -> boolean().
 has_configuration_id(JObj) ->
-    case kz_json:get_ne_binary_value([<<"multi_factor">>, <<"configuration_id">>], JObj) of
-        'undefined' -> 'false';
-        _ -> 'true'
-    end.
+    kz_json:get_ne_binary_value([<<"multi_factor">>, <<"configuration_id">>], JObj) =/= 'undefined'.
 
 -spec has_account_id_or_db(kz_json:object()) -> boolean() | ne_binary().
 has_account_id_or_db(JObj) ->
