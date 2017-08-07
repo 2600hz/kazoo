@@ -59,28 +59,29 @@ get_global_test_() ->
     FunToTest = fun(AccountId, Category, Key) ->
                         kapps_account_config:get_global(AccountId, Category, Key)
                 end,
-    SysDefaultValue = get_fixture_value(<<"default">>, "test_cat_system"),
+    SysDefaultValue = kz_doc:set_account_db(get_fixture_value(<<"default">>, "test_cat_system"), ?KZ_CONFIG_DB),
     ResellerFixture = kapps_config_util:fixture("test_cat_reseller"),
     SubAccountFixture = kapps_config_util:fixture("test_cat_subaccount_1"),
+    EmptySysDoc = kz_doc:set_account_db(kz_json:new(), ?KZ_CONFIG_DB),
 
     [{"Testing get global account config"
      ,[{"customized sub-account on get_global/2 should result in account"
        ,?_assertEqual(SubAccountFixture, kapps_account_config:get_global(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT))
        }
       ,{"undefined sub-account on get_global/2 should result in system_config"
-       ,?_assertEqual(SysDefaultValue, kapps_account_config:get_global(undefined, ?TEST_CAT))
+       ,?_assertEqual(kz_doc:set_id(SysDefaultValue, ?TEST_CAT), kapps_account_config:get_global(undefined, ?TEST_CAT))
        }
       ,{"not customized sub-account and customized reseller on get_global/2 should result in reseller"
        ,?_assertEqual(ResellerFixture, kapps_account_config:get_global(?CUSTOMIZED_RESELLER, ?TEST_CAT))
        }
       ,{"not customized sub-account and reseller on get_global/2 should result in system_config"
-       ,?_assertEqual(SysDefaultValue, kapps_account_config:get_global(?NOT_CUSTOMIZED_ALL_ACCOUNTS, ?TEST_CAT))
+       ,?_assertEqual(kz_doc:set_id(SysDefaultValue, ?TEST_CAT), kapps_account_config:get_global(?NOT_CUSTOMIZED_ALL_ACCOUNTS, ?TEST_CAT))
        }
       ,{"not customized sub-account and reseller and empty system_config on get_global/2 should result in empty"
-       ,?_assertEqual(kz_json:new(), kapps_account_config:get_global(?NOT_CUSTOMIZED_ALL_ACCOUNTS, ?TEST_CAT_EMPTY))
+       ,?_assertEqual(kz_doc:set_id(EmptySysDoc, ?TEST_CAT_EMPTY), kapps_account_config:get_global(?NOT_CUSTOMIZED_ALL_ACCOUNTS, ?TEST_CAT_EMPTY))
        }
       ,{"non exisiting category on get_global/2 should result in empty"
-       ,?_assertEqual(kz_json:new(), kapps_account_config:get_global(?NOT_CUSTOMIZED_ALL_ACCOUNTS, <<"no_cat">>))
+       ,?_assertEqual(kz_doc:set_id(EmptySysDoc, <<"no_cat">>), kapps_account_config:get_global(?NOT_CUSTOMIZED_ALL_ACCOUNTS, <<"no_cat">>))
        }
       ,common_get_global_tests(FunToTest)
       ]

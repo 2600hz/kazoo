@@ -134,11 +134,6 @@
             "description": "crossbar ssl workers",
             "type": "integer"
         },
-        "token_auth_expiry": {
-            "default": 3600,
-            "description": "crossbar token auth expiry",
-            "type": "integer"
-        },
         "token_costs": {
             "default": 1,
             "description": "crossbar token costs",
