@@ -443,8 +443,13 @@ reset_system_private_key(Context) ->
 
 -spec get_system_public_key(cb_context:context()) -> cb_context:context().
 get_system_public_key(Context) ->
-    lager:debug("trying to get kazoo public key"),
-    try kz_auth_keys:to_pem(kz_auth_keys:public_key(<<"kazoo">>)) of
+    lager:debug("trying to get system (kazoo) public key"),
+    get_system_public_key(Context, kz_auth_apps:get_auth_app(<<"kazoo">>)).
+
+-spec get_system_public_key(cb_context:context(), map()) -> cb_context:context().
+get_system_public_key(Context, #{pvt_server_key := ?NE_BINARY=KeyId}) ->
+    lager:debug("system (kazoo) public key with id ~s", [KeyId]),
+    try kz_auth_keys:to_pem(kz_auth_keys:public_key(KeyId)) of
         PublicKeyPem ->
             AcceptType = find_accept_type(Context),
             set_public_key_response(Context, PublicKeyPem, AcceptType)
@@ -452,10 +457,13 @@ get_system_public_key(Context) ->
         _T:_E ->
             lager:debug("failed to get kazoo public key: ~p:~p", [_T, _E]),
             cb_context:add_system_error('datastore_fault', Context)
-    end.
+    end;
+get_system_public_key(Context, _) ->
+    cb_context:add_system_error('datastore_fault', Context).
 
+-spec set_public_key_response(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 set_public_key_response(Context, PublicKeyPem, <<"application/json">>) ->
-    RespDoc = kz_json:from_list([{<<"system_public_key_pem">>, PublicKeyPem}]),
+    RespDoc = kz_json:from_list([{<<"public_key_pem">>, PublicKeyPem}]),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:set_resp_data/2, RespDoc}
               ],
@@ -465,7 +473,7 @@ set_public_key_response(Context, PublicKeyPem, <<"application/x-pem-file">>=CT) 
               ,{fun cb_context:set_resp_data/2, PublicKeyPem}
               ,{fun cb_context:add_resp_headers/2
                ,[{<<"Content-Type">>, CT}
-                ,{<<"Content-Disposition">>, <<"attachment; filename=system_pub_key.pem">>}
+                ,{<<"Content-Disposition">>, <<"attachment; filename=public_key.pem">>}
                 ,{<<"Content-Length">>, erlang:size(PublicKeyPem)}
                 ]
                }
