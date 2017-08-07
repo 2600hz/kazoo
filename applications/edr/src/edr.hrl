@@ -27,8 +27,9 @@
                ,account_tree   :: api_ne_binaries()
                ,app_name       :: ne_binary()
                ,app_version    :: ne_binary()
-               ,level          :: edr_level()
                ,body           :: ne_binary()
+               ,id             :: ne_binary()
+               ,level          :: edr_level()
                ,timestamp      :: ne_binary()
                ,gregorian_time :: pos_integer()
                }).

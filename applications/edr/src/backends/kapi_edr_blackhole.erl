@@ -22,7 +22,7 @@
                                               ,".", (kz_term:to_binary(AccountId))/binary
                                              >>).
 
--define(EVENT_HEADERS, [<<"Body">>, <<"Level">>, <<"Timestamp">>, <<"Gregorian-Time">>]).
+-define(EVENT_HEADERS, [<<"Body">>, <<"ID">>, <<"Level">>, <<"Timestamp">>, <<"Gregorian-Time">>]).
 -define(OPTIONAL_EVENT_HEADERS, [<<"Account-ID">>, <<"Account-Tree">>]).
 -define(EVENT_VALUES, []).
 -define(EVENT_TYPES, [{<<"Body">>, fun kz_json:is_json_object/1}]).

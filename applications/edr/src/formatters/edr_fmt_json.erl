@@ -32,6 +32,7 @@ format_event(_Opts, Event, _IncludeMeta, 'false') ->
             ,{<<"App-Name">>, Event#event.app_name}
             ,{<<"App-Version">>, Event#event.app_version}
             ,{<<"Body">>, Event#event.body}
+            ,{<<"ID">>, Event#event.id}
             ,{<<"Level">>, kz_term:to_binary(Event#event.level)}
             ,{<<"Timestamp">>, Event#event.timestamp}
             ,{<<"Gregorian-Time">>, Event#event.gregorian_time}

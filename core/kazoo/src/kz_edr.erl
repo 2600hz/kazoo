@@ -73,8 +73,9 @@ log_event(AppName, AppVersion, LogLevel, Body) ->
     log_event(AppName, AppVersion, LogLevel, Body, 'undefined').
 log_event(AppName, AppVersion, LogLevel, Body, AccountId) ->
     Req = [{<<"Account-ID">>, AccountId}
-          ,{<<"Level">>, LogLevel}
           ,{<<"Body">>, Body}
+          ,{<<"ID">>, kz_datamgr:get_uuid()}
+          ,{<<"Level">>, LogLevel}
           ,{<<"Timestamp">>, kz_time:now_s(kz_time:now())}
            | kz_api:default_headers(<<"edr">>, <<"event">>, AppName, AppVersion)
           ],
