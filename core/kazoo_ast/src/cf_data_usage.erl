@@ -14,7 +14,7 @@
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
-               ,data_var_aliases = [] :: [] %% typically when kz_json:set_value is used
+               ,data_var_aliases = [] :: [any()] %% typically when kz_json:set_value is used
                ,current_module :: module() %% what module are we currently in
                ,functions = [] :: [tuple()] %% AST functions loaded
                ,visited = [] :: [tuple()] %% MFAs visited (to stop recursion)
