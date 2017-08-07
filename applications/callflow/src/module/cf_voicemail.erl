@@ -95,21 +95,21 @@
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
 
 -record(keys, {operator = <<"0">> :: ne_binary()
-                   %% Compose Voicemail
+                                     %% Compose Voicemail
               ,login = <<"*">> :: ne_binary()
 
-                   %% Record Review
+                                  %% Record Review
               ,save = <<"1">> :: ne_binary()
               ,listen = <<"2">> :: ne_binary()
               ,record = <<"3">> :: ne_binary()
 
-                   %% Main Menu
+                                   %% Main Menu
               ,hear_new = <<"1">> :: ne_binary()
               ,hear_saved = <<"2">> :: ne_binary()
               ,configure = <<"5">> :: ne_binary()
               ,exit = <<"#">> :: ne_binary()
 
-                   %% Config Menu
+                                 %% Config Menu
               ,rec_unavailable  = <<"1">> :: ne_binary()
               ,rec_name = <<"2">> :: ne_binary()
               ,set_pin = <<"3">> :: ne_binary()
@@ -117,7 +117,7 @@
               ,del_temporary_unavailable = <<"5">> :: ne_binary()
               ,return_main = <<"0">> :: ne_binary()
 
-                   %% Post playbak
+                                        %% Post playbak
               ,keep = <<"1">> :: ne_binary()
               ,replay = <<"2">> :: ne_binary()
               ,forward = <<"3">> :: ne_binary()
@@ -125,7 +125,7 @@
               ,next = <<"6">> :: ne_binary()
               ,delete = <<"7">> :: ne_binary()
 
-                   %% Greeting or instructions
+                                   %% Greeting or instructions
               ,continue = 'undefined' :: api_ne_binary()
               }).
 -type vm_keys() :: #keys{}.
