@@ -60,7 +60,7 @@ Looking at the [Rates Task](/applications/tasks/doc/rates.md) we see the followi
     `rate_nocharge_time`|"free" call time, if call duration less then this value (seconds), then call not charged|
     `rate_surcharge`|charge amount on connect (answer)|
     `rate_version`|rate version|
-    `ratedeck_name`| ratedeck name, assigned to account via service plan|
+    `ratedeck_id`| ratedeck name, assigned to account via service plan|
 
 You can also query to the rates task to find this information out:
 
