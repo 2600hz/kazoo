@@ -743,8 +743,8 @@
             ],
             "type": "object"
         },
-        "auth.reset_secret": {
-            "description": "reset idetity secret",
+        "auth.reset_identity": {
+            "description": "reset identity secret",
             "properties": {
                 "owner_id": {
                     "description": "ID of identity's owner to reset (either the user_id or account_id)",

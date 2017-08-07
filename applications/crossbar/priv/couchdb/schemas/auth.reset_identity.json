@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "auth.reset_secret",
+    "_id": "auth.reset_identity",
     "additionalProperties": true,
-    "description": "reset idetity secret",
+    "description": "reset identity secret",
     "properties": {
         "owner_id": {
             "description": "ID of identity's owner to reset (either the user_id or account_id)",

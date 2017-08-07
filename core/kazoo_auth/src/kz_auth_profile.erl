@@ -109,7 +109,6 @@ profile_authorization(#{auth_provider := Provider} = Token, AccessToken) ->
             lager:debug("using profile access token authorization header"),
             DefaultTokenType = maps:get(profile_access_token_type, Provider, <<"Bearer">>),
             TokenType = maps:get(token_type, Token, DefaultTokenType),
-            io:format("~n TokenType ~p~n AccessToken ~p~n", [TokenType, AccessToken]),
             <<TokenType/binary, " ",AccessToken/binary>>;
         <<"api_key">> ->
             lager:debug("using profile api key authorization header"),
