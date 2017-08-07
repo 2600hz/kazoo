@@ -60,8 +60,8 @@
                  ]).
 
 -spec reasons() -> kz_proplist().
--spec reasons(integer()) -> kz_proplist().
--spec reasons(integer(), integer()) -> kz_proplist().
+-spec reasons(integer()) -> ne_binaries().
+-spec reasons(integer(), integer()) -> ne_binaries().
 -spec reasons(integer(), integer(), kz_proplist(), kz_proplist()) ->
                      ne_binaries().
 reasons() ->
