@@ -339,10 +339,8 @@ reset_kazoo_private_key(?NE_BINARY=KeyId) ->
         {'error', 'not_found'} ->
             lager:debug("private key document (kid ~s) is not exists, creating it...", [KeyId]),
             case new_private_key(KeyId) of
-                {ok, _} ->
-                    lager:debug("private key document (kid ~s) is created successfully", [KeyId]);
-
-                    store({'private', KeyId}, PrivateKey),
+                {ok, PrivateKey} ->
+                    lager:debug("private key document (kid ~s) is created successfully", [KeyId]),
                     PublicKey = get_public_key_from_private_key(PrivateKey),
                     store(KeyId, PublicKey);
                 {'error', _Reason}=Error ->

@@ -419,11 +419,13 @@ reset_system_identity_secret(Context) ->
 
 -spec reset_identity_secret(cb_context:context()) -> cb_context:context().
 reset_identity_secret(Context) ->
-    OwnerId = kz_json:ne_binary(<<"owner_id">>, cb_context:doc(Context)),
-    Claims = [{<<"account_id">>, cb_context:account_id(Context)}
-             ,{<<"owner_id">>, OwnerId}
-             ],
-    case kz_auth:reset_secret(Claims) of
+    OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, cb_context:doc(Context)),
+    Claims = props:filter_undefined(
+               [{<<"account_id">>, cb_context:account_id(Context)}
+               ,{<<"owner_id">>, OwnerId}
+               ]
+              ),
+    case kz_auth_identity:reset_secret(Claims) of
         'ok' -> Context;
         {'error', Reason} ->
             crossbar_doc:handle_datamgr_errors(Reason, OwnerId, Context)
