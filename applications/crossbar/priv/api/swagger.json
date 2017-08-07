@@ -743,6 +743,19 @@
             ],
             "type": "object"
         },
+        "auth.reset_secret": {
+            "description": "reset idetity secret",
+            "properties": {
+                "owner_id": {
+                    "description": "ID of identity's owner to reset (either the user_id or account_id)",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "type": "object"
+        },
         "auth_module_config": {
             "description": "crossbar authenticator module configuration",
             "properties": {
@@ -30557,15 +30570,6 @@
             "required": true,
             "type": "string"
         },
-        "KEY_ID": {
-            "in": "path",
-            "maxLength": 32,
-            "minLength": 32,
-            "name": "KEY_ID",
-            "pattern": "^[0-9a-f]+$",
-            "required": true,
-            "type": "string"
-        },
         "LANGUAGE": {
             "in": "path",
             "name": "LANGUAGE",
@@ -41080,8 +41084,8 @@
                 }
             }
         },
-        "/auth/keys": {
-            "get": {
+        "/auth/identity_secret": {
+            "patch": {
                 "responses": {
                     "200": {
                         "description": "request succeeded"
@@ -41089,37 +41093,17 @@
                 }
             }
         },
-        "/auth/keys/{KEY_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/KEY_ID"
-                    }
-                ],
+        "/auth/keys/private": {
+            "patch": {
                 "responses": {
                     "200": {
                         "description": "request succeeded"
                     }
                 }
-            },
+            }
+        },
+        "/auth/keys/public": {
             "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/KEY_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/KEY_ID"
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "request succeeded"

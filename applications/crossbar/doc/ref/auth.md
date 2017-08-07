@@ -6,14 +6,14 @@
 
 
 
-#### Fetch
+#### Patch
 
-> GET /v2/auth/keys
+> PATCH /v2/auth/identity_secret
 
 ```shell
-curl -v -X GET \
+curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/keys
+    http://{SERVER}:8000/v2/auth/identity_secret
 ```
 
 #### Fetch
@@ -88,32 +88,22 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/auth/keys/{KEY_ID}
+> GET /v2/auth/keys/public
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
+    http://{SERVER}:8000/v2/auth/keys/public
 ```
 
-#### Change
+#### Patch
 
-> POST /v2/auth/keys/{KEY_ID}
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
-```
-
-#### Remove
-
-> DELETE /v2/auth/keys/{KEY_ID}
+> PATCH /v2/auth/keys/private
 
 ```shell
-curl -v -X DELETE \
+curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
+    http://{SERVER}:8000/v2/auth/keys/private
 ```
 
 #### Fetch
