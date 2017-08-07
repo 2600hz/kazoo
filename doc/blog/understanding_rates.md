@@ -60,7 +60,7 @@ Looking at the [Rates Task](/applications/tasks/doc/rates.md) we see the followi
     `rate_nocharge_time`|"free" call time, if call duration less then this value (seconds), then call not charged|
     `rate_surcharge`|charge amount on connect (answer)|
     `rate_version`|rate version|
-    `ratedeck_name`| ratedeck name, assigned to account via service plan|
+    `ratedeck_id`| ratedeck name, assigned to account via service plan|
 
 You can also query to the rates task to find this information out:
 
@@ -397,7 +397,7 @@ Since the "retail" ratedeck is the default, no service plan is necessary. Let's 
     "_id":"plan_bulk_ratedeck",
     "pvt_type":"service_plan",
     "name":"Bulk Ratedeck Service Plan",
-    "plans":{
+    "plan":{
         "ratedeck":{
             "bulk":{
             }
@@ -414,7 +414,7 @@ At the moment, there is no API for creating new service plans so you have to do 
 ```shell
 curl -v -X PUT \
      -H "content-type: application/json" \
-     -d '{"pvt_type":"service_plan","name":"Bulk Ratedeck Service Plan","plans":{"ratedeck":{"bulk":{}}}}' \
+     -d '{"pvt_type":"service_plan","name":"Bulk Ratedeck Service Plan","plan":{"ratedeck":{"bulk":{}}}}' \
      'http://{SERVER}:15984/{ADMIN_ACCOUNT_ID}/plan_bulk_ratedeck'
 ```
 

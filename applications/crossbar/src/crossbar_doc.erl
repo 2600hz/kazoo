@@ -1111,6 +1111,15 @@ handle_json_success(JObj, Context, ?HTTP_PUT) ->
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
+handle_json_success(JObj, Context, ?HTTP_DELETE) ->
+    Public = kz_doc:public_fields(JObj),
+    RespJObj = kz_json:set_value([<<"_read_only">>, <<"deleted">>], 'true', Public),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_doc/2, JObj}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, RespJObj}
+                       ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
+                       ]);
 handle_json_success(JObj, Context, _Verb) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
