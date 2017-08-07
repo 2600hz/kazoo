@@ -114,7 +114,8 @@ authorize_request(Context, _, ?HTTP_PUT) ->
 authorize_request(Context, _, ?HTTP_GET) ->
     cb_simple_authz:authorize(Context).
 
--spec authorize_create(cb_context:context()) -> boolean().
+-spec authorize_create(cb_context:context()) -> boolean() |
+                                                {'halt', cb_context:context()}.
 authorize_create(Context) ->
     IsAuthenticated = cb_context:is_authenticated(Context),
     IsSuperDuperAdmin = cb_context:is_superduper_admin(Context),

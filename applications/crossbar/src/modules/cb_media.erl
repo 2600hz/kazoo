@@ -119,7 +119,8 @@ resource_exists(?LANGUAGES, _Language) -> 'true';
 resource_exists(?PROMPTS, _PromptId) -> 'true';
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
--spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context()) -> boolean() |
+                                         {'halt', cb_context:context()}.
 authorize(Context) ->
     authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
 

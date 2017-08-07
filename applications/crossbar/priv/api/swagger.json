@@ -751,9 +751,6 @@
                     "type": "string"
                 }
             },
-            "required": [
-                "id"
-            ],
             "type": "object"
         },
         "auth_module_config": {

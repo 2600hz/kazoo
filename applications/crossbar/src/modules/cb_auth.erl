@@ -95,20 +95,20 @@ allowed_methods(?KEYS_PATH, ?PUBLIC_PATH) -> [?HTTP_GET].
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists(path_token()) -> boolean().
-resource_exists(?TOKENINFO_PATH) -> 'true';
+resource_exists(?APPS_PATH) -> 'true';
 resource_exists(?AUTHORIZE_PATH) -> 'true';
 resource_exists(?CALLBACK_PATH) -> 'true';
+resource_exists(?IDENTITY_SECRET_PATH) -> 'true';
 resource_exists(?LINKS_PATH) -> 'true';
 resource_exists(?PROVIDERS_PATH) -> 'true';
-resource_exists(?APPS_PATH) -> 'true';
-resource_exists(?IDENTITY_SECRET_PATH) -> 'true'.
+resource_exists(?TOKENINFO_PATH) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> boolean().
-resource_exists(?LINKS_PATH, _LinkId) -> 'true';
-resource_exists(?PROVIDERS_PATH, _ProviderId) -> 'true';
 resource_exists(?APPS_PATH, _AppId) -> 'true';
 resource_exists(?KEYS_PATH, ?PRIVATE_PATH) -> 'true';
-resource_exists(?KEYS_PATH, ?PUBLIC_PATH) -> 'true'.
+resource_exists(?KEYS_PATH, ?PUBLIC_PATH) -> 'true';
+resource_exists(?LINKS_PATH, _LinkId) -> 'true';
+resource_exists(?PROVIDERS_PATH, _ProviderId) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,25 +141,30 @@ authorize(Context, PathToken, Id) ->
     authorize_nouns_id(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authorize_nouns(cb_context:context(), path_token(), req_verb(), req_nouns()) -> boolean().
-authorize_nouns(_Context, ?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) ->
-    cb_context:is_superduper_admin(Context);
-authorize_nouns(Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}, {<<"accounts">>, _AccountId}]) ->
-    cb_context:is_account_admin(Context);
+authorize_nouns(_, ?APPS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?AUTHORIZE_PATH,       ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?CALLBACK_PATH,        ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(C, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns(C, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}, {<<"accounts">>, _AccountId}]) -> cb_context:is_account_admin(C);
+authorize_nouns(_, ?LINKS_PATH,           ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?PROVIDERS_PATH,       ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?TOKENINFO_PATH,       ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?TOKENINFO_PATH,       ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, _, _, _) -> 'false'.
 
 -spec authorize_nouns_id(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
-authorize_nouns_id(Context, ?KEYS_PATH, ?PRIVATE_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) ->
-    cb_context:is_superduper_admin(Context);
-authorize_nouns_id(Context, ?KEYS_PATH, ?PUBLIC_PATH, ?HTTP_GET, [{<<"auth">>, _}]) ->
-    cb_context:is_account_admin(Context);
-authorize_nouns_id(Context, ?LINKS_PATH, _Id, ?HTTP_PUT, [{<<"auth">>, _}]) ->
-    cb_context:is_authenticated(Context);
-authorize_nouns_id(Context, ?LINKS_PATH, _Id, ?HTTP_DELETE, [{<<"auth">>, _}]) ->
-    cb_context:is_authenticated(Context).
+authorize_nouns_id(_, ?APPS_PATH,      _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
+authorize_nouns_id(C, ?KEYS_PATH,      ?PRIVATE_PATH, ?HTTP_PATCH,  [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns_id(C, ?KEYS_PATH,      ?PUBLIC_PATH,  ?HTTP_GET,    [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
+authorize_nouns_id(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
+%% monster-ui still uses this (accounts/123/auth/links)
+authorize_nouns_id(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}, [<<"accounts">>, _]]) -> 'true';
+authorize_nouns_id(_, ?LINKS_PATH,     _Id,           ?HTTP_PUT,    [{<<"auth">>, _}]) -> 'true';
+authorize_nouns_id(_, ?LINKS_PATH,     _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> 'true';
+authorize_nouns_id(_, ?PROVIDERS_PATH, _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
+authorize_nouns_id(C, ?PROVIDERS_PATH, _Id,           ?HTTP_POST,   [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns_id(C, ?PROVIDERS_PATH, _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns_id(_, _, _, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public

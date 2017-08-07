@@ -226,8 +226,10 @@ check_kazoo_secret(#{user_doc := JObj}=Token) ->
     end.
 
 -spec update_kazoo_secret(map()) -> map() | {'error', any()}.
-update_kazoo_secret(Token) ->
-    lager:debug("generating new kazoo signing secret"),
+update_kazoo_secret(#{auth_db := Db
+                     ,auth_db_id := Key
+                     }=Token) ->
+    lager:debug("generating new kazoo signing secret for ~s/~s", [Db, Key]),
     update_kazoo_secret(Token, kz_binary:rand_hex(16)).
 
 -spec update_kazoo_secret(map(), ne_binary()) -> map() | {'error', any()}.
