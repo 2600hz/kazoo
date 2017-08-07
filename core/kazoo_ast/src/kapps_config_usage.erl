@@ -117,6 +117,10 @@ expression_to_schema(?MOD_FUN_ARGS(Source='ecallmgr_config', F, Args), Schemas) 
     config_to_schema(Source, F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
 expression_to_schema(?MOD_FUN_ARGS(Source='kapps_account_config', F='get_global', Args), Schemas) ->
     config_to_schema(Source, F, Args, Schemas);
+expression_to_schema(?MOD_FUN_ARGS(Source='kapps_account_config', F='get_hierarchy', Args), Schemas) ->
+    config_to_schema(Source, F, Args, Schemas);
+expression_to_schema(?MOD_FUN_ARGS(Source='kapps_account_config', F='get_with_strategy', Args), Schemas) ->
+    config_to_schema(Source, F, Args, Schemas);
 expression_to_schema(_Expression, Schema) ->
     Schema.
 
@@ -138,6 +142,27 @@ config_to_schema(Source, F='get_global', [_Account, Cat, K, Default], Schemas) -
         'undefined' -> Schemas;
         Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
     end;
+config_to_schema(Source, F='get_hierarchy', [Account, Cat, K], Schemas) ->
+    config_to_schema(Source, F, [Account, Cat, K, 'undefined'], Schemas);
+config_to_schema(Source, F='get_hierarchy', [_Account, Cat, K, Default], Schemas) ->
+    Document = category_to_document(Cat),
+    case key_to_key_path(K) of
+        'undefined' -> Schemas;
+        Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
+    end;
+config_to_schema(Source, F='get_with_strategy', [Strategy, Account, Cat, K], Schemas) ->
+    config_to_schema(Source, F, [Strategy, Account, Cat, K, 'undefined'], Schemas);
+config_to_schema(Source, F='get_with_strategy', [?BINARY_MATCH([?BINARY_STRING(Strategy)]), _Account, Cat, K, Default], Schemas)
+  when Strategy =:= "hierarchy_merge";
+       Strategy =:= "global";
+       Strategy =:= "global_merge" ->
+    Document = category_to_document(Cat),
+    case key_to_key_path(K) of
+        'undefined' -> Schemas;
+        Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
+    end;
+config_to_schema(_, 'get_with_strategy', _Args, Schemas) ->
+    Schemas;
 config_to_schema(Source, F, [Cat, K], Schemas) ->
     config_to_schema(Source, F, [Cat, K, 'undefined'], Schemas);
 config_to_schema(Source, F, [Cat, K, Default, _Node], Schemas) ->
@@ -213,6 +238,8 @@ guess_type('get_integer', _) -> <<"integer">>;
 guess_type('get_float', _) -> <<"float">>;
 guess_type('get_atom', _) -> <<"string">>;
 guess_type('get_global', Default) -> guess_type_by_default(Default);
+guess_type('get_hierarchy', Default) -> guess_type_by_default(Default);
+guess_type('get_with_strategy', Default) -> guess_type_by_default(Default);
 guess_type('set_default', _) -> 'undefined';
 guess_type('set', Default) -> guess_type_by_default(Default);
 guess_type('set_string', _) -> <<"string">>;

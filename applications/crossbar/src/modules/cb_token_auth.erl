@@ -24,12 +24,6 @@
 
 -include("crossbar.hrl").
 
--define(LOOP_TIMEOUT,
-        kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
-
--define(PERCENT_OF_TIMEOUT,
-        kapps_config:get_integer(?APP_NAME, <<"expiry_percentage">>, 75)).
-
 %%%===================================================================
 %%% API
 %%%===================================================================

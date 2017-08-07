@@ -12,7 +12,6 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
 -define(AUTH_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".auth">>).
--define(ACCOUNT_AUTH_CONFIG_ID, <<"kazoo_auth_configs">>).
 
 -define(CACHE_NAME, 'crossbar_cache').
 
