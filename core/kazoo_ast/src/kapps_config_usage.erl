@@ -308,7 +308,7 @@ guess_properties(Document, Source, [Key], Type, Default)
   when is_binary(Key) ->
     guess_properties(Document, Source, Key, Type, Default);
 guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES|_]=Keys, Type, Default) ->
-    JustKeys = lists:filter(fun(?FIELD_PROPERTIES) -> 'false'; (_) -> 'true' end, Keys),
+    JustKeys = [K || K <- Keys, ?FIELD_PROPERTIES =/= K],
     guess_properties(Document, Source, kz_binary:join(JustKeys, $.), Type, Default).
 
 type([undefined]) ->
