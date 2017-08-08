@@ -169,9 +169,11 @@ config_to_schema(Source, F, [Cat, K, Default, _Node], Schemas) ->
     config_to_schema(Source, F, [Cat, K, Default], Schemas);
 config_to_schema(Source, F, [Cat, K, Default], Schemas) ->
     Document = category_to_document(Cat),
+
     case key_to_key_path(K) of
         'undefined' -> Schemas;
-        Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
+        Key ->
+            config_key_to_schema(Source, F, Document, Key, Default, Schemas)
     end.
 
 config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
@@ -179,6 +181,7 @@ config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
 config_key_to_schema(Source, F, Document, Key, Default, Schemas) ->
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     Path = [Document, ?FIELD_PROPERTIES | Key],
+
     kz_json:set_value(Path, Properties, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -287,15 +290,13 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"strin
 
 guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
-    Description = fetch_description(DescriptionKey),
-    case undefined =:= Description of
-        false -> ok;
-        true ->
-            io:format("\nYou need to add the key \"~s\" in ~s\n"
-                     ,[DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]
-                     ),
-            halt(1)
-    end,
+
+    Description =
+        case fetch_description(DescriptionKey) of
+            'undefined' ->
+                kz_binary:join(binary:split(DescriptionKey, <<".">>, ['global']), <<" ">>);
+            D -> D
+        end,
     kz_json:from_list(
       [{?SOURCE, SourceModule}
       ,{<<"description">>, Description}
@@ -306,10 +307,9 @@ guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
 guess_properties(Document, Source, [Key], Type, Default)
   when is_binary(Key) ->
     guess_properties(Document, Source, Key, Type, Default);
-guess_properties(Document, Source, [Key, ?FIELD_PROPERTIES], Type, Default) ->
-    guess_properties(Document, Source, Key, Type, Default);
-guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
-    guess_properties(Document, Source, Rest, Type, Default).
+guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES|_]=Keys, Type, Default) ->
+    JustKeys = [K || K <- Keys, ?FIELD_PROPERTIES =/= K],
+    guess_properties(Document, Source, kz_binary:join(JustKeys, $.), Type, Default).
 
 type([undefined]) ->
     [{?FIELD_TYPE, <<"array">>}];
