@@ -1190,9 +1190,9 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
 
 -spec push_headers(kz_json:object()) -> kz_json:object().
 push_headers(PushJObj) ->
-    kz_json:foldl(fun(K, V, Acc) ->
-                          kz_json:set_value(<<"X-KAZOO-PUSHER-", K/binary>>, V, Acc)
-                  end, kz_json:new(), PushJObj).
+    kz_json:map(fun(K, V) ->
+                        {<<"X-KAZOO-PUSHER-", K/binary>>, V}
+                end, PushJObj).
 
 %%--------------------------------------------------------------------
 %% @private
