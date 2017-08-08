@@ -81,9 +81,8 @@ get_apns(App, ETS) ->
 
 -spec maybe_load_apns(api_binary(), ets:tid()) -> api_pid().
 maybe_load_apns(App, ETS) ->
-    Config = kapps_config:get_json(?CONFIG_CAT, <<"apple">>, kz_json:new(), App),
-    CertBin = kz_json:get_ne_binary_value(<<"certificate">>, Config),
-    Host = kz_json:get_ne_binary_value(<<"host">>, Config, ?DEFAULT_APNS_HOST),
+    CertBin = kapps_config:get_ne_binary(?CONFIG_CAT, [<<"apple">>, <<"certificate">>], 'undefined', App),
+    Host = kapps_config:get_ne_binary(?CONFIG_CAT, [<<"apple">>, <<"host">>], ?DEFAULT_APNS_HOST, App),
     maybe_load_apns(App, ETS, CertBin, Host).
 
 -spec maybe_load_apns(api_binary(), ets:tid(), api_ne_binary(), ne_binary()) -> api_pid().

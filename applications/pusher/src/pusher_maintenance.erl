@@ -27,10 +27,8 @@ add_apple_app(AppId, Certfile) ->
 add_apple_app(AppId, Certfile, Host) ->
     case file:read_file(Certfile) of
         {'ok', Binary} ->
-            Config = kz_json:from_list([{<<"certificate">>, Binary}
-                                       ,{<<"host">>, Host}
-                                       ]),
-            kapps_config:set_node(?CONFIG_CAT, <<"apple">>, Config, AppId),
+            kapps_config:set_node(?CONFIG_CAT, [<<"apple">>, <<"certificate">>], Binary, AppId),
+            kapps_config:set_node(?CONFIG_CAT, [<<"apple">>, <<"host">>], Host, AppId),
             'ok';
         {'error', _} = Err -> Err
     end.
