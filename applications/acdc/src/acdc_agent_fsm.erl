@@ -141,7 +141,7 @@
 %%--------------------------------------------------------------------
 -spec member_connect_req(pid(), kz_json:object()) -> 'ok'.
 member_connect_req(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'member_connect_req', JObj}).
+    gen_statem:cast(FSM, {'member_connect_req', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -152,11 +152,11 @@ member_connect_req(FSM, JObj) ->
 %%--------------------------------------------------------------------
 -spec member_connect_win(pid(), kz_json:object()) -> 'ok'.
 member_connect_win(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'member_connect_win', JObj}).
+    gen_statem:cast(FSM, {'member_connect_win', JObj}).
 
 -spec agent_timeout(pid(), kz_json:object()) -> 'ok'.
 agent_timeout(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'agent_timeout', JObj}).
+    gen_statem:cast(FSM, {'agent_timeout', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -167,21 +167,21 @@ agent_timeout(FSM, JObj) ->
 %%--------------------------------------------------------------------
 -spec call_event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_bridged', call_id(JObj)});
+    gen_statem:cast(FSM, {'channel_bridged', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
+    gen_statem:cast(FSM, {'channel_unbridged', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"usurp_control">>, JObj) ->
-    gen_fsm:send_event(FSM, {'usurp_control', call_id(JObj)});
+    gen_statem:cast(FSM, {'usurp_control', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_hungup', call_id(JObj), hangup_cause(JObj)});
+    gen_statem:cast(FSM, {'channel_hungup', call_id(JObj), hangup_cause(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_CREATED">>, JObj) ->
-    gen_fsm:send_event(FSM, {'leg_created', call_id(JObj)});
+    gen_statem:cast(FSM, {'leg_created', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
-    gen_fsm:send_event(FSM, {'leg_destroyed', call_id(JObj)});
+    gen_statem:cast(FSM, {'leg_destroyed', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_ANSWER">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_answered', call_id(JObj)});
+    gen_statem:cast(FSM, {'channel_answered', call_id(JObj)});
 call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
-    gen_fsm:send_event(FSM, {'dtmf_pressed', kz_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
+    gen_statem:cast(FSM, {'dtmf_pressed', kz_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
     maybe_send_execute_complete(FSM, kz_json:get_value(<<"Application-Name">>, JObj), JObj);
 call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
@@ -190,11 +190,11 @@ call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
 
     Req = kz_json:get_value(<<"Request">>, JObj),
 
-    gen_fsm:send_event(FSM, {'dialplan_error', kz_json:get_value(<<"Application-Name">>, Req)});
+    gen_statem:cast(FSM, {'dialplan_error', kz_json:get_value(<<"Application-Name">>, Req)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_replaced', JObj});
+    gen_statem:cast(FSM, {'channel_replaced', JObj});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
+    gen_statem:cast(FSM, {'channel_unbridged', call_id(JObj)});
 call_event(_, _C, _E, _) ->
     lager:info("Unhandled combo: ~s/~s", [_C, _E]).
 
@@ -209,9 +209,9 @@ maybe_send_execute_complete(FSM, <<"bridge">>, JObj) ->
                ,call_id(JObj)
                ,kz_call_event:other_leg_call_id(JObj)
                ]),
-    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
+    gen_statem:cast(FSM, {'channel_unbridged', call_id(JObj)});
 maybe_send_execute_complete(FSM, <<"call_pickup">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_bridged', call_id(JObj)});
+    gen_statem:cast(FSM, {'channel_bridged', call_id(JObj)});
 maybe_send_execute_complete(_, _, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -220,19 +220,19 @@ maybe_send_execute_complete(_, _, _) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec originate_ready(server_ref(), kz_json:object()) -> 'ok'.
 originate_ready(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_ready', JObj}).
+    gen_statem:cast(FSM, {'originate_ready', JObj}).
 
 -spec originate_resp(server_ref(), kz_json:object()) -> 'ok'.
 originate_resp(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_resp', kz_json:get_value(<<"Call-ID">>, JObj)}).
+    gen_statem:cast(FSM, {'originate_resp', kz_json:get_value(<<"Call-ID">>, JObj)}).
 
 -spec originate_started(server_ref(), kz_json:object()) -> 'ok'.
 originate_started(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_started', kz_json:get_value(<<"Call-ID">>, JObj)}).
+    gen_statem:cast(FSM, {'originate_started', kz_json:get_value(<<"Call-ID">>, JObj)}).
 
 -spec originate_uuid(server_ref(), kz_json:object()) -> 'ok'.
 originate_uuid(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_uuid'
+    gen_statem:cast(FSM, {'originate_uuid'
                             ,kz_json:get_value(<<"Outbound-Call-ID">>, JObj)
                             ,kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj)
                             }).
@@ -243,7 +243,7 @@ originate_uuid(FSM, JObj) ->
 %%--------------------------------------------------------------------
 -spec originate_failed(server_ref(), kz_json:object()) -> 'ok'.
 originate_failed(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_failed', JObj}).
+    gen_statem:cast(FSM, {'originate_failed', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -251,7 +251,7 @@ originate_failed(FSM, JObj) ->
 %%--------------------------------------------------------------------
 -spec sync_req(server_ref(), kz_json:object()) -> 'ok'.
 sync_req(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'sync_req', JObj}).
+    gen_statem:cast(FSM, {'sync_req', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -259,7 +259,7 @@ sync_req(FSM, JObj) ->
 %%--------------------------------------------------------------------
 -spec sync_resp(server_ref(), kz_json:object()) -> 'ok'.
 sync_resp(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'sync_resp', JObj}).
+    gen_statem:cast(FSM, {'sync_resp', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -267,7 +267,7 @@ sync_resp(FSM, JObj) ->
 %%--------------------------------------------------------------------
 -spec pause(server_ref(), kz_timeout()) -> 'ok'.
 pause(FSM, Timeout) ->
-    gen_fsm:send_all_state_event(FSM, {'pause', Timeout}).
+    gen_statem:cast(FSM, {'pause', Timeout}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -275,7 +275,7 @@ pause(FSM, Timeout) ->
 %%--------------------------------------------------------------------
 -spec resume(server_ref()) -> 'ok'.
 resume(FSM) ->
-    gen_fsm:send_all_state_event(FSM, {'resume'}).
+    gen_statem:cast(FSM, {'resume'}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -285,7 +285,7 @@ resume(FSM) ->
 %%--------------------------------------------------------------------
 -spec add_acdc_queue(server_ref(), ne_binary()) -> 'ok'.
 add_acdc_queue(FSM, QueueId) ->
-    gen_fsm:send_all_state_event(FSM, {'add_acdc_queue', QueueId}).
+    gen_statem:cast(FSM, {'add_acdc_queue', QueueId}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -295,7 +295,7 @@ add_acdc_queue(FSM, QueueId) ->
 %%--------------------------------------------------------------------
 -spec rm_acdc_queue(server_ref(), ne_binary()) -> 'ok'.
 rm_acdc_queue(FSM, QueueId) ->
-    gen_fsm:send_all_state_event(FSM, {'rm_acdc_queue', QueueId}).
+    gen_statem:cast(FSM, {'rm_acdc_queue', QueueId}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -303,7 +303,7 @@ rm_acdc_queue(FSM, QueueId) ->
 %%--------------------------------------------------------------------
 -spec update_presence(server_ref(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(FSM, PresenceId, PresenceState) ->
-    gen_fsm:send_all_state_event(FSM, {'update_presence', PresenceId, PresenceState}).
+    gen_statem:cast(FSM, {'update_presence', PresenceId, PresenceState}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -311,20 +311,20 @@ update_presence(FSM, PresenceId, PresenceState) ->
 %%--------------------------------------------------------------------
 -spec agent_logout(server_ref()) -> 'ok'.
 agent_logout(FSM) ->
-    gen_fsm:send_all_state_event(FSM, {'agent_logout'}).
+    gen_statem:cast(FSM, {'agent_logout'}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh(pid(), kz_json:object()) -> 'ok'.
-refresh(FSM, AgentJObj) -> gen_fsm:send_all_state_event(FSM, {'refresh', AgentJObj}).
+refresh(FSM, AgentJObj) -> gen_statem:cast(FSM, {'refresh', AgentJObj}).
 
 -spec current_call(pid()) -> api_object().
-current_call(FSM) -> gen_fsm:sync_send_event(FSM, 'current_call').
+current_call(FSM) -> gen_statem:call(FSM, 'current_call').
 
 -spec status(pid()) -> kz_proplist().
-status(FSM) -> gen_fsm:sync_send_event(FSM, 'status').
+status(FSM) -> gen_statem:call(FSM, 'status').
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -367,7 +367,7 @@ pvt_start_link(_AccountId, 'undefined', Supervisor, _, _) ->
     _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     'ignore';
 pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
-    gen_fsm:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
+    gen_statem:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
 
 -spec new_endpoint(pid(), kz_json:object()) -> 'ok'.
 -spec edited_endpoint(pid(), kz_json:object()) -> 'ok'.
@@ -376,7 +376,7 @@ new_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 edited_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]),
-    gen_fsm:send_all_state_event(FSM, {'edited_endpoint', kz_doc:id(EP), EP}).
+    gen_statem:cast(FSM, {'edited_endpoint', kz_doc:id(EP), EP}).
 deleted_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 
@@ -441,12 +441,12 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
                 of
                     'true' -> {'ready', 'undefined'};
                     _ ->
-                        gen_fsm:send_event(FSM, 'send_sync_event'),
-                        gen_fsm:send_all_state_event(FSM, 'load_endpoints'),
+                        gen_statem:cast(FSM, 'send_sync_event'),
+                        gen_statem:cast(FSM, 'load_endpoints'),
                         {'sync', start_sync_timer(FSM)}
                 end,
 
-            gen_fsm:send_event(FSM, {'listener', P, NextState, SyncRef})
+            gen_statem:cast(FSM, {'listener', P, NextState, SyncRef})
     end.
 
 %%--------------------------------------------------------------------
@@ -467,7 +467,7 @@ wait({'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountI
                                          ,agent_listener_id=acdc_util:proc_id()
                                          }};
 wait('send_sync_event', State) ->
-    gen_fsm:send_event(self(), 'send_sync_event'),
+    gen_statem:cast(self(), 'send_sync_event'),
     {'next_state', 'wait', State};
 wait(_Msg, State) ->
     lager:debug("unhandled event in wait: ~p", [_Msg]),
@@ -495,7 +495,7 @@ sync({'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
 sync({'timeout', Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
     lager:debug("resync timer expired, lets check with the others again"),
     SyncRef = start_sync_timer(),
-    gen_fsm:send_event(self(), 'send_sync_event'),
+    gen_statem:cast(self(), 'send_sync_event'),
     {'next_state', 'sync', State#state{sync_ref=SyncRef}};
 sync('send_sync_event', #state{agent_listener=AgentListener
                               ,agent_listener_id=_AProcId
@@ -1379,7 +1379,7 @@ handle_event({'refresh', AgentJObj}, StateName, #state{agent_listener=AgentListe
     {'next_state', StateName, State};
 handle_event('load_endpoints', StateName, #state{agent_listener='undefined'}=State) ->
     lager:debug("agent proc not ready, not loading endpoints yet"),
-    gen_fsm:send_all_state_event(self(), 'load_endpoints'),
+    gen_statem:cast(self(), 'load_endpoints'),
     {'next_state', StateName, State};
 handle_event('load_endpoints', StateName, #state{agent_id=AgentId
                                                 ,agent_listener=AgentListener
@@ -1442,7 +1442,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_info({'timeout', _Ref, ?SYNC_RESPONSE_MESSAGE}=Msg, StateName, State) ->
-    gen_fsm:send_event(self(), Msg),
+    gen_statem:cast(self(), Msg),
     {'next_state', StateName, State};
 handle_info({'endpoint_edited', EP}, StateName, #state{endpoints=EPs
                                                       ,account_id=AccountId
@@ -1486,10 +1486,10 @@ handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
             end
     end;
 handle_info(?NEW_CHANNEL_FROM(_CallId)=Evt, StateName, State) ->
-    gen_fsm:send_event(self(), Evt),
+    gen_statem:cast(self(), Evt),
     {'next_state', StateName, State};
 handle_info(?NEW_CHANNEL_TO(_CallId, _)=Evt, StateName, State) ->
-    gen_fsm:send_event(self(), Evt),
+    gen_statem:cast(self(), Evt),
     {'next_state', StateName, State};
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
@@ -1531,24 +1531,24 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 -spec start_wrapup_timer(integer()) -> reference().
 start_wrapup_timer(Timeout) when Timeout =< 0 -> start_wrapup_timer(1); % send immediately
-start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, ?WRAPUP_FINISHED).
+start_wrapup_timer(Timeout) -> erlang:start_timer(Timeout*1000, ?WRAPUP_FINISHED).
 
 -spec start_sync_timer() -> reference().
 -spec start_sync_timer(pid()) -> reference().
 start_sync_timer() ->
-    gen_fsm:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
+    erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
 start_sync_timer(P) ->
     erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, P, ?SYNC_RESPONSE_MESSAGE).
 
 -spec start_resync_timer() -> reference().
 start_resync_timer() ->
-    gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
+    erlang:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
 
 -spec start_pause_timer(pos_integer()) -> api_reference().
 start_pause_timer('undefined') -> start_pause_timer(1);
 start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
-    gen_fsm:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
+    erlang:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
 
 -spec call_id(kz_json:object()) -> api_binary().
 call_id(JObj) ->

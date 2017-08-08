@@ -120,16 +120,16 @@ handle(Data, Call) ->
     lager:info("unbridge transferee ~s and transferor ~s", [Transferee, Transferor]),
     unbridge(Call),
 
-    try gen_fsm:enter_loop(?MODULE, [], 'pre_originate'
-                          ,#state{transferor = Transferor
-                                 ,transferee = Transferee
-                                 ,call = kapps_call:set_controller_queue(konami_event_listener:queue_name(), Call)
-                                 ,takeback_dtmf = kz_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
-                                 ,ringback = to_tonestream(kz_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
-                                 ,moh = find_moh(Data, Call)
-                                 ,extension = get_extension(kz_json:get_first_defined([<<"captures">>, <<"target">>], Data))
-                                 }
-                          )
+    try gen_statem:enter_loop(?MODULE, [], 'pre_originate'
+                             ,#state{transferor = Transferor
+                                    ,transferee = Transferee
+                                    ,call = kapps_call:set_controller_queue(konami_event_listener:queue_name(), Call)
+                                    ,takeback_dtmf = kz_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
+                                    ,ringback = to_tonestream(kz_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
+                                    ,moh = find_moh(Data, Call)
+                                    ,extension = get_extension(kz_json:get_first_defined([<<"captures">>, <<"target">>], Data))
+                                    }
+                             )
     of
         _ -> 'ok'
     catch
@@ -1003,7 +1003,7 @@ handle_info(_Info, StateName, State) ->
 
 -spec send_event(kz_json:object()) -> 'ok'.
 send_event(JObj) ->
-    gen_fsm:send_event(self()
+    gen_statem:cast(self()
                       ,?EVENT(kz_json:get_first_defined([<<"Call-ID">>
                                                         ,<<"Outbound-Call-ID">>
                                                         ], JObj)
