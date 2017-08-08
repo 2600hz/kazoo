@@ -4,11 +4,43 @@ Crossbar module for operations on JWT Token, SSO/OAuth tokens.
 
 #### About Authentication
 
-#### Schema
+#### Schema for auth.callback
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`client_id` | client id, usually appplication id for oauth providers | `string` |  | `true`
+`code` | access code emitted by provider | `string` | `true` | `true`
+`provider` | provider | `string` | `true` | `true`
+`redirect_uri` | redirect uri | `string` |   | `true`
+`state` | state | `string` |  | `false`
+
+#### Schema for auth.provider
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`id` | id | `string` |  | `true`
+
+#### Schema for auth.app
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`client_id` | client id, usually appplication id for oauth providers | `string` |  | `true`
+`email` | email for app | `string` | `true` | `false`
+`provider` | provider | `string` | `true` | `true`
+`secret` | secret for app | `string` |   | `true`
+
+#### Schema for auth.reset_identity
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`owner_id` | client id, usually appplication id for oauth providers | `string` |  | `false`
 
 
+#### Resetting System (Kazoo) Identity Secret
 
-#### Patch
+System Identity secret and the subject identity is being used to sign the identity in the JWT token that Kazoo is issuing.
+
+If you feel that this system secret is compropised, use this API to reset it.
 
 > *Caution:* Reseting system identity secret will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
 
@@ -181,7 +213,7 @@ curl -v -X GET \
 }
 ```
 
-#### Create a Token from SSO Response
+#### Authenticate a User with a SSO (Create a Token from SSO Response)
 
 After a user authenticate with Single Sign On provider, use this API to send the provider response to Crossbar to login and create a token.
 
