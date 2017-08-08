@@ -1661,7 +1661,7 @@ hangup_call(#state{agent_listener=AgentListener
 -spec maybe_stop_timer(api_reference(), boolean()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) when is_reference(ConnRef) ->
-    _ = gen_fsm:cancel_timer(ConnRef),
+    _ = erlang:cancel_timer(ConnRef),
     'ok'.
 
 maybe_stop_timer(TimerRef, 'true') -> maybe_stop_timer(TimerRef);
