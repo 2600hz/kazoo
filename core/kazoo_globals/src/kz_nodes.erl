@@ -65,7 +65,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
 
--define(HEARTBEAT, crypto:rand_uniform(5 * ?MILLISECONDS_IN_SECOND, 15 * ?MILLISECONDS_IN_SECOND)).
+-define(HEARTBEAT, 5 * ?MILLISECONDS_IN_SECOND + rand:uniform(10 * ?MILLISECONDS_IN_SECOND)).
 -define(EXPIRE_PERIOD, 1 * ?MILLISECONDS_IN_SECOND).
 -define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"kz_nodes">>).

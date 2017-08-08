@@ -299,7 +299,7 @@ handle_cast({'fs_nodeup', Node}, #state{node=Node
                                        }=State) ->
     lager:debug("regained connection to media node ~s", [Node]),
     _ = (catch erlang:cancel_timer(TRef)),
-    _ = timer:sleep(crypto:rand_uniform(100, 1500)),
+    _ = timer:sleep(100 + rand:uniform(1400)),
     case freeswitch:api(Node, 'uuid_exists', CallId) of
         {'ok', <<"true">>} ->
             {'noreply', force_queue_advance(State#state{is_node_up='true'})};

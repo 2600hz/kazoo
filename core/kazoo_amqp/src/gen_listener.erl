@@ -472,7 +472,8 @@ handle_cast({'rm_responder', Responder, Keys}, #state{responders=Responders}=Sta
     ,State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}
     };
 handle_cast({'add_binding', _, _}=AddBinding, #state{is_consuming='false'}=State) ->
-    Time = ?BIND_WAIT + (crypto:rand_uniform(100, 200)), % wait 100 + [100,200) ms before replaying the binding request
+    %% wait 100 + [100,200) ms before replaying the binding request
+    Time = ?BIND_WAIT + 100 + rand:uniform(100),
     lager:debug("not consuming yet, put binding to end of message queue after ~b ms", [Time]),
     delayed_cast(self(), AddBinding, Time),
     {'noreply', State};

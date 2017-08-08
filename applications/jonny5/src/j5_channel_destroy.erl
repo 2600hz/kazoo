@@ -21,7 +21,7 @@
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     kz_util:put_callid(JObj),
-    timer:sleep(crypto:rand_uniform(1000, 3000)),
+    timer:sleep(1000 + rand:uniform(2000)),
     Request = j5_request:from_jobj(JObj),
     _ = account_reconcile_cdr(Request),
     _ = reseller_reconcile_cdr(Request),
