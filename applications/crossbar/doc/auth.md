@@ -29,12 +29,6 @@ Key | Description | Type | Default | Required
 `provider` | provider | `string` | `true` | `true`
 `secret` | secret for app | `string` |   | `true`
 
-#### Schema for auth.reset_identity
-
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`owner_id` | client id, usually appplication id for oauth providers | `string` |  | `false`
-
 
 
 #### Resetting System (Kazoo) Identity Secret

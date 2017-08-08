@@ -743,16 +743,6 @@
             ],
             "type": "object"
         },
-        "auth.reset_identity": {
-            "description": "reset identity secret",
-            "properties": {
-                "owner_id": {
-                    "description": "ID of identity's owner to reset (either the user_id or account_id)",
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
         "auth_module_config": {
             "description": "crossbar authenticator module configuration",
             "properties": {
