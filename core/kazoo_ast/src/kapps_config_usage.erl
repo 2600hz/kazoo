@@ -181,6 +181,7 @@ config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
 config_key_to_schema(Source, F, Document, Key, Default, Schemas) ->
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     Path = [Document, ?FIELD_PROPERTIES | Key],
+
     kz_json:set_value(Path, Properties, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -289,14 +290,13 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"strin
 
 guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
-    Description = fetch_description(DescriptionKey),
-    case undefined =:= Description of
-        false -> ok;
-        true ->
-            io:format("\nYou need to add the key \"~s\" in ~s\n"
-                     ,[DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]
-                     )
-    end,
+
+    Description =
+        case fetch_description(DescriptionKey) of
+            'undefined' ->
+                kz_binary:join(binary:split(DescriptionKey, <<".">>, ['global']), <<" ">>);
+            D -> D
+        end,
     kz_json:from_list(
       [{?SOURCE, SourceModule}
       ,{<<"description">>, Description}
