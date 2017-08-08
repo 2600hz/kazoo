@@ -295,8 +295,7 @@ guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
         true ->
             io:format("\nYou need to add the key \"~s\" in ~s\n"
                      ,[DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]
-                     ),
-            halt(1)
+                     )
     end,
     kz_json:from_list(
       [{?SOURCE, SourceModule}
