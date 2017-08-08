@@ -84,20 +84,20 @@
 
 -spec start_fsm(kapps_call:call(), kz_json:object()) -> any().
 start_fsm(Call, JObj) ->
-    gen_fsm:start_link(?MODULE, {Call, JObj}, []).
+    gen_statem:start_link(?MODULE, {Call, JObj}, []).
 
 -spec event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 event(FSM, CallId, <<"DTMF">>, JObj) ->
-    gen_fsm:send_event(FSM, {'dtmf'
+    gen_statem:cast(FSM, {'dtmf'
                             ,CallId
                             ,kz_call_event:dtmf_digit(JObj)
                             });
 event(FSM, CallId, Event, JObj) ->
-    gen_fsm:send_all_state_event(FSM, ?EVENT(CallId, Event, JObj)).
+    gen_statem:cast(FSM, ?EVENT(CallId, Event, JObj)).
 
 -spec transfer_to(kapps_call:call(), 'a' | 'b') -> 'ok'.
 transfer_to(Call, Leg) ->
-    gen_fsm:send_all_state_event(kapps_call:kvs_fetch(?MODULE, Call)
+    gen_statem:cast(kapps_call:kvs_fetch(?MODULE, Call)
                                 ,{'transfer_to', Call, Leg}
                                 ).
 
@@ -482,14 +482,14 @@ handle_pattern_metaflow(Call, P, DTMFLeg) ->
 
 -spec arm_aleg(state()) -> state().
 arm_aleg(#state{digit_timeout=Timeout}=State) ->
-    State#state{a_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
+    State#state{a_digit_timeout_ref = erlang:start_timer(Timeout, 'digit_timeout')
                ,a_collected_dtmf = <<>>
                ,a_leg_armed='true'
                }.
 
 -spec arm_bleg(state()) -> state().
 arm_bleg(#state{digit_timeout=Timeout}=State) ->
-    State#state{b_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
+    State#state{b_digit_timeout_ref = erlang:start_timer(Timeout, 'digit_timeout')
                ,b_collected_dtmf = <<>>
                ,b_leg_armed='true'
                }.
@@ -515,7 +515,7 @@ add_aleg_dtmf(#state{a_collected_dtmf=Collected
                     }=State, DTMF) ->
     lager:debug("a recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     maybe_cancel_timer(OldRef),
-    State#state{a_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
+    State#state{a_digit_timeout_ref = erlang:start_timer(Timeout, 'digit_timeout')
                ,a_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
@@ -527,7 +527,7 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                     }=State, DTMF) ->
     lager:debug("b recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     maybe_cancel_timer(OldRef),
-    State#state{b_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
+    State#state{b_digit_timeout_ref = erlang:start_timer(Timeout, 'digit_timeout')
                ,b_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 

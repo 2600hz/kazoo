@@ -109,11 +109,11 @@
 %%--------------------------------------------------------------------
 -spec start_link(pid(), pid(), kz_json:object()) -> startlink_ret().
 start_link(MgrPid, ListenerPid, QueueJObj) ->
-    gen_fsm:start_link(?SERVER, [MgrPid, ListenerPid, QueueJObj], []).
+    gen_statem:start_link(?SERVER, [MgrPid, ListenerPid, QueueJObj], []).
 
 -spec refresh(pid(), kz_json:object()) -> 'ok'.
 refresh(FSM, QueueJObj) ->
-    gen_fsm:send_all_state_event(FSM, {'refresh', QueueJObj}).
+    gen_statem:cast(FSM, {'refresh', QueueJObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -121,7 +121,7 @@ refresh(FSM, QueueJObj) ->
 %%--------------------------------------------------------------------
 -spec member_call(pid(), kz_json:object(), gen_listener:basic_deliver()) -> 'ok'.
 member_call(FSM, CallJObj, Delivery) ->
-    gen_fsm:send_event(FSM, {'member_call', CallJObj, Delivery}).
+    gen_statem:cast(FSM, {'member_call', CallJObj, Delivery}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -129,7 +129,7 @@ member_call(FSM, CallJObj, Delivery) ->
 %%--------------------------------------------------------------------
 -spec member_connect_resp(pid(), kz_json:object()) -> 'ok'.
 member_connect_resp(FSM, Resp) ->
-    gen_fsm:send_event(FSM, {'agent_resp', Resp}).
+    gen_statem:cast(FSM, {'agent_resp', Resp}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -137,7 +137,7 @@ member_connect_resp(FSM, Resp) ->
 %%--------------------------------------------------------------------
 -spec member_accepted(pid(), kz_json:object()) -> 'ok'.
 member_accepted(FSM, AcceptJObj) ->
-    gen_fsm:send_event(FSM, {'accepted', AcceptJObj}).
+    gen_statem:cast(FSM, {'accepted', AcceptJObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -145,7 +145,7 @@ member_accepted(FSM, AcceptJObj) ->
 %%--------------------------------------------------------------------
 -spec member_connect_retry(pid(), kz_json:object()) -> 'ok'.
 member_connect_retry(FSM, RetryJObj) ->
-    gen_fsm:send_event(FSM, {'retry', RetryJObj}).
+    gen_statem:cast(FSM, {'retry', RetryJObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -156,11 +156,11 @@ member_connect_retry(FSM, RetryJObj) ->
 %%--------------------------------------------------------------------
 -spec call_event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
-    gen_fsm:send_event(FSM, {'member_hungup', EvtJObj});
+    gen_statem:cast(FSM, {'member_hungup', EvtJObj});
 call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
-    gen_fsm:send_event(FSM, {'dtmf_pressed', kz_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
+    gen_statem:cast(FSM, {'dtmf_pressed', kz_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, EvtJObj) ->
-    gen_fsm:send_event(FSM, {'channel_bridged', EvtJObj});
+    gen_statem:cast(FSM, {'channel_bridged', EvtJObj});
 call_event(_, _E, _N, _J) -> 'ok'.
 %% lager:debug("unhandled event: ~s: ~s (~s)"
 %%             ,[_E, _N, kz_json:get_value(<<"Application-Name">>, _J)]
@@ -168,19 +168,19 @@ call_event(_, _E, _N, _J) -> 'ok'.
 
 -spec finish_member_call(pid()) -> 'ok'.
 finish_member_call(FSM) ->
-    gen_fsm:send_event(FSM, {'member_finished'}).
+    gen_statem:cast(FSM, {'member_finished'}).
 
 -spec current_call(pid()) -> api_object().
 current_call(FSM) ->
-    gen_fsm:sync_send_event(FSM, 'current_call').
+    gen_statem:call(FSM, 'current_call').
 
 -spec status(pid()) -> kz_proplist().
 status(FSM) ->
-    gen_fsm:sync_send_event(FSM, 'status').
+    gen_statem:call(FSM, 'status').
 
 -spec cdr_url(pid()) -> api_binary().
 cdr_url(FSM) ->
-    gen_fsm:sync_send_all_state_event(FSM, 'cdr_url').
+    gen_statem:call(FSM, 'cdr_url').
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -485,7 +485,7 @@ connecting({'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
             lager:debug("recv retry from our winning agent ~s(~s)", [RetryAgentId, RetryProcId]),
 
             lager:debug("but wait, we have others who wanted to try"),
-            gen_fsm:send_event(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
+            gen_statem:cast(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
 
             maybe_stop_timer(CollectRef),
             maybe_stop_timer(AgentRef),
@@ -509,7 +509,7 @@ connecting({'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring
                                                                      }=State) ->
     lager:debug("timed out waiting for agent to pick up"),
     lager:debug("let's try another agent"),
-    gen_fsm:send_event(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
+    gen_statem:cast(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
 
     acdc_queue_listener:timeout_agent(Srv, Winner),
 
@@ -702,7 +702,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 start_collect_timer() ->
-    gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
+    erlang:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
 -spec connection_timeout(api_integer()) -> pos_integer().
 connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
@@ -710,7 +710,7 @@ connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 
 -spec start_connection_timer(pos_integer()) -> reference().
 start_connection_timer(ConnTimeout) ->
-    gen_fsm:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
+    erlang:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
 
 -spec agent_ring_timeout(api_integer()) -> pos_integer().
 agent_ring_timeout(N) when is_integer(N), N > 0 -> N;
@@ -718,12 +718,12 @@ agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
 -spec start_agent_ring_timer(pos_integer()) -> reference().
 start_agent_ring_timer(AgentTimeout) ->
-    gen_fsm:start_timer(AgentTimeout * 1600, ?AGENT_RING_TIMEOUT_MESSAGE).
+    erlang:start_timer(AgentTimeout * 1600, ?AGENT_RING_TIMEOUT_MESSAGE).
 
 -spec maybe_stop_timer(api_reference()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) ->
-    _ = gen_fsm:cancel_timer(ConnRef),
+    _ = erlang:cancel_timer(ConnRef),
     'ok'.
 
 -spec maybe_timeout_winner(pid(), api_object()) -> 'ok'.
@@ -827,7 +827,7 @@ maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
                                                      }};
         'false' ->
             lager:debug("connect_req delayed (not up next)"),
-            gen_fsm:send_event_after(1000, {'member_call', CallJObj, Delivery}),
+            erlang:send_after(1000, {'member_call', CallJObj, Delivery}),
             {'next_state', 'ready', State}
     end.
 
@@ -869,7 +869,7 @@ maybe_delay_connect_re_req(MgrSrv, ListenerSrv, #state{member_call=Call}=State) 
             {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()}};
         'false' ->
             lager:debug("connect_re_req delayed (not up next)"),
-            gen_fsm:send_event_after(1000, {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
+            erlang:send_after(1000, {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
             {'next_state', 'connect_req', State#state{collect_ref='undefined'}}
     end.
 
