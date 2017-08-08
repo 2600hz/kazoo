@@ -17,6 +17,7 @@
                     "type": "string"
                 },
                 "host": {
+                    "default": "api.push.apple.com",
                     "description": "APNs server host",
                     "type": "string"
                 }
