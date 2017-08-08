@@ -1004,13 +1004,13 @@ handle_info(_Info, StateName, State) ->
 -spec send_event(kz_json:object()) -> 'ok'.
 send_event(JObj) ->
     gen_statem:cast(self()
-                      ,?EVENT(kz_json:get_first_defined([<<"Call-ID">>
-                                                        ,<<"Outbound-Call-ID">>
-                                                        ], JObj)
-                             ,kz_json:get_value(<<"Event-Name">>, JObj)
-                             ,JObj
-                             )
-                      ).
+                   ,?EVENT(kz_json:get_first_defined([<<"Call-ID">>
+                                                     ,<<"Outbound-Call-ID">>
+                                                     ], JObj)
+                          ,kz_json:get_value(<<"Event-Name">>, JObj)
+                          ,JObj
+                          )
+                   ).
 
 -spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{transferor=Transferor
