@@ -827,7 +827,7 @@ maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
                                                      }};
         'false' ->
             lager:debug("connect_req delayed (not up next)"),
-            erlang:send_after(1000, {'member_call', CallJObj, Delivery}),
+            erlang:send_after(1000, self(), {'member_call', CallJObj, Delivery}),
             {'next_state', 'ready', State}
     end.
 
@@ -869,7 +869,7 @@ maybe_delay_connect_re_req(MgrSrv, ListenerSrv, #state{member_call=Call}=State) 
             {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()}};
         'false' ->
             lager:debug("connect_re_req delayed (not up next)"),
-            erlang:send_after(1000, {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
+            erlang:send_after(1000, self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
             {'next_state', 'connect_req', State#state{collect_ref='undefined'}}
     end.
 
