@@ -50,7 +50,7 @@ retry504s(_Fun, 3) ->
     {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
     kazoo_stats:increment_counter(<<"bigcouch-request">>),
-    case catch Fun() of
+    try Fun() of
         {'error', {'ok', 504, _, _}} ->
             kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
             timer:sleep(100 * (Cnt+1)),
@@ -58,7 +58,7 @@ retry504s(Fun, Cnt) ->
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', kz_term:to_integer(ErrCode)};
-%%% couchbeam doesn't pass 202 as acceptable
+        %% couchbeam doesn't pass 202 as acceptable
         {'error', {'bad_response',{202, _Headers, Body}}} ->
             {'ok', kz_json:decode(Body)};
         {'error', {'bad_response',{204, _Headers, _Body}}} ->
@@ -73,14 +73,13 @@ retry504s(Fun, Cnt) ->
         {'error', Other} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', format_error(Other)};
-        {'ok', _Other}=OK -> OK;
-        {'EXIT', _E} ->
+        OK -> OK
+    catch _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("exception running fun: ~p", [_E]),
+            lager:debug("exception running fun: ~p:~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
-            retry504s(Fun, Cnt+1);
-        OK -> OK
+            retry504s(Fun, Cnt+1)
     end.
 
 %%------------------------------------------------------------------------------
