@@ -36,22 +36,23 @@ Key | Description | Type | Default | Required
 `owner_id` | client id, usually appplication id for oauth providers | `string` |  | `false`
 
 
+
 #### Resetting System (Kazoo) Identity Secret
 
 System Identity secret and the subject identity is being used to sign the identity in the JWT token that Kazoo is issuing.
 
-If you feel that this system secret is compropised, use this API to reset it.
+If you feel that this system secret is compromised, use this API to reset it.
 
-> *Caution:* Reseting system identity secret will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
+> **Caution:** Reseting system identity secret will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
 
-> *Note:* Only super duper admin can reset system secert!
+> **Note:** Only super duper admin can reset system secert!
 
-> PATCH /v2/auth/identity_secret
+> PATCH /v2/auth/identity_secrets
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/identity_secret
+    http://{SERVER}:8000/v2/auth/identity_secrets
 ```
 
 ##### Response
@@ -69,25 +70,37 @@ Returns an empty success response.
 }
 ```
 
-#### Resetting a User Identity Secret
+#### Resetting an Account or a User Identity Secret
 
 System Identity secret and the subject identity is being used to sign the identity in the JWT token that Kazoo is issuing.
 
-If you feel that an account or a user secret is compropised, use this API to reset it.
+If you feel that an account or a user secret is compromised, use this API to reset it.
 
 * To reset an account's identity secret, simply make request to this API with the account's id in the paths
 * To reset a user's identity secret, make a request as above with setting payload as: `{"data": { "owner_id": "{USER_ID}" } }`
 
-> *Caution:* Reseting identity secret will invalidate user's issued token! In other words if the is already logined, the user will be logout from the system and can't make any further request until login again.
+> **Caution:** Reseting identity secret will invalidate user's issued token! In other words if the is already logined, the user will be logout from the system and can't make any further request until login again.
 
-> *Note:* Only and account admin can a user's secert!
+> **Note:** Only and account admin can a user's secert!
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/auth/identity_secret
+##### To Reset an Account Identity Secret
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/auth/identity_secrets
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/auth/identity_secret
+    http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/auth/identity_secrets
+```
+
+##### To Reset a User Identity Secret
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/auth/identity_secrets
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/users/3bedb94b3adfc4873a548b41d28778b5/auth/identity_secrets
 ```
 
 ##### Response
@@ -203,7 +216,7 @@ curl -v -X GET \
       ],
       "email": "{USER_EMAIL}"
     }
-  ]
+  ],
   "timestamp": "{TIMESTAMP}",
   "version": "4.0.0",
   "node": "{NODE}",
@@ -228,7 +241,7 @@ curl -v -X PUT \
 
 ##### Response when no User is Linked yet
 
-If this is the first that the user is authenticating using this SSO provider, Kazoo returns and empty response indeicating that user should first login using it's own Kazoo credentials first to link the SSO application with its user. After login the user is linked with the app and it no need to maunual login again.
+If this is the first time that the user is authenticating using this SSO provider, Kazoo returns and empty response indeicating that user should first login using it's own Kazoo credentials first to link the SSO application with its user. After login the user is linked with the app and it no need to maunual login again.
 
 ```json
 {
@@ -254,7 +267,7 @@ If this is the first that the user is authenticating using this SSO provider, Ka
     "reseller_id": "{RESELLER_ID}",
     "account_name": "{ACCOUNT_NAME}",
     "language": "{LANG}",
-    "apps": [{APPS}]
+    "apps": []
   },
   "timestamp": "{TIMESTAMP}",
   "version": "4.0.0",
@@ -298,7 +311,7 @@ curl -v -X GET \
     "reseller_id": "{RESELLER_ID}",
     "account_name": "{ACCOUNT_NAME}",
     "language": "{LANG}",
-    "apps": [{APPS}]
+    "apps": []
   },
   "timestamp": "{TIMESTAMP}",
   "version": "4.0.0",
@@ -333,7 +346,7 @@ curl -v -X POST \
     "reseller_id": "{RESELLER_ID}",
     "account_name": "{ACCOUNT_NAME}",
     "language": "{LANG}",
-    "apps": [{APPS}]
+    "apps": []
   },
   "timestamp": "{TIMESTAMP}",
   "version": "4.0.0",
@@ -342,6 +355,7 @@ curl -v -X POST \
   "status": "success",
   "auth_token": "{AUTH_TOKEN}"
 }
+```
 
 #### Get a SSO Application
 
@@ -370,6 +384,7 @@ curl -v -X GET \
   "status": "success",
   "auth_token": "{AUTH_TOKEN}"
 }
+```
 
 #### Change a SSO Application
 
@@ -395,7 +410,7 @@ curl -v -X DELETE \
 
 Get the System public key used for signing the JWT tokens issued by system.
 
-*Note:* To get the public key in form of a PEM file set `Accept` header as `application/x-pem-file`.
+> **Note:** To get the public key in form of a PEM file set `Accept` header as `application/x-pem-file`.
 
 > GET /v2/auth/keys/public
 
@@ -420,14 +435,15 @@ curl -v -X GET \
   "status": "success",
   "auth_token": "{AUTH_TOKEN}"
 }
+```
 
 #### Reset System Private Key
 
 Reset the private key of the system used to signing and verifing issued JWT tokens. If you feel that you the private key is compromised, use this API to generate a new private and public key.
 
-> *Caution:* Reseting system private will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
+> **Caution:** Reseting system private will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
 
-> *Note:* Only super duper admin can reset system private key!
+> **Note:** Only super duper admin can reset system private key!
 
 > PATCH /v2/auth/keys/private
 
@@ -473,7 +489,7 @@ curl -v -X GET \
 
 #### Make changes to SSO Provider
 
-> *Note:* Only super duper admin can make changes to SSO provider!
+> **Note:** Only super duper admin can make changes to SSO provider!
 
 > POST /v2/auth/providers/{PROVIDER_ID}
 
@@ -485,7 +501,7 @@ curl -v -X POST \
 
 #### Remove a SSO Provider
 
-> *Note:* Only super duper admin can delete a SSO provider!
+> **Note:** Only super duper admin can delete a SSO provider!
 
 > DELETE /v2/auth/providers/{PROVIDER_ID}
 

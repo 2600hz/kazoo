@@ -41,6 +41,9 @@
 -define(APPS_VIEW, <<"apps/list_by_account">>).
 -define(KEYS_VIEW, <<"auth/list_keys">>).
 
+-define(RESET_ACCOUNT_IDENTITY_PATH, [{<<"auth">>, _}, {<<"accounts">>, _}]).
+-define(RESET_USER_IDENTITY_PATH, [{<<"auth">>, _}, {<<"users">>, _}, {<<"accounts">>, _}]).
+
 -define(PUBLIC_KEY_MIME, [{<<"application">>, <<"x-pem-file">>}]).
 
 %%%===================================================================
@@ -145,7 +148,8 @@ authorize_nouns(_, ?APPS_PATH,             ?HTTP_GET,   [{<<"auth">>, _}]) -> 't
 authorize_nouns(_, ?AUTHORIZE_PATH,        ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?CALLBACK_PATH,         ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, _                ) -> cb_context:is_account_admin(C);
+authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, ?RESET_ACCOUNT_IDENTITY_PATH) -> cb_context:is_account_admin(C);
+authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, ?RESET_USER_IDENTITY_PATH) -> cb_context:is_account_admin(C);
 authorize_nouns(_, ?LINKS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?PROVIDERS_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
@@ -257,8 +261,7 @@ validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
 validate_path(Context, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH) ->
     case cb_context:req_nouns(Context) of
         [{<<"auth">>, _}] -> reset_system_identity_secret(Context);
-        _ ->
-            cb_context:validate_request_data(<<"auth.reset_identity">>, Context, fun reset_identity_secret/1)
+        _ -> reset_identity_secret(Context)
     end.
 
 -spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
@@ -443,16 +446,15 @@ reset_system_identity_secret(Context) ->
 
 -spec reset_identity_secret(cb_context:context()) -> cb_context:context().
 reset_identity_secret(Context) ->
-    OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, cb_context:doc(Context)),
     Claims = props:filter_undefined(
                [{<<"account_id">>, cb_context:account_id(Context)}
-               ,{<<"owner_id">>, OwnerId}
+               ,{<<"owner_id">>, cb_context:user_id(Context)}
                ]
               ),
     case kz_auth_identity:reset_secret(Claims) of
         'ok' -> Context;
-        {'error', Reason} ->
-            crossbar_doc:handle_datamgr_errors(Reason, OwnerId, Context)
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', Context)
     end.
 
 -spec reset_system_private_key(cb_context:context()) -> cb_context:context().
