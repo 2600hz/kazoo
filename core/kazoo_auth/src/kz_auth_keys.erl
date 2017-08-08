@@ -20,7 +20,7 @@
 
 -export([new_private_key/1, new_private_key/2]).
 
--export([reset_kazoo_private_key/0]).
+-export([reset_kazoo_private_key/0, reset_private_key/1]).
 
 -include("kazoo_auth.hrl").
 
@@ -65,12 +65,13 @@ to_pem(RSA) ->
 
 -spec lookup(any()) -> {'ok', any()} | {'error', 'not_found'}.
 lookup(KeyId) ->
+    io:format("~n lookup KeyId ~p~n", [KeyId]),
     kz_cache:fetch_local(?PK_CACHE, KeyId).
 
 -spec store(any(), any()) -> 'ok'.
 store(KeyId, Key) ->
     lager:debug("storing public key ~p in cache", [KeyId]),
-    kz_cache:store_local(?PK_CACHE, KeyId, Key).
+    kz_cache:store_local(?PK_CACHE, KeyId, Key, [{'origin', {'db', ?KZ_AUTH_DB, KeyId}}]).
 
 -spec from_token(map()) -> {'ok', rsa_key()} | {'error', 'not_found'}.
 from_token(#{}=Token) ->
@@ -232,21 +233,21 @@ public_key(KeyId) ->
     {'ok', Key} = private_key(KeyId),
     get_public_key_from_private_key(Key).
 
--spec private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()}.
+-spec private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 private_key(KeyId) ->
     case lookup({'private', KeyId}) of
         {'error', 'not_found'} -> load_private_key(KeyId);
         Found -> Found
     end.
 
--spec load_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()}.
+-spec load_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 load_private_key(KeyId) ->
     case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, KeyId) of
         {'ok', JObj} -> load_private_key_attachment(JObj);
         {'error', 'not_found'} -> new_private_key(KeyId)
     end.
 
--spec load_private_key_attachment(kz_json:object()) -> {'ok', public_key:rsa_private_key()}.
+-spec load_private_key_attachment(kz_json:object()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 load_private_key_attachment(JObj) ->
     KeyId = kz_doc:id(JObj),
     case kz_datamgr:fetch_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME) of
@@ -322,52 +323,30 @@ erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
 %% * generate a new private key and put it in cache
 %% @end
 %%--------------------------------------------------------------------
--spec reset_kazoo_private_key() -> 'ok' | {'error', any()}.
+-spec reset_kazoo_private_key() -> {'ok', ne_binary()} | {'error', any()}.
 reset_kazoo_private_key() ->
     lager:debug("trying to reset kazoo private key"),
-    reset_kazoo_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>)).
+    reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>)).
 
--spec reset_kazoo_private_key(map() | ne_binary()) -> 'ok' | {'error', any()}.
-reset_kazoo_private_key(#{pvt_server_key := KeyId}) ->
-    reset_kazoo_private_key(KeyId);
-reset_kazoo_private_key(#{}) ->
+-spec reset_private_key(map() | ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+reset_private_key(#{pvt_server_key := KeyId}) ->
+    reset_private_key(KeyId);
+reset_private_key(#{}) ->
     {'error', 'invalid_identity_provider'};
-reset_kazoo_private_key(?NE_BINARY=KeyId) ->
-    lager:debug("check if key document (kid ~s) exists", [KeyId]),
-    case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, KeyId) of
-        {'ok', JObj} -> reset_kazoo_private_key(KeyId, JObj);
-        {'error', 'not_found'} ->
-            lager:debug("private key document (kid ~s) is not exists, creating it...", [KeyId]),
-            case new_private_key(KeyId) of
-                {ok, PrivateKey} ->
-                    lager:debug("private key document (kid ~s) is created successfully", [KeyId]),
-                    PublicKey = get_public_key_from_private_key(PrivateKey),
-                    store(KeyId, PublicKey);
-                {'error', _Reason}=Error ->
-                    lager:debug("failed to create new private key (kid ~s): ~p", [KeyId, _Reason]),
-                    Error
-            end;
-        {'error', _Reason}=Error ->
-            lager:debug("failed to open private key document (kid ~s)", [KeyId, _Reason]),
-            Error
-    end.
+reset_private_key(?NE_BINARY=KeyId) ->
+    NewKeyId = kz_binary:rand_hex(16),
+    lager:debug("resetting private key id from ~s to ~s", [KeyId, NewKeyId]),
+    maybe_delete_old_pkey(KeyId, NewKeyId, kapps_config:set_string(?CONFIG_CAT, <<"system_key">>, NewKeyId)).
 
--spec reset_kazoo_private_key(ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
-reset_kazoo_private_key(KeyId, JObj) ->
-    lager:debug("resetting kazoo private key ~s", [KeyId]),
-    {'ok', PrivateKey} = gen_private_key(),
-    Options = [{'doc_type', <<"system_key">>}
-              ,{'rev', kz_doc:revision(JObj)}
-              ,{'content_type', ?SYSTEM_KEY_ATTACHMENT_CTYPE}
-              ],
-    case kz_datamgr:put_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME, to_pem(PrivateKey), Options) of
-        {'ok', _} ->
-            lager:debug("refreshing private/public cache for key ~s", [KeyId]),
-
-            store({'private', KeyId}, PrivateKey),
-            PublicKey = get_public_key_from_private_key(PrivateKey),
-            store(KeyId, PublicKey);
-        {'error', _Err}=Err ->
-            lager:debug("error ~p saving generated system key ~s", [_Err, KeyId]),
-            Err
-    end.
+-spec maybe_delete_old_pkey(ne_binary(), ne_binary(), {'ok', kz_json:object()} | {'error', any()}) ->
+                                   {'ok', ne_binary()} | {'error', any()}.
+maybe_delete_old_pkey(KeyId, NewKeyId, {'ok', _}) ->
+    case kz_datamgr:del_doc(?KZ_AUTH_DB, KeyId) of
+        {'ok', _} -> {'ok', NewKeyId};
+        {'error', _Reason} ->
+            lager:error("failed to delete old private key ~s: ~p", [KeyId, _Reason]),
+            {'error', 'failed_delete'}
+    end;
+maybe_delete_old_pkey(KeyId, _, {'error', _Reason}=Error) ->
+    lager:error("failed to reset private key ~s: ~p", [KeyId, _Reason]),
+    Error.

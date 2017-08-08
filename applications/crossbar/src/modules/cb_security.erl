@@ -129,6 +129,7 @@ resource_exists(_ConfigId) -> 'false'.
 
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?ATTEMPTS, _AttemptId) -> 'true'.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

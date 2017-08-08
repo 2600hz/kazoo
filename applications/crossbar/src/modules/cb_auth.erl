@@ -30,8 +30,6 @@
 -define(APPS_PATH, <<"apps">>).
 -define(PROVIDERS_PATH, <<"providers">>).
 -define(KEYS_PATH, <<"keys">>).
--define(PRIVATE_PATH, <<"private">>).
--define(PUBLIC_PATH, <<"public">>).
 -define(WHITELABEL_PATH, <<"whitelabel">>).
 -define(IDENTITY_SECRETS_PATH, <<"identity_secrets">>).
 
@@ -74,20 +72,20 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(?TOKENINFO_PATH) -> [?HTTP_GET, ?HTTP_POST];
+allowed_methods(?APPS_PATH) -> [?HTTP_GET];
 allowed_methods(?AUTHORIZE_PATH) -> [?HTTP_PUT];
 allowed_methods(?CALLBACK_PATH) -> [?HTTP_PUT];
+allowed_methods(?IDENTITY_SECRETS_PATH) -> [?HTTP_PATCH];
+allowed_methods(?KEYS_PATH) -> [?HTTP_GET];
 allowed_methods(?LINKS_PATH) -> [?HTTP_GET];
 allowed_methods(?PROVIDERS_PATH) -> [?HTTP_GET];
-allowed_methods(?APPS_PATH) -> [?HTTP_GET];
-allowed_methods(?IDENTITY_SECRETS_PATH) -> [?HTTP_PATCH].
+allowed_methods(?TOKENINFO_PATH) -> [?HTTP_GET, ?HTTP_POST].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods(?LINKS_PATH, _LinkId) -> [?HTTP_GET , ?HTTP_PUT , ?HTTP_DELETE];
-allowed_methods(?PROVIDERS_PATH, _ProviderId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE];
 allowed_methods(?APPS_PATH, _AppId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE];
-allowed_methods(?KEYS_PATH, ?PRIVATE_PATH) -> [?HTTP_PATCH];
-allowed_methods(?KEYS_PATH, ?PUBLIC_PATH) -> [?HTTP_GET].
+allowed_methods(?KEYS_PATH, _KeyId) -> [?HTTP_GET, ?HTTP_PATCH];
+allowed_methods(?LINKS_PATH, _LinkId) -> [?HTTP_GET , ?HTTP_PUT , ?HTTP_DELETE];
+allowed_methods(?PROVIDERS_PATH, _ProviderId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,14 +100,14 @@ resource_exists(?APPS_PATH) -> 'true';
 resource_exists(?AUTHORIZE_PATH) -> 'true';
 resource_exists(?CALLBACK_PATH) -> 'true';
 resource_exists(?IDENTITY_SECRETS_PATH) -> 'true';
+resource_exists(?KEYS_PATH) -> 'true';
 resource_exists(?LINKS_PATH) -> 'true';
 resource_exists(?PROVIDERS_PATH) -> 'true';
 resource_exists(?TOKENINFO_PATH) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists(?APPS_PATH, _AppId) -> 'true';
-resource_exists(?KEYS_PATH, ?PRIVATE_PATH) -> 'true';
-resource_exists(?KEYS_PATH, ?PUBLIC_PATH) -> 'true';
+resource_exists(?KEYS_PATH, _KeyId) -> 'true';
 resource_exists(?LINKS_PATH, _LinkId) -> 'true';
 resource_exists(?PROVIDERS_PATH, _ProviderId) -> 'true'.
 
@@ -124,7 +122,7 @@ resource_exists(?PROVIDERS_PATH, _ProviderId) -> 'true'.
 content_types_provided(Context, _) -> Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-content_types_provided(Context, ?KEYS_PATH, ?PUBLIC_PATH) ->
+content_types_provided(Context, ?KEYS_PATH, _KeyId) ->
     cb_context:set_content_types_provided(Context, [{'to_json', ?JSON_CONTENT_TYPES}
                                                    ,{'to_binary', ?PUBLIC_KEY_MIME}
                                                    ]);
@@ -135,11 +133,11 @@ content_types_provided(Context, _, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context(), path_token()) -> boolean().
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'halt', cb_context:context()}.
 authorize(Context, PathToken) ->
     authorize_nouns(Context, PathToken, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean() | {'halt', cb_context:context()}.
 authorize(Context, PathToken, Id) ->
     authorize_nouns(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
@@ -150,16 +148,17 @@ authorize_nouns(_, ?CALLBACK_PATH,         ?HTTP_PUT,   [{<<"auth">>, _}]) -> 't
 authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, ?RESET_ACCOUNT_IDENTITY_PATH) -> cb_context:is_account_admin(C);
 authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, ?RESET_USER_IDENTITY_PATH) -> cb_context:is_account_admin(C);
+authorize_nouns(C, ?KEYS_PATH,             ?HTTP_GET,   [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
 authorize_nouns(_, ?LINKS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?PROVIDERS_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_, _, _, _) -> 'false'.
+authorize_nouns(C, _, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
 
 -spec authorize_nouns(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
 authorize_nouns(_, ?APPS_PATH,      _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(C, ?KEYS_PATH,      ?PRIVATE_PATH, ?HTTP_PATCH,  [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns(C, ?KEYS_PATH,      ?PUBLIC_PATH,  ?HTTP_GET,    [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
+authorize_nouns(C, ?KEYS_PATH,      _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
+authorize_nouns(C, ?KEYS_PATH,      _Id,           ?HTTP_PATCH,  [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
 %% monster-ui still uses this (accounts/123/auth/links)
 authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}, [<<"accounts">>, _]]) -> 'true';
@@ -168,7 +167,7 @@ authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_DELETE, [{<<"auth">>, _
 authorize_nouns(_, ?PROVIDERS_PATH, _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_POST,   [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns(_, _, _, _, _) -> 'false'.
+authorize_nouns(C, _, _, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -262,7 +261,11 @@ validate_path(Context, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH) ->
     case cb_context:req_nouns(Context) of
         [{<<"auth">>, _}] -> reset_system_identity_secret(Context);
         _ -> reset_identity_secret(Context)
-    end.
+    end;
+
+%% validating /auth/keys
+validate_path(Context, ?KEYS_PATH, ?HTTP_GET) ->
+    keys_summary(Context).
 
 -spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 %% validating /auth/apps/{app_id}
@@ -294,10 +297,10 @@ validate_path(Context, ?LINKS_PATH, Id, ?HTTP_DELETE) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
 
 %% validating /auth/keys/{key_id}
-validate_path(Context, ?KEYS_PATH, ?PRIVATE_PATH, ?HTTP_PATCH) ->
-    reset_system_private_key(Context);
-validate_path(Context, ?KEYS_PATH, ?PUBLIC_PATH, ?HTTP_GET) ->
-    get_system_public_key(Context).
+validate_path(Context, ?KEYS_PATH, Id, ?HTTP_PATCH) ->
+    reset_private_key(Context, Id);
+validate_path(Context, ?KEYS_PATH, Id, ?HTTP_GET) ->
+    get_public_key(Context, Id).
 
 -spec validate_token_info(cb_context:context(), ne_binary()) -> cb_context:context().
 validate_token_info(Context, Token) ->
@@ -457,37 +460,44 @@ reset_identity_secret(Context) ->
             cb_context:add_system_error('datastore_fault', Context)
     end.
 
--spec reset_system_private_key(cb_context:context()) -> cb_context:context().
-reset_system_private_key(Context) ->
-    case kz_auth_keys:reset_kazoo_private_key() of
-        'ok' -> cb_context:set_resp_status(Context, 'success');
-        {'error', Error} ->
-            try kz_term:to_binary(Error) of
-                Reason -> cb_context:add_system_error('datastore_fault', kz_json:from_list([{<<"cause">>, Reason}]), Context)
-            catch
-                _:_ -> cb_context:add_system_error('datastore_fault', Context)
-            end
+-spec keys_summary(cb_context:context()) -> cb_context:context().
+keys_summary(Context) ->
+    #{pvt_server_key := KeyId} = kz_auth_apps:get_auth_app(<<"kazoo">>),
+    Setters = [{fun cb_context:set_resp_status/2, 'success'}
+              ,{fun cb_context:set_resp_data/2, [KeyId]}
+              ],
+    cb_context:setters(Context, Setters).
+
+-spec reset_private_key(cb_context:context(), ne_binary()) -> cb_context:context().
+reset_private_key(Context, KeyId) ->
+    case kz_auth_keys:reset_private_key(KeyId) of
+        {'ok', NewKeyId} ->
+            Setters = [{fun cb_context:set_resp_status/2, 'success'}
+                      ,{fun cb_context:set_resp_data/2, kz_json:from_list([{<<"id">>, NewKeyId}])}
+                      ],
+            cb_context:setters(Context, Setters);
+        {'error', 'failed_delete'} ->
+            Msg = <<"new private key was generated but old key failed to remove, "
+                   ,"new tokens will use the new private key but previously issued tokens are still valid"
+                  >>,
+            JObj = kz_json:from_list([{<<"message">>, Msg}]),
+            cb_context:add_system_error('datastore_fault', JObj,  Context);
+        {'error', Error} -> crossbar_doc:add_system_error(Error, KeyId, Context)
     end.
 
--spec get_system_public_key(cb_context:context()) -> cb_context:context().
-get_system_public_key(Context) ->
-    lager:debug("trying to get system (kazoo) public key"),
-    get_system_public_key(Context, kz_auth_apps:get_auth_app(<<"kazoo">>)).
+-spec get_public_key(cb_context:context(), ne_binary()) -> cb_context:context().
+get_public_key(Context, KeyId) ->
+    lager:debug("trying to get public key ~s", [KeyId]),
 
--spec get_system_public_key(cb_context:context(), map()) -> cb_context:context().
-get_system_public_key(Context, #{pvt_server_key := ?NE_BINARY=KeyId}) ->
-    lager:debug("system (kazoo) public key with id ~s", [KeyId]),
     try kz_auth_keys:to_pem(kz_auth_keys:public_key(KeyId)) of
         PublicKeyPem ->
             AcceptType = find_accept_type(Context),
             set_public_key_response(Context, PublicKeyPem, AcceptType)
     catch
         _T:_E ->
-            lager:debug("failed to get kazoo public key: ~p:~p", [_T, _E]),
+            lager:debug("failed to get public key ~s: ~p:~p", [KeyId, _T, _E]),
             cb_context:add_system_error('datastore_fault', Context)
-    end;
-get_system_public_key(Context, _) ->
-    cb_context:add_system_error('datastore_fault', Context).
+    end.
 
 -spec set_public_key_response(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 set_public_key_response(Context, PublicKeyPem, <<"application/json">>) ->

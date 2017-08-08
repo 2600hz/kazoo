@@ -30557,6 +30557,15 @@
             "required": true,
             "type": "string"
         },
+        "KEY_ID": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "KEY_ID",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
         "LANGUAGE": {
             "in": "path",
             "name": "LANGUAGE",
@@ -41080,8 +41089,8 @@
                 }
             }
         },
-        "/auth/keys/private": {
-            "patch": {
+        "/auth/keys": {
+            "get": {
                 "responses": {
                     "200": {
                         "description": "request succeeded"
@@ -41089,8 +41098,25 @@
                 }
             }
         },
-        "/auth/keys/public": {
+        "/auth/keys/{KEY_ID}": {
             "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/KEY_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/KEY_ID"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "request succeeded"

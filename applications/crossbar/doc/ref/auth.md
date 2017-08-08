@@ -6,24 +6,24 @@
 
 
 
-#### Patch
-
-> PATCH /v2/auth/identity_secrets
-
-```shell
-curl -v -X PATCH \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/identity_secrets
-```
-
 #### Fetch
 
-> GET /v2/auth/apps
+> GET /v2/auth/tokeninfo
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/apps
+    http://{SERVER}:8000/v2/auth/tokeninfo
+```
+
+#### Change
+
+> POST /v2/auth/tokeninfo
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/tokeninfo
 ```
 
 #### Fetch
@@ -44,6 +44,26 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/auth/links
+```
+
+#### Fetch
+
+> GET /v2/auth/keys
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/keys
+```
+
+#### Patch
+
+> PATCH /v2/auth/identity_secrets
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/identity_secrets
 ```
 
 #### Create
@@ -68,72 +88,12 @@ curl -v -X PUT \
 
 #### Fetch
 
-> GET /v2/auth/tokeninfo
+> GET /v2/auth/apps
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/tokeninfo
-```
-
-#### Change
-
-> POST /v2/auth/tokeninfo
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/tokeninfo
-```
-
-#### Fetch
-
-> GET /v2/auth/keys/public
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/keys/public
-```
-
-#### Patch
-
-> PATCH /v2/auth/keys/private
-
-```shell
-curl -v -X PATCH \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/keys/private
-```
-
-#### Fetch
-
-> GET /v2/auth/apps/{APP_ID}
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/apps/{APP_ID}
-```
-
-#### Change
-
-> POST /v2/auth/apps/{APP_ID}
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/apps/{APP_ID}
-```
-
-#### Remove
-
-> DELETE /v2/auth/apps/{APP_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/apps/{APP_ID}
+    http://{SERVER}:8000/v2/auth/apps
 ```
 
 #### Fetch
@@ -194,5 +154,55 @@ curl -v -X PUT \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/auth/links/{LINK_ID}
+```
+
+#### Fetch
+
+> GET /v2/auth/keys/{KEY_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
+```
+
+#### Patch
+
+> PATCH /v2/auth/keys/{KEY_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
+```
+
+#### Fetch
+
+> GET /v2/auth/apps/{APP_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/apps/{APP_ID}
+```
+
+#### Change
+
+> POST /v2/auth/apps/{APP_ID}
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/apps/{APP_ID}
+```
+
+#### Remove
+
+> DELETE /v2/auth/apps/{APP_ID}
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/apps/{APP_ID}
 ```
 

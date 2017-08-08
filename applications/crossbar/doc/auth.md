@@ -37,7 +37,7 @@ System Identity secret and the subject identity is being used to sign the identi
 
 If you feel that this system secret is compromised, use this API to reset it.
 
-> **Caution:** Reseting system identity secret will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
+> **Caution:** Resetting system identity secret will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
 
 > **Note:** Only super duper admin can reset system secert!
 
@@ -73,7 +73,7 @@ If you feel that an account or a user secret is compromised, use this API to res
 * To reset an account's identity secret, simply make request to this API with the account's id in the paths
 * To reset a user's identity secret, make a request as above with setting payload as: `{"data": { "owner_id": "{USER_ID}" } }`
 
-> **Caution:** Reseting identity secret will invalidate user's issued token! In other words if the is already logined, the user will be logout from the system and can't make any further request until login again.
+> **Caution:** Resetting identity secret will invalidate user's issued token! In other words if the is already logined, the user will be logout from the system and can't make any further request until login again.
 
 > **Note:** Only and account admin can a user's secert!
 
@@ -435,7 +435,7 @@ curl -v -X GET \
 
 Reset the private key of the system used to signing and verifing issued JWT tokens. If you feel that you the private key is compromised, use this API to generate a new private and public key.
 
-> **Caution:** Reseting system private will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
+> **Caution:** Resetting system private will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
 
 > **Note:** Only super duper admin can reset system private key!
 

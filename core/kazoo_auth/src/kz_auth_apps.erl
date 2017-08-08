@@ -40,6 +40,7 @@ get_auth_app(AppId, Option) ->
 
 -spec do_get_auth_app(ne_binary()) -> map() | {'error', ne_binary()}.
 do_get_auth_app(<<"kazoo">>) ->
+    io:format("~n Hallo ~n"),
     #{name => <<"kazoo">>
      ,pvt_server_key => ?SYSTEM_KEY_ID
      ,pvt_auth_provider => <<"kazoo">>
