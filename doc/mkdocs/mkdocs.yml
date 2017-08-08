@@ -405,8 +405,6 @@ pages:
     - 'core/kazoo_proper/doc/rates.md'
   - 'Kazoo Performance Testing':
       - 'core/kazoo_perf/doc/maintenance.md'
-  - 'APNS':
-    - 'core/apns/Readme.md'
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'
