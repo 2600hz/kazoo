@@ -482,14 +482,14 @@ handle_pattern_metaflow(Call, P, DTMFLeg) ->
 
 -spec arm_aleg(state()) -> state().
 arm_aleg(#state{digit_timeout=Timeout}=State) ->
-    State#state{a_digit_timeout_ref = erlang:start_timer(Timeout, 'digit_timeout')
+    State#state{a_digit_timeout_ref = erlang:start_timer(Timeout, self(),'digit_timeout')
                ,a_collected_dtmf = <<>>
                ,a_leg_armed='true'
                }.
 
 -spec arm_bleg(state()) -> state().
 arm_bleg(#state{digit_timeout=Timeout}=State) ->
-    State#state{b_digit_timeout_ref = erlang:start_timer(Timeout, 'digit_timeout')
+    State#state{b_digit_timeout_ref = erlang:start_timer(Timeout, self(), 'digit_timeout')
                ,b_collected_dtmf = <<>>
                ,b_leg_armed='true'
                }.
@@ -515,7 +515,7 @@ add_aleg_dtmf(#state{a_collected_dtmf=Collected
                     }=State, DTMF) ->
     lager:debug("a recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     maybe_cancel_timer(OldRef),
-    State#state{a_digit_timeout_ref = erlang:start_timer(Timeout, 'digit_timeout')
+    State#state{a_digit_timeout_ref = erlang:start_timer(Timeout, self(), 'digit_timeout')
                ,a_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
@@ -527,7 +527,7 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                     }=State, DTMF) ->
     lager:debug("b recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     maybe_cancel_timer(OldRef),
-    State#state{b_digit_timeout_ref = erlang:start_timer(Timeout, 'digit_timeout')
+    State#state{b_digit_timeout_ref = erlang:start_timer(Timeout, self(), 'digit_timeout')
                ,b_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 

@@ -702,7 +702,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 start_collect_timer() ->
-    erlang:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
+    erlang:start_timer(?COLLECT_RESP_TIMEOUT, self(), ?COLLECT_RESP_MESSAGE).
 
 -spec connection_timeout(api_integer()) -> pos_integer().
 connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
@@ -710,7 +710,7 @@ connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 
 -spec start_connection_timer(pos_integer()) -> reference().
 start_connection_timer(ConnTimeout) ->
-    erlang:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
+    erlang:start_timer(ConnTimeout, self(), ?CONNECTION_TIMEOUT_MESSAGE).
 
 -spec agent_ring_timeout(api_integer()) -> pos_integer().
 agent_ring_timeout(N) when is_integer(N), N > 0 -> N;
@@ -718,7 +718,7 @@ agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
 -spec start_agent_ring_timer(pos_integer()) -> reference().
 start_agent_ring_timer(AgentTimeout) ->
-    erlang:start_timer(AgentTimeout * 1600, ?AGENT_RING_TIMEOUT_MESSAGE).
+    erlang:start_timer(AgentTimeout * 1600, self(), ?AGENT_RING_TIMEOUT_MESSAGE).
 
 -spec maybe_stop_timer(api_reference()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
