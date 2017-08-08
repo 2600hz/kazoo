@@ -41081,7 +41081,7 @@
                 }
             }
         },
-        "/auth/identity_secret": {
+        "/auth/identity_secrets": {
             "patch": {
                 "responses": {
                     "200": {

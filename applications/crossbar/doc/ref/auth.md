@@ -8,12 +8,12 @@
 
 #### Patch
 
-> PATCH /v2/auth/identity_secret
+> PATCH /v2/auth/identity_secrets
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/identity_secret
+    http://{SERVER}:8000/v2/auth/identity_secrets
 ```
 
 #### Fetch

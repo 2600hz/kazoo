@@ -33,7 +33,7 @@
 -define(PRIVATE_PATH, <<"private">>).
 -define(PUBLIC_PATH, <<"public">>).
 -define(WHITELABEL_PATH, <<"whitelabel">>).
--define(IDENTITY_SECRET_PATH, <<"identity_secret">>).
+-define(IDENTITY_SECRETS_PATH, <<"identity_secrets">>).
 
 -define(LINKS_VIEW, <<"users/list_linked_users">>).
 -define(PROVIDERS_VIEW, <<"providers/list_by_id">>).
@@ -77,7 +77,7 @@ allowed_methods(?CALLBACK_PATH) -> [?HTTP_PUT];
 allowed_methods(?LINKS_PATH) -> [?HTTP_GET];
 allowed_methods(?PROVIDERS_PATH) -> [?HTTP_GET];
 allowed_methods(?APPS_PATH) -> [?HTTP_GET];
-allowed_methods(?IDENTITY_SECRET_PATH) -> [?HTTP_PATCH].
+allowed_methods(?IDENTITY_SECRETS_PATH) -> [?HTTP_PATCH].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?LINKS_PATH, _LinkId) -> [?HTTP_GET , ?HTTP_PUT , ?HTTP_DELETE];
@@ -98,7 +98,7 @@ allowed_methods(?KEYS_PATH, ?PUBLIC_PATH) -> [?HTTP_GET].
 resource_exists(?APPS_PATH) -> 'true';
 resource_exists(?AUTHORIZE_PATH) -> 'true';
 resource_exists(?CALLBACK_PATH) -> 'true';
-resource_exists(?IDENTITY_SECRET_PATH) -> 'true';
+resource_exists(?IDENTITY_SECRETS_PATH) -> 'true';
 resource_exists(?LINKS_PATH) -> 'true';
 resource_exists(?PROVIDERS_PATH) -> 'true';
 resource_exists(?TOKENINFO_PATH) -> 'true'.
@@ -138,33 +138,33 @@ authorize(Context, PathToken) ->
 
 -spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
 authorize(Context, PathToken, Id) ->
-    authorize_nouns_id(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authorize_nouns(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authorize_nouns(cb_context:context(), path_token(), req_verb(), req_nouns()) -> boolean().
-authorize_nouns(_, ?APPS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_, ?AUTHORIZE_PATH,       ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_, ?CALLBACK_PATH,        ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(C, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns(C, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH, [{<<"auth">>, _}, {<<"accounts">>, _AccountId}]) -> cb_context:is_account_admin(C);
-authorize_nouns(_, ?LINKS_PATH,           ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_, ?PROVIDERS_PATH,       ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_, ?TOKENINFO_PATH,       ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_, ?TOKENINFO_PATH,       ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?APPS_PATH,             ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?AUTHORIZE_PATH,        ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?CALLBACK_PATH,         ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, _                ) -> cb_context:is_account_admin(C);
+authorize_nouns(_, ?LINKS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?PROVIDERS_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, _, _, _) -> 'false'.
 
--spec authorize_nouns_id(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
-authorize_nouns_id(_, ?APPS_PATH,      _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
-authorize_nouns_id(C, ?KEYS_PATH,      ?PRIVATE_PATH, ?HTTP_PATCH,  [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns_id(C, ?KEYS_PATH,      ?PUBLIC_PATH,  ?HTTP_GET,    [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
-authorize_nouns_id(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
+-spec authorize_nouns(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
+authorize_nouns(_, ?APPS_PATH,      _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(C, ?KEYS_PATH,      ?PRIVATE_PATH, ?HTTP_PATCH,  [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns(C, ?KEYS_PATH,      ?PUBLIC_PATH,  ?HTTP_GET,    [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
+authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
 %% monster-ui still uses this (accounts/123/auth/links)
-authorize_nouns_id(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}, [<<"accounts">>, _]]) -> 'true';
-authorize_nouns_id(_, ?LINKS_PATH,     _Id,           ?HTTP_PUT,    [{<<"auth">>, _}]) -> 'true';
-authorize_nouns_id(_, ?LINKS_PATH,     _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns_id(_, ?PROVIDERS_PATH, _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
-authorize_nouns_id(C, ?PROVIDERS_PATH, _Id,           ?HTTP_POST,   [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns_id(C, ?PROVIDERS_PATH, _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns_id(_, _, _, _, _) -> 'false'.
+authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}, [<<"accounts">>, _]]) -> 'true';
+authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_PUT,    [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?PROVIDERS_PATH, _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_POST,   [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns(_, _, _, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -204,13 +204,18 @@ validate(Context, Path) ->
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Path, Id) ->
-    validate_path_id(Context, Path, Id, cb_context:req_verb(Context)).
+    validate_path(Context, Path, Id, cb_context:req_verb(Context)).
 
 -spec validate_path(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+%% validating /auth/authorize
 validate_path(Context, ?AUTHORIZE_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.authorize">>, Context, fun maybe_authorize/1);
+
+%% validating /auth/callback
 validate_path(Context, ?CALLBACK_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.callback">>, Context, fun maybe_authenticate/1);
+
+%% validating /auth/tokeninfo
 validate_path(Context, ?TOKENINFO_PATH, ?HTTP_GET) ->
     case cb_context:req_param(Context, <<"token">>) of
         'undefined' -> crossbar_util:response('error', <<"missing token in params">>, 404, Context);
@@ -225,15 +230,21 @@ validate_path(Context, ?TOKENINFO_PATH, ?HTTP_POST) ->
             lager:debug("validating posted tokeninfo : ~p", [Token]),
             validate_token_info(Context, Token)
     end;
+
+%% validating /auth/links
 validate_path(Context, ?LINKS_PATH, ?HTTP_GET) ->
     Options = [{'key', [cb_context:auth_account_id(Context), cb_context:auth_user_id(Context)]}
               ,'include_docs'
               ],
     crossbar_doc:load_view(?LINKS_VIEW, Options, Context, fun normalize_view/2);
+
+%% validating /auth/providers
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_GET) ->
     crossbar_doc:load_view(?PROVIDERS_VIEW, [], Context, fun normalize_view/2);
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.provider">>, Context, fun add_provider/1);
+
+%% validating /auth/apps
 validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
     Options = [{'key', account_id(Context)}
               ,'include_docs'
@@ -241,40 +252,48 @@ validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
     crossbar_doc:load_view(?APPS_VIEW, Options, Context, fun normalize_view/2);
 validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.app">>, Context, fun add_app/1);
-validate_path(Context, ?IDENTITY_SECRET_PATH, ?HTTP_PATCH) ->
+
+%% validating /auth/identity_secrets
+validate_path(Context, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH) ->
     case cb_context:req_nouns(Context) of
         [{<<"auth">>, _}] -> reset_system_identity_secret(Context);
-        [{<<"auth">>, _}, {<<"accounts">>, _AccountId}] ->
+        _ ->
             cb_context:validate_request_data(<<"auth.reset_identity">>, Context, fun reset_identity_secret/1)
     end.
 
--spec validate_path_id(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
+-spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
+%% validating /auth/apps/{app_id}
+validate_path(Context, ?APPS_PATH, Id, ?HTTP_GET) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
+validate_path(Context, ?APPS_PATH, Id, ?HTTP_POST) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
+validate_path(Context, ?APPS_PATH, Id, ?HTTP_DELETE) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
 
-validate_path_id(Context, ?APPS_PATH, Id, ?HTTP_GET) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
-validate_path_id(Context, ?APPS_PATH, Id, ?HTTP_POST) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
-validate_path_id(Context, ?APPS_PATH, Id, ?HTTP_DELETE) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
-validate_path_id(Context, ?PROVIDERS_PATH, Id, ?HTTP_GET) ->
+%% validating /auth/providers/{provider_id}
+validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_GET) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>));
-validate_path_id(Context, ?PROVIDERS_PATH, Id, ?HTTP_POST) ->
+validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_POST) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>));
-validate_path_id(Context, ?PROVIDERS_PATH, Id, ?HTTP_DELETE) ->
+validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_DELETE) ->
     Options = [{'key', Id}],
     case kz_datamgr:get_result_keys(cb_context:account_db(Context), ?PROVIDERS_APP_VIEW, Options) of
         [] -> Context;
         _ -> cb_context:add_system_error(<<"apps exist for provider">>, Context)
     end;
-validate_path_id(Context, ?LINKS_PATH, Id, ?HTTP_GET) ->
+
+%% validating /auth/links/{link_id}
+validate_path(Context, ?LINKS_PATH, Id, ?HTTP_GET) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
-validate_path_id(Context, ?LINKS_PATH, Id, ?HTTP_PUT) ->
+validate_path(Context, ?LINKS_PATH, Id, ?HTTP_PUT) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
-validate_path_id(Context, ?LINKS_PATH, Id, ?HTTP_DELETE) ->
+validate_path(Context, ?LINKS_PATH, Id, ?HTTP_DELETE) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
-validate_path_id(Context, ?KEYS_PATH, ?PRIVATE_PATH, ?HTTP_PATCH) ->
+
+%% validating /auth/keys/{key_id}
+validate_path(Context, ?KEYS_PATH, ?PRIVATE_PATH, ?HTTP_PATCH) ->
     reset_system_private_key(Context);
-validate_path_id(Context, ?KEYS_PATH, ?PUBLIC_PATH, ?HTTP_GET) ->
+validate_path(Context, ?KEYS_PATH, ?PUBLIC_PATH, ?HTTP_GET) ->
     get_system_public_key(Context).
 
 -spec validate_token_info(cb_context:context(), ne_binary()) -> cb_context:context().
