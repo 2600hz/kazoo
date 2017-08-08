@@ -1531,24 +1531,24 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 -spec start_wrapup_timer(integer()) -> reference().
 start_wrapup_timer(Timeout) when Timeout =< 0 -> start_wrapup_timer(1); % send immediately
-start_wrapup_timer(Timeout) -> erlang:start_timer(Timeout*1000, ?WRAPUP_FINISHED).
+start_wrapup_timer(Timeout) -> erlang:start_timer(Timeout*1000, self(), ?WRAPUP_FINISHED).
 
 -spec start_sync_timer() -> reference().
 -spec start_sync_timer(pid()) -> reference().
 start_sync_timer() ->
-    erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
+    erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, self(), ?SYNC_RESPONSE_MESSAGE).
 start_sync_timer(P) ->
     erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, P, ?SYNC_RESPONSE_MESSAGE).
 
 -spec start_resync_timer() -> reference().
 start_resync_timer() ->
-    erlang:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
+    erlang:start_timer(?RESYNC_RESPONSE_TIMEOUT, self(), ?RESYNC_RESPONSE_MESSAGE).
 
 -spec start_pause_timer(pos_integer()) -> api_reference().
 start_pause_timer('undefined') -> start_pause_timer(1);
 start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
-    erlang:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
+    erlang:start_timer(Timeout * 1000, self(), ?PAUSE_MESSAGE).
 
 -spec call_id(kz_json:object()) -> api_binary().
 call_id(JObj) ->
