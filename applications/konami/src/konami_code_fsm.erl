@@ -89,17 +89,17 @@ start_fsm(Call, JObj) ->
 -spec event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 event(FSM, CallId, <<"DTMF">>, JObj) ->
     gen_statem:cast(FSM, {'dtmf'
-                            ,CallId
-                            ,kz_call_event:dtmf_digit(JObj)
-                            });
+                         ,CallId
+                         ,kz_call_event:dtmf_digit(JObj)
+                         });
 event(FSM, CallId, Event, JObj) ->
     gen_statem:cast(FSM, ?EVENT(CallId, Event, JObj)).
 
 -spec transfer_to(kapps_call:call(), 'a' | 'b') -> 'ok'.
 transfer_to(Call, Leg) ->
     gen_statem:cast(kapps_call:kvs_fetch(?MODULE, Call)
-                                ,{'transfer_to', Call, Leg}
-                                ).
+                   ,{'transfer_to', Call, Leg}
+                   ).
 
 %%%===================================================================
 %%% gen_fsm callbacks

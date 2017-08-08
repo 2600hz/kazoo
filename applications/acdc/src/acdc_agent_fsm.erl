@@ -233,9 +233,9 @@ originate_started(FSM, JObj) ->
 -spec originate_uuid(server_ref(), kz_json:object()) -> 'ok'.
 originate_uuid(FSM, JObj) ->
     gen_statem:cast(FSM, {'originate_uuid'
-                            ,kz_json:get_value(<<"Outbound-Call-ID">>, JObj)
-                            ,kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj)
-                            }).
+                         ,kz_json:get_value(<<"Outbound-Call-ID">>, JObj)
+                         ,kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj)
+                         }).
 
 %%--------------------------------------------------------------------
 %% @doc
