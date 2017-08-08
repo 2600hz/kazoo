@@ -12,17 +12,18 @@
 
                  , kazoo
                  , kazoo_amqp
-                 , kazoo_data
                  , kazoo_apps
+                 , kazoo_data
+                 , kazoo_globals
                  , kazoo_modb
                  , kazoo_oauth
 
-                 , lager
-                 , ranch
                  , cowboy
                  , escalus
-                 , poolboy
                  , gen_smtp
+                 , lager
+                 , poolboy
+                 , ranch
                  ]},
   {mod, {fax_app, []}}
  ]}.
