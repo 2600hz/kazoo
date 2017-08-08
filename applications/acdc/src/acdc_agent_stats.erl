@@ -460,9 +460,8 @@ log_state_change(AccountId, AgentId, NewStateName, ExtraProps) ->
     Body = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
                                                     ,{<<"agent_id">>, AgentId}
                                                     ,{<<"transition_to">>, NewStateName}
-                                                    %%,{<<"reason">>, Reason}
                                                      | ExtraProps])),
-    kz_edr:info(?APP_NAME, ?APP_VERSION, Body, AccountId).
+    kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).
 
 log_agent_event(AccountId, AgentId, Event) ->
     log_agent_event(AccountId, AgentId, Event, []).
@@ -470,6 +469,5 @@ log_agent_event(AccountId, AgentId, Event, ExtraProps) ->
     Body = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
                                                     ,{<<"agent_id">>, AgentId}
                                                     ,{<<"event">>, Event}
-                                                    %%,{<<"reason">>, Reason}
                                                      | ExtraProps])),
-    kz_edr:info(?APP_NAME, ?APP_VERSION, Body, AccountId).
+    kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

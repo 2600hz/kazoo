@@ -33,9 +33,10 @@ format_event(_Opts, Event, _IncludeMeta, 'false') ->
             ,{<<"App-Version">>, Event#event.app_version}
             ,{<<"Body">>, Event#event.body}
             ,{<<"ID">>, Event#event.id}
-            ,{<<"Level">>, kz_term:to_binary(Event#event.level)}
+            ,{<<"Severity">>, kz_term:to_binary(Event#event.severity)}
             ,{<<"Timestamp">>, Event#event.timestamp}
             ,{<<"Gregorian-Time">>, Event#event.gregorian_time}
+            ,{<<"Verbosity">>, kz_term:to_binary(Event#event.verbosity)}
             ],
     kz_json:from_list(Props);
 format_event(Opts, Event, IncludeMeta, 'true') ->

@@ -928,4 +928,4 @@ log_queue_event(AccountId, QueueId, CallId, EventName, ExtraProps) ->
                                                     ,{<<"call_id">>, CallId}
                                                     ,{<<"event">>, EventName}
                                                      | ExtraProps])),
-    kz_edr:info(?APP_NAME, ?APP_VERSION, Body, AccountId).
+    kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

@@ -15,10 +15,13 @@
 
 -include_lib("amqp_util.hrl").
 
--define(EDR_REQ_HEADERS, [<<"Body">>, <<"ID">>, <<"Level">>, <<"Timestamp">>]).
+-define(EDR_REQ_HEADERS, [<<"Body">>, <<"ID">>, <<"Severity">>, <<"Timestamp">>, <<"Verbosity">>]).
 -define(OPTIONAL_EDR_HEADERS, [<<"Account-ID">>]).
 -define(EDR_REQ_VALUES, []).
--define(EDR_REQ_TYPES, [{<<"Body">>, fun kz_json:is_json_object/1}]).
+-define(EDR_REQ_TYPES, [{<<"Body">>, fun kz_json:is_json_object/1}
+                       ,{<<"Severity">>, fun(Val) -> lists:member(Val, ?EDR_SEVERITY_LEVELS) end}
+                       ,{<<"Verbosity">>, fun(Val) -> lists:member(Val, ?EDR_VERBOSITY_LEVELS) end}
+                       ]).
 
 %%--------------------------------------------------------------------
 %% @doc

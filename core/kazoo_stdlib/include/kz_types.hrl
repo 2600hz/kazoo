@@ -402,5 +402,12 @@
 
 -define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash(md5, C))).
 
+%% EDR
+-define(EDR_VERBOSITY_LEVELS, ['fatal', 'error', 'warn', 'info', 'debug', 'trace']).
+-type edr_verbosity() :: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace'.
+
+-define(EDR_SEVERITY_LEVELS, ['ok', 'warning', 'critical']).
+-type edr_severity() :: 'ok' | 'warning' | 'critical'.
+
 -define(KAZOO_TYPES_INCLUDED, 'true').
 -endif.

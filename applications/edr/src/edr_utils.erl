@@ -87,9 +87,10 @@ event_from_kapi(JObj) ->
           ,app_version=kz_json:get_value(<<"App-Version">>, JObj)
           ,body=kz_json:get_value(<<"Body">>, JObj)
           ,id=kz_json:get_value(<<"ID">>, JObj)
-          ,level=kz_json:get_atom_value(<<"Level">>, JObj)
+          ,severity=kz_json:get_atom_value(<<"Severity">>, JObj)
           ,timestamp=kz_time:iso8601(GregorianTime)
           ,gregorian_time=GregorianTime
+          ,verbosity=kz_json:get_atom_value(<<"Verbosity">>, JObj)
           }.
 
 -spec account_tree(api_ne_binary()) -> api_ne_binaries().

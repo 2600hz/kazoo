@@ -20,18 +20,16 @@
                      {'stop', any()} |
                      'ignore'.
 
--define(EDR_LEVELS, ['fatal', 'error', 'warn', 'info', 'debug', 'trace']).
--type edr_level() :: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace'.
-
 -record(event, {account_id     :: api_binary()
                ,account_tree   :: api_ne_binaries()
                ,app_name       :: ne_binary()
                ,app_version    :: ne_binary()
                ,body           :: ne_binary()
                ,id             :: ne_binary()
-               ,level          :: edr_level()
+               ,severity       :: edr_severity()
                ,timestamp      :: ne_binary()
                ,gregorian_time :: pos_integer()
+               ,verbosity      :: edr_verbosity()
                }).
 -type event() :: #event{}.
 -endif.
