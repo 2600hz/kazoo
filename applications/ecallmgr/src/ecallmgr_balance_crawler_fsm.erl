@@ -59,7 +59,7 @@ start_link() ->
 init(_Args) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(?MODULE),
-    erlang:send_after(?CRAWLER_CYCLE_MS, 'start_cycle'),
+    erlang:send_after(?CRAWLER_CYCLE_MS, self(), 'start_cycle'),
     {'ok', 'idle', 'undefined'}.
 
 -spec handle_info(any(), atom(), fsm_state()) -> handle_fsm_ret(fsm_state()).
@@ -110,7 +110,9 @@ worker_timeout('worker_stop', _OldWorkerPid) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+
 spawn_worker(Timeout) when Timeout >= 10 * ?MILLISECONDS_IN_SECOND ->
-    erlang:send_after(Timeout, 'start_cycle'),
+    erlang:send_after(Timeout, self(), 'start_cycle'),
     kz_util:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
-spawn_worker(_) -> spawn_worker(?MILLISECONDS_IN_MINUTE).
+spawn_worker(_) ->
+    spawn_worker(?MILLISECONDS_IN_MINUTE).
