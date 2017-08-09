@@ -70,12 +70,9 @@ System Identity secret and the subject identity is being used to sign the identi
 
 If you feel that an account or a user secret is compromised, use this API to reset it.
 
-* To reset an account's identity secret, simply make request to this API with the account's id in the paths
-* To reset a user's identity secret, make a request as above with setting payload as: `{"data": { "owner_id": "{USER_ID}" } }`
+> **Caution:** Resetting identity secret will invalidate user's issued token! In other words if the user is already logined, it will be logout from the system and can't make any further request until login again.
 
-> **Caution:** Resetting identity secret will invalidate user's issued token! In other words if the is already logined, the user will be logout from the system and can't make any further request until login again.
-
-> **Note:** Only and account admin can a user's secert!
+> **Note:** Only an account admin can a user's secert!
 
 ##### To Reset an Account Identity Secret
 
@@ -313,7 +310,7 @@ curl -v -X PUT \
 
 #### Get Token Information (Query String version)
 
-Returns the information encoded in the sets inside the specified authentication token (from query string `token` parameter).
+Returns the information encoded in the specified authentication token (from query string `token` parameter).
 
 > GET /v2/auth/tokeninfo
 
@@ -347,7 +344,7 @@ curl -v -X GET \
 
 #### Get Token Information (Request Body version)
 
-Returns the information encoded in the sets inside the specified authentication token (from request body `token` parameter).
+Returns the information encoded in the specified authentication token (from request body `token` parameter).
 
 > POST /v2/auth/tokeninfo
 
@@ -462,7 +459,7 @@ curl -v -X GET \
 
 #### Reset a Private Key
 
-Reset the private key of the system used to signing and verifing issued JWT tokens. If you feel that you the private key is compromised, use this API to generate a new private and public key.
+Reset the private key of the system used to signing and verifing issued JWT tokens. If you feel that the private key is compromised, use this API to generate a new private and public key.
 
 > **Caution:** Resetting system private will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
 
@@ -568,7 +565,7 @@ curl -v -X GET \
 
 #### Link an User to a SSO Application
 
-When the user is signing on with A Single Sign On provider for the first time, it should login with its own Kazoo credentials only for this time, and then make a request to this API to link its Kazoo's user to the SSO. After this the user can sign in with SSO regularly without the need to use Kazoo credentials again.
+When the user is signing on with A Single Sign On provider for the first time, it should login with its own Kazoo credentials one more time, and then make a request to this API to link its Kazoo's user to the SSO. After that the user can sign in with SSO regularly and no need to use Kazoo credentials again.
 
 > PUT /v2/auth/links/{LINK_ID}
 
