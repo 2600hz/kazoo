@@ -571,6 +571,8 @@ get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
                    ,kz_term:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
                    ]);
+get_fs_kv(<<"Resource-Fax-Option">>=Key, Val, _) ->
+    list_to_binary(["fax_enable_t38=", maybe_sanitize_fs_value(Key, Val)]);
 get_fs_kv(?CCV(Key), Val, UUID) ->
     get_fs_kv(Key, Val, UUID);
 get_fs_kv(Key, Val, _) ->

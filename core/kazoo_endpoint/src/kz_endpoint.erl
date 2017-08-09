@@ -1127,14 +1127,18 @@ maybe_get_t38(Endpoint, Call) ->
     Opt =
         case ?MODULE:get(Call) of
             {'ok', JObj} -> kz_json:is_true([<<"media">>, <<"fax_option">>], JObj);
-            {'error', _} -> 'undefined'
+            {'error', _} ->
+                case kapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call) of
+                    'true' -> 'true';
+                    _ -> 'undefined'
+                end
         end,
     DeviceType = kz_json:get_value(<<"device_type">>, Endpoint),
     case DeviceType =:= <<"fax">> of
         'false' -> [];
         'true' ->
             kapps_call_command:get_inbound_t38_settings(Opt
-                                                       ,kz_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
+                                                       ,kz_json:get_first_defined([<<"Fax-T38-Enabled">>,[<<"media">>, <<"fax_option">>]], Endpoint)
                                                        )
     end.
 
