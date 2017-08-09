@@ -25,18 +25,19 @@
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".dynamic_cid">>).
 
 -define(REJECT_PROMPT
-       ,kapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
+       ,kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
        ).
 
 -record(prompts
        ,{accept_tone =
-             kapps_config:get_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
-        ,reject_tone =
-             kz_media_util:get_prompt(?REJECT_PROMPT)
+             kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
+         :: ne_binary()
+        ,reject_tone = kz_media_util:get_prompt(?REJECT_PROMPT) :: api_ne_binary()
         ,default_prompt =
              kz_media_util:get_prompt(
-               kapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
+               kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
               )
+         :: ne_binary()
         }).
 -type prompts() :: #prompts{}.
 

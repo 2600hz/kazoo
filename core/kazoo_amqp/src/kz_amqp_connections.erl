@@ -49,7 +49,7 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {watchers = sets:new()
+-record(state, {watchers = sets:new() :: sets:set(pid())
                }).
 -type state() :: #state{}.
 
@@ -339,7 +339,7 @@ handle_cast({'add_watcher', Fun, Watcher}, State) ->
     case Fun() of
         'false' -> {'noreply', add_watcher(Watcher, State), 'hibernate'};
         'true' ->
-            _ = notify_watcher(Watcher),
+            notify_watcher(Watcher),
             {'noreply', State, 'hibernate'}
     end;
 handle_cast(_Msg, State) ->
@@ -407,17 +407,15 @@ add_watcher(Watcher, #state{watchers=Watchers}=State) ->
     State#state{watchers=sets:add_element(Watcher, Watchers)}.
 
 -spec notify_watchers(state()) -> state().
-notify_watchers(#state{watchers=[]}=State) ->
-    State#state{watchers=sets:new()};
-notify_watchers(#state{watchers=[Watcher|Watchers]}=State) ->
-    _ = notify_watcher(Watcher),
-    notify_watchers(State#state{watchers=Watchers});
-notify_watchers(#state{watchers=Watchers}=State) ->
-    notify_watchers(State#state{watchers=sets:to_list(Watchers)}).
+notify_watchers(#state{watchers = Watchers}=State) ->
+    F = fun (Watcher, _) -> notify_watcher(Watcher) end,
+    sets:fold(F, ok, Watchers),
+    State#state{watchers = sets:new()}.
 
--spec notify_watcher(pid()) -> any().
+-spec notify_watcher(pid()) -> ok.
 notify_watcher(Watcher) ->
-    Watcher ! {?MODULE, 'connection_available'}.
+    Watcher ! {?MODULE, 'connection_available'},
+    ok.
 
 -spec wait_for_notification(kz_timeout()) ->
                                    'ok' |

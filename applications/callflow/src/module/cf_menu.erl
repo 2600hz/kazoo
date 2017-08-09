@@ -11,7 +11,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_menu).
-
 -behaviour(gen_cf_action).
 
 -export([handle/2]).
@@ -20,12 +19,10 @@
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".menu">>).
 
--record(menu_keys, {
-          %% Record Review
-          save = <<"1">> :: ne_binary()
+-record(menu_keys, {save = <<"1">> :: ne_binary() %% Record Review
                    ,listen = <<"2">> :: ne_binary()
                    ,record = <<"3">> :: ne_binary()
-         }).
+                   }).
 -type menu_keys() :: #menu_keys{}.
 -define(MENU_KEY_LENGTH, 1).
 

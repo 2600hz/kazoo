@@ -77,8 +77,7 @@
 
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
 
--record(state, {
-          node :: atom()
+-record(state, {node :: atom()
                ,call_id :: ne_binary()
                ,command_q = queue:new() :: queue:queue()
                ,current_app :: api_binary()
@@ -96,7 +95,7 @@
                ,control_q :: api_binary()
                ,initial_ccvs :: kz_json:object()
                ,node_down_tref :: api_reference()
-         }).
+               }).
 -type state() :: #state{}.
 
 -define(RESPONDERS, []).

@@ -32,8 +32,8 @@
          code_change/3]).
 
 -record(state, {name                    :: atom()
-               ,leader                 :: sign()
-               ,role                   :: role()
+               ,leader                 :: sign() | undefined
+               ,role                   :: role() | undefined
                ,elected = 0            :: integer()
                ,restarted = 0          :: integer()
                ,callback_module        :: atom()
@@ -49,7 +49,9 @@
               ,sync                    :: any()
               }).
 
--record(?MODULE, {from, msg}).
+-record(?MODULE, {from :: sign()
+                 ,msg :: join | {leader, sign()} | {sync} | {from_leader, any()}
+                 }).
 
 -type role() :: 'candidate' | 'leader'.
 -type state() :: #state{}.

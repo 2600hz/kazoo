@@ -75,13 +75,15 @@
 -type ident() :: name() | pid().
 %% The task pid() or name.
 
--type task() :: {ident(),
-                 amqp_cron_task:schedule(),
-                 amqp_cron_task:execargs()}.
-%% Task definition.
+-type task() :: {name()
+                ,pid()
+                ,amqp_cron_task:schedule()
+                ,amqp_cron_task:execargs()
+                }.
+-type tasks() :: [task()].
 
--record(state, {tasks = []
-               ,is_leader = 'false'
+-record(state, {tasks = [] :: tasks()
+               ,is_leader = 'false' :: boolean()
                }).
 -type state() :: #state{}.
 
@@ -384,6 +386,8 @@ remove_task_if_done(Task, Acc) ->
             [Task|Acc]
     end.
 
+-spec pid_for_name(binary() | atom(), tasks()) -> pid() |
+                                                  {error, no_such_name}.
 pid_for_name(Name, Tasks) ->
     case lists:keyfind(Name, 1, Tasks) of
         'false' ->

@@ -13,7 +13,8 @@
 -define(SERVER, ?MODULE).
 -define(RETRY, 3).
 
--record(state, {key}).
+-record(state, {key :: nonempty_string()
+               }).
 
 -spec init(any()) -> {ok, #state{}} | {ok, #state{}, non_neg_integer()} | {ok, #state{}, hibernate} | {stop, any()} | ignore.
 -spec handle_call(any(), {pid(),any()}, #state{}) -> {reply, any(), #state{}} | {reply, any(), #state{}, non_neg_integer()} | {reply, any(), #state{}, hibernate} | {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), any(), #state{}} | {stop, any(), #state{}}.

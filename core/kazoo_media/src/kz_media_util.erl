@@ -475,12 +475,14 @@ prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
     filename:join([Lang, PromptId]).
 
--spec get_prompt(ne_binary()) -> api_binary().
+-spec get_prompt(ne_binary()) ->
+                        api_ne_binary().
 -spec get_prompt(ne_binary(), api_ne_binary()) ->
                         api_ne_binary().
 -spec get_prompt(ne_binary(), api_ne_binary(), api_ne_binary()) ->
                         api_ne_binary().
--spec get_prompt(ne_binary(), api_ne_binary(), api_ne_binary(), boolean()) -> api_ne_binary().
+-spec get_prompt(ne_binary(), api_ne_binary(), api_ne_binary(), boolean()) ->
+                        api_ne_binary().
 
 get_prompt(Name) ->
     get_prompt(Name, 'undefined').

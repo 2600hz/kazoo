@@ -34,7 +34,7 @@
 
 -define(TAB, ?MODULE).
 -define(SERVER_RETRY_PERIOD, 30 * ?MILLISECONDS_IN_SECOND).
--record(state, {brokers = ordsets:new()}).
+-record(state, {}).
 -type state() :: #state{}.
 
 %%%===================================================================
