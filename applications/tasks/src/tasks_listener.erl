@@ -11,6 +11,7 @@
 -export([start_link/0]).
 
 -export([handle_start_req/2
+        ,handle_stop_req/2
         ,handle_remove_req/2
         ]).
 
@@ -38,6 +39,9 @@
                      }
                     ,{{?MODULE, 'handle_start_req'}
                      ,[{<<"tasks">>, <<"start_req">>}]
+                     }
+                    ,{{?MODULE, 'handle_stop_req'}
+                     ,[{<<"tasks">>, <<"stop_req">>}]
                      }
                     ,{{?MODULE, 'handle_remove_req'}
                      ,[{<<"tasks">>, <<"remove_req">>}]
@@ -86,6 +90,26 @@ handle_start_req(JObj, _Props) ->
              ]
             ),
     kapi_tasks:publish_start_resp(kz_api:server_id(JObj), Resp).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_stop_req(kz_json:object(), kz_proplist()) -> ok.
+handle_stop_req(JObj, _Props) ->
+    true = kapi_tasks:stop_req_v(JObj),
+    Help =
+        case kz_tasks_scheduler:stop(kapi_tasks:task_id(JObj)) of
+            {ok, TaskJObj} -> TaskJObj;
+            {error, not_running} -> <<"not_running">>
+        end,
+    Resp = kz_json:from_list(
+             [{<<"Reply">>, Help}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    kapi_tasks:publish_stop_resp(kz_api:server_id(JObj), Resp).
 
 %%--------------------------------------------------------------------
 %% @public
