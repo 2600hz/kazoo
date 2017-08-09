@@ -339,19 +339,10 @@ reset_private_key(#{pvt_server_key := KeyId}) ->
 reset_private_key(#{}) ->
     {'error', 'invalid_identity_provider'};
 reset_private_key(?NE_BINARY=KeyId) ->
-    NewKeyId = kz_binary:rand_hex(16),
-    lager:debug("resetting private key id from ~s to ~s", [KeyId, NewKeyId]),
-    maybe_delete_old_pkey(KeyId, NewKeyId, kapps_config:set_string(?CONFIG_CAT, <<"system_key">>, NewKeyId)).
-
--spec maybe_delete_old_pkey(ne_binary(), ne_binary(), {'ok', kz_json:object()} | {'error', any()}) ->
-                                   {'ok', ne_binary()} | {'error', any()}.
-maybe_delete_old_pkey(KeyId, NewKeyId, {'ok', _}) ->
-    case kz_datamgr:del_doc(?KZ_AUTH_DB, KeyId) of
-        {'ok', _} -> {'ok', NewKeyId};
-        {'error', _Reason} ->
-            lager:error("failed to delete old private key ~s: ~p", [KeyId, _Reason]),
-            {'error', 'failed_delete'}
-    end;
-maybe_delete_old_pkey(KeyId, _NewKeyId, {'error', _Reason}=Error) ->
-    lager:error("failed to reset private key ~s: ~p", [KeyId, _Reason]),
-    Error.
+    lager:debug("deleting private key attachment from~s", [KeyId]),
+    case kz_datamgr:delete_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME) of
+        {'ok', _}=OK -> OK;
+        {'error', _Reason}=Error ->
+            lager:error("failed to delete private key attachment ~s: ~p", [KeyId, _Reason]),
+            Error
+    end.

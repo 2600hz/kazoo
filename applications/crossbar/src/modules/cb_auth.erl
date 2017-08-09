@@ -471,17 +471,11 @@ keys_summary(Context) ->
 -spec reset_private_key(cb_context:context(), ne_binary()) -> cb_context:context().
 reset_private_key(Context, KeyId) ->
     case kz_auth_keys:reset_private_key(KeyId) of
-        {'ok', NewKeyId} ->
+        {'ok', _} ->
             Setters = [{fun cb_context:set_resp_status/2, 'success'}
-                      ,{fun cb_context:set_resp_data/2, kz_json:from_list([{<<"id">>, NewKeyId}])}
+                      ,{fun cb_context:set_resp_data/2, kz_json:from_list([{<<"id">>, KeyId}])}
                       ],
             cb_context:setters(Context, Setters);
-        {'error', 'failed_delete'} ->
-            Msg = <<"new private key was generated but old key failed to remove, "
-                    ,"new tokens will use the new private key but previously issued tokens are still valid"
-                  >>,
-            JObj = kz_json:from_list([{<<"message">>, Msg}]),
-            cb_context:add_system_error('datastore_fault', JObj,  Context);
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, KeyId, Context)
     end.
