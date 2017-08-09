@@ -341,7 +341,10 @@ reset_private_key(#{}) ->
 reset_private_key(?NE_BINARY=KeyId) ->
     lager:debug("deleting private key attachment from~s", [KeyId]),
     case kz_datamgr:delete_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME) of
-        {'ok', _}=OK -> OK;
+        {'ok', _}=OK ->
+            kz_cache:erase_local(?PK_CACHE, KeyId),
+            kz_cache:erase_local(?PK_CACHE, {'private', KeyId}),
+            OK;
         {'error', _Reason}=Error ->
             lager:error("failed to delete private key attachment ~s: ~p", [KeyId, _Reason]),
             Error
