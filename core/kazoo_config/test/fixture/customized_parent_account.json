@@ -1,0 +1,16 @@
+{
+    "_id": "5bb4a2b6323bd02a77f1049669073643",
+    "_rev": "20-69d6be7a59cfc0a23af2cf6c9724305e",
+    "name": "Customized ParentAccount-Reseller",
+    "pvt_account_db": "account%2F5b%2Fb4%2Fa2b6323bd02a77f1049669073643",
+    "pvt_account_id": "5bb4a2b6323bd02a77f1049669073643",
+    "pvt_created": 63626042555,
+    "pvt_enabled": true,
+    "pvt_modified": 63640495549,
+    "pvt_reseller_id": "123ca0424ec8acf3acc1f87ac81f2123",
+    "pvt_tree": [
+        "6b71cb72c876b5b1396a335f8f8a2594",
+        "123ca0424ec8acf3acc1f87ac81f2123"
+    ],
+    "pvt_type": "account"
+}

@@ -21,6 +21,7 @@
         ,language/1, language/2, set_language/2
         ,timezone/1, timezone/2, set_timezone/2, default_timezone/0
         ,parent_account_id/1
+        ,get_parent_account/1, get_parent_account_id/1
         ,tree/1, tree/2 ,set_tree/2
         ,notification_preference/1, set_notification_preference/2
         ,is_enabled/1, enable/1, disable/1
@@ -459,6 +460,33 @@ parent_account_id(JObj) ->
     case tree(JObj) of
         [] -> 'undefined';
         Ancestors -> lists:last(Ancestors)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_parent_account(ne_binary()) -> {'ok', doc()} | {'error', any()}.
+get_parent_account(AccountId) ->
+    case get_parent_account_id(AccountId) of
+        'undefined' -> {'error', 'not_found'};
+        ParentId ->
+            fetch(ParentId)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_parent_account_id(ne_binary()) -> api_binary().
+get_parent_account_id(AccountId) ->
+    case fetch(AccountId) of
+        {'ok', JObj} -> parent_account_id(JObj);
+        {'error', _R} ->
+            lager:debug("failed to open account's ~s parent: ~p", [AccountId, _R]),
+            'undefined'
     end.
 
 %%--------------------------------------------------------------------
