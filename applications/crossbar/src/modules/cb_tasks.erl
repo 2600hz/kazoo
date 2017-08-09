@@ -383,8 +383,8 @@ patch(Context, TaskId, ?PATH_STOP) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     {ok, Resp} = kz_amqp_worker:call(Req
-                                    ,fun kapi_tasks:publish_start_req/1
-                                    ,fun kapi_tasks:start_resp_v/1
+                                    ,fun kapi_tasks:publish_stop_req/1
+                                    ,fun kapi_tasks:stop_resp_v/1
                                     ),
     case kapi_tasks:reply(Resp) =:= <<"not_running">> of
         false -> crossbar_util:response(kapi_tasks:reply(Resp), Context);
