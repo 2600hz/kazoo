@@ -208,10 +208,13 @@ reseller_allowed_features(#feature_parameters{assigned_to = AccountId}=_Params) 
 
 -spec system_allowed_features() -> ne_binaries().
 system_allowed_features() ->
-    Features = case ?SYSTEM_PROVIDERS of
-                   undefined -> ?FEATURES_ALLOWED_SYSTEM(?DEFAULT_FEATURES_ALLOWED_SYSTEM);
-                   Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
-               end,
+    Features =
+        lists:usort(
+          case ?SYSTEM_PROVIDERS of
+              undefined -> ?FEATURES_ALLOWED_SYSTEM(?DEFAULT_FEATURES_ALLOWED_SYSTEM);
+              Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
+          end
+         ),
     ?LOG_DEBUG("allowed features from system config: ~s", [?PP(Features)]),
     Features.
 
