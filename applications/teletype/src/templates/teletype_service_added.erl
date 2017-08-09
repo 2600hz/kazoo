@@ -24,7 +24,7 @@
 -spec id() -> ne_binary().
 id() -> <<"service_added">>.
 
--spec macros() -> kz_json:from_list().
+-spec macros() -> kz_json:object().
 macros() ->
     kz_json:from_list(
       [?MACRO_VALUE(<<"sub_account.id">>, <<"sub_account_id">>, <<"Sub-Account ID">>, <<"Sub-Account ID">>)

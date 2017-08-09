@@ -134,6 +134,10 @@ sip_route(DeviceJObj, Default) ->
 custom_sip_headers(DeviceJObj) ->
     kz_json:get_json_value(?CUSTOM_SIP_HEADERS, DeviceJObj, kz_json:new()).
 
+-spec set_custom_sip_headers(doc(), kz_json:object()) -> doc().
+set_custom_sip_headers(DeviceJObj, CSH) ->
+    kz_json:set_value(?CUSTOM_SIP_HEADERS, CSH, DeviceJObj).
+
 -spec custom_sip_headers_inbound(doc()) -> api_object().
 -spec custom_sip_headers_inbound(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers_inbound(DeviceJObj) ->
@@ -207,12 +211,14 @@ set_sip_route(DeviceJObj, Route) ->
 -spec set_custom_sip_headers_inbound(doc(), kz_json:object()) -> doc().
 set_custom_sip_headers_inbound(Device, Headers) ->
     CSH = custom_sip_headers(Device),
-    kz_custom_sip_headers:set_inbound(CSH, Headers).
+    InboundCSH = kz_custom_sip_headers:set_inbound(CSH, Headers),
+    set_custom_sip_headers(Device, InboundCSH).
 
 -spec set_custom_sip_headers_outbound(doc(), kz_json:object()) -> doc().
 set_custom_sip_headers_outbound(Device, Headers) ->
     CSH = custom_sip_headers(Device),
-    kz_custom_sip_headers:set_outbound(CSH, Headers).
+    OutboundCSH = kz_custom_sip_headers:set_outbound(CSH, Headers),
+    set_custom_sip_headers(Device, OutboundCSH).
 
 -spec set_sip_settings(doc(), kz_json:object()) -> doc().
 set_sip_settings(DeviceJObj, SipJObj) ->
