@@ -1,9 +1,15 @@
 ROOT = ../..
 PROJECT = sup
 
-all: sup
+ESCRIPT = sup
+CLEAN_MOAR = clean-escript
 
-sup:
+all: $(ESCRIPT)
+
+$(ESCRIPT):
 	@$(REBAR) compile escriptize
+
+clean-escript:
+	@$(REBAR) clean
 
 include $(ROOT)/make/kz.mk
