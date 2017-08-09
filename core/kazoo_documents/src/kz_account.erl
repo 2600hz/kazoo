@@ -470,7 +470,7 @@ parent_account_id(JObj) ->
 -spec get_parent_account(ne_binary()) -> {'ok', doc()} | {'error', any()}.
 get_parent_account(AccountId) ->
     case get_parent_account_id(AccountId) of
-        'undefined' -> {'ok', 'not_found'};
+        'undefined' -> {'error', 'not_found'};
         ParentId ->
             fetch(ParentId)
     end.
