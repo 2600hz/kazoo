@@ -12,6 +12,7 @@
 %%% Public API
 -export([start_link/0]).
 -export([start/1
+        ,stop/1
         ,remove/1
         ]).
 
@@ -92,6 +93,17 @@ start_link() ->
 start(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'start_task', TaskId}).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec stop(kz_tasks:id()) -> {ok, kz_json:object()} |
+                             {error, not_found | not_running}.
+stop(TaskId=?NE_BINARY) ->
+    gen_server:call(?SERVER, {stop_task, TaskId}).
+
+%% Not for public use
 -spec restart(kz_tasks:id()) -> {'ok', kz_json:object()} |
                                 {'error'
                                 ,'not_found' |
@@ -285,28 +297,47 @@ init([]) ->
     kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, ?APP),
     {'ok', #state{}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%% @end
-%%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'start_task', TaskId}, _From, State) ->
     lager:debug("attempting to start ~s", [TaskId]),
-    %% Running tasks are stored in server State.
-    %% They are then promptly removed.
-    %% Rationale is to rely on the task document most.
+    %% Running tasks are stored in server State then promptly removed.
+    %% So make sure to check State first then maybe DB.
     case task_by_id(TaskId, State) of
         [] ->
             case kz_tasks:task_by_id(TaskId) of
                 [] -> ?REPLY_NOT_FOUND(State);
                 [Task] -> handle_call_start_task(Task, State)
             end;
-        [#{started := Started}]
-          when Started /= 'undefined' ->
-            lager:info("task ~s exists already", [TaskId]),
-            ?REPLY(State, {'error', 'already_started'})
+        [Task] ->
+            true = kz_tasks:is_processing(Task),
+            lager:info("task ~s already started and running", [TaskId]),
+            ?REPLY(State, {error, already_started})
+    end;
+
+handle_call({stop_task, TaskId}, _From, State) ->
+    lager:debug("attempting to stop ~s", [TaskId]),
+    case task_by_id(TaskId, State) of
+        [] ->
+            lager:info("task ~s is not running or does not exist", [TaskId]),
+            ?REPLY_NOT_FOUND(State);
+        [Task = #{worker_pid := Pid}] ->
+            case kz_tasks:is_processing(Task) of
+                false ->
+                    lager:info("task ~s is not running", [TaskId]),
+                    ?REPLY(State, {error, not_running});
+                true ->
+                    Reason = stop_task,
+                    lager:info("killing ~s worker ~p (~p)", [TaskId, Pid, Reason]),
+                    true = exit(Pid, Reason),
+                    lager:info("removing ~s from state", [TaskId]),
+                    Task1 = Task#{finished => kz_time:current_tstamp()
+                                 ,was_stopped => true
+                                 },
+                    {ok, JObj} = update_task(Task1),
+                    %%TODO: save CSV(s) here or in handle_info
+                    State1 = remove_task(TaskId, State),
+                    ?REPLY_FOUND(State1, JObj)
+            end
     end;
 
 handle_call({'restart_task', TaskId}, _From, State) ->
@@ -317,10 +348,10 @@ handle_call({'restart_task', TaskId}, _From, State) ->
                 [] -> ?REPLY_NOT_FOUND(State);
                 [Task] -> handle_call_start_task(Task#{finished=>'undefined'}, State)
             end;
-        [#{started := Started}]
-          when Started /= 'undefined' ->
-            lager:info("task ~s exists already", [TaskId]),
-            ?REPLY(State, {'error', 'already_started'})
+        [Task] ->
+            true = kz_tasks:is_processing(Task),
+            lager:info("task ~s is already running", [TaskId]),
+            ?REPLY(State, {error, already_started})
     end;
 
 %% This used to be cast but would race with worker process' EXIT signal.
@@ -354,14 +385,9 @@ handle_call({'remove_task', TaskId}, _From, State) ->
                     {'ok', _} = kz_datamgr:del_doc(?KZ_TASKS_DB, TaskId),
                     ?REPLY_FOUND(State, kz_tasks:to_public_json(Task))
             end;
-        [Task = #{worker_pid := _Pid}] ->
-            case kz_tasks:is_processing(Task) of
-                'true' -> ?REPLY(State, {'error', 'task_running'});
-                'false' ->
-                    %%FIXME: should attempt to kill worker process.
-                    State1 = remove_task(TaskId, State),
-                    ?REPLY_FOUND(State1, kz_tasks:to_public_json(Task))
-            end
+        [Task] ->
+            true = kz_tasks:is_processing(Task),
+            ?REPLY(State, {error, task_running})
     end;
 
 handle_call(_Request, _From, State) ->
@@ -410,8 +436,8 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', Pid, _Reason}, State) ->
     case task_by_pid(Pid, State) of
         [] ->
-            lager:debug("worker ~p finished: ~p", [Pid, _Reason]),
-            {'noreply', State};
+            lager:debug("worker ~p finished or stopped: ~p", [Pid, _Reason]),
+            {noreply, State};
         [Task=#{id := TaskId}] ->
             lager:error("worker ~p died executing ~s: ~p", [Pid, TaskId, _Reason]),
             %% Note: this means output attachment was MAYBE NOT saved to task doc.
@@ -459,13 +485,13 @@ code_change(_OldVsn, State, _Extra) ->
 -spec task_by_id(kz_tasks:id(), state()) -> [kz_tasks:task()].
 task_by_id(TaskId, State) ->
     [T || T=#{id := Id} <- State#state.tasks,
-          TaskId == Id
+          TaskId =:= Id
     ].
 
 -spec task_by_pid(pid(), state()) -> [kz_tasks:task()].
 task_by_pid(Pid, State) ->
     [T || T=#{worker_pid := WPid} <- State#state.tasks,
-          Pid == WPid
+          Pid =:= WPid
     ].
 
 -spec log_elapsed_time(kz_tasks:task()) -> 'ok'.

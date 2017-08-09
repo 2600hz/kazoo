@@ -36,7 +36,8 @@
 -define(TASK_ID_SIZE, 15).
 -type id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
--type task() :: #{worker_pid => api_pid()
+-type task() :: #{was_stopped => api_boolean()
+                 ,worker_pid => api_pid()
                  ,worker_node => api_ne_binary()
                  ,account_id => ne_binary()
                  ,auth_account_id => ne_binary()
@@ -413,7 +414,10 @@ is_processing(_Task) ->
     'false'.
 
 %% @private
--spec status(task()) -> api_binary().
+-spec status(task()) -> ne_binary().
+status(#{was_stopped := true}) ->
+    ?STATUS_STOPPED;
+
 status(#{started := 'undefined'}) ->
     ?STATUS_PENDING;
 status(#{started := Started
