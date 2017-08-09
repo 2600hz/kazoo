@@ -17,7 +17,8 @@
 -define(SERVER, ?MODULE).
 
 
--define(ORIGIN_BINDINGS, [[{'db', ?KZ_AUTH_DB}]
+-define(ORIGIN_BINDINGS, [[{'type', <<"system_key">>}]
+                         ,[{'db', ?KZ_AUTH_DB}]
                          ]).
 
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}

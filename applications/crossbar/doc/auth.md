@@ -220,6 +220,35 @@ curl -v -X GET \
 }
 ```
 
+#### List Public Key Cryptography
+
+Lists a list of keys which is being used to sign and validate JWT tokens.
+
+> GET /v2/auth/keys
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/keys
+```
+
+##### Response
+
+```json
+{
+  "page_size": 1,
+  "data": [
+    "96247ed90b4bec8294c09ae6ece923a2"
+  ],
+  "timestamp": "{TIMESTAMP}",
+  "version": "4.0.0",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
 #### Authenticate a User with a SSO (Create a Token from SSO Response)
 
 After a user authenticate with Single Sign On provider, use this API to send the provider response to Crossbar to login and create a token.
@@ -400,18 +429,18 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/auth/apps/{APP_ID}
 ```
 
-#### Get System Public Key
+#### Get a Public Key
 
-Get the System public key used for signing the JWT tokens issued by system.
+Get a public key used for signing the JWT tokens issued by system.
 
 > **Note:** To get the public key in form of a PEM file set `Accept` header as `application/x-pem-file`.
 
-> GET /v2/auth/keys/public
+> GET /v2/auth/keys/{KEY_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/keys/public
+    http://{SERVER}:8000/v2/auth/keys/96247ed90b4bec8294c09ae6ece923a2
 ```
 
 ##### Response
@@ -420,7 +449,7 @@ curl -v -X GET \
 {
   "page_size": 1,
   "data": {
-     "public_key_pem": "-----BEGIN RSA PUBLIC KEY-----\n{SYSTEM_PUBLIC_KEY}\n-----END RSA PUBLIC KEY-----\n\n"
+     "public_key_pem": "-----BEGIN RSA PUBLIC KEY-----\n{A_PUBLIC_KEY}\n-----END RSA PUBLIC KEY-----\n\n"
   },
   "timestamp": "{TIMESTAMP}",
   "version": "4.0.0",
@@ -431,7 +460,7 @@ curl -v -X GET \
 }
 ```
 
-#### Reset System Private Key
+#### Reset a Private Key
 
 Reset the private key of the system used to signing and verifing issued JWT tokens. If you feel that you the private key is compromised, use this API to generate a new private and public key.
 
@@ -439,12 +468,12 @@ Reset the private key of the system used to signing and verifing issued JWT toke
 
 > **Note:** Only super duper admin can reset system private key!
 
-> PATCH /v2/auth/keys/private
+> PATCH /v2/auth/keys/{KEY_ID}
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/keys/private
+    http://{SERVER}:8000/v2/auth/keys/96247ed90b4bec8294c09ae6ece923a2
 ```
 
 #### Fetch a SSO Provider Informations

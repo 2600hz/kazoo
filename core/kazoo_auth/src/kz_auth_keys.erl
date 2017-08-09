@@ -65,13 +65,18 @@ to_pem(RSA) ->
 
 -spec lookup(any()) -> {'ok', any()} | {'error', 'not_found'}.
 lookup(KeyId) ->
-    io:format("~n lookup KeyId ~p~n", [KeyId]),
     kz_cache:fetch_local(?PK_CACHE, KeyId).
 
 -spec store(any(), any()) -> 'ok'.
 store(KeyId, Key) ->
     lager:debug("storing public key ~p in cache", [KeyId]),
-    kz_cache:store_local(?PK_CACHE, KeyId, Key, [{'origin', {'db', ?KZ_AUTH_DB, KeyId}}]).
+    kz_cache:store_local(?PK_CACHE, KeyId, Key, cache_options(KeyId)).
+
+-spec cache_options(any()) -> list().
+cache_options({'private', KeyId}) ->
+    [{'origin', {'db', ?KZ_AUTH_DB, KeyId}}];
+cache_options(KeyId) ->
+    [{'origin', {'db', ?KZ_AUTH_DB, KeyId}}].
 
 -spec from_token(map()) -> {'ok', rsa_key()} | {'error', 'not_found'}.
 from_token(#{}=Token) ->
@@ -347,6 +352,6 @@ maybe_delete_old_pkey(KeyId, NewKeyId, {'ok', _}) ->
             lager:error("failed to delete old private key ~s: ~p", [KeyId, _Reason]),
             {'error', 'failed_delete'}
     end;
-maybe_delete_old_pkey(KeyId, _, {'error', _Reason}=Error) ->
+maybe_delete_old_pkey(KeyId, _NewKeyId, {'error', _Reason}=Error) ->
     lager:error("failed to reset private key ~s: ~p", [KeyId, _Reason]),
     Error.

@@ -478,26 +478,45 @@ reset_private_key(Context, KeyId) ->
             cb_context:setters(Context, Setters);
         {'error', 'failed_delete'} ->
             Msg = <<"new private key was generated but old key failed to remove, "
-                   ,"new tokens will use the new private key but previously issued tokens are still valid"
+                    ,"new tokens will use the new private key but previously issued tokens are still valid"
                   >>,
             JObj = kz_json:from_list([{<<"message">>, Msg}]),
             cb_context:add_system_error('datastore_fault', JObj,  Context);
-        {'error', Error} -> crossbar_doc:add_system_error(Error, KeyId, Context)
+        {'error', Error} ->
+            crossbar_doc:handle_datamgr_errors(Error, KeyId, Context)
     end.
 
 -spec get_public_key(cb_context:context(), ne_binary()) -> cb_context:context().
 get_public_key(Context, KeyId) ->
     lager:debug("trying to get public key ~s", [KeyId]),
-
-    try kz_auth_keys:to_pem(kz_auth_keys:public_key(KeyId)) of
-        PublicKeyPem ->
-            AcceptType = find_accept_type(Context),
-            set_public_key_response(Context, PublicKeyPem, AcceptType)
-    catch
-        _T:_E ->
-            lager:debug("failed to get public key ~s: ~p:~p", [KeyId, _T, _E]),
-            cb_context:add_system_error('datastore_fault', Context)
+    C1 = crossbar_doc:load(KeyId, Context, ?TYPE_CHECK_OPTION(<<"system_key">>)),
+    case cb_context:resp_status(C1) of
+        'success' -> load_public_key(C1, KeyId);
+        _ -> C1
     end.
+
+-spec load_public_key(cb_context:context(), ne_binary()) -> cb_context:context().
+load_public_key(Context, KeyId) ->
+    case kz_datamgr:fetch_attachment(?KZ_AUTH_DB, KeyId, <<"private_key.pem">>) of
+        {'ok', PemContents} ->
+            try get_public_from_private_key(PemContents) of
+                PublicKeyPem -> set_public_key_response(Context, PublicKeyPem, find_accept_type(Context))
+            catch
+                _T:_E ->
+                    lager:debug("failed to get public key ~s: ~p:~p", [KeyId, _T, _E]),
+                    cb_context:add_system_error('datastore_fault', Context)
+            end;
+        {'error', _Reason} ->
+            lager:debug("failed to get private key ~s attachment: ~p", [KeyId, _Reason]),
+            JObj = kz_json:from_list([{<<"message">>, <<"failed to get public key attachment">>}]),
+            cb_context:add_system_error('datastore_fault', JObj, Context)
+    end.
+
+-spec get_public_from_private_key(binary()) -> binary().
+get_public_from_private_key(PemContents) ->
+    PrivateKey = kz_auth_keys:from_pem(PemContents),
+    PublicKey = kz_auth_keys:get_public_key_from_private_key(PrivateKey),
+    kz_auth_keys:to_pem(PublicKey).
 
 -spec set_public_key_response(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 set_public_key_response(Context, PublicKeyPem, <<"application/json">>) ->
