@@ -39,9 +39,6 @@
 -define(APPS_VIEW, <<"apps/list_by_account">>).
 -define(KEYS_VIEW, <<"auth/list_keys">>).
 
--define(RESET_ACCOUNT_IDENTITY_PATH, [{<<"auth">>, _}, {<<"accounts">>, _}]).
--define(RESET_USER_IDENTITY_PATH, [{<<"auth">>, _}, {<<"users">>, _}, {<<"accounts">>, _}]).
-
 -define(PUBLIC_KEY_MIME, [{<<"application">>, <<"x-pem-file">>}]).
 
 %%%===================================================================
@@ -146,8 +143,8 @@ authorize_nouns(_, ?APPS_PATH,             ?HTTP_GET,   [{<<"auth">>, _}]) -> 't
 authorize_nouns(_, ?AUTHORIZE_PATH,        ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?CALLBACK_PATH,         ?HTTP_PUT,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, ?RESET_ACCOUNT_IDENTITY_PATH) -> cb_context:is_account_admin(C);
-authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, ?RESET_USER_IDENTITY_PATH) -> cb_context:is_account_admin(C);
+authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, [{<<"auth">>, _}, {<<"accounts">>, _}]) -> cb_context:is_account_admin(C);
+authorize_nouns(C, ?IDENTITY_SECRETS_PATH, ?HTTP_PATCH, [{<<"auth">>, _}, {<<"users">>, _}, {<<"accounts">>, _}]) -> cb_context:is_account_admin(C);
 authorize_nouns(C, ?KEYS_PATH,             ?HTTP_GET,   [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
 authorize_nouns(_, ?LINKS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?PROVIDERS_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
@@ -161,7 +158,7 @@ authorize_nouns(C, ?KEYS_PATH,      _Id,           ?HTTP_GET,    [{<<"auth">>, _
 authorize_nouns(C, ?KEYS_PATH,      _Id,           ?HTTP_PATCH,  [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
 %% monster-ui still uses this (accounts/123/auth/links)
-authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}, [<<"accounts">>, _]]) -> 'true';
+authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_GET,    [{<<"auth">>, _}, {<<"accounts">>, _}]) -> 'true';
 authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_PUT,    [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?PROVIDERS_PATH, _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
