@@ -52,7 +52,7 @@
 -define(UPLOAD_ATTEMPTS,
         kapps_config:get_pos_integer(?CONFIG_CAT, <<"attempt_upload_output_times">>, 5)).
 
--record(state, {tasks = [] :: [kz_tasks:task()]
+-record(state, {tasks = #{} :: #{kz_tasks:id() => kz_tasks:task()}
                }).
 -type state() :: #state{}.
 
@@ -85,11 +85,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start(kz_tasks:id()) -> {ok, kz_json:object()} |
-                              {error
-                              ,not_found |
-                               already_started |
-                               any()
-                              }.
+                              {error, not_found | already_started | any()}.
 start(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'start_task', TaskId}).
 
@@ -482,17 +478,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec task_by_id(kz_tasks:id(), state()) -> [kz_tasks:task()].
-task_by_id(TaskId, State) ->
-    [T || T=#{id := Id} <- State#state.tasks,
-          TaskId =:= Id
-    ].
+-spec task_by_id(kz_tasks:id(), state()) -> kz_tasks:task() | undefined.
+task_by_id(TaskId, #state{tasks = Tasks}) ->
+    maps:get(TaskId, Tasks, undefined).
 
 -spec task_by_pid(pid(), state()) -> [kz_tasks:task()].
-task_by_pid(Pid, State) ->
-    [T || T=#{worker_pid := WPid} <- State#state.tasks,
-          Pid =:= WPid
-    ].
+task_by_pid(Pid, #state{tasks = Tasks}) ->
+    F = fun (_, #{worker_pid := WPid}=Task, Acc) ->
+                case Pid =:= WPid of
+                    true -> [Task|Acc];
+                    false -> Acc
+                end
+        end,
+    maps:fold(F, [], Tasks).
 
 -spec log_elapsed_time(kz_tasks:task()) -> 'ok'.
 log_elapsed_time(#{started := Start
@@ -543,17 +541,12 @@ handle_call_start_task(Task=#{id := TaskId
     end.
 
 -spec remove_task(kz_tasks:id(), state()) -> state().
-remove_task(TaskId, State) ->
-    NewTasks =
-        [T || T=#{id := Id} <- State#state.tasks,
-              TaskId /= Id
-        ],
-    State#state{tasks = NewTasks}.
+remove_task(TaskId, State=#state{tasks = Tasks}) ->
+    State#state{tasks = maps:remove(TaskId, Tasks)}.
 
 -spec add_task(kz_tasks:task(), state()) -> state().
-add_task(Task, State) ->
-    Tasks = [Task | State#state.tasks],
-    State#state{tasks = Tasks}.
+add_task(Task=#{id := TaskId}, State=#state{tasks = Tasks}) ->
+    State#state{tasks = maps:put(TaskId, Task, Tasks)}.
 
 -spec update_task(kz_tasks:task()) -> {'ok', kz_json:object()} |
                                       {'error', any()}.
