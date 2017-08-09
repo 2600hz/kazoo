@@ -400,18 +400,19 @@ to_public_json(Task) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Whether task has been started and is still running.
+%% @doc
+%% Whether task has been started and is still running.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_processing(task()) -> boolean().
 is_processing(#{started := Started
                ,finished := Finished
-               })
-  when Started  =/= 'undefined',
-       Finished =:= 'undefined' ->
-    'true';
-is_processing(_Task) ->
-    'false'.
+               }=Task)
+  when Started  =/= undefined,
+       Finished =:= undefined ->
+    not maps:get(was_stopped, Task, false);
+is_processing(_) ->
+    false.
 
 %% @private
 -spec status(task()) -> ne_binary().

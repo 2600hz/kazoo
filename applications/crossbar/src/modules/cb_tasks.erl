@@ -533,10 +533,7 @@ read_attachment(TaskId, Context, AccountId) ->
 
 -spec requested_attachment_name(cb_context:context()) -> ne_binary().
 requested_attachment_name(Context) ->
-    cb_context:req_value(Context
-                        ,<<"csv_name">>
-                        ,?KZ_TASKS_ANAME_OUT
-                        ).
+    cb_context:req_value(Context, <<"csv_name">>, ?KZ_TASKS_ANAME_OUT).
 
 -spec csv_path_to_file(ne_binary()) -> ne_binary().
 csv_path_to_file(?PATH_INPUT) ->

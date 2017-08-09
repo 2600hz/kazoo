@@ -21,6 +21,8 @@
 is_processing_test_() ->
     [?_assert(kz_tasks:is_processing(task(executing)))
     ,?_assert(kz_tasks:is_processing(task(executing_noinput)))
+    ,?_assert(not kz_tasks:is_processing(task(stopped)))
+    ,?_assert(not kz_tasks:is_processing(task(stopped_noinput)))
     ,?_assert(not kz_tasks:is_processing(task(pending)))
     ,?_assert(not kz_tasks:is_processing(task(pending_noinput)))
     ,?_assert(not kz_tasks:is_processing(task(success)))
@@ -36,6 +38,8 @@ is_processing_test_() ->
 status_test_() ->
     [?_assertEqual(?STATUS_EXECUTING, kz_tasks:status(task(executing)))
     ,?_assertEqual(?STATUS_EXECUTING, kz_tasks:status(task(executing_noinput)))
+    ,?_assertEqual(?STATUS_STOPPED, kz_tasks:status(task(stopped)))
+    ,?_assertEqual(?STATUS_STOPPED, kz_tasks:status(task(stopped_noinput)))
     ,?_assertEqual(?STATUS_PENDING, kz_tasks:status(task(pending)))
     ,?_assertEqual(?STATUS_PENDING, kz_tasks:status(task(pending_noinput)))
     ,?_assertEqual(?STATUS_SUCCESS, kz_tasks:status(task(success)))
@@ -75,6 +79,7 @@ task(bad) ->
      };
 
 task(executing_noinput) -> noinput(executing);
+task(stopped_noinput) -> noinput(stopped);
 task(pending_noinput) -> noinput(pending);
 task(success_noinput) -> noinput(success);
 task(partial_noinput) -> noinput(partial);
@@ -147,6 +152,24 @@ task(pending) ->
      ,total_rows => 42
      ,total_rows_failed => undefined
      ,total_rows_succeeded => undefined
+     };
+
+task(stopped) ->
+    #{worker_pid => self()
+     ,worker_node => kz_term:to_binary(node())
+     ,account_id => ?ACCOUNT_ID
+     ,auth_account_id => ?AUTH_ACCOUNT_ID
+     ,id => kz_tasks:new_id()
+     ,category => ?CATEGORY
+     ,action => ?ACTION_WITH_INPUT
+     ,file_name => ?INPUT_FILE_NAME
+     ,created => 63669093916
+     ,started => 63669094000
+     ,finished => undefined
+     ,total_rows => 42
+     ,total_rows_failed => 0
+     ,total_rows_succeeded => 10
+     ,was_stopped => true
      };
 
 task(executing) ->

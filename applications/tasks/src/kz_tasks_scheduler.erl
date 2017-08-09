@@ -87,7 +87,7 @@ start_link() ->
 -spec start(kz_tasks:id()) -> {ok, kz_json:object()} |
                               {error, not_found | already_started | any()}.
 start(TaskId=?NE_BINARY) ->
-    gen_server:call(?SERVER, {'start_task', TaskId}).
+    gen_server:call(?SERVER, {start_task, TaskId}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -98,6 +98,7 @@ start(TaskId=?NE_BINARY) ->
                              {error, not_found | not_running}.
 stop(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {stop_task, TaskId}).
+
 
 %% Not for public use
 -spec restart(kz_tasks:id()) -> {'ok', kz_json:object()} |
@@ -117,7 +118,7 @@ restart(TaskId = ?NE_BINARY) ->
 -spec remove(kz_tasks:id()) -> {ok, kz_json:object()} |
                                {error, not_found | task_running}.
 remove(TaskId=?NE_BINARY) ->
-    gen_server:call(?SERVER, {'remove_task', TaskId}).
+    gen_server:call(?SERVER, {remove_task, TaskId}).
 
 
 %%%===================================================================
