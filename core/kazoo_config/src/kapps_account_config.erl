@@ -19,11 +19,12 @@
         ,get_global/2, get_global/3, get_global/4
         ,get_from_reseller/3, get_from_reseller/4
         ,get_with_strategy/4, get_with_strategy/5
+        ,get_hierarchy/3, get_hierarchy/4
 
         ,set/4
         ,set_global/4
 
-        ,flush/2
+        ,flush/2, flush_all_strategies/2, flush/3
         ,migrate/1
         ]).
 
@@ -91,12 +92,13 @@ get_global(Account, Category, Key, Default) ->
 get_global(Account, Category) ->
     case load_config_from_account(account_id(Account), Category) of
         {ok, JObj} -> JObj;
-        {error, no_account_id} -> maybe_new(load_config_from_system(Account, Category));
+        {error, no_account_id} ->
+            maybe_new_system_doc(load_config_from_system(Account, Category), Category);
         {error, _} ->
             case load_config_from_reseller(Account, Category) of
                 {ok, JObj} -> JObj;
                 {error, _} ->
-                    maybe_new(load_config_from_system(Account, Category))
+                    maybe_new_system_doc(load_config_from_system(Account, Category), Category)
             end
     end.
 
@@ -119,6 +121,26 @@ get_from_reseller(Account, Category, Key, Default) ->
         {error, _} ->
             kapps_config:get(Category, Key, Default)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Same as get_hierarchy/4 with Default set to undefined
+%% @end
+%%--------------------------------------------------------------------
+-spec get_hierarchy(api_account(), ne_binary(), kz_json:path()) -> kz_json:json_term().
+get_hierarchy(Account, Category, Key) ->
+    get_hierarchy(Account, Category, Key, undefined).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Same as get_with_strategy/5 with Strategy "hierarchy_merge"
+%% @end
+%%--------------------------------------------------------------------
+-spec get_hierarchy(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:json_term().
+get_hierarchy(Account, Category, Key, Default) ->
+    get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -215,9 +237,11 @@ get(Account, Category) ->
 load_config_from_system(_Account, Category) ->
     case kapps_config:get_category(Category) of
         {ok, JObj} ->
-            {ok, kz_json:get_value(<<"default">>, JObj, kz_json:new())};
+            Doc = kz_json:get_value(<<"default">>, JObj, kz_json:new()),
+            {ok, Doc};
         {error, _}=Error -> Error
     end.
+
 -spec load_config_from_reseller(api_account(), ne_binary()) -> kazoo_data:get_results_return().
 -ifdef(TEST).
 load_config_from_reseller(Account, Category) ->
@@ -423,8 +447,25 @@ update_config_for_saving(AccountId, JObj) ->
 %%--------------------------------------------------------------------
 -spec flush(ne_binary(), ne_binary()) -> ok.
 flush(Account, Category) ->
-    AccountDb = kz_util:format_account_id(Account, encoded),
-    kz_datamgr:flush_cache_doc(AccountDb, kapps_config_util:account_doc_id(Category)).
+    AccountDb = kz_util:format_account_db(Account),
+    kz_datamgr:flush_cache_doc(AccountDb, kapps_config_util:account_doc_id(Category)),
+    flush_all_strategies(Account, Category).
+
+-spec flush_all_strategies(ne_binary(), ne_binary()) -> ok.
+flush_all_strategies(Account, Category) ->
+    Strategies = [<<"hierarchy_merge">>
+                 ,<<"global">>
+                 ,<<"reseller">>
+                 ,<<"global_merge">>
+                 ,<<"reseller_merge">>
+                 ],
+    lists:foreach(fun(Strategy) -> flush(Account, Category, Strategy) end, Strategies).
+
+-spec flush(ne_binary(), ne_binary(), ne_binary()) -> ok.
+flush(Account, Category, Strategy) ->
+    AccountId = kz_util:format_account_id(Account),
+    CacheKey = strategy_cache_key(AccountId, Category, Strategy),
+    kz_cache:erase_local(?KAPPS_CONFIG_CACHE, CacheKey).
 
 
 %% ====================================================================
@@ -471,7 +512,7 @@ walk_the_walk(#{account_id := AccountId
 
 -spec maybe_merge_results(map(), boolean()) -> {ok, kz_json:object()}.
 maybe_merge_results(#{results := JObjs}=Map, true) ->
-    store_in_strategy_cache(Map, kz_json:merge([kz_doc:public_fields(J) || J <- JObjs]));
+    store_in_strategy_cache(Map, kz_json:merge([kz_doc:public_fields(J, false) || J <- JObjs]));
 maybe_merge_results(#{results := JObjs}, false) ->
     {ok, lists:last(JObjs)}.
 
@@ -578,9 +619,11 @@ account_id_from_jobj(_Obj, false) ->
 maybe_format_account_id(undefined) -> no_account_id;
 maybe_format_account_id(Account) -> kz_util:format_account_id(Account).
 
--spec maybe_new({ok, kz_json:object()} | {error, any()}) -> kz_json:object().
-maybe_new({ok, JObj}) -> JObj;
-maybe_new({error, _}) -> kz_json:new().
+-spec maybe_new_system_doc({ok, kz_json:object()} | {error, any()}, ne_binary()) -> kz_json:object().
+maybe_new_system_doc({ok, JObj}, Category) ->
+    kz_doc:set_id(kz_doc:set_account_db(JObj, ?KZ_CONFIG_DB), Category);
+maybe_new_system_doc({error, _}, Category) ->
+    kz_doc:set_id(kz_doc:set_account_db(kz_json:new(), ?KZ_CONFIG_DB), Category).
 
 
 %% ====================================================================

@@ -943,6 +943,9 @@ get_category(Category, 'false') ->
         ,{{<<"crossbar">>, <<"soft_delete_pause_ms">>}
          ,{<<"tasks">>, <<"soft_delete_pause_ms">>}
          }
+        ,{{<<"crossbar">>, <<"token_auth_expiry">>}
+         ,{<<"crossbar.auth">>, <<"token_auth_expiry_s">>}
+         }
         ,{{<<"cb_modb">>, <<"maybe_archive_modbs">>}
          ,{<<"tasks">>, <<"should_archive_modbs">>}
          }

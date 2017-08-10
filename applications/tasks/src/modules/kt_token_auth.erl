@@ -19,7 +19,7 @@
 -include("tasks.hrl").
 
 -define(LOOP_TIMEOUT,
-        kapps_config:get_integer(<<"crossbar">>, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
+        kapps_config:get_integer(<<"crossbar.auth">>, <<"token_auth_expiry_s">>, ?SECONDS_IN_HOUR)).
 
 
 %%%===================================================================
