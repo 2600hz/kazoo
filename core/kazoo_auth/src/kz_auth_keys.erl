@@ -339,13 +339,10 @@ reset_private_key(#{pvt_server_key := KeyId}) ->
 reset_private_key(#{}) ->
     {'error', 'invalid_identity_provider'};
 reset_private_key(?NE_BINARY=KeyId) ->
-    lager:debug("deleting private key attachment from~s", [KeyId]),
-    case kz_datamgr:delete_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME) of
-        {'ok', _}=OK ->
-            kz_cache:erase_local(?PK_CACHE, KeyId),
-            kz_cache:erase_local(?PK_CACHE, {'private', KeyId}),
-            OK;
+    lager:debug("deleting private key ~s", [KeyId]),
+    case kz_datamgr:del_doc(?KZ_AUTH_DB, KeyId) of
+        {'ok', _}=OK -> OK;
         {'error', _Reason}=Error ->
-            lager:error("failed to delete private key attachment ~s: ~p", [KeyId, _Reason]),
+            lager:error("failed to delete private key ~s: ~p", [KeyId, _Reason]),
             Error
     end.
