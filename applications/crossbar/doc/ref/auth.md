@@ -6,6 +6,16 @@
 
 
 
+#### Create
+
+> PUT /v2/auth
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth
+```
+
 #### Fetch
 
 > GET /v2/auth/tokeninfo
@@ -54,16 +64,6 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/auth/keys
-```
-
-#### Patch
-
-> PATCH /v2/auth/identity_secrets
-
-```shell
-curl -v -X PATCH \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/identity_secrets
 ```
 
 #### Create
@@ -166,12 +166,12 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
 ```
 
-#### Patch
+#### Create
 
-> PATCH /v2/auth/keys/{KEY_ID}
+> PUT /v2/auth/keys/{KEY_ID}
 
 ```shell
-curl -v -X PATCH \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
 ```

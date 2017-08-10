@@ -31,22 +31,23 @@ Key | Description | Type | Default | Required
 
 
 
-#### Resetting System (Kazoo) Identity Secret
+#### Resetting System (Kazoo) Signature Secret
 
-System Identity secret and the subject identity is being used to sign the identity in the JWT token that Kazoo is issuing.
+System signature secret and the subject signature is being used to sign the signature in the JWT token that Kazoo is issuing.
 
 If you feel that this system secret is compromised, use this API to reset it.
 
-> **Caution:** Resetting system identity secret will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
+> **Caution:** Resetting system signature secret will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
 
 > **Note:** Only super duper admin can reset system secert!
 
-> PATCH /v2/auth/identity_secrets
+> PUT /v2/auth
 
 ```shell
-curl -v -X PATCH \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/identity_secrets
+    -d '{ "action": "reset_signature_secret", "data": {} }'
+    http://{SERVER}:8000/v2/auth
 ```
 
 ##### Response
@@ -64,34 +65,36 @@ Returns an empty success response.
 }
 ```
 
-#### Resetting an Account or a User Identity Secret
+#### Resetting an Account or a User Signature Secret
 
-System Identity secret and the subject identity is being used to sign the identity in the JWT token that Kazoo is issuing.
+System signature secret and the subject signature is being used to sign the signature in the JWT token that Kazoo is issuing.
 
 If you feel that an account or a user secret is compromised, use this API to reset it.
 
-> **Caution:** Resetting identity secret will invalidate user's issued token! In other words if the user is already logined, it will be logout from the system and can't make any further request until login again.
+> **Caution:** Resetting signature secret will invalidate user's issued token! In other words if the user is already logined, it will be logout from the system and can't make any further request until login again.
 
 > **Note:** Only an account admin can a user's secert!
 
-##### To Reset an Account Identity Secret
+##### To Reset an Account Signature Secret
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/auth/identity_secrets
+> PUT /v2/accounts/{ACCOUNT_ID}/auth
 
 ```shell
-curl -v -X PATCH \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/auth/identity_secrets
+    -d '{ "action": "reset_signature_secret", "data": {} }'
+    http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/auth
 ```
 
-##### To Reset a User Identity Secret
+##### To Reset a User Signature Secret
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/auth/identity_secrets
+> PUT /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/auth
 
 ```shell
-curl -v -X PATCH \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/users/3bedb94b3adfc4873a548b41d28778b5/auth/identity_secrets
+    -d '{ "action": "reset_signature_secret", "data": {} }'
+    http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/users/3bedb94b3adfc4873a548b41d28778b5/auth
 ```
 
 ##### Response
@@ -465,12 +468,26 @@ Reset the private key of the system used to signing and verifing issued JWT toke
 
 > **Note:** Only super duper admin can reset system private key!
 
-> PATCH /v2/auth/keys/{KEY_ID}
+> PUT /v2/auth/keys/{KEY_ID}
 
 ```shell
-curl -v -X PATCH \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{ "action": "reset_private_key", "data": {} }'
     http://{SERVER}:8000/v2/auth/keys/96247ed90b4bec8294c09ae6ece923a2
+```
+
+##### Response
+
+```json
+{
+  "timestamp": "{TIMESTAMP}",
+  "version": "4.0.0",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
 ```
 
 #### Fetch a SSO Provider Informations

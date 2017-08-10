@@ -41015,6 +41015,15 @@
                 }
             }
         },
+        "/auth": {
+            "put": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/auth/apps": {
             "get": {
                 "responses": {
@@ -41080,15 +41089,6 @@
                 }
             }
         },
-        "/auth/identity_secrets": {
-            "patch": {
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/auth/keys": {
             "get": {
                 "responses": {
@@ -41111,7 +41111,7 @@
                     }
                 }
             },
-            "patch": {
+            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/KEY_ID"

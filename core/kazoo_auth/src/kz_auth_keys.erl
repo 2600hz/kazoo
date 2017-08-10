@@ -330,7 +330,7 @@ erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
 %%--------------------------------------------------------------------
 -spec reset_kazoo_private_key() -> {'ok', ne_binary()} | {'error', any()}.
 reset_kazoo_private_key() ->
-    lager:debug("trying to reset kazoo private key"),
+    lager:warning("trying to reset kazoo private key"),
     reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>)).
 
 -spec reset_private_key(map() | ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
@@ -339,7 +339,7 @@ reset_private_key(#{pvt_server_key := KeyId}) ->
 reset_private_key(#{}) ->
     {'error', 'invalid_identity_provider'};
 reset_private_key(?NE_BINARY=KeyId) ->
-    lager:debug("deleting private key ~s", [KeyId]),
+    lager:warning("deleting private key ~s", [KeyId]),
     case kz_datamgr:del_doc(?KZ_AUTH_DB, KeyId) of
         {'ok', _}=OK -> OK;
         {'error', _Reason}=Error ->
