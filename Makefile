@@ -128,17 +128,18 @@ read-release-cookie:
 	@NODE_NAME='$(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
 
 DIALYZER ?= dialyzer
+DIZLYZER += --statistics --no_native
 PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
 $(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
-	@$(DIALYZER) --no_native --build_plt --output_plt $(PLT) \
+	@$(DIALYZER) --build_plt --output_plt $(PLT) \
 	    --apps $(OTP_APPS) \
 	    -r $(DEPS_SRCS)
 	@for ebin in $(CORE_EBINS); do \
-	    $(DIALYZER) --no_native --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
+	    $(DIALYZER) --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
 	done
 build-plt: $(PLT)
 
