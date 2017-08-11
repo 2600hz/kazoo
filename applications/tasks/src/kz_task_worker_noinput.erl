@@ -23,7 +23,7 @@
                }).
 -type state() :: #state{}.
 
--define(OUT(TaskId), <<"/tmp/task_out.", (TaskId)/binary, ".csv">>).
+-define(OUT(TaskId), kz_tasks_scheduler:output_path(TaskId)).
 
 
 %%%===================================================================
@@ -77,7 +77,6 @@ loop(IterValue, State=#state{task_id = TaskId}) ->
             _ = kz_tasks_scheduler:worker_finished(TaskId
                                                   ,State#state.total_succeeded
                                                   ,State#state.total_failed
-                                                  ,?OUT(TaskId)
                                                   ,State#state.columns
                                                   ),
             'stop';
@@ -86,7 +85,6 @@ loop(IterValue, State=#state{task_id = TaskId}) ->
             _ = kz_tasks_scheduler:worker_finished(TaskId
                                                   ,NewState#state.total_succeeded
                                                   ,NewState#state.total_failed
-                                                  ,?OUT(TaskId)
                                                   ,NewState#state.columns
                                                   ),
             'stop';

@@ -16,15 +16,16 @@
         ,remove/1
         ]).
 
-%%% For playfull debugging
+%%% For playful debugging
 -export([restart/1]).
 
 %%% API used by workers
--export([worker_finished/5
+-export([worker_finished/4
         ,worker_error/1
         ,worker_pause/0
         ,worker_maybe_send_update/3
         ,get_output_header/1
+        ,output_path/1
         ,cleanup_task/2
         ]).
 
@@ -165,19 +166,24 @@ worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_finished(kz_tasks:id(), non_neg_integer(), non_neg_integer(), ne_binary(), kz_tasks:columns()) -> ok.
-worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, CSVPath=?NE_BINARY, Columns)
+-spec worker_finished(kz_tasks:id(), non_neg_integer(), non_neg_integer(), kz_tasks:columns()) -> ok.
+worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Columns)
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
     _ = gen_server:call(?SERVER, {worker_finished, TaskId, TotalSucceeded, TotalFailed}),
-    worker_finished(TaskId, CSVPath, Columns).
+    worker_finished(TaskId, Columns).
 
--spec worker_finished(kz_tasks:id(), ne_binary(), kz_tasks:columns()) -> ok.
-worker_finished(TaskId=?NE_BINARY, CSVPath=?NE_BINARY, Columns) ->
+-spec worker_finished(kz_tasks:id(), kz_tasks:columns()) -> ok.
+worker_finished(TaskId, Columns) ->
+    CSVPath = output_path(TaskId),
     _ = try_maybe_strip_columns(Columns, CSVPath),
     {ok, CSV} = file:read_file(CSVPath),
     lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
     Max = ?UPLOAD_ATTEMPTS,
     attempt_upload(TaskId, ?KZ_TASKS_ANAME_OUT, CSV, CSVPath, Max, Max).
+
+try_to_salvage_output(TaskId=?NE_BINARY) ->
+    lager:info("task ~s was stopped/killed, trying to upload output anyway", [TaskId]),
+    worker_finished(TaskId, sets:new()).
 
 try_maybe_strip_columns(Columns, CSVPath) ->
     try maybe_strip_columns(Columns, CSVPath)
@@ -270,6 +276,15 @@ get_output_header(API) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec output_path(kz_tasks:id()) -> file:filename_all().
+output_path(TaskId=?NE_BINARY) ->
+    <<"/tmp/task_out.", TaskId/binary, ".csv">>.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec cleanup_task(kz_json:object(), any()) -> 'ok'.
 cleanup_task(API, Data) ->
     lager:debug("cleaning up after task"),
@@ -332,8 +347,8 @@ handle_call({stop_task, TaskId}, _From, State) ->
                                  ,was_stopped => true
                                  },
                     {ok, JObj} = update_task(Task1),
-                    %%TODO: save CSV(s) here or in handle_info
                     State1 = remove_task(TaskId, State),
+                    kz_util:spawn(fun try_to_salvage_output/1, [TaskId]),
                     ?REPLY_FOUND(State1, JObj)
             end
     end;
@@ -431,7 +446,6 @@ handle_info({'EXIT', Pid, normal}, State) ->
 handle_info({'EXIT', Pid, _Reason}, State) ->
     #{id := TaskId} = Task = task_by_pid(Pid, State),
     lager:error("worker ~p died executing ~s: ~p", [Pid, TaskId, _Reason]),
-    %% Note: this means output attachment was MAYBE NOT saved to task doc.
     %% Note: setting total_rows_failed to undefined here will change
     %%  status to ?STATUS_BAD but will not update total_rows_failed value in doc.
     Task1 = Task#{finished => kz_time:current_tstamp()
@@ -439,6 +453,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
                  },
     {ok, _JObj} = update_task(Task1),
     State1 = remove_task(TaskId, State),
+    kz_util:spawn(fun try_to_salvage_output/1, [TaskId]),
     {noreply, State1};
 
 handle_info(_Info, State) ->
