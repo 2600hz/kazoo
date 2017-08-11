@@ -19,7 +19,7 @@ Kazoo can be configured to use third-party resources such as authentication, sto
     2.3 Add the `Google Drive API` to the project
     2.4 Gather `client id`, `client secret`
 3. Register the client_id in kazoo
-    3.1 `sup kazoo_auth_maintenance {MASTER_ACCOUNT} {CLIENT_ID}  {CLIENT_SECRET} google`
+    3.1 `sup kazoo_auth_maintenance register_auth_app {MASTER_ACCOUNT} {CLIENT_ID}  {CLIENT_SECRET} google`
 4. Edit index.html in the example dir
     4.1 change YOUR_CLIENT_ID and WEB_URL
     4.2 navigate to WEB_URL
@@ -39,14 +39,14 @@ Kazoo can be configured to use third-party resources such as authentication, sto
     4.7 grab `auth_id`
     4.8 use the `auth_id`to configure your data_plan
 
-attachments    
+attachments
 "5fa1f134417927ae200fb12879acec71": {
        "handler": "google_drive",
        "name": "mydrive",
        "settings": {
            "oauth_doc_id": {AUTH_ID}
        }
-   }    
+   }
 
    plan
  "modb": {
@@ -60,6 +60,6 @@ attachments
                    "stub": true
                }
            }
-           
+
     4.9 leave a voicemail
-    
+

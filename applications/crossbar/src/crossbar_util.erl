@@ -1238,13 +1238,11 @@ maybe_validate_quickcall(Context) ->
     end.
 
 maybe_validate_quickcall(Context, 'success') ->
-    AllowAnon = kz_json:get_value(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
+    AllowAnon = kz_json:is_true(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
 
-    case kz_term:is_true(AllowAnon)
+    case AllowAnon
         orelse cb_context:is_authenticated(Context)
-        orelse (AllowAnon =:= 'undefined'
-                andalso kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anonymous_quickcalls">>, 'true')
-               )
+        orelse kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anonymous_quickcalls">>, 'true')
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context

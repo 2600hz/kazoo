@@ -278,7 +278,17 @@ is_superduper_admin(Context) ->
 
 -spec is_account_admin(context()) -> boolean().
 is_account_admin(Context) ->
-    kzd_user:is_account_admin(auth_account_id(Context), auth_user_id(Context)).
+    AuthAccountId = auth_account_id(Context),
+    AuthUserId = auth_user_id(Context),
+    lager:debug("checking if user ~s is account admin of ~s", [AuthAccountId, AuthUserId]),
+    case kzd_user:is_account_admin(AuthAccountId, AuthUserId) of
+        'true' ->
+            lager:debug("the requestor is an account admin"),
+            'true';
+        'false' ->
+            lager:debug("the requestor is an superduper admin"),
+            'false'
+    end.
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
