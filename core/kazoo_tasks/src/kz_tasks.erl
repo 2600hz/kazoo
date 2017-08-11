@@ -36,8 +36,7 @@
 -define(TASK_ID_SIZE, 15).
 -type id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
--type task() :: #{was_stopped => api_boolean()
-                 ,worker_pid => api_pid()
+-type task() :: #{worker_pid => api_pid()
                  ,worker_node => api_ne_binary()
                  ,account_id => ne_binary()
                  ,auth_account_id => ne_binary()
@@ -51,6 +50,7 @@
                  ,total_rows => api_pos_integer() %% CSV rows (undefined for a noinput task)
                  ,total_rows_failed => api_non_neg_integer() %% Rows that crashed or didn't return ok
                  ,total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
+                 ,was_stopped => api_boolean() %% true if stopped, undefined of false otherwise
                  }.
 
 -type input() :: api_ne_binary() | kz_json:objects().
@@ -324,7 +324,7 @@ task_by_id(TaskId) ->
 
 -spec from_json(kz_json:object()) -> task().
 from_json(Doc) ->
-    #{worker_pid => 'undefined'
+    #{worker_pid => undefined
      ,worker_node => kzd_task:node(Doc)
      ,account_id => kzd_task:account_id(Doc)
      ,auth_account_id => kzd_task:auth_account_id(Doc)
@@ -338,6 +338,7 @@ from_json(Doc) ->
      ,total_rows => kzd_task:total_count(Doc)
      ,total_rows_failed => kzd_task:failure_count(Doc)
      ,total_rows_succeeded => kzd_task:success_count(Doc)
+     ,was_stopped => ?STATUS_STOPPED =:= kzd_task:status(Doc)
      }.
 
 -spec to_json(task()) -> kz_json:object().
