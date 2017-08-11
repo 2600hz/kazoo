@@ -154,12 +154,10 @@ worker_pause() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec worker_maybe_send_update(kz_tasks:id(), pos_integer(), pos_integer()) -> ok.
-worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
-    case (TotalFailed + TotalSucceeded) rem ?PROGRESS_AFTER_PROCESSED == 0 of
-        'false' -> 'ok';
-        'true' ->
-            gen_server:cast(?SERVER, {'worker_update_processed', TaskId, TotalSucceeded, TotalFailed})
-    end.
+worker_maybe_send_update(TaskId, Succeeded, Failed) ->
+    (Failed + Succeeded) rem ?PROGRESS_AFTER_PROCESSED =:= 0
+        andalso gen_server:cast(?SERVER, {worker_update_processed, TaskId, Succeeded, Failed}),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -420,15 +418,20 @@ handle_cast({'worker_error', TaskId}, State) ->
     State1 = remove_task(TaskId, State),
     {'noreply', State1};
 
-handle_cast({'worker_update_processed', TaskId, TotalSucceeded, TotalFailed}, State) ->
+handle_cast({worker_update_processed, TaskId, TotalSucceeded, TotalFailed}, State) ->
     lager:debug("worker update ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
-    Task = #{} = task_by_id(TaskId, State),
-    Task1 = Task#{total_rows_failed => TotalFailed
-                 ,total_rows_succeeded => TotalSucceeded
-                 },
-    {'ok', _JObj} = update_task(Task1),
-    State1 = add_task(Task1, remove_task(TaskId, State)),
-    {'noreply', State1};
+    case task_by_id(TaskId, State) of
+        undefined ->
+            %% Happens when there was a stop_task right before
+            {noreply, State};
+        Task ->
+            Task1 = Task#{total_rows_failed => TotalFailed
+                         ,total_rows_succeeded => TotalSucceeded
+                         },
+            {ok, _JObj} = update_task(Task1),
+            State1 = add_task(Task1, remove_task(TaskId, State)),
+            {noreply, State1}
+    end;
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast ~p", [_Msg]),
