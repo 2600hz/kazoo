@@ -522,7 +522,7 @@ curl -v -X PATCH \
 
 ##### Task is not running
 
-A task that was not yet started or that hsa already finished cannot be stopped.
+A task that was not yet started or that has already finished cannot be stopped.
 
 ```json
 {
