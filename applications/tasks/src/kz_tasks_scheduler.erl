@@ -56,6 +56,8 @@
                }).
 -type state() :: #state{}.
 
+-define(STOP_REASON, task_stopped).
+
 -define(REPLY(State, Value), {'reply', Value, State}).
 -define(REPLY_FOUND(State, TaskJObj), {'reply', {'ok', TaskJObj}, State}).
 -define(REPLY_NOT_FOUND(State), {'reply', {'error', 'not_found'}, State}).
@@ -166,9 +168,13 @@ worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
 -spec worker_finished(kz_tasks:id(), non_neg_integer(), non_neg_integer(), ne_binary(), kz_tasks:columns()) -> ok.
 worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, CSVPath=?NE_BINARY, Columns)
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
-    _ = gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}),
+    _ = gen_server:call(?SERVER, {worker_finished, TaskId, TotalSucceeded, TotalFailed}),
+    worker_finished(TaskId, CSVPath, Columns).
+
+-spec worker_finished(kz_tasks:id(), ne_binary(), kz_tasks:columns()) -> ok.
+worker_finished(TaskId=?NE_BINARY, CSVPath=?NE_BINARY, Columns) ->
     _ = try_maybe_strip_columns(Columns, CSVPath),
-    {'ok', CSV} = file:read_file(CSVPath),
+    {ok, CSV} = file:read_file(CSVPath),
     lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
     Max = ?UPLOAD_ATTEMPTS,
     attempt_upload(TaskId, ?KZ_TASKS_ANAME_OUT, CSV, CSVPath, Max, Max).
@@ -319,9 +325,8 @@ handle_call({stop_task, TaskId}, _From, State) ->
                     lager:info("task ~s is not running", [TaskId]),
                     ?REPLY(State, {error, not_running});
                 true ->
-                    Reason = stop_task,
-                    lager:info("killing ~s worker ~p (~p)", [TaskId, Pid, Reason]),
-                    true = exit(Pid, Reason),
+                    lager:info("stopping ~s worker ~p", [TaskId, Pid]),
+                    true = exit(Pid, ?STOP_REASON),
                     lager:info("removing ~s from state", [TaskId]),
                     Task1 = Task#{finished => kz_time:current_tstamp()
                                  ,was_stopped => true
@@ -350,19 +355,16 @@ handle_call({'restart_task', TaskId}, _From, State) ->
 %% This used to be cast but would race with worker process' EXIT signal.
 handle_call({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, _From, State) ->
     lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
-    case task_by_id(TaskId, State) of
-        undefined -> ?REPLY(State, ok); %% Probably useless, but let's not crash here
-        Task ->
-            Task1 = Task#{finished => kz_time:current_tstamp()
-                         ,total_rows_failed => TotalFailed
-                         ,total_rows_succeeded => TotalSucceeded
-                         },
-            log_elapsed_time(Task1),
-            %% This MUST happen before put_attachment or conflicts won't be resolved.
-            {ok, _JObj} = update_task(Task1),
-            State1 = remove_task(TaskId, State),
-            ?REPLY(State1, ok)
-    end;
+    Task = task_by_id(TaskId, State),
+    Task1 = Task#{finished => kz_time:current_tstamp()
+                 ,total_rows_failed => TotalFailed
+                 ,total_rows_succeeded => TotalSucceeded
+                 },
+    log_elapsed_time(Task1),
+    %% This MUST happen before put_attachment or conflicts won't be resolved.
+    {ok, _JObj} = update_task(Task1),
+    State1 = remove_task(TaskId, State),
+    ?REPLY(State1, ok);
 
 handle_call({'remove_task', TaskId}, _From, State) ->
     lager:debug("attempting to remove ~s", [TaskId]),
@@ -417,30 +419,27 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%% @end
-%%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info({'EXIT', Pid, ?STOP_REASON}, State) ->
+    lager:debug("worker ~p was stopped", [Pid]),
+    {noreply, State};
+
+handle_info({'EXIT', Pid, normal}, State) ->
+    lager:debug("worker ~p finished", [Pid]),
+    {noreply, State};
+
 handle_info({'EXIT', Pid, _Reason}, State) ->
-    case task_by_pid(Pid, State) of
-        [] ->
-            lager:debug("worker ~p finished or stopped: ~p", [Pid, _Reason]),
-            {noreply, State};
-        [Task=#{id := TaskId}] ->
-            lager:error("worker ~p died executing ~s: ~p", [Pid, TaskId, _Reason]),
-            %% Note: this means output attachment was MAYBE NOT saved to task doc.
-            %% Note: setting total_rows_failed to undefined here will change
-            %%  status to ?STATUS_BAD but will not update total_rows_failed value in doc.
-            Task1 = Task#{finished => kz_time:current_tstamp()
-                         ,total_rows_failed => 'undefined'
-                         },
-            {'ok', _JObj} = update_task(Task1),
-            State1 = remove_task(TaskId, State),
-            {'noreply', State1}
-    end;
+    #{id := TaskId} = Task = task_by_pid(Pid, State),
+    lager:error("worker ~p died executing ~s: ~p", [Pid, TaskId, _Reason]),
+    %% Note: this means output attachment was MAYBE NOT saved to task doc.
+    %% Note: setting total_rows_failed to undefined here will change
+    %%  status to ?STATUS_BAD but will not update total_rows_failed value in doc.
+    Task1 = Task#{finished => kz_time:current_tstamp()
+                 ,total_rows_failed => undefined
+                 },
+    {ok, _JObj} = update_task(Task1),
+    State1 = remove_task(TaskId, State),
+    {noreply, State1};
 
 handle_info(_Info, State) ->
     lager:debug("unhandled message ~p", [_Info]),
@@ -477,15 +476,16 @@ code_change(_OldVsn, State, _Extra) ->
 task_by_id(TaskId, #state{tasks = Tasks}) ->
     maps:get(TaskId, Tasks, undefined).
 
--spec task_by_pid(pid(), state()) -> [kz_tasks:task()].
+-spec task_by_pid(pid(), state()) -> kz_tasks:task() | undefined.
 task_by_pid(Pid, #state{tasks = Tasks}) ->
-    F = fun (_, #{worker_pid := WPid}=Task, Acc) ->
-                case Pid =:= WPid of
-                    true -> [Task|Acc];
-                    false -> Acc
-                end
+    F = fun (_, #{worker_pid := WorkerPid}=Task, Acc) ->
+                Pid =:= WorkerPid
+                    andalso throw({task, Task}),
+                Acc
         end,
-    maps:fold(F, [], Tasks).
+    try maps:fold(F, undefined, Tasks)
+    catch throw:{task,Task} -> Task
+    end.
 
 -spec log_elapsed_time(kz_tasks:task()) -> 'ok'.
 log_elapsed_time(#{started := Start
