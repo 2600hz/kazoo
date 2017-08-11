@@ -40994,6 +40994,15 @@
                 }
             }
         },
+        "/auth": {
+            "put": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/auth/apps": {
             "get": {
                 "responses": {
@@ -41069,18 +41078,6 @@
             }
         },
         "/auth/keys/{KEY_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/KEY_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
             "get": {
                 "parameters": [
                     {
@@ -41093,7 +41090,7 @@
                     }
                 }
             },
-            "post": {
+            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/KEY_ID"
