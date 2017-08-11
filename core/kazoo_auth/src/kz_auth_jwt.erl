@@ -41,11 +41,11 @@ decode(JWTToken, Verify) when is_binary(JWTToken) ->
     end;
 decode(#{header := Header, payload := Payload} = Token, 'true') ->
     case verify(Token) of
-        'true' -> {'ok', kz_json:from_map(Header), kz_json:from_map(Payload)};
+        'true' -> {'ok', maps:to_list(Header), maps:to_list(Payload)};
         'false' -> {'error', 'verify_failed'}
     end;
 decode(#{header := Header, payload := Payload}, 'false') ->
-    {'ok', kz_json:from_map(Header), kz_json:from_map(Payload)}.
+    {'ok', maps:to_list(Header), maps:to_list(Payload)}.
 
 -spec verify(ne_binary() | map()) -> boolean().
 verify(JWTToken) when is_binary(JWTToken) ->

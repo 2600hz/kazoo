@@ -4,7 +4,7 @@
 
 Voicemail boxes store messages, recorded from the caller, for the voicemail box owner to listen to at a later time.
 
-#### Differences between version 1 and 2 of Voicemail box
+#### Differences between Kazoo version 3.x and 4.x
 
 As of Kazoo 4.0 all new voicemail messages will be stored in the account MODbs.
 
