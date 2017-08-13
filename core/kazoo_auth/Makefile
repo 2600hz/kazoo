@@ -23,6 +23,9 @@ ifeq ($(PLATFORM),darwin)
 else ifeq ($(PLATFORM),freebsd)
 	CFLAGS = -c -O3 -std=c99 -finline-functions -fstack-protector -Wall -Wmissing-prototypes -fPIC
 	LDFLAGS = -shared
+else ifeq ($(PLATFORM),solaris)
+	CFLAGS = -c -O3 -std=c99 -finline-functions -fstack-protector -Wall -Wmissing-prototypes -fPIC
+	LDFLAGS = -shared
 else ifeq ($(PLATFORM),linux)
 	CFLAGS = -c -O3 -std=c99 -finline-functions -fstack-protector -Wall -Wmissing-prototypes -fPIC
 	LDFLAGS = -shared
