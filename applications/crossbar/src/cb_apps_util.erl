@@ -122,8 +122,8 @@ find_service_plan_with_apps(AccountId, ResellerId) ->
     ReResellerId = kz_services:find_reseller_id(ResellerId),
 
     ServicePlan = kz_services:service_plan_json(AccountId),
-    case {has_apps_in_service_plan(ServicePlan)
-         ,is_all_in_apps_service_plan(ServicePlan)
+    case {is_apps_in_service_plan_empty(ServicePlan)
+         ,is_show_all_in_service_plan_enabled(ServicePlan)
          }
     of
         {'true', _} ->
@@ -149,15 +149,15 @@ check_service_plan(AccountId) ->
 has_all_or_apps_in_service_plan(ServicePlan) ->
     %% If the "ui_apps" key is empty, return true
     %% else "ui_apps._all.enabled" == true
-    has_apps_in_service_plan(ServicePlan)
-        orelse is_all_in_apps_service_plan(ServicePlan).
+    is_apps_in_service_plan_empty(ServicePlan)
+        orelse is_show_all_in_service_plan_enabled(ServicePlan).
 
--spec has_apps_in_service_plan(kzd_service_plan:doc()) -> boolean().
-has_apps_in_service_plan(ServicePlan) ->
+-spec is_apps_in_service_plan_empty(kzd_service_plan:doc()) -> boolean().
+is_apps_in_service_plan_empty(ServicePlan) ->
     kz_term:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY)).
 
--spec is_all_in_apps_service_plan(kzd_service_plan:doc()) -> boolean().
-is_all_in_apps_service_plan(ServicePlan) ->
+-spec is_show_all_in_service_plan_enabled(kzd_service_plan:doc()) -> boolean().
+is_show_all_in_service_plan_enabled(ServicePlan) ->
     kzd_item_plan:is_enabled(kzd_service_plan:category_plan(ServicePlan, ?PLAN_CATEGORY)).
 
 %%--------------------------------------------------------------------

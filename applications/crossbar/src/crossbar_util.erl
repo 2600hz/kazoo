@@ -653,8 +653,9 @@ load_apps(AccountId, UserId) ->
 
 -spec load_apps(ne_binary(), ne_binary(), ne_binary()) -> kz_json:objects().
 load_apps(AccountId, UserId, Language) ->
-    {MicroSeconds, AppJObjs} = timer:tc(cb_apps_util, authorized_apps, [AccountId, UserId]),
-    io:format("~n took ~b microSeconds, ~b seconds ~n", [MicroSeconds, kz_time:microseconds_to_seconds(MicroSeconds)]),
+    AppJObjs = cb_apps_util:authorized_apps(AccountId, UserId),
+    %% {MicroSeconds, AppJObjs} = timer:tc(cb_apps_util, authorized_apps, [AccountId, UserId]),
+    %% io:format("~n took ~b microSeconds, ~b seconds ~n", [MicroSeconds, kz_time:microseconds_to_seconds(MicroSeconds)]),
     [format_app(Language, AppJObj)
      || AppJObj <- AppJObjs
     ].
