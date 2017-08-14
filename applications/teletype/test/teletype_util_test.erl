@@ -18,7 +18,7 @@ find_addresses_test_() ->
     [{"find_addresses for type " ++ kz_term:to_list(Type)
      ,generate_find_addresses_test(Type)
      }
-     || Type <- [?EMAIL_SPECIFIED, ?EMAIL_ORIGINAL]%%, 'undefined']
+     || Type <- [?EMAIL_SPECIFIED, ?EMAIL_ORIGINAL]%%, 'undefined', ?EMAIL_ADMINS]
     ].
 
 generate_find_addresses_test(?EMAIL_SPECIFIED=Type) ->
