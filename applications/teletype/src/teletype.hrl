@@ -38,7 +38,7 @@
 -type rendered_templates() :: [rendered_template()].
 
 %% {"to"/"cc"/etc, [Address,...]}
--type email_map() :: [{ne_binary(), ne_binaries()}].
+-type email_map() :: [{ne_binary(), api_ne_binaries()}].
 
 -type init_param() :: {'macros', kz_json:object()} |
                       {'subject', ne_binary()} |

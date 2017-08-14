@@ -686,7 +686,7 @@ get_parent_account_id(AccountId) ->
 
 -spec find_addresses(kz_json:object(), kz_json:object(), ne_binary()) ->
                             email_map().
--spec find_addresses(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path(), email_map()) ->
+-spec find_addresses(kz_json:object(), kz_json:object(), ne_binary(), ne_binaries(), email_map()) ->
                             email_map().
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
@@ -701,10 +701,10 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
                   ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
                   ).
 
--spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path()) ->
-                          {kz_json:path(), api_binaries()}.
--spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path(), api_binary()) ->
-                          {kz_json:path(), api_binaries()}.
+-spec find_address(kz_json:object(), kz_json:object(), ne_binary(), ne_binary()) ->
+                          {ne_binary(), api_ne_binaries()}.
+-spec find_address(kz_json:object(), kz_json:object(), ne_binary(), ne_binary(), api_binary()) ->
+                          {ne_binary(), api_ne_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(DataJObj
                 ,TemplateMetaJObj
@@ -717,27 +717,38 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
 
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
-    {Key, check_address_value(kz_json:find(Key, [DataJObj, TemplateMetaJObj]))};
+    {Key, find_first_defined_address(Key, [Key], [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
-    Email0 = kz_json:get_first_defined([[Key, <<"email_addresses">>], Key], TemplateMetaJObj),
-    Emails = case kz_term :is_empty(Email0) of
-                 'false' -> Email0;
-                 'true' -> kz_json:get_first_defined([[Key, <<"email_addresses">>], Key], DataJObj)
-             end,
-    {Key, check_address_value(Emails)};
+    {Key, find_first_defined_address(Key, [[Key, <<"email_addresses">>], Key], [TemplateMetaJObj, DataJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
     lager:debug("checking data for '~s' email address(es)", [Key]),
-    Emails = kz_json:find_first_defined([Key, [Key, <<"email_addresses">>]], [DataJObj, TemplateMetaJObj]),
-    {Key, check_address_value(Emails)};
+    {Key, find_first_defined_address(Key, [Key, [Key, <<"email_addresses">>]], [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
--spec check_address_value(binary() | binaries() | kz_json:object() | 'undefined') -> api_binaries().
+-spec find_first_defined_address(ne_binary(), kz_json:paths(), kz_json:objects()) -> api_ne_binaries().
+find_first_defined_address(_Key, [], _JObjs) -> 'undefined';
+find_first_defined_address(Key, [Path|Paths], JObjs) ->
+    case get_address_value(Key, Path, JObjs) of
+        'undefined' -> find_first_defined_address(Key, Paths, JObjs);
+        Emails -> Emails
+    end.
+
+-spec get_address_value(ne_binary(), kz_json:path(), kz_json:objects()) -> api_ne_binaries().
+get_address_value(_Key, _Path, []) -> 'undefined';
+get_address_value(Key, Path, [JObj|JObjs]) ->
+    Email0 = kz_json:get_value(Key, JObj),
+    case check_address_value(Email0) of
+        'undefined' ->  get_address_value(Key, Path, JObjs);
+        Emails -> Emails
+    end.
+
+-spec check_address_value(binary() | binaries() | kz_json:object() | 'undefined') -> api_ne_binaries().
 check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';
-check_address_value(<<_/binary>> = Email) -> Email;
+check_address_value(<<_/binary>> = Email) -> [Email];
 check_address_value(Emails) when is_list(Emails) ->
     case [E || E <- Emails, not kz_term:is_empty(E)] of
         [] -> 'undefined';
@@ -747,7 +758,7 @@ check_address_value(JObj) ->
     check_address_value(kz_json:get_value(<<"email_addresses">>, JObj)).
 
 -spec find_admin_emails(kz_json:object(), ne_binary(), kz_json:path()) ->
-                               api_binaries().
+                               api_ne_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case find_account_rep_email(kapi_notifications:account_id(DataJObj)) of
         'undefined' ->
@@ -756,7 +767,7 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec find_default(ne_binary(), kz_json:path()) -> api_binaries().
+-spec find_default(ne_binary(), kz_json:path()) -> api_ne_binaries().
 find_default(ConfigCat, Key) ->
     case kapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
         'undefined' ->
