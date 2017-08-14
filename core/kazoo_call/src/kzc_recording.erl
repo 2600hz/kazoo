@@ -576,6 +576,8 @@ handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=Account
     ,{field, <<"cdr_id">>}
     ,<<"&interaction_id=">>
     ,{field, <<"interaction_id">>}
+    ,<<"&owner_id=">>
+    ,{field, <<"owner_id">>}
     ,<<"&account_id=">>
     ,AccountId
     ].
