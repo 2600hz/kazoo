@@ -165,7 +165,7 @@ is_show_all_in_service_plan_enabled(ServicePlan) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_apps(ne_binary(), ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec filter_apps(ne_binary(), api_ne_binary(), kz_json:objects()) -> kz_json:objects().
 filter_apps(AccountId, UserId, Apps) ->
     case get_apps_store_doc(AccountId) of
         {'ok', Doc} -> filter_apps(AccountId, UserId, Apps, Doc);
@@ -174,7 +174,7 @@ filter_apps(AccountId, UserId, Apps) ->
             filter_apps(AccountId, UserId, Apps, kz_json:new())
     end.
 
--spec filter_apps(ne_binary(), ne_binary(), kz_json:objects(), kz_json:object()) -> kz_json:objects().
+-spec filter_apps(ne_binary(), api_ne_binary(), kz_json:objects(), kz_json:object()) -> kz_json:objects().
 filter_apps(AccountId, UserId, Apps, AppStoreJObj) ->
     [add_permissions(App, AppStoreJObj)
      || App <- Apps,
