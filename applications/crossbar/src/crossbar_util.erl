@@ -631,9 +631,10 @@ response_auth(JObj, AccountId, UserId) ->
 -spec populate_resp(kz_json:object(), api_binary(), api_binary()) -> kz_json:object().
 populate_resp(JObj, 'undefined', _UserId) -> JObj;
 populate_resp(JObj, AccountId, UserId) ->
+    Language = get_language(AccountId, UserId),
     Props = props:filter_undefined(
-              [{<<"apps">>, load_apps(AccountId, UserId)}
-              ,{<<"language">>, get_language(AccountId, UserId)}
+              [{<<"apps">>, load_apps(AccountId, UserId, Language)}
+              ,{<<"language">>, Language}
               ,{<<"account_name">>, kz_account:fetch_name(AccountId)}
               ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
               ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
@@ -647,34 +648,14 @@ populate_resp(JObj, AccountId, UserId) ->
 %%--------------------------------------------------------------------
 -spec load_apps(ne_binary(), ne_binary()) -> kz_json:objects().
 load_apps(AccountId, UserId) ->
-    Apps = cb_apps_util:allowed_apps(AccountId),
-    FilteredApps = filter_apps(Apps, AccountId, UserId),
-    format_apps(AccountId, UserId, FilteredApps).
+    Language = get_language(AccountId, UserId),
+    load_apps(AccountId, UserId, Language).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec filter_apps(kz_json:objects(), ne_binary(), ne_binary()) ->
-                         kz_json:objects().
-filter_apps(Apps, AccountId, UserId) ->
-    OnlyAuthorized =
-        fun(App) ->
-                AppId = kz_doc:id(App),
-                cb_apps_util:is_authorized(AccountId, UserId, AppId)
-        end,
-    lists:filter(OnlyAuthorized, Apps).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec format_apps(ne_binary(), ne_binary(), kz_json:objects()) -> kz_json:objects().
-format_apps(AccountId=?NE_BINARY, UserId, AppJObjs) ->
-    Lang = get_language(AccountId, UserId),
-    [format_app(Lang, AppJObj)
+-spec load_apps(ne_binary(), ne_binary(), ne_binary()) -> kz_json:objects().
+load_apps(AccountId, UserId, Language) ->
+    {MicroSeconds, AppJObjs} = timer:tc(cb_apps_util, authorized_apps, [AccountId, UserId]),
+    io:format("~n took ~b microSeconds, ~b seconds ~n", [MicroSeconds, kz_time:microseconds_to_seconds(MicroSeconds)]),
+    [format_app(Language, AppJObj)
      || AppJObj <- AppJObjs
     ].
 
