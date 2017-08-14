@@ -98,20 +98,34 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize(ne_binary()) ->
-                       ne_binary().
-normalize(?NE_BINARY = Num) ->
-    (?CONVERTER_MOD):normalize(Num).
+-spec normalize(ne_binary()) -> ne_binary();
+               (ne_binaries()) -> ne_binaries().
+normalize(Num=?NE_BINARY) ->
+    (?CONVERTER_MOD):normalize(Num);
+normalize(Nums)
+  when is_list(Nums) ->
+    [normalize(Num) || Num <- Nums].
 
--spec normalize(ne_binary(), api_binary()) ->
-                       ne_binary().
-normalize(?NE_BINARY = Num, AccountId) ->
-    (?CONVERTER_MOD):normalize(Num, AccountId).
+-spec normalize(ne_binary(), api_ne_binary()) -> ne_binary();
+               (ne_binaries(), api_ne_binary()) -> ne_binaries().
+normalize(Num=?NE_BINARY, undefined) ->
+    normalize(Num);
+normalize(Num=?NE_BINARY, AccountId) ->
+    (?CONVERTER_MOD):normalize(Num, AccountId);
+normalize(Nums, undefined)
+  when is_list(Nums) ->
+    normalize(Nums);
+normalize(Nums, AccountId)
+  when is_list(Nums) ->
+    [normalize(Num, AccountId) || Num <- Nums].
 
--spec normalize(ne_binary(), api_binary(), kz_json:object()) ->
-                       ne_binary().
-normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
-    (?CONVERTER_MOD):normalize(Num, AccountId, DialPlan).
+-spec normalize(ne_binary(), ne_binary(), kz_json:object()) -> ne_binary();
+               (ne_binaries(), ne_binary(), kz_json:object()) -> ne_binaries().
+normalize(Num=?NE_BINARY, ?MATCH_ACCOUNT_RAW(AccountId), DialPlan) ->
+    (?CONVERTER_MOD):normalize(Num, AccountId, DialPlan);
+normalize(Nums, ?MATCH_ACCOUNT_RAW(AccountId), DialPlan)
+  when is_list(Nums) ->
+    [normalize(Num, AccountId, DialPlan) || Num <- Nums].
 
 %%--------------------------------------------------------------------
 %% @public
