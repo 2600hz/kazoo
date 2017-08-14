@@ -56,12 +56,12 @@ generate_find_addresses_test(?EMAIL_ORIGINAL=Type) ->
      }
     ,{"fallback to template with path 'to' if not found in datajobj"
      ,?_assertEqual([<<"an_address@test.com">>]
-                   ,props:get_value(<<"to">>, teletype_util:find_addresses(kz_json:new(), ?EMAILS_IN_TEMPLATE_2(Type), <<"some_notification">>))
+                   ,props:get_value(<<"to">>, teletype_util:find_addresses(kz_json:from_list([{<<"type">>, Type}]), ?EMAILS_IN_TEMPLATE_2(Type), <<"some_notification">>))
                    )
      }
     ,{"fallback to template with path 'to.email_addresses' if not found in datajobj"
      ,?_assertEqual([<<"an_address@test.com">>]
-                   ,props:get_value(<<"to">>, teletype_util:find_addresses(kz_json:from_list([{<<"type">>, Type}]), ?EMAILS_IN_TEMPLATE_2(Tyoe), <<"some_notification">>))
+                   ,props:get_value(<<"to">>, teletype_util:find_addresses(kz_json:from_list([{<<"type">>, Type}]), ?EMAILS_IN_TEMPLATE_1(Type), <<"some_notification">>))
                    )
      }
     ].
