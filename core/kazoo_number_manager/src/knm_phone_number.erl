@@ -195,7 +195,7 @@ from_number_with_options(DID, Options) ->
 fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
-    Pairs = group_by_db(lists:usort([knm_converters:normalize(Num) || Num <- Nums])),
+    Pairs = group_by_db(lists:usort(knm_converters:normalize(Nums))),
     F = fun (NumberDb, NormalizedNums, T) ->
                 case fetch_in(NumberDb, NormalizedNums, Options) of
                     {error, R} ->
@@ -432,11 +432,8 @@ fetch(NumberDb, NormalizedNum, Options) ->
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
     case state(PN) =:= ?NUMBER_STATE_AVAILABLE
-        orelse ((is_authorized(PN)
-                 orelse is_reserved_from_parent(PN)
-                )
-                andalso is_mdn_for_mdn_run(PN, Options)
-               )
+        orelse is_authorized(PN)
+        orelse is_reserved_from_parent(PN)
     of
         true -> {ok, PN};
         false -> knm_errors:unauthorized()
@@ -445,16 +442,28 @@ handle_fetch(JObj, Options) ->
 is_mdn_for_mdn_run(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}, _) ->
     lager:debug("mdn check disabled by auth_by"),
     true;
-is_mdn_for_mdn_run(PN, Options) ->
+is_mdn_for_mdn_run(PN, IsMDNRun) ->
     IsMDN = ?CARRIER_MDN =:= module_name(PN),
-    %% Equal to: IsMDN xnor IsMDNRun
-    case knm_number_options:mdn_run(Options) of
-        false -> not IsMDN;
-        true ->
-            _ = IsMDN
-                andalso lager:debug("~s is an mdn", [number(PN)]),
-            IsMDN
-    end.
+    IsMDN
+        andalso ?LOG_DEBUG("~s is an mdn", [number(PN)]),
+    xnor(IsMDNRun, IsMDN).
+
+%% @private
+xnor(false, false) -> true;
+xnor(false, true) -> false;
+xnor(true, false) -> false;
+xnor(true, true) -> true.
+
+is_mdn_for_mdn_run(T0=#{todo := PNs, options := Options}) ->
+    IsMDNRun = knm_number_options:mdn_run(Options),
+    Reason = error_unauthorized(),
+    F = fun (PN, T) ->
+                case is_mdn_for_mdn_run(PN, IsMDNRun) of
+                    true -> knm_numbers:ok(PN, T);
+                    false -> knm_numbers:ko(number(PN), Reason, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -465,7 +474,8 @@ is_mdn_for_mdn_run(PN, Options) ->
 save(T0) ->
     {T, NotToSave} = take_not_to_save(T0),
     Ta = knm_numbers:ok(NotToSave, T),
-    Tb = knm_numbers:pipe(T, [fun save_to_number_db/1
+    Tb = knm_numbers:pipe(T, [fun is_mdn_for_mdn_run/1
+                             ,fun save_to_number_db/1
                              ,fun assign/1
                              ,fun unassign_from_prev/1
                              ]),
@@ -1660,8 +1670,7 @@ is_in_account_hierarchy(AuthBy, AccountId) ->
 
 -spec is_authorized_collection(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
 is_authorized_collection(T0=#{todo := PNs}) ->
-    {error,A} = (catch knm_errors:unauthorized()),
-    Reason = knm_errors:to_json(A),
+    Reason = error_unauthorized(),
     F = fun (PN, T) ->
                 case is_authorized(PN) of
                     true -> knm_numbers:ok(PN, T);
@@ -1672,8 +1681,7 @@ is_authorized_collection(T0=#{todo := PNs}) ->
 
 -spec is_reserved_from_parent_collection(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
 is_reserved_from_parent_collection(T0=#{todo := PNs}) ->
-    {error,A} = (catch knm_errors:unauthorized()),
-    Reason = knm_errors:to_json(A),
+    Reason = error_unauthorized(),
     F = fun (PN, T) ->
                 case is_authorized(PN)
                     orelse is_reserved_from_parent(PN)
@@ -1683,6 +1691,10 @@ is_reserved_from_parent_collection(T0=#{todo := PNs}) ->
                 end
         end,
     lists:foldl(F, T0, PNs).
+
+error_unauthorized() ->
+    {error,A} = (catch knm_errors:unauthorized()),
+    knm_errors:to_json(A).
 
 %%--------------------------------------------------------------------
 %% @private

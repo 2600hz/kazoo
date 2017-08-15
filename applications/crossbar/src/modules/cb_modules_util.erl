@@ -570,12 +570,7 @@ remove_plaintext_password(Context) ->
                              ),
     cb_context:set_doc(Context, Doc).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+%% @public
 -spec validate_number_ownership(ne_binaries(), cb_context:context()) ->
                                        cb_context:context().
 validate_number_ownership(Numbers, Context) ->
