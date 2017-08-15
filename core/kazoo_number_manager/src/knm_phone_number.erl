@@ -263,29 +263,30 @@ fetch(NumberDb, NormalizedNum, Options) ->
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
     case state(PN) =:= ?NUMBER_STATE_AVAILABLE
-        orelse ((is_authorized(PN)
-                 orelse is_reserved_from_parent(PN)
-                )
-                andalso is_mdn_for_mdn_run(PN, Options)
-               )
+        orelse is_authorized(PN)
+        orelse is_reserved_from_parent(PN)
     of
         true -> {ok, PN};
         false -> knm_errors:unauthorized()
     end.
 
-is_mdn_for_mdn_run(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}, _) ->
+is_mdn_for_mdn_run(PN=#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:debug("mdn check disabled by auth_by"),
-    true;
-is_mdn_for_mdn_run(PN, Options) ->
+    PN;
+is_mdn_for_mdn_run(PN) ->
     IsMDN = ?CARRIER_MDN =:= module_name(PN),
-    %% Equal to: IsMDN xnor IsMDNRun
-    case knm_number_options:mdn_run(Options) of
-        false -> not IsMDN;
-        true ->
-            _ = IsMDN
-                andalso lager:debug("~s is an mdn", [number(PN)]),
-            IsMDN
+    IsMDN
+        andalso ?LOG_DEBUG("~s is an mdn", [number(PN)]),
+    case xnor(mdn_run(PN), IsMDN) of
+        true -> PN;
+        false -> knm_errors:unauthorized()
     end.
+
+%% @private
+xnor(false, false) -> true;
+xnor(false, true) -> false;
+xnor(true, false) -> false;
+xnor(true, true) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -300,7 +301,8 @@ save(PN=#knm_phone_number{is_dirty = false}) ->
     lager:debug("not dirty, skip saving ~s", [number(PN)]),
     PN;
 save(PN) ->
-    Routines = [fun save_to_number_db/1
+    Routines = [fun is_mdn_for_mdn_run/1
+               ,fun save_to_number_db/1
                ,fun handle_assignment/1
                ],
     {'ok', NewPN} = setters(PN, Routines),

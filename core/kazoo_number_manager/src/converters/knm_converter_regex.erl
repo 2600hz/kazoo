@@ -38,10 +38,8 @@
 normalize(?NE_BINARY = Num) ->
     to_e164(Num).
 
--spec normalize(ne_binary(), api_binary()) ->
+-spec normalize(ne_binary(), ne_binary()) ->
                        ne_binary().
-normalize(?NE_BINARY = Num, 'undefined') ->
-    to_e164(Num);
 normalize(?NE_BINARY = Num, AccountId) ->
     to_e164(Num, AccountId).
 
