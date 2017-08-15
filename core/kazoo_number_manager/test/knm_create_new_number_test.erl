@@ -295,16 +295,17 @@ create_non_existing_mobile_number_test_() ->
           ,{<<"device-id">>, kz_binary:rand_hex(32)}
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
-    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+    Props = [{auth_by, ?MASTER_ACCOUNT_ID}
             ,{assign_to, ?RESELLER_ACCOUNT_ID}
-            ,{'dry_run', 'false'}
-            ,{'public_fields', PublicFields}
-            ,{'module_name', ?CARRIER_MDN}
+            ,{dry_run, false}
+            ,{public_fields, PublicFields}
+            ,{module_name, ?CARRIER_MDN}
+            ,{mdn_run, true}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, true)
              }
             ],
-    {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
+    {ok, N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
