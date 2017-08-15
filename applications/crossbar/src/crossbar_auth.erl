@@ -189,15 +189,13 @@ get_inherited_auth_config(AccountId) ->
 
 %% @private
 %% Utility func to generate method's config path
--spec method_config_path(ne_binary(), ne_binary()) -> ne_binaries().
-method_config_path(Method, Key) ->
-    [<<"auth_modules">>, Method, Key].
+-spec method_config_path(ne_binary(), ne_binary()) -> kz_json:path().
+method_config_path(Method, Key) -> [Method, Key].
 
 %% @private
 %% Utility func to generate method's multi-factor config path
--spec method_mfa_path(ne_binary(), ne_binary()) -> ne_binaries().
-method_mfa_path(Method, Key) ->
-    [<<"auth_modules">>, Method, <<"multi_factor">>, Key].
+-spec method_mfa_path(ne_binary(), ne_binary()) -> kz_json:path().
+method_mfa_path(Method, Key) -> [Method, <<"multi_factor">>, Key].
 
 -spec token_auth_expiry(ne_binary(), kz_json:object()) -> non_neg_integer().
 token_auth_expiry(Method, AuthConfig) ->
