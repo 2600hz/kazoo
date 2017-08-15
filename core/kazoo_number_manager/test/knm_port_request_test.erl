@@ -162,35 +162,3 @@ transition_port_from_not_found_test_() ->
      ,?_assertEqual(true, knm_phone_number:ported_in(PN))
      }
     ].
-
-is_force_outbound_test_() ->
-    {ok, ?RESELLER_ACCOUNT_ID, Props1} = knm_number:lookup_account(?TEST_PORT_IN_NUM),
-    {error, {not_in_service, ?RESELLER_ACCOUNT_ID}} = knm_number:lookup_account(?TEST_TELNYX_NUM),
-    {ok, ?RESELLER_ACCOUNT_ID, Props2} = knm_number:lookup_account(?TEST_VITELITY_NUM),
-    {ok, ?RESELLER_ACCOUNT_ID, Props3} = knm_number:lookup_account(?TEST_IN_SERVICE_NUM),
-    {ok, ?RESELLER_ACCOUNT_ID, Props4} = knm_number:lookup_account(?TEST_IN_SERVICE_MDN),
-    {ok, ?RESELLER_ACCOUNT_ID, Props5} = knm_number:lookup_account(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
-    {ok, ?RESELLER_ACCOUNT_ID, Props6} = knm_number:lookup_account(?TEST_NEW_PORT_NUM),
-    {ok, ?RESELLER_ACCOUNT_ID, Props7} = knm_number:lookup_account(?TEST_PORT_IN3_NUM),
-    [{"knm_local + port_in --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props1))
-     }
-    ,{"knm_vitelity + in_service --> false"
-     ,?_assert(not knm_number_options:should_force_outbound(Props2))
-     }
-    ,{"knm_local + in_service --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props3))
-     }
-    ,{"knm_mdn + in_service --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props4))
-     }
-    ,{"knm_pacwest + in_service --> false"
-     ,?_assert(not knm_number_options:should_force_outbound(Props5))
-     }
-    ,{"pending port request --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props6))
-     }
-    ,{"knm_bandwidth2 + port_in --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props7))
-     }
-    ].
