@@ -389,6 +389,8 @@ provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
 provider_module(?FEATURE_RENAME_CARRIER, _) ->
     ?PROVIDER_RENAME_CARRIER;
+provider_module(?FEATURE_FORCE_OUTBOUND, _) ->
+    ?PROVIDER_FORCE_OUTBOUND;
 provider_module(Other, _) ->
     ?LOG_DEBUG("unmatched feature provider ~p, allowing", [Other]),
     Other.
