@@ -68,8 +68,6 @@
 -define(CARRIER_RESERVED, <<"knm_reserved">>).
 -define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
 
--define(PROVIDER_RENAME_CARRIER, <<"knm_rename_carrier">>).
-
 -define(FEATURE_CNAM, <<"cnam">>).
 -define(FEATURE_CNAM_INBOUND, <<"inbound_cnam">>).
 -define(FEATURE_CNAM_OUTBOUND, <<"outbound_cnam">>).
@@ -81,6 +79,9 @@
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RENAME_CARRIER, <<"carrier_name">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
+
+-define(PROVIDER_RENAME_CARRIER, <<"knm_rename_carrier">>).
+-define(PROVIDER_FORCE_OUTBOUND, <<"knm_", (?FEATURE_FORCE_OUTBOUND)/binary>>).
 
 -define(LEGACY_DASH_E911, <<"dash_e911">>).
 -define(LEGACY_TELNYX_E911, <<"telnyx_e911">>).
