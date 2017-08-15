@@ -8,9 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(cb_apps_util).
 
--export([allowed_apps/1]).
+-export([allowed_apps/1, allowed_apps/2]).
 -export([allowed_app/2]).
--export([is_authorized/3]).
+-export([authorized_apps/2]).
 -export([load_default_apps/0]).
 -export([create_apps_store_doc/1]).
 
@@ -26,14 +26,22 @@
 %%--------------------------------------------------------------------
 -spec allowed_apps(ne_binary()) -> kz_json:objects().
 allowed_apps(AccountId) ->
+    allowed_apps(AccountId, 'undefined').
+
+-spec allowed_apps(ne_binary(), api_ne_binary()) -> kz_json:objects().
+allowed_apps(AccountId, UserId) ->
     case find_service_plan_with_apps(AccountId) of
         'undefined' ->
             DefaultApps = load_default_apps(),
-            filter_apps(AccountId, DefaultApps);
+            filter_apps(AccountId, UserId, DefaultApps);
         ServicePlan ->
             Apps = find_enabled_apps(get_plan_apps(ServicePlan)),
-            filter_apps(AccountId, Apps)
+            filter_apps(AccountId, UserId, Apps)
     end.
+
+-spec authorized_apps(ne_binary(), ne_binary()) -> kz_json:objects().
+authorized_apps(AccountId, UserId) ->
+    allowed_apps(AccountId, UserId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -52,40 +60,6 @@ allowed_app(AccountId, AppId) ->
             App;
         [] -> 'undefined'
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec is_authorized(ne_binary(), ne_binary(), ne_binary()) -> boolean().
-is_authorized(AccountId, UserId, AppId) ->
-    case get_apps_store_doc(AccountId) of
-        {'error', _R} ->
-            lager:error("failed to fetch apps store doc in ~s : ~p", [AccountId, _R]),
-            'false';
-        {'ok', Doc} ->
-            AppJObj = kz_json:get_value(AppId, kzd_apps_store:apps(Doc)),
-            AllowedType = kzd_app:allowed_users(AppJObj, <<"specific">>),
-            SpecificIds = get_specific_ids(kzd_app:users(AppJObj)),
-            case {AllowedType, SpecificIds} of
-                {<<"all">>, _} -> 'true';
-                {<<"specific">>, []} -> 'false';
-                {<<"specific">>, UserIds} ->
-                    lists:member(UserId, UserIds);
-                {<<"admins">>, _} ->
-                    kzd_user:is_account_admin(AccountId, UserId);
-                {_A, _U} ->
-                    lager:error("unknown data ~p : ~p", [_A, _U]),
-                    'false'
-            end
-    end.
-
--spec get_specific_ids(kz_json:objects()) -> ne_binaries().
-get_specific_ids(Users) ->
-    [Id || User <- Users,
-           (Id = kz_doc:id(User)) =/= 'undefined'
-    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -148,8 +122,8 @@ find_service_plan_with_apps(AccountId, ResellerId) ->
     ReResellerId = kz_services:find_reseller_id(ResellerId),
 
     ServicePlan = kz_services:service_plan_json(AccountId),
-    case {has_apps_in_service_plan(ServicePlan)
-         ,is_all_in_apps_service_plan(ServicePlan)
+    case {is_apps_in_service_plan_empty(ServicePlan)
+         ,is_show_all_in_service_plan_enabled(ServicePlan)
          }
     of
         {'true', _} ->
@@ -175,15 +149,15 @@ check_service_plan(AccountId) ->
 has_all_or_apps_in_service_plan(ServicePlan) ->
     %% If the "ui_apps" key is empty, return true
     %% else "ui_apps._all.enabled" == true
-    has_apps_in_service_plan(ServicePlan)
-        orelse is_all_in_apps_service_plan(ServicePlan).
+    is_apps_in_service_plan_empty(ServicePlan)
+        orelse is_show_all_in_service_plan_enabled(ServicePlan).
 
--spec has_apps_in_service_plan(kzd_service_plan:doc()) -> boolean().
-has_apps_in_service_plan(ServicePlan) ->
+-spec is_apps_in_service_plan_empty(kzd_service_plan:doc()) -> boolean().
+is_apps_in_service_plan_empty(ServicePlan) ->
     kz_term:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY)).
 
--spec is_all_in_apps_service_plan(kzd_service_plan:doc()) -> boolean().
-is_all_in_apps_service_plan(ServicePlan) ->
+-spec is_show_all_in_service_plan_enabled(kzd_service_plan:doc()) -> boolean().
+is_show_all_in_service_plan_enabled(ServicePlan) ->
     kzd_item_plan:is_enabled(kzd_service_plan:category_plan(ServicePlan, ?PLAN_CATEGORY)).
 
 %%--------------------------------------------------------------------
@@ -191,21 +165,52 @@ is_all_in_apps_service_plan(ServicePlan) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_apps(ne_binary(), kz_json:objects()) -> kz_json:objects().
--spec filter_apps(ne_binary(), kz_json:objects(), kz_json:object()) -> kz_json:objects().
-filter_apps(AccountId, Apps) ->
+-spec filter_apps(ne_binary(), api_ne_binary(), kz_json:objects()) -> kz_json:objects().
+filter_apps(AccountId, UserId, Apps) ->
     case get_apps_store_doc(AccountId) of
-        {'ok', Doc} -> filter_apps(AccountId, Apps, Doc);
+        {'ok', Doc} -> filter_apps(AccountId, UserId, Apps, Doc);
         {'error', _R} ->
             lager:error("failed to fetch apps store doc in ~s : ~p", [AccountId, _R]),
-            filter_apps(AccountId, Apps, kz_json:new())
+            filter_apps(AccountId, UserId, Apps, kz_json:new())
     end.
 
-filter_apps(AccountId, Apps, JObj) ->
-    [add_permissions(App, JObj)
+-spec filter_apps(ne_binary(), api_ne_binary(), kz_json:objects(), kz_json:object()) -> kz_json:objects().
+filter_apps(AccountId, UserId, Apps, AppStoreJObj) ->
+    [add_permissions(App, AppStoreJObj)
      || App <- Apps,
-        not is_filtered(AccountId, App)
-            andalso not is_blacklisted(App, JObj)
+        is_authorized(AccountId, UserId, kz_doc:id(App), AppStoreJObj)
+            andalso not is_filtered(AccountId, App)
+            andalso not is_blacklisted(App, AppStoreJObj)
+    ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_authorized(ne_binary(), api_ne_binary(), ne_binary(), kz_json:object()) -> boolean().
+is_authorized(_, 'undefined', _, _) ->
+    'true';
+is_authorized(AccountId, UserId, AppId, AppStoreJObj) ->
+    AppJObj = kz_json:get_value(AppId, kzd_apps_store:apps(AppStoreJObj)),
+    AllowedType = kzd_app:allowed_users(AppJObj, <<"specific">>),
+    SpecificIds = get_specific_ids(kzd_app:users(AppJObj)),
+    case {AllowedType, SpecificIds} of
+        {<<"all">>, _} -> 'true';
+        {<<"specific">>, []} -> 'false';
+        {<<"specific">>, UserIds} ->
+            lists:member(UserId, UserIds);
+        {<<"admins">>, _} ->
+            kzd_user:is_account_admin(AccountId, UserId);
+        {_A, _U} ->
+            lager:error("unknown data ~p : ~p", [_A, _U]),
+            'false'
+    end.
+
+-spec get_specific_ids(kz_json:objects()) -> ne_binaries().
+get_specific_ids(Users) ->
+    [Id || User <- Users,
+           (Id = kz_doc:id(User)) =/= 'undefined'
     ].
 
 %%--------------------------------------------------------------------
