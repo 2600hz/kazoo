@@ -43,7 +43,11 @@ feature(N) ->
 -spec update(knm_number:knm_number()) -> knm_number:knm_number().
 update(N) ->
     Private = feature(N),
-    Public = kz_json:get_ne_value(?KEY, knm_phone_number:doc(knm_number:phone_number(N))),
+    Public0 = kz_json:get_ne_value(?KEY, knm_phone_number:doc(knm_number:phone_number(N))),
+    Public = case kz_term:is_boolean(Public0) of
+                 false -> undefined;
+                 true -> kz_term:is_true(Public0)
+             end,
     NotChanged = kz_json:are_equal(Private, Public),
     case kz_term:is_empty(Public) of
         true -> knm_services:deactivate_feature(N, ?KEY);
