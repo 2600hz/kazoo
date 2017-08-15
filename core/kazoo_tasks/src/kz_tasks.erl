@@ -12,6 +12,7 @@
         ,all/1
         ,read/1
         ,new/7
+        ,new_id/0
         ]).
 
 -export([mandatory/1
@@ -27,12 +28,12 @@
         ]).
 
 -export([is_processing/1
+        ,status/1
         ]).
 
 -include("kazoo_tasks.hrl").
 
 -define(TASK_ID_SIZE, 15).
--define(A_TASK_ID, kz_binary:rand_hex(?TASK_ID_SIZE)).
 -type id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -type task() :: #{worker_pid => api_pid()
@@ -49,6 +50,7 @@
                  ,total_rows => api_pos_integer() %% CSV rows (undefined for a noinput task)
                  ,total_rows_failed => api_non_neg_integer() %% Rows that crashed or didn't return ok
                  ,total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
+                 ,was_stopped => api_boolean() %% true if stopped, undefined of false otherwise
                  }.
 
 -type input() :: api_ne_binary() | kz_json:objects().
@@ -172,7 +174,7 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                                 end,
                     lager:debug("creating ~s.~s task (~p)", [Category, Action, TotalRows]),
                     lager:debug("using auth ~s and account ~s", [AuthAccountId, AccountId]),
-                    TaskId = ?A_TASK_ID,
+                    TaskId = new_id(),
                     Task = #{worker_pid => 'undefined'
                             ,worker_node => 'undefined'
                             ,account_id => AccountId
@@ -193,6 +195,10 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                     Ok
             end
     end.
+
+-spec new_id() -> id().
+new_id() ->
+    kz_binary:rand_hex(?TASK_ID_SIZE).
 
 %%%===================================================================
 %%% Internal functions
@@ -318,7 +324,7 @@ task_by_id(TaskId) ->
 
 -spec from_json(kz_json:object()) -> task().
 from_json(Doc) ->
-    #{worker_pid => 'undefined'
+    #{worker_pid => undefined
      ,worker_node => kzd_task:node(Doc)
      ,account_id => kzd_task:account_id(Doc)
      ,auth_account_id => kzd_task:auth_account_id(Doc)
@@ -332,6 +338,7 @@ from_json(Doc) ->
      ,total_rows => kzd_task:total_count(Doc)
      ,total_rows_failed => kzd_task:failure_count(Doc)
      ,total_rows_succeeded => kzd_task:success_count(Doc)
+     ,was_stopped => ?STATUS_STOPPED =:= kzd_task:status(Doc)
      }.
 
 -spec to_json(task()) -> kz_json:object().
@@ -394,21 +401,25 @@ to_public_json(Task) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Whether task has been started and is still running.
+%% @doc
+%% Whether task has been started and is still running.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_processing(task()) -> boolean().
 is_processing(#{started := Started
                ,finished := Finished
-               })
-  when Started  /= 'undefined',
-       Finished == 'undefined' ->
-    'true';
-is_processing(_Task) ->
-    'false'.
+               }=Task)
+  when Started  =/= undefined,
+       Finished =:= undefined ->
+    not maps:get(was_stopped, Task, false);
+is_processing(_) ->
+    false.
 
 %% @private
--spec status(task()) -> api_binary().
+-spec status(task()) -> ne_binary().
+status(#{was_stopped := true}) ->
+    ?STATUS_STOPPED;
+
 status(#{started := 'undefined'}) ->
     ?STATUS_PENDING;
 status(#{started := Started

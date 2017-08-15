@@ -26,7 +26,7 @@
 -type state() :: #state{}.
 
 -define(IN, 'csv_in').
--define(OUT(TaskId), <<"/tmp/task_out.", (TaskId)/binary, ".csv">>).
+-define(OUT(TaskId), kz_tasks_scheduler:output_path(TaskId)).
 
 %%%===================================================================
 %%% API
@@ -145,7 +145,6 @@ teardown(API, IterValue, #state{task_id = TaskId
     _ = kz_tasks_scheduler:worker_finished(TaskId
                                           ,TotalSucceeded
                                           ,TotalFailed
-                                          ,?OUT(TaskId)
                                           ,Columns
                                           ),
     _ = erase(?IN),
