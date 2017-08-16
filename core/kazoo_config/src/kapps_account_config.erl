@@ -512,7 +512,7 @@ walk_the_walk(#{account_id := AccountId
 
 -spec maybe_merge_results(map(), boolean()) -> {ok, kz_json:object()}.
 maybe_merge_results(#{results := JObjs}=Map, true) ->
-    store_in_strategy_cache(Map, kz_json:merge([kz_doc:public_fields(J, false) || J <- JObjs]));
+    store_in_strategy_cache(Map, kz_json:merge(lists:reverse([kz_doc:public_fields(J, false) || J <- JObjs])));
 maybe_merge_results(#{results := JObjs}, false) ->
     {ok, lists:last(JObjs)}.
 
