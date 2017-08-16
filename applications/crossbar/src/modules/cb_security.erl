@@ -244,18 +244,14 @@ read(Context) ->
 
 -spec add_inherited_config(cb_context:context()) -> cb_context:context().
 add_inherited_config(Context) ->
-    InheritedConfig = crossbar_auth:get_inherited_auth_config(cb_context:account_id(Context)),
     AccountConfig = case cb_context:resp_status(Context) of
                         'success' -> kz_json:delete_key(<<"id">>, cb_context:resp_data(Context));
                         _ -> kz_json:new()
                     end,
-
-    Doc = kz_json:from_list(
-            [{<<"account">>, AccountConfig}
-            ,{<<"inherited_config">>, InheritedConfig}
-            ]
-           ),
-    crossbar_doc:handle_json_success(Doc, Context).
+    Props = [{<<"account">>, AccountConfig}
+            ,{<<"inherited_config">>, crossbar_auth:get_inherited_config(Context)}
+            ],
+    crossbar_doc:handle_json_success(kz_json:from_list(Props), Context).
 
 %%--------------------------------------------------------------------
 %% @private
