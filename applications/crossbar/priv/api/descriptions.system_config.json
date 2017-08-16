@@ -140,7 +140,6 @@
     "crossbar.auth.auth_modules": "Default crossbar authentication modules configuration",
     "crossbar.auth.available_auth_methods": "List of crossbar auth configurable modules",
     "crossbar.auth.basic_auth_type": "crossbar.auth basic auth type",
-    "crossbar.auth.kazoo_auth_configs": "Kazoo Auth modules' configurations",
     "crossbar.auth.log_failed_attempts": "Should log failed login attempts",
     "crossbar.auth.log_successful_attempts": "Should log successful login attempts",
     "crossbar.auth.token_auth_expiry_s": "crossbar token auth expiry in seconds",

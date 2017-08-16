@@ -263,8 +263,6 @@ curl -v -X GET \
     "auth_type": "multi_factor",
     "debug_type": "failed",
     "message": "no multi factor authentication provider is configured",
-    "auth_config_origin": "{ACCOUNT_ID}",
-    "mfa_config_origin": "{ACCOUNT_ID}",
     "timestamp": 63655033238,
     "id": "201702-09a979346eff06746e445a8cc1e574c4"
   },
