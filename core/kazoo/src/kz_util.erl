@@ -456,7 +456,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
                     'false'
             end;
         {'error', _R} ->
-            lager:debug("failed to get the ancestory of the account ~s: ~p", [AccountId, _R]),
+            lager:debug("failed to get the ancestry of the account ~s: ~p", [AccountId, _R]),
             'false'
     end.
 

@@ -326,14 +326,29 @@ has_account_id_or_db(JObj) ->
         _AccountId -> 'true'
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Only allow to set the configuration id if the account who has the configuration is
+%% in the tree
+%% * if master is setting the config, allow
+%% * if the account is the same authenticated account, allow
+%% * if authenticated account is parent and wants to set its descendant's, allow
+%% * if a include_subaccounts, allow a child account set its parent's config
+%% @end
+%%--------------------------------------------------------------------
 -spec check_account_hierarchy(ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
 check_account_hierarchy(AuthModule, JObj, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     IsSysAdmin = cb_context:is_superduper_admin(AuthAccountId),
     AccountId = kz_json:get_ne_binary_value([<<"multi_factor">>, <<"account_id">>], JObj),
+    NotIncludeSubAccounts = kz_json:is_false([<<"multi_factor">>, <<"include_subaccounts">>], JObj),
 
     case IsSysAdmin
-        orelse kz_util:is_in_account_hierarchy(AccountId, AuthAccountId, 'true')
+        orelse kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
+        orelse (NotIncludeSubAccounts
+                orelse kz_util:is_in_account_hierarchy(AccountId, AuthAccountId, 'true')
+               )
     of
         'true' -> Context;
         'false' ->

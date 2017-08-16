@@ -101,7 +101,7 @@ create_auth_token(Context, Method, JObj) ->
 
             lager:debug("created new local auth token: ~s", [kz_json:encode(Resp)]),
 
-            log_success_auth(Method, <<"jwt_auth_token">>, <<"authentiaction resulted in token creation">>, Context, AccountId, AuthConfig),
+            log_success_auth(Method, <<"jwt_auth_token">>, <<"authentication resulted in token creation">>, Context, AccountId, AuthConfig),
 
             crossbar_util:response(Resp, cb_context:setters(Context, Setters));
         {'error', R} ->
@@ -224,7 +224,7 @@ is_auth_module_enabled(Method, Config) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Checks if authenticator module is configured to do mutli factor auth
+%% Checks if authenticator module is configured to do multi factor auth
 %% @end
 %%--------------------------------------------------------------------
 -spec is_multi_factor_enabled(kz_proplist(), kz_json:object()) -> boolean().
@@ -270,7 +270,7 @@ master_account_id() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Log successful authentiaction if configured to do so
+%% Log successful authentication if configured to do so
 %% @end
 %%--------------------------------------------------------------------
 -spec log_success_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context()) -> 'ok'.
@@ -300,7 +300,7 @@ log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) -
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Log failed authentiaction if configured to do so
+%% Log failed authentication if configured to do so
 %% @end
 %%--------------------------------------------------------------------
 -spec log_failed_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context()) -> 'ok'.
