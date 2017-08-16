@@ -5,17 +5,14 @@
     "description": "crossbar authenticator module configuration",
     "properties": {
         "enabled": {
-            "default": true,
             "description": "whether or not this authenticator module is enabled",
             "type": "boolean"
         },
         "log_failed_attempts": {
-            "default": true,
             "description": "should log failed logging attempts",
             "type": "boolean"
         },
         "log_successful_attempts": {
-            "default": true,
             "description": "should log successful logging attempts",
             "type": "boolean"
         },
@@ -32,12 +29,10 @@
                     "type": "string"
                 },
                 "enabled": {
-                    "default": false,
                     "description": "turn on/off multi factor authentications for this module",
                     "type": "boolean"
                 },
                 "include_subaccounts": {
-                    "default": false,
                     "description": "should this multi factor authentication settings be applied when used by sub-accounts",
                     "type": "boolean"
                 }
@@ -45,7 +40,6 @@
             "type": "object"
         },
         "token_auth_expiry_s": {
-            "default": 3600,
             "description": "expiration period of the JWT token (seconds)",
             "type": "integer"
         }
