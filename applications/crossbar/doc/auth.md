@@ -8,10 +8,10 @@ Crossbar module for operations on JWT Token, SSO/OAuth tokens.
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`client_id` | client id, usually appplication id for oauth providers | `string` |  | `true`
+`client_id` | client id, usually application id for OAuth providers | `string` |  | `true`
 `code` | access code emitted by provider | `string` | `true` | `true`
 `provider` | provider | `string` | `true` | `true`
-`redirect_uri` | redirect uri | `string` |   | `true`
+`redirect_uri` | redirect URI | `string` |   | `true`
 `state` | state | `string` |  | `false`
 
 #### Schema for auth.provider
@@ -24,10 +24,10 @@ Key | Description | Type | Default | Required
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`client_id` | client id, usually appplication id for oauth providers | `string` |  | `true`
-`email` | email for app | `string` | `true` | `false`
+`client_id` | client id, usually application id for OAuth providers | `string` |  | `true`
+`email` | email for application | `string` | `true` | `false`
 `provider` | provider | `string` | `true` | `true`
-`secret` | secret for app | `string` |   | `true`
+`secret` | secret for application | `string` |   | `true`
 
 
 
@@ -37,9 +37,9 @@ System signature secret and the subject signature is being used to sign the sign
 
 If you feel that this system secret is compromised, use this API to reset it.
 
-> **Caution:** Resetting system signature secret will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
+> **Caution:** Resetting system signature secret will invalidate *all* issued token! In other words all login users will be logout from the system and can't make any further request until login again. Use this API if you feel the system secret is compromised only.
 
-> **Note:** Only super duper admin can reset system secert!
+> **Note:** Only super duper admin can reset system secret!
 
 > PUT /v2/auth
 
@@ -71,9 +71,9 @@ System signature secret and the subject signature is being used to sign the sign
 
 If you feel that an account or a user secret is compromised, use this API to reset it.
 
-> **Caution:** Resetting signature secret will invalidate user's issued token! In other words if the user is already logined, it will be logout from the system and can't make any further request until login again.
+> **Caution:** Resetting signature secret will invalidate user's issued token! In other words if the user is already login, it will be logout from the system and can't make any further request until login again.
 
-> **Note:** Only an account admin can a user's secert!
+> **Note:** Only an account admin can a user's secret!
 
 ##### To Reset an Account Signature Secret
 
@@ -161,15 +161,21 @@ curl -v -X GET \
 ```json
 {
   "page_size": 3,
+  "start_key": [
+    "oauth"
+  ],
   "data": [
     {
-      "id": "salesforce"
+      "id": "salesforce",
+      "provider_type": "oauth"
     },
     {
-      "id": "office365"
+      "id": "office365",
+      "provider_type": "oauth"
     },
     {
-      "id": "google"
+      "id": "google",
+      "provider_type": "oauth"
     }
   ],
   "timestamp": "{TIMESTAMP}",
@@ -264,7 +270,7 @@ curl -v -X PUT \
 
 ##### Response when no User is Linked yet
 
-If this is the first time that the user is authenticating using this SSO provider, Kazoo returns and empty response indeicating that user should first login using it's own Kazoo credentials first to link the SSO application with its user. After login the user is linked with the app and it no need to maunual login again.
+If this is the first time that the user is authenticating using this SSO provider, Kazoo returns and empty response indicating that user should first login using it's own Kazoo credentials first to link the SSO application with its user. After login the user is linked with the application and it no need to manual login again.
 
 ```json
 {
@@ -462,9 +468,9 @@ curl -v -X GET \
 
 #### Reset a Private Key
 
-Reset the private key of the system used to signing and verifing issued JWT tokens. If you feel that the private key is compromised, use this API to generate a new private and public key.
+Reset the private key of the system used to signing and verifying issued JWT tokens. If you feel that the private key is compromised, use this API to generate a new private and public key.
 
-> **Caution:** Resetting system private will invalidate *all* issued token! In other words all logined users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
+> **Caution:** Resetting system private will invalidate *all* issued token! In other words all login users will be logout from the system and can't make any further request until login again. Use this API if you feel the system private key is compromised only.
 
 > **Note:** Only super duper admin can reset system private key!
 

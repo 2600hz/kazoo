@@ -17,7 +17,7 @@
             "type": "string"
         },
         "settings": {
-            "description": "provider configurations",
+            "description": "provider configuration",
             "type": "object"
         }
     },
