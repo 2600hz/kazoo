@@ -286,8 +286,8 @@ load_config_from_account(AccountId, Category) ->
 %% @doc
 %%  Get Accounts parent configuration for the Category
 %%  1. Read account definition
-%%      1.1. If failed to read account definiation, find its reseller
-%%  2. Fold over ancestor Ids and fetch config doc from thier db
+%%      1.1. If failed to read account definition, find its reseller
+%%  2. Fold over ancestor Ids and fetch config doc from their db
 %%      2.1. If document exists and the account is reseller, return
 %%      2.2. If document does not exists:
 %%          2.2.1. If the account is reseller return accumulator
@@ -361,7 +361,7 @@ is_reseller_account(AccountId) ->
 find_reseller_account(AccountId) ->
     case kz_services:find_reseller_id(AccountId) of
         undefined ->
-            lager:debug("failed to find accout ~s parents and reseller"),
+            lager:debug("failed to find account ~s parents and reseller"),
             [];
         AccountId -> []; %% should get from direct reseller only
         ResellerId -> [ResellerId]
