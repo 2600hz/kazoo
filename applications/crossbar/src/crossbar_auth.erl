@@ -260,14 +260,14 @@ is_multi_factor_enabled(Claims, AuthConfig) ->
 %%
 %% * If account is master, allow
 %% * If account is the same as mfa account, allow
-%% * If there is no account in mfa, return 'include_subaccounts' boolean
+%% * If there is no account in mfa, return allow
 %% * If account ids are not same, return 'include_subaccounts' boolean
 %% @end
 %%--------------------------------------------------------------------
 -spec multi_factor_allowed_for_account(api_binary(), api_binary(), api_binary(), boolean()) -> boolean().
 multi_factor_allowed_for_account(?NE_BINARY=Master, ?NE_BINARY=Master, _, _) -> 'true';
-multi_factor_allowed_for_account(_Master, _ClaimAccountId, 'undefined', IncludeSubAcc) -> IncludeSubAcc;
-multi_factor_allowed_for_account(_Master, AccountId, AccountId, _IncludeSubAcc) -> 'true';
+multi_factor_allowed_for_account(_Master, _ClaimAccountId, 'undefined', _) -> 'true';
+multi_factor_allowed_for_account(_Master, AccountId, AccountId, _) -> 'true';
 multi_factor_allowed_for_account(_Master, _ClaimAccountId, _ParentAccount, IncludeSubAcc) -> IncludeSubAcc.
 
 -spec master_account_id() -> api_ne_binary().
