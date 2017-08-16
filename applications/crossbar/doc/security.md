@@ -321,8 +321,6 @@ curl -v -X GET \
     "status": "success",
     "auth_module": "cb_user_auth",
     "message": "authentication resulted in token creation",
-    "auth_config_origin": "system",
-    "multi_factor_config_origin": "system",
     "client_headers": {
       "host": "10.1.0.2:8000",
       "connection": "keep-alive",
