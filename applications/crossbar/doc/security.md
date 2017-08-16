@@ -16,9 +16,9 @@ Configuration is the merged result of the account's configuration and all its pa
 
 If you want to use multi factor authentication for a module, set the `multi_factor.enabled` to `true`. You can control if the multi factor settings can be applied to the account's children by `multi_factor.include_subaccounts`.
 
-When setting `configuration_id` of the multi-factor, you have to set the Account ID which contains the that configuration too.
+When setting `configuration_id` of the multi-factor, you have to set the Account ID which contains the that configuration.
 
-Only a parent Account or the same Account can set `configuration_id` and `account_id`.
+Only a parent Account or the same Account can set `configuration_id` and `account_id` unless `multi_factor.include_subaccounts` is `true` and a descendant account can use its parent `configuration_id`.
 
 #### Account Auth Configuration Schema
 
@@ -34,14 +34,14 @@ Key | Description | Type | Default | Required
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`enabled` | whether or not this authentication module is enabled | `boolean` |  | `true`
-`log_failed_attempts` | should log failed logging attempts | `boolean` | `true` | `false`
-`log_successful_attempts` | should log successful logging attempts | `boolean` | `false` | `false`
+`enabled` | whether or not this authentication module is enabled | `boolean` |  | `false`
+`log_failed_attempts` | should log failed logging attempts | `boolean` |  | `false`
+`log_successful_attempts` | should log successful logging attempts | `boolean` |  | `false`
 `multi_factor` | control multi factor authentications for this module | `object` |   | `false`
 `multi_factor.account_id` | ID of the account that contains the multi factor configuration | `string` |  | `false`
 `multi_factor.configuration_id` | document ID contains the multi factor configuration | `string` |  | `false`
-`multi_factor.enabled` | turn on/off multi factor authentications for this module | `boolean` |  | `true`
-`multi_factor.include_subaccounts` | should this multi factor authentication settings be applied when used by sub-accounts | `boolean` | `false` | `false`
+`multi_factor.enabled` | turn on/off multi factor authentications for this module | `boolean` |  | `false`
+`multi_factor.include_subaccounts` | should this multi factor authentication settings be applied when used by sub-accounts | `boolean` |  | `false`
 `token_auth_expiry_s` | expiration period of the JWT token (seconds) | `integer` |  | `false`
 
 #### Get a List of Available Auth Module
@@ -147,7 +147,7 @@ Customize modules config for the account. Set what settings you want here, cross
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "data": { "auth_modules" :{ "cb_user_auth": { "enabled": true, "token_auth_expiry_s": 604800}, "cb_api_auth": { "enabled": true } } } }'
+    -d '{ "data": { "auth_modules" :{ "cb_user_auth": { "token_auth_expiry_s": 604800 }, "cb_api_auth": { "enabled": false } } } }'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
@@ -158,16 +158,10 @@ curl -v -X POST \
   "data": {
     "auth_modules": {
       "cb_user_auth": {
-        "token_auth_expiry_s": 604800,
-        "enabled": true,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
+        "token_auth_expiry_s": 604800
       },
       "cb_api_auth": {
-        "token_auth_expiry_s": 604800,
-        "log_successful_attempts": true,
-        "log_failed_attempts": true,
-        "enabled": true
+        "enabled": false
       }
     },
     "id": "configs_crossbar.auth"
@@ -183,7 +177,7 @@ curl -v -X POST \
 
 #### Patch
 
-Patch fields of config for the account customization.
+Patch field(s) of config for the account customization.
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/security
 
@@ -191,7 +185,7 @@ Patch fields of config for the account customization.
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "data": { "auth_modules" :{ "cb_api_auth": { "enabled": false } } } }'
+    -d '{ "data": { "auth_modules" :{ "cb_api_auth": { "enabled": true } } } }'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
@@ -202,15 +196,9 @@ curl -v -X PATCH \
   "data": {
     "auth_modules": {
       "cb_user_auth": {
-        "token_auth_expiry_s": 604800,
-        "enabled": false,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
+        "token_auth_expiry_s": 604800
       },
       "cb_api_auth": {
-        "token_auth_expiry_s": 604800,
-        "log_successful_attempts": true,
-        "log_failed_attempts": true,
         "enabled": false
       }
     },
@@ -244,15 +232,9 @@ curl -v -X DELETE \
   "data": {
     "auth_modules": {
       "cb_user_auth": {
-        "token_auth_expiry_s": 604800,
-        "enabled": false,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
+        "token_auth_expiry_s": 604800
       },
       "cb_api_auth": {
-        "token_auth_expiry_s": 604800,
-        "log_successful_attempts": true,
-        "log_failed_attempts": true,
         "enabled": false
       }
     },
