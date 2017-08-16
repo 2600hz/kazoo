@@ -2,7 +2,7 @@
 
 #### Overview
 
-Integrating Kazoo to MFA providers to secure accessing the Crossbar API endpoints. Users are authenticating with their usual Kazoo credentials and then will be authenticated through a second factors like a pin code recieved by text message or a phone call or a push notification.
+Integrating Kazoo to MFA providers to secure accessing the Crossbar API endpoints. Users are authenticating with their usual Kazoo credentials and then will be authenticated through a second factors like a pin code received by text message or a phone call or a push notification.
 
 > **Caution:** Please make sure that **NTP** service is configured on Kazoo servers and that your server's time is correct! Otherwise MFA request would be failed or would be invalid.
 
@@ -16,7 +16,7 @@ MFA process involves these steps:
 4. If no MFA provider configuration was found, the auth request will be successful and a token will be generated as a normal auth-request as before
 5. If the MFA provider is disabled based on the configuration, a HTTP `401 unauthorized` error will be returned.
 6. Provider module will try to validate the request and settings and return a HTTP `401 unauthorized` if some parameters is invalid and provide an appropriate error message.
-7. If the request doesn't have a response from MFA provider (if there is no `multi_factor_response` inside the body of the request) it will generate the required information that the client needs to preform second-factor auth with the provider. Crossbar will reply a HTTP `401 unauthorized` with the payload simliar to this:
+7. If the request doesn't have a response from MFA provider (if there is no `multi_factor_response` inside the body of the request) it will generate the required information that the client needs to preform second-factor auth with the provider. Crossbar will reply a HTTP `401 unauthorized` with the payload similar to this:
 
 ```json
 {

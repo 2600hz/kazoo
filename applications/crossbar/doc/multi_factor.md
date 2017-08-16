@@ -15,7 +15,7 @@ If you want to use multi factor authentication for a module, set the `multi_fact
 #### Multi Factor Authentication (MFA) flow summary
 
 The MFA process in Kazoo is straight forward. You configured the Kazoo integrated MFA service provider, and enabling the multi factor for an authentication endpoint. User will authenticate as usual by its own Kazoo credential. If the first factor authentication passed, second-factor provider information (usually a signed token) would be returned to client with HTTP `401 Unauthorized` status.
-User's client performs the second-factor authentication with the provider and sends provider response to Kazoo. If the provider validates user will be authenicated successful and a Kazoo token will be generated as usual otherwise if the second-factor provider response is not validated a HTTP `401 Unauthorized` will be returned.
+User's client performs the second-factor authentication with the provider and sends provider response to Kazoo. If the provider validates user will be authenticated successful and a Kazoo token will be generated as usual otherwise if the second-factor provider response is not validated a HTTP `401 Unauthorized` will be returned.
 
 #### Schema
 
@@ -56,7 +56,7 @@ curl -v -X GET \
 
 #### Configure a provider
 
-Creates configuration for a MFA provider. Provider type is `"multi_factor"`. Provider configs should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
+Creates configuration for a MFA provider. Provider type is `"multi_factor"`. Provider config should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/multi_factor
 

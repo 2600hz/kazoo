@@ -80,7 +80,7 @@ curl -v -X GET \
 
 #### Fetch All Configurations
 
-Get all configured authentocator module on the account alongside the default settings of merged result of account itself and its parents, reseller and system.
+Get all configured authenticator module on the account alongside the default settings of merged result of account itself and its parents, reseller and system.
 
 > GET /v2/accounts/{ACCOUNT_ID}/security
 
@@ -288,7 +288,7 @@ curl -v -X GET \
       "auth_type": "jwt_auth_token",
       "auth_module": "cb_user_auth",
       "status": "success",
-      "message": "authentiaction resulted in token creation",
+      "message": "authentication resulted in token creation",
       "timestamp": 63667032239,
       "client_ip": "10.1.0.2"
     }
@@ -320,7 +320,7 @@ curl -v -X GET \
     "auth_type": "jwt_auth_token",
     "status": "success",
     "auth_module": "cb_user_auth",
-    "message": "authentiaction resulted in token creation",
+    "message": "authentication resulted in token creation",
     "auth_config_origin": "system",
     "multi_factor_config_origin": "system",
     "client_headers": {
