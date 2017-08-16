@@ -190,7 +190,7 @@ get_account_config(AccountId) ->
 -spec get_inherited_config(cb_context:context()) -> kz_json:object().
 get_inherited_config(Context) ->
     AccountId = cb_context:account_id(Context),
-    get_inherited_config(AccountId, kz_service:is_reseller(AccountId)).
+    get_inherited_config(AccountId, kz_services:is_reseller(AccountId)).
 
 -spec get_inherited_config(ne_binary(), boolean()) -> kz_json:object().
 get_inherited_config(_, 'true') ->

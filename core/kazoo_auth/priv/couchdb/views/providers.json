@@ -12,12 +12,17 @@
             ],
             "reduce": "_count"
         },
-        "list_by_id": {
+        "list_by_type": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'provider' || doc.pvt_provider_type != 'multi_factor' || doc.pvt_deleted )",
+                "  if (doc.pvt_type != 'provider' || doc.pvt_deleted)",
                 "    return;",
-                "  emit(doc._id, {id : doc._id});",
+                "  emit([doc.pvt_provider_type, doc._id], {",
+                "    'id' : doc._id,",
+                "    'enabled': doc.enabled,",
+                "    'provider_name': doc.provider_name,",
+                "    'provider_type': doc.pvt_provider_type",
+                "  });",
                 "}"
             ]
         }

@@ -33,7 +33,7 @@
 -define(WHITELABEL_PATH, <<"whitelabel">>).
 
 -define(LINKS_VIEW, <<"users/list_linked_users">>).
--define(PROVIDERS_VIEW, <<"providers/list_by_id">>).
+-define(PROVIDERS_VIEW, <<"providers/list_by_type">>).
 -define(PROVIDERS_APP_VIEW, <<"apps/list_by_provider">>).
 -define(APPS_VIEW, <<"apps/list_by_account">>).
 -define(KEYS_VIEW, <<"auth/list_keys">>).
@@ -274,7 +274,10 @@ validate_path(Context, ?LINKS_PATH, ?HTTP_GET) ->
 
 %% validating /auth/providers
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_GET) ->
-    crossbar_doc:load_view(?PROVIDERS_VIEW, [], Context, fun normalize_view/2);
+    ViewOptions = [{'startkey', [<<"oauth">>]}
+                  ,{'endkey', [<<"oauth">>, kz_json:new()]}
+                  ],
+    crossbar_doc:load_view(?PROVIDERS_VIEW, ViewOptions, Context, fun normalize_view/2);
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.provider">>, Context, fun add_provider/1);
 

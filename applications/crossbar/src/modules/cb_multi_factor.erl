@@ -21,7 +21,6 @@
 
 -include("crossbar.hrl").
 
--define(LISTS_BY_TYPE, <<"auth/providers_by_type">>).
 -define(CB_LIST_ATTEMPT_LOG, <<"auth/login_attempt_by_auth_type">>).
 
 -define(ATTEMPTS, <<"attempts">>).
@@ -244,7 +243,7 @@ summary(Context) ->
                   ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
                   ],
     add_available_providers(
-      crossbar_doc:load_view(?LISTS_BY_TYPE, ViewOptions, Context, fun normalize_view_results/2)
+      crossbar_doc:load_view(<<"auth/providers_by_type">>, ViewOptions, Context, fun normalize_view_results/2)
      ).
 
 -spec add_available_providers(cb_context:context()) -> cb_context:context().
@@ -252,7 +251,7 @@ add_available_providers(Context) ->
     ViewOptions = [{'startkey', [<<"multi_factor">>]}
                   ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
                   ],
-    case kz_datamgr:get_results(?KZ_AUTH_DB, <<"auth/enabled_providers_by_type">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_AUTH_DB, <<"providers/list_by_type">>, ViewOptions) of
         {'error', _R} -> Context;
         {'ok', JObjs} ->
             Available = [kz_json:get_value(<<"value">>, J)
@@ -269,11 +268,11 @@ merge_summary(Context, Available) ->
 merge_summary(Context, Available, 'success') ->
     kz_json:from_list(
       [{<<"configured">>, cb_context:doc(Context)}
-      ,{<<"available_system_provider">>, Available}
+      ,{<<"multi_factor_providers">>, Available}
       ]
      );
 merge_summary(_Context, Available, _) ->
-    kz_json:from_list([{<<"available_system_provider">>, Available}]).
+    kz_json:from_list([{<<"multi_factor_providers">>, Available}]).
 
 %%--------------------------------------------------------------------
 %% @private
