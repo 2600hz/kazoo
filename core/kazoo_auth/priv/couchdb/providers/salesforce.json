@@ -25,6 +25,7 @@
     "public_key_jwt_location": "header",
     "public_key_lookup_field": "kid",
     "public_key_method": "lookup",
+    "pvt_provider_type": "sso",
     "pvt_type": "provider",
     "scopes": {
         "api": "api",

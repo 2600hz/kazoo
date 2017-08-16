@@ -24,7 +24,6 @@
 -define(LISTS_BY_TYPE, <<"auth/providers_by_type">>).
 -define(CB_LIST_ATTEMPT_LOG, <<"auth/login_attempt_by_auth_type">>).
 
--define(AUTH_PROVIDER, <<"auth_provider">>).
 -define(ATTEMPTS, <<"attempts">>).
 -define(ATTEMPTS_TYPE, <<"login_attempt">>).
 
@@ -195,7 +194,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"auth_provider">>)).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -284,14 +283,15 @@ merge_summary(_Context, Available, _) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"auth_provider">>));
+    Doc = kz_json:set_value(<<"pvt_provider_type">>, <<"multi_factor">>, cb_context:doc(Context)),
+    cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"provider">>));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"auth_provider">>)).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>)).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

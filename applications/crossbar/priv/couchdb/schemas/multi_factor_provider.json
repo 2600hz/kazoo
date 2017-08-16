@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "multi_factor_provider",
+    "additionalProperties": true,
+    "description": "multi factor provider configuration",
+    "properties": {
+        "enabled": {
+            "description": "whether or not this configuration is enabled or not",
+            "type": "boolean"
+        },
+        "name": {
+            "description": "A friendly name for the configuration",
+            "type": "string"
+        },
+        "provider_name": {
+            "description": "multi factor provider name",
+            "type": "string"
+        },
+        "settings": {
+            "description": "provider configurations",
+            "type": "object"
+        }
+    },
+    "required": [
+        "enabled",
+        "name",
+        "provider_name"
+    ],
+    "type": "object"
+}

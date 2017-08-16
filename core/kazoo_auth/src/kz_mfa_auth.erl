@@ -62,17 +62,19 @@ provider(Configs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Get MFA configs from Account, if there was no config account
+%% @doc Get MFA config from Account, if there was no config account
 %% get system default configuration
 %% @end
 %%--------------------------------------------------------------------
--spec get_configs('undefined' | kz_proplist()) -> api_object().
+-spec get_configs('undefined' | kz_proplist() | kz_json:object()) -> api_object().
 get_configs('undefined') ->
     get_system_configs();
 get_configs(Options) when is_list(Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
-    ConfigId = props:get_value(<<"config_id">>, Options),
-    get_account_configs(AccountId, ConfigId).
+    ConfigId = props:get_value(<<"configuration_id">>, Options),
+    get_account_configs(AccountId, ConfigId);
+get_configs(JObj) ->
+    get_configs(kz_json:recursive_to_proplist(JObj)).
 
 -spec get_account_configs(api_binary(), api_binary()) -> api_object().
 get_account_configs('undefined', _ConfigId) -> get_system_configs();

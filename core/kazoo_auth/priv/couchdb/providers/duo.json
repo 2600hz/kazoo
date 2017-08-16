@@ -2,7 +2,7 @@
     "_id": "duo",
     "enabled": true,
     "provider_name": "duo",
-    "provider_type": "multi_factor",
+    "pvt_provider_type": "multi_factor",
     "pvt_type": "provider",
     "settings": {}
 }
