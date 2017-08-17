@@ -15,6 +15,13 @@
     "bol_key": false,
     "obj_key": {
         "from": "reseller"
+    },
+    "obj_empty_test": {
+      "obj_empty_sometimes": {
+        "from": "reseller",
+        "reseller": true
+      },
+      "banana": "nadarim"
     }
   },
   "pvt_account_id": "123ca0424ec8acf3acc1f87ac81f2123",
