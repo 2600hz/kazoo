@@ -581,7 +581,8 @@ process_dynamic_flags([<<"zone">>|DynamicFlags], Flags, Call) ->
     lager:debug("adding dynamic flag ~s", [Zone]),
     process_dynamic_flags(DynamicFlags, [Zone|Flags], Call);
 process_dynamic_flags([<<"custom_channel_vars.", Key/binary>>|DynamicFlags], Flags, Call) ->
-    case kapps_call:custom_channel_var(Key, Call) of
+    CCVs = kz_json:normalize_jobj(kapps_call:custom_channel_vars(Call)),
+    case kz_json:get_ne_binary_value(Key, CCVs) of
         'undefined' -> process_dynamic_flags(DynamicFlags, Flags, Call);
         Flag ->
             lager:debug("adding dynamic flag ~s", [Flag]),
