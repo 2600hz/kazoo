@@ -22,6 +22,9 @@
 -export([get_account_external_cid/1]).
 -export([maybe_get_assigned_number/3]).
 -export([maybe_get_account_default_number/4]).
+-export([process_dynamic_flags/2
+        ,process_dynamic_flags/3
+        ]).
 
 -include("kazoo_endpoint.hrl").
 
@@ -560,6 +563,49 @@ owned_by_query(ViewOptions, Call, ViewKey) ->
             lager:warning("unable to find owned documents (~p) using ~p", [_R, ViewOptions]),
             []
     end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec process_dynamic_flags(ne_binaries(), kapps_call:call()) -> ne_binaries().
+process_dynamic_flags(DynamicFlags, Call) ->
+    process_dynamic_flags(DynamicFlags, [], Call).
+
+-spec process_dynamic_flags(ne_binaries(), ne_binaries(), kapps_call:call()) ->
+                                   ne_binaries().
+process_dynamic_flags([], Flags, _) -> Flags;
+process_dynamic_flags([<<"zone">>|DynamicFlags], Flags, Call) ->
+    Zone = kz_term:to_binary(kz_nodes:local_zone()),
+    lager:debug("adding dynamic flag ~s", [Zone]),
+    process_dynamic_flags(DynamicFlags, [Zone|Flags], Call);
+process_dynamic_flags([<<"custom_channel_vars.", Key/binary>>|DynamicFlags], Flags, Call) ->
+    case kapps_call:custom_channel_var(Key, Call) of
+        'undefined' -> process_dynamic_flags(DynamicFlags, Flags, Call);
+        Flag ->
+            lager:debug("adding dynamic flag ~s", [Flag]),
+            process_dynamic_flags(DynamicFlags, [Flag|Flags], Call)
+    end;
+process_dynamic_flags([DynamicFlag|DynamicFlags], Flags, Call) ->
+    case is_flag_exported(DynamicFlag) of
+        'false' -> process_dynamic_flags(DynamicFlags, Flags, Call);
+        'true' ->
+            Fun = kz_term:to_atom(DynamicFlag),
+            Flag =  kapps_call:Fun(Call),
+            lager:debug("adding dynamic flag ~s", [Flag]),
+            process_dynamic_flags(DynamicFlags, [Flag|Flags], Call)
+    end.
+
+-spec is_flag_exported(ne_binary()) -> boolean().
+is_flag_exported(Flag) ->
+    is_flag_exported(Flag, kapps_call:module_info('exports')).
+
+is_flag_exported(_, []) -> 'false';
+is_flag_exported(Flag, [{F, 1}|Funs]) ->
+    kz_term:to_binary(F) =:= Flag
+        orelse is_flag_exported(Flag, Funs);
+is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 
 %%-----------------------------------------------------------------------------
 %% @private
