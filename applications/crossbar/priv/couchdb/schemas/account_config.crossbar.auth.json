@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.crossbar.auth",
+    "additionalProperties": false,
     "description": "Schema for crossbar.auth account_config",
     "properties": {
         "auth_modules": {

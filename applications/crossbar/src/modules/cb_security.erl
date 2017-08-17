@@ -351,7 +351,7 @@ create_config_document(Context) ->
 
 check_multi_factor_setting(Context) ->
     ReqData = cb_context:fetch(Context, <<"orig_req_data">>, cb_context:req_data(Context)),
-    kz_json:foldl(fun check_multi_factor_setting/3, Context, kz_json:get_value(<<"auth_modules">>, ReqData)).
+    kz_json:foldl(fun check_multi_factor_setting/3, Context, kz_json:get_value(<<"auth_modules">>, ReqData, kz_json:new())).
 
 check_multi_factor_setting(AuthModule, JObj, Context) ->
     case has_configuration_id(JObj)
