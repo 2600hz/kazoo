@@ -15,22 +15,22 @@ get_ne_binary_test_() ->
      ,[{"get a key with binary value"
        ,?_assertEqual(true, is_ne_binary(kapps_account_config:get_ne_binary(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>])))
        }
-       %% ,{"get a non castable to binary value should crash"
+       %% ,{"get a non cast-able to binary value should crash"
        %%  ,?_assertEqual(undefined, is_ne_binary(kapps_account_config:get_ne_binary(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"obj_key">>])))
        %%  }
-      ,{"get a castable to binary value should it as binary"
+      ,{"get a non-empty value which is cast-able to binary should return it as non-empty binary"
        ,?_assertEqual(true, is_ne_binary(kapps_account_config:get_ne_binary(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"i_key">>])))
        }
-      ,{"get an empty value should reutrn default"
+      ,{"get an empty value should return default"
        ,?_assertEqual(undefined, kapps_account_config:get_ne_binary(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, <<"not_exists">>))
        }
-      ,{"get a list of binary value should reutrn list of binary"
+      ,{"get a list of binary value should return list of binary"
        ,?_assertEqual(true, is_ne_binaries(kapps_account_config:get_ne_binaries(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"b_keys">>])))
        }
-      ,{"get not a list of binary value should reutrn Default"
+      ,{"get not a list of binary value should return Default"
        ,?_assertEqual(undefined, kapps_account_config:get_ne_binaries(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>]))
        }
-      ,{"get an empty list of binary value should reutrn Default"
+      ,{"get an empty list of binary value should return Default"
        ,?_assertEqual(undefined, kapps_account_config:get_ne_binaries(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>]))
        }
       ]
@@ -80,7 +80,7 @@ get_global_test_() ->
       ,{"not customized sub-account and reseller and empty system_config on get_global/2 should result in empty"
        ,?_assertEqual(kz_doc:set_id(EmptySysDoc, ?TEST_CAT_EMPTY), kapps_account_config:get_global(?NOT_CUSTOMIZED_ALL_ACCOUNTS, ?TEST_CAT_EMPTY))
        }
-      ,{"non exisiting category on get_global/2 should result in empty"
+      ,{"non existing category on get_global/2 should result in empty"
        ,?_assertEqual(kz_doc:set_id(EmptySysDoc, <<"no_cat">>), kapps_account_config:get_global(?NOT_CUSTOMIZED_ALL_ACCOUNTS, <<"no_cat">>))
        }
       ,common_get_global_tests(FunToTest)
@@ -181,7 +181,7 @@ get_with_strategy_general() ->
       ,{"empty jobj object account id should result in system_config"
        ,?_assertEqual(SysValue, kapps_account_config:get_with_strategy(<<"global">>, kz_json:new(), ?TEST_CAT, <<"root_obj_key">>))
        }
-      ,{"unkown object account id should result in system_config"
+      ,{"unknown object account id should result in system_config"
        ,?_assertEqual(SysValue, kapps_account_config:get_with_strategy(<<"global">>, maps:new(), ?TEST_CAT, <<"root_obj_key">>))
        }
       ,{"passing non raw account id where account is not customized should result in system_config"
@@ -196,7 +196,7 @@ get_with_strategy_general() ->
      ,[{"not customized account and reseller and empty system_config should result in set Default on system_config"
        ,?_assertEqual(Default, kapps_account_config:get_with_strategy(<<"global">>, ?NOT_CUSTOMIZED_ALL_ACCOUNTS, ?TEST_CAT_EMPTY, <<"new_key">>, Default))
        }
-      ,{"not customized account and reseller and not exisits system_config should result in set Default on system_config"
+      ,{"not customized account and reseller and not exists system_config should result in set Default on system_config"
        ,?_assertEqual(Default, kapps_account_config:get_with_strategy(<<"global">>, ?NO_CONFIG, <<"no_cat">>, <<"new_key">>, Default))
        }
       ]
@@ -240,52 +240,62 @@ get_startegy_reseller() ->
 %%      `-----> E(R) ==> A
 %%      `-----> N(R) ==> A
 %% Legend: A=Account P=ParentAccount R=ResellerAccount
-%%         E(X)=Account X has the doument but it's empty
+%%         E(X)=Account X has the document but it's empty
 %%         N(X)=Account X does not have the document
+%%
 get_startegy_hierarchy_merge() ->
     SysValue = get_fixture_value([<<"default">>, <<"root_obj_key">>], "test_cat_system"),
     SubAccount1Value = get_fixture_value(<<"root_obj_key">>, "test_cat_subaccount_1"),
     SubAccount2Value = get_fixture_value(<<"root_obj_key">>, "test_cat_subaccount_2"),
     CusResellerHierValue = get_fixture_value(<<"root_obj_key">>, "test_cat_reseller"),
 
+    SometimesEmptyValue_System = kz_json:get_value([<<"obj_empty_test">>, <<"obj_empty_sometimes">>], SysValue),
+    SometimesEmptyValue_Reseller = kz_json:get_value([<<"obj_empty_test">>, <<"obj_empty_sometimes">>], CusResellerHierValue),
+    SometimesEmptyValue_Sub1 = kz_json:get_value([<<"obj_empty_test">>, <<"obj_empty_sometimes">>], SubAccount1Value),
+
     [{"Testing get config hierarchy_merge strategy"
      ,[{"customized account where account is reseller itself should result in merged value of account and system"
-       ,?_assertEqual(kz_json:merge([SysValue, CusResellerHierValue])
+       ,?_assertEqual(kz_json:merge_recursive([SysValue, CusResellerHierValue])
                      ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?SELF_RESELLER, ?TEST_CAT, <<"root_obj_key">>)
                      )
        }
       ,{"customized account 1 should result in merged value of account, reseller and system"
-       ,?_assertEqual(kz_json:merge([SysValue, CusResellerHierValue, SubAccount1Value])
-                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, <<"root_obj_key">>)
+       ,?_assertEqual(kz_json:merge_recursive([SysValue, CusResellerHierValue, SubAccount1Value])
+                     ,kapps_account_config:get_hierarchy(?CUSTOMIZED_SUBACCOUNT_1, ?TEST_CAT, <<"root_obj_key">>)
                      )
        }
       ,{"customized account, system and empty/not_exists parent, reseller should result in merged value of account and system"
-       ,?_assertEqual(kz_json:merge([SysValue, SubAccount2Value])
-                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_404_P_404_R, ?TEST_CAT, <<"root_obj_key">>)
+       ,?_assertEqual(kz_json:merge_recursive([SysValue, SubAccount2Value])
+                     ,kapps_account_config:get_hierarchy(?CUST_A_404_P_404_R, ?TEST_CAT, <<"root_obj_key">>)
                      )
        }
       ,{"customized account, reseller, system and empty/not_exists parent should result in merged value of all customized and system"
-       ,?_assertEqual(kz_json:merge([SysValue, CusResellerHierValue, SubAccount2Value])
-                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_404_P_CUST_R, ?TEST_CAT, <<"root_obj_key">>)
+       ,?_assertEqual(kz_json:merge_recursive([SysValue, CusResellerHierValue, SubAccount2Value])
+                     ,kapps_account_config:get_hierarchy(?CUST_A_404_P_CUST_R, ?TEST_CAT, <<"root_obj_key">>)
                      )
        }
       ,{"customized account, parent, system and empty reseller should result in merged value of all customized and system"
-       ,?_assertEqual(kz_json:merge([SysValue, SubAccount1Value, SubAccount2Value])
-                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_CUST_P_EMPTY_R, ?TEST_CAT, <<"root_obj_key">>)
+       ,?_assertEqual(kz_json:merge_recursive([SysValue, SubAccount1Value, SubAccount2Value])
+                     ,kapps_account_config:get_hierarchy(?CUST_A_CUST_P_EMPTY_R, ?TEST_CAT, <<"root_obj_key">>)
                      )
        }
       ,{"customized account, parent, system and not customized reseller should result in merged value of all customized and system"
-       ,?_assertEqual(kz_json:merge([SysValue, SubAccount1Value, SubAccount2Value])
-                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_CUST_P_404_R, ?TEST_CAT, <<"root_obj_key">>)
+       ,?_assertEqual(kz_json:merge_recursive([SysValue, SubAccount1Value, SubAccount2Value])
+                     ,kapps_account_config:get_hierarchy(?CUST_A_CUST_P_404_R, ?TEST_CAT, <<"root_obj_key">>)
                      )
        }
       ,{"customized account, parents and system should result in merged value of all"
-       ,?_assertEqual(kz_json:merge([SysValue, CusResellerHierValue, SubAccount1Value, SubAccount2Value])
-                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?CUST_A_CUST_P_CUST_R, ?TEST_CAT, <<"root_obj_key">>)
+       ,?_assertEqual(kz_json:merge_recursive([SysValue, CusResellerHierValue, SubAccount1Value, SubAccount2Value])
+                     ,kapps_account_config:get_hierarchy(?CUST_A_CUST_P_CUST_R, ?TEST_CAT, <<"root_obj_key">>)
                      )
        }
       ,{"not customized account with undefined parent account id and no reseller should result in system_config"
-       ,?_assertEqual(SysValue, kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?AN_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>))
+       ,?_assertEqual(SysValue, kapps_account_config:get_hierarchy(?AN_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>))
+       }
+      ,{"check if the account set an empty jobj, the content of the hierarchy is merged into the jobj properly"
+       ,?_assertEqual(kz_json:merge_recursive([SometimesEmptyValue_System, SometimesEmptyValue_Reseller, SometimesEmptyValue_Sub1])
+                     ,kapps_account_config:get_hierarchy(?CUSTOMIZED_SUBACCOUNT_2, ?TEST_CAT, [<<"root_obj_key">>, <<"obj_empty_test">>, <<"obj_empty_sometimes">>])
+                     )
        }
       ]
      }

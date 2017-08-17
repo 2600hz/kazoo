@@ -20,12 +20,18 @@
             "bol_key": true,
             "f_key": 1.2,
             "i_key": 123456,
+            "obj_empty_test": {
+                "banana": "darim",
+                "obj_empty_sometimes": {
+                    "from": "system",
+                    "system": true
+                }
+            },
             "obj_key": {
                 "from": "system"
             },
             "system_key": "system_only"
-        },
-        "system": "system_only"
+        }
     },
     "pvt_account_db": "system_config",
     "pvt_account_id": "system_config",
