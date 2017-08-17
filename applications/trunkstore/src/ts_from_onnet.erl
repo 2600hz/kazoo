@@ -129,7 +129,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                 ]
         end,
 
-    Call = ts_callflow:kapps_call(State),
+    Call = ts_callflow:get_kapps_call(State),
 
     Command = [KV
                || {_,V}=KV <- CallerID
