@@ -39,7 +39,7 @@
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
--define(Mod, mod_kazoo).
+-define(FS_MODULE, mod_kazoo).
 
 -type fs_api_ok() :: {'ok', binary()}.
 -type fs_api_error():: {'error', 'timeout' | 'exception' | binary()}.
@@ -51,76 +51,76 @@
 
 -spec version(atom()) -> fs_api_return().
 -spec version(atom(), pos_integer()) -> fs_api_return().
-version(Node) -> (?Mod):version(Node).
-version(Node, Timeout) -> (?Mod):version(Node, Timeout).
+version(Node) -> ?FS_MODULE:version(Node).
+version(Node, Timeout) -> ?FS_MODULE:version(Node, Timeout).
 
 -spec noevents(atom()) -> fs_api_return().
-noevents(Node) -> (?Mod):noevents(Node).
+noevents(Node) -> ?FS_MODULE:noevents(Node).
 
 -spec close(atom()) -> 'ok'.
-close(Node) -> (?Mod):close(Node).
+close(Node) -> ?FS_MODULE:close(Node).
 
 -spec getpid(atom()) -> fs_api_return().
 -spec getpid(atom(), pos_integer()) -> fs_api_return().
-getpid(Node) -> (?Mod):getpid(Node).
-getpid(Node, Timeout) -> (?Mod):getpid(Node, Timeout).
+getpid(Node) -> ?FS_MODULE:getpid(Node).
+getpid(Node, Timeout) -> ?FS_MODULE:getpid(Node, Timeout).
 
 -spec bind(atom(), atom()) -> fs_api_return().
 -spec bind(atom(), atom(), pos_integer()) -> fs_api_return().
-bind(Node, Type) -> (?Mod):bind(Node, Type).
-bind(Node, Type, Timeout) -> (?Mod):bind(Node, Type, Timeout).
+bind(Node, Type) -> ?FS_MODULE:bind(Node, Type).
+bind(Node, Type, Timeout) -> ?FS_MODULE:bind(Node, Type, Timeout).
 
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string()) -> 'ok'.
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), pos_integer() | 'infinity') ->
                          'ok' | {'error', 'baduuid'}.
-fetch_reply(Node, FetchID, Section, Reply) -> (?Mod):fetch_reply(Node, FetchID, Section, Reply).
-fetch_reply(Node, FetchID, Section, Reply, Timeout) -> (?Mod):fetch_reply(Node, FetchID, Section, Reply, Timeout).
+fetch_reply(Node, FetchID, Section, Reply) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply).
+fetch_reply(Node, FetchID, Section, Reply, Timeout) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Timeout).
 
 -spec api(atom(), string()) -> fs_api_return().
 -spec api(atom(), string(), string()) -> fs_api_return().
 -spec api(atom(), text(), string(), kz_timeout()) -> fs_api_return().
-api(Node, Cmd) -> (?Mod):api(Node, Cmd).
-api(Node, Cmd, Args) -> (?Mod):api(Node, Cmd, Args).
-api(Node, Cmd, Args, Timeout) -> (?Mod):api(Node, Cmd, Args, Timeout).
+api(Node, Cmd) -> ?FS_MODULE:api(Node, Cmd).
+api(Node, Cmd, Args) -> ?FS_MODULE:api(Node, Cmd, Args).
+api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:api(Node, Cmd, Args, Timeout).
 
 %% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
 %% sent to calling process after it is received. This function
 %% returns the result of the initial bgapi call or `timeout' if FreeSWITCH fails
 %% to respond.
 -spec bgapi(atom(), atom(), string() | binary()) -> fs_api_return().
-bgapi(Node, Cmd, Args) -> (?Mod):bgapi(Node, Cmd, Args).
+bgapi(Node, Cmd, Args) -> ?FS_MODULE:bgapi(Node, Cmd, Args).
 
 -spec bgapi(atom(), atom(), string() | binary(), fun()) -> fs_api_return().
-bgapi(Node, Cmd, Args, Fun) -> (?Mod):bgapi(Node, Cmd, Args, Fun).
+bgapi(Node, Cmd, Args, Fun) -> ?FS_MODULE:bgapi(Node, Cmd, Args, Fun).
 
 -spec bgapi(atom(), atom(), string() | binary(), fun(), list()) -> fs_api_return().
-bgapi(Node, Cmd, Args, Fun, CallBackParams) -> (?Mod):bgapi(Node, Cmd, Args, Fun, CallBackParams).
+bgapi(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi(Node, Cmd, Args, Fun, CallBackParams).
 
 -spec bgapi(atom(), ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
-bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) -> (?Mod):bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun).
+bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) -> ?FS_MODULE:bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun).
 
 -type event() :: kz_json:object().
 -spec event(atom(), event() | [event()]) -> 'ok' | {'error', 'timeout' | 'exception'}.
 -spec event(atom(), event() | [event()], pos_integer()) -> 'ok' | {'error', 'timeout' | 'exception'}.
-event(Node, Events) -> (?Mod):event(Node, Events).
-event(Node, Events, Timeout) -> (?Mod):event(Node, Events, Timeout).
+event(Node, Events) -> ?FS_MODULE:event(Node, Events).
+event(Node, Events, Timeout) -> ?FS_MODULE:event(Node, Events, Timeout).
 
 -spec nixevent(atom(), event() | [event()]) -> 'ok'.
-nixevent(Node, Event) -> (?Mod):nixevent(Node, Event).
+nixevent(Node, Event) -> ?FS_MODULE:nixevent(Node, Event).
 
 -spec sendevent(atom(), ne_binary(), list()) -> 'ok'.
-sendevent(Node, EventName, Headers) -> (?Mod):sendevent(Node, EventName, Headers).
+sendevent(Node, EventName, Headers) -> ?FS_MODULE:sendevent(Node, EventName, Headers).
 
 -spec sendevent_custom(atom(), atom(), list()) -> 'ok'.
-sendevent_custom(Node, SubClassName, Headers) -> (?Mod):sendevent_custom(Node, SubClassName, Headers).
+sendevent_custom(Node, SubClassName, Headers) -> ?FS_MODULE:sendevent_custom(Node, SubClassName, Headers).
 
 -spec sendmsg(atom(), ne_binary(), list()) -> fs_api_return().
-sendmsg(Node, UUID, Headers) -> (?Mod):sendmsg(Node, UUID, Headers).
+sendmsg(Node, UUID, Headers) -> ?FS_MODULE:sendmsg(Node, UUID, Headers).
 
 -spec config(atom()) -> 'ok'.
-config(Node) -> (?Mod):config(Node).
+config(Node) -> ?FS_MODULE:config(Node).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
                     {'ok', binary()} |
                     {'error', 'timeout' | 'exception' | binary()}.
-bgapi4(Node, Cmd, Args, Fun, CallBackParams) -> (?Mod):bgapi4(Node, Cmd, Args, Fun, CallBackParams).
+bgapi4(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi4(Node, Cmd, Args, Fun, CallBackParams).
