@@ -1,6 +1,7 @@
 {
     "_id": "duo",
     "enabled": false,
+    "name": "System Default Provider",
     "provider_name": "duo",
     "pvt_provider_type": "multi_factor",
     "pvt_type": "provider",
