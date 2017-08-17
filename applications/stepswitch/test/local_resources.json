@@ -1,0 +1,291 @@
+[
+    {
+        "doc": {
+            "_id": "1c30a2ada029e2b31654ae2c3937b04c",
+            "_rev": "2-707061f7bff991b38d004f125b026416",
+            "classifiers": {
+                "caribbean": {
+                    "enabled": false,
+                    "prefix": "111",
+                    "suffix": ""
+                },
+                "did_us": {
+                    "enabled": true,
+                    "prefix": "",
+                    "suffix": ""
+                },
+                "unknown": {
+                    "enabled": true,
+                    "prefix": "111",
+                    "regex": "^(.{10})$",
+                    "suffix": ""
+                }
+            },
+            "emergency": false,
+            "enabled": true,
+            "flags": [],
+            "format_from_uri": false,
+            "gateways": [
+                {
+                    "channel_selection": "ascending",
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "port": 5060,
+                    "privacy_mode": "sip",
+                    "progress_timeout": 8,
+                    "server": "10.0.1.2",
+                    "skype_rr": true
+                }
+            ],
+            "grace_period": 5,
+            "media": {
+                "audio": {
+                    "codecs": []
+                },
+                "fax_option": false,
+                "video": {
+                    "codecs": []
+                }
+            },
+            "name": "ccaacacaccc",
+            "notes": "",
+            "pvt_account_db": "account%2Fe6%2Fed%2F490b996152f639c4118f8c21d4bb",
+            "pvt_account_id": "e6ed490b996152f639c4118f8c21d4bb",
+            "pvt_created": 63670213394,
+            "pvt_is_authenticated": true,
+            "pvt_modified": 63670213586,
+            "pvt_type": "resource",
+            "pvt_vsn": "1",
+            "require_flags": false,
+            "rules": [],
+            "template_name": "call_centric",
+            "weight_cost": 2
+        },
+        "id": "1c30a2ada029e2b31654ae2c3937b04c",
+        "key": "1c30a2ada029e2b31654ae2c3937b04c",
+        "value": "ccaacacaccc"
+    },
+    {
+        "doc": {
+            "_id": "6365415261d12830250e11116743f42a",
+            "_rev": "2-287505ba35236b47a47011dba53ef7a8",
+            "classifiers": {
+                "toll_us": {
+                    "enabled": true,
+                    "prefix": "",
+                    "suffix": ""
+                }
+            },
+            "emergency": false,
+            "enabled": true,
+            "flags": [],
+            "format_from_uri": false,
+            "gateways": [
+                {
+                    "channel_selection": "ascending",
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "port": 5060,
+                    "privacy_mode": "sip",
+                    "progress_timeout": 8,
+                    "server": "10.0.1.9",
+                    "skype_rr": true
+                }
+            ],
+            "grace_period": 5,
+            "media": {
+                "audio": {
+                    "codecs": []
+                },
+                "fax_option": false,
+                "video": {
+                    "codecs": []
+                }
+            },
+            "name": "TLNX",
+            "notes": "",
+            "pvt_account_db": "account%2Fe6%2Fed%2F490b996152f639c4118f8c21d4bb",
+            "pvt_account_id": "e6ed490b996152f639c4118f8c21d4bb",
+            "pvt_created": 63670213478,
+            "pvt_is_authenticated": true,
+            "pvt_modified": 63670213586,
+            "pvt_type": "resource",
+            "pvt_vsn": "1",
+            "require_flags": false,
+            "rules": [],
+            "template_name": "telnyx",
+            "weight_cost": 1
+        },
+        "id": "6365415261d12830250e11116743f42a",
+        "key": "6365415261d12830250e11116743f42a",
+        "value": "TLNX"
+    },
+    {
+        "doc": {
+            "_id": "66f10c653f8e65e0e16f0ba6788bfe95",
+            "_rev": "2-cdc562eaa1501cfeb29a4ec28441adc3",
+            "classifiers": {
+                "caribbean": {
+                    "enabled": true,
+                    "prefix": "",
+                    "suffix": ""
+                }
+            },
+            "emergency": false,
+            "enabled": true,
+            "flags": [],
+            "format_from_uri": false,
+            "gateways": [
+                {
+                    "channel_selection": "ascending",
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "port": 5060,
+                    "privacy_mode": "sip",
+                    "progress_timeout": 8,
+                    "server": "10.0.0.10",
+                    "skype_rr": true
+                }
+            ],
+            "grace_period": 5,
+            "media": {
+                "audio": {
+                    "codecs": []
+                },
+                "fax_option": false,
+                "video": {
+                    "codecs": []
+                }
+            },
+            "name": "Bandwidth Template",
+            "notes": "",
+            "pvt_account_db": "account%2Fe6%2Fed%2F490b996152f639c4118f8c21d4bb",
+            "pvt_account_id": "e6ed490b996152f639c4118f8c21d4bb",
+            "pvt_created": 63670213264,
+            "pvt_is_authenticated": true,
+            "pvt_modified": 63670213586,
+            "pvt_type": "resource",
+            "pvt_vsn": "1",
+            "require_flags": false,
+            "rules": [],
+            "template_name": "bandwidth",
+            "weight_cost": 5
+        },
+        "id": "66f10c653f8e65e0e16f0ba6788bfe95",
+        "key": "66f10c653f8e65e0e16f0ba6788bfe95",
+        "value": "Bandwidth Template"
+    },
+    {
+        "doc": {
+            "_id": "c9bb38dfdff0f4738636e7beac700d3b",
+            "_rev": "2-77d2ca11edadd1de95f87c4673c735b7",
+            "classifiers": {
+                "tollfree_us": {
+                    "enabled": true,
+                    "prefix": "",
+                    "suffix": ""
+                }
+            },
+            "emergency": false,
+            "enabled": false,
+            "flags": [],
+            "format_from_uri": false,
+            "gateways": [
+                {
+                    "channel_selection": "ascending",
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "port": 5060,
+                    "privacy_mode": "sip",
+                    "progress_timeout": 8,
+                    "server": "10.0.1.111",
+                    "skype_rr": true
+                }
+            ],
+            "grace_period": 5,
+            "media": {
+                "audio": {
+                    "codecs": []
+                },
+                "fax_option": false,
+                "video": {
+                    "codecs": []
+                }
+            },
+            "name": "voipin",
+            "notes": "",
+            "pvt_account_db": "account%2Fe6%2Fed%2F490b996152f639c4118f8c21d4bb",
+            "pvt_account_id": "e6ed490b996152f639c4118f8c21d4bb",
+            "pvt_created": 63670213513,
+            "pvt_is_authenticated": true,
+            "pvt_modified": 63670213586,
+            "pvt_type": "resource",
+            "pvt_vsn": "1",
+            "require_flags": false,
+            "rules": [],
+            "template_name": "voip_innovations",
+            "weight_cost": 3
+        },
+        "id": "c9bb38dfdff0f4738636e7beac700d3b",
+        "key": "c9bb38dfdff0f4738636e7beac700d3b",
+        "value": "voipin"
+    },
+    {
+        "doc": {
+            "_id": "ea2d868dad3629254d57d5a1f6a69cde",
+            "_rev": "2-c5dc54badfa28c27ae31280d981f0127",
+            "emergency": false,
+            "enabled": true,
+            "flags": [],
+            "format_from_uri": false,
+            "gateways": [
+                {
+                    "channel_selection": "ascending",
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "port": 5060,
+                    "privacy_mode": "sip",
+                    "progress_timeout": 8,
+                    "server": "10.0.1.4",
+                    "skype_rr": true
+                }
+            ],
+            "grace_period": 5,
+            "media": {
+                "audio": {
+                    "codecs": []
+                },
+                "fax_option": false,
+                "video": {
+                    "codecs": []
+                }
+            },
+            "name": "LVL3",
+            "notes": "",
+            "pvt_account_db": "account%2Fe6%2Fed%2F490b996152f639c4118f8c21d4bb",
+            "pvt_account_id": "e6ed490b996152f639c4118f8c21d4bb",
+            "pvt_created": 63670213414,
+            "pvt_is_authenticated": true,
+            "pvt_modified": 63670213586,
+            "pvt_type": "resource",
+            "pvt_vsn": "1",
+            "require_flags": false,
+            "rules": [],
+            "template_name": "level3",
+            "weight_cost": 4
+        },
+        "id": "ea2d868dad3629254d57d5a1f6a69cde",
+        "key": "ea2d868dad3629254d57d5a1f6a69cde",
+        "value": "LVL3"
+    }
+]

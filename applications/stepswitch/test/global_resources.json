@@ -1,0 +1,221 @@
+[
+    {
+        "doc": {
+            "_id": "7e6ab78098a1a788019a54ed4f51ba82",
+            "_rev": "5-fbdd5c963775f45cb27f01cc9a778660",
+            "classifiers": {
+                "international": {
+                    "enabled": true,
+                    "prefix": "",
+                    "suffix": ""
+                }
+            },
+            "emergency": false,
+            "enabled": true,
+            "flags": [],
+            "format_from_uri": false,
+            "gateways": [
+                {
+                    "channel_selection": "ascending",
+                    "custom_sip_headers": {},
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "password": "PWD",
+                    "port": 5060,
+                    "progress_timeout": 8,
+                    "server": "sip.flowroute.com",
+                    "skype_rr": true,
+                    "username": "LGN"
+                }
+            ],
+            "grace_period": 5,
+            "id": "7e6ab78098a1a788019a54ed4f51ba82",
+            "media": {
+                "audio": {
+                    "codecs": [
+                        "PCMU"
+                    ]
+                },
+                "fax_option": false,
+                "video": {
+                    "codecs": []
+                }
+            },
+            "name": "Flowroute Int.",
+            "notes": "",
+            "pvt_account_db": "offnet",
+            "pvt_created": 63640928460,
+            "pvt_is_authenticated": true,
+            "pvt_modified": 63640929081,
+            "pvt_type": "resource",
+            "pvt_vsn": "1",
+            "require_flags": false,
+            "rules": [],
+            "template_name": "Flowroute",
+            "weight_cost": 50
+        },
+        "id": "7e6ab78098a1a788019a54ed4f51ba82",
+        "key": "7e6ab78098a1a788019a54ed4f51ba82",
+        "value": "Flowroute Int."
+    },
+    {
+        "doc": {
+            "_id": "d4bc772163c9ab2ebc4ee79637ae3433",
+            "_rev": "12-e8b8bf95f9576005fd133c7aa17f1d6b",
+            "classifiers": {
+                "did_us": {
+                    "enabled": true,
+                    "prefix": "+1",
+                    "suffix": ""
+                },
+                "tollfree_us": {
+                    "enabled": true,
+                    "prefix": "+1",
+                    "suffix": ""
+                }
+            },
+            "emergency": false,
+            "enabled": true,
+            "flags": [
+                "fax"
+            ],
+            "format_from_uri": false,
+            "gateways": [
+                {
+                    "channel_selection": "ascending",
+                    "custom_sip_headers": {},
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "password": "PWD",
+                    "port": 5060,
+                    "privacy_mode": "sip",
+                    "progress_timeout": 8,
+                    "server": "sip.flowroute.com",
+                    "skype_rr": true,
+                    "username": "LGN"
+                }
+            ],
+            "grace_period": 5,
+            "id": "d4bc772163c9ab2ebc4ee79637ae3433",
+            "media": {
+                "audio": {
+                    "codecs": [
+                        "PCMU"
+                    ]
+                },
+                "bypass_media": false,
+                "fax_option": false,
+                "video": {
+                    "codecs": []
+                }
+            },
+            "name": "FlowRoute Domestic",
+            "notes": "",
+            "pvt_account_db": "offnet",
+            "pvt_created": 63635230797,
+            "pvt_is_authenticated": true,
+            "pvt_modified": 63653196011,
+            "pvt_type": "resource",
+            "pvt_vsn": "1",
+            "require_flags": false,
+            "rules": [],
+            "template_name": "Flowroute",
+            "weight_cost": 50
+        },
+        "id": "d4bc772163c9ab2ebc4ee79637ae3433",
+        "key": "d4bc772163c9ab2ebc4ee79637ae3433",
+        "value": "FlowRoute Domestic"
+    },
+    {
+        "doc": {
+            "_id": "d60be7f888d8b7d937a846e07b927886",
+            "_rev": "3-52105eda324b1bbac691f0623a5551fe",
+            "caller_id_options": {
+                "type": "emergency"
+            },
+            "classifiers": {
+                "emergency": {
+                    "enabled": true,
+                    "prefix": "",
+                    "suffix": ""
+                }
+            },
+            "emergency": true,
+            "enabled": true,
+            "flags": [
+                "CallerID",
+                "CNAM",
+                "US48",
+                "Alaska",
+                "Hawaii",
+                "TollFree"
+            ],
+            "format_from_uri": false,
+            "gateways": [
+                {
+                    "channel_selection": "ascending",
+                    "custom_sip_headers": {},
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "password": "PWD",
+                    "port": 5060,
+                    "progress_timeout": 3,
+                    "realm": "42.42.42.42",
+                    "server": "42.42.42.42;fs_path=sip:42.42.42.43",
+                    "skype_rr": true,
+                    "username": "login"
+                },
+                {
+                    "channel_selection": "ascending",
+                    "custom_sip_headers": {},
+                    "enabled": true,
+                    "endpoint_type": "sip",
+                    "force_port": false,
+                    "invite_format": "route",
+                    "password": "whatever",
+                    "port": 5060,
+                    "progress_timeout": 3,
+                    "realm": "42.42.42.42",
+                    "server": "208.94.159.10;fs_path=sip:42.42.42.44",
+                    "skype_rr": true,
+                    "username": "2600hz"
+                }
+            ],
+            "grace_period": 5,
+            "id": "d60be7f888d8b7d937a846e07b927886",
+            "media": {
+                "audio": {
+                    "codecs": [
+                        "PCMU"
+                    ]
+                },
+                "fax_option": false,
+                "video": {
+                    "codecs": []
+                }
+            },
+            "name": "Dash 911",
+            "notes": "",
+            "pvt_account_db": "offnet",
+            "pvt_is_authenticated": true,
+            "pvt_modified": 63649578016,
+            "pvt_type": "resource",
+            "pvt_vsn": "1",
+            "require_flags": false,
+            "rules": [
+                "^\\+{0,1}(933)$",
+                "^\\+{0,1}(911)$"
+            ],
+            "weight_cost": 0
+        },
+        "id": "d60be7f888d8b7d937a846e07b927886",
+        "key": "d60be7f888d8b7d937a846e07b927886",
+        "value": "Dash 911"
+    }
+]

@@ -70,6 +70,12 @@
         ,set_resrc_selector_marks/2
         ]).
 
+-ifdef(TEST).
+-export([resources_from_jobjs/1
+        ,fetch_local_resources/2
+        ]).
+-endif.
+
 -include("stepswitch.hrl").
 
 -define(CONFIG_CAT, <<"number_manager">>).
@@ -876,11 +882,13 @@ fetch_local_resources(AccountId, JObjs) ->
       ]).
 
 -spec fetch_account_dedicated_proxies(api_ne_binary()) -> kz_proplist().
-fetch_account_dedicated_proxies('undefined') -> [];
+fetch_account_dedicated_proxies(undefined) -> [];
 fetch_account_dedicated_proxies(AccountId) ->
-    case kz_ips:assigned(AccountId) of
-        {'ok', IPS} -> [build_account_dedicated_proxy(IP) || IP <- IPS];
-        _ -> []
+    case assigned_IPs(AccountId) of
+        {ok, IPS} -> [build_account_dedicated_proxy(IP) || IP <- IPS];
+        {error, _R} ->
+            lager:error("could not fetch IPs assigned to ~s: ~p", [AccountId, _R]),
+            []
     end.
 
 -spec build_account_dedicated_proxy(kz_json:object()) -> {api_ne_binary(), api_ne_binary()}.
@@ -888,6 +896,12 @@ build_account_dedicated_proxy(Proxy) ->
     Zone = kz_json:get_ne_binary_value(<<"zone">>, Proxy),
     ProxyIP = kz_json:get_ne_binary_value(<<"ip">>, Proxy),
     {Zone, ProxyIP}.
+
+-ifdef(TEST).
+assigned_IPs(?ACCOUNT_ID) -> {ok, []}.
+-else.
+assigned_IPs(AccountId) -> kz_ips:assigned(AccountId).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -68,12 +68,10 @@ available(Zone, Quantity) ->
                       {'error', any()}.
 assigned(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    ViewOptions = [{'key', AccountId}],
-    case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
-                               ,<<"dedicated_ips/assigned_to_listing">>
-                               ,ViewOptions
-                               )
-    of
+    ViewOptions = [{'key', AccountId}
+                  ],
+    View = <<"dedicated_ips/assigned_to_listing">>,
+    case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB, View, ViewOptions) of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(fun() -> assigned(Account) end);
         {'ok', JObjs} ->

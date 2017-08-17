@@ -39,5 +39,9 @@
         kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"default_emergency_cid_number">>)
        ).
 
+-ifdef(TEST).
+-define(ACCOUNT_ID, <<"e6ed490b996152f639c4118f8c21d4bb">>).
+-endif.
+
 -define(STEPSWITCH_HRL, 'true').
 -endif.
