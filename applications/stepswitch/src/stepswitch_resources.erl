@@ -875,7 +875,7 @@ fetch_local_resources(AccountId, JObjs) ->
        || JObj <- JObjs
       ]).
 
--spec fetch_account_dedicated_proxies(api_binary()) -> kz_proplist().
+-spec fetch_account_dedicated_proxies(api_ne_binary()) -> kz_proplist().
 fetch_account_dedicated_proxies('undefined') -> [];
 fetch_account_dedicated_proxies(AccountId) ->
     case kz_ips:assigned(AccountId) of
@@ -883,10 +883,10 @@ fetch_account_dedicated_proxies(AccountId) ->
         _ -> []
     end.
 
--spec build_account_dedicated_proxy(kz_json:object()) -> {api_binary(), api_binary()}.
+-spec build_account_dedicated_proxy(kz_json:object()) -> {api_ne_binary(), api_ne_binary()}.
 build_account_dedicated_proxy(Proxy) ->
-    Zone = kz_json:get_value(<<"zone">>, Proxy),
-    ProxyIP = kz_json:get_value(<<"ip">>, Proxy),
+    Zone = kz_json:get_ne_binary_value(<<"zone">>, Proxy),
+    ProxyIP = kz_json:get_ne_binary_value(<<"ip">>, Proxy),
     {Zone, ProxyIP}.
 
 %%--------------------------------------------------------------------
@@ -896,28 +896,26 @@ build_account_dedicated_proxy(Proxy) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resources_from_jobjs(kz_json:objects()) -> resources().
--spec resources_from_jobjs(kz_json:objects(), resources()) -> resources().
 resources_from_jobjs(JObjs) ->
     resources_from_jobjs(JObjs, []).
 
+-spec resources_from_jobjs(kz_json:objects(), resources()) -> resources().
 resources_from_jobjs([], Resources) -> Resources;
-resources_from_jobjs([JObj|JObjs], Resources) ->
-    case kz_json:is_true(<<"enabled">>, JObj, 'true') of
-        'false' -> resources_from_jobjs(JObjs, Resources);
-        'true' -> resources_from_jobjs(JObjs, create_resource(JObj, Resources))
-    end.
+resources_from_jobjs([JObj|JObjs], Resources0) ->
+    Resources = case kz_json:is_true(<<"enabled">>, JObj, true) of
+                    false -> Resources0;
+                    true -> create_resource(JObj, Resources0)
+                end,
+    resources_from_jobjs(JObjs, Resources).
 
 -spec create_resource(kz_json:object(), resources()) -> resources().
 create_resource(JObj, Resources) ->
     case kz_json:get_value(<<"classifiers">>, JObj) of
-        'undefined' -> [resource_from_jobj(JObj) | Resources];
-        ResourceClassifiers ->
+        undefined -> [resource_from_jobj(JObj) | Resources];
+        ResourceClassifiers0 ->
+            ResourceClassifiers = kz_json:to_proplist(ResourceClassifiers0),
             AvailableClassifiers = kz_json:to_proplist(knm_converters:available_classifiers()),
-            create_resource(kz_json:to_proplist(ResourceClassifiers)
-                           ,AvailableClassifiers
-                           ,JObj
-                           ,Resources
-                           )
+            create_resource(ResourceClassifiers, AvailableClassifiers, JObj, Resources)
     end.
 
 -spec create_resource(kz_proplist(), kz_proplist(), kz_json:object(), resources()) -> resources().
@@ -927,19 +925,9 @@ create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, R
         'undefined' ->
             create_resource(Classifiers, ConfigClassifiers, Resource, Resources);
         ConfigClassifier ->
-            JObj =
-                create_classifier_resource(Resource
-                                          ,ClassifierJObj
-                                          ,Classifier
-                                          ,ConfigClassifier
-                                          ),
-            create_resource(Classifiers
-                           ,ConfigClassifiers
-                           ,Resource
-                           ,[resource_from_jobj(JObj)
-                             | Resources
-                            ]
-                           )
+            JObj = create_classifier_resource(Resource, ClassifierJObj, Classifier, ConfigClassifier),
+            NewResources = [resource_from_jobj(JObj) | Resources],
+            create_resource(Classifiers, ConfigClassifiers, Resource, NewResources)
     end.
 
 -spec create_classifier_resource(kz_json:object(), kz_json:object(), ne_binary(), kz_proplist()) -> kz_json:object().
@@ -955,8 +943,7 @@ create_classifier_resource(Resource, ClassifierJObj, Classifier, ConfigClassifie
           ,{<<"emergency">>, classifier_is_emergency(ClassifierJObj, Classifier, DefaultEmergency)}
           ,{<<"classifier">>, Classifier}
           ,{<<"classifier_enable">>, kz_json:is_true(<<"enabled">>, ClassifierJObj, 'true')}
-          ]
-         ),
+          ]),
     create_classifier_gateways(kz_json:set_values(Props, Resource), ClassifierJObj).
 
 -spec create_classifier_gateways(kz_json:object(), kz_json:object()) -> kz_json:object().
@@ -965,15 +952,14 @@ create_classifier_gateways(Resource, ClassifierJObj) ->
         props:filter_undefined(
           [{<<"suffix">>, kz_json:get_value(<<"suffix">>, ClassifierJObj)}
           ,{<<"prefix">>, kz_json:get_value(<<"prefix">>, ClassifierJObj)}
-          ]
-         ),
+          ]),
     Gateways =
         [kz_json:set_values(Props, Gateway)
          || Gateway <- kz_json:get_value(<<"gateways">>, Resource, [])
         ],
     kz_json:set_value(<<"gateways">>, Gateways, Resource).
 
--spec classifier_is_emergency(kz_json:object(), ne_binary(), boolean() | 'undefined') -> boolean().
+-spec classifier_is_emergency(kz_json:object(), ne_binary(), api_boolean()) -> boolean().
 classifier_is_emergency(ClassifierJObj, <<"emergency">>, _DefaultEmergency) ->
     kz_json:is_true(<<"emergency">>, ClassifierJObj, 'true');
 classifier_is_emergency(ClassifierJObj, _Classifier, DefaultEmergency) ->
@@ -1105,12 +1091,6 @@ gateways_from_jobjs([JObj|JObjs], Resource, Gateways) ->
             gateways_from_jobjs(JObjs, Resource, G)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec gateway_from_jobj(kz_json:object(), resource()) -> gateway().
 gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                               ,format_from_uri=FormatFrom
