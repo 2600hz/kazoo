@@ -299,11 +299,12 @@ load_config_from_ancestors(AccountId, Category) ->
     load_config_from_ancestors(AccountId, Category, is_reseller_account(AccountId)).
 
 -spec load_config_from_ancestors(ne_binary(), ne_binary(), boolean()) -> kazoo_data:get_results_return().
-load_config_from_ancestors(AccountId, Category, true) ->
-    %% account is reseller, only read from account
-    load_config_from_ancestors_fold([AccountId], Category, []);
+load_config_from_ancestors(_, _, true) ->
+    %% account is reseller, no need to read from its parents
+    %% Note: load_config_from_account is already read the config from this AccountId
+    {error, <<"account_is_reseller">>};
 load_config_from_ancestors(AccountId, Category, false) ->
-    %% not reseller, walk account and its ancestors
+    %% not reseller, get its ancestors and walk
     Tree = get_account_ancestors_or_reseller(AccountId),
     load_config_from_ancestors_fold(Tree, Category, []).
 
