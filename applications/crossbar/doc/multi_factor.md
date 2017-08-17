@@ -56,7 +56,7 @@ curl -v -X GET \
     "multi_factor_providers": [
       {
         "id": "duo",
-        "enabled": true,
+        "enabled": false,
         "provider_name": "duo",
         "provider_type": "multi_factor"
       }

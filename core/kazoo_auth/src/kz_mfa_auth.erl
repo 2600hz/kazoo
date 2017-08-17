@@ -10,14 +10,10 @@
 -export([authenticate/1
         ,get_configs/1
         ,get_system_configs/0
-        ,provider/1
+        ,provider/1, default_provider/0
         ]).
 
 -include("kazoo_auth.hrl").
-
--define(DEFAULT_PROVIDER,
-        kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>)
-       ).
 
 -type result() :: mfa_result().
 
@@ -97,7 +93,7 @@ get_account_configs(AccountId, ConfigId) ->
 -spec get_system_configs() -> api_object().
 get_system_configs() ->
     lager:debug("get authentication factor configuration from system config"),
-    case ?DEFAULT_PROVIDER of
+    case default_provider() of
         'undefined' -> 'undefined';
         DefaultProvider ->
             case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DefaultProvider) of
@@ -110,3 +106,7 @@ get_system_configs() ->
 
 -spec module_name(ne_binary()) -> atom().
 module_name(Provider) -> kz_term:to_atom(<<"kz_mfa_", Provider/binary>>, 'true').
+
+-spec default_provider() -> ne_binary().
+default_provider() ->
+    kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>, <<"duo">>).

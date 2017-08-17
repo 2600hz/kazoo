@@ -1,6 +1,6 @@
 {
     "_id": "duo",
-    "enabled": true,
+    "enabled": false,
     "provider_name": "duo",
     "pvt_provider_type": "multi_factor",
     "pvt_type": "provider",
