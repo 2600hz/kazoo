@@ -302,15 +302,14 @@ build_originate(#state{endpoints=Endpoints
        | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec originate_from_uri(ne_binary(), kz_json:object()) -> api_binary().
+-spec originate_from_uri(ne_binary(), kz_json:object()) -> api_ne_binary().
 originate_from_uri(CIDNum, OffnetReq) ->
     Realm = kz_json:get_first_defined([<<"From-URI-Realm">>
                                       ,<<"Account-Realm">>
                                       ], OffnetReq),
-    case (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
-          orelse kz_json:is_true(<<"Format-From-URI">>, OffnetReq))
-        andalso (is_binary(CIDNum)
-                 andalso is_binary(Realm)
+    case (is_binary(CIDNum) and is_binary(Realm))
+        andalso (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
+                 orelse kz_json:is_true(<<"Format-From-URI">>, OffnetReq)
                 )
     of
         'false' -> 'undefined';
