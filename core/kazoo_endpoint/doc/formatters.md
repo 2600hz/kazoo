@@ -16,14 +16,18 @@ If the call came from a known resource, you can optionally define formatters to 
 
 On the resource document, define a key `Formatters` which is a JSON object of route request headers as keys and their value being an object (or list of objects) of regexes, prefixes, and suffixes.
 
-    {"_id":"some_resource_id"
-     ,...
-     ,"formatters":{
-         "request":[{...}]
-         ,"from":[{...},{...}]
-         ,"outbound_caller_id_number":{...}
-         ...
-     }
+```json
+{
+    "_id":"some_resource_id",
+    ...
+    "formatters": {
+        "request": [{...}],
+        "from": [{...},{...}],
+        "outbound_caller_id_number": {...},
+        ...
+    }
+}
+```
 
 In the above partial example, the resource has defined formatters for the `request` and `caller-id-number` fields, and a list of two formatters for the `from` field.
 
@@ -41,14 +45,17 @@ Inbound fields are found in the [kapi_route request schema](https://github.com/2
 
 Okay, so what goes in the `{...}` portions of the example above? The generic formatter looks like this:
 
-    {"regex":"^som(e_r)egex$"
-     ,"prefix":"some_prefix"
-     ,"suffix":"some_suffix"
-     ,"strip":boolean()
-     ,"match_invite_format":boolean()
-     ,"direction":direction()
-     ,"value":"static_value"
-    }
+```json
+{
+    "regex": "^som(e_r)egex$",
+    "prefix": "some_prefix",
+    "suffix": "some_suffix",
+    "strip": boolean()
+    "match_invite_format": boolean()
+    "direction": direction()
+    "value": "static_value"
+}
+```
 
 #### Schema
 
@@ -75,27 +82,36 @@ There is one caveat to that: when processing a regex for the `request`, `to`, or
 
 A more full example:
 
-    {"_id":"resource_id"
-     ,"formatters":{
-         "from":[
-             {"regex":"^\\+?1?(\\d{10})$"
-              ,"prefix":"+1"
-              ,"direction":"inbound"
-             }
-             ,{"regex":"\\+?1?(\\d{10})$"
-               ,"direction":"outbound"
-              }
-          ]
-          ,"diversion":[{
-              "match_invite_format":true
-              ,"direction":"outbound"
-          }]
-          ,"outbound_caller_id_name":[{
-              "value":"Kazoo"
-          }]
-      }
-      ,...
-    }
+```json
+{
+    "_id":"resource_id",
+    "formatters": {
+        "from": [
+            {
+                "regex": "^\\+?1?(\\d{10})$",
+                "prefix": "+1",
+                "direction": "inbound"
+            },
+            {
+                "regex": "\\+?1?(\\d{10})$",
+                "direction": "outbound"
+            }
+        ],
+        "diversion": [
+            {
+                "match_invite_format": true,
+                "direction": "outbound"
+            }
+        ],
+        "outbound_caller_id_name": [
+            {
+                "value": "Kazoo"
+            }
+        ]
+    },
+    ...
+}
+```
 
 This will
 1. Format the 'From' DID as E164 before republishing the inbound request
@@ -177,9 +193,9 @@ sip:+14158867900@kazoo.account.realm
 The caller ID presented to the device can be altered by creating a formatter object for `caller_id_number`. If you just want to capture the 10-digit number (in the US) for instance, the value could be:
 
 ```json
-"formatters":{
-    "caller_id_number":{
-        "regex":"(\\d{10})$"
+"formatters": {
+    "caller_id_number": {
+        "regex": "(\\d{10})$"
     }
 }
 ```

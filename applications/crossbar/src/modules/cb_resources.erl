@@ -72,16 +72,13 @@ init() ->
 
 -spec maybe_start_jobs_listener() -> pid().
 maybe_start_jobs_listener() ->
-    case jobs_listener_pid() of
+    Child = cb_jobs_listener,
+    case whereis(Child) of
         'undefined' ->
-            {'ok', Pid} = crossbar_module_sup:start_child('cb_jobs_listener'),
+            {'ok', Pid} = crossbar_module_sup:start_child(Child),
             Pid;
         Pid -> Pid
     end.
-
--spec jobs_listener_pid() -> api_pid().
-jobs_listener_pid() ->
-    whereis('cb_jobs_listener').
 
 -spec authorize(cb_context:context()) ->
                        boolean() |
@@ -107,10 +104,10 @@ authorize(_Context, _Nouns) ->
                                    {'halt', cb_context:context()}.
 maybe_authorize_admin(Context) ->
     case cb_context:is_superduper_admin(Context) of
+        'false' -> {'halt', Context};
         'true' ->
             lager:debug("authz the request for global resources"),
-            'true';
-        'false' -> {'halt', Context}
+            'true'
     end.
 
 %%--------------------------------------------------------------------

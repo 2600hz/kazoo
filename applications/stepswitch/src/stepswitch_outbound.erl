@@ -43,7 +43,7 @@ handle_req(OffnetJObj, _Props) ->
 -spec handle_audio_req(ne_binary(), kapi_offnet_resource:req()) -> any().
 handle_audio_req(OffnetReq) ->
     Number = stepswitch_util:get_outbound_destination(OffnetReq),
-    lager:debug("received outbound audio resource request for ~s: ~p", [Number, OffnetReq]),
+    lager:debug("received outbound audio resource request for ~s: ~s", [Number, kz_json:encode(OffnetReq)]),
     handle_audio_req(Number, OffnetReq).
 
 handle_audio_req(Number, OffnetReq) ->
