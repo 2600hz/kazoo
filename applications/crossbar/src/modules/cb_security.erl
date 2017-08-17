@@ -240,18 +240,69 @@ summary_available(Context) ->
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
-    add_inherited_config(crossbar_doc:load(ConfigId, Context, ?TYPE_CHECK_OPTION(<<"account_config">>))).
+    C1 = crossbar_doc:load(ConfigId, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            add_inherited_config(cb_context:set_resp_data(C1, kz_json:delete_key(<<"id">>, cb_context:resp_data(C1))));
+        _ ->
+            add_inherited_config(cb_context:set_resp_data(C1, kz_json:new()))
+    end.
 
 -spec add_inherited_config(cb_context:context()) -> cb_context:context().
 add_inherited_config(Context) ->
-    AccountConfig = case cb_context:resp_status(Context) of
-                        'success' -> kz_json:delete_key(<<"id">>, cb_context:resp_data(Context));
-                        _ -> kz_json:new()
-                    end,
-    Props = [{<<"account">>, AccountConfig}
-            ,{<<"inherited_config">>, crossbar_auth:get_inherited_config(Context)}
+    Props = [{<<"account">>
+             ,maybe_add_multi_factor_metadata(cb_context:resp_data(Context))
+             }
+            ,{<<"inherited_config">>
+             ,maybe_add_multi_factor_metadata(kz_json:from_list([{<<"auth_modules">>, crossbar_auth:get_inherited_config(Context)}]))
+             }
             ],
     crossbar_doc:handle_json_success(kz_json:from_list(Props), Context).
+
+-spec maybe_add_multi_factor_metadata(kz_json:object()) -> kz_json:object().
+maybe_add_multi_factor_metadata(AuthConfig) ->
+    Fun = fun(K, V, Acc) ->
+                  case kz_json:get_value(<<"multi_factor">>, V) of
+                      'undefined' -> Acc;
+                      _MFA -> add_multi_factor_metadata(K, V, Acc)
+                  end
+          end,
+    kz_json:foldl(Fun, AuthConfig, kz_json:get_value(<<"auth_modules">>, AuthConfig, kz_json:new())).
+
+-spec add_multi_factor_metadata(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+add_multi_factor_metadata(AuthModule, JObj, AuthConfig) ->
+    AccountId = kz_json:get_value([<<"multi_factor">>, <<"account_id">>], JObj),
+    ConfigId = kz_json:get_value([<<"multi_factor">>, <<"configuration_id">>], JObj),
+
+    Path = [<<"auth_modules">>, AuthModule, <<"multi_factor">>, <<"_read_only">>],
+    case kz_term:is_not_empty(AccountId)
+        andalso kz_term:is_not_empty(ConfigId)
+        andalso get_metadata(AccountId, ConfigId)
+    of
+        'false' -> set_as_system(AuthConfig, Path);
+        'undefined' -> set_as_system(AuthConfig, Path);
+        Metadata ->
+            kz_json:set_value(Path, Metadata, AuthConfig)
+    end.
+
+-spec get_metadata(ne_binary(), ne_binary()) -> kz_json:object().
+get_metadata(AccountId, ConfigId) ->
+    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConfigId) of
+        {'ok', JObj} ->
+            kz_json:from_list(
+              [{<<"name">>, kz_json:get_value(<<"name">>, JObj)}
+              ,{<<"provider_name">>, kz_json:get_value(<<"provider_name">>, JObj)}
+              ]);
+        _ -> 'undefined'
+    end.
+
+-spec set_as_system(kz_json:object(), kz_json:path()) -> kz_json:object().
+set_as_system(AuthConfig, Path) ->
+    Default = kz_json:from_list(
+                [{<<"name">>, <<"Default System Provider">>}
+                ,{<<"provider_name">>, kz_mfa_auth:default_provider()}
+                ]),
+    kz_json:set_value(Path, Default, AuthConfig).
 
 %%--------------------------------------------------------------------
 %% @private
