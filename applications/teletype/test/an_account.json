@@ -39,7 +39,6 @@
     "descendants_count": 6,
     "dial_plan": {},
     "id": "009afc511c97b2ae693c6cc4920988e8",
-    "pvt_reseller": false,
     "language": "en-us",
     "music_on_hold": {},
     "name": "wefwefwefwef",
@@ -68,6 +67,8 @@
     "pvt_is_authenticated": true,
     "pvt_modified": 63637971621,
     "pvt_request_id": "2464a8675d663ccb4da9220e5cf168e7",
+    "pvt_reseller": false,
+    "pvt_reseller_id": "6b71cb72c876b5b1396a335f8f8a2594",
     "pvt_signature_secret": "c2f48e20b07eac4651e2b03b20ce4d8d",
     "pvt_tree": [
         "6b71cb72c876b5b1396a335f8f8a2594"
@@ -76,7 +77,6 @@
     "pvt_vsn": "1",
     "pvt_wnm_allow_additions": true,
     "realm": "wefwefwefwef.app.com",
-    "pvt_reseller_id": "6b71cb72c876b5b1396a335f8f8a2594",
     "ringtones": {},
     "timezone": "America/Los_Angeles",
     "ui_metadata": {

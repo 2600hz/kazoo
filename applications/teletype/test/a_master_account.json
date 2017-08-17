@@ -38,6 +38,7 @@
     "pvt_notification_preference": "teletype",
     "pvt_request_id": "c37ca4fd8202c02eef2a9a1c3faa4e58",
     "pvt_reseller": true,
+    "pvt_reseller_id": "6b71cb72c876b5b1396a335f8f8a2594",
     "pvt_signature_secret": "2be1ac2003c9f1f45e0fefc163a0e2af",
     "pvt_superduper_admin": true,
     "pvt_tree": [],
@@ -45,7 +46,6 @@
     "pvt_vsn": "1",
     "pvt_wnm_allow_additions": true,
     "realm": "qwdqwdqwdqwd.app.com",
-    "pvt_reseller_id": "6b71cb72c876b5b1396a335f8f8a2594",
     "ringtones": {},
     "timezone": "America/Los_Angeles",
     "ui_metadata": {

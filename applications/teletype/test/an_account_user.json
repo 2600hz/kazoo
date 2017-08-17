@@ -1,100 +1,91 @@
 {
-   "_id": "8e248327b85591955749e53ea45b6baa",
-   "_rev": "12-fc07bd2b489764ba69c1eb4b8910e821",
-   "caller_id": {
-       "internal": {
-           "name": "wefwefwefwef we",
-           "number": "1000"
-       }
-   },
-   "presence_id": "1000",
-   "email": "pierrefenoll+w4@gmail.com",
-   "priv_level": "user",
-   "first_name": "wefwefwefwef",
-   "last_name": "wefwefwefwef",
-   "username": "wefwefwefwef",
-   "send_email_on_creation": true,
-   "ui_metadata": {
-       "version": "3.23",
-       "ui": "monster-ui",
-       "origin": "myaccount"
-   },
-   "call_restriction": {
-   },
-   "contact_list": {
-   },
-   "dial_plan": {
-   },
-   "enabled": true,
-   "hotdesk": {
-       "enabled": false,
-       "keep_logged_in_elsewhere": false,
-       "require_pin": false
-   },
-   "media": {
-       "audio": {
-           "codecs": [
-               "PCMU"
-           ]
-       },
-       "encryption": {
-           "enforce_security": false,
-           "methods": [
-           ]
-       },
-       "video": {
-           "codecs": [
-           ]
-       }
-   },
-   "music_on_hold": {
-   },
-   "profile": {
-   },
-   "require_password_update": false,
-   "ringtones": {
-   },
-   "verified": false,
-   "vm_to_email_enabled": true,
-   "account_name": "wefwefwefwef",
-   "apps": {
-   },
-   "ui_help": {
-       "myaccount": {
-           "showfirstUseWalkthrough": false
-       },
-       "voip": {
-           "showDashboardWalkthrough": false,
-           "showUsersWalkthrough": false
-       }
-   },
-   "appList": [
-       "44c076738144b5f4f80542ce49035a27",
-       "06815c7173aafa575bcf3c68ee124a77",
-       "1a7c8fe3ac9ada1688c3cea4fc021aeb",
-       "1ba3b630fd111e1fbc9a6f606abb7f81",
-       "41f5eba03d33fc10740df7f541745f1d",
-       "736150fc8cdf0015fb68fd8c29ecb3b5",
-       "7eed61440df858fce1ed4735a3e4a9ae",
-       "3eb4f9230f95a7a60ac825021ad0affe",
-       "bbd90ad61193b2a9a3529b4f78038b5e",
-       "a81f6097ab6b5f513d1f095d89ab51f7"
-   ],
-   "ui_flags": {
-       "numbers_format": "inherit",
-       "colorblind": true
-   },
-   "pvt_signature_secret": "fcdf65b80458a5c04f833383c7470ff9",
-   "pvt_is_authenticated": true,
-   "pvt_auth_account_id": "009afc511c97b2ae693c6cc4920988e8",
-   "pvt_auth_user_id": "8e248327b85591955749e53ea45b6baa",
-   "pvt_request_id": "058bee0d72beee61b035ddffae0f7c99",
-   "pvt_modified": 63661153403,
-   "pvt_created": 63627175976,
-   "pvt_account_db": "account%2F00%2F9a%2Ffc511c97b2ae693c6cc4920988e8",
-   "pvt_account_id": "009afc511c97b2ae693c6cc4920988e8",
-   "pvt_vsn": "1",
-   "pvt_md5_auth": "45836e5d8b63eb89aeabdc4cd9eca71e",
-   "pvt_sha1_auth": "82393b170c1c0886bbe43bc1325d78981666668e",
-   "pvt_type": "user"
+    "_id": "8e248327b85591955749e53ea45b6baa",
+    "_rev": "12-fc07bd2b489764ba69c1eb4b8910e821",
+    "account_name": "wefwefwefwef",
+    "appList": [
+        "44c076738144b5f4f80542ce49035a27",
+        "06815c7173aafa575bcf3c68ee124a77",
+        "1a7c8fe3ac9ada1688c3cea4fc021aeb",
+        "1ba3b630fd111e1fbc9a6f606abb7f81",
+        "41f5eba03d33fc10740df7f541745f1d",
+        "736150fc8cdf0015fb68fd8c29ecb3b5",
+        "7eed61440df858fce1ed4735a3e4a9ae",
+        "3eb4f9230f95a7a60ac825021ad0affe",
+        "bbd90ad61193b2a9a3529b4f78038b5e",
+        "a81f6097ab6b5f513d1f095d89ab51f7"
+    ],
+    "apps": {},
+    "call_restriction": {},
+    "caller_id": {
+        "internal": {
+            "name": "wefwefwefwef we",
+            "number": "1000"
+        }
+    },
+    "contact_list": {},
+    "dial_plan": {},
+    "email": "pierrefenoll+w4@gmail.com",
+    "enabled": true,
+    "first_name": "wefwefwefwef",
+    "hotdesk": {
+        "enabled": false,
+        "keep_logged_in_elsewhere": false,
+        "require_pin": false
+    },
+    "last_name": "wefwefwefwef",
+    "media": {
+        "audio": {
+            "codecs": [
+                "PCMU"
+            ]
+        },
+        "encryption": {
+            "enforce_security": false,
+            "methods": []
+        },
+        "video": {
+            "codecs": []
+        }
+    },
+    "music_on_hold": {},
+    "presence_id": "1000",
+    "priv_level": "user",
+    "profile": {},
+    "pvt_account_db": "account%2F00%2F9a%2Ffc511c97b2ae693c6cc4920988e8",
+    "pvt_account_id": "009afc511c97b2ae693c6cc4920988e8",
+    "pvt_auth_account_id": "009afc511c97b2ae693c6cc4920988e8",
+    "pvt_auth_user_id": "8e248327b85591955749e53ea45b6baa",
+    "pvt_created": 63627175976,
+    "pvt_is_authenticated": true,
+    "pvt_md5_auth": "45836e5d8b63eb89aeabdc4cd9eca71e",
+    "pvt_modified": 63661153403,
+    "pvt_request_id": "058bee0d72beee61b035ddffae0f7c99",
+    "pvt_sha1_auth": "82393b170c1c0886bbe43bc1325d78981666668e",
+    "pvt_signature_secret": "fcdf65b80458a5c04f833383c7470ff9",
+    "pvt_type": "user",
+    "pvt_vsn": "1",
+    "require_password_update": false,
+    "ringtones": {},
+    "send_email_on_creation": true,
+    "ui_flags": {
+        "colorblind": true,
+        "numbers_format": "inherit"
+    },
+    "ui_help": {
+        "myaccount": {
+            "showfirstUseWalkthrough": false
+        },
+        "voip": {
+            "showDashboardWalkthrough": false,
+            "showUsersWalkthrough": false
+        }
+    },
+    "ui_metadata": {
+        "origin": "myaccount",
+        "ui": "monster-ui",
+        "version": "3.23"
+    },
+    "username": "wefwefwefwef",
+    "verified": false,
+    "vm_to_email_enabled": true
 }

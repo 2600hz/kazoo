@@ -64,7 +64,7 @@ ebin/$(PROJECT).app: $(SOURCES)
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 
-json: JSON = $(if $(wildcard priv/), $(shell find priv/ -name '*.json'))
+json: JSON = $(shell find . -name '*.json')
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 

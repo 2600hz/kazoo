@@ -28,7 +28,6 @@
     "created": 63635232676,
     "descendants_count": 43,
     "dial_plan": {},
-    "pvt_reseller": true,
     "language": "en-us",
     "music_on_hold": {},
     "name": "reseller-account",
@@ -49,13 +48,14 @@
     "pvt_is_authenticated": true,
     "pvt_modified": 63639469042,
     "pvt_request_id": "666980a8b6be100d9a5d4e122ada1eee",
+    "pvt_reseller": true,
+    "pvt_reseller_id": "master_3dd0df9f3b3940b8a972c0e43",
     "pvt_tree": [
         "master_3dd0df9f3b3940b8a972c0e43"
     ],
     "pvt_type": "account",
     "pvt_vsn": "1",
     "realm": "reseller.kazoo.com",
-    "pvt_reseller_id": "master_3dd0df9f3b3940b8a972c0e43",
     "ringtones": {},
     "timezone": "America/Los_Angeles",
     "ui_metadata": {
