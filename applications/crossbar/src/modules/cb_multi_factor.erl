@@ -61,7 +61,7 @@ init() ->
                        {'halt', cb_context:context()}.
 authorize(Context) ->
     case {cb_context:req_nouns(Context), cb_context:req_verb(Context)} of
-        {[{<<"multi_factor">>, _}], ?HTTP_GET} -> cb_context:is_superduper_admin(Context);
+        {[{<<"multi_factor">>, _}], ?HTTP_GET} -> 'true';
         {[{<<"multi_factor">>, _}], _} -> {'halt', cb_context:add_system_error('forbidden', Context)};
         _ -> 'true'
     end.

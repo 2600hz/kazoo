@@ -185,7 +185,15 @@ validate_auth_configs(Context, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    maybe_flush_config(crossbar_doc:save(Context)).
+    C1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            maybe_flush_config(C1),
+            RespJObj = maybe_add_multi_factor_metadata(cb_context:resp_data(Context)),
+            cb_context:set_resp_data(Context, RespJObj);
+        _ -> C1
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -196,7 +204,14 @@ post(Context) ->
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context()) -> cb_context:context().
 patch(Context) ->
-    maybe_flush_config(crossbar_doc:save(Context)).
+    C1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            maybe_flush_config(C1),
+            RespJObj = maybe_add_multi_factor_metadata(cb_context:resp_data(Context)),
+            cb_context:set_resp_data(Context, RespJObj);
+        _ -> C1
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -209,9 +224,7 @@ delete(Context) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
 
 maybe_flush_config(Context) ->
-    case cb_context:resp_status(Context) =:= 'success'
-        andalso cb_context:fetch(Context, 'flush', 'false')
-    of
+    case cb_context:fetch(Context, 'flush', 'false') of
         'true' ->
             kapps_account_config:flush(cb_context:account_id(Context), ?AUTH_CONFIG_CAT, <<"hierarchy_merge">>);
         'false' -> Context

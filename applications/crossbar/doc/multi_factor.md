@@ -73,7 +73,7 @@ curl -v -X GET \
 
 #### Configure a provider
 
-Create configuration for a MFA provider. Provider type is `"multi_factor"`. Provider config should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
+Create configuration for a MFA provider. Provider config should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/multi_factor
 
@@ -316,6 +316,159 @@ curl -v -X GET \
         "account_id": "a391d64a083b99232f6d2633c47432e3"
     },
     "id": "201702-09a979346eff06746e445a8cc1e574c4"
+  },
+  "revision": "{REVERSION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### List System Multi Factor Providers
+
+List system multi factor providers
+
+> GET /v2/multi_factor
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/multi_factor
+```
+
+##### Response
+
+```json
+{
+  "page_size": 1,
+  "start_key": [
+    "multi_factor"
+  ],
+  "data": [
+    {
+      "id": "duo",
+      "enabled": false,
+      "name": "System Default Provider",
+      "provider_name": "duo",
+      "provider_type": "multi_factor"
+    }
+  ],
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### Fetch a System Provider Configuration
+
+> **Note:** Only super duper admin can get system providers configuration!
+
+> GET /v2/multi_factor/{CONFIG_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/multi_factor/c757665dca55edba2395df3ca6423f4f
+```
+
+##### Response
+
+```json
+{
+  "data": {
+    "settings": {},
+    "provider_name": "duo",
+    "name": "System Default Provider",
+    "enabled": false,
+    "id": "duo"
+  },
+  "revision": "{REVERSION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### Change a System Provider Configuration
+
+> **Note:** Only super duper admin can change system providers configuration!
+
+> POST /v2/multi_factor/{CONFIG_ID}
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    --data '{"data": {"name": "System Default Provider", "enabled": true, "provider_name": "duo", "settings": {"integration_key": "{DUO_IKEY}", "secret_key": "{DUO_SKEY}", "application_secret_key": "{DUO_AKEY}", "api_hostname": "{DUO_HOST_NAME}", "duo_expire": 300,"app_expire": 3600}}}' \
+    http://{SERVER}:8000/v2/multi_factor/duo
+```
+
+##### Response
+
+```json
+{
+  "data": {
+    "settings": {
+      "secret_key": "{DUO_SKEY}",
+      "integration_key": "{DUO_IKEY}",
+      "duo_expire": 300,
+      "application_secret_key": "{DUO_AKEY}",
+      "app_expire": 3600,
+      "api_hostname": "{DUO_HOST_NAME}"
+    },
+    "provider_name": "duo",
+    "name": "System Default Provider",
+    "enabled": true,
+    "id": "duo"
+  },
+  "revision": "{REVERSION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### Patch fields in a System provider configuration
+
+> **Note:** Only super duper admin can change system providers configuration!
+
+> PATCH /v2/multi_factor/{CONFIG_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    --data '{"data": {"enabled": false}}' \
+    http://{SERVER}:8000/v2/multi_factor/duo
+```
+
+##### Response
+
+```json
+{
+  "data": {
+    "settings": {
+      "secret_key": "{DUO_SKEY}",
+      "integration_key": "{DUO_IKEY}",
+      "duo_expire": 300,
+      "application_secret_key": "{DUO_AKEY}",
+      "app_expire": 3600,
+      "api_hostname": "{DUO_HOST_NAME}"
+    },
+    "provider_name": "duo",
+    "name": "System Default Provider",
+    "enabled": false,
+    "id": "duo"
   },
   "revision": "{REVERSION}",
   "timestamp": "{TIMESTAMP}",
