@@ -10,7 +10,6 @@ DEPS = amqp_client \
 	erlsom \
 	erlydtl \
 	escalus \
-	eunit \
 	exml \
 	folsom \
 	fs_event \
