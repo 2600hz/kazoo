@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_device).
 
+-export([fetch/2]).
 -export([sip_username/1, sip_username/2, set_sip_username/2
         ,sip_password/1, sip_password/2, set_sip_password/2
         ,sip_method/1, sip_method/2, set_sip_method/2
@@ -65,6 +66,22 @@
 -define(PVT_TYPE, <<"device">>).
 -define(KEY_TIMEZONE, <<"timezone">>).
 -define(KEY_UNSOLICITATED_MWI_UPDATES, <<"mwi_unsolicitated_updates">>).
+
+-spec fetch(api_binary(), api_binary()) -> {'ok', doc()} |
+                                           {'error', any()}.
+
+-ifdef(TEST).
+fetch(_Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
+    {'ok', kz_json:load_fixture_from_file('kazoo_documents', "fixtures/device", <<DeviceId/binary, ".json">>)};
+fetch(_, _) ->
+    {'error', 'invalid_parameters'}.
+-else.
+fetch(Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
+    AccountDb = kz_util:format_account_db(Account),
+    kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{'cache_failures', false}]);
+fetch(_, _) ->
+    {'error', 'invalid_parameters'}.
+-endif.
 
 -spec new() -> doc().
 new() ->

@@ -109,7 +109,7 @@ get(EndpointId, Call) ->
                                   {'ok', kz_json:object()} |
                                   kz_datamgr:data_error().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
-    case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
+    case kz_device:fetch(AccountDb, EndpointId) of
         {'ok', JObj} ->
             maybe_have_endpoint(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
@@ -458,7 +458,7 @@ merge_call_restrictions([Classifier|Classifiers], Account, Endpoint, Owner) ->
 -spec get_user(ne_binary(), api_binary() | kz_json:object()) -> kz_json:object().
 get_user(_, 'undefined') -> kz_json:new();
 get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
-    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
+    case kzd_user:fetch(AccountDb, OwnerId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->
             lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
@@ -483,7 +483,7 @@ get_users(AccountDb, OwnerIds) ->
 get_users(_, [], Users) ->
     Users;
 get_users(AccountDb, [OwnerId|OwnerIds], Users) ->
-    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
+    case kzd_user:fetch(AccountDb, OwnerId) of
         {'ok', JObj} ->
             get_users(AccountDb, OwnerIds, [JObj|Users]);
         {'error', _R} ->

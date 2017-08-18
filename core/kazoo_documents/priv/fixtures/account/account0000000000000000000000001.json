@@ -7,6 +7,16 @@
     ],
     "call_recording": {
         "account": {
+            "any": {
+                "any": {
+                    "enabled": true,
+                    "format": "wav",
+                    "record_min_sec": 2,
+                    "record_sample_rate": 8000,
+                    "time_limit": 7200,
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
+                }
+            },
             "inbound": {
                 "offnet": {
                     "enabled": true,
@@ -14,7 +24,7 @@
                     "record_min_sec": 2,
                     "record_sample_rate": 8000,
                     "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
                 },
                 "onnet": {
                     "enabled": true,
@@ -22,7 +32,7 @@
                     "record_min_sec": 2,
                     "record_sample_rate": 8000,
                     "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
                 }
             },
             "outbound": {
@@ -32,7 +42,7 @@
                     "record_min_sec": 2,
                     "record_sample_rate": 8000,
                     "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
                 },
                 "onnet": {
                     "enabled": true,
@@ -40,49 +50,21 @@
                     "record_min_sec": 2,
                     "record_sample_rate": 8000,
                     "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
-                }
-            }
-        },
-        "any": {
-            "inbound": {
-                "offnet": {
-                    "enabled": true,
-                    "format": "wav",
-                    "record_min_sec": 2,
-                    "record_sample_rate": 8000,
-                    "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
-                },
-                "onnet": {
-                    "enabled": true,
-                    "format": "wav",
-                    "record_min_sec": 2,
-                    "record_sample_rate": 8000,
-                    "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
-                }
-            },
-            "outbound": {
-                "offnet": {
-                    "enabled": true,
-                    "format": "wav",
-                    "record_min_sec": 2,
-                    "record_sample_rate": 8000,
-                    "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
-                },
-                "onnet": {
-                    "enabled": true,
-                    "format": "wav",
-                    "record_min_sec": 2,
-                    "record_sample_rate": 8000,
-                    "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
                 }
             }
         },
         "endpoint": {
+            "any": {
+                "any": {
+                    "enabled": true,
+                    "format": "wav",
+                    "record_min_sec": 2,
+                    "record_sample_rate": 8000,
+                    "time_limit": 7200,
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
+                }
+            },
             "inbound": {
                 "offnet": {
                     "enabled": true,
@@ -90,7 +72,7 @@
                     "record_min_sec": 2,
                     "record_sample_rate": 8000,
                     "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
                 },
                 "onnet": {
                     "enabled": true,
@@ -98,7 +80,7 @@
                     "record_min_sec": 2,
                     "record_sample_rate": 8000,
                     "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
                 }
             },
             "outbound": {
@@ -108,7 +90,7 @@
                     "record_min_sec": 2,
                     "record_sample_rate": 8000,
                     "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
                 },
                 "onnet": {
                     "enabled": true,
@@ -116,58 +98,58 @@
                     "record_min_sec": 2,
                     "record_sample_rate": 8000,
                     "time_limit": 7200,
-                    "url": "https://account-3.2600hz.local/sub/directory?parameter=value"
+                    "url": "https://account-1.2600hz.local/sub/directory?object=account"
                 }
             }
         }
     },
     "call_restriction": {
         "caribbean": {
-            "action": "inherit"
+            "action": "deny"
         },
         "did_us": {
-            "action": "inherit"
+            "action": "deny"
         },
         "emergency": {
-            "action": "inherit"
+            "action": "deny"
         },
         "international": {
-            "action": "inherit"
+            "action": "deny"
         },
         "toll_us": {
-            "action": "inherit"
+            "action": "deny"
         },
         "tollfree_us": {
-            "action": "inherit"
+            "action": "deny"
         },
         "unknown": {
-            "action": "inherit"
+            "action": "deny"
         }
     },
     "call_waiting": {
-        "enabled": true
+        "enabled": false
     },
     "caller_id": {
         "emergency": {
-            "name": "emergency-name",
-            "number": "emergency-number"
+            "name": "account-emergency-name",
+            "number": "account-emergency-number"
         },
         "external": {
-            "name": "external-name",
-            "number": "external-number"
+            "name": "account-external-name",
+            "number": "account-external-number"
         },
         "internal": {
-            "name": "internal-name",
-            "number": "internal-number"
+            "name": "account-internal-name",
+            "number": "account-internal-number"
         }
     },
     "created": 63636183145,
     "descendants_count": 11,
     "dial_plan": {
-        "regex": {
-            "description": "description",
-            "prefix": "prefix",
-            "suffix": "suffix"
+        "account-regex": {
+            "description": "account-description",
+            "prefix": "account-prefix",
+            "suffix": "account-suffix"
         },
         "system": [
             "dialplan000000000000000000000001"
@@ -233,7 +215,7 @@
     "music_on_hold": {
         "media_id": "media000000000000000000000000001"
     },
-    "name": "Master-Account",
+    "name": "Master Account",
     "notification_preference": "teletype",
     "notifications": {
         "first_occurrence": {
@@ -245,7 +227,7 @@
         }
     },
     "outbound_flags": [
-        "old_flag"
+        "account_old_static_flag"
     ],
     "preflow": {
         "always": "callflow000000000000000000000001"
@@ -254,21 +236,25 @@
     "pvt_account_id": "account0000000000000000000000001",
     "pvt_api_key": "apikey0000000000000000000000000000000000000000000000000000000001",
     "pvt_auth_account_id": "account0000000000000000000000001",
-    "pvt_auth_user_id": "owner000000000000000000000000001",
+    "pvt_auth_user_id": "user0000000000000000000000000001",
     "pvt_created": 63636183145,
     "pvt_enabled": true,
     "pvt_is_authenticated": true,
     "pvt_modified": 63667898685,
     "pvt_notification_preference": "teletype",
     "pvt_request_id": "request0000000000000000000000001",
+    "pvt_reseller": true,
+    "pvt_reseller_id": "account0000000000000000000000001",
+    "pvt_superduper_admin": true,
     "pvt_tree": [],
     "pvt_type": "account",
     "pvt_vsn": "1",
     "pvt_whitelabel_domain": "2600hz.local",
+    "pvt_wnm_allow_additions": true,
     "realm": "4a6863.sip.2600hz.local",
     "ringtones": {
-        "external": "<http://192.168.0.231/Vin/MyRing1.wav>;info=Callers",
-        "internal": "<http://192.168.0.231/Vin/MyRing2.wav>;info=Friends"
+        "external": "<http://192.168.0.231/Account1/MyRing1.wav>;info=Callers",
+        "internal": "<http://192.168.0.231/Account1/MyRing2.wav>;info=Friends"
     },
     "timezone": "America/Los_Angeles",
     "topup": {

@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzd_user).
 
+-export([fetch/2]).
 -export([email/1, email/2
         ,voicemail_notification_enabled/1, voicemail_notification_enabled/2
         ,to_vcard/1
@@ -17,7 +18,6 @@
         ,enable/1, disable/1
         ,type/0
         ,devices/1
-        ,fetch/2
         ,fax_settings/1
         ,name/1, first_name/1, last_name/1
         ,priv_level/1, priv_level/2, set_priv_level/2
@@ -45,6 +45,21 @@
 -define(KEY_CALL_RESTRICTION_ACTION, <<"action">>).
 
 -define(PVT_TYPE, <<"user">>).
+
+-spec fetch(api_binary(), api_binary()) -> {'ok', doc()} |
+                                           {'error', any()}.
+-ifdef(TEST).
+fetch(_Account=?NE_BINARY, UserId=?NE_BINARY) ->
+    {'ok', kz_json:load_fixture_from_file('kazoo_documents', "fixtures/user", <<UserId/binary, ".json">>)};
+fetch(_, _) ->
+    {'error', 'invalid_parameters'}.
+-else.
+fetch(Account=?NE_BINARY, UserId=?NE_BINARY) ->
+    AccountDb = kz_util:format_account_db(Account),
+    kz_datamgr:open_cache_doc(AccountDb, UserId, [{'cache_failures', false}]);
+fetch(_, _) ->
+    {'error', 'invalid_parameters'}.
+-endif.
 
 -spec email(doc()) -> api_binary().
 -spec email(doc(), Default) -> ne_binary() | Default.
@@ -273,12 +288,6 @@ devices(UserJObj) ->
             []
     end.
 
--spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
-fetch(AccountId=?NE_BINARY, UserId=?NE_BINARY) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    kz_datamgr:open_cache_doc(AccountDb, UserId);
-fetch(_, _) ->
-    {'error', 'invalid_parameters'}.
 
 -spec is_account_admin(api_object()) -> boolean().
 is_account_admin('undefined') -> 'false';

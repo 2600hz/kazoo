@@ -646,7 +646,7 @@ get_account_dynamic_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} ->
-            process_dynamic_flags(kz_account:dynamic_flags(AccountJObj), Flags, Call);
+            process_dynamic_flags(kz_account:outbound_dynamic_flags(AccountJObj), Flags, Call);
         {'error', _E} ->
             lager:error("not applying account dynamic flags for ~s: ~p"
                        ,[AccountId, _E]

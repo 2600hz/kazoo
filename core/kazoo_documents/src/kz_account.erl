@@ -170,6 +170,8 @@ fetch('undefined') ->
 fetch(<<_/binary>> = Account) ->
     fetch(Account, 'account').
 
+-spec fetch(api_binary(), 'account' | 'accounts') -> {'ok', doc()} |
+                                                     {'error', any()}.
 -ifdef(TEST).
 fetch('undefined', _) ->
     {'error', 'invalid_db_name'};
@@ -177,8 +179,6 @@ fetch(Account, 'account') ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     {'ok', kz_json:load_fixture_from_file('kazoo_documents', "fixtures/account", <<AccountId/binary, ".json">>)}.
 -else.
--spec fetch(api_binary(), 'account' | 'accounts') -> {'ok', doc()} |
-                                                     {'error', any()}.
 fetch('undefined', _) ->
     {'error', 'invalid_db_name'};
 fetch(Account, 'account') ->
@@ -738,7 +738,7 @@ is_trial_account(JObj) ->
 %%--------------------------------------------------------------------
 -spec is_reseller(doc()) -> boolean().
 is_reseller(JObj) ->
-    kz_json:is_true(?RESELLER, JObj).
+    kz_json:is_true(?RESELLER, JObj) orelse is_superduper_admin(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -756,7 +756,6 @@ promote(JObj) ->
 %%--------------------------------------------------------------------
 -spec demote(doc()) -> doc().
 demote(JObj) ->
-    io:format("demote~n", []),
     kz_json:set_value(?RESELLER, 'false', JObj).
 
 %%--------------------------------------------------------------------
