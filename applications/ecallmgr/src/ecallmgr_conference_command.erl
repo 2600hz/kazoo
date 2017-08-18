@@ -34,9 +34,6 @@ api(Node, ConferenceId, {AppName, AppData}) ->
     Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
     freeswitch:api(Node, 'conference', Command).
 
--type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
-                  {ne_binary(), ne_binary(), atom()}.
--type fs_apps() :: [fs_app()].
 -spec get_conf_command(ne_binary(), atom(), ne_binary(), kz_json:object()) ->
                               fs_app() | fs_apps() |
                               {'return', 'error' | ne_binary()} |

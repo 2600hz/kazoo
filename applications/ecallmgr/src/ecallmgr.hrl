@@ -33,6 +33,10 @@
 -define(DEFAULT_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_sample_rate">>, 8000)).
 -define(DEFAULT_STEREO_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_stereo_sample_rate">>, 16000)).
 
+-type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
+                  {ne_binary(), ne_binary(), atom()}.
+-type fs_apps() :: [fs_app(),...].
+
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |
                             'timeout'.
@@ -471,11 +475,14 @@
 
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
+-define(FS_CALL_EVENT_MSG(Node, EvtName, CallId), {'call_event', Node, EvtName, CallId}).
 -define(FS_CALL_EVENTS_PROCESS_REG(Node, CallId)
        ,{'n', 'l', {'call_events_process', Node, CallId}}
        ).
 
 -define(FS_ROUTE_MSG(Node, Section, Context), {'route', Node, Section, Context}).
+
+-define(FS_OPTION_MSG(Node), {'option', Node}).
 
 -define(FS_CARRIER_ACL_LIST, <<"trusted">>).
 -define(FS_SBC_ACL_LIST, <<"authoritative">>).

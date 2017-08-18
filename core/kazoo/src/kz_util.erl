@@ -76,7 +76,7 @@
 
 -export([uri/2]).
 
--export([pad_month/1]).
+-export([pad_month/1, pad_day/1]).
 
 -export([binary_md5/1]).
 -export([pad_binary/3, pad_binary_left/3
@@ -90,7 +90,7 @@
         ,unix_timestamp_to_gregorian_seconds/1
         ,pretty_print_datetime/1
         ,rfc1036/1, rfc1036/2
-        ,iso8601/1
+        ,iso8601/1, iso8601_date/1, iso8601_time/1
         ,pretty_print_elapsed_s/1
         ,decr_timeout/2
         ,pretty_print_bytes/1, pretty_print_bytes/2
@@ -452,14 +452,6 @@ format_account_modb(AccountId, 'unencoded') ->
 format_account_modb(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
     to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
-
--spec pad_month(kz_month() | ne_binary()) -> ne_binary().
-pad_month(<<_/binary>> = Month) ->
-    pad_month(to_integer(Month));
-pad_month(Month) when Month < 10 ->
-    <<"0", (to_binary(Month))/binary>>;
-pad_month(Month) ->
-    to_binary(Month).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1438,6 +1430,36 @@ rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
     >>;
 rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
     rfc1036(calendar:gregorian_seconds_to_datetime(Timestamp), TZ).
+
+-spec pad0(integer() | ne_binary()) -> ne_binary().
+pad0(<<_/binary>> = Number) ->
+    pad0(to_integer(Number));
+pad0(Number) when Number < 10 ->
+    <<"0", (to_binary(Number))/binary>>;
+pad0(Number) ->
+    to_binary(Number).
+
+-spec pad_month(kz_month() | ne_binary()) -> ne_binary().
+pad_month(Month) -> pad0(Month).
+
+-spec pad_day(kz_day() | ne_binary()) -> ne_binary().
+pad_day(Day) -> pad0(Day).
+
+-spec iso8601_date(calendar:date() | calendar:datetime() | gregorian_seconds()) -> ne_binary().
+iso8601_date({Y,M,D}) ->
+    <<(to_binary(Y))/binary, "-", (pad0(M))/binary, "-", (pad0(D))/binary>>;
+iso8601_date({{_Y,_M,_D}=Date, _}) ->
+    iso8601_date(Date);
+iso8601_date(Timestamp) ->
+    iso8601_date(calendar:gregorian_seconds_to_datetime(Timestamp)).
+
+-spec iso8601_time(calendar:time() | calendar:datetime() | gregorian_seconds()) -> ne_binary().
+iso8601_time({H,M,S}) ->
+    <<(pad0(H))/binary, ":", (pad0(M))/binary, ":", (pad0(S))/binary>>;
+iso8601_time({{_,_,_}, {_H, _M, _S}=Time}) ->
+    iso8601_time(Time);
+iso8601_time(Timestamp) ->
+    iso8601_time(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
 -spec iso8601(calendar:datetime() | gregorian_seconds()) -> ne_binary().
 iso8601({{Y,M,D},_}) ->
