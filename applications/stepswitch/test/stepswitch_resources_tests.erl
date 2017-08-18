@@ -27,7 +27,7 @@ global_resources_test_() ->
 
 local_resources_test_() ->
     LocalJObjs = fixture("test/local_resources.json"),
-    [L1,L2,L3,L4,L5,L6] = stepswitch_resources:fetch_local_resources(?ACCOUNT_ID, LocalJObjs),
+    [L1,L2,L3,L4,L5,L6] = stepswitch_resources:local_resources_fetched(?ACCOUNT_ID, LocalJObjs),
     [?_assertEqual(<<"ea2d868dad3629254d57d5a1f6a69cde">>, stepswitch_resources:get_resrc_id(L1))
     ,?_assertEqual(<<"LVL3">>, stepswitch_resources:get_resrc_name(L1))
     ,?_assertEqual(4, stepswitch_resources:get_resrc_weight(L1))

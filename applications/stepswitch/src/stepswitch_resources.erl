@@ -72,24 +72,37 @@
 
 -ifdef(TEST).
 -export([resources_from_jobjs/1
-        ,fetch_local_resources/2
+        ,local_resources_fetched/2
         ]).
 -endif.
 
 -include("stepswitch.hrl").
 
--define(CONFIG_CAT, <<"number_manager">>).
-
--define(DEFAULT_ROUTE, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_route">>)).
--define(DEFAULT_PREFIX, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_prefix">>, <<>>)).
--define(DEFAULT_SUFFIX, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_suffix">>, <<>>)).
+-define(DEFAULT_ROUTE, kapps_config:get_binary(?CONFIG_CAT, <<"default_route">>)).
+-define(DEFAULT_PREFIX, kapps_config:get_binary(?CONFIG_CAT, <<"default_prefix">>, <<>>)).
+-define(DEFAULT_SUFFIX, kapps_config:get_binary(?CONFIG_CAT, <<"default_suffix">>, <<>>)).
 -define(DEFAULT_CALLER_ID_TYPE,
-        kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_caller_id_type">>, <<"external">>)).
+        kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_caller_id_type">>, <<"external">>)).
 -define(DEFAULT_PROGRESS_TIMEOUT,
-        kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_progress_timeout">>, 8)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"default_progress_timeout">>, 8)).
 -define(DEFAULT_WEIGHT,
-        kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 3)).
--define(DEFAULT_RTCP_MUX, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_rtcp_mux">>)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"default_weight">>, 3)).
+-define(DEFAULT_RTCP_MUX, kapps_config:get_binary(?CONFIG_CAT, <<"default_rtcp_mux">>)).
+
+-define(DEFAULT_BYPASS_MEDIA
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"default_bypass_media">>, false)).
+
+-define(DEFAULT_FORMATTERS, kapps_config:get(?CONFIG_CAT, <<"default_formatters">>)).
+
+-define(DEFAULT_CODECS_VIDEO
+       ,kapps_config:get_ne_binaries(?CONFIG_CAT, <<"default_video_codecs">>, [])).
+
+-define(DEFAULT_CODECS_AUDIO
+       ,kapps_config:get_ne_binaries(?CONFIG_CAT, <<"default_audio_codecs">>, [])).
+
+-define(DEFAULT_CODECS
+       ,kapps_config:get_ne_binaries(?CONFIG_CAT, <<"default_codecs">>, [])).
+
 
 -record(gateway, {server :: api_binary()
                  ,port :: api_integer()
@@ -826,7 +839,7 @@ get_local_resource(ResourceId, AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
@@ -834,8 +847,7 @@ get_local_resource(ResourceId, AccountId) ->
 -spec fetch_global_resources() -> resources().
 fetch_global_resources() ->
     lager:debug("global resource cache miss, fetching from db"),
-    ViewOptions = ['include_docs'],
-    case kz_datamgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, ViewOptions) of
+    case kz_datamgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [include_docs]) of
         {'error', _R} ->
             lager:warning("unable to fetch global resources: ~p", [_R]),
             [];
@@ -848,7 +860,7 @@ fetch_global_resources() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
@@ -856,21 +868,20 @@ fetch_global_resources() ->
 -spec fetch_local_resources(ne_binary()) -> resources().
 fetch_local_resources(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    ViewOptions = ['include_docs'],
     lager:debug("local resource cache miss, fetching from db ~s", [AccountDb]),
-    case kz_datamgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, [include_docs]) of
         {'error', _R} ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];
         {'ok', JObjs} ->
-            LocalResources = fetch_local_resources(AccountId, JObjs),
+            LocalResources = local_resources_fetched(AccountId, JObjs),
             CacheProps = [{'origin', [{'db', AccountDb, <<"resource">>}]}],
             kz_cache:store_local(?CACHE_NAME, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
 
--spec fetch_local_resources(ne_binary(), kz_json:objects()) -> resources().
-fetch_local_resources(AccountId, JObjs) ->
+-spec local_resources_fetched(ne_binary(), kz_json:objects()) -> resources().
+local_resources_fetched(AccountId, JObjs) ->
     Proxies = fetch_account_dedicated_proxies(AccountId),
     resources_from_jobjs(
       [kz_json:set_values([{<<"Is-Global">>, 'false'}
@@ -1022,22 +1033,20 @@ resource_from_jobj(JObj) ->
 
 -spec resource_bypass_media(kz_json:object()) -> boolean().
 resource_bypass_media(JObj) ->
-    Default = kapps_config:get_is_true(?SS_CONFIG_CAT, <<"default_bypass_media">>, 'false'),
-    kz_json:is_true([<<"media">>, <<"bypass_media">>], JObj, Default).
+    kz_json:is_true([<<"media">>, <<"bypass_media">>], JObj, ?DEFAULT_BYPASS_MEDIA).
 
 -spec resource_formatters(kz_json:object()) -> api_objects().
 resource_formatters(JObj) ->
-    Default = kapps_config:get(?SS_CONFIG_CAT, <<"default_formatters">>),
-    kz_json:get_value(<<"formatters">>, JObj, Default).
+    kz_json:get_value(<<"formatters">>, JObj, ?DEFAULT_FORMATTERS).
 
 -spec resource_codecs(kz_json:object()) -> ne_binaries().
 resource_codecs(JObj) ->
-    DefaultAudio = kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_audio_codecs">>, []),
-    DefaultVideo = kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_video_codecs">>, []),
+    DefaultAudio = ?DEFAULT_CODECS_AUDIO,
+    DefaultVideo = ?DEFAULT_CODECS_VIDEO,
     case kz_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, DefaultAudio)
         ++ kz_json:get_value([<<"media">>, <<"video">>, <<"codecs">>], JObj, DefaultVideo)
     of
-        [] -> kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_codecs">>, []);
+        [] -> ?DEFAULT_CODECS;
         Codecs -> Codecs
     end.
 

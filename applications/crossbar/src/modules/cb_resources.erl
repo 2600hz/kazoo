@@ -163,37 +163,25 @@ resource_exists(?JOBS, _ID) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    case is_global_resource_request(Context) of
-        'true' ->
-            validate_resources(cb_context:set_account_db(Context, ?KZ_OFFNET_DB)
-                              ,cb_context:req_verb(Context)
-                              );
-        'false' ->
-            validate_resources(Context, cb_context:req_verb(Context))
-    end.
+    Context1 = maybe_set_db_to_offnet(Context),
+    validate_resources(Context1, cb_context:req_verb(Context)).
 
 validate(Context, ?COLLECTION) ->
-    case is_global_resource_request(Context) of
-        'true' ->
-            validate_collection(cb_context:set_account_db(Context, ?KZ_OFFNET_DB));
-        'false' ->
-            validate_collection(Context)
-    end;
+    validate_collection(maybe_set_db_to_offnet(Context));
 validate(Context, ?JOBS) ->
     validate_jobs(maybe_set_account_to_master(Context), cb_context:req_verb(Context));
 validate(Context, Id) ->
-    case is_global_resource_request(Context) of
-        'true' ->
-            validate_resource(cb_context:set_account_db(Context, ?KZ_OFFNET_DB)
-                             ,Id
-                             ,cb_context:req_verb(Context)
-                             );
-        'false' ->
-            validate_resource(Context, Id, cb_context:req_verb(Context))
-    end.
+    Context1 = maybe_set_db_to_offnet(Context),
+    validate_resource(Context1, Id, cb_context:req_verb(Context)).
 
 validate(Context, ?JOBS, JobId) ->
     read_job(maybe_set_account_to_master(Context), JobId).
+
+maybe_set_db_to_offnet(Context) ->
+    case is_global_resource_request(Context) of
+        false -> Context;
+        true -> cb_context:set_account_db(Context, ?KZ_OFFNET_DB)
+    end.
 
 -spec maybe_set_account_to_master(cb_context:context()) -> cb_context:context().
 maybe_set_account_to_master(Context) ->
@@ -239,40 +227,31 @@ validate_patch(Context, Id) ->
     end.
 
 validate_collection(Context) ->
-    lists:foldl(fun validate_collection_fold/2
-               ,cb_context:setters(Context
-                                  ,[{fun cb_context:set_doc/2, kz_json:new()}
-                                   ,{fun cb_context:set_resp_data/2, kz_json:new()}
-                                   ,{fun cb_context:set_resp_status/2, 'success'}
-                                   ]
-                                  )
-               ,cb_context:req_data(Context)
-               ).
+    Fields = [{fun cb_context:set_doc/2, kz_json:new()}
+             ,{fun cb_context:set_resp_data/2, kz_json:new()}
+             ,{fun cb_context:set_resp_status/2, 'success'}
+             ],
+    Context1 = cb_context:setters(Context, Fields),
+    lists:foldl(fun validate_collection_fold/2, Context1, cb_context:req_data(Context)).
 
 -type collection_fold_acc() :: cb_context:context().
 -spec validate_collection_fold(kz_json:object(), collection_fold_acc()) -> collection_fold_acc().
 validate_collection_fold(Resource, C) ->
     Id = kz_doc:id(Resource, kz_datamgr:get_uuid()),
-    case validate_collection_resource(kz_doc:set_id(Resource, Id)
-                                     ,C
-                                     ,cb_context:req_verb(C)
-                                     )
-    of
-        {'ok', C1} ->
-            lager:debug("~s loaded successfully", [Id]),
-            cb_context:set_resp_data(C
-                                    ,kz_json:set_value([?KEY_SUCCESS, Id], cb_context:doc(C1), cb_context:resp_data(C))
-                                    );
-        {'error', 'not_found'} ->
-            RespData = cb_context:resp_data(C),
-            lager:debug("~s not found", [Id]),
-            cb_context:set_resp_data(C, kz_json:set_value([<<"errors">>, Id], <<"resource does not exist">>, RespData));
-        {'error', Errors} ->
-            RespData = cb_context:resp_data(C),
-            lager:debug("~s failed validation: ~p", [Id, Errors]),
-            lager:debug("Adding to ~p", [RespData]),
-            cb_context:set_resp_data(C, kz_json:set_value([<<"errors">>, Id], Errors, RespData))
-    end.
+    RespData = cb_context:resp_data(C),
+    NewRespData =
+        case validate_collection_resource(kz_doc:set_id(Resource, Id), C, cb_context:req_verb(C)) of
+            {'ok', C1} ->
+                lager:debug("~s loaded successfully", [Id]),
+                kz_json:set_value([?KEY_SUCCESS, Id], cb_context:doc(C1), RespData);
+            {'error', 'not_found'} ->
+                lager:debug("~s not found", [Id]),
+                kz_json:set_value([<<"errors">>, Id], <<"resource does not exist">>, RespData);
+            {'error', Errors} ->
+                lager:debug("~s failed validation: ~p", [Id, Errors]),
+                kz_json:set_value([<<"errors">>, Id], Errors, RespData)
+        end,
+    cb_context:set_resp_data(C, NewRespData).
 
 -spec validate_collection_resource(kz_json:object(), cb_context:context(), http_method()) ->
                                           {'ok', cb_context:context()} |
@@ -369,7 +348,6 @@ put_collection(Context, _AccountDb) ->
 put_job(Context) ->
     Modb = cb_context:account_modb(Context),
     Context1 = crossbar_doc:save(cb_context:set_account_db(Context, Modb)),
-
     case cb_context:resp_status(Context1) of
         'success' ->
             _ = cb_jobs_listener:publish_new_job(Context),

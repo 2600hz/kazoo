@@ -11,8 +11,6 @@
 
 -include("stepswitch_resource_selectors.hrl").
 
--define(MOD_NAME, <<"resource_selectors">>).
--define(SRS_CONFIG_CAT, <<?SS_CONFIG_CAT/binary, ".", ?MOD_NAME/binary>>).
 -define(MOD_PREFIX, "kz_srs_").
 -define(SRS_RULES_DOC, <<"resource_selector_rules">>).
 -define(DEFAULT_SRS_RULES, [kz_json:from_list([{<<"get_resources">>

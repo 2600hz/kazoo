@@ -20,6 +20,20 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
+-define(MAX_SHORTDIAL_CORRECTION
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"max_shortdial_correction">>, 5)).
+
+-define(MIN_SHORTDIAL_CORRECTION
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"min_shortdial_correction">>, 2)).
+
+-define(SHOULD_ASSUME_INBOUND_E164
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"assume_inbound_e164">>, false)).
+
+-define(DEFAULT_ROUTE_BY, <<"stepswitch_resources">>).
+-define(ROUTE_BY
+       ,kapps_config:get_ne_binary(?CONFIG_CAT, <<"route_by">>, ?DEFAULT_ROUTE_BY)).
+
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -53,7 +67,7 @@ get_realm(JObj) ->
 -spec get_inbound_destination(kz_json:object()) -> ne_binary().
 get_inbound_destination(JObj) ->
     {Number, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    case kapps_config:get_is_true(?SS_CONFIG_CAT, <<"assume_inbound_e164">>, 'false') of
+    case ?SHOULD_ASSUME_INBOUND_E164 of
         'true' -> assume_e164(Number);
         'false' -> knm_converters:normalize(Number)
     end.
@@ -90,8 +104,8 @@ correct_shortdial(<<"+", Number/binary>>, CIDNum) ->
 correct_shortdial(Number, <<"+", CIDNum/binary>>) ->
     correct_shortdial(Number, CIDNum);
 correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
-    MaxCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"max_shortdial_correction">>, 5),
-    MinCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"min_shortdial_correction">>, 2),
+    MaxCorrection = ?MAX_SHORTDIAL_CORRECTION,
+    MinCorrection = ?MIN_SHORTDIAL_CORRECTION,
     case byte_size(CIDNum) - byte_size(Number) of
         Length when Length =< MaxCorrection, Length >= MinCorrection ->
             Correction = kz_binary:truncate_right(CIDNum, Length),
@@ -119,10 +133,7 @@ get_sip_headers(OffnetReq) ->
             maybe_remove_diversions(SIPHeaders);
         Diversions ->
             lager:debug("setting diversions ~p", [Diversions]),
-            kz_json:set_value(<<"Diversions">>
-                             ,Diversions
-                             ,SIPHeaders
-                             )
+            kz_json:set_value(<<"Diversions">>, Diversions, SIPHeaders)
     end.
 
 -spec maybe_remove_diversions(kz_json:object()) -> kz_json:object().
@@ -147,11 +158,9 @@ get_diversions(Inception, Diversions) ->
     Fs = [{fun kzsip_diversion:set_address/2, <<"sip:", Inception/binary>>}
          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversions) + 1}
          ],
+    Folder = fun({F, V}, D) -> F(D, V) end,
     [kzsip_diversion:to_binary(
-       lists:foldl(fun({F, V}, D) -> F(D, V) end
-                  ,kzsip_diversion:new()
-                  ,Fs
-                  )
+       lists:foldl(Folder, kzsip_diversion:new(), Fs)
       )
     ].
 
@@ -305,10 +314,9 @@ get_endpoint_format_from(OffnetReq, CCVs) ->
         'false' -> kz_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm)
     end.
 
--spec route_by() -> atom().
+-spec route_by() -> module().
 route_by() ->
-    RouteBy = kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"route_by">>, ?DEFAULT_ROUTE_BY),
-    case kz_util:try_load_module(RouteBy) of
+    case kz_util:try_load_module(?ROUTE_BY) of
         'false' -> kz_term:to_atom(?DEFAULT_ROUTE_BY);
         Module -> Module
     end.
@@ -328,11 +336,7 @@ resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
 
 -spec maybe_resource_to_endpoints(stepswitch_resources:resource(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
                                          kz_json:objects().
-maybe_resource_to_endpoints(Resource
-                           ,Number
-                           ,OffnetJObj
-                           ,Endpoints
-                           ) ->
+maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints) ->
     Id = stepswitch_resources:get_resrc_id(Resource),
     Name = stepswitch_resources:get_resrc_name(Resource),
     Gateways = stepswitch_resources:get_resrc_gateways(Resource),

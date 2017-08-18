@@ -308,7 +308,7 @@ originate_from_uri(CIDNum, OffnetReq) ->
                                       ,<<"Account-Realm">>
                                       ], OffnetReq),
     case (is_binary(CIDNum) and is_binary(Realm))
-        andalso (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
+        andalso (?SHOULD_FORMAT_FROM_URI
                  orelse kz_json:is_true(<<"Format-From-URI">>, OffnetReq)
                 )
     of

@@ -26,38 +26,50 @@
 
 -type state() :: atom().
 
--define(SERVER, ?MODULE).
+-define(MOD_CONFIG_CAT, <<"stepswitch.cnam">>).
 
--define(CONFIG_CAT, <<"stepswitch.cnam">>).
+-define(DEFAULT_HTTP_URL, <<"https://api.opencnam.com/v2/phone/{{phone_number}}">>).
+-define(DEFAULT_ACCEPT_HDR, "text/pbx,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8").
 
--define(DEFAULT_EXPIRES, 900).
--define(DEFAULT_METHOD, <<"get">>).
--define(DEFAULT_CONTENT, <<>>).
--define(DEFAULT_URL, <<"https://api.opencnam.com/v2/phone/{{phone_number}}">>).
--define(DEFAULT_ACCEPT_HDR, <<"text/pbx,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8">>).
--define(DEFAULT_USER_AGENT_HDR, <<"Kazoo Stepswitch CNAM">>).
--define(DEFAULT_CONTENT_TYPE_HDR, <<"application/json">>).
+-define(HTTP_METHOD
+       ,kapps_config:get_binary(?MOD_CONFIG_CAT, <<"http_method">>, <<"get">>)).
+
+-define(HTTP_BODY
+       ,kapps_config:get_binary(?MOD_CONFIG_CAT, <<"http_body">>, <<>>)).
+
+-define(HTTP_URL
+       ,kapps_config:get_binary(?MOD_CONFIG_CAT, <<"http_url">>, ?DEFAULT_HTTP_URL)).
+
+-define(HTTP_AUTH_LOGIN
+       ,kapps_config:get_string(?MOD_CONFIG_CAT, <<"http_basic_auth_username">>, "")).
+
+-define(HTTP_AUTH_PASSWORD
+       ,kapps_config:get_string(?MOD_CONFIG_CAT, <<"http_basic_auth_password">>, "")).
 
 -define(HTTP_ACCEPT_HEADER
-       ,kapps_config:get_string(?CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)
+       ,kapps_config:get_string(?MOD_CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)
        ).
+
 -define(HTTP_USER_AGENT
-       ,kapps_config:get_string(?CONFIG_CAT, <<"http_user_agent_header">>, ?DEFAULT_USER_AGENT_HDR)
+       ,kapps_config:get_string(?MOD_CONFIG_CAT, <<"http_user_agent_header">>, "Kazoo Stepswitch CNAM")
        ).
+
 -define(HTTP_CONTENT_TYPE
-       ,kapps_config:get_string(?CONFIG_CAT, <<"http_content_type_header">>, ?DEFAULT_CONTENT_TYPE_HDR)
+       ,kapps_config:get_string(?MOD_CONFIG_CAT, <<"http_content_type_header">>, "application/json")
        ).
+
 -define(HTTP_CONNECT_TIMEOUT_MS
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"http_connect_timeout_ms">>, 500)
+       ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"http_connect_timeout_ms">>, 500)
        ).
+
 -define(DISABLE_NORMALIZE
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"disable_normalize">>, 'false')
+       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"disable_normalize">>, 'false')
        ).
 
 -define(CACHE_KEY(Number), {'cnam', Number}).
 
 -define(CNAM_EXPIRES,
-        kapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)).
+        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"cnam_expires">>, 900)).
 
 %%%===================================================================
 %%% API
@@ -68,8 +80,8 @@
 %%--------------------------------------------------------------------
 -spec start_link(any()) -> startlink_ret().
 start_link(_) ->
-    _ = ssl:start(),
-    gen_server:start_link(?SERVER, [], []).
+    {ok,_} = application:ensure_all_started(ssl),
+    gen_server:start_link(?MODULE, [], []).
 
 -spec lookup(kz_json:object() | ne_binary()) -> kz_json:object().
 lookup(<<_/binary>> = Number) ->
@@ -316,10 +328,9 @@ request(Number, JObj) ->
 
 -spec get_http_url(kz_json:object()) -> ne_binary().
 get_http_url(JObj) ->
-    Template = kapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
+    Template = ?HTTP_URL,
     {'ok', SrcUrl} = render(JObj, Template),
     Url = iolist_to_binary(SrcUrl),
-
     case binary:match(Template, <<"opencnam">>) of
         'nomatch' -> Url;
         _Else ->
@@ -333,7 +344,7 @@ get_http_url(JObj) ->
 
 -spec get_http_body(kz_json:object()) -> list().
 get_http_body(JObj) ->
-    Template = kapps_config:get_binary(?CONFIG_CAT, <<"http_body">>, ?DEFAULT_CONTENT),
+    Template = ?HTTP_BODY,
     case kz_term:is_empty(Template) of
         'true' -> [];
         'false' ->
@@ -364,8 +375,8 @@ maybe_enable_ssl(_Url, Props) -> Props.
 -spec maybe_enable_auth([{nonempty_string(), nonempty_string()}]) ->
                                [{nonempty_string(), nonempty_string()}].
 maybe_enable_auth(Props) ->
-    Username = kapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
-    Password = kapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
+    Username = ?HTTP_AUTH_LOGIN,
+    Password = ?HTTP_AUTH_PASSWORD,
     case kz_term:is_empty(Username)
         orelse kz_term:is_empty(Password)
     of
@@ -381,7 +392,7 @@ basic_auth(Username, Password) ->
 
 -spec get_http_method() -> 'get' | 'put' | 'post'.
 get_http_method() ->
-    case kapps_config:get_binary(?CONFIG_CAT, <<"http_method">>, ?DEFAULT_METHOD) of
+    case ?HTTP_METHOD of
         <<"post">> -> 'post';
         <<"put">> -> 'put';
         _Else -> 'get'

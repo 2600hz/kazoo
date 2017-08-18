@@ -60,8 +60,25 @@
                               }).
 
 -define(SHOULD_ENSURE_E911_CID_VALID
-       ,kapps_config:get_is_true(?SS_CONFIG_CAT, <<"ensure_valid_emergency_cid">>, 'false')
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_emergency_cid">>, 'false')
        ).
+
+-define(SHOULD_DENY_INVALID_EMERGENCY_CID
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"deny_invalid_emergency_cid">>, false)).
+
+-define(DENY_EMERGENCY_BRIDGE_CODE
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"deny_emergency_bridge_code">>, 486)).
+
+-define(DENY_EMERGENCY_BRIDGE_CAUSE
+       ,kapps_config:get_ne_binary(?CONFIG_CAT
+                                  ,<<"deny_emergency_bridge_cause">>
+                                  ,<<"Emergency service not configured">>)).
+
+-define(DENY_EMERGENCY_BRIDGE_MEDIA
+       ,kapps_config:get_ne_binary(?CONFIG_CAT
+                                  ,<<"deny_emergency_bridge_media">>
+                                  ,<<"prompt://system_media/stepswitch-emergency_not_configured/">>)).
+
 
 %%%===================================================================
 %%% API
@@ -308,11 +325,7 @@ maybe_bridge_emergency(#state{resource_req=OffnetReq
 -spec maybe_deny_emergency_bridge(state(), api_binary(), api_binary()) -> 'ok'.
 maybe_deny_emergency_bridge(#state{resource_req=OffnetReq}=State, 'undefined', Name) ->
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
-    case kapps_config:get_is_true(?SS_CONFIG_CAT
-                                 ,<<"deny_invalid_emergency_cid">>
-                                 ,'false'
-                                 )
-    of
+    case ?SHOULD_DENY_INVALID_EMERGENCY_CID of
         'true' -> deny_emergency_bridge(State);
         'false' ->
             Number = default_emergency_number(kz_privacy:anonymous_caller_id_number(AccountId)),
@@ -402,12 +415,10 @@ build_bridge(#state{endpoints=Endpoints
                              api_binary().
 bridge_from_uri(Number, OffnetReq) ->
     Realm = stepswitch_util:default_realm(OffnetReq),
-
-    case (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
-          orelse kapi_offnet_resource:format_from_uri(OffnetReq)
-         )
-        andalso is_binary(Number)
-        andalso is_binary(Realm)
+    case (is_binary(Number) and is_binary(Realm))
+        andalso (?SHOULD_FORMAT_FROM_URI
+                 orelse kapi_offnet_resource:format_from_uri(OffnetReq)
+                )
     of
         'false' -> 'undefined';
         'true' ->
@@ -588,15 +599,9 @@ send_deny_emergency_notification(OffnetReq) ->
                                           {'error', 'no_response'}.
 send_deny_emergency_response(OffnetReq, ControlQ) ->
     CallId = kapi_offnet_resource:call_id(OffnetReq),
-    Code = kapps_config:get_integer(?SS_CONFIG_CAT, <<"deny_emergency_bridge_code">>, 486),
-    Cause = kapps_config:get_ne_binary(?SS_CONFIG_CAT
-                                      ,<<"deny_emergency_bridge_cause">>
-                                      ,<<"Emergency service not configured">>
-                                      ),
-    Media = kapps_config:get_ne_binary(?SS_CONFIG_CAT
-                                      ,<<"deny_emergency_bridge_media">>
-                                      ,<<"prompt://system_media/stepswitch-emergency_not_configured/">>
-                                      ),
+    Code = ?DENY_EMERGENCY_BRIDGE_CODE,
+    Cause = ?DENY_EMERGENCY_BRIDGE_CAUSE,
+    Media = ?DENY_EMERGENCY_BRIDGE_MEDIA,
     kz_call_response:send(CallId, ControlQ, Code, Cause, Media).
 
 -spec get_event_type(kz_json:object()) -> {ne_binary(), ne_binary(), ne_binary()}.

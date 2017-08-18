@@ -16,12 +16,10 @@
 -define(APP_NAME, <<"stepswitch">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--define(SS_CONFIG_CAT, <<"stepswitch">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(CACHE_NAME, 'stepswitch_cache').
 -define(STEPSWITCH_CNAM_POOL, 'stepswitch_cnam_pool').
-
--define(DEFAULT_ROUTE_BY, <<"stepswitch_resources">>).
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
@@ -30,14 +28,17 @@
        ).
 
 -define(RULES_HONOR_DIVERSION
-       ,kapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'false')
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'false')
        ).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>, <<"sms">>]).
 
 -define(DEFAULT_EMERGENCY_CID_NUMBER,
-        kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"default_emergency_cid_number">>)
+        kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_emergency_cid_number">>)
        ).
+
+-define(SHOULD_FORMAT_FROM_URI
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"format_from_uri">>, false)).
 
 -ifdef(TEST).
 -define(ACCOUNT_ID, <<"e6ed490b996152f639c4118f8c21d4bb">>).
