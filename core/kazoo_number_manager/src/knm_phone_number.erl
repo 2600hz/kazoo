@@ -1003,7 +1003,7 @@ set_features(PN=#knm_phone_number{features = undefined}, Features) ->
         false -> PN#knm_phone_number{features = Features}
     end;
 set_features(PN, Features) ->
-    'true' = kz_json:is_json_object(Features),
+    true = kz_json:is_json_object(Features),
     case kz_json:are_equal(PN#knm_phone_number.features, Features) of
         true -> PN;
         false -> ?DIRTY(PN#knm_phone_number{features = Features})
@@ -1011,7 +1011,11 @@ set_features(PN, Features) ->
 
 -spec feature(knm_phone_number(), ne_binary()) -> kz_json:api_json_term().
 feature(PN, Feature) ->
-    kz_json:get_ne_value(Feature, features(PN)).
+    Value = kz_json:get_value(Feature, features(PN)),
+    case kz_json:is_empty(Value) of
+        false -> Value;
+        true -> undefined
+    end.
 
 -spec set_feature(knm_phone_number(), ne_binary(), kz_json:json_term()) ->
                          knm_phone_number().

@@ -223,6 +223,7 @@ system_allowed_features() ->
 number_allowed_features(#feature_parameters{num = ?TEST_OLD5_1_NUM}) ->
     AllowedFeatures = [?FEATURE_CNAM
                       ,?FEATURE_E911
+                      ,?FEATURE_FORCE_OUTBOUND
                       ,?FEATURE_RENAME_CARRIER
                       ],
     ?LOG_DEBUG("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
@@ -230,6 +231,7 @@ number_allowed_features(#feature_parameters{num = ?TEST_OLD5_1_NUM}) ->
 number_allowed_features(#feature_parameters{num = ?TEST_VITELITY_NUM}) ->
     AllowedFeatures = [?FEATURE_CNAM
                       ,?FEATURE_E911
+                      ,?FEATURE_FORCE_OUTBOUND
                       ,?FEATURE_PREPEND
                       ,?FEATURE_RENAME_CARRIER
                       ],
@@ -389,6 +391,8 @@ provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
 provider_module(?FEATURE_RENAME_CARRIER, _) ->
     ?PROVIDER_RENAME_CARRIER;
+provider_module(?FEATURE_FORCE_OUTBOUND, _) ->
+    ?PROVIDER_FORCE_OUTBOUND;
 provider_module(Other, _) ->
     ?LOG_DEBUG("unmatched feature provider ~p, allowing", [Other]),
     Other.

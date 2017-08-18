@@ -307,7 +307,7 @@ create(Nums, Options) ->
             try knm_number:state_for_create(Options) of
                 ToState ->
                     lager:debug("picked state ~s for ~s for ~p", [ToState, knm_number_options:assign_to(Options), Nums]),
-                    NewOptions = [{'state', ToState} | Options],
+                    NewOptions = [{state, ToState} | Options],
                     ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
                             ,[fun knm_number:new/1
                              ,fun knm_number_states:to_options_state/1
