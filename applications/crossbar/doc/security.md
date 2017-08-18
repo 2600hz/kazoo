@@ -101,7 +101,14 @@ curl -v -X GET \
         "enabled": true,
         "token_auth_expiry_s": 3600,
         "log_failed_attempts": true,
-        "log_successful_attempts": true
+        "log_successful_attempts": true,
+        "multi_factor": {
+          "enabled": false,
+          "_read_only": {
+            "name": "Default System Provider",
+            "provider_name": "duo"
+          }
+        }
       },
       "cb_api_auth": {
         "enabled": true,
@@ -236,6 +243,47 @@ curl -v -X DELETE \
       },
       "cb_api_auth": {
         "enabled": false
+      }
+    },
+    "id": "configs_crossbar.auth"
+  },
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### Set Multi Factor Configuration for a Authentication Module
+
+> POST /v2/accounts/{ACCOUNT_ID}/security
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{ "data": { "auth_modules" :{ "cb_user_auth": { "multi_factor": { "enabled": true, "configuration_id": "c757665dca55edba2395df3ca6423f4f", "account_id": "a391d64a083b99232f6d2633c47432e3" } } } } }'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
+```
+
+##### Response
+
+```json
+{
+  "data": {
+    "auth_modules": {
+      "cb_user_auth": {
+        "multi_factor": {
+          "enabled": true,
+          "configuration_id": "c757665dca55edba2395df3ca6423f4f",
+          "account_id": "a391d64a083b99232f6d2633c47432e3"
+          "_read_only": {
+            "name": "a nice day",
+            "provider_name": "duo"
+          }
+        }
+        }
       }
     },
     "id": "configs_crossbar.auth"

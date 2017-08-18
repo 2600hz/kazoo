@@ -20,6 +20,7 @@
                 "  emit([doc.pvt_provider_type, doc._id], {",
                 "    'id' : doc._id,",
                 "    'enabled': doc.enabled,",
+                "    'name': doc.name,",
                 "    'provider_name': doc.provider_name,",
                 "    'provider_type': doc.pvt_provider_type",
                 "  });",
