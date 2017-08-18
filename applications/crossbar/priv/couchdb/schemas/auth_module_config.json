@@ -1,7 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "auth_module_config",
-    "additionalProperties": false,
     "description": "crossbar authenticator module configuration",
     "properties": {
         "enabled": {

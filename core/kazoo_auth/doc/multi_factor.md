@@ -6,7 +6,7 @@ Integrating Kazoo to MFA providers to secure accessing the Crossbar API endpoint
 
 > **Caution:** Please make sure that **NTP** service is configured on Kazoo servers and that your server's time is correct! Otherwise MFA request would be failed or would be invalid.
 
-#### Multi Factor Authentication flow
+##### Multi Factor Authentication flow
 
 MFA process involves these steps:
 
@@ -35,7 +35,7 @@ MFA process involves these steps:
 8. After the client performed the MFA with the provider, it should issue the same auth request this time with payload included the response from MFA provider
 9. In this second request, kazoo provider module will try to verifying the request and provider response, if the provider response that user is claiming could be verified the request will be authorized and a token will be generated as before. Otherwise a HTTP `401 unauthorized` error will be returned.
 
-#### Where provider configuration comes from
+##### Where provider configuration comes from
 
 If `mfa_option` is not present in the `Claims` or settings could not be fetched from Account's database the system default provider settings from `system_auth` will be used (which by default has an empty settings).
 Otherwise the Account's settings will be used.
@@ -62,15 +62,15 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 
 ###### Authenticate Users using Kazoo Duo integration
 
-1. Use Crossbar multi factor API endpoint to configure Duo by you IKey, SKey, AKey, API hostname.
-2. Enable multi factor (See [Crossbar Auth Config](../../../applications/crossbar/doc/multi_factor.md)) for a Crossbar auth module.
-3. Users can now use a usual Crossbar authentication procedure (for example with `cb_user_auth`).
-4. Kazoo auth MFA and Crossbar will return `sig_request` and `api_hostname` to client.
-5. Use `Duo-Web-v2.js` to implement Duo client side for performing 2FA authentication. See [Duo Web](https://duo.com/docs/duoweb) (steps 3 and beyond in **Instructions** section).
-6. Send back the Duo response to kazoo by repeating the auth request in step 3 by adding `multi_factor_response` as payload.
-7. If `sig_response` is valid, user's will be authenticated and a token will be generated, otherwise a HTTP `401 unauthorized` will be returned.
+1. Use Crossbar multi factor API endpoint to configure Duo by you IKey, SKey, AKey, API hostname
+2. Enable multi factor (See [Crossbar Auth Config](../../../applications/crossbar/doc/multi_factor.md)) for a Crossbar auth module  (usually `cb_user_auth`)
+3. Users can now use a usual Crossbar authentication procedure (usually `cb_user_auth`)
+4. Kazoo auth MFA and Crossbar will return `sig_request` and `api_hostname` to client
+5. Use `Duo-Web-v2.js` to implement Duo client side for performing 2FA authentication. See [Duo Web](https://duo.com/docs/duoweb) (steps 3 and beyond in **Instructions** section)
+6. Send back the Duo response to kazoo by repeating the auth request in step 3 by adding `multi_factor_response` as payload
+7. If `sig_response` is valid, user's will be authenticated and a token will be generated, otherwise a HTTP `401 unauthorized` will be returned
 
-####### Sample Duo configuration (see step 1 above)
+###### a Sample Duo configuration (see step 1 above)
 
 ```json
 {
@@ -90,7 +90,9 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 }
 ```
 
-####### Crossbar return `sig_request` (see step 4 above)
+###### A Sample Crossbar Multi Factor Challenge Response (see step 4 above)
+
+If the first factor authentication (usually using a user name and password) has been successful, Crossbar would return this response asking the Client to perform the authentication with Duo server.
 
 ```json
 {
@@ -107,11 +109,15 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 }
 ```
 
-Which `sig_request` is a string similar to `TX|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|28af5ae63742cfc52f36002a146ee181326cd40d:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777`.
+`sig_request` is a string similar to:
 
-Notice the `TX` and `APP` parts which separated by `:`. You need the `APP` part later to merge it with response from Duo when you're sending it to Kazoo.
+```
+TX|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|28af5ae63742cfc52f36002a146ee181326cd40d:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777
+```
 
-####### Client sends Duo response to Kazoo with this payload
+> *Note:* Notice the `TX` and `APP` parts which separated by `:`. You need the `APP` part later to merge it with response from Duo when you're sending it to Kazoo.
+
+###### Completing Second Factor Authentication
 
 Duo will authenticate user by the whatever methods user has chosen and then will respond to Duo JavaScript client with a payload similar to this:
 
@@ -127,7 +133,7 @@ Duo will authenticate user by the whatever methods user has chosen and then will
 }
 ```
 
-You need to merge `cookie` with `APP` from previous part and send it to Kazoo with a payload like below.
+Client needs to merge the value of the `cookie` with `APP` from previous part and send it to Kazoo with a below payload:
 
 ```json
 {
@@ -137,4 +143,4 @@ You need to merge `cookie` with `APP` from previous part and send it to Kazoo wi
 }
 ```
 
-Notice that the cookie Duo sent to you (`AUTH|...|...`) was merged with `APP|...|...` from previous step (separated with a colon): `AUTH|...|...:APP|...|...`.
+> *Note:* Again notice that the cookie Duo sent to the client (`AUTH|...|...`) was merged with `APP|...|...` from previous step (separated with a colon) so final result is `AUTH|...|...:APP|...|...`.

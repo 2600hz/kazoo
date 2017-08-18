@@ -20,6 +20,8 @@ When setting `configuration_id` of the multi-factor, you have to set the Account
 
 Only a parent Account or the same Account can set `configuration_id` and `account_id` unless `multi_factor.include_subaccounts` is `true` and a descendant account can use its parent `configuration_id`.
 
+See [Multi Factor Authentication API documentation](./multi_factor.md).
+
 #### Account Auth Configuration Schema
 
 Key | Description | Type | Default | Required
@@ -277,7 +279,7 @@ curl -v -X POST \
         "multi_factor": {
           "enabled": true,
           "configuration_id": "c757665dca55edba2395df3ca6423f4f",
-          "account_id": "a391d64a083b99232f6d2633c47432e3"
+          "account_id": "a391d64a083b99232f6d2633c47432e3",
           "_read_only": {
             "name": "a nice day",
             "provider_name": "duo"
