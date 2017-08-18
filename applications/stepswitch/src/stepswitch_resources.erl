@@ -118,9 +118,9 @@
                  ,privacy_mode = 'undefined' :: api_binary()
                  }).
 
--record(resrc, {id :: api_binary()
-               ,rev :: api_binary()
-               ,name :: api_binary()
+-record(resrc, {id :: api_ne_binary()
+               ,rev :: api_ne_binary()
+               ,name :: api_ne_binary()
                ,weight = 1 :: 1..100
                ,grace_period = 3 :: non_neg_integer()
                ,flags = [] :: list()
@@ -133,17 +133,17 @@
                ,require_flags = 'false' :: boolean()
                ,global = 'true' :: boolean()
                ,format_from_uri = 'false' :: boolean()
-               ,from_uri_realm :: api_binary()
+               ,from_uri_realm :: api_ne_binary()
                ,from_account_realm = 'false' :: boolean()
                ,fax_option :: ne_binary() | boolean()
                ,codecs = [] :: ne_binaries()
                ,bypass_media = 'false' :: boolean()
                ,formatters :: api_objects()
                ,proxies = [] :: kz_proplist()
-               ,selector_marks = [] :: [tuple()]
-               ,privacy_mode = 'undefined' :: api_binary()
-               ,classifier = 'undefined' :: api_binary()
-               ,classifier_enable = 'undefined' :: api_boolean()
+               ,selector_marks = [] :: kz_proplist()
+               ,privacy_mode :: api_ne_binary()
+               ,classifier :: api_ne_binary()
+               ,classifier_enable :: api_boolean()
                }).
 
 -type resource() :: #resrc{}.
