@@ -49,6 +49,12 @@
 
         ,preflow_id/1
         ]).
+-export([outbound_flags/1
+        ,set_outbound_flags/2
+        ]).
+-export([outbound_dynamic_flags/1
+        ,set_outbound_dynamic_flags/2
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -80,6 +86,9 @@
 -define(TOPUP_THRESHOLD, [<<"topup">>, <<"threshold">>]).
 -define(SENT_INITIAL_REGISTRATION, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]).
 -define(SENT_INITIAL_CALL, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]).
+-define(OUTBOUND_FLAGS, <<"outbound_flags">>).
+-define(STATIC_FLAGS, <<"static">>).
+-define(DYNAMIC_FLAGS, <<"dynamic">>).
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
@@ -161,6 +170,13 @@ fetch('undefined') ->
 fetch(<<_/binary>> = Account) ->
     fetch(Account, 'account').
 
+-ifdef(TEST).
+fetch('undefined', _) ->
+    {'error', 'invalid_db_name'};
+fetch(Account, 'account') ->
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    {'ok', kz_json:load_fixture_from_file('kazoo_documents', "fixtures/account", <<AccountId/binary, ".json">>)}.
+-else.
 -spec fetch(api_binary(), 'account' | 'accounts') -> {'ok', doc()} |
                                                      {'error', any()}.
 fetch('undefined', _) ->
@@ -171,6 +187,7 @@ fetch(Account, 'account') ->
     kz_datamgr:open_cache_doc(AccountDb, AccountId, [{'cache_failures',false}]);
 fetch(AccountId, 'accounts') ->
     kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId, [{'cache_failures',false}]).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -759,6 +776,54 @@ reseller_id(JObj) ->
 -spec set_reseller_id(doc(), ne_binary()) -> doc().
 set_reseller_id(JObj, ResellerId) ->
     kz_json:set_value(?RESELLER_ID, ResellerId, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec outbound_flags(kz_json:object()) -> ne_binaries().
+outbound_flags(JObj) ->
+    OutboundFlags = kz_json:get_ne_value(?OUTBOUND_FLAGS, JObj, []),
+    %% Backward compatibilty with an arrayu of static flags
+    case kz_json:is_json_object(OutboundFlags) of
+        'false' -> OutboundFlags;
+        'true' -> kz_json:get_list_value(?STATIC_FLAGS, OutboundFlags, [])
+    end.
+
+-spec set_outbound_flags(kz_json:object(), ne_binaries()) -> kz_json:object().
+set_outbound_flags(JObj, Flags) when is_list(Flags) ->
+    OutboundFlags = kz_json:get_ne_value(?OUTBOUND_FLAGS, JObj, []),
+    %% Backward compatibilty with an arrayu of static flags
+    case kz_json:is_json_object(OutboundFlags) of
+        'true' -> kz_json:set_value([?OUTBOUND_FLAGS, ?STATIC_FLAGS], Flags, JObj);
+        'false' ->
+            Updates = kz_json:from_list([{?STATIC_FLAGS, Flags}]),
+            kz_json:set_value(?OUTBOUND_FLAGS, Updates, JObj)
+    end.
+
+-spec outbound_dynamic_flags(kz_json:object()) -> ne_binaries().
+outbound_dynamic_flags(JObj) ->
+    OutboundFlags = kz_json:get_ne_value(?OUTBOUND_FLAGS, JObj, []),
+    %% Backward compatibilty with an arrayu of static flags
+    case kz_json:is_json_object(OutboundFlags) of
+        'false' -> [];
+        'true' -> kz_json:get_list_value(?DYNAMIC_FLAGS, OutboundFlags, [])
+    end.
+
+-spec set_outbound_dynamic_flags(kz_json:object(), ne_binaries()) -> kz_json:object().
+set_outbound_dynamic_flags(JObj, Flags) when is_list(Flags) ->
+    OutboundFlags = kz_json:get_ne_value(?OUTBOUND_FLAGS, JObj, []),
+    %% Backward compatibilty with an arrayu of static flags
+    case kz_json:is_json_object(OutboundFlags) of
+        'true' -> kz_json:set_value([?OUTBOUND_FLAGS, ?DYNAMIC_FLAGS], Flags, JObj);
+        'false' ->
+            Updates = kz_json:from_list([{?STATIC_FLAGS, OutboundFlags}
+                                        ,{?DYNAMIC_FLAGS, Flags}
+                                        ]
+                                       ),
+            kz_json:set_value(?OUTBOUND_FLAGS, Updates, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

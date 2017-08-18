@@ -12,10 +12,10 @@
 process_dynamic_flags_test_() ->
     Call = create_kapps_call(),
     [{"verify that dynamic CCVs can be fetched and are converted to binary"
-     ,?_assertEqual([<<"true">>], kz_attributes:process_dynamic_flags([<<"custom_channel_vars.ccv_dynamic_flag">>], Call))
+     ,?_assertEqual([<<"sys_info">>], kz_attributes:process_dynamic_flags([<<"custom_channel_vars.authorizing_type">>], Call))
      }
     ,{"verify that exported kapps_call functions can be used"
-     ,?_assertEqual([<<"nouser">>], kz_attributes:process_dynamic_flags([<<"to_user">>], Call))
+     ,?_assertEqual([<<"20255520140">>], kz_attributes:process_dynamic_flags([<<"to_user">>], Call))
      }
     ,{"verify that non-exported kapps_call functions dont crash"
      ,?_assertEqual([], kz_attributes:process_dynamic_flags([<<"not_exported">>], Call))
@@ -26,5 +26,6 @@ process_dynamic_flags_test_() ->
     ].
 
 create_kapps_call() ->
-    Routines = [{fun kapps_call:insert_custom_channel_var/3, <<"CCV-Dynamic-Flag">>, 'true'}],
-    kapps_call:exec(Routines, kapps_call:new()). 
+    RouteReq = kz_json:load_fixture_from_file('kazoo_call', "fixtures/route_req", "inbound-onnet-trunkstore.json"),
+    RouteWin = kz_json:load_fixture_from_file('kazoo_call', "fixtures/route_win", "inbound-onnet-trunkstore.json"),
+    kapps_call:from_route_win(RouteWin, kapps_call:from_route_req(RouteReq)).

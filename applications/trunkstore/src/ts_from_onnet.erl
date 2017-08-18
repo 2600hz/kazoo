@@ -173,6 +173,7 @@ get_flags(DIDOptions, ServerOptions, AccountOptions, Call) ->
                ,fun get_account_flags/5
                ,fun get_offnet_dynamic_flags/5
                ,fun get_account_dynamic_flags/5
+               ,fun get_config_dynamic_flags/5
                ],
     lists:foldl(fun(F, A) -> F(DIDOptions, ServerOptions, AccountOptions, Call, A) end, [], Routines).
 
@@ -208,8 +209,19 @@ get_offnet_dynamic_flags(_, ServerOptions, AccountOptions, Call, Flags) ->
     end.
 
 -spec get_account_dynamic_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                                       ne_binaries().
+                               ne_binaries().
 get_account_dynamic_flags(_, _, _, Call, Flags) ->
+    AccountId = kapps_call:account_id(Call),
+    case kz_account:fetch(AccountId) of
+        {'error', _E} -> Flags;
+        {'ok', AccountJObj} ->
+            DynamicFlags = kz_json:get_list_value(<<"outbound_dynamic_flags">>, AccountJObj, []),
+            kz_attributes:process_dynamic_flags(DynamicFlags, Flags, Call)
+    end.
+
+-spec get_config_dynamic_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) ->
+                                       ne_binaries().
+get_config_dynamic_flags(_, _, _, Call, Flags) ->
     DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
                                            ,<<"trunkstore">>
                                            ,<<"dynamic_flags">>

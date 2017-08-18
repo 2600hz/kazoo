@@ -1,0 +1,29 @@
+{  
+   "Custom-Channel-Vars":{  
+      "Account-ID":"account0000000000000000000000001",
+      "Global-Resource":false,
+      "Channel-Authorized":"true",
+      "Caller-Privacy-Hide-Number":false,
+      "Caller-Privacy-Hide-Name":false,
+      "Caller-Screen-Bit":true,
+      "Username":"trunkstore_sip_username",
+      "Realm":"4a6863.sip.2600hz.local",
+      "Authorizing-Type":"sys_info",
+      "Authorizing-ID":"trunkstore0000000000000000000001",
+      "Account-Realm":"4a6863.sip.2600hz.local",
+      "Account-Name":"Master-Account",
+      "Fetch-ID":"2f12140e-844d-11e7-9426-03f51cdc7211",
+      "Call-Interaction-ID":"63670304469-eac90b9a",
+      "Application-Node":"kazoo_apps@apps001.2600hz.local",
+      "Application-Name":"trunkstore"
+   },
+   "Control-Queue":"ecallmgr@apps001.2600hz.local-<0.28561.28>-a4a36185",
+   "Call-ID":"82159ZWEwNTQ2NGY4Yzc2YzRiNDE4YzY1YzdmZmVjNWQ3ZjQ",
+   "Server-ID":"ecallmgr@apps001.2600hz.local-<0.28561.28>-a4a36185",
+   "Node":"ecallmgr@apps001.2600hz.local",
+   "Msg-ID":"82159ZWEwNTQ2NGY4Yzc2YzRiNDE4YzY1YzdmZmVjNWQ3ZjQ",
+   "Event-Name":"route_win",
+   "Event-Category":"dialplan",
+   "App-Version":"4.0.0",
+   "App-Name":"ecallmgr"
+}
