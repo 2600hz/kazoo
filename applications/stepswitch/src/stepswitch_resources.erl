@@ -92,7 +92,7 @@
 -define(DEFAULT_BYPASS_MEDIA
        ,kapps_config:get_is_true(?CONFIG_CAT, <<"default_bypass_media">>, false)).
 
--define(DEFAULT_FORMATTERS, kapps_config:get(?CONFIG_CAT, <<"default_formatters">>)).
+-define(DEFAULT_FORMATTERS, kapps_config:get_jsons(?CONFIG_CAT, <<"default_formatters">>, undefined)).
 
 -define(DEFAULT_CODECS_VIDEO
        ,kapps_config:get_ne_binaries(?CONFIG_CAT, <<"default_video_codecs">>, [])).
