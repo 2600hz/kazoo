@@ -11,12 +11,24 @@
 -include("stepswitch.hrl").
 
 
-global_test_() ->
+global_resources_test_() ->
     GlobalJObjs = fixture("test/global_resources.json"),
+    [G1,G2,G3] = stepswitch_resources:resources_from_jobjs(GlobalJObjs),
+    [?_assertEqual(<<"d60be7f888d8b7d937a846e07b927886">>, stepswitch_resources:get_resrc_id(G1))
+    ,?_assertEqual(3, stepswitch_resources:get_resrc_weight(G1))
+    ,?_assertEqual(3, stepswitch_resources:get_resrc_grace_period(G1))
+    ,?_assertEqual(<<"d4bc772163c9ab2ebc4ee79637ae3433">>, stepswitch_resources:get_resrc_id(G2))
+    ,?_assertEqual(3, stepswitch_resources:get_resrc_weight(G2))
+    ,?_assertEqual(3, stepswitch_resources:get_resrc_grace_period(G2))
+    ,?_assertEqual(<<"7e6ab78098a1a788019a54ed4f51ba82">>, stepswitch_resources:get_resrc_id(G3))
+    ,?_assertEqual(3, stepswitch_resources:get_resrc_weight(G3))
+    ,?_assertEqual(3, stepswitch_resources:get_resrc_grace_period(G3))
+    ].
+
+local_resources_test_() ->
     LocalJObjs = fixture("test/local_resources.json"),
     [L1,L2,L3,L4,L5,L6] = stepswitch_resources:fetch_local_resources(?ACCOUNT_ID, LocalJObjs),
-    [?_assertEqual(3, length(stepswitch_resources:resources_from_jobjs(GlobalJObjs)))
-    ,?_assertEqual(<<"ea2d868dad3629254d57d5a1f6a69cde">>, stepswitch_resources:get_resrc_id(L1))
+    [?_assertEqual(<<"ea2d868dad3629254d57d5a1f6a69cde">>, stepswitch_resources:get_resrc_id(L1))
     ,?_assertEqual(<<"LVL3">>, stepswitch_resources:get_resrc_name(L1))
     ,?_assertEqual(4, stepswitch_resources:get_resrc_weight(L1))
     ,?_assertEqual(5, stepswitch_resources:get_resrc_grace_period(L1))
