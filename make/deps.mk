@@ -73,8 +73,6 @@ dep_inet_cidr = git https://github.com/icehess/inet_cidr.git
 ### PR opened upstream ###
 dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb26016380cd7df5d30aa0ef284ae252b5bae31
 
-dep_erlydtl = git https://github.com/erlydtl/erlydtl 0.12.1
-
 ### need to update upstream ###
 dep_hep = git https://github.com/lazedo/hep 1.5.4
 dep_ecsv = git https://github.com/lazedo/ecsv ecsv-1
