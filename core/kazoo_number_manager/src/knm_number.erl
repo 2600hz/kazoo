@@ -41,6 +41,7 @@
 
 -ifdef(TEST).
 -export([ensure_can_create/2]).
+-export([is_force_outbound/1]).
 -endif.
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
