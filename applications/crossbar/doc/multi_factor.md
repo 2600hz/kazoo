@@ -2,19 +2,20 @@
 
 #### About Multi Factor
 
-Allow to configure a Multi Factor Authentication (MFA) provider for an account.
+API endpoint to configure Crossbar Multi Factor Authentication (MFA) providers.
 
 See [Kazoo Auth multi factor documentation](../../../core/kazoo_auth/doc/multi_factor.md) to learn more about available providers and their required settings.
 
 ##### Enable MFA for a Crossbar auth module
 
-If you want to use multi factor authentication for a module, set the `multi_factor.enabled` to `true` for that authentication module. You can control if the multi factor settings can be applied to the account's children by `multi_factor.include_subaccounts`.
+If you want to use multi factor authentication for a module, set the `multi_factor.enabled` to `true` for that authentication module. You can control if the multi factor settings can be applied to the account's children by `multi_factor.include_subaccounts`. See [Crossbar Security API documentation](./security.md).
 
 > **Note:** You can specify the `id` of multi factor provider settings. If you miss this value, system's default MFA provider will be used!
 
 #### Multi Factor Authentication (MFA) flow summary
 
 The MFA process in Kazoo is straight forward. You configured the Kazoo integrated MFA service provider, and enabling the multi factor for an authentication endpoint. User will authenticate as usual by its own Kazoo credential. If the first factor authentication passed, second-factor provider information (usually a signed token) would be returned to client with HTTP `401 Unauthorized` status.
+
 User's client performs the second-factor authentication with the provider and sends provider response to Kazoo. If the provider validates user will be authenticated successful and a Kazoo token will be generated as usual otherwise if the second-factor provider response is not validated a HTTP `401 Unauthorized` will be returned.
 
 #### Provider Configuration Schema
@@ -27,7 +28,7 @@ Key | Description | Type | Default | Required
 `settings` | provider configuration | `object` |   | `false`
 
 
-#### List Configured Multi Factor Providers
+#### List Account Configuration and Available System Providers
 
 List configured multi factor providers and available system multi factor provider.
 
@@ -57,6 +58,7 @@ curl -v -X GET \
       {
         "id": "duo",
         "enabled": false,
+        "name": "System Default Provider",
         "provider_name": "duo",
         "provider_type": "multi_factor"
       }
@@ -71,7 +73,7 @@ curl -v -X GET \
 }
 ```
 
-#### Configure a provider
+#### Create a Provider Configuration for an Account
 
 Create configuration for a MFA provider. Provider config should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
 
@@ -112,7 +114,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Fetch a provider configuration
+#### Fetch an Account's Provider Configuration
 
 Get account's configuration of a provider.
 
@@ -152,7 +154,7 @@ curl -v -X GET \
 }
 ```
 
-#### Change a provider configuration
+#### Change an Account's Provider Configuration
 
 > POST /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -191,7 +193,7 @@ curl -v -X POST \
 }
 ```
 
-#### Patch fields in a provider configuration
+#### Patch Fields in an Account's Provider Configuration
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -230,7 +232,7 @@ curl -v -X PATCH \
 }
 ```
 
-#### Remove a provider
+#### Remove an Account's Provider Configuration
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -240,7 +242,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/c757665dca55edba2395df3ca6423f4f
 ```
 
-#### Get a summary of multi-factor login attempts
+#### Get a Summary of Multi Factor Login Attempts
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/attempts
 
@@ -275,7 +277,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch details of a multi-factor login attempts
+#### Fetch Details of a Multi Factor Login Attempts
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/attempts/{ATTEMPT_ID}
 
@@ -356,6 +358,49 @@ curl -v -X GET \
       "provider_type": "multi_factor"
     }
   ],
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### Create a System Provider Configuration
+
+Provider config should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
+
+> **Note:** Only super duper admin can create system providers configuration!
+
+> PUT /v2/multi_factor
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    --data '{"data": {"name": "have a nice day", "enabled": true, "provider_name": "duo", "settings": {"integration_key": "{DUO_IKEY}", "secret_key": "{DUO_SKEY}", "application_secret_key": "{DUO_AKEY}", "api_hostname": "{DUO_HOST_NAME}", "duo_expire": 300,"app_expire": 3600}}}' \
+    http://{SERVER}:8000/v2/multi_factor
+```
+
+##### Response
+
+```json
+{
+  "data": {
+    "settings": {
+      "secret_key": "{DUO_SKEY}",
+      "integration_key": "{DUO_IKEY}",
+      "duo_expire": 300,
+      "application_secret_key": "{DUO_AKEY}",
+      "app_expire": 3600,
+      "api_hostname": "{DUO_HOST_NAME}"
+    },
+    "provider_name": "duo",
+    "name": "have a nice day",
+    "enabled": true,
+    "id": "5c61dd2098466017f716417792f769cc"
+  },
+  "revision": "{REVERSION}",
   "timestamp": "{TIMESTAMP}",
   "version": "{VERSION}",
   "node": "{NODE_HASH}",

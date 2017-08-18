@@ -93,15 +93,12 @@ get_account_configs(AccountId, ConfigId) ->
 -spec get_system_configs() -> api_object().
 get_system_configs() ->
     lager:debug("get authentication factor configuration from system config"),
-    case default_provider() of
-        'undefined' -> 'undefined';
-        DefaultProvider ->
-            case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DefaultProvider) of
-                {'ok', JObj} -> kz_json:set_value(<<"from">>, <<"system">>, JObj);
-                {'error', _R} ->
-                    lager:debug("failed to open default ~s multi factor provider config", [DefaultProvider]),
-                    'undefined'
-            end
+    DefaultProvider = default_provider(),
+    case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DefaultProvider) of
+        {'ok', JObj} -> kz_json:set_value(<<"from">>, <<"system">>, JObj);
+        {'error', _R} ->
+            lager:debug("failed to open default ~s multi factor provider config", [DefaultProvider]),
+            'undefined'
     end.
 
 -spec module_name(ne_binary()) -> atom().

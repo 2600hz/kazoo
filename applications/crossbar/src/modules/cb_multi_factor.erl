@@ -60,11 +60,7 @@ init() ->
                        boolean() |
                        {'halt', cb_context:context()}.
 authorize(Context) ->
-    case {cb_context:req_nouns(Context), cb_context:req_verb(Context)} of
-        {[{<<"multi_factor">>, _}], ?HTTP_GET} -> 'true';
-        {[{<<"multi_factor">>, _}], _} -> {'halt', cb_context:add_system_error('forbidden', Context)};
-        _ -> 'true'
-    end.
+    authorize_system_multi_factor(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec authorize(cb_context:context(), path_token()) ->
                        boolean() |
@@ -78,6 +74,8 @@ authorize(_Context, _, _) -> 'true'.
 -spec authorize_system_multi_factor(cb_context:context(), req_nouns(), http_method()) ->
                                            boolean() |
                                            {'halt', cb_context:context()}.
+authorize_system_multi_factor(_, [{<<"multi_factor">>, []}], ?HTTP_GET) -> 'true';
+authorize_system_multi_factor(C, [{<<"multi_factor">>, []}], ?HTTP_PUT) -> cb_context:is_superduper_admin(C);
 authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], ?HTTP_GET) -> cb_context:is_superduper_admin(C);
 authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], ?HTTP_POST) -> cb_context:is_superduper_admin(C);
 authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], ?HTTP_PATCH) -> cb_context:is_superduper_admin(C);
@@ -93,7 +91,7 @@ authorize_system_multi_factor(_, _, _) -> 'true'.
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET].
+    [?HTTP_GET, ?HTTP_PUT].
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?ATTEMPTS) ->
@@ -161,6 +159,8 @@ validate(Context, ?ATTEMPTS, AttemptId) ->
 -spec validate_multi_factor(cb_context:context(), req_nouns(), http_method()) -> cb_context:context().
 validate_multi_factor(Context, [{<<"multi_factor">>, _}], ?HTTP_GET) ->
     system_summary(Context);
+validate_multi_factor(Context, [{<<"multi_factor">>, _}], ?HTTP_PUT) ->
+    create(cb_context:set_account_db(Context, ?KZ_AUTH_DB));
 validate_multi_factor(Context, _, ?HTTP_GET) ->
     summary(Context);
 validate_multi_factor(Context, _, ?HTTP_PUT) ->
