@@ -57,12 +57,10 @@ endpoints(Number, OffnetJObj) ->
 
 -spec foldl_modules(ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_json:objects()) -> stepswitch_resources:resources().
 foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules) ->
-    lists:foldl(fun(Rule, Resources) ->
-                        rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb)
-                end
-               ,[]
-               ,SelectorRules
-               ).
+    F = fun(Rule, Resources) ->
+                rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb)
+        end,
+    lists:foldl(F, [], SelectorRules).
 
 -spec rule_to_resource(kz_json:object(), stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary()) ->
                               stepswitch_resources:resources().
@@ -70,18 +68,10 @@ rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb) ->
     [Module|_] = kz_json:get_keys(Rule),
     ModuleName = real_module_name(Module),
     ModuleParams = kz_json:get_value(Module, Rule),
-    try ModuleName:handle_req(Resources
-                             ,Number
-                             ,OffnetJObj
-                             ,SelectorsDb
-                             ,ModuleParams
-                             )
-    of
+    try ModuleName:handle_req(Resources, Number, OffnetJObj, SelectorsDb, ModuleParams) of
         Res ->
             lager:info("module ~p return resources: ~p"
-                      ,[Module
-                       ,[stepswitch_resources:get_resrc_id(R) || R <- Res]
-                       ]
+                      ,[Module, [stepswitch_resources:get_resrc_id(R) || R <- Res]]
                       ),
             Res
     catch

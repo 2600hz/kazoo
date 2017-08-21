@@ -70,12 +70,6 @@
         ,set_resrc_selector_marks/2
         ]).
 
--ifdef(TEST).
--export([resources_from_jobjs/1
-        ,local_resources_fetched/2
-        ]).
--endif.
-
 -include("stepswitch.hrl").
 
 -define(DEFAULT_ROUTE, kapps_config:get_binary(?CONFIG_CAT, <<"default_route">>)).
@@ -165,10 +159,8 @@
 -type gateway() :: #gateway{}.
 -type gateways() :: [#gateway{}].
 
--export_type([resource/0
-             ,resources/0
-             ,gateway/0
-             ,gateways/0
+-export_type([resource/0, resources/0
+             ,gateway/0, gateways/0
              ]).
 
 -compile({'no_auto_import', [get/0, get/1]}).
@@ -220,9 +212,14 @@ resource_to_props(#resrc{}=Resource) ->
 
 -spec sort_resources(resources()) -> resources().
 sort_resources(Resources) ->
-    lists:sort(fun(#resrc{weight=W1}, #resrc{weight=W2}) ->
-                       W1 =< W2
-               end, Resources).
+    lists:sort(fun compare_resources/2, Resources).
+
+compare_resources(#resrc{weight = W1}, #resrc{weight = W2}) ->
+    W1 =< W2.
+
+endpoint_ordering(P1, P2) ->
+    kz_json:get_integer_value(<<"Weight">>, P1, 1)
+        =< kz_json:get_integer_value(<<"Weight">>, P2, 1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,11 +272,6 @@ get_global_endpoints(Number, OffnetJObj) ->
 -spec sort_endpoints(kz_json:objects()) -> kz_json:objects().
 sort_endpoints(Endpoints) ->
     lists:sort(fun endpoint_ordering/2, Endpoints).
-
--spec endpoint_ordering(kz_json:object(), kz_json:object()) -> boolean().
-endpoint_ordering(P1, P2) ->
-    kz_json:get_value(<<"Weight">>, P1, 1)
-        =< kz_json:get_value(<<"Weight">>, P2, 1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -805,17 +797,44 @@ gateway_emergency_resource(_) -> 'undefined'.
 -spec get() -> resources().
 get() -> get('undefined').
 
--spec get(api_binary()) -> resources().
-get('undefined') ->
-    case kz_cache:fetch_local(?CACHE_NAME, 'global_resources') of
-        {'ok', Resources} -> Resources;
-        {'error', 'not_found'} -> fetch_global_resources()
-    end;
-get(AccountId) ->
-    case kz_cache:fetch_local(?CACHE_NAME, {'local_resources', AccountId}) of
-        {'ok', Resources} -> Resources;
-        {'error', 'not_found'} -> fetch_local_resources(AccountId)
+-spec get(api_ne_binary()) -> resources().
+get(MaybeAccountId) ->
+    Key = case MaybeAccountId of
+              undefined -> global_resources;
+              AccountId -> {local_resources, AccountId}
+          end,
+    case cached(Key) of
+        {ok, Resources} -> Resources;
+        {error, not_found} ->
+            Resources = fetch_resources(MaybeAccountId),
+            _ = cache(Key, Resources),
+            Resources
     end.
+
+fetch_resources(undefined) ->
+    fetch_global_resources();
+fetch_resources(AccountId) ->
+    fetch_local_resources(AccountId).
+
+-ifdef(TEST).
+cached(global_resources) -> {error, not_found};
+cached({local_resources, ?MATCH_ACCOUNT_RAW(_)}) -> {error, not_found}.
+
+cache(global_resources, Resources) when is_list(Resources) -> ok;
+cache({local_resources, ?MATCH_ACCOUNT_RAW(_)}, Resources)
+  when is_list(Resources) -> ok.
+-else.
+cached(Key) ->
+    kz_cache:fetch_local(?CACHE_NAME, Key).
+
+cache(Key, Resources) ->
+    Db = case Key of
+             global_resources -> ?RESOURCES_DB;
+             {local_resources, AccountId} -> kz_util:format_account_id(AccountId, encoded)
+         end,
+    CacheProps = [{origin, [{db, Db, <<"resource">>}]}],
+    kz_cache:store_local(?CACHE_NAME, Key, Resources, CacheProps).
+-endif.
 
 -spec get_resource(ne_binary()) -> resource() | 'undefined'.
 get_resource(ResourceId) ->
@@ -846,18 +865,26 @@ get_local_resource(ResourceId, AccountId) ->
 %%--------------------------------------------------------------------
 -spec fetch_global_resources() -> resources().
 fetch_global_resources() ->
-    lager:debug("global resource cache miss, fetching from db"),
-    case kz_datamgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [include_docs]) of
-        {'error', _R} ->
+    Db = ?RESOURCES_DB,
+    lager:debug("global resource cache miss, fetching from db ~s", [Db]),
+    case list_resources_by_id(Db) of
+        {error, _R} ->
             lager:warning("unable to fetch global resources: ~p", [_R]),
             [];
-        {'ok', JObjs} ->
-            CacheProps = [{'origin', [{'db', ?RESOURCES_DB, <<"resource">>}]}],
-            Docs = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-            Resources = resources_from_jobjs(Docs),
-            kz_cache:store_local(?CACHE_NAME, 'global_resources', Resources, CacheProps),
-            Resources
+        {ok, JObjs} ->
+            resources_from_jobjs(
+              [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]
+             )
     end.
+
+-ifdef(TEST).
+list_resources_by_id(?RESOURCES_DB) ->
+    {ok, Bin} = file:read_file("test/global_resources.json"),
+    {ok, kz_json:decode(Bin)}.
+-else.
+list_resources_by_id(Db) ->
+    kz_datamgr:get_results(Db, ?LIST_RESOURCES_BY_ID, [include_docs]).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -869,31 +896,23 @@ fetch_global_resources() ->
 fetch_local_resources(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     lager:debug("local resource cache miss, fetching from db ~s", [AccountDb]),
-    case kz_datamgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, [include_docs]) of
-        {'error', _R} ->
+    case list_resources_by_id(AccountDb) of
+        {error, _R} ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];
-        {'ok', JObjs} ->
-            LocalResources = local_resources_fetched(AccountId, JObjs),
-            CacheProps = [{'origin', [{'db', AccountDb, <<"resource">>}]}],
-            kz_cache:store_local(?CACHE_NAME, {'local_resources', AccountId}, LocalResources, CacheProps),
-            LocalResources
+        {ok, JObjs} ->
+            Proxies = fetch_account_dedicated_proxies(AccountId),
+            resources_from_jobjs(
+              [kz_json:set_values([{<<"Is-Global">>, 'false'}
+                                  ,{<<"Proxies">>, kz_json:from_list(Proxies)}
+                                  ]
+                                 ,kz_json:get_value(<<"doc">>, JObj)
+                                 )
+               || JObj <- JObjs
+              ])
     end.
 
--spec local_resources_fetched(ne_binary(), kz_json:objects()) -> resources().
-local_resources_fetched(AccountId, JObjs) ->
-    Proxies = fetch_account_dedicated_proxies(AccountId),
-    resources_from_jobjs(
-      [kz_json:set_values([{<<"Is-Global">>, 'false'}
-                          ,{<<"Proxies">>, kz_json:from_list(Proxies)}
-                          ]
-                         ,kz_json:get_value(<<"doc">>, JObj)
-                         )
-       || JObj <- JObjs
-      ]).
-
--spec fetch_account_dedicated_proxies(api_ne_binary()) -> kz_proplist().
-fetch_account_dedicated_proxies(undefined) -> [];
+-spec fetch_account_dedicated_proxies(ne_binary()) -> kz_proplist().
 fetch_account_dedicated_proxies(AccountId) ->
     case assigned_IPs(AccountId) of
         {ok, IPS} -> [build_account_dedicated_proxy(IP) || IP <- IPS];

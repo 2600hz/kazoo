@@ -148,18 +148,13 @@ add_resource_id(JObj, ResourceProps) ->
 
 -spec maybe_add_t38_settings(kz_json:object(), kz_proplist()) -> kz_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
-    case props:get_value('fax_option', ResourceProps) of
-        'true' ->
-            kz_json:set_value(?CCV(<<"Resource-Fax-Option">>)
-                             ,props:get_value('fax_option', ResourceProps)
-                             ,JObj
-                             );
-        <<"auto">> ->
-            kz_json:set_value(?CCV(<<"Resource-Fax-Option">>)
-                             ,props:get_value('fax_option', ResourceProps)
-                             ,JObj
-                             );
-        _ -> JObj
+    FaxOption = props:get_value(fax_option, ResourceProps),
+    case FaxOption
+        orelse FaxOption =:= <<"auto">>
+    of
+        false -> JObj;
+        true ->
+            kz_json:set_value(?CCV(<<"Resource-Fax-Option">>), FaxOption, JObj)
     end.
 
 -spec maybe_format_destination(knm_number_options:extra_options(), kz_json:object()) ->

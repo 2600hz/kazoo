@@ -12,22 +12,15 @@
 
 
 global_resources_test_() ->
-    GlobalJObjs = fixture("test/global_resources.json"),
-    [G1,G2,G3] = stepswitch_resources:resources_from_jobjs(GlobalJObjs),
-    [?_assertEqual(<<"d60be7f888d8b7d937a846e07b927886">>, stepswitch_resources:get_resrc_id(G1))
-    ,?_assertEqual(3, stepswitch_resources:get_resrc_weight(G1))
-    ,?_assertEqual(3, stepswitch_resources:get_resrc_grace_period(G1))
-    ,?_assertEqual(<<"d4bc772163c9ab2ebc4ee79637ae3433">>, stepswitch_resources:get_resrc_id(G2))
-    ,?_assertEqual(3, stepswitch_resources:get_resrc_weight(G2))
-    ,?_assertEqual(3, stepswitch_resources:get_resrc_grace_period(G2))
-    ,?_assertEqual(<<"7e6ab78098a1a788019a54ed4f51ba82">>, stepswitch_resources:get_resrc_id(G3))
-    ,?_assertEqual(3, stepswitch_resources:get_resrc_weight(G3))
-    ,?_assertEqual(3, stepswitch_resources:get_resrc_grace_period(G3))
+    Gs = stepswitch_resources:get_props(),
+    [?_assert(g(I) =:= maps:with(maps:keys(g(I)), GI))
+    || I <- lists:seq(1, length(Gs)),
+       GI <- [maps:from_list(lists:nth(I, Gs))]
     ].
 
 local_resources_test_() ->
-    LocalJObjs = fixture("test/local_resources.json"),
-    [L1,L2,L3,L4,L5,L6] = stepswitch_resources:local_resources_fetched(?ACCOUNT_ID, LocalJObjs),
+    Ls = stepswitch_resources:get_props(?ACCOUNT_ID),
+    [io:format(user, "\n>>> ~p\n", [L]) || L <- Ls],
     [?_assertEqual(<<"ea2d868dad3629254d57d5a1f6a69cde">>, stepswitch_resources:get_resrc_id(L1))
     ,?_assertEqual(<<"LVL3">>, stepswitch_resources:get_resrc_name(L1))
     ,?_assertEqual(4, stepswitch_resources:get_resrc_weight(L1))
@@ -55,11 +48,80 @@ local_resources_test_() ->
     ].
 
 
-%% Internals
+%% Intrernals
 
-fixture(Path) ->
-    {ok,Bin} = file:read_file(Path),
-    case lists:suffix(".json", Path) of
-        false -> Bin;
-        true -> kz_json:decode(Bin)
-    end.
+g(1) ->
+    #{<<"Name">> => <<"Dash 911 - emergency">>
+     ,<<"ID">> => <<"d60be7f888d8b7d937a846e07b927886-emergency">>
+     ,<<"Rev">> => <<"3-52105eda324b1bbac691f0623a5551fe">>
+     ,<<"Weight">> => 1
+     ,<<"Global">> => true
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Require-Flags">> => false
+     ,<<"Is-Emergency">> => true
+     ,<<"T38">> => false
+     ,<<"Bypass-Media">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"Flags">> => [<<"CallerID">>,<<"CNAM">>,<<"US48">>,<<"Alaska">>,<<"Hawaii">>,<<"TollFree">>]
+     ,<<"Codecs">> => [<<"PCMU">>]
+     ,<<"Rules">> => [<<"^(911)$">>]
+     ,<<"Caller-ID-Rules">> => []
+     };
+
+g(2) ->
+    #{<<"Name">> => <<"FlowRoute Domestic - tollfree_us">>
+     ,<<"ID">> => <<"d4bc772163c9ab2ebc4ee79637ae3433-tollfree_us">>
+     ,<<"Rev">> => <<"12-e8b8bf95f9576005fd133c7aa17f1d6b">>
+     ,<<"Weight">> => 50
+     ,<<"Global">> => true
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Require-Flags">> => false
+     ,<<"Is-Emergency">> => false
+     ,<<"T38">> => false
+     ,<<"Bypass-Media">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"Flags">> => [<<"fax">>]
+     ,<<"Codecs">> => [<<"PCMU">>]
+     ,<<"Rules">> => [<<"^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})$">>]
+     ,<<"Caller-ID-Rules">> => []
+     };
+
+g(3) ->
+    #{<<"Name">> => <<"FlowRoute Domestic - did_us">>
+     ,<<"ID">> => <<"d4bc772163c9ab2ebc4ee79637ae3433-did_us">>
+     ,<<"Rev">> => <<"12-e8b8bf95f9576005fd133c7aa17f1d6b">>
+     ,<<"Weight">> => 50
+     ,<<"Global">> => true
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Require-Flags">> => false
+     ,<<"Is-Emergency">> => false
+     ,<<"T38">> => false
+     ,<<"Bypass-Media">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"Flags">> => [<<"fax">>]
+     ,<<"Codecs">> => [<<"PCMU">>]
+     ,<<"Rules">> => [<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>]
+     ,<<"Caller-ID-Rules">> => []
+     };
+
+g(4) ->
+    #{<<"Name">> => <<"Flowroute Int. - international">>
+     ,<<"ID">> => <<"7e6ab78098a1a788019a54ed4f51ba82-international">>
+     ,<<"Rev">> => <<"5-fbdd5c963775f45cb27f01cc9a778660">>
+     ,<<"Weight">> => 50
+     ,<<"Global">> => true
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Require-Flags">> => false
+     ,<<"Is-Emergency">> => false
+     ,<<"T38">> => false
+     ,<<"Bypass-Media">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"Flags">> => []
+     ,<<"Codecs">> => [<<"PCMU">>]
+     ,<<"Rules">> => [<<"^(011\\d*)$|^(00\\d*)$">>]
+     ,<<"Caller-ID-Rules">> => []
+     }.

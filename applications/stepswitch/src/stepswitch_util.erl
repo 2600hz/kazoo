@@ -17,7 +17,6 @@
 -export([resources_to_endpoints/3]).
 
 -include("stepswitch.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
 -define(MAX_SHORTDIAL_CORRECTION
@@ -224,23 +223,19 @@ format_endpoint(Endpoint, Number, FilterFun, OffnetReq, SIPHeaders, AccountId) -
 
 -spec apply_formatters(kz_json:object(), kz_json:object(), ne_binary()) -> kz_json:object().
 apply_formatters(Endpoint, SIPHeaders, AccountId) ->
-    kz_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
-                       ,props:get_value(<<"Formatters">>
-                                       ,endpoint_props(Endpoint, AccountId)
-                                       ,kz_json:new()
-                                       )
-                       ,'outbound'
-                       ).
+    Props = endpoint_props(Endpoint, AccountId),
+    Formatters = props:get_value(<<"Formatters">>, Props, kz_json:new()),
+    kz_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders), Formatters, outbound).
 
 -spec endpoint_props(kz_json:object(), api_binary()) -> kz_proplist().
 endpoint_props(Endpoint, AccountId) ->
     ResourceId = kz_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
-    case kz_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
-        'true' ->
-            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId));
-        'false' ->
-            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
-    end.
+    Resources =
+        case kz_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
+            true -> stepswitch_resources:get_props(ResourceId);
+            false -> stepswitch_resources:get_props(ResourceId, AccountId)
+        end,
+    empty_list_on_undefined(Resources).
 
 -spec empty_list_on_undefined(kz_proplist() | 'undefined') -> kz_proplist().
 empty_list_on_undefined('undefined') -> [];
@@ -249,10 +244,10 @@ empty_list_on_undefined(L) -> L.
 -spec maybe_add_sip_headers(kz_json:object(), kz_json:object()) -> kz_json:object().
 maybe_add_sip_headers(Endpoint, SIPHeaders) ->
     LocalSIPHeaders = kz_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, kz_json:new()),
-
-    case kz_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
-        ?EMPTY_JSON_OBJECT -> Endpoint;
-        MergedHeaders -> kz_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
+    MergedHeaders = kz_json:merge_jobjs(SIPHeaders, LocalSIPHeaders),
+    case kz_json:is_empty(MergedHeaders) of
+        true -> Endpoint;
+        false -> kz_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
     end.
 
 -spec maybe_endpoint_format_from(kz_json:object(), ne_binary(), kapi_offnet_resource:req()) ->

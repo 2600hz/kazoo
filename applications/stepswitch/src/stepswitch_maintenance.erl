@@ -139,14 +139,14 @@ refresh() ->
         {'EXIT', _E} ->
             lager:debug("failure looking up all docs in ~s: ~p", [?RESOURCES_DB, _E]);
         {'ok', JObjs} ->
-            _ = kz_datamgr:del_docs(?RESOURCES_DB
-                                   ,[Doc
-                                     || JObj <- JObjs,
-                                        begin
-                                            Doc = kz_json:get_value(<<"doc">>, JObj),
-                                            kz_doc:type(Doc) =:= <<"route">>
-                                        end
-                                    ]),
+            Docs = [Doc
+                    || JObj <- JObjs,
+                       begin
+                           Doc = kz_json:get_value(<<"doc">>, JObj),
+                           kz_doc:type(Doc) =:= <<"route">>
+                       end
+                   ],
+            _ = kz_datamgr:del_docs(?RESOURCES_DB, Docs),
             'ok'
     end.
 
