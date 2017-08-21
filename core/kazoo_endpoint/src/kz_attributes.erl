@@ -585,7 +585,9 @@ get_flags(ApplicationName, Call) ->
                                       ne_binaries().
 maybe_get_endpoint_flags(_, Call, Flags) ->
     case kz_endpoint:get(Call) of
-        {'error', _} -> Flags;
+        {'error', _R} ->
+            file:write_file("/tmp/test.debug", io_lib:format("error: ~p~n", [_R])),
+            Flags;
         {'ok', Endpoint} ->
             get_endpoint_flags(Flags, Endpoint)
     end.

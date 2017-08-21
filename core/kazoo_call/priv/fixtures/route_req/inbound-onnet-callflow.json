@@ -3,8 +3,8 @@
     "App-Version": "4.0.0",
     "Call-Direction": "inbound",
     "Call-ID": "82159NjBmNTI0YjQ5MTE2NmFkNmQ3NmRmYzFiYWRhMGQ0NGI",
-    "Caller-ID-Name": "user-internal-name",
-    "Caller-ID-Number": "user-external-number",
+    "Caller-ID-Name": "caller-id-name",
+    "Caller-ID-Number": "caller-id-number",
     "Custom-Channel-Vars": {
         "Account-ID": "account0000000000000000000000001",
         "Account-Name": "Master Account",

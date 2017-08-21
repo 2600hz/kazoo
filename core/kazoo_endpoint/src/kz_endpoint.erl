@@ -111,6 +111,7 @@ get(EndpointId, Call) ->
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case kz_device:fetch(AccountDb, EndpointId) of
         {'ok', JObj} ->
+            file:write_file("/tmp/endpoint.debug", io_lib:format("error: ~s ~s ~p~n", [AccountDb, EndpointId, JObj])),
             maybe_have_endpoint(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
             lager:info("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
