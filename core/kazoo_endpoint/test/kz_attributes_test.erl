@@ -11,8 +11,9 @@
 
 get_flags_test_() ->
     Call = kapps_call_test:create_callflow_call(),
+    Expected = [<<"user_old_static_flag">>, <<"device_old_static_flag">>, <<"account_old_static_flag">>],
     [{"verify that get flags will pull the static and dynamic flags from the account as well as endpoint"
-     ,?_assertEqual([<<"sys_info">>], kz_attributes:get_flags(<<"callflows">>, Call))
+     ,?_assertEqual(Expected, kz_attributes:get_flags(<<"callflows">>, Call))
      }
     ].
 

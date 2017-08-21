@@ -193,51 +193,6 @@ reseller_test_() ->
     ,{"validate demote returns the expected value", ?_assertNot(kz_account:is_reseller(Demoted))}
     ].
 
-outbound_flags_test_() ->
-    {'ok', OldData} = kz_account:fetch(<<"account0000000000000000000000001">>),
-    UpdatedOldData = kz_json:get_value(<<"outbound_flags">>, kz_account:set_outbound_flags(OldData, [<<"updated_flag">>])),
-    ExpectedOldUpdate = kz_json:decode("{\"static\": [\"updated_flag\"]}"),
-
-    {'ok', NewData} = kz_account:fetch(<<"account0000000000000000000000002">>),
-    UpdatedNewData = kz_json:get_value(<<"outbound_flags">>, kz_account:set_outbound_flags(NewData, [<<"updated_flag">>])),
-    ExpectedNewUpdate = kz_json:decode("{\"dynamic\": [\"zone\", \"from_domain\", \"custom_channel_vars.owner_id\"], \"static\": [\"updated_flag\"]}"),
-
-    [{"verify get for deprecated format"
-     ,?_assertEqual([<<"account_old_static_flag">>], kz_account:outbound_flags(OldData))
-     }
-    ,{"verify get for new format"
-     ,?_assertEqual([<<"account_new_static_flag">>], kz_account:outbound_flags(NewData))
-     }
-    ,{"verify set with old format converts to new"
-     ,?_assertEqual(ExpectedOldUpdate, UpdatedOldData)
-     }
-    ,{"verify set with new format"
-     ,?_assertEqual(ExpectedNewUpdate, UpdatedNewData)
-     }
-    ].
-
-outbound_dynamic_flags_test_() ->
-    {'ok', OldData} = kz_account:fetch(<<"account0000000000000000000000001">>),
-    UpdatedOldData = kz_json:get_value(<<"outbound_flags">>, kz_account:set_outbound_dynamic_flags(OldData, [<<"updated_flag">>])),
-    ExpectedOldUpdate = kz_json:decode("{\"static\": [\"account_old_static_flag\"], \"dynamic\": [\"updated_flag\"]}"),
-
-    {'ok', NewData} = kz_account:fetch(<<"account0000000000000000000000002">>),
-    UpdatedNewData = kz_json:get_value(<<"outbound_flags">>, kz_account:set_outbound_dynamic_flags(NewData, [<<"updated_flag">>])),
-    ExpectedNewUpdate = kz_json:decode("{\"dynamic\": [\"updated_flag\"], \"static\": [\"account_new_static_flag\"]}"),
-    [{"verify get for deprecated format"
-     ,?_assertEqual([], kz_account:outbound_dynamic_flags(OldData))
-     }
-    ,{"verify get for new format"
-     ,?_assertEqual([<<"zone">>, <<"from_domain">>, <<"custom_channel_vars.owner_id">>], kz_account:outbound_dynamic_flags(NewData))
-     }
-    ,{"verify set with old format converts to new"
-     ,?_assertEqual(ExpectedOldUpdate, UpdatedOldData)
-     }
-    ,{"verify set with new format"
-     ,?_assertEqual(ExpectedNewUpdate, UpdatedNewData)
-     }
-    ].
-
 validate(Schema, Device) ->
     kz_json_schema:validate(Schema
                            ,Device

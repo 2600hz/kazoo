@@ -111,7 +111,6 @@ get(EndpointId, Call) ->
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case kz_device:fetch(AccountDb, EndpointId) of
         {'ok', JObj} ->
-            file:write_file("/tmp/endpoint.debug", io_lib:format("error: ~s ~s ~p~n", [AccountDb, EndpointId, JObj])),
             maybe_have_endpoint(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
             lager:info("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
@@ -205,8 +204,9 @@ merge_attributes(Endpoint, Type) ->
            ,<<"mobile">>
            ,<<"presence_id">>
            ,<<"call_waiting">>
-           ,?ATTR_LOWER_KEY
            ,<<"formatters">>
+           ,<<"outbound_flags">>
+           ,?ATTR_LOWER_KEY
            ],
     merge_attributes(Endpoint, Type, Keys).
 
@@ -239,9 +239,6 @@ merge_attributes(Keys, AccountDoc, EndpointDoc, OwnerDoc) ->
                ).
 
 -spec merge_attribute(ne_binary(), api_object(), api_object(), api_object()) -> kz_json:object().
-merge_attribute(<<"call_restriction">>, Account, Endpoint, Owner) ->
-    Classifiers = kz_json:get_keys(knm_converters:available_classifiers()),
-    merge_call_restrictions(Classifiers, Account, Endpoint, Owner);
 merge_attribute(?ATTR_LOWER_KEY, _Account, Endpoint, Owner) ->
     FullKey = [?ATTR_LOWER_KEY, ?ATTR_UPPER_KEY],
     OwnerAttr = kz_json:get_integer_value(FullKey, Owner, 5),
@@ -250,6 +247,9 @@ merge_attribute(?ATTR_LOWER_KEY, _Account, Endpoint, Owner) ->
         'true' -> Endpoint;
         'false' -> kz_json:set_value(FullKey, OwnerAttr, Endpoint)
     end;
+merge_attribute(<<"call_restriction">>, Account, Endpoint, Owner) ->
+    Classifiers = kz_json:get_keys(knm_converters:available_classifiers()),
+    merge_call_restrictions(Classifiers, Account, Endpoint, Owner);
 merge_attribute(<<"name">> = Key, Account, Endpoint, Owner) ->
     Name = create_endpoint_name(kz_json:get_ne_value(<<"first_name">>, Owner)
                                ,kz_json:get_ne_value(<<"last_name">>, Owner)
@@ -314,6 +314,16 @@ merge_attribute(<<"call_recording">> = Key, Account, Endpoint, Owner) ->
     EndpointAttr = get_endpoint_record_call_properties(Endpoint),
     Merged = kz_json:merge([AccountAttr, OwnerAttr, EndpointAttr]),
     kz_json:set_value(Key, Merged, Endpoint);
+merge_attribute(<<"outbound_flags">>, Account, Endpoint, Owner) ->
+    Static = lists:flatten([kz_device:outbound_static_flags(Account)
+                           ,kz_device:outbound_static_flags(Owner)
+                           ,kz_device:outbound_static_flags(Endpoint)
+                           ]),
+    Dynamic = lists:flatten([kz_device:outbound_dynamic_flags(Account)
+                            ,kz_device:outbound_dynamic_flags(Owner)
+                            ,kz_device:outbound_dynamic_flags(Endpoint)
+                            ]),
+    kz_device:set_outbound_flags(Endpoint, Static, Dynamic);
 merge_attribute(Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),

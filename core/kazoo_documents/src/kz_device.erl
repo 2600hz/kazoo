@@ -37,6 +37,16 @@
         ,type/0
         ,is_device/1
         ]).
+-export([outbound_flags/1
+        ,set_outbound_flags/2
+        ,set_outbound_flags/3
+        ]).
+-export([outbound_static_flags/1
+        ,set_outbound_static_flags/2
+        ]).
+-export([outbound_dynamic_flags/1
+        ,set_outbound_dynamic_flags/2
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -66,6 +76,9 @@
 -define(PVT_TYPE, <<"device">>).
 -define(KEY_TIMEZONE, <<"timezone">>).
 -define(KEY_UNSOLICITATED_MWI_UPDATES, <<"mwi_unsolicitated_updates">>).
+-define(OUTBOUND_FLAGS, <<"outbound_flags">>).
+-define(STATIC_FLAGS, <<"static">>).
+-define(DYNAMIC_FLAGS, <<"dynamic">>).
 
 -spec fetch(api_binary(), api_binary()) -> {'ok', doc()} |
                                            {'error', any()}.
@@ -351,3 +364,71 @@ unsolicitated_mwi_updates(DeviceJObj) ->
 -spec set_unsolicitated_mwi_updates(doc(), boolean()) -> doc().
 set_unsolicitated_mwi_updates(DeviceJObj, Enabled) ->
     kz_json:set_value(?KEY_UNSOLICITATED_MWI_UPDATES, Enabled, DeviceJObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec outbound_flags(kz_json:object()) -> kz_json:object().
+outbound_flags(JObj) ->
+    OutboundFlags = kz_json:get_ne_value(?OUTBOUND_FLAGS, JObj, kz_json:new()),
+    %% Backward compatibilty with an array of static flags
+    case kz_json:is_json_object(OutboundFlags) of
+        'false' -> kz_json:from_list([{?STATIC_FLAGS, OutboundFlags}]);
+        'true' -> OutboundFlags
+    end.
+
+-spec set_outbound_flags(kz_json:object(), kz_json:object() | ne_binaries()) -> kz_json:object().
+set_outbound_flags(JObj, Flags) when is_list(Flags) ->
+    OutboundFlags = outbound_flags(JObj),
+    UpdatedFlags = kz_json:set_value(?STATIC_FLAGS, Flags, OutboundFlags),
+    kz_json:set_value(?OUTBOUND_FLAGS, UpdatedFlags, JObj);
+set_outbound_flags(JObj, Flags) ->
+    kz_json:set_value(?OUTBOUND_FLAGS, Flags, JObj).
+
+-spec set_outbound_flags(kz_json:object(), api_binaries(), api_binaries()) -> kz_json:object().
+set_outbound_flags(JObj, 'undefined', DynamicFlags) ->
+    set_outbound_flags(JObj, [], DynamicFlags);
+set_outbound_flags(JObj, StaticFlags, 'undefined') ->
+    set_outbound_flags(JObj, StaticFlags, []);
+set_outbound_flags(JObj, StaticFlags, DynamicFlags) when is_list(StaticFlags), is_list(DynamicFlags) ->
+    Flags = kz_json:from_list([{?DYNAMIC_FLAGS, DynamicFlags}
+                              ,{?STATIC_FLAGS, StaticFlags}
+                              ]),
+    kz_json:set_value(?OUTBOUND_FLAGS, Flags, JObj).
+
+-spec outbound_static_flags(kz_json:object()) -> ne_binaries().
+outbound_static_flags(JObj) ->
+    OutboundFlags = outbound_flags(JObj),
+    kz_json:get_list_value(?STATIC_FLAGS, OutboundFlags, []).
+
+-spec set_outbound_static_flags(kz_json:object(), ne_binaries()) -> kz_json:object().
+set_outbound_static_flags(JObj, Flags) when is_list(Flags) ->
+    OutboundFlags = kz_json:get_ne_value(?OUTBOUND_FLAGS, JObj, []),
+    %% Backward compatibilty with an array of static flags
+    case kz_json:is_json_object(OutboundFlags) of
+        'true' -> kz_json:set_value([?OUTBOUND_FLAGS, ?STATIC_FLAGS], Flags, JObj);
+        'false' ->
+            Updates = kz_json:from_list([{?STATIC_FLAGS, Flags}]),
+            kz_json:set_value(?OUTBOUND_FLAGS, Updates, JObj)
+    end.
+
+-spec outbound_dynamic_flags(kz_json:object()) -> ne_binaries().
+outbound_dynamic_flags(JObj) ->
+    OutboundFlags = outbound_flags(JObj),
+    kz_json:get_list_value(?DYNAMIC_FLAGS, OutboundFlags, []).
+
+-spec set_outbound_dynamic_flags(kz_json:object(), ne_binaries()) -> kz_json:object().
+set_outbound_dynamic_flags(JObj, Flags) when is_list(Flags) ->
+    OutboundFlags = kz_json:get_ne_value(?OUTBOUND_FLAGS, JObj, []),
+    %% Backward compatibilty with an array of static flags
+    case kz_json:is_json_object(OutboundFlags) of
+        'true' -> kz_json:set_value([?OUTBOUND_FLAGS, ?DYNAMIC_FLAGS], Flags, JObj);
+        'false' ->
+            Updates = kz_json:from_list([{?STATIC_FLAGS, OutboundFlags}
+                                        ,{?DYNAMIC_FLAGS, Flags}
+                                        ]
+                                       ),
+            kz_json:set_value(?OUTBOUND_FLAGS, Updates, JObj)
+    end.

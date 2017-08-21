@@ -572,40 +572,39 @@ owned_by_query(ViewOptions, Call, ViewKey) ->
 %%-----------------------------------------------------------------------------
 -spec get_flags(kz_json:object(), kapps_call:call()) -> api_binaries().
 get_flags(ApplicationName, Call) ->
-    Routines = [fun maybe_get_endpoint_flags/3
-               ,fun get_account_flags/3
-               ,fun get_config_flags/3
+    Routines = [fun maybe_get_endpoint_static_flags/3
+               ,fun get_account_static_flags/3
+               ,fun get_config_static_flags/3
                ,fun maybe_get_endpoint_dynamic_flags/3
                ,fun get_account_dynamic_flags/3
                ,fun get_config_dynamic_flags/3
                ],
-    lists:foldl(fun(F, A) -> F(ApplicationName, Call, A) end, [], Routines).
+    Flags = lists:foldl(fun(F, A) -> F(ApplicationName, Call, A) end, [], Routines),
+    sets:to_list(sets:from_list(Flags)).
 
--spec maybe_get_endpoint_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
+-spec maybe_get_endpoint_static_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
                                       ne_binaries().
-maybe_get_endpoint_flags(_, Call, Flags) ->
+maybe_get_endpoint_static_flags(_, Call, Flags) ->
     case kz_endpoint:get(Call) of
-        {'error', _R} ->
-            file:write_file("/tmp/test.debug", io_lib:format("error: ~p~n", [_R])),
-            Flags;
+        {'error', _R} -> Flags;
         {'ok', Endpoint} ->
-            get_endpoint_flags(Flags, Endpoint)
+            get_endpoint_static_flags(Flags, Endpoint)
     end.
 
--spec get_endpoint_flags(ne_binaries(), kz_json:object()) ->
+-spec get_endpoint_static_flags(ne_binaries(), kz_json:object()) ->
                                 ne_binaries().
-get_endpoint_flags(Flags, Endpoint) ->
-    case kz_json:get_list_value(<<"outbound_flags">>, Endpoint, []) of
+get_endpoint_static_flags(Flags, Endpoint) ->
+    case kz_device:outbound_static_flags(Endpoint) of
         [] -> Flags;
         EndpointFlags -> EndpointFlags ++ Flags
     end.
 
--spec get_account_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
+-spec get_account_static_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
                                ne_binaries().
-get_account_flags(_, Call, Flags) ->
+get_account_static_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
-        {'ok', AccountJObj} -> kz_account:outbound_flags(AccountJObj) ++ Flags;
+        {'ok', AccountJObj} -> kz_device:outbound_static_flags(AccountJObj) ++ Flags;
         {'error', _E} ->
             lager:error("not applying account outbound flags for ~s: ~p"
                        ,[AccountId, _E]
@@ -613,9 +612,9 @@ get_account_flags(_, Call, Flags) ->
             Flags
     end.
 
--spec get_config_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
+-spec get_config_static_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
                                        ne_binaries().
-get_config_flags(ApplicationName, Call, Flags) ->
+get_config_static_flags(ApplicationName, Call, Flags) ->
     case kapps_account_config:get(kapps_call:account_id(Call)
                                  ,ApplicationName
                                  ,<<"outbound_flags">>
@@ -648,7 +647,7 @@ get_account_dynamic_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} ->
-            process_dynamic_flags(kz_account:outbound_dynamic_flags(AccountJObj), Flags, Call);
+            process_dynamic_flags(kz_device:outbound_dynamic_flags(AccountJObj), Flags, Call);
         {'error', _E} ->
             lager:error("not applying account dynamic flags for ~s: ~p"
                        ,[AccountId, _E]
