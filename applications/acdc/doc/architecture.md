@@ -4,7 +4,7 @@ Agents represent the endpoints that a call in a queue will try to connect with.
 
 #### Agents
 
-Agents are comprised of two processes, a `gen_listener` (named process) and a `gen_fsm`. A supervisor ensures that the `gen_listener` and `gen_fsm` are kept alive together. A supervisor above that manages the list of agents.
+Agents are comprised of two processes, a `gen_listener` (named process) and a `gen_statem`. A supervisor ensures that the `gen_listener` and `gen_statem` are kept alive together. A supervisor above that manages the list of agents.
 
 > Agent process tree
 
