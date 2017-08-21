@@ -42,6 +42,7 @@
 
 -ifdef(TEST).
 -define(ACCOUNT_ID, <<"e6ed490b996152f639c4118f8c21d4bb">>).
+-define(ACCOUNT_DB, <<"account%2Fe6%2Fed%2F490b996152f639c4118f8c21d4bb">>).
 -endif.
 
 -define(STEPSWITCH_HRL, 'true').

@@ -878,8 +878,12 @@ fetch_global_resources() ->
     end.
 
 -ifdef(TEST).
-list_resources_by_id(?RESOURCES_DB) ->
-    {ok, Bin} = file:read_file("test/global_resources.json"),
+list_resources_by_id(Db) ->
+    Fixture = case Db of
+                  ?RESOURCES_DB -> "test/global_resources.json";
+                  ?ACCOUNT_DB -> "test/local_resources.json"
+              end,
+    {ok, Bin} = file:read_file(Fixture),
     {ok, kz_json:decode(Bin)}.
 -else.
 list_resources_by_id(Db) ->

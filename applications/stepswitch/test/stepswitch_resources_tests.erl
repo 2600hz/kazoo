@@ -19,32 +19,23 @@ global_resources_test_() ->
     ].
 
 local_resources_test_() ->
-    Ls = stepswitch_resources:get_props(?ACCOUNT_ID),
-    [io:format(user, "\n>>> ~p\n", [L]) || L <- Ls],
-    [?_assertEqual(<<"ea2d868dad3629254d57d5a1f6a69cde">>, stepswitch_resources:get_resrc_id(L1))
-    ,?_assertEqual(<<"LVL3">>, stepswitch_resources:get_resrc_name(L1))
-    ,?_assertEqual(4, stepswitch_resources:get_resrc_weight(L1))
-    ,?_assertEqual(5, stepswitch_resources:get_resrc_grace_period(L1))
-    ,?_assertEqual(<<"66f10c653f8e65e0e16f0ba6788bfe95-caribbean">>, stepswitch_resources:get_resrc_id(L2))
-    ,?_assertEqual(<<"Bandwidth Template - caribbean">>, stepswitch_resources:get_resrc_name(L2))
-    ,?_assertEqual(5, stepswitch_resources:get_resrc_weight(L2))
-    ,?_assertEqual(5, stepswitch_resources:get_resrc_grace_period(L2))
-    ,?_assertEqual(<<"6365415261d12830250e11116743f42a-toll_us">>, stepswitch_resources:get_resrc_id(L3))
-    ,?_assertEqual(<<"TLNX - toll_us">>, stepswitch_resources:get_resrc_name(L3))
-    ,?_assertEqual(1, stepswitch_resources:get_resrc_weight(L3))
-    ,?_assertEqual(5, stepswitch_resources:get_resrc_grace_period(L3))
-    ,?_assertEqual(<<"1c30a2ada029e2b31654ae2c3937b04c-unknown">>, stepswitch_resources:get_resrc_id(L4))
-    ,?_assertEqual(<<"ccaacacaccc - unknown">>, stepswitch_resources:get_resrc_name(L4))
-    ,?_assertEqual(2, stepswitch_resources:get_resrc_weight(L4))
-    ,?_assertEqual(5, stepswitch_resources:get_resrc_grace_period(L4))
-    ,?_assertEqual(<<"1c30a2ada029e2b31654ae2c3937b04c-did_us">>, stepswitch_resources:get_resrc_id(L5))
-    ,?_assertEqual(<<"ccaacacaccc - did_us">>, stepswitch_resources:get_resrc_name(L5))
-    ,?_assertEqual(2, stepswitch_resources:get_resrc_weight(L5))
-    ,?_assertEqual(5, stepswitch_resources:get_resrc_grace_period(L5))
-    ,?_assertEqual(<<"1c30a2ada029e2b31654ae2c3937b04c-caribbean">>, stepswitch_resources:get_resrc_id(L6))
-    ,?_assertEqual(<<"ccaacacaccc - caribbean">>, stepswitch_resources:get_resrc_name(L6))
-    ,?_assertEqual(2, stepswitch_resources:get_resrc_weight(L6))
-    ,?_assertEqual(5, stepswitch_resources:get_resrc_grace_period(L6))
+    Disabled = <<"c9bb38dfdff0f4738636e7beac700d3b-tollfree_us">>, %% enabled:false
+    Ids = [<<"6365415261d12830250e11116743f42a-toll_us">>
+          ,<<"1c30a2ada029e2b31654ae2c3937b04c-caribbean">>
+          ,<<"1c30a2ada029e2b31654ae2c3937b04c-did_us">>
+          ,<<"1c30a2ada029e2b31654ae2c3937b04c-unknown">>
+          ,Disabled
+          ,<<"ea2d868dad3629254d57d5a1f6a69cde">>
+          ,<<"66f10c653f8e65e0e16f0ba6788bfe95-caribbean">>
+          ],
+    [case Id =:= Disabled of
+         true -> ?_assertEqual(l(Id), Props);
+         false -> ?_assert(l(Id) =:= maps:with(maps:keys(l(Id)), maps:from_list(Props)))
+     end
+     || Id <- Ids,
+        ok =:= io:format(user, "\n\nId ~p\n", [Id]),
+        Props <- [stepswitch_resources:get_props(Id, ?ACCOUNT_ID)],
+        ok =:= io:format(user, "oui\n", [])
     ].
 
 
@@ -124,4 +115,124 @@ g(4) ->
      ,<<"Codecs">> => [<<"PCMU">>]
      ,<<"Rules">> => [<<"^(011\\d*)$|^(00\\d*)$">>]
      ,<<"Caller-ID-Rules">> => []
+     }.
+
+
+l(<<"6365415261d12830250e11116743f42a-toll_us">>) ->
+    #{<<"Bypass-Media">> => false
+     ,<<"Caller-ID-Rules">> => []
+     ,<<"Codecs">> => []
+     ,<<"Flags">> => []
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Global">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"ID">> => <<"6365415261d12830250e11116743f42a-toll_us">>
+     ,<<"Is-Emergency">> => false
+     ,<<"Name">> => <<"TLNX - toll_us">>
+     ,<<"Require-Flags">> => false
+     ,<<"Rev">> => <<"2-287505ba35236b47a47011dba53ef7a8">>
+     ,<<"Rules">> => [<<"^\\+1(900\\d{7})$">>]
+     ,<<"T38">> => false
+     ,<<"Weight">> => 1
+     };
+
+l(<<"1c30a2ada029e2b31654ae2c3937b04c-caribbean">>) ->
+    #{<<"Bypass-Media">> => false
+     ,<<"Caller-ID-Rules">> => []
+     ,<<"Codecs">> => []
+     ,<<"Flags">> => []
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Global">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"ID">> => <<"1c30a2ada029e2b31654ae2c3937b04c-caribbean">>
+     ,<<"Is-Emergency">> => false
+     ,<<"Name">> => <<"ccaacacaccc - caribbean">>
+     ,<<"Require-Flags">> => false
+     ,<<"Rev">> => <<"2-707061f7bff991b38d004f125b026416">>
+     ,<<"Rules">> =>
+          [<<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$">>]
+     ,<<"T38">> => false
+     ,<<"Weight">> => 2
+     };
+
+l(<<"1c30a2ada029e2b31654ae2c3937b04c-did_us">>) ->
+    #{<<"Bypass-Media">> => false
+     ,<<"Caller-ID-Rules">> => []
+     ,<<"Codecs">> => []
+     ,<<"Flags">> => []
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Global">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"ID">> => <<"1c30a2ada029e2b31654ae2c3937b04c-did_us">>
+     ,<<"Is-Emergency">> => false
+     ,<<"Name">> => <<"ccaacacaccc - did_us">>
+     ,<<"Require-Flags">> => false
+     ,<<"Rev">> => <<"2-707061f7bff991b38d004f125b026416">>
+     ,<<"Rules">> => [<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>]
+     ,<<"T38">> => false
+     ,<<"Weight">> => 2
+     };
+
+l(<<"1c30a2ada029e2b31654ae2c3937b04c-unknown">>) ->
+    #{<<"Bypass-Media">> => false
+     ,<<"Caller-ID-Rules">> => []
+     ,<<"Codecs">> => []
+     ,<<"Flags">> => []
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Global">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"ID">> => <<"1c30a2ada029e2b31654ae2c3937b04c-unknown">>
+     ,<<"Is-Emergency">> => false
+     ,<<"Name">> => <<"ccaacacaccc - unknown">>
+     ,<<"Require-Flags">> => false
+     ,<<"Rev">> => <<"2-707061f7bff991b38d004f125b026416">>
+     ,<<"Rules">> => [<<"^(.{10})$">>]
+     ,<<"T38">> => false
+     ,<<"Weight">> => 2
+     };
+
+l(<<"c9bb38dfdff0f4738636e7beac700d3b-tollfree_us">>) ->
+    undefined;
+
+l(<<"ea2d868dad3629254d57d5a1f6a69cde">>) ->
+    #{<<"Bypass-Media">> => false
+     ,<<"Caller-ID-Rules">> => []
+     ,<<"Codecs">> => []
+     ,<<"Flags">> => []
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Global">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"ID">> => <<"ea2d868dad3629254d57d5a1f6a69cde">>
+     ,<<"Is-Emergency">> => false
+     ,<<"Name">> => <<"LVL3">>
+     ,<<"Require-Flags">> => false
+     ,<<"Rev">> => <<"2-c5dc54badfa28c27ae31280d981f0127">>
+     ,<<"Rules">> => []
+     ,<<"T38">> => false
+     ,<<"Weight">> => 4
+     };
+
+l(<<"66f10c653f8e65e0e16f0ba6788bfe95-caribbean">>) ->
+    #{<<"Bypass-Media">> => false
+     ,<<"Caller-ID-Rules">> => []
+     ,<<"Codecs">> => []
+     ,<<"Flags">> => []
+     ,<<"Format-From-URI">> => false
+     ,<<"From-Account-Realm">> => false
+     ,<<"Global">> => false
+     ,<<"Grace-Period">> => 5
+     ,<<"ID">> => <<"66f10c653f8e65e0e16f0ba6788bfe95-caribbean">>
+     ,<<"Is-Emergency">> => false
+     ,<<"Name">> => <<"Bandwidth Template - caribbean">>
+     ,<<"Require-Flags">> => false
+     ,<<"Rev">> => <<"2-cdc562eaa1501cfeb29a4ec28441adc3">>
+     ,<<"Rules">> =>
+          [<<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$">>]
+     ,<<"T38">> => false
+     ,<<"Weight">> => 5
      }.
