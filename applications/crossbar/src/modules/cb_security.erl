@@ -298,7 +298,7 @@ add_multi_factor_metadata(AuthModule, JObj, AuthConfig) ->
             kz_json:set_value(Path, Metadata, AuthConfig)
     end.
 
--spec get_metadata(ne_binary(), ne_binary()) -> kz_json:object().
+-spec get_metadata(ne_binary(), ne_binary()) -> api_object().
 get_metadata(AccountId, ConfigId) ->
     case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConfigId) of
         {'ok', JObj} ->
