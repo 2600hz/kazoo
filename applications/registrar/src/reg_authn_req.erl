@@ -274,7 +274,7 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %%-----------------------------------------------------------------------------
 -spec check_auth_user(kz_json:object(), ne_binary(), ne_binary(), kz_json:object()) ->
                              {'ok', auth_user()} |
-                             {'error', any()}.
+                             {'error', 'disabled'}.
 check_auth_user(JObj, Username, Realm, Req) ->
     Things = [{<<"account">>, get_account_id(JObj)}
              ,{kz_json:get_value([<<"doc">>, <<"pvt_type">>], JObj), kz_doc:id(JObj)}
@@ -348,26 +348,20 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     GsmDoc = kz_json:get_value(<<"gsm">>, JObj),
     CachedNonce = kz_json:get_value(<<"nonce">>, GsmDoc, kz_util:rand_hex_binary(16)),
     Nonce = remove_dashes(
-              kz_json:get_first_defined([<<"nonce">>
-                                        ,<<"Auth-Nonce">>
-                                        ]
-                                       ,Req
-                                       ,CachedNonce
-                                       )
+              kz_json:get_first_defined([<<"nonce">>, <<"Auth-Nonce">>], Req, CachedNonce)
              ),
     GsmKey = kz_json:get_value(<<"key">>, GsmDoc),
     GsmSRes = kz_json:get_value(<<"sres">>, GsmDoc, kz_util:rand_hex_binary(6)),
     GsmNumber = kz_json:get_value(<<"msisdn">>, GsmDoc),
     ReqMethod = kz_json:get_value(<<"Method">>, Req),
     gsm_auth(
-      maybe_update_gsm(
-        ReqMethod
+      maybe_update_gsm(ReqMethod
                       ,AuthUser#auth_user{msisdn=GsmNumber
                                          ,a3a8_key=GsmKey
                                          ,a3a8_sres=GsmSRes
                                          ,nonce=Nonce
                                          }
-       )
+                      )
      );
 maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)->
     {'ok', AuthUser}.
