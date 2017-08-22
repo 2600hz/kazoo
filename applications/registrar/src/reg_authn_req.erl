@@ -11,7 +11,6 @@
 
 -export([init/0
         ,handle_req/2
-        ,lookup_account_by_ip/1
         ]).
 
 -include("reg.hrl").
@@ -266,19 +265,6 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
             lager:debug("~s@~s found in account db: ~s", [Username, Realm, AccountDB]),
             {'ok', User}
     end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% lookup auth by IP in cache/database and return the result
-%% @end
-%%-----------------------------------------------------------------------------
--spec lookup_account_by_ip(ne_binary()) ->
-                                  {'ok', kz_proplist()} |
-                                  {'error', 'not_founnd'}.
-lookup_account_by_ip(IP) ->
-    lager:debug("looking up IP: ~s in db ~s", [IP, ?KZ_SIP_DB]),
-    kapps_util:get_ccvs_by_ip(IP).
 
 %%-----------------------------------------------------------------------------
 %% @private
