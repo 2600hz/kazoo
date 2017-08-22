@@ -276,62 +276,15 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
                              {'ok', auth_user()} |
                              {'error', any()}.
 check_auth_user(JObj, Username, Realm, Req) ->
-    case is_account_enabled(JObj)
-        andalso maybe_auth_type_enabled(JObj)
-        andalso maybe_owner_enabled(JObj)
-    of
+    Things = [{<<"account">>, get_account_id(JObj)}
+             ,{kz_json:get_value([<<"doc">>, <<"pvt_type">>], JObj), kz_doc:id(JObj)}
+             ,{<<"owner">>, kz_json:get_value([<<"doc">>, <<"owner_id">>], JObj)}
+             ],
+    case kapps_util:are_all_enabled(Things) of
         'true' -> jobj_to_auth_user(JObj, Username, Realm, Req);
-        'false' -> {'error', 'disabled'}
-    end.
-
--spec is_account_enabled(kz_json:object()) -> boolean().
-is_account_enabled(JObj) ->
-    AccountId = get_account_id(JObj),
-    case kz_util:is_account_enabled(AccountId) of
-        'true' -> 'true';
-        'false' ->
-            lager:notice("rejecting authn for disabled account ~s", [AccountId]),
-            'false'
-    end.
-
--spec maybe_auth_type_enabled(kz_json:object()) -> boolean().
-maybe_auth_type_enabled(JObj) ->
-    case kz_json:get_value([<<"doc">>, <<"pvt_type">>], JObj) of
-        <<"device">> -> is_device_enabled(JObj);
-        _Else -> 'true'
-    end.
-
--spec is_device_enabled(kz_json:object()) -> boolean().
-is_device_enabled(JObj) ->
-    Default = kapps_config:get_is_true(?CONFIG_CAT, <<"device_enabled_default">>, 'true'),
-    case kz_json:is_true([<<"doc">>, <<"enabled">>], JObj, Default) of
-        'true' -> 'true';
-        'false' ->
-            lager:notice("rejecting authn for disabled device ~s", [kz_doc:id(JObj)]),
-            'false'
-    end.
-
--spec maybe_owner_enabled(kz_json:object()) -> boolean().
-maybe_owner_enabled(JObj) ->
-    case kz_json:get_value([<<"doc">>, <<"owner_id">>], JObj) of
-        'undefined' -> 'true';
-        OwnerId -> is_owner_enabled(get_account_db(JObj), OwnerId)
-    end.
-
--spec is_owner_enabled(ne_binary(), ne_binary()) -> boolean().
-is_owner_enabled(AccountDb, OwnerId) ->
-    Default = kapps_config:get_is_true(?CONFIG_CAT, <<"owner_enabled_default">>, 'true'),
-    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
-        {'ok', UserJObj} ->
-            case kzd_user:is_enabled(UserJObj, Default) of
-                'true' -> 'true';
-                'false' ->
-                    lager:notice("rejecting authn for disabled owner ~s", [OwnerId]),
-                    'false'
-            end;
-        {'error', _R} ->
-            lager:debug("unable to fetch owner doc ~s: ~p", [OwnerId, _R]),
-            'true'
+        {'false', Reason} ->
+            lager:notice("rejecting authn for ~p", [Reason]),
+            {'error', 'disabled'}
     end.
 
 -spec jobj_to_auth_user(kz_json:object(), ne_binary(), ne_binary(), kz_json:object()) ->
