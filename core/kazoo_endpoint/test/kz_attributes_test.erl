@@ -9,11 +9,61 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-get_flags_test_() ->
+-define(NEW_CF_FLAGS, [fun(C) -> kapps_call:set_account_id(<<"account0000000000000000000000002">>, C) end
+                      ,fun(C) -> kapps_call:set_authorizing_id(<<"device00000000000000000000000002">>, C) end
+                      ,fun(C) -> kapps_call:set_owner_id(<<"user0000000000000000000000000002">>, C) end
+                      ]).
+
+-define(MIXED_CF_FLAGS, [fun(C) -> kapps_call:set_account_id(<<"account0000000000000000000000003">>, C) end
+                        ,fun(C) -> kapps_call:set_authorizing_id(<<"device00000000000000000000000003">>, C) end
+                        ,fun(C) -> kapps_call:set_owner_id(<<"user0000000000000000000000000003">>, C) end
+                        ]).
+
+-define(NEW_TS_FLAGS, [fun(C) -> kapps_call:set_account_id(<<"account0000000000000000000000002">>, C) end
+                      ,fun(C) -> kapps_call:set_authorizing_id(<<"trunkstore0000000000000000000002">>, C) end
+                      ]).
+
+get_flags_callflow_test_() ->
     Call = kapps_call_test:create_callflow_call(),
-    Expected = [<<"user_old_static_flag">>, <<"device_old_static_flag">>, <<"account_old_static_flag">>],
-    [{"verify that get flags will pull the static and dynamic flags from the account as well as endpoint"
-     ,?_assertEqual(Expected, kz_attributes:get_flags(<<"callflows">>, Call))
+    ExpectedOld = [<<"user_old_static_flag">>
+                  ,<<"device_old_static_flag">>
+                  ,<<"account_old_static_flag">>
+                  ],
+    ExpectedNew = [<<"user0000000000000000000000000002">>
+                  ,<<"user_new_static_flag">>
+                  ,<<"local">>
+                  ,<<"device_new_static_flag">>
+                  ,<<"4a6863.sip.2600hz.local">>
+                  ,<<"account_new_static_flag">>
+                  ],
+    ExpectedMixed = [<<"user_new_static_flag">>
+                    ,<<"local">>
+                    ,<<"device_old_static_flag">>
+                    ,<<"user0000000000000000000000000003">>
+                    ,<<"account_new_static_flag">>
+                  ],
+    [{"verify that get flags will pull the static and dynamic flags from all sources with old formats"
+     ,?_assertEqual(ExpectedOld, kz_attributes:get_flags(<<"callflows">>, Call))
+     }
+    ,{"verify that get flags will pull the static and dynamic flags from all sources with new formats"
+     ,?_assertEqual(ExpectedNew, kz_attributes:get_flags(<<"callflows">>, kapps_call:exec(?NEW_CF_FLAGS, Call)))
+     }
+    ,{"verify that get flags will pull the static and dynamic flags from all sources with mixed formats"
+     ,?_assertEqual(ExpectedMixed, kz_attributes:get_flags(<<"callflows">>, kapps_call:exec(?MIXED_CF_FLAGS, Call)))
+     }
+    ].
+
+get_flags_trunkstore_test_() ->
+    Call = kapps_call_test:create_trunkstore_call(),
+    ExpectedOld = [<<"account_old_static_flag">>],
+    ExpectedNew = [<<"local">>
+                  ,<<"account_new_static_flag">>
+                  ],
+    [{"verify that get flags will pull the static and dynamic flags from all sources with old formats"
+     ,?_assertEqual(ExpectedOld, kz_attributes:get_flags(<<"trunkstore">>, Call))
+     }
+    ,{"verify that get flags will pull the static and dynamic flags from all sources with new formats"
+     ,?_assertEqual(ExpectedNew, kz_attributes:get_flags(<<"trunkstore">>, kapps_call:exec(?NEW_TS_FLAGS, Call)))
      }
     ].
 

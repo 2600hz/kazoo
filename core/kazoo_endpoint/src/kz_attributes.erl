@@ -636,8 +636,8 @@ maybe_get_endpoint_dynamic_flags(_, Call, Flags) ->
 -spec get_endpoint_dynamic_flags(kapps_call:call(), ne_binaries(), kz_json:object()) ->
                                         ne_binaries().
 get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
-    case kz_json:get_list_value(<<"dynamic_flags">>, Endpoint) of
-        'undefined' -> Flags;
+    case kz_device:outbound_dynamic_flags(Endpoint) of
+        [] -> Flags;
         DynamicFlags -> process_dynamic_flags(DynamicFlags, Flags, Call)
     end.
 

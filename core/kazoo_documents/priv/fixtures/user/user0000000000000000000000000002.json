@@ -1,5 +1,5 @@
 {
-    "_id": "device00000000000000000000000002",
+    "_id": "user0000000000000000000000000002",
     "_rev": "1-7280940a25dcb8eac5ab129dd8fbe5c6",
     "call_forward": {
         "direct_calls_only": false,
@@ -19,7 +19,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-2.2600hz.local/sub/directory?object=user"
             }
         },
         "inbound": {
@@ -29,7 +29,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-2.2600hz.local/sub/directory?object=user"
             },
             "onnet": {
                 "enabled": true,
@@ -37,7 +37,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-2.2600hz.local/sub/directory?object=user"
             }
         },
         "outbound": {
@@ -47,7 +47,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-2.2600hz.local/sub/directory?object=user"
             },
             "onnet": {
                 "enabled": true,
@@ -55,7 +55,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-2.2600hz.local/sub/directory?object=user"
             }
         }
     },
@@ -87,39 +87,46 @@
     },
     "caller_id": {
         "emergency": {
-            "name": "device-emergency-name",
-            "number": "device-emergency-number"
+            "name": "user-emergency-name",
+            "number": "user-emergency-number"
         },
         "external": {
-            "name": "device-external-name",
-            "number": "device-external-number"
+            "name": "user-external-name",
+            "number": "user-external-number"
         },
         "internal": {
-            "name": "device-internal-name",
-            "number": "device-internal-number"
+            "name": "user-internal-name",
+            "number": "user-internal-number"
         }
     },
     "contact_list": {
         "exclude": true
     },
-    "device_type": "sip_device",
     "dial_plan": {
-        "device-regex": {
-            "description": "device-description",
-            "prefix": "device-prefix",
-            "suffix": "device-suffix"
-        },
         "system": [
-            "dialplan000000000000000000000002"
-        ]
+            "dialplan000000000000000000000003"
+        ],
+        "user-regex": {
+            "description": "user-description",
+            "prefix": "user-prefix",
+            "suffix": "user-suffix"
+        }
     },
     "do_no_disturb": {
         "enabled": false
     },
+    "email": "test@2600hz.local",
     "enabled": true,
-    "exclude_from_queues": false,
-    "language": "fr-fr",
-    "mac_address": "00:15:65:27:C9:8E",
+    "first_name": "User",
+    "hotdesk": {
+        "enabled": true,
+        "id": "2017",
+        "keep_logged_in_elsewhere": false,
+        "pin": "1234",
+        "require_pin": true
+    },
+    "language": "mk-bs",
+    "last_name": "Two",
     "media": {
         "audio": {
             "codecs": [
@@ -145,14 +152,13 @@
         "digit_timeout": 800,
         "listen_on": "both",
         "numbers": {
-            "4": {
+            "7": {
                 "children": {
                     "_": {
                         "data": {
-                            "action": "toggle",
-                            "time_limit": 3600
+                            "action": "toggle"
                         },
-                        "module": "record_call"
+                        "module": "hold_control"
                     }
                 },
                 "data": {
@@ -161,14 +167,16 @@
                 },
                 "module": "play"
             },
-            "5": {
+            "8": {
                 "children": {
                     "_": {
                         "data": {
-                            "action": "start",
-                            "time_limit": 3600
+                            "engine": "ispeech",
+                            "leg": "self",
+                            "text": "This call is powered by 2600Hz.",
+                            "voice": "female"
                         },
-                        "module": "record_call"
+                        "module": "tts"
                     }
                 },
                 "data": {
@@ -177,13 +185,16 @@
                 },
                 "module": "play"
             },
-            "6": {
+            "9": {
                 "children": {
                     "_": {
                         "data": {
-                            "action": "stop"
+                            "engine": "ispeech",
+                            "leg": "peer",
+                            "text": "This call is powered by 2600Hz.",
+                            "voice": "female"
                         },
-                        "module": "record_call"
+                        "module": "tts"
                     }
                 },
                 "data": {
@@ -195,25 +206,20 @@
         }
     },
     "music_on_hold": {
-        "media_id": "media000000000000000000000000002"
+        "media_id": "media000000000000000000000000003"
     },
-    "mwi_unsolicitated_updates": true,
-    "name": "Test Device 2",
     "outbound_flags": {
         "dynamic": [
-            "not_exported",
-            "from_realm"
+            "custom_channel_vars.owner_id"
         ],
         "static": [
-            "device_new_static_flag"
+            "user_new_static_flag"
         ]
     },
-    "owner_id": "user0000000000000000000000000002",
-    "presence_id": "device-2@4a6863.sip.2600hz.local",
-    "provision": {
-        "endpoint_brand": "yealink",
-        "endpoint_family": "t3x",
-        "endpoint_model": "t38g"
+    "presence_id": "user-2@4a6863.sip.2600hz.local",
+    "priv_level": "admin",
+    "pronounced_name": {
+        "media_id": "media000000000000000000000000004"
     },
     "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000002",
     "pvt_account_id": "account0000000000000000000000002",
@@ -223,35 +229,17 @@
     "pvt_is_authenticated": true,
     "pvt_modified": 63645260666,
     "pvt_request_id": "request0000000000000000000000001",
-    "pvt_type": "device",
+    "pvt_type": "user",
     "pvt_vsn": "1",
     "register_overwrite_notify": false,
+    "require_password_update": true,
     "ringtones": {
         "external": "<http://192.168.0.231/Device1/MyRing1.wav>;info=Callers",
         "internal": "<http://192.168.0.231/Device1/MyRing2.wav>;info=Friends"
     },
-    "sip": {
-        "custom_sip_headers": {
-            "in": {
-                "x-device-header": "foo"
-            },
-            "out": {
-                "x-outbound-header": "bar"
-            },
-            "x-device-header": "baz",
-            "x-legacy-header": "Hz"
-        },
-        "expire_seconds": 300,
-        "ignore_completed_elsewhere": false,
-        "invite_format": "contact",
-        "ip": "10.26.20.20",
-        "method": "password",
-        "number": "+14158867900",
-        "password": "device_2_password",
-        "route": "2600hz.local:7000",
-        "static_route": "sip:999#4158867900@2600hz.local:7000",
-        "username": "device_2_username"
-    },
-    "suppress_unregister_notifications": false,
-    "timezone": "America/New_York"
+    "timezone": "Europe/Moscow",
+    "user_type": "sip_user",
+    "username": "userone",
+    "verified": true,
+    "vm_to_email_enabled": true
 }

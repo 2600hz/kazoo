@@ -236,9 +236,7 @@
     },
     "outbound_flags": {
         "dynamic": [
-            "zone",
-            "from_domain",
-            "custom_channel_vars.owner_id"
+            "zone"
         ],
         "static": [
             "account_new_static_flag"

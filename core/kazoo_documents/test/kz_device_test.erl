@@ -97,16 +97,16 @@ outbound_flags_test_() ->
     ExpectedOldData = kz_json:decode("{\"static\": [\"device_old_static_flag\"]}"),
 
     {'ok', NewData} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_2_ID),
-    ExpectedNewData = kz_json:decode("{\"dynamic\": [\"zone\", \"from_domain\", \"custom_channel_vars.owner_id\"], \"static\": [\"device_new_static_flag\"]}"),
+    ExpectedNewData = kz_json:decode("{\"dynamic\": [\"not_exported\", \"from_realm\"], \"static\": [\"device_new_static_flag\"]}"),
 
     MissingData = kz_json:delete_key(<<"outbound_flags">>, NewData),
 
     UpdatedOldData = kz_device:set_outbound_flags(MissingData, [<<"device_old_static_flag">>]),
-    Update = kz_json:from_list([{<<"dynamic">>, [<<"zone">>, <<"from_domain">>, <<"custom_channel_vars.owner_id">>]}, {<<"static">>, [<<"device_new_static_flag">>]}]),
+    Update = kz_json:from_list([{<<"dynamic">>, [<<"not_exported">>, <<"from_realm">>]}, {<<"static">>, [<<"device_new_static_flag">>]}]),
     UpdatedNewData = kz_device:set_outbound_flags(MissingData, Update),
 
     StaticUpdate = [<<"device_new_static_flag">>],
-    DynamicUpdate = [<<"zone">>, <<"from_domain">>, <<"custom_channel_vars.owner_id">>],
+    DynamicUpdate = [<<"not_exported">>, <<"from_realm">>],
     UpdateBothNewData = kz_device:set_outbound_flags(MissingData, StaticUpdate, DynamicUpdate),
 
     [{"verify get for deprecated format"
@@ -142,7 +142,7 @@ outbound_flags_static_test_() ->
 
     {'ok', NewData} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_2_ID),
     UpdatedNewData = kz_json:get_value(<<"outbound_flags">>, kz_device:set_outbound_static_flags(NewData, [<<"updated_flag">>])),
-    ExpectedNewUpdate = kz_json:decode("{\"dynamic\": [\"zone\", \"from_domain\", \"custom_channel_vars.owner_id\"], \"static\": [\"updated_flag\"]}"),
+    ExpectedNewUpdate = kz_json:decode("{\"dynamic\": [\"not_exported\", \"from_realm\"], \"static\": [\"updated_flag\"]}"),
 
     [{"verify get for deprecated format"
      ,?_assertEqual([<<"device_old_static_flag">>], kz_device:outbound_static_flags(OldData))
@@ -170,7 +170,7 @@ outbound_dynamic_flags_test_() ->
      ,?_assertEqual([], kz_device:outbound_dynamic_flags(OldData))
      }
     ,{"verify get for new format"
-     ,?_assertEqual([<<"zone">>, <<"from_domain">>, <<"custom_channel_vars.owner_id">>], kz_device:outbound_dynamic_flags(NewData))
+     ,?_assertEqual([<<"not_exported">>, <<"from_realm">>], kz_device:outbound_dynamic_flags(NewData))
      }
     ,{"verify set with old format converts to new"
      ,?_assertEqual(ExpectedOldUpdate, UpdatedOldData)

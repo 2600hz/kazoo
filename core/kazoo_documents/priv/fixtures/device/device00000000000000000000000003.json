@@ -1,5 +1,5 @@
 {
-    "_id": "device00000000000000000000000002",
+    "_id": "device00000000000000000000000003",
     "_rev": "1-7280940a25dcb8eac5ab129dd8fbe5c6",
     "call_forward": {
         "direct_calls_only": false,
@@ -19,7 +19,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-3.2600hz.local/sub/directory?object=device"
             }
         },
         "inbound": {
@@ -29,7 +29,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-3.2600hz.local/sub/directory?object=device"
             },
             "onnet": {
                 "enabled": true,
@@ -37,7 +37,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-3.2600hz.local/sub/directory?object=device"
             }
         },
         "outbound": {
@@ -47,7 +47,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-3.2600hz.local/sub/directory?object=device"
             },
             "onnet": {
                 "enabled": true,
@@ -55,7 +55,7 @@
                 "record_min_sec": 2,
                 "record_sample_rate": 8000,
                 "time_limit": 7200,
-                "url": "https://account-2.2600hz.local/sub/directory?object=device"
+                "url": "https://account-3.2600hz.local/sub/directory?object=device"
             }
         }
     },
@@ -198,27 +198,21 @@
         "media_id": "media000000000000000000000000002"
     },
     "mwi_unsolicitated_updates": true,
-    "name": "Test Device 2",
-    "outbound_flags": {
-        "dynamic": [
-            "not_exported",
-            "from_realm"
-        ],
-        "static": [
-            "device_new_static_flag"
-        ]
-    },
-    "owner_id": "user0000000000000000000000000002",
-    "presence_id": "device-2@4a6863.sip.2600hz.local",
+    "name": "Test Device 3",
+    "outbound_flags": [
+        "device_old_static_flag"
+    ],
+    "owner_id": "user0000000000000000000000000003",
+    "presence_id": "device-3@4a6863.sip.2600hz.local",
     "provision": {
         "endpoint_brand": "yealink",
         "endpoint_family": "t3x",
         "endpoint_model": "t38g"
     },
-    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000002",
-    "pvt_account_id": "account0000000000000000000000002",
-    "pvt_auth_account_id": "account0000000000000000000000002",
-    "pvt_auth_user_id": "user0000000000000000000000000002",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000003",
+    "pvt_account_id": "account0000000000000000000000003",
+    "pvt_auth_account_id": "account0000000000000000000000003",
+    "pvt_auth_user_id": "user0000000000000000000000000003",
     "pvt_created": 63645260666,
     "pvt_is_authenticated": true,
     "pvt_modified": 63645260666,
@@ -247,10 +241,10 @@
         "ip": "10.26.20.20",
         "method": "password",
         "number": "+14158867900",
-        "password": "device_2_password",
+        "password": "device_3_password",
         "route": "2600hz.local:7000",
         "static_route": "sip:999#4158867900@2600hz.local:7000",
-        "username": "device_2_username"
+        "username": "device_3_username"
     },
     "suppress_unregister_notifications": false,
     "timezone": "America/New_York"
