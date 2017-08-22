@@ -274,10 +274,7 @@ validate_path(Context, ?LINKS_PATH, ?HTTP_GET) ->
 
 %% validating /auth/providers
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_GET) ->
-    ViewOptions = [{'startkey', [<<"oauth">>]}
-                  ,{'endkey', [<<"oauth">>, kz_json:new()]}
-                  ],
-    crossbar_doc:load_view(?PROVIDERS_VIEW, ViewOptions, Context, fun normalize_view/2);
+    crossbar_doc:load_view(?PROVIDERS_VIEW, [], Context, fun normalize_view/2);
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.provider">>, Context, fun add_provider/1);
 

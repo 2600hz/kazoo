@@ -176,6 +176,13 @@ curl -v -X GET \
     {
       "id": "google",
       "provider_type": "oauth"
+    },
+    {
+      "id": "duo",
+      "enabled": false,
+      "name": "System Default Provider",
+      "provider_name": "duo",
+      "provider_type": "multi_factor"
     }
   ],
   "timestamp": "{TIMESTAMP}",
