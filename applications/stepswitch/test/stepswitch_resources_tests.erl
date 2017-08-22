@@ -33,9 +33,7 @@ local_resources_test_() ->
          false -> ?_assert(l(Id) =:= maps:with(maps:keys(l(Id)), maps:from_list(Props)))
      end
      || Id <- Ids,
-        ok =:= io:format(user, "\n\nId ~p\n", [Id]),
-        Props <- [stepswitch_resources:get_props(Id, ?ACCOUNT_ID)],
-        ok =:= io:format(user, "oui\n", [])
+        Props <- [stepswitch_resources:get_props(Id, ?ACCOUNT_ID)]
     ].
 
 
