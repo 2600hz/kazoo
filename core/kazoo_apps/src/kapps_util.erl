@@ -443,7 +443,7 @@ account_ccvs_from_ip_auth(Doc) ->
                              'true' |
                              {'false', {not_enabled_error(), ne_binary()}}.
 are_all_enabled(Things) ->
-    AccountId = props:get_value(<<"account">>, Things),
+    ?MATCH_ACCOUNT_RAW(AccountId) = props:get_value(<<"account">>, Things),
     try lists:all(fun(Thing) -> is_enabled(AccountId, Thing) end, Things)
     catch
         'throw':{'error', Reason} -> {'false', Reason}
