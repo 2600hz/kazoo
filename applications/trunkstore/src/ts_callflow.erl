@@ -351,15 +351,24 @@ check_ccvs_for_type(_CCVs, []) ->
     lager:info("no types left to check, not a trunkstore account"),
     'false';
 check_ccvs_for_type(CCVs, <<"sys_info">> = Type) ->
-    Type =:= kz_json:get_ne_binary_value([<<"Authorizing-Type">>], CCVs)
-        orelse kz_json:get_ne_binary_value([<<"Trunkstore-ID">>], CCVs) =/= 'undefined'
-        andalso (kz_json:get_ne_binary_value([<<"Referred-By">>], CCVs) =/= 'undefined'
-                 orelse kz_json:get_ne_binary_value([<<"Redirected-By">>], CCVs) =/= 'undefined'
-                );
+    is_authorized(CCVs, Type)
+        orelse has_trunkstore_id(CCVs)
+        andalso is_not_redirected(CCVs);
 check_ccvs_for_type(CCVs, Type) ->
-    AuthorizingType = kz_json:get_ne_binary_value([<<"Authorizing-Type">>], CCVs),
-    lager:debug("is authz type '~s' = '~s'", [AuthorizingType, Type]),
-    Type =:= AuthorizingType.
+    is_authorized(CCVs, Type).
+
+-spec is_authorized(kz_json:object(), api_ne_binary()) -> boolean().
+is_authorized(CCVs, Type) ->
+    Type =:= kz_json:get_ne_binary_value([<<"Authorizing-Type">>], CCVs).
+
+-spec has_trunkstore_id(kz_json:object()) -> boolean().
+has_trunkstore_id(CCVs) ->
+    'undefined' =/= kz_json:get_ne_binary_value([<<"Trunkstore-ID">>], CCVs).
+
+-spec is_not_redirected(kz_json:object()) -> boolean().
+is_not_redirected(CCVs) ->
+    'undefined' =/= kz_json:get_ne_binary_value([<<"Referred-By">>], CCVs)
+        orelse 'undefined' =/= kz_json:get_ne_binary_value([<<"Redirected-By">>], CCVs).
 
 -spec pre_park_action() -> ne_binary().
 pre_park_action() ->
