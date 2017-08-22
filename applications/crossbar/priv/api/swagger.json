@@ -28591,7 +28591,11 @@
                     "type": "string"
                 },
                 "default_formatters": {
-                    "description": "stepswitch default formatters"
+                    "description": "stepswitch default formatters",
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
                 },
                 "default_prefix": {
                     "default": "",
