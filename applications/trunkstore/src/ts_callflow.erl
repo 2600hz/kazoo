@@ -338,18 +338,28 @@ set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
 -spec is_trunkstore_acct(kz_json:object(), api_binary() | api_binaries()) -> boolean().
-is_trunkstore_acct(JObj, [Type|Types]) ->
-    is_trunkstore_acct(JObj, Type)
-        orelse is_trunkstore_acct(JObj, Types);
-is_trunkstore_acct(_JObj, []) -> 'false';
-is_trunkstore_acct(JObj, <<"sys_info">> = Type) ->
-    Type =:= kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj)
-        orelse kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Trunkstore-ID">>], JObj) =/= 'undefined'
-        andalso (kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-By">>], JObj) =/= 'undefined'
-                 orelse kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Redirected-By">>], JObj) =/= 'undefined');
+is_trunkstore_acct(RouteReqJObj, Type) ->
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteReqJObj, kz_json:new()),
+    lager:info("checking type(s) ~p against CCVs ~s", [Type, kz_json:encode(CCVs)]),
+    check_ccvs_for_type(CCVs, Type).
 
-is_trunkstore_acct(JObj, Type) ->
-    Type =:= kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj).
+-spec check_ccvs_for_type(kz_json:object(), api_binary() | api_binaries()) -> boolean().
+check_ccvs_for_type(CCVs, [Type|Types]) ->
+    check_ccvs_for_type(CCVs, Type)
+        orelse check_ccvs_for_type(CCVs, Types);
+check_ccvs_for_type(_CCVs, []) ->
+    lager:info("no types left to check, not a trunkstore account"),
+    'false';
+check_ccvs_for_type(CCVs, <<"sys_info">> = Type) ->
+    Type =:= kz_json:get_ne_binary_value([<<"Authorizing-Type">>], CCVs)
+        orelse kz_json:get_ne_binary_value([<<"Trunkstore-ID">>], CCVs) =/= 'undefined'
+        andalso (kz_json:get_ne_binary_value([<<"Referred-By">>], CCVs) =/= 'undefined'
+                 orelse kz_json:get_ne_binary_value([<<"Redirected-By">>], CCVs) =/= 'undefined'
+                );
+check_ccvs_for_type(CCVs, Type) ->
+    AuthorizingType = kz_json:get_ne_binary_value([<<"Authorizing-Type">>], CCVs),
+    lager:debug("is authz type '~s' = '~s'", [AuthorizingType, Type]),
+    Type =:= AuthorizingType.
 
 -spec pre_park_action() -> ne_binary().
 pre_park_action() ->
