@@ -129,8 +129,6 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                 ]
         end,
 
-    Call = ts_callflow:get_kapps_call(State),
-
     Command = [KV
                || {_,V}=KV <- CallerID
                       ++ EmergencyCallerID
@@ -139,7 +137,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                          ,{<<"To-DID">>, ToDID}
                          ,{<<"Account-ID">>, AccountId}
                          ,{<<"Application-Name">>, <<"bridge">>}
-                         ,{<<"Flags">>, get_flags(DIDOptions, ServerOptions, AccountOptions, Call)}
+                         ,{<<"Flags">>, get_flags(DIDOptions, ServerOptions, AccountOptions, State)}
                          ,{<<"Media">>, MediaHandling}
                          ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, DIDOptions)}
                          ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, DIDOptions)}
@@ -167,18 +165,17 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
         ts_callflow:cleanup_amqp(State)
     end.
 
--spec get_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call()) -> ne_binaries().
-get_flags(DIDOptions, ServerOptions, AccountOptions, Call) ->
+-spec get_flags(kz_json:object(), kz_json:object(), kz_json:object(), ts_callflow:state()) -> ne_binaries().
+get_flags(DIDOptions, ServerOptions, AccountOptions, State) ->
+    Call = ts_callflow:get_kapps_call(State),
+    Flags = kz_attributes:get_flags(?APP_NAME, Call),
     Routines = [fun get_offnet_flags/5
-               ,fun get_account_flags/5
                ,fun get_offnet_dynamic_flags/5
-               ,fun get_account_dynamic_flags/5
-               ,fun get_config_dynamic_flags/5
                ],
-    lists:foldl(fun(F, A) -> F(DIDOptions, ServerOptions, AccountOptions, Call, A) end, [], Routines).
+    lists:foldl(fun(F, A) -> F(DIDOptions, ServerOptions, AccountOptions, A) end, Flags, Routines).
 
--spec get_offnet_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) -> ne_binaries().
-get_offnet_flags(DIDOptions, ServerOptions, AccountOptions, _, Flags) ->
+-spec get_offnet_flags(kz_json:object(), kz_json:object(), kz_json:object(), ne_binaries()) -> ne_binaries().
+get_offnet_flags(DIDOptions, ServerOptions, AccountOptions, Flags) ->
     case ts_util:offnet_flags([kz_json:get_value(<<"DID_Opts">>, DIDOptions)
                               ,kz_json:get_value(<<"flags">>, ServerOptions)
                               ,kz_json:get_value(<<"flags">>, AccountOptions)
@@ -186,17 +183,6 @@ get_offnet_flags(DIDOptions, ServerOptions, AccountOptions, _, Flags) ->
     of
         'undefined' -> Flags;
         DIDFlags -> Flags ++ DIDFlags
-    end.
-
--spec get_account_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                               ne_binaries().
-get_account_flags(_, _, _, Call, Flags) ->
-    AccountId = kapps_call:account_id(Call),
-    case kz_account:fetch(AccountId) of
-        {'error', _E} -> Flags;
-        {'ok', AccountJObj} ->
-            AccountFlags = kz_json:get_list_value(<<"outbound_flags">>, AccountJObj, []),
-            AccountFlags ++ Flags
     end.
 
 get_offnet_dynamic_flags(_, ServerOptions, AccountOptions, Call, Flags) ->
@@ -207,27 +193,6 @@ get_offnet_dynamic_flags(_, ServerOptions, AccountOptions, Call, Flags) ->
         'undefined' -> Flags;
         DynamicFlags -> kz_attributes:process_dynamic_flags(DynamicFlags, Flags, Call)
     end.
-
--spec get_account_dynamic_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                               ne_binaries().
-get_account_dynamic_flags(_, _, _, Call, Flags) ->
-    AccountId = kapps_call:account_id(Call),
-    case kz_account:fetch(AccountId) of
-        {'error', _E} -> Flags;
-        {'ok', AccountJObj} ->
-            DynamicFlags = kz_json:get_list_value(<<"outbound_dynamic_flags">>, AccountJObj, []),
-            kz_attributes:process_dynamic_flags(DynamicFlags, Flags, Call)
-    end.
-
--spec get_config_dynamic_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                                       ne_binaries().
-get_config_dynamic_flags(_, _, _, Call, Flags) ->
-    DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
-                                           ,<<"trunkstore">>
-                                           ,<<"dynamic_flags">>
-                                           ,[]
-                                           ),
-    kz_attributes:process_dynamic_flags(DynamicFlags, Flags, Call).
 
 send_park(State, Command) ->
     case ts_callflow:send_park(State) of

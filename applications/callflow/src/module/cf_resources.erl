@@ -282,31 +282,11 @@ get_t38_enabled(Call) ->
 
 -spec get_flags(kz_json:object(), kapps_call:call()) -> api_binaries().
 get_flags(Data, Call) ->
-    Routines = [fun maybe_get_endpoint_flags/3
-               ,fun get_flow_flags/3
-               ,fun get_account_flags/3
+    Flags = kz_attributes:get_flags(?APP_NAME, Call),
+    Routines = [fun get_flow_flags/3
                ,fun get_flow_dynamic_flags/3
-               ,fun maybe_get_endpoint_dynamic_flags/3
-               ,fun get_account_dynamic_flags/3
                ],
-    lists:foldl(fun(F, A) -> F(Data, Call, A) end, [], Routines).
-
--spec maybe_get_endpoint_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                                      ne_binaries().
-maybe_get_endpoint_flags(_Data, Call, Flags) ->
-    case kz_endpoint:get(Call) of
-        {'error', _} -> Flags;
-        {'ok', Endpoint} ->
-            get_endpoint_flags(Flags, Endpoint)
-    end.
-
--spec get_endpoint_flags(ne_binaries(), kz_json:object()) ->
-                                ne_binaries().
-get_endpoint_flags(Flags, Endpoint) ->
-    case kz_json:get_list_value(<<"outbound_flags">>, Endpoint, []) of
-        [] -> Flags;
-        EndpointFlags -> EndpointFlags ++ Flags
-    end.
+    lists:foldl(fun(F, A) -> F(Data, Call, A) end, Flags, Routines).
 
 -spec get_flow_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
                             ne_binaries().
@@ -316,21 +296,6 @@ get_flow_flags(Data, _Call, Flags) ->
         FlowFlags -> FlowFlags ++ Flags
     end.
 
--spec get_account_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                               ne_binaries().
-get_account_flags(_Data, Call, Flags) ->
-    AccountId = kapps_call:account_id(Call),
-    case kz_account:fetch(AccountId) of
-        {'ok', AccountJObj} ->
-            AccountFlags = kz_json:get_list_value(<<"outbound_flags">>, AccountJObj, []),
-            AccountFlags ++ Flags;
-        {'error', _E} ->
-            lager:error("not applying account outbound flags for ~s: ~p"
-                       ,[AccountId, _E]
-                       ),
-            Flags
-    end.
-
 -spec get_flow_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
                                     ne_binaries().
 get_flow_dynamic_flags(Data, Call, Flags) ->
@@ -338,34 +303,6 @@ get_flow_dynamic_flags(Data, Call, Flags) ->
         'undefined' -> Flags;
         DynamicFlags -> kz_attributes:process_dynamic_flags(DynamicFlags, Flags, Call)
     end.
-
--spec maybe_get_endpoint_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                                              ne_binaries().
-maybe_get_endpoint_dynamic_flags(_Data, Call, Flags) ->
-    case kz_endpoint:get(Call) of
-        {'error', _} -> Flags;
-        {'ok', Endpoint} ->
-            get_endpoint_dynamic_flags(Call, Flags, Endpoint)
-    end.
-
--spec get_endpoint_dynamic_flags(kapps_call:call(), ne_binaries(), kz_json:object()) ->
-                                        ne_binaries().
-get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
-    case kz_json:get_list_value(<<"dynamic_flags">>, Endpoint) of
-        'undefined' -> Flags;
-        DynamicFlags ->
-            kz_attributes:process_dynamic_flags(DynamicFlags, Flags, Call)
-    end.
-
--spec get_account_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                                       ne_binaries().
-get_account_dynamic_flags(_, Call, Flags) ->
-    DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
-                                           ,<<"callflow">>
-                                           ,<<"dynamic_flags">>
-                                           ,[]
-                                           ),
-    kz_attributes:process_dynamic_flags(DynamicFlags, Flags, Call).
 
 -spec get_inception(kapps_call:call()) -> api_binary().
 get_inception(Call) ->
