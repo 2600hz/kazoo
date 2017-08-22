@@ -61,8 +61,11 @@ authorize(Context, _) -> is_authorize(Context).
 -spec is_authorize(cb_context:context()) -> boolean().
 is_authorize(Context) ->
     AccountId = cb_context:account_id(Context),
-    kz_term:is_not_empty(AccountId)
-        andalso kz_services:is_reseller(AccountId).
+    (kz_term:is_not_empty(AccountId)
+     andalso AccountId =:= cb_context:auth_account_id(Context)
+     andalso kz_services:is_reseller(AccountId)
+    )
+        orelse cb_context:is_superduper_admin(Context).
 
 
 %%--------------------------------------------------------------------
