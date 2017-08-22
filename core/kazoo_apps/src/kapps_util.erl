@@ -394,7 +394,7 @@ get_ccvs_by_ip(IP) ->
                                {'ok', kz_proplist()} |
                                {'error', 'not_found'}.
 do_get_ccvs_by_ip(IP) ->
-    case kapps_config:get_is_true(<<"registrar">>, <<"use_aggregrate">>, 'true')
+    case kapps_config:get_is_true(<<"registrar">>, <<"use_aggregate">>, 'true')
         andalso kz_datamgr:get_results(?KZ_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}])
     of
         {'ok', []} ->
