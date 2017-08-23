@@ -13,36 +13,6 @@
 
 -include("knm.hrl").
 
--ifdef(TEST).
--spec should_age() -> boolean().
-should_age() -> 'false'.
-
--spec should_permanently_delete() -> boolean().
-should_permanently_delete() -> 'false'.
-
--spec released_state() -> ne_binary().
-released_state() -> ?NUMBER_STATE_AVAILABLE.
-
--spec locality_url() -> api_ne_binary().
-locality_url() -> 'undefined'.
-
--spec should_force_outbound() -> boolean().
-should_force_outbound() -> 'false'.
-
--spec should_force_port_in_outbound() -> boolean().
-should_force_port_in_outbound() -> 'true'.
-
--spec should_force_port_out_outbound() -> boolean().
-should_force_port_out_outbound() -> 'true'.
-
--spec should_force_local_outbound() -> boolean().
-should_force_local_outbound() -> 'true'.
-
--spec should_fetch_account_from_ports() -> boolean().
-should_fetch_account_from_ports() -> 'true'.
-
--else.
-
 -define(LOCALITY_CONFIG_CAT, <<"number_manager.locality">>).
 
 -define(DEFAULT_LOCALITY_URL
@@ -84,5 +54,3 @@ should_force_port_out_outbound() ->
 -spec should_fetch_account_from_ports() -> boolean().
 should_fetch_account_from_ports() ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"fetch_account_from_ports">>, 'true').
-
--endif.

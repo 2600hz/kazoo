@@ -55,19 +55,12 @@
 
 -ifdef(TEST).
 -define(BW2_ACCOUNT_ID, "eunit_testing_account").
--define(IS_SANDBOX_PROVISIONING_TRUE, 'true').
--define(IS_PROVISIONING_ENABLED, 'true').
--define(BW2_ORDER_NAME_PREFIX, "Kazoo").
--define(BW2_SITE_ID, "").
--define(BW2_SIP_PEER, "").
--define(BW2_API_USERNAME, <<>>).
--define(BW2_API_PASSWORD, <<>>).
--define(MAX_SEARCH_QUANTITY, 500).
 -else.
-
 -define(BW2_ACCOUNT_ID
        ,kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"account_id">>, "")
        ).
+-endif.
+
 -define(IS_SANDBOX_PROVISIONING_TRUE
        ,kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')
        ).
@@ -94,7 +87,6 @@
 -define(MAX_SEARCH_QUANTITY
        ,kapps_config:get_pos_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 500)
        ).
--endif.
 
 -define(BW2_ORDER_POLL_INTERVAL, 2000).
 

@@ -39,15 +39,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -define(DEBUG_WRITE(Format, Args), ?debugFmt(Format, Args)).
 -define(DEBUG_APPEND(Format, Args), ?debugFmt(Format, Args)).
--define(IS_SANDBOX_PROVISIONING_TRUE, 'false').
--define(IS_PROVISIONING_ENABLED, 'true').
-
--define(VI_LOGIN, <<>>).
--define(VI_PASSWORD, <<>>).
--define(VI_ENDPOINT_GROUP, <<>>).
-
 -else.
-
 -define(VI_DEBUG, kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"debug">>, 'false')).
 -define(VI_DEBUG_FILE, "/tmp/voipinnovations.xml").
 -define(DEBUG_WRITE(Format, Args),
@@ -58,6 +50,8 @@
         _ = ?VI_DEBUG
         andalso file:write_file(?VI_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
+-endif.
+
 
 -define(IS_SANDBOX_PROVISIONING_TRUE
        ,kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')
@@ -69,8 +63,6 @@
 -define(VI_LOGIN, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"login">>, <<>>)).
 -define(VI_PASSWORD, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"password">>, <<>>)).
 -define(VI_ENDPOINT_GROUP, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"endpoint_group">>, <<>>)).
-
--endif.
 
 -define(URL_IN_USE
        ,case ?IS_SANDBOX_PROVISIONING_TRUE of

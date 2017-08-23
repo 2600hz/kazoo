@@ -21,21 +21,6 @@
 -export([features_denied/1]).
 -export([system_allowed_features/0]).
 
--define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
-
--ifdef(TEST).
--define(CNAM_PROVIDER(_AccountId), <<"knm_cnam_notifier">>).
--define(E911_PROVIDER(_AccountId), <<"knm_dash_e911">>).
--define(SYSTEM_PROVIDERS, 'undefined').
--record(feature_parameters, {is_local = false :: boolean()
-                            ,is_admin = false :: boolean()
-                            ,assigned_to :: api_ne_binary()
-                            ,used_by :: api_ne_binary()
-                            ,allowed_features = [] :: ne_binaries()
-                            ,denied_features = [] :: ne_binaries()
-                            ,num :: ne_binary() %% TEST-only
-                            }).
--else.
 -define(CNAM_PROVIDER(AccountId)
        ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, <<"knm_cnam_notifier">>)
        ).
@@ -45,6 +30,19 @@
        ).
 
 -define(SYSTEM_PROVIDERS, kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"providers">>)).
+
+-define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
+
+-ifdef(TEST).
+-record(feature_parameters, {is_local = false :: boolean()
+                            ,is_admin = false :: boolean()
+                            ,assigned_to :: api_ne_binary()
+                            ,used_by :: api_ne_binary()
+                            ,allowed_features = [] :: ne_binaries()
+                            ,denied_features = [] :: ne_binaries()
+                            ,num :: ne_binary() %% TEST-only
+                            }).
+-else.
 -record(feature_parameters, {is_local = false :: boolean()
                             ,is_admin = false :: boolean()
                             ,assigned_to :: api_ne_binary()
@@ -410,14 +408,14 @@ provider_module(Other, _) ->
 
 -ifdef(TEST).
 e911_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_e911">>;
-e911_provider(_AccountId) -> ?E911_PROVIDER(AccountId).
+e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
 -else.
 e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
 -endif.
 
 -ifdef(TEST).
 cnam_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_cnam">>;
-cnam_provider(_AccountId) -> ?CNAM_PROVIDER(AccountId).
+cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 -else.
 cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 -endif.

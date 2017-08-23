@@ -34,8 +34,6 @@
         ]).
 
 -ifdef(TEST).
--define(DEFAULT_CARRIER_MODULE, ?CARRIER_LOCAL).
--define(CARRIER_MODULES, ?DEFAULT_CARRIER_MODULES).
 -define(CARRIER_MODULES(AccountId)
        ,(fun (?CHILD_ACCOUNT_ID) ->
                  %% CHILD_ACCOUNT_ID is not a reseller but that's okay
@@ -43,19 +41,18 @@
              (_) -> ?CARRIER_MODULES
          end)(AccountId)).
 -else.
-
--define(DEFAULT_CARRIER_MODULE
-       ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)
+-define(CARRIER_MODULES(AccountId)
+       ,kapps_account_config:get_ne_binaries(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
        ).
+-endif.
 
 -define(CARRIER_MODULES
        ,kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)
        ).
 
--define(CARRIER_MODULES(AccountId)
-       ,kapps_account_config:get_ne_binaries(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
+-define(DEFAULT_CARRIER_MODULE
+       ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)
        ).
--endif.
 
 -define(DEFAULT_CARRIER_MODULES, [?DEFAULT_CARRIER_MODULE]).
 

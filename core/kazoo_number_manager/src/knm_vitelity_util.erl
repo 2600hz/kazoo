@@ -34,16 +34,12 @@
 
 -export_type([query_options/0]).
 
--ifdef(TEST).
--define(API_URL, <<"http://api.vitelity.net/api.php">>).
--else.
 -define(API_URL
        ,kapps_config:get_ne_binary(?KNM_VITELITY_CONFIG_CAT
                                   ,<<"api_uri">>
                                   ,<<"http://api.vitelity.net/api.php">>
                                   )
        ).
--endif.
 
 -spec api_uri() -> ne_binary().
 api_uri() -> ?API_URL.

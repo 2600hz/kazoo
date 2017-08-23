@@ -25,14 +25,14 @@
 
 -define(KNM_OTHER_CONFIG_CAT, <<?KNM_CONFIG_CAT/binary, ".other">>).
 
--ifdef(TEST).
--define(PHONEBOOK_URL, 'undefined').
--define(PHONEBOOK_URL(Options), props:get_value('phonebook_url', Options)).
--define(COUNTRY, ?KNM_DEFAULT_COUNTRY).
--else.
--define(PHONEBOOK_URL, kapps_config:get_ne_binary(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
--define(PHONEBOOK_URL(_Options), ?PHONEBOOK_URL).
 -define(COUNTRY, kapps_config:get_ne_binary(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY)).
+
+-define(PHONEBOOK_URL, kapps_config:get_ne_binary(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
+
+-ifdef(TEST).
+-define(PHONEBOOK_URL(Options), props:get_value('phonebook_url', Options)).
+-else.
+-define(PHONEBOOK_URL(_Options), ?PHONEBOOK_URL).
 -endif.
 
 -ifdef(TEST).

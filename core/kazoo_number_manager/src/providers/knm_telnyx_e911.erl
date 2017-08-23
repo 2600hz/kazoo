@@ -20,13 +20,9 @@
 
 -define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".telnyx">>).
 
--ifdef(TEST).
--define(IS_SANDBOX_PROVISIONING_TRUE, 'false').
--else.
 -define(IS_SANDBOX_PROVISIONING_TRUE
        ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')
        ).
--endif.
 
 %%--------------------------------------------------------------------
 %% @public

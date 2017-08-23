@@ -2,10 +2,6 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include("knm_phone_number.hrl").
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -define(APP, 'kazoo_number_manager').
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP_NAME, atom_to_binary(?APP, 'utf8')).
@@ -49,13 +45,6 @@
 
 -define(DEFAULT_FEATURES_ALLOWED_SYSTEM, ?ALL_KNM_FEATURES).
 
--ifdef(TEST).
--define(PORT_IN_MODULE_NAME, ?CARRIER_LOCAL).
--define(FEATURES_ALLOWED_RESELLER(_AccountId), 'undefined').
--define(FEATURES_DENIED_RESELLER(_AccountId), 'undefined').
--define(FEATURES_ALLOWED_SYSTEM(Default), Default).
--define(LOCAL_FEATURE_OVERRIDE, 'false').
--else.
 -define(PORT_IN_MODULE_NAME
        ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)
        ).
@@ -71,9 +60,9 @@
 -define(LOCAL_FEATURE_OVERRIDE
        ,kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"local_feature_override">>, 'false')
        ).
--endif.
 
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 -define(START_BLOCK, <<"+14158867900">>).
 -define(END_BLOCK, <<"+14158897909">>).
 

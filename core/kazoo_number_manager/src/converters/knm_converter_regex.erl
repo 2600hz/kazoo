@@ -26,13 +26,9 @@
           ,{<<"^[2-9]\\d{7,}\$">>, [{<<"prefix">>, <<"+">>}]}
           ])).
 
--ifdef(TEST).
--define(SYSTEM_E164_CONVERTERS, ?DEFAULT_E164_CONVERTERS).
--else.
 -define(SYSTEM_E164_CONVERTERS
        ,kapps_config:get_json(?KNM_CONFIG_CAT, ?KEY_E164_CONVERTERS, ?DEFAULT_E164_CONVERTERS)
        ).
--endif.
 
 -define(KEY_E164_CONVERTERS, <<"e164_converters">>).
 

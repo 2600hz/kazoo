@@ -77,13 +77,6 @@
                           ,{<<"unknown">>, ?CLASSIFIER_UNKNOWN}
                           ])).
 
--ifdef(TEST).
--define(DEFAULT_CONVERTER, ?DEFAULT_CONVERTER_B).
--define(RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX).
--define(CLASSIFIERS, ?DEFAULT_CLASSIFIERS).
-
--else.
-
 -define(DEFAULT_CONVERTER
        ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)
        ).
@@ -94,7 +87,6 @@
 -define(CLASSIFIERS
        ,kapps_config:get_json(?KNM_CONFIG_CAT, <<"classifiers">>, ?DEFAULT_CLASSIFIERS)
        ).
--endif.
 
 -define(RECONCILE_REGEX(AccountId)
        ,kapps_account_config:get_global(AccountId, ?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)
