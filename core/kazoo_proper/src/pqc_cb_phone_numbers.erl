@@ -140,16 +140,16 @@ command(Model) ->
     command(Model, pqc_kazoo_model:has_accounts(Model)).
 
 command(Model, 'false') ->
-    {'call', 'pqc_cb_accounts', 'create_account', [pqc_kazoo_model:api(Model), name()]};
+    pqc_cb_accounts:command(Model, name());
 command(Model, 'true') ->
     API = pqc_kazoo_model:api(Model),
-    AccountId = {'call', 'pqc_kazoo_model', 'account_id_by_name', [Model, name()]},
+    AccountId = pqc_cb_accounts:symbolic_account_id(Model, name()),
 
     oneof([{'call', ?MODULE, 'list_number', [API, AccountId, phone_number()]}
           ,{'call', ?MODULE, 'add_number', [API, AccountId, phone_number()]}
           ,{'call', ?MODULE, 'activate_number', [API, AccountId, phone_number()]}
           ,{'call', ?MODULE, 'remove_number', [API, AccountId, phone_number()]}
-          ,{'call', 'pqc_cb_accounts', 'create_account', [pqc_kazoo_model:api(Model), name()]}
+          ,pqc_cb_accounts:command(Model, name())
            %% ,{'call', ?MODULE, 'reserve_number', [API, name(), phone_number()]}
           ]).
 
@@ -160,14 +160,8 @@ phone_number() ->
     elements(?PHONE_NUMBERS).
 
 -spec next_state(pqc_kazoo_model:model(), any(), any()) -> pqc_kazoo_model:model().
-next_state(Model
-          ,APIResp
-          ,{'call', _, 'create_account', [_API, Name]}
-          ) ->
-    pqc_util:transition_if(Model
-                          ,[{fun pqc_kazoo_model:is_account_missing/2, [Name]}
-                           ,{fun pqc_kazoo_model:add_account/3, [Name, APIResp]}
-                           ]);
+next_state(Model, APIResp, {'call', _, 'create_account', _Args}=Call) ->
+    pqc_cb_accounts:next_state(Model, APIResp, Call);
 next_state(Model
           ,APIResp
           ,{'call', _, 'add_number', [_API, AccountId, Number]}
@@ -206,15 +200,10 @@ next_state(Model
 
 -spec postcondition(pqc_kazoo_model:model(), any(), any()) -> boolean().
 postcondition(Model
-             ,{'call', _, 'create_account', [_API, Name]}
+             ,{'call', _, 'create_account', [_API, _Name]}=Call
              ,APIResult
              ) ->
-    case pqc_kazoo_model:account_id_by_name(Model, Name) of
-        'undefined' ->
-            'undefined' =/= pqc_cb_response:account_id(APIResult);
-        _AccountId ->
-            500 =:= pqc_cb_response:error_code(APIResult)
-    end;
+    pqc_cb_accounts:postcondition(Model, Call, APIResult);
 postcondition(Model
              ,{'call', _, 'list_number', [_API, AccountId, Number]}
              ,APIResult

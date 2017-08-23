@@ -780,7 +780,7 @@ handle_cast({'event', MsgId, JObj}
     case UntilFun(Responses, Acc) of
         'true' ->
             lager:debug("responses have apparently met the criteria for the client, returning"),
-            lager:debug("response for msg id ~s took ~bus to return"
+            lager:debug("response for msg id ~s took ~bμs to return"
                        ,[MsgId, kz_time:elapsed_us(StartTime)]
                        ),
             gen_server:reply(From, {'ok', Responses}),

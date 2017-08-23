@@ -242,11 +242,13 @@ ensure_can_create(Num, Options) ->
         andalso ensure_number_is_not_porting(Num, Options).
 
 -ifdef(TEST).
--define(LOAD_ACCOUNT(Options, _AccountId),
-        {'ok', props:get_value(<<"auth_by_account">>, Options)}).
+-define(LOAD_ACCOUNT(Options, _AccountId)
+       ,{'ok', props:get_value(<<"auth_by_account">>, Options)}
+       ).
 -else.
--define(LOAD_ACCOUNT(_Options, AccountId),
-        kz_account:fetch(AccountId)).
+-define(LOAD_ACCOUNT(_Options, AccountId)
+       ,kz_account:fetch(AccountId)
+       ).
 -endif.
 
 -spec allow_number_additions(knm_number_options:options(), ne_binary()) -> boolean().
@@ -441,25 +443,28 @@ check_account(PN) ->
 
 -spec maybe_fetch_account_from_ports(ne_binary(), {error, any()}) -> lookup_account_return().
 maybe_fetch_account_from_ports(Num, Error) ->
-    case kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"fetch_account_from_ports">>, true) of
-        false -> Error;
-        true ->
-            case knm_port_request:get(Num) of
-                {error, _E} -> Error;
-                {ok, Port} ->
-                    AccountId = kz_doc:account_id(Port),
-                    Props = [{pending_port, true}
-                            ,{local, true}
-                            ,{number, Num}
-                            ,{account_id, AccountId}
-                             %% No prepend
-                            ,{inbound_cnam, false}
-                             %% No ringback_media
-                             %% No transfer_media
-                            ,{force_outbound, true}
-                            ],
-                    {ok, AccountId, Props}
-            end
+    case knm_config:should_fetch_account_from_ports() of
+        'false' -> Error;
+        'true' -> fetch_account_from_ports(Num, Error)
+    end.
+
+-spec fetch_account_from_ports(ne_binary(), {'error', any()}) -> lookup_account_return().
+fetch_account_from_ports(Num, Error) ->
+    case knm_port_request:get(Num) of
+        {error, _E} -> Error;
+        {ok, Port} ->
+            AccountId = kz_doc:account_id(Port),
+            Props = [{pending_port, true}
+                    ,{local, true}
+                    ,{number, Num}
+                    ,{account_id, AccountId}
+                     %% No prepend
+                    ,{inbound_cnam, false}
+                     %% No ringback_media
+                     %% No transfer_media
+                    ,{force_outbound, true}
+                    ],
+            {ok, AccountId, Props}
     end.
 
 %%--------------------------------------------------------------------
@@ -528,10 +533,10 @@ is_force_outbound(PN) ->
 
 -spec is_force_outbound(ne_binary(), ne_binary(), boolean()) -> boolean().
 is_force_outbound(?NUMBER_STATE_PORT_IN, Module, _ForceOutbound) ->
-    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_in_outbound">>, true)
+    knm_config:should_force_port_in_outbound()
         orelse force_module_outbound(Module);
 is_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
-    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_out_outbound">>, true)
+    knm_config:should_force_port_out_outbound()
         orelse force_module_outbound(Module);
 is_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
     force_local_outbound();
@@ -544,19 +549,18 @@ is_force_outbound(_State, _Module, ForceOutbound) ->
 -spec force_outbound_feature(knm_phone_number:knm_phone_number()) -> boolean().
 force_outbound_feature(PN) ->
     case knm_phone_number:feature(PN, ?FEATURE_FORCE_OUTBOUND) of
-        undefined -> kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"default_force_outbound">>, false);
+        'undefined' -> knm_config:should_force_outbound();
         FO -> kz_term:is_true(FO)
     end.
 
 -spec force_module_outbound(ne_binary()) -> boolean().
 force_module_outbound(?CARRIER_LOCAL) -> force_local_outbound();
 force_module_outbound(?CARRIER_MDN) -> force_local_outbound();
-force_module_outbound(_Mod) -> false.
+force_module_outbound(_Mod) -> 'false'.
 
 -spec force_local_outbound() -> boolean().
 force_local_outbound() ->
-    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_local_outbound">>, true).
-
+    knm_config:should_force_local_outbound().
 
 -spec phone_number(knm_number()) -> knm_phone_number:knm_phone_number().
 -spec set_phone_number(knm_number(), knm_phone_number:knm_phone_number()) ->
