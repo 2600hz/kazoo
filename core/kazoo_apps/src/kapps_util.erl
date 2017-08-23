@@ -25,8 +25,10 @@
         ,is_account_mod/1
         ]).
 -export([get_account_by_realm/1
-        ,get_account_by_ip/1, get_ccvs_by_ip/1
+        ,get_ccvs_by_ip/1
         ,get_accounts_by_name/1
+
+        ,are_all_enabled/1
         ]).
 -export([get_master_account_id/0
         ,get_master_account_db/0
@@ -377,14 +379,6 @@ get_account_by_realm(RawRealm) ->
     Realm = kz_term:to_lower_binary(RawRealm),
     get_accounts_by(Realm, ?ACCT_BY_REALM_CACHE(Realm), ?AGG_LIST_BY_REALM).
 
--spec get_account_by_ip(ne_binary()) -> getby_return().
-get_account_by_ip(IP) ->
-    case get_ccvs_by_ip(IP) of
-        {'error', 'not_found'}=E -> E;
-        {'ok', AccountCCVs} ->
-            {'ok', props:get_value(<<"Account-ID">>, AccountCCVs)}
-    end.
-
 -spec get_ccvs_by_ip(ne_binary()) ->
                             {'ok', kz_proplist()} |
                             {'error', 'not_found'}.
@@ -399,7 +393,9 @@ get_ccvs_by_ip(IP) ->
                                {'ok', kz_proplist()} |
                                {'error', 'not_found'}.
 do_get_ccvs_by_ip(IP) ->
-    case kz_datamgr:get_results(?KZ_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}]) of
+    case kapps_config:get_is_true(<<"registrar">>, <<"use_aggregate">>, 'true')
+        andalso kz_datamgr:get_results(?KZ_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}])
+    of
         {'ok', []} ->
             NotF = {'error', 'not_found'},
             lager:debug("no entry in ~s for IP: ~s", [?KZ_SIP_DB, IP]),
@@ -417,17 +413,62 @@ do_get_ccvs_by_ip(IP) ->
 
 -spec account_ccvs_from_ip_auth(kz_json:object()) -> kz_proplist().
 account_ccvs_from_ip_auth(Doc) ->
-    AccountID = kz_json:get_value([<<"value">>, <<"account_id">>], Doc),
-    OwnerID = kz_json:get_value([<<"value">>, <<"owner_id">>], Doc),
+    AccountId = kz_json:get_value([<<"value">>, <<"account_id">>], Doc),
+    OwnerId = kz_json:get_value([<<"value">>, <<"owner_id">>], Doc),
     AuthType = kz_json:get_value([<<"value">>, <<"authorizing_type">>], Doc, <<"anonymous">>),
 
-    props:filter_undefined(
-      [{<<"Account-ID">>, AccountID}
-      ,{<<"Owner-ID">>, OwnerID}
-      ,{<<"Authorizing-ID">>, kz_doc:id(Doc)}
-      ,{<<"Inception">>, <<"on-net">>}
-      ,{<<"Authorizing-Type">>, AuthType}
-      ]).
+    case are_all_enabled([{<<"account">>, AccountId}
+                         ,{<<"owner">>, OwnerId}
+                         ,{AuthType, kz_doc:id(Doc)}
+                         ])
+    of
+        {'false', _Reason} ->
+            lager:notice("no IP auth info: ~p", [_Reason]),
+            [];
+        'true' ->
+            props:filter_undefined(
+              [{<<"Account-ID">>, AccountId}
+              ,{<<"Owner-ID">>, OwnerId}
+              ,{<<"Authorizing-ID">>, kz_doc:id(Doc)}
+              ,{<<"Inception">>, <<"on-net">>}
+              ,{<<"Authorizing-Type">>, AuthType}
+              ])
+    end.
+
+-type not_enabled_error() :: 'device_disabled' |
+                             'owner_disabled' |
+                             'account_disabled'.
+-spec are_all_enabled(kz_proplist()) ->
+                             'true' |
+                             {'false', {not_enabled_error(), ne_binary()}}.
+are_all_enabled(Things) ->
+    ?MATCH_ACCOUNT_RAW(AccountId) = props:get_value(<<"account">>, Things),
+    try lists:all(fun(Thing) -> is_enabled(AccountId, Thing) end, Things)
+    catch
+        'throw':{'error', Reason} -> {'false', Reason}
+    end.
+
+-spec is_enabled(ne_binary(), {ne_binary(), api_ne_binary()}) -> boolean().
+is_enabled(_AccountId, {_Type, 'undefined'}) -> 'true';
+is_enabled(AccountId, {<<"device">>, DeviceId}) ->
+    Default = kapps_config:get_is_true(<<"registrar">>, <<"device_enabled_default">>, 'true'),
+    {'ok', DeviceJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DeviceId),
+    kz_device:enabled(DeviceJObj, Default)
+        orelse throw({'error', {'device_disabled', DeviceId}});
+is_enabled(AccountId, {<<"owner">>, OwnerId}) ->
+    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of
+        {'ok', UserJObj} ->
+            Default = kapps_config:get_is_true(<<"registrar">>, <<"owner_enabled_default">>, 'true'),
+            kzd_user:is_enabled(UserJObj, Default)
+                orelse throw({'error', {'owner_disabled', OwnerId}});
+        {'error', _R} ->
+            lager:debug("unable to fetch owner doc ~s: ~p", [OwnerId, _R]),
+            'true'
+    end;
+is_enabled(AccountId, {<<"account">>, AccountId}) ->
+    kz_util:is_account_enabled(AccountId)
+        orelse throw({'error', {'account_disabled', AccountId}});
+is_enabled(_AccountId, {_Type, _Thing}) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
