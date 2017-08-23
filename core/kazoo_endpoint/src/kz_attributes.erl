@@ -583,7 +583,7 @@ get_flags(ApplicationName, Call) ->
     sets:to_list(sets:from_list(Flags)).
 
 -spec maybe_get_endpoint_static_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
-                                      ne_binaries().
+                                             ne_binaries().
 maybe_get_endpoint_static_flags(_, Call, Flags) ->
     case kz_endpoint:get(Call) of
         {'error', _R} -> Flags;
@@ -592,7 +592,7 @@ maybe_get_endpoint_static_flags(_, Call, Flags) ->
     end.
 
 -spec get_endpoint_static_flags(ne_binaries(), kz_json:object()) ->
-                                ne_binaries().
+                                       ne_binaries().
 get_endpoint_static_flags(Flags, Endpoint) ->
     case kz_device:outbound_static_flags(Endpoint) of
         [] -> Flags;
@@ -600,7 +600,7 @@ get_endpoint_static_flags(Flags, Endpoint) ->
     end.
 
 -spec get_account_static_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
-                               ne_binaries().
+                                      ne_binaries().
 get_account_static_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
@@ -613,7 +613,7 @@ get_account_static_flags(_, Call, Flags) ->
     end.
 
 -spec get_config_static_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
-                                       ne_binaries().
+                                     ne_binaries().
 get_config_static_flags(ApplicationName, Call, Flags) ->
     case kapps_account_config:get(kapps_call:account_id(Call)
                                  ,ApplicationName
@@ -642,7 +642,7 @@ get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
     end.
 
 -spec get_account_dynamic_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
-                               ne_binaries().
+                                       ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
@@ -656,7 +656,7 @@ get_account_dynamic_flags(_, Call, Flags) ->
     end.
 
 -spec get_config_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                                       ne_binaries().
+                                      ne_binaries().
 get_config_dynamic_flags(ApplicationName, Call, Flags) ->
     DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
                                            ,ApplicationName

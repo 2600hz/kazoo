@@ -41,7 +41,7 @@ get_flags_callflow_test_() ->
                     ,<<"device_old_static_flag">>
                     ,<<"user0000000000000000000000000003">>
                     ,<<"account_new_static_flag">>
-                  ],
+                    ],
     [{"verify that get flags will pull the static and dynamic flags from all sources with old formats"
      ,?_assertEqual(ExpectedOld, kz_attributes:get_flags(<<"callflows">>, Call))
      }

@@ -97,13 +97,13 @@ parent_account_id_test_() ->
     {'ok', SubSubAccount} = kz_account:fetch(?SUB_SUB_ACCOUNT_ID),
     [{"verify that fetching the parent id of the master account returns 'undefined'"
      ,?_assertEqual('undefined', kz_account:parent_account_id(MasterAccount))
-    }
+     }
     ,{"verify that fetching the parent id of sub account is the master account"
       ,?_assertEqual(?MASTER_ACCOUNT_ID, kz_account:parent_account_id(SubAccount))
      }
     ,{"verify fetching the parent id of a sub-sub account is the direct ancestor"
      ,?_assertEqual(?SUB_ACCOUNT_ID, kz_account:parent_account_id(SubSubAccount))
-    }
+     }
     ].
 
 tree_test_() ->

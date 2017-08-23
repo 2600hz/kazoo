@@ -729,7 +729,8 @@ is_trial_account(JObj) ->
 %%--------------------------------------------------------------------
 -spec is_reseller(doc()) -> boolean().
 is_reseller(JObj) ->
-    kz_json:is_true(?RESELLER, JObj) orelse is_superduper_admin(JObj).
+    kz_json:is_true(?RESELLER, JObj)
+        orelse is_superduper_admin(JObj).
 
 %%--------------------------------------------------------------------
 %% @public

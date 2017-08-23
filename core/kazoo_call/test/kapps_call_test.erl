@@ -47,24 +47,24 @@ encode_decode_test() ->
     ?assert(kapps_call:eq(Call, Call1)).
 
 ensure_prepend_cid_name_kvs_test_() ->
-   RouteReq = kz_json:set_value(<<"Prepend-CID-Name">>
-                               ,<<"prepend">>
-                               ,inbound_onnet_callflow_req()
-                               ),
-   Call = kapps_call:from_route_req(RouteReq),
-  [{"verify that the CCV prepend CID name is moved to the KVS"
-   ,?_assertEqual({'ok', <<"prepend">>}, kapps_call:kvs_find('prepend_cid_name', Call))}
-  ].
+    RouteReq = kz_json:set_value(<<"Prepend-CID-Name">>
+                                ,<<"prepend">>
+                                ,inbound_onnet_callflow_req()
+                                ),
+    Call = kapps_call:from_route_req(RouteReq),
+    [{"verify that the CCV prepend CID name is moved to the KVS"
+    ,?_assertEqual({'ok', <<"prepend">>}, kapps_call:kvs_find('prepend_cid_name', Call))}
+    ].
 
 ensure_call_id_binary_test_() ->
-   RouteReq = kz_json:set_value(<<"Call-ID">>
-                               ,'atom'
-                               ,inbound_onnet_callflow_req()
-                               ),
-   Call = kapps_call:from_route_req(RouteReq),
-  [{"verify that the call id is always returned as a binary"
-   ,?_assertEqual(<<"atom">>, kapps_call:call_id(Call))}
-  ].
+    RouteReq = kz_json:set_value(<<"Call-ID">>
+                                ,'atom'
+                                ,inbound_onnet_callflow_req()
+                                ),
+    Call = kapps_call:from_route_req(RouteReq),
+    [{"verify that the call id is always returned as a binary"
+    ,?_assertEqual(<<"atom">>, kapps_call:call_id(Call))}
+    ].
 
 validate_kapps_call_basic(Call) ->
     [{"verify the caller id name is the expected value"
