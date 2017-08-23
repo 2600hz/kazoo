@@ -48,7 +48,7 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     case ?IS_ENABLED of
-        'true' -> gen_statem:start_link(?SERVER, [], []);
+        'true' -> gen_fsm:start_link(?SERVER, [], []);
         'false' -> 'ignore'
     end.
 
@@ -59,13 +59,13 @@ start_link() ->
 init(_Args) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(?MODULE),
-    erlang:send_after(?CRAWLER_CYCLE_MS, self(), 'start_cycle'),
+    gen_fsm:send_event_after(?CRAWLER_CYCLE_MS, 'start_cycle'),
     {'ok', 'idle', 'undefined'}.
 
 -spec handle_info(any(), atom(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 handle_info({'EXIT', WorkerPid, Reason}, StateName, WorkerPid) ->
     lager:debug("worker: ~p exited with reason ~p", [WorkerPid, Reason]),
-    gen_statem:cast(self(), 'worker_stop'),
+    gen_fsm:send_event(self(), 'worker_stop'),
     {'next_state', StateName, WorkerPid};
 
 handle_info(_Info, StateName, State) ->
@@ -110,9 +110,7 @@ worker_timeout('worker_stop', _OldWorkerPid) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
 spawn_worker(Timeout) when Timeout >= 10 * ?MILLISECONDS_IN_SECOND ->
-    erlang:send_after(Timeout, self(), 'start_cycle'),
+    gen_fsm:send_event_after(Timeout, 'start_cycle'),
     kz_util:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
-spawn_worker(_) ->
-    spawn_worker(?MILLISECONDS_IN_MINUTE).
+spawn_worker(_) -> spawn_worker(?MILLISECONDS_IN_MINUTE).
