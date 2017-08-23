@@ -1062,8 +1062,8 @@ no_prune([K], JObj) when not is_list(JObj) ->
         [] -> new();
         L -> from_list(L)
     end;
-no_prune([K|T], Array) when is_list(Array) ->
-    {Less, [V|More]} = lists:split(kz_term:to_integer(K)-1, Array),
+no_prune([K|T], Array) when is_list(Array), is_integer(K) ->
+    {Less, [V|More]} = lists:split(K-1, Array),
     case {is_json_object(V), T, V} of
         {'true', [_|_]=Keys, JObj} ->
             Less ++ [no_prune(Keys, JObj)] ++ More;
