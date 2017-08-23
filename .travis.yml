@@ -8,7 +8,6 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
-  - 20.0
   - 19.3
 
 sudo: required
