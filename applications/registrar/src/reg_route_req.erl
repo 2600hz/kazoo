@@ -10,6 +10,7 @@
 
 -export([init/0
         ,handle_route_req/2
+        ,lookup_account_by_ip/1
         ]).
 
 -include("reg.hrl").
@@ -36,7 +37,7 @@ maybe_replay_route_req(JObj, CCVs) ->
 maybe_replay_route_req(_JObj, _CCVs, 'undefined') ->
     lager:debug("failing to reply route req with no IP to use");
 maybe_replay_route_req(JObj, CCVs, IP) ->
-    case reg_authn_req:lookup_account_by_ip(IP) of
+    case lookup_account_by_ip(IP) of
         {'ok', AccountCCVs} ->
             lager:debug("route req was missing account information, loading from IP ~s and replaying", [IP]),
             kapi_route:publish_req(
@@ -48,3 +49,17 @@ maybe_replay_route_req(JObj, CCVs, IP) ->
         {'error', _E} ->
             lager:debug("failed to find account information from IP ~s, not replaying route req", [IP])
     end.
+
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% lookup auth by IP in cache/database and return the result
+%% @end
+%%-----------------------------------------------------------------------------
+-spec lookup_account_by_ip(ne_binary()) ->
+                                  {'ok', kz_proplist()} |
+                                  {'error', 'not_founnd'}.
+lookup_account_by_ip(IP) ->
+    lager:debug("looking up IP: ~s in db ~s", [IP, ?KZ_SIP_DB]),
+    kapps_util:get_ccvs_by_ip(IP).

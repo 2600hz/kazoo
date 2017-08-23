@@ -9,9 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(kapps_maintenance).
 
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
--include("kazoo_apps.hrl").
-
 -export([rebuild_token_auth/0
         ,rebuild_token_auth/1
         ]).
@@ -51,6 +48,12 @@
 -export([migrate_system/0]).
 
 -export([bind/3, unbind/3]).
+
+-export([flush_getby_cache/0]).
+
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_caches/include/kazoo_caches.hrl").
+-include("kazoo_apps.hrl").
 
 binding('migrate') -> <<"maintenance.migrate">>;
 binding('refresh') -> <<"maintenance.refresh">>;
@@ -1288,3 +1291,8 @@ handle_module_rename_doc(JObj) ->
                 {'error', _Error} -> 'false'
             end
     end.
+
+-spec flush_getby_cache() -> 'ok'.
+flush_getby_cache() ->
+    kz_cache:flush_local(?KAPPS_GETBY_CACHE),
+    'ok'.
