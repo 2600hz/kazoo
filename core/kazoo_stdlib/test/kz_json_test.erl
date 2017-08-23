@@ -758,6 +758,13 @@ merge_vs_merge_recursive_test_() ->
     ,?_assert(kz_json:are_equal(M3, ?REQUEST))
     ].
 
+set_value_test_() ->
+    JObj = kz_json:from_list([{<<189>>,[]}]),
+    Key = [<<189>>,<<0>>],
+    Value = null,
+    JObj1 = kz_json:set_value(Key, Value, JObj),
+    [{"prop_set_value error", ?_assertEqual(Value, kz_json:get_value(Key, JObj1, Value))}].
+
 -ifdef(PERF).
 -define(REPEAT, 100000).
 
