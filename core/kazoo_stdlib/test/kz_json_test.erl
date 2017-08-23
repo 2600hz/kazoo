@@ -758,7 +758,7 @@ merge_vs_merge_recursive_test_() ->
     ,?_assert(kz_json:are_equal(M3, ?REQUEST))
     ].
 
-prop_set_value_test_() ->
+set_value_test_() ->
     JObj = kz_json:from_list([{<<189>>,[]}]),
     Key = [<<189>>,<<0>>],
     Value = null,
