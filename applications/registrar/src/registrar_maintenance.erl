@@ -18,7 +18,7 @@ device_by_ip(IP) when not is_binary(IP) ->
     device_by_ip(kz_term:to_binary(IP));
 device_by_ip(IP) ->
     io:format("Looking up IP: ~s~n", [IP]),
-    case reg_authn_req:lookup_account_by_ip(IP) of
+    case reg_route_req:lookup_account_by_ip(IP) of
         {'ok', AccountProps} ->
             pretty_print_device_by_ip(AccountProps);
         {'error', _E} ->
