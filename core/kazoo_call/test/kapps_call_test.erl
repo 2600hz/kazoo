@@ -53,7 +53,8 @@ ensure_prepend_cid_name_kvs_test_() ->
                                 ),
     Call = kapps_call:from_route_req(RouteReq),
     [{"verify that the CCV prepend CID name is moved to the KVS"
-    ,?_assertEqual({'ok', <<"prepend">>}, kapps_call:kvs_find('prepend_cid_name', Call))}
+     ,?_assertEqual({'ok', <<"prepend">>}, kapps_call:kvs_find('prepend_cid_name', Call))
+     }
     ].
 
 ensure_call_id_binary_test_() ->
@@ -63,7 +64,8 @@ ensure_call_id_binary_test_() ->
                                 ),
     Call = kapps_call:from_route_req(RouteReq),
     [{"verify that the call id is always returned as a binary"
-    ,?_assertEqual(<<"atom">>, kapps_call:call_id(Call))}
+     ,?_assertEqual(<<"atom">>, kapps_call:call_id(Call))
+     }
     ].
 
 validate_kapps_call_basic(Call) ->

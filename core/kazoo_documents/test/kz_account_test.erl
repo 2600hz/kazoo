@@ -42,7 +42,7 @@ new_test_() ->
 type_test_() ->
     [{"validate type returns the expected value", ?_assertEqual(<<"account">>, kz_account:type())}].
 
-id_test_() -> 
+id_test_() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     [{"validate id returns the expected value", ?_assertEqual(?MASTER_ACCOUNT_ID, kz_account:id(MasterAccount))}].
 
@@ -99,7 +99,7 @@ parent_account_id_test_() ->
      ,?_assertEqual('undefined', kz_account:parent_account_id(MasterAccount))
      }
     ,{"verify that fetching the parent id of sub account is the master account"
-      ,?_assertEqual(?MASTER_ACCOUNT_ID, kz_account:parent_account_id(SubAccount))
+     ,?_assertEqual(?MASTER_ACCOUNT_ID, kz_account:parent_account_id(SubAccount))
      }
     ,{"verify fetching the parent id of a sub-sub account is the direct ancestor"
      ,?_assertEqual(?SUB_ACCOUNT_ID, kz_account:parent_account_id(SubSubAccount))
