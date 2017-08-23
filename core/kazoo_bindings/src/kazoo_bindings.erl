@@ -665,6 +665,12 @@ fold_bind_results([#kz_responder{module=M
         {'error', _E}=E ->
             lager:debug("error: ~p", [_E]),
             E;
+        {'EXIT', {'undef', [{_M, _F, _A, _}|_]}} ->
+            lager:debug("undefined function ~s:~s/~b", [M, F, length(Payload)]),
+            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
+        {'EXIT', _E} ->
+            lager:error("~s:~s/~p died unexpectedly: ~p", [M, F, length(Payload), _E]),
+            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         'ok' ->
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         Pay1 ->
