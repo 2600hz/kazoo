@@ -12,6 +12,9 @@
         ,restore_system_templates/0
         ,restore_system_template/1
         ]).
+-export([remove_customization/1, remove_customization/2
+        ,force_system_default/1, force_system_default/2
+        ]).
 -export([renderer_status/0]).
 -export([start_module/1
         ,stop_module/1
@@ -76,7 +79,7 @@ default_receipt_printing(Receipt) ->
 
 -spec restore_system_templates() -> ok.
 restore_system_templates() ->
-    lists:foreach(fun restore_system_template/1, list_system_templates()).
+    lists:foreach(fun restore_system_template/1, list_templates_from_db(?KZ_CONFIG_DB)).
 
 -spec restore_system_template(ne_binary()) -> ok.
 restore_system_template(<<"skel">>) -> 'ok';
@@ -95,18 +98,78 @@ restore_system_template(TemplateId) ->
     catch(Mod:init()),
     io:format("  finished~n").
 
-list_system_templates() ->
-    case kz_datamgr:all_docs(?KZ_CONFIG_DB
+-spec list_templates_from_db(ne_binary()) -> ne_binaries().
+list_templates_from_db(Db) ->
+    case kz_datamgr:all_docs(Db
                             ,[{'startkey', <<"notification.">>}
                              ,{'endkey', <<"notification.zzz">>}
                              ]
                             )
     of
         {'ok', Results} ->
-            [kz_json:get_value(<<"key">>, Result) || Result <- Results];
+            [kz_doc:id(Result) || Result <- Results];
         {'error', _E} ->
             io:format("failed to query existing notifications: ~p~n", [_E]),
             []
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Remove Template Customization from an account
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_customization(ne_binary()) -> 'no_return'.
+remove_customization(Account) ->
+    remove_customization(Account, list_templates_from_db(kz_util:format_account_db(Account))).
+
+-spec remove_customization(ne_binary(), ne_binary() | ne_binaries()) -> 'no_return'.
+remove_customization(Account, Id) when is_binary(Id) ->
+    remove_customization(Account, [kz_notification:db_id(Id)]);
+remove_customization(_Account, []) ->
+    io:format(":: no template customization(s) found for ~s~n", [_Account]),
+    'no_return';
+remove_customization(Account, Ids) ->
+    io:format(":: removing ~b template customization(s) from ~s~n", [length(Ids), Account]),
+    case kz_datamgr:del_docs(kz_util:format_account_db(Account), Ids) of
+        {'ok', JObjs} ->
+            _ = [io:format("  ~s: ~s~n", [kz_notification:resp_id(kz_doc:id(J)), kz_json:get_value(<<"error">>, J, <<"deleted">>)])
+                 || J <- JObjs
+                ],
+            'no_return';
+        {'error', _Reason} ->
+            io:format("failed to remove customization: ~p", [_Reason]),
+            'no_return'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Forcing System's Templates to an account by first removing
+%% account's customization and then copy the templates from
+%% system_config to account's db.
+%% @end
+%%--------------------------------------------------------------------
+-spec force_system_default(ne_binary()) -> 'no_return'.
+force_system_default(Account) ->
+    force_system_default(Account, list_templates_from_db(?KZ_CONFIG_DB)).
+
+-spec force_system_default(ne_binary(), ne_binary() | ne_binaries()) -> 'no_return'.
+force_system_default(Account, Id) when is_binary(Id) ->
+    force_system_default(Account, [kz_notification:db_id(Id)]);
+force_system_default(_Account, []) -> 'no_return';
+force_system_default(Account, Ids) ->
+    _ = remove_customization(Account),
+    io:format("~n:: forcing ~b system default template(s) for account ~s~n", [length(Ids), Account]),
+    AccountDb = kz_util:format_account_db(Account),
+    _ = [copy_from_system_to_account(AccountDb, Id) || Id <- Ids],
+    'no_return'.
+
+-spec copy_from_system_to_account(ne_binary(), ne_binary()) -> 'ok'.
+copy_from_system_to_account(AccountDb, Id) ->
+    case kz_datamgr:copy_doc(?KZ_CONFIG_DB, Id, AccountDb, Id, []) of
+        {'ok', _} -> io:format("  ~s: done~n", [kz_notification:resp_id(Id)]);
+        {'error', _Reason} -> io:format("  ~s: ~p~n", [kz_notification:resp_id(Id), _Reason])
     end.
 
 -spec renderer_status() -> 'no_return'.
