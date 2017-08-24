@@ -12,6 +12,7 @@
         ]).
 
 -include_lib("eunit/include/eunit.hrl").
+-define(APP, kazoo_call).
 
 -define(UPDATERS, [fun(C) -> kapps_call:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
                   ,fun(C) -> kapps_call:set_custom_channel_var(<<"key2">>, 2600, C) end
@@ -22,13 +23,13 @@
                   ]).
 
 callflow_route_request_test_() ->
-    RouteReq = kz_json:load_fixture_from_file('kazoo_call', "fixtures/route_req", "inbound-onnet-callflow.json"),
+    RouteReq = kz_json:load_fixture_from_file(?APP, "fixtures/route_req", "inbound-onnet-callflow.json"),
     'true' = kapi_route:req_v(RouteReq),
     Call = kapps_call:from_route_req(RouteReq),
     validate_kapps_call_basic(Call) ++ validate_kapps_call_callflow_req(Call).
 
 trunkstore_route_request_test_() ->
-    RouteReq = kz_json:load_fixture_from_file('kazoo_call', "fixtures/route_req", "inbound-onnet-trunkstore.json"),
+    RouteReq = kz_json:load_fixture_from_file(?APP, "fixtures/route_req", "inbound-onnet-trunkstore.json"),
     'true' = kapi_route:req_v(RouteReq),
     Call = kapps_call:from_route_req(RouteReq),
     validate_kapps_call_basic(Call) ++ validate_kapps_call_trunkstore_req(Call).
@@ -266,12 +267,12 @@ create_callflow_call() ->
     kapps_call:from_route_win(RouteWin, kapps_call:from_route_req(RouteReq)).
 
 inbound_onnet_callflow_req() ->
-    RouteReq = kz_json:load_fixture_from_file('kazoo_call', "fixtures/route_req", "inbound-onnet-callflow.json"),
+    RouteReq = kz_json:load_fixture_from_file(?APP, "fixtures/route_req", "inbound-onnet-callflow.json"),
     'true' = kapi_route:req_v(RouteReq),
     RouteReq.
 
 inbound_onnet_callflow_win() ->
-    RouteWin = kz_json:load_fixture_from_file('kazoo_call', "fixtures/route_win", "inbound-onnet-callflow.json"),
+    RouteWin = kz_json:load_fixture_from_file(?APP, "fixtures/route_win", "inbound-onnet-callflow.json"),
     'true' = kapi_route:win_v(RouteWin),
     RouteWin.
 
@@ -281,11 +282,11 @@ create_trunkstore_call() ->
     kapps_call:from_route_win(RouteWin, kapps_call:from_route_req(RouteReq)).
 
 inbound_onnet_trunkstore_req() ->
-    RouteReq = kz_json:load_fixture_from_file('kazoo_call', "fixtures/route_req", "inbound-onnet-trunkstore.json"),
+    RouteReq = kz_json:load_fixture_from_file(?APP, "fixtures/route_req", "inbound-onnet-trunkstore.json"),
     'true' = kapi_route:req_v(RouteReq),
     RouteReq.
 
 inbound_onnet_trunkstore_win() ->
-    RouteWin = kz_json:load_fixture_from_file('kazoo_call', "fixtures/route_win", "inbound-onnet-trunkstore.json"),
+    RouteWin = kz_json:load_fixture_from_file(?APP, "fixtures/route_win", "inbound-onnet-trunkstore.json"),
     'true' = kapi_route:win_v(RouteWin),
     RouteWin.
