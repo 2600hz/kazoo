@@ -63,6 +63,7 @@
 -export([write_file/2, write_file/3
         ,rename_file/2
         ,delete_file/1
+        ,delete_dir/1
         ,make_dir/1
         ]).
 
