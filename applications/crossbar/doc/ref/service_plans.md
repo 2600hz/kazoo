@@ -58,7 +58,7 @@ Key | Description | Type | Default | Required
 `activation_charge` | What to charge when activating an Item | `number()` |   | `false`
 `as` | Count Item as if it was another Item | `string()` |   | `false`
 `cascade` | Whether to count quantities among all sub-accounts or just the account | `boolean()` |   | `false`
-`cumulative_discount` | Whether to give a discount based on quatities of the account and all sub-accounts | `boolean()` |   | `false`
+`cumulative_discount` | Whether to give a discount based on quantities of the account and all sub-accounts | `boolean()` |   | `false`
 `cumulative_discount_rate` | How much of a discount to apply | `number()` |   | `false`
 `discounts.cumulative.maximum` | The most number of Items to apply discount to | `integer()` |   | `false`
 `discounts.cumulative.rate` | The discount to apply, up to maximum Items (if applicable) | `number()` |   | `false`
