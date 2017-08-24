@@ -643,7 +643,7 @@ update_macro(MacroKey, MacroValue, {_IsUpdated, TemplateJObj}=Acc) ->
 %%--------------------------------------------------------------------
 -spec attachment_name(ne_binary()) -> ne_binary().
 attachment_name(ContentType) ->
-    kz_binary:clean(<<"template.", (kz_http_util:urlencode(ContentType))/binary>>).
+    kz_binary:clean(<<"template.", ContentType/binary>>).
 
 %%--------------------------------------------------------------------
 %% @private

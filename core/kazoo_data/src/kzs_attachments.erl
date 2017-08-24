@@ -110,7 +110,8 @@ relay_stream_attachment(Caller, Ref, Bin) ->
                             {'ok', kz_json:object()} |
                             data_error().
 put_attachment(#{att_handler := {Handler, Params}}=Map
-              ,DbName, DocId, AName, Contents, Options) ->
+              ,DbName, DocId, AttName, Contents, Options) ->
+    AName = kz_http_util:urlencode(AttName),
     case Handler:put_attachment(Params, DbName, DocId, AName, Contents, Options) of
         {'ok', Props} ->
             CT = props:get_value('content_type', Options, kz_mime:from_filename(AName)),
@@ -119,7 +120,8 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
             handle_put_attachment(Map, Att, DbName, DocId, AName, Contents, Options, Props);
         {'error', _} = E -> E
     end;
-put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
+put_attachment(#{server := {App, Conn}}, DbName, DocId, AttName, Contents, Options) ->
+    AName = kz_http_util:urlencode(AttName),
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:put_attachment(Conn, DbName, DocId, AName, Contents, Options).
 
