@@ -493,8 +493,10 @@ order_by(Path, Ids, ListOfJObjs)
         ],
     [erase(Id) || Id <- Ids].
 
--spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
--spec to_proplist(path(), object() | objects()) -> json_proplist() | json_proplists().
+-spec to_proplist(object() | objects()) ->
+                         json_proplist() | json_proplists() | flat_proplist().
+-spec to_proplist(path(), object() | objects()) ->
+                         json_proplist() | json_proplists() | flat_proplist().
 %% Convert a json object to a proplist
 %% only top-level conversion is supported
 to_proplist(JObjs) when is_list(JObjs) -> [to_proplist(JObj) || JObj <- JObjs];

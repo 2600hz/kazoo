@@ -255,7 +255,7 @@ process_schema(Filename, Definitions) ->
                     false -> KV;
                     true -> {Path, maybe_fix_ref(V)}
                 end
-                || {Path,V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
+                || {Path, V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
                    not lists:member(<<"patternProperties">>, Path),
                    not lists:member(<<"kazoo-validation">>, Path),
                    not lists:member(<<"oneOf">>, Path)
