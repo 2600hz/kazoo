@@ -2,7 +2,9 @@
 
 Allow managing templates for notification emails.
 
-#### About Notifications Structure
+#### About Notifications
+
+Flowing is a basic structure of a notification object (here it is a digest of `voicemail_to_email` notification).
 
 ```json
 {
@@ -12,8 +14,7 @@ Allow managing templates for notification emails.
       "i18n_label": "voicemail_vmbox_id",
       "friendly_name": "Voicemail Box Id",
       "description": "Which voicemail box was the message left in"
-    },
-    // other macros....
+    }
   },
   "subject": "New voicemail from {{caller_id.name}} ({{caller_id.number}})",
   "category": "voicemail",
@@ -43,23 +44,23 @@ Allow managing templates for notification emails.
 }
 ```
 
-The `account_overridden` flag added if it is account-specific; lack of the key indicates it is the system default notification.
+By looking at above structure, there are some points of interest to say about notification parameters:
 
-The `enabled` flag indicates that should system send an E-mail notifying of the causing event. Lacking of this flag would considered as the notification is enabled.
+* The `account_overridden` parameter would be added if the notification is account-specific; lack of the key indicates it is the system default notification.
+* The `enabled` parameter indicates should system send an E-mail notifying of the causing event. Lacking of this parameter would considered as the notification is enabled.
+* The `macros` object is a per-template, system-defined set of macros you can use in your templates. You **cannot** configure this via the API.
 
-In addition to the JSON data, templates in various formats can be uploaded (such as from a WYSIWYG tool). Currently supported are plain text and HTML documents.
+In addition to the JSON data describing configuration of a notification, notification templates can be represented in various formats and can be modified by uploading the representation document (such as using a WYSIWYG tool). Currently supported formats are plain text and HTML documents.
 
-The `macros` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
-
-#### Template Formats
+##### Template Formats
 
 Creating the configuration documents is all well and good, but it is necessary to be able to attach the templates in their various forms as well. Currently supported formats are `text/html` and `text/plain`.
 
-#### Operations considerations
+##### Operation considerations
 
-In versions Kazoo prior to 3.19, notification templates were managed and processed by the `notify` application. In the newer Kazoo version this has been replace by a robust and more featureful `teletype` application.
+In Kazoo versions prior to 3.19, notification templates were managed and processed by the `notify` application. In the newer Kazoo versions this has been replace by a robust and more featureful `teletype` application.
 
-All accounts will continue to be processed by the `notify` application until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding application in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` application to ignore processing and instructs the `teletype` application to process it instead. This allows administrators to run both `notify` and `teletyple` concurrently without sending multiple copies of each notification.
+All accounts will continue to be processed by the `notify` application until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding application in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` application to ignore processing and instructs the `teletype` application to process it instead. This allows administrators to run both `notify` and `teletype` concurrently without sending multiple copies of each notification.
 
 #### Notifications Schema
 
@@ -73,7 +74,7 @@ Key | Description | Type | Default | Required
 `cc` | CC email field | `object()` |   | `false`
 `cc.email_addresses.[]` |   | `string()` |   | `false`
 `cc.email_addresses` | CC Email Addresses | `array(string())` |   | `false`
-`cc.type` |   | `string('original' | 'specified' | 'admins')` |   | `false`
+`cc.type` |   | `string('original' or 'specified' or 'admins')` |   | `false`
 `enabled` | Enable notification | `boolean()` | `true` | `false`
 `friendly_name` | Friendly name of the template | `string(1..)` |   | `false`
 `from` | From: email address | `string()` |   | `true`
@@ -84,7 +85,8 @@ Key | Description | Type | Default | Required
 `to` | To email field | `object()` |   | `true`
 `to.email_addresses.[]` |   | `string()` |   | `false`
 `to.email_addresses` |   | `array(string())` |   | `false`
-`to.type` |   | `string('original' | 'specified' | 'admins')` |   | `false`
+`to.type` |   | `string('original' or 'specified' or 'admins')` |   | `false`
+
 
 
 #### Summary of Available System Notifications
@@ -110,7 +112,7 @@ curl -v -X GET \
       "macros": {
         "call_id": {
           "description": "Call ID of the caller",
-          "friendly_name": "Call ID"
+          "friendly_name": "Call ID",
           "i18n_label": "call_id"
         },
         "caller_id.name": {
@@ -118,11 +120,11 @@ curl -v -X GET \
           "friendly_name": "Caller ID Name",
           "i18n_label": "caller_id_name"
         }
-        // ...
+        "..."
       }
     }
-    // ...
-  ]
+    "..."
+  ],
   "timestamp": "{TIMESTAMP}",
   "version": "{VERSION}",
   "node": "{NODE_HASH}",
@@ -151,12 +153,11 @@ curl -v -X GET \
   "auth_token": "{AUTH_TOKEN}",
   "data": [
     {
-
       "id": "voicemail_to_email",
       "macros": {
         "call_id": {
           "description": "Call ID of the caller",
-          "friendly_name": "Call ID"
+          "friendly_name": "Call ID",
           "i18n_label": "call_id"
         },
         "caller_id.name": {
@@ -164,12 +165,12 @@ curl -v -X GET \
           "friendly_name": "Caller ID Name",
           "i18n_label": "caller_id_name"
         }
-        // ...
+        "..."
       },
       "account_overridden": true
     }
-    // ...
-  ]
+    "..."
+  ],
   "timestamp": "{TIMESTAMP}",
   "version": "{VERSION}",
   "node": "{NODE_HASH}",
@@ -181,7 +182,7 @@ curl -v -X GET \
 
 #### Create a New System Notification
 
-To create a new system notification template.
+Creates a new system notification template.
 
 > **Note:** Only a super duper admin can create/modify/delete system notifications!
 
@@ -214,7 +215,7 @@ curl -v -X PUT \
     "enabled": true,
     "id": "voicemail_to_email",
     "from": "reseller@resellerdomain.com",
-    "macros": { ... },
+    "macros": { "..." },
     "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
     "template_charset": "utf-8",
     "to": {
@@ -237,7 +238,7 @@ curl -v -X PUT \
 
 Now that you've fetched the system default template, modify the template and PUT it back to the account.
 
-This request will fail if `id` does not already exist in the system defaults.
+*This request will fail if `id` does not already exist in the system defaults.*
 
 > PUT /v2/accounts/{ACCOUNT_ID}/notifications
 
@@ -266,7 +267,7 @@ Same as `PUT` for system level, but with the `"account_overridden": true` flag a
 
 #### Details of a System Notification
 
-Using the ID from the system listing above, get the template JSON. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
+Using the ID from the system listing above, get the template object. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
 
 > GET /v2/notifications/{NOTIFICATION_ID}
 
@@ -284,8 +285,8 @@ curl -v -X GET \
   "data": [
     {
       "id": "{NOTIFICATION_ID}",
-      "macros": { "// ..." },
-      ,"templates": {
+      "macros": { "..." },
+      "templates": {
         "text/html": {
           "length": 600
         }
@@ -294,8 +295,8 @@ curl -v -X GET \
         }
       }
     }
-    // ...
-  ]
+    "..."
+  ],
   "timestamp": "{TIMESTAMP}",
   "version": "{VERSION}",
   "node": "{NODE_HASH}",
@@ -323,7 +324,7 @@ Same as above with the `account_overridden` flag added.
 
 #### Update a Notification
 
-Similar to the PUT, POST will update an existing config:
+Similar to the PUT, POST will update an existing configuration:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -359,7 +360,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-#### Remove a notification template
+#### Remove a Notification
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -375,7 +376,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
-When you GET a notification config (using `Accept: application/json` header), look in the response header `Content-Type`. Use those content types to fetch a specific template by setting the your request `Accept` header:
+When you perform a `GET` request to fetch a notification configuration (using `Accept: application/json` header or not setting `Accept` header at all), there is a `Content-Type` HTTP header in the response headers. Use those content types to fetch a specific template by setting your request `Accept` header:
 
 ##### Get as `text/html`
 
@@ -395,9 +396,9 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a non-existent Accept MIME type, expect to receive a `406 Not Acceptable` error.
+Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a non-existent `Accept` MIME type, expect to receive a `406 Not Acceptable` error.
 
-For clients that do not support setting the `Accept` header, a query string parameter can be included (e.g. `http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template).
+For clients that do not support setting the `Accept` header, a query string parameter can be included (e.g. `/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template).
 
 #### Update Notification Template:
 
@@ -413,7 +414,9 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-##### Update `text/html` using CUrl Upload File
+##### Update `text/html`
+
+An Example using Curl Upload File:
 
 ```shell
 curl -v -X POST \
@@ -515,9 +518,9 @@ curl -v -X DELETE \
 }
 ```
 
-#### Force All Account's Notification to System Default
+#### Force All Account's Notifications to System Default
 
-To remove all notification customizations made on the account and use the notification from system use a `PUR` method with action `force_system`.
+To remove all notification customizations made on the account and use the notification from system use a `PUT` method with action `force_system`.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/notifications/
 
@@ -641,15 +644,7 @@ curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H 'Content-Type: text/html' \
     -F content=@file.html \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message
-```
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H 'Content-Type: text/html' \
-    -F content=@file.html \
-    http://{SERVER}:8000/v2/accounts/{SENDER_RESELLER_ACCOUNT_ID}/notifications/customer_update/message
+    http://{SERVER}:8000/v2/accounts/{RESELLER_ACCOUNT_ID}/notifications/customer_update/message
 ```
 
 ##### Send Message to a Particular Account:
@@ -659,15 +654,7 @@ curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H 'Content-Type: text/html' \
     -d '{"data": {"recipient_id": "33ca3929ed585e0e423eb39e4ffe1452"}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message
-```
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H 'Content-Type: text/html' \
-    -d '{"data": {"recipient_id": "33ca3929ed585e0e423eb39e4ffe1452"}}' \
-    http://{SERVER}:8000/v2/accounts/{SENDER_RESELLER_ACCOUNT_ID}/notifications/customer_update/message
+    http://{SERVER}:8000/v2/accounts/{PARTICULAR_ACCOUNT_ID}/notifications/customer_update/message
 ```
 
 ##### Send Message to Particular Users
@@ -684,15 +671,17 @@ You can send a message to all users, administrators only or a particular user wi
 
 * **Particular user:**
 
+> **Note:** Applicable to send message to a particular account only.
+
 ```json
 {
-  "data": {"user_type": "{ACCOUNT_ID}"}
+  "data": {"user_type": "{USER_ID}"}
 }
 ````
 
 * **Admin privileged users only**
 
-It's Default behavior, could be omitted:
+> **Note:** This is the default behavior, so `user_type` could be omitted.
 
 ```json
 {
@@ -700,9 +689,9 @@ It's Default behavior, could be omitted:
 }
 ````
 
-##### Customizing the Message
+##### Specifying the Message
 
-You can send a message with changed subject, HTML and plain text templates by providing full notification document payload:
+For specifying the actual message (and the email subject) you want to send, provide HTML and plain text templates by uploading document:
 
 ```json
 {
@@ -714,7 +703,7 @@ You can send a message with changed subject, HTML and plain text templates by pr
     "enabled": true,
     "category": "user",
     "friendly_name": "Customer update",
-    "from": "info@onnet.su",
+    "from": "info@localhost.me",
     "subject": "Test Reseller customer update",
     "bcc": {
       "email_addresses": [],
@@ -753,7 +742,7 @@ You can send a message with changed subject, HTML and plain text templates by pr
     },
     "template_charset": "utf-8",
     "html": "PHA+RGVhciB7e3VzZXIuZmlyc3RfbmFtZX19IHt7dXNlci5sYXN0X25hbWV9fS48L3A+CjxwPkhlcmUgYXJlIHNvbWUgbmV3cyB0aGF0IHdlIGhhdmUgc2VsZWN0ZWQgZm9yIHlvdTwvcD4KPHA+QmVzdCByZWdhcmRzLDwvcD4KPHA+T25OZXQgSW5ub3ZhdGlvbnMgTGltaXRlZC48L3A+",
-    "plain": "Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some more news that we have selected for you.\n\nBest regards,\nOnNet Innovations Limited.",
+    "plain": "Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some more news that we have selected for you.\n\nBest regards,\nYour Imagination, Corp",
     "templates": {
       "text/html": {
         "length": 161
@@ -766,7 +755,9 @@ You can send a message with changed subject, HTML and plain text templates by pr
 }
 ```
 
-To send an update to a customer from your Kazoo Application, you can build payload including you application data (see `<<"DataBag">>` field) and send it over AMQP using predefined particular template (see `<<"Template-ID">>` field) or your own hard coded templates (see `<<"HTML">>` and `<<"Text">>` fields):
+#### Send Message from your Kazoo Application
+
+To send an update to a customer from your Kazoo Application, you can build payload include your application data (`<<"DataBag">>` field) and send it over AMQP using predefined particular template (`<<"Template-ID">>` field) or your own hard coded templates (`<<"HTML">>` and `<<"Text">>` fields):
 
 ```erlang
 -spec send_account_update(ne_binary()) -> 'ok'.
@@ -787,8 +778,11 @@ build_customer_update_payload(AccountId) ->
     props:filter_empty(
       [{<<"Account-ID">>, kz_services:find_reseller_id(AccountId)}
       ,{<<"Recipient-ID">>, AccountId}
+      %% DataBag is useful if you have a customized template and wants to pass some your info from your app
+      ,{<<"DataBag">>, kz_json:from_list([{<<"field1">>,<<"value1">>},{<<"field2">>,{[{<<"subfield1">>,<<"subvalue1">>},{<<"subfield2">>,<<"subvalue2">>}]}}])}
+      %% set below prop if you have a customized template with this ID in your account's DB
       ,{<<"Template-ID">>, <<"customer_update_billing_period">>}
-      ,{<<"DataBag">>, kz_json:from_list([{<<"field1">>,<<"value1">>},{<<"field2">>,{[{<<"subfield1">>,<<"subvalue1">>},{<<"subfield2">>,<<"subvalue2">>}]}}]) }
+      %% otherwise set your customized message as below:
       ,{<<"HTML">>, base64:encode(<<"Dear {{user.first_name}} {{user.last_name}}. <br /> DataBag test: {{databag.field2.subfield1}} <br /> Kind regards,">>)}
       ,{<<"Text">>, <<"Oh Dear {{user.first_name}} {{user.last_name}}.\n\nDataBag test: {{databag.field2.subfield2}}\n\nBest regards,">>}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
