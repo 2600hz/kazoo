@@ -64,8 +64,8 @@ init(?MATCH_ACCOUNT_RAW(AccountId)) ->
           };
 
 init({ServicesFixture, ServicePlanFixture}) ->
-    ServicePlanJObj = kz_json:fixture(?APP, ServicePlanFixture),
-    ServicesJObj = kz_json:fixture(?APP, ServicesFixture),
+    {ok,ServicePlanJObj} = kz_json:fixture(?APP, ServicePlanFixture),
+    {ok,ServicesJObj} = kz_json:fixture(?APP, ServicesFixture),
     Overrides = kzd_services:plan_overrides(ServicesJObj, kz_doc:id(ServicePlanJObj)),
     #state{services_jobj = ServicesJObj
           ,services = kz_services:from_service_json(ServicesJObj, false)

@@ -100,7 +100,7 @@ invalid_task_data4() ->
                       ]).
 
 validate_v3_test_() ->
-    V3SchemaJObj = kz_json:fixture(?APP, "fixtures/schemav3_tasks.json"),
+    {ok,V3SchemaJObj} = kz_json:fixture(?APP, "fixtures/schemav3_tasks.json"),
     [?_assertMatch({ok,_}, kz_json_schema:validate(V3SchemaJObj, valid_task_data()))
     ,?_assertMatch({error, [{data_invalid,_,{missing_required_property,<<"do_it_now">>},_,_}
                            ,{data_invalid,_,wrong_size,_,[<<"records">>]}
@@ -122,7 +122,7 @@ validate_v3_test_() ->
     ].
 
 validate_v4_test_() ->
-    V4SchemaJObj = kz_json:fixture(?APP, "fixtures/schemav4_tasks.json"),
+    {ok,V4SchemaJObj} = kz_json:fixture(?APP, "fixtures/schemav4_tasks.json"),
     [?_assertMatch({ok,_}, kz_json_schema:validate(V4SchemaJObj, valid_task_data()))
     ,?_assertMatch({error, [{data_invalid,_,wrong_size,_,[<<"records">>]}
                            ,{data_invalid,_,missing_required_property,_,_}

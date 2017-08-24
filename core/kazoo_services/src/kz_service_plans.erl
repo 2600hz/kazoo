@@ -112,7 +112,7 @@ add_service_plan(PlanId, ResellerId, ServicesJObj) ->
 
 -ifdef(TEST).
 open_cache_doc(?A_MASTER_ACCOUNT_DB, ?A_MASTER_PLAN_ID) ->
-    {ok, kz_json:fixture(?APP, "a_master_plans.json")}.
+    kz_json:fixture(?APP, "a_master_plans.json").
 -else.
 open_cache_doc(Db, Id) ->
     kz_datamgr:open_cache_doc(Db, Id).

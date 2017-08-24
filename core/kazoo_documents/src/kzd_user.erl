@@ -54,7 +54,7 @@ fetch(_, _) ->
 
 -ifdef(TEST).
 open_cache_doc(?MATCH_ACCOUNT_ENCODED(_), UserId) ->
-    {ok, kz_json:fixture(?APP, <<"fixtures/user/", UserId/binary, ".json">>)}.
+    kz_json:fixture(?APP, <<"fixtures/user/", UserId/binary, ".json">>).
 -else.
 open_cache_doc(AccountDb, UserId) ->
     kz_datamgr:open_cache_doc(AccountDb, UserId, [{cache_failures,false}]).

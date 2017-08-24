@@ -353,7 +353,7 @@ user_params(UserJObj) ->
 -ifdef(TEST).
 timezone(UserJObj) ->
     ?AN_ACCOUNT_ID = kz_doc:account_id(UserJObj),
-    AccountJObj = kz_json:fixture(?APP, "an_account.json"),
+    {ok,AccountJObj} = kz_json:fixture(?APP, "an_account.json"),
     kz_account:timezone(AccountJObj).
 -else.
 timezone(UserJObj) -> kzd_user:timezone(UserJObj).
@@ -389,8 +389,8 @@ find_account_params(AccountId) ->
     end.
 
 -ifdef(TEST).
-fetch_account_for_params(?AN_ACCOUNT_ID) -> {ok, kz_json:fixture(?APP, "an_account.json")};
-fetch_account_for_params(?A_MASTER_ACCOUNT_ID) -> {ok, kz_json:fixture(?APP, "a_master_account.json")};
+fetch_account_for_params(?AN_ACCOUNT_ID) -> kz_json:fixture(?APP, "an_account.json");
+fetch_account_for_params(?A_MASTER_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_master_account.json");
 fetch_account_for_params(?MATCH_ACCOUNT_RAW(_)) -> {error, testing_too_hard}.
 -else.
 fetch_account_for_params(AccountId) -> kz_account:fetch(AccountId).
@@ -576,7 +576,8 @@ query_for_account_admin(AccountId) ->
 
 -ifdef(TEST).
 account_users(?AN_ACCOUNT_ID) ->
-    UserJObj = kzd_user:set_priv_level(<<"admin">>, kz_json:fixture(?APP, "an_account_user.json")),
+    {ok,UserJObj0} = kz_json:fixture(?APP, "an_account_user.json"),
+    UserJObj = kzd_user:set_priv_level(<<"admin">>, UserJObj0),
     {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
 -else.
 account_users(AccountId) ->

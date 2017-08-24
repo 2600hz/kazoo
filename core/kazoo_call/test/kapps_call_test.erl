@@ -23,13 +23,13 @@
                   ]).
 
 callflow_route_request_test_() ->
-    RouteReq = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-callflow.json"),
+    {ok,RouteReq} = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-callflow.json"),
     'true' = kapi_route:req_v(RouteReq),
     Call = kapps_call:from_route_req(RouteReq),
     validate_kapps_call_basic(Call) ++ validate_kapps_call_callflow_req(Call).
 
 trunkstore_route_request_test_() ->
-    RouteReq = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-trunkstore.json"),
+    {ok,RouteReq} = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-trunkstore.json"),
     'true' = kapi_route:req_v(RouteReq),
     Call = kapps_call:from_route_req(RouteReq),
     validate_kapps_call_basic(Call) ++ validate_kapps_call_trunkstore_req(Call).
@@ -267,12 +267,12 @@ create_callflow_call() ->
     kapps_call:from_route_win(RouteWin, kapps_call:from_route_req(RouteReq)).
 
 inbound_onnet_callflow_req() ->
-    RouteReq = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-callflow.json"),
+    {ok,RouteReq} = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-callflow.json"),
     'true' = kapi_route:req_v(RouteReq),
     RouteReq.
 
 inbound_onnet_callflow_win() ->
-    RouteWin = kz_json:fixture(?APP, "fixtures/route_win/inbound-onnet-callflow.json"),
+    {ok,RouteWin} = kz_json:fixture(?APP, "fixtures/route_win/inbound-onnet-callflow.json"),
     'true' = kapi_route:win_v(RouteWin),
     RouteWin.
 
@@ -282,11 +282,11 @@ create_trunkstore_call() ->
     kapps_call:from_route_win(RouteWin, kapps_call:from_route_req(RouteReq)).
 
 inbound_onnet_trunkstore_req() ->
-    RouteReq = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-trunkstore.json"),
+    {ok,RouteReq} = kz_json:fixture(?APP, "fixtures/route_req/inbound-onnet-trunkstore.json"),
     'true' = kapi_route:req_v(RouteReq),
     RouteReq.
 
 inbound_onnet_trunkstore_win() ->
-    RouteWin = kz_json:fixture(?APP, "fixtures/route_win/inbound-onnet-trunkstore.json"),
+    {ok,RouteWin} = kz_json:fixture(?APP, "fixtures/route_win/inbound-onnet-trunkstore.json"),
     'true' = kapi_route:win_v(RouteWin),
     RouteWin.
