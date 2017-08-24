@@ -387,7 +387,7 @@ set_outbound_flags(JObj, Flags) when is_list(Flags) ->
 set_outbound_flags(JObj, Flags) ->
     kz_json:set_value(?OUTBOUND_FLAGS, Flags, JObj).
 
--spec set_outbound_flags(kz_json:object(), api_binaries(), api_binaries()) -> kz_json:object().
+-spec set_outbound_flags(kz_json:object(), ne_binaries()|undefined, ne_binaries()|undefined) -> kz_json:object().
 set_outbound_flags(JObj, 'undefined', DynamicFlags) ->
     set_outbound_flags(JObj, [], DynamicFlags);
 set_outbound_flags(JObj, StaticFlags, 'undefined') ->
