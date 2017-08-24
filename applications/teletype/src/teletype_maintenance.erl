@@ -112,6 +112,7 @@ list_templates_from_db(Db) ->
             io:format("failed to query existing notifications: ~p~n", [_E]),
             []
     end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -126,10 +127,10 @@ remove_customization(Account) ->
 remove_customization(Account, Id) when is_binary(Id) ->
     remove_customization(Account, [kz_notification:db_id(Id)]);
 remove_customization(_Account, []) ->
-    io:format(":: no template(s) customization found for ~s~n", [_Account]),
+    io:format(":: no template customization(s) found for ~s~n", [_Account]),
     'no_return';
 remove_customization(Account, Ids) ->
-    io:format(":: removing ~b template(s) customization from ~s~n", [length(Ids), Account]),
+    io:format(":: removing ~b template customization(s) from ~s~n", [length(Ids), Account]),
     case kz_datamgr:del_docs(kz_util:format_account_db(Account), Ids) of
         {'ok', JObjs} ->
             _ = [io:format("  ~s: ~s~n", [kz_notification:resp_id(kz_doc:id(J)), kz_json:get_value(<<"error">>, J, <<"deleted">>)])
