@@ -30,7 +30,7 @@
 
 -spec init() -> ok.
 init() ->
-    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, 'crossbar', "views/resources.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, ?APP, "views/resources.json"),
     _ = crossbar_maintenance:start_module('cb_resources'),
     ok.
 

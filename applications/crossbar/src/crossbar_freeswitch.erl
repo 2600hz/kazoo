@@ -488,10 +488,7 @@ query_registrar(Realm, Username) ->
 
 -spec template_file(atom()) -> string().
 template_file(Module) ->
-    filename:join([code:priv_dir('crossbar')
-                  ,"freeswitch"
-                  ,template_file_name(Module)
-                  ]).
+    filename:join([code:priv_dir(?APP), "freeswitch", template_file_name(Module)]).
 
 -spec template_file_name(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY | ?FS_DIRECTORY_REALM) -> string().
 template_file_name(?FS_DIALPLAN) -> "dialplan_template.xml";
@@ -519,10 +516,7 @@ compile_template(Module, Template) ->
 
 -spec xml_file(atom()) -> string().
 xml_file(Module) ->
-    filename:join([code:priv_dir('crossbar')
-                  ,"freeswitch"
-                  ,xml_file_name(Module)
-                  ]).
+    filename:join([code:priv_dir(?APP), "freeswitch", xml_file_name(Module)]).
 
 -spec xml_file_name(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY) -> string().
 xml_file_name(?FS_DIALPLAN) -> "dialplan.xml";

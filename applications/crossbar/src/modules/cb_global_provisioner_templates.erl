@@ -67,7 +67,7 @@ init() ->
 
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_PROVISIONER_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_PROVISIONER_DB, 'crossbar', <<"account/provisioner_templates.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_PROVISIONER_DB, ?APP, <<"account/provisioner_templates.json">>),
     ok.
 
 %%--------------------------------------------------------------------
