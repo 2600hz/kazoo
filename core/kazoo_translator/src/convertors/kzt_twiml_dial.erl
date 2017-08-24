@@ -400,7 +400,7 @@ conference_id(Txts) ->
     MD5.
 
 
--spec add_conference_profile(kapps_call:call(), kz_proplist()) -> kz_json:object().
+-spec add_conference_profile(kapps_call:call(), kz_proplist()) -> kapps_call:call().
 add_conference_profile(Call, ConfProps) ->
     AccountId = kapps_call:account_id(Call),
     Profile = kz_json:from_list(
