@@ -1122,12 +1122,12 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fixture_from_file(atom(), nonempty_string() | ne_binary()) ->
-                                {'ok', object()} |
-                                {'error', atom()}.
+                                    object() |
+                                    {'error', atom()}.
 
 -spec load_fixture_from_file(atom(), nonempty_string() | ne_binary(), ne_binary()) ->
-                                {'ok', object()} |
-                                {'error', atom()}.
+                                    object() |
+                                    {'error', atom()}.
 
 load_fixture_from_file(App, File) ->
     load_fixture_from_file(App, <<"couchdb">>, File).
