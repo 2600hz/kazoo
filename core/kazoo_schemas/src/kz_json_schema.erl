@@ -30,6 +30,23 @@
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
+
+-type extra_validator() :: fun((jesse:json_term(), jesse_state:state()) -> jesse_state:state()).
+-type validator_option() :: 'use_defaults' | 'apply_defaults_to_empty_objects'.
+-type validator_options() :: [validator_option()].
+
+-type jesse_option() :: {'parser_fun', fun((_) -> _)} |
+{'error_handler', fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
+ [jesse_error:error_reason()])} |
+{'allowed_errors', non_neg_integer() | 'infinity'} |
+{'default_schema_ver', binary()} |
+{'schema_loader_fun', fun((ne_binary()) -> {'ok', kz_json:object()} | kz_json:object() | 'not_found')} |
+{'extra_validator', extra_validator()} |
+{'setter_fun', fun((kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object())} |
+{'validator_options', validator_options()}.
+
+-type jesse_options() :: [jesse_option()].
+
 -define(DEFAULT_OPTIONS, [{'schema_loader_fun', fun load/1}
                          ,{'allowed_errors', 'infinity'}
                          ,{'extra_validator', fun kz_json_schema_extensions:extra_validator/2}
@@ -157,21 +174,6 @@ maybe_default(Key, Default, JObj) ->
         _Value -> JObj
     end.
 
--type extra_validator() :: fun((jesse:json_term(), jesse_state:state()) -> jesse_state:state()).
--type validator_option() :: 'use_defaults' | 'apply_defaults_to_empty_objects'.
--type validator_options() :: [validator_option()].
-
--type jesse_option() :: {'parser_fun', fun((_) -> _)} |
-{'error_handler', fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
- [jesse_error:error_reason()])} |
-{'allowed_errors', non_neg_integer() | 'infinity'} |
-{'default_schema_ver', binary()} |
-{'schema_loader_fun', fun((binary()) -> {'ok', jesse:json_term()} | jesse:json_term() | 'not_found')} |
-{'extra_validator', extra_validator()} |
-{'validator_options', validator_options()}.
-
--type jesse_options() :: [jesse_option()].
-
 -spec validate(ne_binary() | kz_json:object(), kz_json:object()) ->
                       {'ok', kz_json:object()} |
                       jesse_error:error().
@@ -185,7 +187,7 @@ validate(<<_/binary>> = Schema, DataJObj, Options) ->
     Fun = props:get_value('schema_loader_fun', Options, fun load/1),
     {'ok', SchemaJObj} = Fun(Schema),
     validate(SchemaJObj, DataJObj, Options);
-validate(SchemaJObj, DataJObj, Options0) ->
+validate(SchemaJObj, DataJObj, Options0) when is_list(Options0) ->
     jesse:validate_with_schema(SchemaJObj, DataJObj, Options0 ++ ?DEFAULT_OPTIONS).
 
 -type option() :: {'version', ne_binary()} |
