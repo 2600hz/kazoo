@@ -710,8 +710,8 @@ write_templates_to_disk(TemplateId, Params) ->
                                      {'ok', binary()} |
                                      {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 read_template_from_disk(TemplateId, Type) ->
-    File = template_filename(TemplateId, Type),
-    file:read_file(File).
+    file:read_file(
+      template_filename(TemplateId, Type)).
 
 -spec write_template_to_disk(ne_binary(), {'html' | 'text', binary()}) -> 'ok'.
 write_template_to_disk(TemplateId, {Type, Template}) ->
@@ -721,7 +721,4 @@ write_template_to_disk(TemplateId, {Type, Template}) ->
 -spec template_filename(ne_binary(), 'html' | 'text') -> file:filename_all().
 template_filename(TemplateId, Type) ->
     Basename = iolist_to_binary([TemplateId, ".", kz_term:to_list(Type)]),
-    filename:join([code:priv_dir('teletype')
-                  ,"templates"
-                  ,Basename
-                  ]).
+    filename:join([code:priv_dir(?APP), "templates", Basename]).

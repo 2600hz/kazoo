@@ -250,16 +250,16 @@ fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId)) ->
 -ifdef(TEST).
 fetch_services_doc(?A_MASTER_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
-    {ok, kz_services_test:fixture("a_master_services.json")};
+    {ok, kz_json:fixture(?APP, "a_master_services.json")};
 fetch_services_doc(?A_RESELLER_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
-    {ok, kz_services_test:fixture("a_reseller_services.json")};
+    {ok, kz_json:fixture(?APP, "a_reseller_services.json")};
 fetch_services_doc(?A_SUB_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
-    {ok, kz_services_test:fixture("a_sub_services.json")};
+    {ok, kz_json:fixture(?APP, "a_sub_services.json")};
 fetch_services_doc(?B_SUB_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
-    ServicesJObj0 = kz_services_test:fixture("a_sub_services.json"),
+    ServicesJObj0 = kz_json:fixture(?APP, "a_sub_services.json"),
     ServicesJObj1 = kzd_services:set_is_dirty(ServicesJObj0, true),
     ServicesJObj2 = kzd_services:set_reseller_id(ServicesJObj1, undefined),
     {ok, kz_doc:set_id(ServicesJObj2, ?B_SUB_ACCOUNT_ID)};
@@ -1527,11 +1527,11 @@ get_reseller_id(Parent, Ancestors, ServicesJObj) ->
     end.
 
 -ifdef(TEST).
-fetch_account(?A_MASTER_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_master_account.json")};
-fetch_account(?A_RESELLER_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_reseller_account.json")};
-fetch_account(?A_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")};
-fetch_account(?B_SUB_ACCOUNT_ID) -> {ok, kz_services_test:fixture("a_sub_account.json")};
-fetch_account(?UNRELATED_ACCOUNT_ID) -> {ok, kz_services_test:fixture("unrelated_account.json")}.
+fetch_account(?A_MASTER_ACCOUNT_ID) -> {ok, kz_json:fixture(?APP, "a_master_account.json")};
+fetch_account(?A_RESELLER_ACCOUNT_ID) -> {ok, kz_json:fixture(?APP, "a_reseller_account.json")};
+fetch_account(?A_SUB_ACCOUNT_ID) -> {ok, kz_json:fixture(?APP, "a_sub_account.json")};
+fetch_account(?B_SUB_ACCOUNT_ID) -> {ok, kz_json:fixture(?APP, "a_sub_account.json")};
+fetch_account(?UNRELATED_ACCOUNT_ID) -> {ok, kz_json:fixture(?APP, "unrelated_account.json")}.
 -else.
 fetch_account(Account) -> kz_account:fetch(Account).
 -endif.
