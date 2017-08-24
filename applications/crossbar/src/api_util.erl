@@ -547,8 +547,14 @@ normalize_envelope_keys_foldl(K, V, JObj) -> kz_json:set_value(kz_json:normalize
 %%--------------------------------------------------------------------
 -spec is_valid_request_envelope(kz_json:object(), cb_context:context()) -> 'true' | validation_errors().
 is_valid_request_envelope(Envelope, Context) ->
-    lists:member(cb_context:api_version(Context), ?NO_ENVELOPE_VERSIONS)
-        orelse validate_request_envelope(Envelope).
+    case requires_envelope(Context) of
+        'true' -> validate_request_envelope(Envelope);
+        'false' -> 'true'
+    end.
+
+-spec requires_envelope(cb_context:context()) -> boolean().
+requires_envelope(Context) ->
+    not lists:member(cb_context:api_version(Context), ?NO_ENVELOPE_VERSIONS).
 
 -spec validate_request_envelope(kz_json:object()) -> 'true' | validation_errors().
 validate_request_envelope(Envelope) ->
