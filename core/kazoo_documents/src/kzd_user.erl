@@ -44,22 +44,22 @@
 -define(KEY_CALL_RESTRICTIONS, <<"call_restriction">>).
 -define(KEY_CALL_RESTRICTION_ACTION, <<"action">>).
 
--define(PVT_TYPE, <<"user">>).
-
--spec fetch(api_binary(), api_binary()) -> {'ok', doc()} |
-                                           {'error', any()}.
--ifdef(TEST).
-fetch(_Account=?NE_BINARY, UserId=?NE_BINARY) ->
-    {'ok', kz_json:fixture(?APP, <<"fixtures/user", UserId/binary, ".json">>)};
-fetch(_, _) ->
-    {'error', 'invalid_parameters'}.
--else.
+-spec fetch(api_ne_binary(), api_ne_binary()) -> {'ok', doc()} |
+                                                 {'error', any()}.
 fetch(Account=?NE_BINARY, UserId=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
-    kz_datamgr:open_cache_doc(AccountDb, UserId, [{'cache_failures', false}]);
+    open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
+
+-ifdef(TEST).
+open_cache_doc(?MATCH_ACCOUNT_ENCODED(_), UserId) ->
+    {ok, kz_json:fixture(?APP, <<"fixtures/user/", UserId/binary, ".json">>)}.
+-else.
+open_cache_doc(AccountDb, UserId) ->
+    kz_datamgr:open_cache_doc(AccountDb, UserId, [{cache_failures,false}]).
 -endif.
+
 
 -spec email(doc()) -> api_binary().
 -spec email(doc(), Default) -> ne_binary() | Default.
@@ -270,7 +270,7 @@ disable(JObj) ->
     kz_json:set_value(?KEY_IS_ENABLED, 'false', JObj).
 
 -spec type() -> ne_binary().
-type() -> ?PVT_TYPE.
+type() -> <<"user">>.
 
 -spec devices(doc()) -> kz_device:docs().
 devices(UserJObj) ->

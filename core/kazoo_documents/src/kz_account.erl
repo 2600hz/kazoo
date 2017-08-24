@@ -96,31 +96,22 @@ get_inherited_value(Account, ValueFun, Default) ->
     case check_account(Account, ValueFun) of
         'undefined' ->
             check_reseller(Account, ValueFun, Default);
-
-        Value ->
-            Value
+        Value -> Value
     end.
 
 -spec check_account(api_binary(), fun()) -> any().
 check_account(Account, ValueFun) ->
     case fetch(Account) of
-        {'error', _Err} ->
-            'undefined';
-
-        {'ok', JObj} ->
-            ValueFun(JObj)
+        {'error', _Err} -> 'undefined';
+        {'ok', JObj} -> ValueFun(JObj)
     end.
 
 -spec check_reseller(api_binary(), fun(), any()) -> any().
 check_reseller(Account, ValueFun, Default) ->
     Reseller = kz_services:find_reseller_id(Account),
-
     case check_account(Reseller, ValueFun) of
-        'undefined' ->
-            Default;
-
-        Value ->
-            Value
+        'undefined' -> Default;
+        Value -> Value
     end.
 
 %%--------------------------------------------------------------------
@@ -154,30 +145,30 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary()) -> {'ok', doc()} |
-                             {'error', any()}.
+-spec fetch(api_ne_binary()) -> {'ok', doc()} |
+                                {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
-fetch(<<_/binary>> = Account) ->
+fetch(Account=?NE_BINARY) ->
     fetch(Account, 'account').
 
--spec fetch(api_binary(), 'account' | 'accounts') -> {'ok', doc()} |
-                                                     {'error', any()}.
--ifdef(TEST).
-fetch('undefined', _) ->
-    {'error', 'invalid_db_name'};
-fetch(Account, 'account') ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    {'ok', kz_json:fixture(?APP, <<"fixtures/account", AccountId/binary, ".json">>)}.
--else.
+-spec fetch(api_ne_binary(), 'account' | 'accounts') -> {'ok', doc()} |
+                                                        {'error', any()}.
 fetch('undefined', _) ->
     {'error', 'invalid_db_name'};
 fetch(Account, 'account') ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    kz_datamgr:open_cache_doc(AccountDb, AccountId, [{'cache_failures',false}]);
+    open_cache_doc(AccountDb, AccountId);
 fetch(AccountId, 'accounts') ->
-    kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId, [{'cache_failures',false}]).
+    open_cache_doc(?KZ_ACCOUNTS_DB, AccountId).
+
+-ifdef(TEST).
+open_cache_doc(Db, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    {ok, kz_json:fixture(?APP, <<"fixtures/account/", AccountId/binary, ".json">>)}.
+-else.
+open_cache_doc(Db, AccountId) ->
+    kz_datamgr:open_cache_doc(Db, AccountId, [{cache_failures,false}]).
 -endif.
 
 %%--------------------------------------------------------------------

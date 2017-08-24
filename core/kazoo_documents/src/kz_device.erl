@@ -73,28 +73,28 @@
 -define(DEVICE_TYPE, <<"device_type">>).
 -define(KEY_OWNER_ID, <<"owner_id">>).
 -define(ENABLED, <<"enabled">>).
--define(PVT_TYPE, <<"device">>).
 -define(KEY_TIMEZONE, <<"timezone">>).
 -define(KEY_UNSOLICITATED_MWI_UPDATES, <<"mwi_unsolicitated_updates">>).
 -define(OUTBOUND_FLAGS, <<"outbound_flags">>).
 -define(STATIC_FLAGS, <<"static">>).
 -define(DYNAMIC_FLAGS, <<"dynamic">>).
 
--spec fetch(api_binary(), api_binary()) -> {'ok', doc()} |
-                                           {'error', any()}.
-
--ifdef(TEST).
-fetch(_Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
-    {'ok', kz_json:fixture(?APP, <<"fixtures/device", DeviceId/binary, ".json">>)};
-fetch(_, _) ->
-    {'error', 'invalid_parameters'}.
--else.
+-spec fetch(api_ne_binary(), api_ne_binary()) -> {'ok', doc()} |
+                                                 {'error', any()}.
 fetch(Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
-    kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{'cache_failures', false}]);
+    open_cache_doc(AccountDb, DeviceId);
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
+
+-ifdef(TEST).
+open_cache_doc(?MATCH_ACCOUNT_ENCODED(_), DeviceId) ->
+    {ok, kz_json:fixture(?APP, <<"fixtures/device/", DeviceId/binary, ".json">>)}.
+-else.
+open_cache_doc(AccountDb, DeviceId) ->
+    kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{cache_failures,false}]).
 -endif.
+
 
 -spec new() -> doc().
 new() ->
@@ -102,7 +102,7 @@ new() ->
 
 -spec is_device(doc() | kz_json:object()) -> boolean().
 is_device(Doc) ->
-    kz_doc:type(Doc) =:= ?PVT_TYPE.
+    kz_doc:type(Doc) =:= type().
 
 -spec sip_username(doc()) -> api_binary().
 -spec sip_username(doc(), Default) -> ne_binary() | Default.
@@ -313,7 +313,7 @@ set_device_type(DeviceJObj, MacAddress) ->
     kz_json:set_value(?DEVICE_TYPE, MacAddress, DeviceJObj).
 
 -spec type() -> ne_binary().
-type() -> ?PVT_TYPE.
+type() -> <<"device">>.
 
 -spec owner_id(doc()) -> api_binary().
 -spec owner_id(doc(), Default) -> ne_binary() | Default.
