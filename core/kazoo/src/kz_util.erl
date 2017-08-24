@@ -897,7 +897,7 @@ del_all_files([Dir | T], EmptyDirs) ->
                                                 {[Path | Fs], Ds}
                                         end
                                 end, {[],[]}, FilesInDir),
-    lists:foreach(fun kz_util:delete_file/1, Files),
+    lists:foreach(fun delete_file/1, Files),
     del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
 
 %% @public
