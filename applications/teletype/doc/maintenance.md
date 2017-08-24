@@ -25,3 +25,49 @@ module. If this is not already in `autoload_modules` then it will be added.
 Running `sup teletype_maintenance stop_module {MODULE_NAME}` will unbind the specified teletype
 module from notification events. This has the effect of disabling the module. If the module is in
 `autoload_modules` then it will be removed.
+
+## Restore System Templates
+
+Running this command will restore system templates to the original/initial state by reading templates from the file system.
+
+##### Restoring All Templates
+```shell
+sup teletype_maintenance restore_system_templates
+```
+
+##### Restoring a Specific Template
+```shell
+sup teletype_maintenance restore_system_templates {TEMPLATE_NAME}
+```
+
+## Remove Account's Template Customization
+
+Removes the customization made to an account.
+
+##### Remove All Account's Customizations
+
+```shell
+sup teletype_maintenance remove_customization {ACCOUNT_ID}
+```
+
+##### Remove a Specific Account's Customization
+
+```shell
+sup teletype_maintenance remove_customization {ACCOUNT_ID} {TEMPLATE_NAME}
+```
+
+## Force System's Templates on an Account
+
+Will force system default templates to an account by removing all customization on the account and copying system's templates to the account's DB.
+
+##### Force All System's Templates
+
+```shell
+sup teletype_maintenance force_system_default {ACCOUNT_ID}
+```
+
+##### Force a Specific System's Template
+
+```shell
+sup teletype_maintenance force_system_default {ACCOUNT_ID} {TEMPLATE_NAME}
+```

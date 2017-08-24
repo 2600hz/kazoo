@@ -4,44 +4,65 @@ Allow managing templates for notification emails.
 
 #### About Notifications
 
-Example structure:
+Flowing is a basic structure of a notification object (here it is a digest of `voicemail_to_email` notification).
 
 ```json
 {
-    "enabled": true,
-    "from": "peter@email.com",
-    "macros": {
-        "user.first_name": {
-            "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present",
-            "friendly_name": "First Name",
-            "i18n_label": "first_name"
-        },
-        "user.last_name": {
-            "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present",
-            "friendly_name": "Last Name",
-            "i18n_label": "last_name"
-        }
-    },
-    "subject": "Hello {{user.first_name}}, you received a new voicemail!",
-    "template_charset": "utf-8",
-    "to": {
-        "email_addresses": [
-            "peter@email.com"
-        ],
-        "type": "admins"
+  "enabled": true,
+  "macros": {
+    "voicemail.vmbox_id": {
+      "i18n_label": "voicemail_vmbox_id",
+      "friendly_name": "Voicemail Box Id",
+      "description": "Which voicemail box was the message left in"
     }
+  },
+  "subject": "New voicemail from {{caller_id.name}} ({{caller_id.number}})",
+  "category": "voicemail",
+  "friendly_name": "Voicemail To Email",
+  "to": {
+    "type": "original"
+  },
+  "from": "no_reply@localhost.me",
+  "cc": {
+    "type": "specified",
+    "email_addresses": []
+  },
+  "bcc": {
+    "type": "specified",
+    "email_addresses": []
+  },
+  "id": "voicemail_to_email",
+  "account_overridden": true,
+  "templates": {
+    "text/plain": {
+      "length": 971
+    },
+    "text/html": {
+      "length": 13350
+    }
+  }
 }
 ```
 
-In addition to the JSON data, templates in various formats can be uploaded (such as from a WYSIWYG tool). Currently supported are plaintext and HTML documents.
+By looking at above structure, there are some points of interest to say about notification parameters:
 
-The `macros` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
+* The `account_overridden` parameter would be added if the notification is account-specific; lack of the key indicates it is the system default notification.
+* The `enabled` parameter indicates should system send an E-mail notifying of the causing event. Lacking of this parameter would considered as the notification is enabled.
+* The `macros` object is a per-template, system-defined set of macros you can use in your templates. You **cannot** configure this via the API.
 
-#### Schema
+In addition to the JSON data describing configuration of a notification, notification templates can be represented in various formats and can be modified by uploading the representation document (such as using a WYSIWYG tool). Currently supported formats are plain text and HTML documents.
 
-Notifications templates
+##### Template Formats
 
+Creating the configuration documents is all well and good, but it is necessary to be able to attach the templates in their various forms as well. Currently supported formats are `text/html` and `text/plain`.
 
+##### Operation considerations
+
+In Kazoo versions prior to 3.19, notification templates were managed and processed by the `notify` application. In the newer Kazoo versions this has been replace by a robust and more featureful `teletype` application.
+
+All accounts will continue to be processed by the `notify` application until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding application in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` application to ignore processing and instructs the `teletype` application to process it instead. This allows administrators to run both `notify` and `teletype` concurrently without sending multiple copies of each notification.
+
+#### Notifications Schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -50,10 +71,10 @@ Key | Description | Type | Default | Required
 `bcc.type` |   | `string('original' | 'specified' | 'admins')` |   | `false`
 `bcc` | Bcc email field | `object()` |   | `false`
 `category` | Category of the template, for grouping purposes | `string(1..)` |   | `false`
+`cc` | CC email field | `object()` |   | `false`
 `cc.email_addresses.[]` |   | `string()` |   | `false`
 `cc.email_addresses` | CC Email Addresses | `array(string())` |   | `false`
-`cc.type` |   | `string('original' | 'specified' | 'admins')` |   | `false`
-`cc` | CC email field | `object()` |   | `false`
+`cc.type` |   | `string('original' or 'specified' or 'admins')` |   | `false`
 `enabled` | Enable notification | `boolean()` | `true` | `false`
 `friendly_name` | Friendly name of the template | `string(1..)` |   | `false`
 `from` | From: email address | `string()` |   | `true`
@@ -61,18 +82,18 @@ Key | Description | Type | Default | Required
 `reply_to` | Reply-To: email address | `string()` |   | `false`
 `subject` | Email subject | `string(1..200)` |   | `true`
 `template_charset` |   | `string(1..)` | `utf-8` | `false`
+`to` | To email field | `object()` |   | `true`
 `to.email_addresses.[]` |   | `string()` |   | `false`
 `to.email_addresses` |   | `array(string())` |   | `false`
-`to.type` |   | `string('original' | 'specified' | 'admins')` |   | `false`
-`to` | To email field | `object()` |   | `true`
+`to.type` |   | `string('original' or 'specified' or 'admins')` |   | `false`
 
 
 
-#### Fetch
+#### Summary of Available System Notifications
+
+Request to see what templates exist on the system to override.
 
 > GET /v2/notifications
-
-This is the first request to make to see what templates exist on the system to override
 
 ```shell
 curl -v -X GET \
@@ -80,36 +101,42 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
+##### Response
+
 ```json
 {
-        "auth_token": "{AUTH_TOKEN},
-        "data": [
-            {"id": "voicemail_to_email"
-             ,"macros": {
-                 "call_id": {
-                     "description": "Call ID of the caller"
-                     ,"friendly_name": "Call ID"
-                     ,"i18n_label": "call_id"
-                     }
-                 ,"caller_id.name": {
-                     "description": "Caller ID Name"
-                     ,"friendly_name": "Caller ID Name"
-                     ,"i18n_label": "caller_id_name"
-                 }
-                 ,...
-             }
-            }
-            ,{...}
-        ]
-        "request_id": "{REQUEST_ID}",
-        "revision": "{REVISION}",
-        "status": "success"
+  "auth_token": "{AUTH_TOKEN}",
+  "data": [
+    {
+      "id": "voicemail_to_email",
+      "macros": {
+        "call_id": {
+          "description": "Call ID of the caller",
+          "friendly_name": "Call ID",
+          "i18n_label": "call_id"
+        },
+        "caller_id.name": {
+          "description": "Caller ID Name",
+          "friendly_name": "Caller ID Name",
+          "i18n_label": "caller_id_name"
+        }
+        "..."
+      }
+    }
+    "..."
+  ],
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
 }
 ```
 
-#### Fetch notifications overridden in the account
+#### Summary of Account Overridden Notifications
 
-To see what notification templates an account overrides, include the account ID in the URI:
+To see what notification templates an account overrides. The key `account_overridden` will exist on any templates that are account-specific.
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications
 
@@ -119,73 +146,99 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
+##### Response
+
 ```json
 {
-    "auth_token": "{AUTH_TOKEN}",
-    "data": [
-        {
-            "id": "voicemail_to_email",
-            "macros": {
-                "call_id": {
-                    "description": "Call ID of the caller",
-                    "friendly_name": "Call ID",
-                    "i18n_label": "call_id"
-                },
-                "caller_id.name": {
-                    "description": "Caller ID Name",
-                    "friendly_name": "Caller ID Name",
-                    "i18n_label": "caller_id_name"
-                },
-                ...
-            },
-            "account_overridden": true
+  "auth_token": "{AUTH_TOKEN}",
+  "data": [
+    {
+      "id": "voicemail_to_email",
+      "macros": {
+        "call_id": {
+          "description": "Call ID of the caller",
+          "friendly_name": "Call ID",
+          "i18n_label": "call_id"
+        },
+        "caller_id.name": {
+          "description": "Caller ID Name",
+          "friendly_name": "Caller ID Name",
+          "i18n_label": "caller_id_name"
         }
-    ],
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success"
+        "..."
+      },
+      "account_overridden": true
+    }
+    "..."
+  ],
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
 }
 ```
 
-The key `account_overridden` will exist on any templates that are account-specific.
+#### Create a New System Notification
 
-#### Fetch a notification's configuration
+Creates a new system notification template.
 
-> GET /v2/notifications/{NOTIFICATION_ID}
+> **Note:** Only a super duper admin can create/modify/delete system notifications!
 
-Using the ID from the system listing above, get the template JSON. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
+> PUT /v2/notifications
 
 ```shell
-curl -v -X GET \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/notifications/{NOTIFICATION_ID}
+    -d '{
+    "data": {
+      "id":"voicemail_to_email",
+      "to": {
+        "type": "users",
+        "email_addresses": ["user@account.com"]
+      },
+      "from": "reseller@resellerdomain.com",
+      "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
+      "enabled": true,
+      "template_charset": "utf-8"
+    }}' \
+    http://{SERVER}:8000/v2/notifications
 ```
+
+##### Response
+
 ```json
-    {
-        "auth_token": "{AUTH_TOKEN}",
-        "data": {
-            "id": "{NOTIFICATION_ID}"
-            ,"macros":{...}
-            ,"templates": {
-                "text/html": {
-                    "length": 600
-                }
-                ,"text/plain": {
-                    "length": 408
-                }
-            }
-        },
-        "request_id": "{REQUEST_ID}",
-        "revision": "{REVISION}",
-        "status": "success"
+{
+  "auth_token": "{AUTH_TOKEN}",
+  "data": {
+    "enabled": true,
+    "id": "voicemail_to_email",
+    "from": "reseller@resellerdomain.com",
+    "macros": { "..." },
+    "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
+    "template_charset": "utf-8",
+    "to": {
+      "email_addresses": [
+        "user@account.com"
+      ],
+      "type": "users"
     }
+  },
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
 ```
 
-Performing a GET with an account ID will return the notification object, again with the `account_overridden` flag added if it is account-specific; lack of the key indicates it is the system default notification.
+#### Create a Notification as Account Override
 
-#### Create a notification template
+Now that you've fetched the system default template, modify the template and PUT it back to the account.
 
-Now that you've fetched the system default template, modify and PUT it back to the account.
+*This request will fail if `id` does not already exist in the system defaults.*
 
 > PUT /v2/accounts/{ACCOUNT_ID}/notifications
 
@@ -194,58 +247,68 @@ curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{
     "data": {
-        "id":"{NOTIFICATION_ID}",
-        "to": {
-            "type": "users",
-            "email_addresses": ["user@account.com"]
-        },
-        "from": "reseller@resellerdomain.com",
-        "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
-        "enabled": true,
-        "template_charset": "utf-8"
+      "id":"voicemail_to_email",
+      "to": {
+        "type": "users",
+        "email_addresses": ["user@account.com"]
+      },
+      "from": "reseller@resellerdomain.com",
+      "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
+      "enabled": true,
+      "template_charset": "utf-8"
     }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
+##### Response
+
+Same as `PUT` for system level, but with the `"account_overridden": true` flag added.
+
+
+#### Details of a System Notification
+
+Using the ID from the system listing above, get the template object. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
+
+> GET /v2/notifications/{NOTIFICATION_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/notifications/{NOTIFICATION_ID}
+```
+
+##### Response
+
 ```json
 {
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "enabled": true,
-        "from": "reseller@resellerdomain.com",
-        "id": "{NOTIFICATION_ID}",
-        "macros": {
-            "user.first_name": {
-                "description": "If the voicemail box has an owner id, this is the first name of that user. Not always present",
-                "friendly_name": "First Name",
-                "i18n_label": "first_name"
-            },
-            "user.last_name": {
-                "description": "If the voicemail box has an owner id, this is the last name of that user. Not always present",
-                "friendly_name": "Last Name",
-                "i18n_label": "last_name"
-            }
-        },
-        "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
-        "template_charset": "utf-8",
-        "to": {
-            "email_addresses": [
-                "user@account.com"
-            ],
-            "type": "users"
+  "auth_token": "{AUTH_TOKEN}",
+  "data": [
+    {
+      "id": "{NOTIFICATION_ID}",
+      "macros": { "..." },
+      "templates": {
+        "text/html": {
+          "length": 600
         }
-    },
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success"
+        ,"text/plain": {
+          "length": 408
+        }
+      }
+    }
+    "..."
+  ],
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
 }
 ```
 
-This request will fail if `id` does not already exist in the system defaults. To create a new system notification template, a superduper admin can use the above PUT, but to `/v2/notifications` instead of a specific account.
+#### Details of an Account Overridden Notification
 
-#### Fetch a specific notification
-
-Now that you've created an account-specific notification, you can fetch it to feed into a WYSIWYG editor or for other purposes:
+Performing a GET with an account ID will return the notification object, again with the `account_overridden` flag added.
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -255,26 +318,17 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "id": "{NOTIFICATION_ID}",
-        ...
-    },
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success"
-}
-```
+##### Response
 
-#### Update a notification's config
+Same as above with the `account_overridden` flag added.
 
-Similar to the PUT, POST will update an existing config:
+#### Update a Notification
+
+Similar to the PUT, POST will update an existing configuration:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
-Omit `/accounts/{ACCOUNT_ID}` to update the system's version.
+> **Note:** Omit `/accounts/{ACCOUNT_ID}` to update the system's version. Only a super duper admin can create/modify/delete system notifications!
 
 ```shell
 curl -v -X POST \
@@ -306,13 +360,11 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-#### Remove a notification template
+#### Remove a Notification
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
-Omit the `/accounts/{ACCOUNT_ID}` to remove the system default.
-
-> DELETE /v2/notifications/{NOTIFICATION_ID}
+> **Note:** Omit the `/accounts/{ACCOUNT_ID}` to remove the system default. Only a super duper admin can create/modify/delete system notifications!
 
 ```shell
 curl -v -X DELETE \
@@ -320,15 +372,13 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-### Template Formats
-
-Creating the configuration documents is all well and good, but it is necessary to be able to attach the templates in their various forms as well. Currently supported formats are `text/html` and `text/plain`.
-
-#### Get notification template:
+#### Get Notification Template:
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
-When you GET a notification config (`Accept` of `application/json`), get a `templates` list of `Content-Type` atttributes. Use those to fetch a specific template by setting the `Accept` header:
+When you perform a `GET` request to fetch a notification configuration (using `Accept: application/json` header or not setting `Accept` header at all), there is a `Content-Type` HTTP header in the response headers. Use those content types to fetch a specific template by setting your request `Accept` header:
+
+##### Get as `text/html`
 
 ```shell
 curl -v -X GET \
@@ -337,6 +387,8 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
+##### Get as `text/plain`
+
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -344,13 +396,15 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a non-existent Accept MIME type, expect to receive a `406 Not Acceptable` error.
+Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a non-existent `Accept` MIME type, expect to receive a `406 Not Acceptable` error.
 
-For clients that do not support setting the `Accept` header, a querystring parameter can be included (eg `http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template.
+For clients that do not support setting the `Accept` header, a query string parameter can be included (e.g. `/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template).
 
-#### Update notification template:
+#### Update Notification Template:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+
+##### Update `text/plain`
 
 ```shell
 curl -v -X POST \
@@ -360,15 +414,19 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
+##### Update `text/html`
+
+An Example using Curl Upload File:
+
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H 'Content-Type: text/html' \
-    -d '<div>
-            <p>Some Html and {{macro.key}} replaced on render</p>
-       </div>' \
+    -F content=@file.html \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
+
+> **Note:** Omit `/accounts/{ACCOUNT_ID}` to update the system's version. Only a super duper admin can create/modify/delete system notifications!
 
 #### Preview a new template
 
@@ -394,11 +452,135 @@ curl -v -X POST \
 * `html` is the base64 encoded HTML template
 * `plain` is the plain-text template
 
-### Operations considerations
 
-In versions Kazoo prior to 3.19, notification templates were managed and processed by the `notify` app.
+#### Remove All Account's Notification Customizations
 
-All accounts will continue to be processed by the `notify` app until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding App in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` app to ignore processing and instructs the `teletype` app to process it instead. This allows admins to run both `notify` and `teletyple` concurrently without sending multiple copies of each notification.
+To remove all notification customizations made on the account use a `DELETE` method with action `remove_customizations`.
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/notifications/
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"action": "remove_customizations", "data": {}}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
+```
+
+
+##### Response
+
+```json
+{
+  "auth_token": "{AUTH_TOKEN}",
+  "data": {
+    "account_zone_change": "deleted",
+    "cnam_request": "deleted",
+    "customer_update": "deleted",
+    "denied_emergency_bridge": "deleted",
+    "deregister": "deleted",
+    "fax_inbound_error_to_email": "deleted",
+    "fax_inbound_error_to_email_filtered": "deleted",
+    "fax_inbound_to_email": "deleted",
+    "fax_outbound_error_to_email": "deleted",
+    "fax_outbound_smtp_error_to_email": "deleted",
+    "fax_outbound_to_email": "deleted",
+    "first_occurrence": "deleted",
+    "low_balance": "deleted",
+    "missed_call": "deleted",
+    "new_account": "deleted",
+    "new_user": "deleted",
+    "password_recovery": "deleted",
+    "port_cancel": "deleted",
+    "port_comment": "deleted",
+    "port_pending": "deleted",
+    "port_rejected": "deleted",
+    "port_request": "deleted",
+    "port_request_admin": "deleted",
+    "port_scheduled": "deleted",
+    "port_unconfirmed": "deleted",
+    "ported": "deleted",
+    "service_added": "deleted",
+    "skel": "deleted",
+    "system_alert": "deleted",
+    "topup": "deleted",
+    "transaction": "deleted",
+    "transaction_failed": "deleted",
+    "voicemail_full": "deleted",
+    "voicemail_to_email": "deleted",
+    "webhook_disabled": "deleted"
+  },
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### Force All Account's Notifications to System Default
+
+To remove all notification customizations made on the account and use the notification from system use a `PUT` method with action `force_system`.
+
+> PUT /v2/accounts/{ACCOUNT_ID}/notifications/
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"action": "force_system", "data": {}}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
+```
+
+##### Response
+
+```json
+{
+  "auth_token": "{AUTH_TOKEN}",
+  "data": {
+    "account_zone_change": "replaced",
+    "cnam_request": "replaced",
+    "customer_update": "replaced",
+    "denied_emergency_bridge": "replaced",
+    "deregister": "replaced",
+    "fax_inbound_error_to_email": "replaced",
+    "fax_inbound_error_to_email_filtered": "replaced",
+    "fax_inbound_to_email": "replaced",
+    "fax_outbound_error_to_email": "replaced",
+    "fax_outbound_smtp_error_to_email": "replaced",
+    "fax_outbound_to_email": "replaced",
+    "first_occurrence": "replaced",
+    "low_balance": "replaced",
+    "missed_call": "replaced",
+    "new_account": "replaced",
+    "new_user": "replaced",
+    "password_recovery": "replaced",
+    "port_cancel": "replaced",
+    "port_comment": "replaced",
+    "port_pending": "replaced",
+    "port_rejected": "replaced",
+    "port_request": "replaced",
+    "port_request_admin": "replaced",
+    "port_scheduled": "replaced",
+    "port_unconfirmed": "replaced",
+    "ported": "replaced",
+    "service_added": "replaced",
+    "skel": "replaced",
+    "system_alert": "replaced",
+    "topup": "replaced",
+    "transaction": "replaced",
+    "transaction_failed": "replaced",
+    "voicemail_full": "replaced",
+    "voicemail_to_email": "replaced",
+    "webhook_disabled": "replaced"
+  },
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
 
 #### Get the notification(s) SMTP log
 
@@ -451,138 +633,131 @@ curl -v -X GET \
 
 #### Customer update
 
-Send a message to all reseller's children or to a particular account.
+You can use the special Customer Update notification to send a message to all reseller's children users or to a particular account's users.
+
+##### Send Message to All Reseller's Accounts:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message
 
-Send message to all reseller's accounts:
-
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H 'Content-Type: text/plain' \
-    -d '{} \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message
+    -H 'Content-Type: text/html' \
+    -F content=@file.html \
+    http://{SERVER}:8000/v2/accounts/{RESELLER_ACCOUNT_ID}/notifications/customer_update/message
 ```
 
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H 'Content-Type: text/plain' \
-    -d '{} \
-    http://{SERVER}:8000/v2/accounts/{SENDER(RESELLER)_ACCOUNT_ID}/notifications/customer_update/message
-```
-
-Send message to a particular acount:
-
+##### Send Message to a Particular Account:
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H 'Content-Type: text/plain' \
+    -H 'Content-Type: text/html' \
     -d '{"data": {"recipient_id": "33ca3929ed585e0e423eb39e4ffe1452"}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message
+    http://{SERVER}:8000/v2/accounts/{PARTICULAR_ACCOUNT_ID}/notifications/customer_update/message
 ```
 
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H 'Content-Type: text/plain' \
-    -d '{"data": {"recipient_id": "33ca3929ed585e0e423eb39e4ffe1452"}}' \
-    http://{SERVER}:8000/v2/accounts/{SENDER(RESELLER)_ACCOUNT_ID}/notifications/customer_update/message
-```
+##### Send Message to Particular Users
 
-You can send a message to all users, admins only or a particular user within an account. Just add a `user_type` field to your payload:
+You can send a message to all users, administrators only or a particular user within an account. Just add a `user_type` field to your payload:
 
-All users:
+* **All users:**
 
 ```json
 {
-    "data": {"user_type": "all_users"}
+  "data": {"user_type": "all_users"}
 }
 ````
 
-Particular user:
+* **Particular user:**
+
+> **Note:** Applicable to send message to a particular account only.
 
 ```json
 {
-    "data": {"user_type": "{ACCOUNT_ID}"}
+  "data": {"user_type": "{USER_ID}"}
 }
 ````
 
-Admin privileged users only. Default. Could be omitted:
+* **Admin privileged users only**
+
+> **Note:** This is the default behavior, so `user_type` could be omitted.
 
 ```json
 {
-    "data": {"user_type": "admins_only"}
+  "data": {"user_type": "admins_only"}
 }
 ````
 
-You can send a message with changed subject, html and plain text templates by providing full notification document payload:
+##### Specifying the Message
+
+For specifying the actual message (and the email subject) you want to send, provide HTML and plain text templates by uploading document:
 
 ```json
 {
-    "data": {
-        "recipient_id": "33ca3929ed585e0e423eb39e4ffe1452",
-        "user_type": "3d9b564d5c95d52d81a2e49ea0c57941",
-        "id": "customer_update",
-        "account_overridden": true,
-        "enabled": true,
-        "category": "user",
-        "friendly_name": "Customer update",
-        "from": "info@onnet.su",
-        "subject": "Test Reseller customer update",
-        "bcc": {
-            "email_addresses": [],
-            "type": ""
-        },
-        "cc": {
-            "email_addresses": [],
-            "type": ""
-        },
-        "macros": {
-            "user.email": {
-                "description": "Email of the user",
-                "friendly_name": "Email",
-                "i18n_label": "user_email"
-            },
-            "user.first_name": {
-                "description": "First Name",
-                "friendly_name": "First Name",
-                "i18n_label": "first_name"
-            },
-            "user.last_name": {
-                "description": "Last Name",
-                "friendly_name": "Last Name",
-                "i18n_label": "last_name"
-            },
-            "user.timezone": {
-                "description": "Timezone of the user",
-                "friendly_name": "Timezone",
-                "i18n_label": "user_timezone"
-            },
-            "user.username": {
-                "description": "Username",
-                "friendly_name": "Username",
-                "i18n_label": "username"
-            }
-        },
-        "template_charset": "utf-8",
-        "html": "PHA+RGVhciB7e3VzZXIuZmlyc3RfbmFtZX19IHt7dXNlci5sYXN0X25hbWV9fS48L3A+CjxwPkhlcmUgYXJlIHNvbWUgbmV3cyB0aGF0IHdlIGhhdmUgc2VsZWN0ZWQgZm9yIHlvdTwvcD4KPHA+QmVzdCByZWdhcmRzLDwvcD4KPHA+T25OZXQgSW5ub3ZhdGlvbnMgTGltaXRlZC48L3A+",
-        "plain": "Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some more news that we have selected for you.\n\nBest regards,\nOnNet Innovations Limited.",
-        "templates": {
-            "text/html": {
-                "length": 161
-            },
-            "text/plain": {
-                "length": 136
-            }
-        },
-    }
+  "data": {
+    "recipient_id": "33ca3929ed585e0e423eb39e4ffe1452",
+    "user_type": "3d9b564d5c95d52d81a2e49ea0c57941",
+    "id": "customer_update",
+    "account_overridden": true,
+    "enabled": true,
+    "category": "user",
+    "friendly_name": "Customer update",
+    "from": "info@localhost.me",
+    "subject": "Test Reseller customer update",
+    "bcc": {
+      "email_addresses": [],
+      "type": ""
+    },
+    "cc": {
+      "email_addresses": [],
+      "type": ""
+    },
+    "macros": {
+      "user.email": {
+        "description": "Email of the user",
+        "friendly_name": "Email",
+        "i18n_label": "user_email"
+      },
+      "user.first_name": {
+        "description": "First Name",
+        "friendly_name": "First Name",
+        "i18n_label": "first_name"
+      },
+      "user.last_name": {
+        "description": "Last Name",
+        "friendly_name": "Last Name",
+        "i18n_label": "last_name"
+      },
+      "user.timezone": {
+        "description": "Timezone of the user",
+        "friendly_name": "Timezone",
+        "i18n_label": "user_timezone"
+      },
+      "user.username": {
+        "description": "Username",
+        "friendly_name": "Username",
+        "i18n_label": "username"
+      }
+    },
+    "template_charset": "utf-8",
+    "html": "PHA+RGVhciB7e3VzZXIuZmlyc3RfbmFtZX19IHt7dXNlci5sYXN0X25hbWV9fS48L3A+CjxwPkhlcmUgYXJlIHNvbWUgbmV3cyB0aGF0IHdlIGhhdmUgc2VsZWN0ZWQgZm9yIHlvdTwvcD4KPHA+QmVzdCByZWdhcmRzLDwvcD4KPHA+T25OZXQgSW5ub3ZhdGlvbnMgTGltaXRlZC48L3A+",
+    "plain": "Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some more news that we have selected for you.\n\nBest regards,\nYour Imagination, Corp",
+    "templates": {
+      "text/html": {
+        "length": 161
+      },
+      "text/plain": {
+        "length": 136
+      }
+    },
+  }
 }
 ```
 
-To send an update to a customer from your kapp, you can build payload including you apps data (see <<"DataBag">> field) and send it over amqp using predefined particular template (see <<"Template-ID">> field) or your own hardcoded templates (see <<"HTML">> and <<"Text">> fields):
+#### Send Message from your Kazoo Application
+
+To send an update to a customer from your Kazoo Application, you can build payload include your application data (`<<"DataBag">>` field) and send it over AMQP using predefined particular template (`<<"Template-ID">>` field) or your own hard coded templates (`<<"HTML">>` and `<<"Text">>` fields):
 
 ```erlang
 -spec send_account_update(ne_binary()) -> 'ok'.
@@ -598,13 +773,16 @@ send_account_update(AccountId) ->
             lager:debug("failed to publish_customer update notification: ~p", [_E])
     end.
 
--spec build_customer_update_payload(cb_context:context()) -> kz_proplist().
+-spec build_customer_update_payload(ne_binary()) -> kz_proplist().
 build_customer_update_payload(AccountId) ->
     props:filter_empty(
       [{<<"Account-ID">>, kz_services:find_reseller_id(AccountId)}
       ,{<<"Recipient-ID">>, AccountId}
+      %% DataBag is useful if you have a customized template and wants to pass some your info from your app
+      ,{<<"DataBag">>, kz_json:from_list([{<<"field1">>,<<"value1">>},{<<"field2">>,{[{<<"subfield1">>,<<"subvalue1">>},{<<"subfield2">>,<<"subvalue2">>}]}}])}
+      %% set below prop if you have a customized template with this ID in your account's DB
       ,{<<"Template-ID">>, <<"customer_update_billing_period">>}
-      ,{<<"DataBag">>, {[{<<"field1">>,<<"value1">>},{<<"field2">>,{[{<<"subfield1">>,<<"subvalue1">>},{<<"subfield2">>,<<"subvalue2">>}]}}]}}
+      %% otherwise set your customized message as below:
       ,{<<"HTML">>, base64:encode(<<"Dear {{user.first_name}} {{user.last_name}}. <br /> DataBag test: {{databag.field2.subfield1}} <br /> Kind regards,">>)}
       ,{<<"Text">>, <<"Oh Dear {{user.first_name}} {{user.last_name}}.\n\nDataBag test: {{databag.field2.subfield2}}\n\nBest regards,">>}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
