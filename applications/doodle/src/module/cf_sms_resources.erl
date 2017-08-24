@@ -28,12 +28,11 @@ handle(Data, Call1) ->
                'true' -> doodle_util:set_caller_id(kapps_call:from_user(Call1), Call1);
                'false' -> doodle_util:set_caller_id(Data, Call1)
            end,
-    case kapps_util:amqp_pool_request(
-           build_offnet_request(Data, Call)
+    case kapps_util:amqp_pool_request(build_offnet_request(Data, Call)
                                      ,fun kapi_offnet_resource:publish_req/1
                                      ,fun kapi_offnet_resource:resp_v/1
                                      ,30 * ?MILLISECONDS_IN_SECOND
-          )
+                                     )
     of
         {'ok', Res} ->
             handle_result(Res, Call);
@@ -117,7 +116,7 @@ get_bypass_e164(Data) ->
     kz_json:is_true(<<"do_not_normalize">>, Data)
         orelse kz_json:is_true(<<"bypass_e164">>, Data).
 
--spec get_from_uri_realm(kz_json:object(), kapps_call:call()) -> api_binary().
+-spec get_from_uri_realm(kz_json:object(), kapps_call:call()) -> api_ne_binary().
 get_from_uri_realm(Data, Call) ->
     case kz_json:get_ne_value(<<"from_uri_realm">>, Data) of
         'undefined' -> maybe_get_call_from_realm(Call);
@@ -131,7 +130,7 @@ maybe_get_call_from_realm(Call) ->
         Realm -> Realm
     end.
 
--spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> api_binary().
+-spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> api_ne_binary().
 get_hunt_account_id(Data, Call) ->
     case kz_json:is_true(<<"use_local_resources">>, Data, 'true') of
         'false' -> 'undefined';
@@ -178,7 +177,7 @@ get_sip_headers(Data, Call) ->
         'false' -> JObj
     end.
 
--spec get_flags(kz_json:object(), kapps_call:call()) -> api_binaries().
+-spec get_flags(kz_json:object(), kapps_call:call()) -> ne_binaries() | undefined.
 get_flags(Data, Call) ->
     Flags = kz_attributes:get_flags(?APP_NAME, Call),
     Routines = [fun get_flow_flags/3
@@ -211,6 +210,6 @@ get_resource_flags(JObj, Call, Flags) ->
 get_resource_type_flags(<<"sms">>, _JObj, _Call, Flags) -> [<<"sms">> | Flags];
 get_resource_type_flags(_Other, _JObj, _Call, Flags) -> Flags.
 
--spec get_inception(kapps_call:call()) -> api_binary().
+-spec get_inception(kapps_call:call()) -> api_ne_binary().
 get_inception(Call) ->
     kz_json:get_value(<<"Inception">>, kapps_call:custom_channel_vars(Call)).

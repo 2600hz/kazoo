@@ -570,7 +570,7 @@ owned_by_query(ViewOptions, Call, ViewKey) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_flags(kz_json:object(), kapps_call:call()) -> api_binaries().
+-spec get_flags(ne_binary(), kapps_call:call()) -> ne_binaries() | undefined.
 get_flags(ApplicationName, Call) ->
     Routines = [fun maybe_get_endpoint_static_flags/3
                ,fun get_account_static_flags/3
@@ -594,10 +594,7 @@ maybe_get_endpoint_static_flags(_, Call, Flags) ->
 -spec get_endpoint_static_flags(ne_binaries(), kz_json:object()) ->
                                        ne_binaries().
 get_endpoint_static_flags(Flags, Endpoint) ->
-    case kz_device:outbound_static_flags(Endpoint) of
-        [] -> Flags;
-        EndpointFlags -> EndpointFlags ++ Flags
-    end.
+    kz_device:outbound_static_flags(Endpoint) ++ Flags.
 
 -spec get_account_static_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
                                       ne_binaries().
@@ -606,24 +603,19 @@ get_account_static_flags(_, Call, Flags) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} -> kz_device:outbound_static_flags(AccountJObj) ++ Flags;
         {'error', _E} ->
-            lager:error("not applying account outbound flags for ~s: ~p"
-                       ,[AccountId, _E]
-                       ),
+            lager:error("not applying account outbound flags for ~s: ~p", [AccountId, _E]),
             Flags
     end.
 
 -spec get_config_static_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
                                      ne_binaries().
 get_config_static_flags(ApplicationName, Call, Flags) ->
-    case kapps_account_config:get(kapps_call:account_id(Call)
-                                 ,ApplicationName
-                                 ,<<"outbound_flags">>
-                                 ,[]
-                                 )
-    of
-        [] -> Flags;
-        OutboundFlags -> OutboundFlags ++ Flags
-    end.
+    kapps_account_config:get_ne_binaries(kapps_call:account_id(Call)
+                                        ,ApplicationName
+                                        ,<<"outbound_flags">>
+                                        ,[]
+                                        )
+        ++ Flags.
 
 -spec maybe_get_endpoint_dynamic_flags(ne_binary(), kapps_call:call(), ne_binaries()) ->
                                               ne_binaries().
@@ -649,20 +641,18 @@ get_account_dynamic_flags(_, Call, Flags) ->
         {'ok', AccountJObj} ->
             process_dynamic_flags(kz_device:outbound_dynamic_flags(AccountJObj), Flags, Call);
         {'error', _E} ->
-            lager:error("not applying account dynamic flags for ~s: ~p"
-                       ,[AccountId, _E]
-                       ),
+            lager:error("not applying account dynamic flags for ~s: ~p", [AccountId, _E]),
             Flags
     end.
 
 -spec get_config_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
                                       ne_binaries().
 get_config_dynamic_flags(ApplicationName, Call, Flags) ->
-    DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
-                                           ,ApplicationName
-                                           ,<<"dynamic_flags">>
-                                           ,[]
-                                           ),
+    DynamicFlags = kapps_account_config:get_ne_binaries(kapps_call:account_id(Call)
+                                                       ,ApplicationName
+                                                       ,<<"dynamic_flags">>
+                                                       ,[]
+                                                       ),
     process_dynamic_flags(DynamicFlags, Flags, Call).
 
 %%-----------------------------------------------------------------------------
@@ -701,7 +691,7 @@ process_dynamic_flags([DynamicFlag|DynamicFlags], Flags, Call) ->
 
 -spec is_flag_exported(ne_binary()) -> boolean().
 is_flag_exported(Flag) ->
-    is_flag_exported(Flag, kapps_call:module_info('exports')).
+    is_flag_exported(kz_term:to_binary(Flag), kapps_call:module_info('exports')).
 
 is_flag_exported(_, []) -> 'false';
 is_flag_exported(Flag, [{F, 1}|Funs]) ->
@@ -732,7 +722,7 @@ default_cid_name(<<_/binary>> = Name, _Call) -> Name;
 default_cid_name(Endpoint, Call) ->
     default_cid_name(kz_json:get_ne_value(<<"name">>, Endpoint), Call).
 
--spec get_cid_or_default(ne_binary(), ne_binary(), kz_json:object()) -> api_binary().
+-spec get_cid_or_default(ne_binary(), ne_binary(), kz_json:object()) -> api_ne_binary().
 get_cid_or_default(<<"emergency">>, Property, Endpoint) ->
     case kz_json:get_first_defined([[<<"caller_id">>, <<"emergency">>, Property]
                                    ,[<<"caller_id">>, <<"external">>, Property]
