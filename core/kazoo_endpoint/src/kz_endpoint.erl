@@ -20,6 +20,10 @@
         ,get_sip_realm/2, get_sip_realm/3
         ]).
 
+-ifdef(TEST).
+-export([attributes_keys/0]).
+-endif.
+
 -include("kazoo_endpoint.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -187,28 +191,30 @@ maybe_format_endpoint(Endpoint, 'false') ->
 -spec merge_attributes(kz_json:object(), ne_binary()) -> kz_json:object().
 -spec merge_attributes(kz_json:object(), ne_binary(), ne_binaries()) -> kz_json:object().
 merge_attributes(Endpoint, Type) ->
-    Keys = [<<"name">>
-           ,<<"call_restriction">>
-           ,<<"music_on_hold">>
-           ,<<"ringtones">>
-           ,<<"caller_id">>
-           ,<<"caller_id_options">>
-           ,<<"do_not_disturb">>
-           ,<<"call_forward">>
-           ,<<"dial_plan">>
-           ,<<"metaflows">>
-           ,<<"media">>
-           ,<<"language">>
-           ,<<"record_call">>
-           ,<<"call_recording">>
-           ,<<"mobile">>
-           ,<<"presence_id">>
-           ,<<"call_waiting">>
-           ,<<"formatters">>
-           ,<<"outbound_flags">>
-           ,?ATTR_LOWER_KEY
-           ],
-    merge_attributes(Endpoint, Type, Keys).
+    merge_attributes(Endpoint, Type, attributes_keys()).
+
+attributes_keys() ->
+    [<<"name">>
+    ,<<"call_restriction">>
+    ,<<"music_on_hold">>
+    ,<<"ringtones">>
+    ,<<"caller_id">>
+    ,<<"caller_id_options">>
+    ,<<"do_not_disturb">>
+    ,<<"call_forward">>
+    ,<<"dial_plan">>
+    ,<<"metaflows">>
+    ,<<"media">>
+    ,<<"language">>
+    ,<<"record_call">>
+    ,<<"call_recording">>
+    ,<<"mobile">>
+    ,<<"presence_id">>
+    ,<<"call_waiting">>
+    ,<<"formatters">>
+    ,<<"outbound_flags">>
+    ,?ATTR_LOWER_KEY
+    ].
 
 merge_attributes(Owner, <<"user">>, Keys) ->
     case kz_account:fetch(kz_doc:account_id(Owner)) of
