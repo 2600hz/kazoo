@@ -27,7 +27,7 @@
 
 -type last_key() :: 'undefined' | kz_json:path().
 
--spec get_results(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), options()) ->
+-spec get_results(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds(), pos_integer(), options()) ->
                          {last_key(), kz_json:objects()}.
 get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, StartTimestamp, EndTimestamp, Limit, Options) ->
     {StartKey, EndKey} = start_end_keys(StartTimestamp, EndTimestamp, Options),
@@ -38,11 +38,11 @@ get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, StartTimestamp, EndTimest
     Mapper = props:get_value('mapper', Options, fun kz_term:identity/1),
     get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Limit, Mapper, CouchOptions).
 
--spec get_ordered(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), mapper_fun(), kz_datamgr:view_options()) ->
+-spec get_ordered(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds(), pos_integer(), mapper_fun(), kz_datamgr:view_options()) ->
                          {last_key(), kz_json:objects()}.
 get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Limit, Mapper, CouchOptions) when StartTimestamp >= EndTimestamp ->
     MODbs = lists:reverse(kazoo_modb:get_range(AccountId, EndTimestamp, StartTimestamp)),
-    CouchOpts = [descending | CouchOptions],
+    CouchOpts = ['descending' | CouchOptions],
     {_, LastKey, JObjs} =
         lists:foldl(fun fold_query/2, {Limit, 'undefined', []}, [{Db, View, CouchOpts, Mapper} || Db <- MODbs ]),
     {LastKey, JObjs};
@@ -100,7 +100,8 @@ last_key(_LastKey, [Last|JObjs], Limit, Returned) when Returned == Limit ->
 
 %%% unlimited version
 
--spec get_results(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), options()) -> [kz_json:objects()].
+-spec get_results(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds(), options()) ->
+                         kz_json:objects().
 get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, StartTimestamp, EndTimestamp, Options) ->
     {StartKey, EndKey} = start_end_keys(StartTimestamp, EndTimestamp, Options),
     CouchOptions = [{'startkey', StartKey}
@@ -110,25 +111,27 @@ get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, StartTimestamp, EndTimest
     Mapper = props:get_value('mapper', Options, fun kz_term:identity/1),
     get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Mapper, CouchOptions).
 
--spec get_ordered(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), mapper_fun(), kz_datamgr:view_options()) -> kz_json:objects().
+-spec get_ordered(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds(), mapper_fun(), kz_datamgr:view_options()) ->
+                         kz_json:objects().
 get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Mapper, CouchOptions) when StartTimestamp >= EndTimestamp ->
     MODbs = lists:reverse(kazoo_modb:get_range(AccountId, EndTimestamp, StartTimestamp)),
-    CouchOpts = [descending | CouchOptions],
+    CouchOpts = ['descending' | CouchOptions],
     lists:flatten([ apply_filter(Mapper, unlimited_query(Db, View, CouchOpts)) || Db <- MODbs ]);
-
 get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Mapper, CouchOptions) when StartTimestamp < EndTimestamp ->
     MODbs = kazoo_modb:get_range(AccountId, StartTimestamp, EndTimestamp),
     lists:flatten([ apply_filter(Mapper, unlimited_query(Db, View, CouchOptions)) || Db <- MODbs ]).
 
--spec unlimited_query(ne_binary(), ne_binary(), kz_datamgr:view_options()) -> kz_json:objects().
+-spec unlimited_query(ne_binary(), ne_binary(), kz_datamgr:view_options()) ->
+                             kz_json:objects().
 unlimited_query(Db, View, CouchOpts) ->
     case kazoo_modb:get_results(Db, View, CouchOpts) of
-        {ok, JObjs} -> JObjs;
-        {error, not_found} -> [];
-        {error, Error} -> throw(Error)
+        {'ok', JObjs} -> JObjs;
+        {'error', 'not_found'} -> [];
+        {'error', Error} -> throw(Error)
     end.
 
--spec start_end_keys(integer(), integer(), options()) -> {kz_json:path(), kz_json:path()}.
+-spec start_end_keys(gregorian_seconds(), gregorian_seconds(), options()) ->
+                            {kz_json:path(), kz_json:path()}.
 start_end_keys(StartTimestamp, EndTimestamp, Options) ->
     {StartKeyMap, EndKeyMap} = get_key_maps(Options),
     {StartKeyMap(StartTimestamp), EndKeyMap(EndTimestamp)}.
