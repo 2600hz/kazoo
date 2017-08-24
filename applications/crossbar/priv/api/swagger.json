@@ -35961,6 +35961,21 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/notifications": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
             "get": {
                 "parameters": [
                     {
