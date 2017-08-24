@@ -9,7 +9,6 @@
 validate_fixtures_test_() ->
     {'ok', Schema} = kz_json_schema:fload(<<"devices">>),
     {'ok', Device1} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
-    file:write_file("/tmp/error", io_lib:format("check: ~p~n", [validate(Schema, Device1)])),
     [{"validate device fixture 1", ?_assertMatch({'ok', _}, validate(Schema, Device1))}].
 
 custom_sip_headers_test_() ->

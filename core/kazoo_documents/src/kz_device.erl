@@ -85,7 +85,7 @@
 
 -ifdef(TEST).
 fetch(_Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
-    {'ok', kz_json:load_fixture_from_file(?APP, "fixtures/device", <<DeviceId/binary, ".json">>)};
+    {'ok', kz_json:fixture(?APP, <<"fixtures/device", DeviceId/binary, ".json">>)};
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
 -else.

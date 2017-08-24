@@ -168,7 +168,7 @@ fetch('undefined', _) ->
     {'error', 'invalid_db_name'};
 fetch(Account, 'account') ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    {'ok', kz_json:load_fixture_from_file(?APP, "fixtures/account", <<AccountId/binary, ".json">>)}.
+    {'ok', kz_json:fixture(?APP, <<"fixtures/account", AccountId/binary, ".json">>)}.
 -else.
 fetch('undefined', _) ->
     {'error', 'invalid_db_name'};

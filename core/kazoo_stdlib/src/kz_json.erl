@@ -78,6 +78,9 @@
 -export([from_list/1, from_list_recursive/1, merge_jobjs/2]).
 
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
+-ifdef(TEST).
+-export([fixture/2]).
+-endif.
 
 -export([normalize_jobj/1
         ,normalize_jobj/3
@@ -1116,7 +1119,6 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Read a json fixture file from the filesystem into memory
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fixture_from_file(atom(), nonempty_string() | ne_binary()) ->
@@ -1145,7 +1147,12 @@ load_fixture_from_file(App, Dir, File) ->
             {'error', Reason}
     end.
 
-
+-spec fixture(atom(), file:filename_all()) -> object().
+fixture(App, Path0) when is_atom(App) ->
+    Path = iolist_to_binary([code:lib_dir(App, test), Path0]),
+    io:format(user, "reading fixture from ~s\n", [Path]),
+    {ok, Bin} = file:read_file(Path),
+    kz_json:decode(Bin).
 
 %%--------------------------------------------------------------------
 %% @doc

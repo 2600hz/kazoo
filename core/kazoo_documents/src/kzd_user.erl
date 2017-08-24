@@ -50,7 +50,7 @@
                                            {'error', any()}.
 -ifdef(TEST).
 fetch(_Account=?NE_BINARY, UserId=?NE_BINARY) ->
-    {'ok', kz_json:load_fixture_from_file(?APP, "fixtures/user", <<UserId/binary, ".json">>)};
+    {'ok', kz_json:fixture(?APP, <<"fixtures/user", UserId/binary, ".json">>)};
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
 -else.
