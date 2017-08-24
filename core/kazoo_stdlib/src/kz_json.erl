@@ -1147,12 +1147,14 @@ load_fixture_from_file(App, Dir, File) ->
             {'error', Reason}
     end.
 
+-ifdef(TEST).
 -spec fixture(atom(), file:filename_all()) -> object().
 fixture(App, Path0) when is_atom(App) ->
     Path = filename:join(code:lib_dir(App, test), Path0),
     io:format(user, "reading fixture from ~s\n", [Path]),
     {ok, Bin} = file:read_file(Path),
-    kz_json:decode(Bin).
+    decode(Bin).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @doc
