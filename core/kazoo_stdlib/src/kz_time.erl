@@ -54,7 +54,7 @@ unix_seconds_to_gregorian_seconds(UnixSeconds) ->
 unix_timestamp_to_gregorian_seconds(UnixTimestamp) ->
     ?UNIX_EPOCH_IN_GREGORIAN + (kz_term:to_integer(UnixTimestamp) div 1000).
 
--spec to_gregorian_seconds(kz_datetime(), ne_binary()) -> gregorian_seconds().
+-spec to_gregorian_seconds(kz_datetime(), api_ne_binary()) -> gregorian_seconds().
 -ifdef(TEST).
 to_gregorian_seconds(Datetime, 'undefined') ->
     to_gregorian_seconds(Datetime, <<"America/Los_Angeles">>);
