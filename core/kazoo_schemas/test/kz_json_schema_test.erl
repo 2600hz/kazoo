@@ -9,6 +9,7 @@
 -module(kz_json_schema_test).
 
 -include_lib("eunit/include/eunit.hrl").
+-include("schemas.hrl").
 
 add_defaults_test_() ->
     JObj = kz_json:decode(<<"{\"key1\":\"value1\"}">>),
