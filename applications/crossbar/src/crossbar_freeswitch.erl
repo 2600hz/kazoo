@@ -269,7 +269,7 @@ build_freeswitch(Pid) ->
     lists:foreach(fun crawl_numbers_db/1, knm_util:get_all_number_dbs()),
     process_realms(),
     File = zip_directory(WorkDir),
-    del_dir(kz_term:to_list(WorkDir)),
+    kz_util:delete_dir(kz_term:to_list(WorkDir)),
     gen_server:cast(Pid, {'completed', File}).
 
 -spec crawl_numbers_db(ne_binary()) -> 'ok'.
@@ -543,27 +543,3 @@ xml_file_from_config(Module, 'undefined', KeyName) ->
     kapps_config:set(?MOD_CONFIG_CAT, KeyName, Contents),
     Contents;
 xml_file_from_config(_, Contents, _) -> Contents.
-
--spec del_dir(string()) -> 'ok'.
-%% TODO: This should be moved to a kz_file helper
-%%    when kz_util is cleaned-up
-del_dir(Dir) ->
-    lists:foreach(fun(D) -> 'ok' = file:del_dir(D) end
-                 ,del_all_files([Dir], [])
-                 ).
-
--spec del_all_files(strings(), strings()) -> strings().
-del_all_files([], EmptyDirs) -> EmptyDirs;
-del_all_files([Dir | T], EmptyDirs) ->
-    {'ok', FilesInDir} = file:list_dir(Dir),
-    {Files, Dirs} = lists:foldl(fun(F, {Fs, Ds}) ->
-                                        Path = Dir ++ "/" ++ F,
-                                        case filelib:is_dir(Path) of
-                                            'true' ->
-                                                {Fs, [Path | Ds]};
-                                            'false' ->
-                                                {[Path | Fs], Ds}
-                                        end
-                                end, {[],[]}, FilesInDir),
-    lists:foreach(fun kz_util:delete_file/1, Files),
-    del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
