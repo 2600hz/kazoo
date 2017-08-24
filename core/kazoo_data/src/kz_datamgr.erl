@@ -905,10 +905,11 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 %% fetch, update and save a doc (creating if not present)
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(ne_binary(), docid(), kz_proplist()) ->
+-type update_props() :: [{kz_json:path(), kz_json:json_term()}].
+-spec update_doc(ne_binary(), docid(), update_props()) ->
                         {'ok', kz_json:object()} |
                         data_error().
--spec update_doc(ne_binary(), docid(), kz_proplist(), kz_proplist()) ->
+-spec update_doc(ne_binary(), docid(), update_props(), kz_proplist()) ->
                         {'ok', kz_json:object()} |
                         data_error().
 
@@ -922,10 +923,11 @@ update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
             JObj = kz_json:from_list(lists:append([[{<<"_id">>, Id} | CreateProps], UpdateProps])),
             save_doc(DbName, JObj);
         {'error', _}=E -> E;
-        {'ok', JObj}=Ok ->
-            case kz_json:set_values(UpdateProps, JObj) of
-                JObj -> Ok;
-                UpdatedJObj -> save_doc(DbName, UpdatedJObj)
+        {'ok', JObj}=OK ->
+            UpdatedJObj = kz_json:set_values(UpdateProps, JObj),
+            case kz_json:are_equal(JObj, UpdatedJObj) of
+                'true' -> OK;
+                'false' -> save_doc(DbName, UpdatedJObj)
             end
     end.
 
