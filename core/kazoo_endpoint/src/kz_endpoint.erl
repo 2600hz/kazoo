@@ -493,19 +493,17 @@ get_user(AccountDb, Endpoint) ->
 
 -spec get_users(ne_binary(), ne_binaries()) -> kzd_user:docs().
 get_users(AccountDb, OwnerIds) ->
-    get_users(AccountDb, OwnerIds, []).
-
--spec get_users(ne_binary(), ne_binaries(), kzd_user:docs()) -> kzd_user:docs().
-get_users(_, [], Users) ->
-    Users;
-get_users(AccountDb, [OwnerId|OwnerIds], Users) ->
-    case kzd_user:fetch(AccountDb, OwnerId) of
-        {'ok', JObj} ->
-            get_users(AccountDb, OwnerIds, [JObj|Users]);
-        {'error', _R} ->
-            lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
-            get_users(AccountDb, OwnerIds, Users)
-    end.
+    %% Bulk fetch to fill the cache
+    _ = kz_datamgr:open_cache_docs(AccountDb, OwnerIds),
+    F = fun (UserId, UsersAcc) ->
+                case kzd_user:fetch(AccountDb, UserId) of
+                    {ok, UserJObj} -> [UserJObj|UsersAcc];
+                    {error, _R} ->
+                        lager:warning("failed to load endpoint owner ~s: ~p", [UserId, _R]),
+                        UsersAcc
+                end
+        end,
+    lists:foldl(F, [], OwnerIds).
 
 -spec fix_user_restrictions(kzd_user:doc()) -> kzd_user:doc().
 fix_user_restrictions(UserJObj) ->
@@ -533,10 +531,7 @@ convert_to_single_user(UserJObjs) ->
 singlfy_user_attr_keys(UserJObjs, AccJObj) ->
     PrecedenceKey = [?ATTR_LOWER_KEY, ?ATTR_UPPER_KEY],
     Value = lists:foldl(fun(UserJObj, V1) ->
-                                case kz_json:get_integer_value(PrecedenceKey, UserJObj, 5) of
-                                    V2 when V2 < V1 -> V2;
-                                    _ -> V1
-                                end
+                                min(V1, kz_json:get_integer_value(PrecedenceKey, UserJObj, 5))
                         end
                        ,5
                        ,UserJObjs
