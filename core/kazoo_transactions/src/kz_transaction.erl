@@ -509,7 +509,7 @@ service_save_transaction(#kz_transaction{pvt_account_id = AccountId}=Transaction
         {'ok', ServicesJObj} ->
             Transactions = kz_json:get_list_value(<<"transactions">>, ServicesJObj, []),
             Props = [{<<"transactions">>, [TransactionJObj|Transactions]}
-                    ,{?SERVICES_PVT_IS_DIRTY, 'true'}
+                    ,{<<"pvt_dirty">>, 'true'}
                     ],
             case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, ServicesJObj)) of
                 {'error', _R}=Error ->

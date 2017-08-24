@@ -12,7 +12,7 @@
 -export([feature_activation_charge/2]).
 -export([phone_number_activation_charge/2]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(NUMBER_SERVICES, <<"number_services">>).
 -define(PHONE_NUMBERS, <<"phone_numbers">>).
