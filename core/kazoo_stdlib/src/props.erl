@@ -100,7 +100,7 @@ filter(Fun, Props) when is_function(Fun, 1),
                         is_list(Props) ->
     [P || P <- Props, Fun(P)].
 
--spec filter_empty(kz_proplist()) -> kz_proplist().
+-spec filter_empty([{any(), any()} | atom()]) -> [{any(), any()} | atom()].
 filter_empty(Props) ->
     filter(fun is_not_empty/1, Props).
 

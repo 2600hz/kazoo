@@ -33,7 +33,7 @@
 -type pids() :: [pid()].
 -type references() :: [reference()].
 
--type kz_proplist_key() :: atom() | binary() | string() | fun().
+-type kz_proplist_key() :: any().
 -type kz_proplist_value() :: any().
 -type kz_proplist_property() :: atom() | {kz_proplist_key(), kz_proplist_value()}.
 -type kz_proplist() :: [kz_proplist_property()].
