@@ -1301,7 +1301,7 @@ proxy_path('undefined', 'undefined', Port) -> proxy_path('undefined', <<>>, Port
 proxy_path('undefined', IP, 'undefined') -> IP;
 proxy_path('undefined', IP, Port) -> <<IP/binary, ":", (kz_term:to_binary(Port))/binary>>;
 proxy_path(Proxy, _, Port) ->
-    Proxy1 = binary:replace(Proxy, [<<"sip:">>], <<>>),
+    Proxy1 = binary:replace(Proxy, <<"sip:">>, <<>>),
     case binary:match(Proxy1, <<":">>) of
         'nomatch' -> <<Proxy1/binary, ":", (kz_term:to_binary(Port))/binary>>;
         _ -> Proxy1
