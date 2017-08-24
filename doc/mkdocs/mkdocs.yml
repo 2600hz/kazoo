@@ -10,16 +10,16 @@ pages:
     - 'applications/crossbar/doc/schemas.md'
     - 'applications/crossbar/doc/402.md'
   - 'Authentication':
-    - 'applications/crossbar/doc/auth.md'
-    - 'applications/crossbar/doc/user_authentication.md'
     - 'applications/crossbar/doc/api_authentication.md'
-    - 'applications/crossbar/doc/ip_auth.md'
+    - 'applications/crossbar/doc/auth.md'
     - 'applications/crossbar/doc/basic_auth.md'
-    - 'applications/crossbar/doc/token_auth.md'
+    - 'applications/crossbar/doc/ip_auth.md'
     - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
     - 'applications/crossbar/doc/security.md'
     - 'applications/crossbar/doc/shared_auth.md'
+    - 'applications/crossbar/doc/token_auth.md'
     - 'applications/crossbar/doc/ubiquiti_auth.md'
+    - 'applications/crossbar/doc/user_authentication.md'
   - 'Account Management':
     - 'applications/crossbar/doc/accounts.md'
     - 'applications/crossbar/doc/allotments.md'
@@ -36,14 +36,14 @@ pages:
   - 'Branding':
     - 'applications/crossbar/doc/notifications.md'
   - 'Connectivity':
+    - 'applications/crossbar/doc/access_lists.md'
     - 'applications/crossbar/doc/connectivity.md'
     - 'applications/crossbar/doc/ips.md'
-    - 'applications/crossbar/doc/rates.md'
-    - 'applications/crossbar/doc/resources.md'
-    - 'applications/crossbar/doc/resource_templates.md'
-    - 'applications/crossbar/doc/resource_selectors.md'
     - 'applications/crossbar/doc/rate_limits.md'
-    - 'applications/crossbar/doc/access_lists.md'
+    - 'applications/crossbar/doc/rates.md'
+    - 'applications/crossbar/doc/resource_selectors.md'
+    - 'applications/crossbar/doc/resource_templates.md'
+    - 'applications/crossbar/doc/resources.md'
   - 'Media Management':
     - 'applications/crossbar/doc/media.md'
   - 'Misc':
