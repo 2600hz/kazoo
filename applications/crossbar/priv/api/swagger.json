@@ -24551,7 +24551,8 @@
                             "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
                             "type": "string"
                         }
-                    }
+                    },
+                    "type": "object"
                 }
             },
             "type": "object"
