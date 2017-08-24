@@ -26,11 +26,11 @@
 
 -include("cdr.hrl").
 
--spec get_prev_n_month_date_list(kz_datetime(), pos_integer()) -> yms().
+-spec get_prev_n_month_date_list(kz_datetime(), pos_integer()) -> ymds().
 get_prev_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
     get_prev_n_month_date_list(Year, Month, NumMonths).
 
--spec get_prev_n_month_date_list(kz_year(), kz_month(), pos_integer()) -> yms().
+-spec get_prev_n_month_date_list(kz_year(), kz_month(), pos_integer()) -> ymds().
 get_prev_n_month_date_list(Year, Month, NumMonths) ->
     SortDirection = 'DESC',
     DateRange = get_prev_n_months(Year, Month, NumMonths, SortDirection),
@@ -38,8 +38,8 @@ get_prev_n_month_date_list(Year, Month, NumMonths) ->
                         build_month_date_list(NextYear, NextMonth, SortDirection, Acc)
                 end, [], DateRange).
 
--spec get_next_n_month_date_list(kz_datetime(), pos_integer()) -> yms().
--spec get_next_n_month_date_list(kz_year(), kz_month(), pos_integer()) -> yms().
+-spec get_next_n_month_date_list(kz_datetime(), pos_integer()) -> ymds().
+-spec get_next_n_month_date_list(kz_year(), kz_month(), pos_integer()) -> ymds().
 get_next_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
     get_next_n_month_date_list(Year, Month, NumMonths).
 
@@ -64,7 +64,7 @@ build_month_date_list(Year, Month, 'ASC', Acc) ->
      || Day <- lists:seq(1, calendar:last_day_of_the_month(Year, Month))
     ] ++ Acc.
 
--spec get_test_account_details(pos_integer()) -> {ne_binary(), ne_binary(), ne_binary(), ne_binary()}.
+-spec get_test_account_details(integer()) -> [{ne_binary(), ne_binary(), ne_binary(), ne_binary()}].
 get_test_account_details(NumAccounts) ->
     [{<<"v3migratetest", XNum/binary>>
      ,<<"v3migratetest", XNum/binary, ".realm.com">>
