@@ -935,11 +935,11 @@ insert_values(KVs, JObj) ->
 insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
 
--spec set_value(path(), json_term(), object() | objects()) -> object() | objects().
+-spec set_value(path(), json_term() | 'null', object() | objects()) -> object() | objects().
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
--spec set_value1(keys(), json_term(), object() | objects()) -> object() | objects().
+-spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, []) when not is_integer(Key) ->
     set_value1(Keys, Value, new());
 set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
@@ -949,7 +949,7 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
         'true' ->
             try
                 %% Create a new object with the next key as a property
-                JObjs ++ [ set_value1(T, Value, set_value1([hd(T)], [], new())) ]
+                JObjs ++ [set_value1(T, Value, set_value1([hd(T)], [], new()))]
             catch
                 %% There are no more keys in the list, add it unless not an object
                 _:_ ->
