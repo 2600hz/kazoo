@@ -80,7 +80,7 @@ generate_test_accounts(NumAccounts, NumMonths, NumCdrs) ->
     CdrJObjFixture = kz_json:load_fixture_from_file(?APP, "fixtures/cdr.json"),
     F = fun(AccountDetail) ->
                 generate_test_account(AccountDetail, NumMonths, NumCdrs, CdrJObjFixture)
-        end
+        end,
     lists:foreach(F, get_test_account_details(NumAccounts)).
 
 -spec generate_test_account({ne_binary(),ne_binary(), ne_binary(), ne_binary()}
