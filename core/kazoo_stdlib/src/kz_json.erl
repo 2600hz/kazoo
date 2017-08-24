@@ -191,7 +191,7 @@ log_big_binary(Bin) ->
 
 -spec is_defined(path(), object()) -> boolean().
 is_defined(Path, JObj) ->
-    undefined =/= get_value(Path, JObj).
+    'undefined' =/= get_value(Path, JObj).
 
 -spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->
