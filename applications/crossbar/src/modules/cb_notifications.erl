@@ -341,7 +341,7 @@ validate_recipient_id(RecipientId, Context) ->
 sender_account_id(Context) ->
     sender_account_id(Context, cb_context:account_id(Context)).
 
--spec sender_account_id(cb_context:context(), ne_binary()|'undefined') -> ne_binary().
+-spec sender_account_id(cb_context:context(), api_ne_binary()) -> ne_binary().
 sender_account_id(Context, 'undefined') ->
     cb_context:auth_account_id(Context);
 sender_account_id(_Context, AccountId) ->
@@ -1447,7 +1447,6 @@ maybe_update_db(Context) ->
         _AccountId -> Context
     end.
 
-
 -spec normalize_view_result(kz_json:object()) -> kz_json:object().
 normalize_view_result(JObj) ->
     kz_json:get_value(<<"value">>, JObj).
@@ -1527,6 +1526,6 @@ list_templates_from_db(Db) ->
         {'ok', Results} ->
             [kz_doc:id(Result) || Result <- Results];
         {'error', _E} ->
-            io:format("failed to query existing notifications: ~p~n", [_E]),
+            lager:debug("failed to query existing notifications: ~p~n", [_E]),
             []
     end.

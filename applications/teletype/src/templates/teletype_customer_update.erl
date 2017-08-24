@@ -75,8 +75,7 @@ handle_req(JObj, 'true') ->
         'false' -> teletype_util:notification_disabled(DataJObj, maybe_expand_template_id(DataJObj));
         'true' ->
             Result = process_req(DataJObj, teletype_util:is_preview(DataJObj)),
-            io:format("~nDataJObj ~p~n", [DataJObj]),
-            case lists:partition(fun('ok') -> 'true'; (_) -> 'false' end, Result) of
+            case lists:partition(fun('ok') -> 'true'; (_) -> 'false' end, lists:flatten(Result)) of
                 {[], []} ->
                     lager:debug("no success no failure, I'm done"),
                     teletype_util:send_update(DataJObj, <<"completed">>);
@@ -89,10 +88,10 @@ handle_req(JObj, 'true') ->
 
 -spec process_req(kz_json:object(), boolean()) -> kz_proplist().
 process_req(DataJObj, 'true') ->
-    send_update_to_user(kz_json:new(), DataJObj);
+    [send_update_to_user(kz_json:new(), DataJObj)];
 process_req(DataJObj, 'false') ->
     case kz_json:get_value(<<"recipient_id">>, DataJObj) of
-        <<RecipientId:32/binary>> -> process_account(RecipientId, DataJObj);
+        ?MATCH_ACCOUNT_RAW(RecipientId) -> process_account(RecipientId, DataJObj);
         'undefined' -> process_accounts(DataJObj)
     end.
 
@@ -114,7 +113,7 @@ process_accounts(DataJObj) ->
 -spec process_account(ne_binary(), kz_json:object()) -> kz_proplist().
 process_account(AccountId, DataJObj) ->
     case kz_json:get_value(<<"user_type">>, DataJObj) of
-        <<UserId:32/binary>> ->
+        ?MATCH_ACCOUNT_RAW(UserId) ->
             {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
             [send_update_to_user(UserJObj, DataJObj)];
         _ ->
