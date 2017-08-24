@@ -277,7 +277,7 @@ ready('cast', {'dtmf_pressed', _DTMF}, State) ->
     lager:debug("DTMF(~s) for old call", [_DTMF]),
     {'next_state', 'ready', State};
 ready('cast', Event, State) ->
-    handle_event(Event, ?FUNCTION_NAME, State);
+    handle_event(Event, ready, State);
 ready({'call', From}, 'status', #state{cdr_url=Url
                                       ,recording_url=RecordingUrl
                                       }=State) ->
@@ -289,7 +289,7 @@ ready({'call', From}, 'status', #state{cdr_url=Url
 ready({'call', From}, 'current_call', State) ->
     {'next_state', 'ready', State, {'reply', From, 'undefined'}};
 ready({'call', From}, Event, State) ->
-    handle_sync_event(Event, From, ?FUNCTION_NAME, State).
+    handle_sync_event(Event, From, ready, State).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -375,7 +375,7 @@ connect_req('cast', {'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
     {'next_state', 'ready', clear_member_call(State), 'hibernate'};
 
 connect_req('cast', Event, State) ->
-    handle_event(Event, ?FUNCTION_NAME, State);
+    handle_event(Event, connect_req, State);
 
 connect_req({'call', From}, 'status', #state{member_call=Call
                                             ,member_call_start=Start
@@ -403,7 +403,7 @@ connect_req({'call', From}, 'current_call', #state{member_call=Call
     ,{'reply', From, current_call(Call, ConnRef, Start)}
     };
 connect_req({'call', From}, Event, State) ->
-    handle_sync_event(Event, From, ?FUNCTION_NAME, State);
+    handle_sync_event(Event, From, connect_req, State);
 
 connect_req('info', {'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                                    ,connect_resps=[]
@@ -546,7 +546,7 @@ connecting('cast', {'dtmf_pressed', _DTMF}, State) ->
     {'next_state', 'connecting', State};
 
 connecting('cast', Event, State) ->
-    handle_event(Event, ?FUNCTION_NAME, State);
+    handle_event(Event, connecting, State);
 
 connecting({'call', From}, 'status', #state{member_call=Call
                                            ,member_call_start=Start
@@ -576,7 +576,7 @@ connecting({'call', From}, 'current_call', #state{member_call=Call
     ,{'reply', From, current_call(Call, ConnRef, Start)}
     };
 connecting({'call', From}, Event, State) ->
-    handle_sync_event(Event, From, ?FUNCTION_NAME, State);
+    handle_sync_event(Event, From, connecting, State);
 
 connecting('info', {'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=AgentRef
                                                                              ,member_call_winner=Winner

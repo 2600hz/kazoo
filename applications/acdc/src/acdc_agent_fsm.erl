@@ -464,13 +464,13 @@ wait('cast', 'send_sync_event', State) ->
     gen_statem:cast(self(), 'send_sync_event'),
     {'next_state', 'wait', State};
 wait('cast', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State);
+    handle_event(Evt, wait, State);
 wait({'call', From}, 'status', State) ->
     {'next_state', 'wait', State, {'reply', From, [{'state', <<"wait">>}]}};
 wait({'call', From}, 'current_call', State) ->
     {'next_state', 'wait', State, {'reply', From, 'undefined'}};
 wait('info', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State).
+    handle_event(Evt, wait, State).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -527,7 +527,7 @@ sync('cast', ?NEW_CHANNEL_TO(CallId, _), State) ->
     lager:debug("sync call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 sync('cast', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State);
+    handle_event(Evt, sync, State);
 sync({'call', From}, 'status', State) ->
     {'next_state', 'sync', State, {'reply', From, [{'state', <<"sync">>}]}};
 sync({'call', From}, 'current_call', State) ->
@@ -545,7 +545,7 @@ sync('info', {'timeout', Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=St
     gen_statem:cast(self(), 'send_sync_event'),
     {'next_state', 'sync', State#state{sync_ref=SyncRef}};
 sync('info', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State).
+    handle_event(Evt, sync, State).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -683,13 +683,13 @@ ready('cast', ?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
 ready('cast', ?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
     {'next_state', 'ready', State};
 ready('cast', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State);
+    handle_event(Evt, ready, State);
 ready({'call', From}, 'status', State) ->
     {'next_state', 'ready', State, {'reply', From, [{'state', <<"ready">>}]}};
 ready({'call', From}, 'current_call', State) ->
     {'next_state', 'ready', State, {'reply', From, 'undefined'}};
 ready('info', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State).
+    handle_event(Evt, ready, State).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -932,7 +932,7 @@ ringing('cast', {'leg_destroyed', _CallId}, State) ->
 ringing('cast', {'usurp_control', _CallId}, State) ->
     {'next_state', 'ringing', State};
 ringing('cast', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State);
+    handle_event(Evt, ringing, State);
 ringing({'call', From}, 'status', #state{member_call_id=MemberCallId
                                         ,agent_call_id=ACallId
                                         }=State) ->
@@ -948,7 +948,7 @@ ringing({'call', From}, 'current_call', #state{member_call=Call
     ,{'reply', From, current_call(Call, 'ringing', QueueId, 'undefined')}
     };
 ringing('info', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State).
+    handle_event(Evt, ringing, State).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1100,7 +1100,7 @@ answered('cast', {'leg_created', _CallId}, State) ->
 answered('cast', {'usurp_control', _CallId}, State) ->
     {'next_state', 'answered', State};
 answered('cast', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State);
+    handle_event(Evt, answered, State);
 answered({'call', From}, 'status', #state{member_call_id=MemberCallId
                                          ,agent_call_id=ACallId
                                          }=State) ->
@@ -1117,7 +1117,7 @@ answered({'call', From}, 'current_call', #state{member_call=Call
     ,{'reply', From, current_call(Call, 'answered', QueueId, Start)}
     };
 answered('info', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State).
+    handle_event(Evt, answered, State).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1164,7 +1164,7 @@ wrapup('cast', ?NEW_CHANNEL_TO(CallId, _), State) ->
 wrapup('cast', {'originate_resp', _}, State) ->
     {'next_state', 'wrapup', State};
 wrapup('cast', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State);
+    handle_event(Evt, wrapup, State);
 wrapup({'call', From}, 'status', #state{wrapup_ref=Ref}=State) ->
     {'next_state', 'wrapup', State
     ,{'reply', From, [{'state', <<"wrapup">>}
@@ -1185,7 +1185,7 @@ wrapup('info', {'timeout', Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
 
     apply_state_updates(clear_call(State, 'ready'));
 wrapup('info', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State).
+    handle_event(Evt, wrapup, State).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1221,7 +1221,7 @@ paused('cast', ?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
 paused('cast', ?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
     {'next_state', 'paused', State};
 paused('cast', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State);
+    handle_event(Evt, paused, State);
 paused({'call', From}, 'status', #state{pause_ref=Ref}=State) ->
     {'next_state', 'paused', State
     ,{'reply', From, [{'state', <<"paused">>}
@@ -1242,7 +1242,7 @@ paused('info', {'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
 
     apply_state_updates(clear_call(State#state{sync_ref='undefined'}, 'ready'));
 paused('info', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State).
+    handle_event(Evt, paused, State).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1309,7 +1309,7 @@ outbound('cast', {'leg_destroyed', _CallId}, State) ->
 outbound('cast', {'usurp_control', _CallId}, State) ->
     {'next_state', 'outbound', State};
 outbound('cast', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State);
+    handle_event(Evt, outbound, State);
 outbound({'call', From}, 'status', #state{wrapup_ref=Ref
                                          ,outbound_call_ids=OutboundCallIds
                                          }=State) ->
@@ -1327,7 +1327,7 @@ outbound('info', {'timeout', WRef, ?WRAPUP_FINISHED}, #state{wrapup_ref=WRef}=St
     lager:debug("wrapup timer ended while on outbound call"),
     {'next_state', 'outbound', State#state{wrapup_ref='undefined'}, 'hibernate'};
 outbound('info', Evt, State) ->
-    handle_event(Evt, ?FUNCTION_NAME, State).
+    handle_event(Evt, outbound, State).
 
 %%--------------------------------------------------------------------
 %% @private
