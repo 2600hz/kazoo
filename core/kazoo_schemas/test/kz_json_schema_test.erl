@@ -155,11 +155,12 @@ default_object_test() ->
     [?_assertEqual({[{<<"caller_id">>,{[{<<"emergency">>,{[{<<"name">>,<<"emer_default">>}]}}]}}]}, Default)].
 
 flatten_sms_schema_test() ->
-    Flat = kz_json_schema:flatten(get_schema_sms()),
-    [?_assertEqual(Flat, {[
-                           {[<<"outbound">>,<<"options">>,<<"default">>], {[{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}},
-                           {[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>},
-                           {[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
+    SMSSchema = get_schema_sms(),
+    Flat = kz_json_schema:flatten(SMSSchema),
+
+    [?_assertEqual(Flat, {[{[<<"outbound">>,<<"options">>,<<"default">>], {[{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}}
+                          ,{[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>}
+                          ,{[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
                          })].
 
 did_duplication_test() ->

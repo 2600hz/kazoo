@@ -276,7 +276,6 @@ get_database_sort(Db1, Db2) ->
 -type refresh_result() :: {kz_amqp_worker:request_return()
                           ,kz_amqp_worker:request_return()
                           }.
-
 -spec refresh(ne_binary()) -> 'ok'.
 refresh(Database) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),

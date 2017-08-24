@@ -81,19 +81,19 @@
                           ,assigned_to :: api_ne_binary()
                           ,prev_assigned_to :: api_ne_binary()
                           ,used_by :: api_ne_binary()
-                          ,features :: kz_json:object()
+                          ,features :: api_object()
                           ,state :: api_ne_binary()              %%%
                           ,reserve_history :: api_ne_binaries()  %%%
                           ,ported_in :: api_boolean()            %%%
                           ,module_name :: api_ne_binary()        %%%
-                          ,carrier_data :: kz_json:object()
+                          ,carrier_data :: api_object()
                           ,region :: api_ne_binary()
                           ,auth_by :: api_ne_binary()
                           ,dry_run = 'false' :: boolean()
                           ,batch_run = 'false' :: boolean()
                           ,mdn_run = false :: boolean()
                           ,locality :: api_object()
-                          ,doc :: kz_json:object()
+                          ,doc :: api_object()
                           ,modified :: api_seconds()             %%%
                           ,created :: api_seconds()              %%%
                           ,is_dirty = 'false' :: boolean()
@@ -109,7 +109,6 @@
              ,set_function/0
              ,set_functions/0
              ]).
-
 
 -ifdef(FUNCTION_NAME).
 -define(DIRTY(PN),
@@ -285,7 +284,9 @@ retry_conflicts(T0, Db, PNsMap, ErrorF) ->
     lists:foldl(F, BaseT, Conflicts).
 
 take_conflits(T=#{ko := KOs}) ->
-    F = fun ({_Num, R}) -> knm_errors:cause(R) =:= <<"conflict">> end,
+    F = fun ({_Num, R}) when is_atom(R) -> false;
+            ({_Num, R}) -> knm_errors:cause(R) =:= <<"conflict">>
+        end,
     {Conflicts, NewKOs} = lists:partition(F, maps:to_list(KOs)),
     {Nums, _} = lists:unzip(Conflicts),
     {Nums, T#{ko => maps:from_list(NewKOs)}}.

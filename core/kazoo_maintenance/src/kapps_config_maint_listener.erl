@@ -197,8 +197,7 @@ cleanup_invalid_notify_docs([]) -> 'ok';
 cleanup_invalid_notify_docs([JObj|JObjs]) ->
     Id = kz_json:get_value(<<"id">>, JObj),
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    Type = kz_json:get_value(<<"pvt_type">>, Doc),
-    _ = maybe_remove_invalid_notify_doc(Type, Id, Doc),
+    _ = maybe_remove_invalid_notify_doc(kz_doc:type(Doc), Id, Doc),
     cleanup_invalid_notify_docs(JObjs).
 
 -spec maybe_remove_invalid_notify_doc(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.

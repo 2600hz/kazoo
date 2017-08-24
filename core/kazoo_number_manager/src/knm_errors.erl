@@ -164,6 +164,7 @@ to_json('by_carrier', Num, {_Carrier,_Cause}) ->
     lager:error("carrier ~s fault: ~p", [_Carrier, _Cause]),
     build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);
 to_json(Reason, _, Cause) ->
+    ?LOG_ERROR("funky 500 error: ~p/~p", [Reason, Cause]),
     build_error(500, 'unspecified_fault', Reason, Cause).
 
 %%%===================================================================
