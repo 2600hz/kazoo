@@ -60,8 +60,8 @@ pad_left(Bin, _Size, _Value) -> Bin.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec join([text() | atom(),...]) -> binary().
--spec join([text() | atom(),...], iodata() | char()) -> binary().
+-spec join([text()]) -> binary().
+-spec join([text()], iodata() | char()) -> binary().
 
 join(Bins) -> join(Bins, <<", ">>).
 join([], _) -> <<>>;
@@ -94,9 +94,11 @@ clean(Bin, Opts) ->
     Routines = [fun remove_white_spaces/2],
     lists:foldl(fun(F, B) -> F(B, Opts) end, Bin, Routines).
 
+-type strip_option() :: 'both' | 'left' | 'right' | char() | nonempty_string().
+-type strip_options() :: [strip_option()].
 
 -spec strip(binary()) -> binary().
--spec strip(binary(), 'both' | 'left' | 'right' | char() | nonempty_string()) -> binary().
+-spec strip(binary(), strip_option() | strip_options()) -> binary().
 -spec strip_left(binary(), char() | binary()) -> binary().
 -spec strip_right(binary(), char() | binary()) -> binary().
 strip(B) -> strip(B, 'both').
@@ -106,10 +108,7 @@ strip(B, 'right') -> strip_right(B, $\s);
 strip(B, 'both') -> strip_right(strip_left(B, $\s), $\s);
 strip(B, C) when is_integer(C) -> strip_right(strip_left(B, C), C);
 strip(B, Cs) when is_list(Cs) ->
-    lists:foldl(fun(C, Acc) -> strip(Acc, C) end
-               ,B
-               ,Cs
-               ).
+    lists:foldl(fun(C, Acc) -> strip(Acc, C) end, B, Cs).
 
 strip_left(<<C, B/binary>>, C) -> strip_left(B, C);
 strip_left(B, _) -> B.
@@ -160,7 +159,7 @@ suffix(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
         _:_ -> 'false'
     end.
 
--spec hexencode(binary()) -> binary().
+-spec hexencode(text()) -> binary().
 hexencode(<<_/binary>> = Bin) ->
     hexencode(Bin, <<>>);
 hexencode(S) ->
@@ -197,7 +196,7 @@ hex_char_to_binary(B) when B < 58 ->
 hex_char_to_binary(B) ->
     kz_term:to_lower_char(B) - ($a - 10).
 
--spec rand_hex(pos_integer() | ne_binary()) -> ne_binary().
+-spec rand_hex(pos_integer() | binary() | string()) -> ne_binary().
 rand_hex(Size) when not is_integer(Size) ->
     rand_hex(kz_term:to_integer(Size));
 rand_hex(Size) when is_integer(Size)
