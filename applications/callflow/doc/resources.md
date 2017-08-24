@@ -27,10 +27,10 @@ Key | Description | Type | Default | Required
 ## Special Dynamic Flags
 
 ### Zone
-Adding the value "zone" to the dynamic_flags array will result in a flag set to the zone name that is executing the call.
+Adding the value `"zone"` to the `dynamic_flags` array will result in a flag set to the zone name that is executing the call.
 
 ### Custom Channel Vars
-Adding the value "custom_channel_vars." appened with a normalized variable name will add the value (if present) to the flags array.  For example, "custom_channel_vars.owner_id".
+Adding the value `"custom_channel_vars."` appended with a normalized variable name will add the value (if present) to the flags array.  For example, `"custom_channel_vars.owner_id"`.
 
 ## Examples
 
