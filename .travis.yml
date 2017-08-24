@@ -9,7 +9,6 @@ notifications:
 
 otp_release:
   - 19.3
-  - 20.0
 
 sudo: required
 
