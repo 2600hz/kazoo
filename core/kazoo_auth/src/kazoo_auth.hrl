@@ -60,7 +60,7 @@
                       'unauthorized' |
                       ne_binary().
 
--type mfa_result() :: 'authenticated' |
+-type mfa_result() :: {'ok', 'authenticated'} |
                       {'error', mfa_errors()} |
                       {'error', non_neg_integer(), kz_json:object()}.
 

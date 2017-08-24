@@ -5,7 +5,7 @@
     "description": "callback for authentication providers",
     "properties": {
         "client_id": {
-            "description": "client id, usually appplication id for oauth providers",
+            "description": "client id, usually application id for OAuth providers",
             "type": "string"
         },
         "code": {
@@ -17,7 +17,7 @@
             "type": "string"
         },
         "redirect_uri": {
-            "description": "redirect uri",
+            "description": "redirect URI",
             "type": "string"
         },
         "state": {

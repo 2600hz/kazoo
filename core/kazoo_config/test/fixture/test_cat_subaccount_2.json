@@ -15,6 +15,11 @@
     "bol_key": false,
     "obj_key": {
         "from": "subaccount2"
+    },
+    "obj_empty_test": {
+      "obj_empty_sometimes": {
+        },
+      "wand": "dnaw"
     }
   },
   "pvt_account_id": "5bb4a2b6323bd02a77f1049669073643",

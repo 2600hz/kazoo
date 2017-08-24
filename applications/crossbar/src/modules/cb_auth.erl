@@ -33,7 +33,7 @@
 -define(WHITELABEL_PATH, <<"whitelabel">>).
 
 -define(LINKS_VIEW, <<"users/list_linked_users">>).
--define(PROVIDERS_VIEW, <<"providers/list_by_id">>).
+-define(PROVIDERS_VIEW, <<"providers/list_by_type">>).
 -define(PROVIDERS_APP_VIEW, <<"apps/list_by_provider">>).
 -define(APPS_VIEW, <<"apps/list_by_account">>).
 -define(KEYS_VIEW, <<"auth/list_keys">>).

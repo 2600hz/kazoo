@@ -286,8 +286,8 @@ load_config_from_account(AccountId, Category) ->
 %% @doc
 %%  Get Accounts parent configuration for the Category
 %%  1. Read account definition
-%%      1.1. If failed to read account definiation, find its reseller
-%%  2. Fold over ancestor Ids and fetch config doc from thier db
+%%      1.1. If failed to read account definition, find its reseller
+%%  2. Fold over ancestor Ids and fetch config doc from their db
 %%      2.1. If document exists and the account is reseller, return
 %%      2.2. If document does not exists:
 %%          2.2.1. If the account is reseller return accumulator
@@ -300,8 +300,11 @@ load_config_from_ancestors(AccountId, Category) ->
 
 -spec load_config_from_ancestors(ne_binary(), ne_binary(), boolean()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(_, _, true) ->
+    %% account is reseller, no need to read from its parents
+    %% Note: load_config_from_account is already read the config from this AccountId
     {error, <<"account_is_reseller">>};
 load_config_from_ancestors(AccountId, Category, false) ->
+    %% not reseller, get its ancestors and walk
     Tree = get_account_ancestors_or_reseller(AccountId),
     load_config_from_ancestors_fold(Tree, Category, []).
 
@@ -361,7 +364,7 @@ is_reseller_account(AccountId) ->
 find_reseller_account(AccountId) ->
     case kz_services:find_reseller_id(AccountId) of
         undefined ->
-            lager:debug("failed to find accout ~s parents and reseller"),
+            lager:debug("failed to find account ~s parents and reseller"),
             [];
         AccountId -> []; %% should get from direct reseller only
         ResellerId -> [ResellerId]
@@ -512,7 +515,7 @@ walk_the_walk(#{account_id := AccountId
 
 -spec maybe_merge_results(map(), boolean()) -> {ok, kz_json:object()}.
 maybe_merge_results(#{results := JObjs}=Map, true) ->
-    store_in_strategy_cache(Map, kz_json:merge([kz_doc:public_fields(J, false) || J <- JObjs]));
+    store_in_strategy_cache(Map, kz_json:merge_recursive([kz_doc:public_fields(J, false) || J <- JObjs]));
 maybe_merge_results(#{results := JObjs}, false) ->
     {ok, lists:last(JObjs)}.
 
