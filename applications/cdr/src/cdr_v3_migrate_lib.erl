@@ -63,17 +63,20 @@ build_month_date_list(Year, Month, 'ASC', Acc) ->
      || Day <- lists:seq(1, calendar:last_day_of_the_month(Year, Month))
     ] ++ Acc.
 
--spec get_test_account_details(pos_integer()) -> api_binaries().
+-spec get_test_account_details(pos_integer()) -> any().
 get_test_account_details(NumAccounts) ->
-    [{<<"v3migratetest", (kz_term:to_binary(io_lib:format("~3..0B",[X])))/binary>>
-     , <<"v3migratetest",(kz_term:to_binary(io_lib:format("~3..0B", [X])))/binary,".realm.com">>
-     , <<"v3testuser", (kz_term:to_binary(io_lib:format("~3..0B", [X])))/binary, "-user">>
-     , <<"v3password">>
-     } || X <- lists:seq(1, NumAccounts)].
+    [{<<"v3migratetest", XNum/binary>>
+     ,<<"v3migratetest", XNum/binary, ".realm.com">>
+     ,<<"v3testuser", XNum/binary, "-user">>
+     ,<<"v3password">>
+     }
+     || X <- lists:seq(1, NumAccounts),
+        XNum <- [kz_term:to_binary(io_lib:format("~3..0B",[X]))]
+    ].
 
 -spec generate_test_accounts(pos_integer(), pos_integer(), pos_integer()) -> 'ok'.
 generate_test_accounts(NumAccounts, NumMonths, NumCdrs) ->
-    CdrJObjFixture = kz_json:load_fixture_from_file('cdr', "fixtures/cdr.json"),
+    CdrJObjFixture = kz_json:load_fixture_from_file(?APP, "fixtures/cdr.json"),
     lists:foreach(fun(AccountDetail) ->
                           generate_test_account(AccountDetail
                                                ,NumMonths
@@ -138,9 +141,7 @@ generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
 
 -spec delete_test_accounts() -> 'ok' | kz_std_return().
 delete_test_accounts() ->
-    lists:foreach(fun maybe_delete_test_account/1
-                 ,kapps_util:get_all_accounts()
-                 ).
+    lists:foreach(fun maybe_delete_test_account/1, kapps_util:get_all_accounts()).
 
 -spec maybe_get_migrate_account(account_db()) -> 'false' | kz_json:objects().
 maybe_get_migrate_account(AccountDb) ->

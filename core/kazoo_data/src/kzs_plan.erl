@@ -308,11 +308,8 @@ fetch_dataplan(Id) ->
 
 -spec fetch_dataplan_from_file(ne_binary()) -> kz_json:object().
 fetch_dataplan_from_file(Id) ->
-    JObj = kz_json:load_fixture_from_file('kazoo_data'
-                                         ,?DATAPLAN_FILE_LOCATION
-                                         ,[Id, ".json"]
-                                         ),
-    kzs_cache:add_to_doc_cache(?KZ_DATA_DB, Id, JObj),
+    JObj = kz_json:load_fixture_from_file(?APP, ?DATAPLAN_FILE_LOCATION, [Id, ".json"]),
+    _ = kzs_cache:add_to_doc_cache(?KZ_DATA_DB, Id, JObj),
     JObj.
 
 -spec default_dataplan() -> kz_json:object().

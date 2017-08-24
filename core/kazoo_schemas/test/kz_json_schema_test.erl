@@ -79,7 +79,7 @@ add_sub_defaults_array_test_() ->
 
 -spec from_file(nonempty_string()) -> kz_json:object().
 from_file(File) ->
-    kz_json:load_fixture_from_file('kazoo', "fixtures", File).
+    kz_json:load_fixture_from_file(?APP, "fixtures", File).
 
 valid_task_data() ->
     kz_json:from_list([{<<"do_it_now">>, true}]).

@@ -4,9 +4,12 @@
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
+-define(APP, kazoo_documents).
+-define(APP_NAME, (atom_to_binary(?APP, utf8))).
+-define(APP_VERSION, <<"4.0.0">>).
+
 -define(FAX_SETTINGS_KEY, <<"fax_settings">>).
 -define(FAX_TIMEZONE_KEY, <<"fax_timezone">>).
-
 
 -define(DEFAULT_FAX_SETTINGS,
         kapps_config:get_json(<<"fax">>, ?FAX_SETTINGS_KEY, kz_json:from_list(
@@ -17,18 +20,13 @@
 -define(SYSTEM_FAX_SETTINGS, kz_json:set_value(?FAX_TIMEZONE_KEY, kz_account:default_timezone(), ?DEFAULT_FAX_SETTINGS)).
 
 -ifdef(TEST).
--define(SCHEMA_KEY1, kz_json:from_list([{<<"type">>, <<"string">>}])).
--define(SCHEMA_KEY2, kz_json:from_list([{<<"type">>, <<"integer">>}])).
--define(SCHEMA_KEY3
-       ,kz_json:from_list([{<<"type">>, <<"string">>}
-                          ,{<<"default">>, <<"value3">>}
-                          ])).
--define(PROPERTIES_JOBJ
-       ,kz_json:from_list(
-          [{<<"key1">>, ?SCHEMA_KEY1}
-          ,{<<"key2">>, ?SCHEMA_KEY2}
-          ,{<<"key3">>, ?SCHEMA_KEY3}
-          ])).
+-define(PROPERTIES_JOBJ, kz_json:from_list_recursive(
+                           [{<<"key1">>, [{<<"type">>, <<"string">>}]}
+                           ,{<<"key2">>, [{<<"type">>, <<"integer">>}]}
+                           ,{<<"key3">>, [{<<"type">>, <<"string">>}
+                                         ,{<<"default">>, <<"value3">>}
+                                         ]}
+                           ])).
 -define(SCHEMA_JOBJ
        ,kz_json:from_list(
           [{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
