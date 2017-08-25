@@ -76,9 +76,9 @@ bind(Node, Type, Timeout) -> ?FS_MODULE:bind(Node, Type, Timeout).
 fetch_reply(Node, FetchID, Section, Reply) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply).
 fetch_reply(Node, FetchID, Section, Reply, Timeout) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Timeout).
 
--spec api(atom(), string()) -> fs_api_return().
--spec api(atom(), string(), string()) -> fs_api_return().
--spec api(atom(), text(), string(), kz_timeout()) -> fs_api_return().
+-spec api(atom(), text()) -> fs_api_return().
+-spec api(atom(), text(), text()) -> fs_api_return().
+-spec api(atom(), text(), text(), kz_timeout()) -> fs_api_return().
 api(Node, Cmd) -> ?FS_MODULE:api(Node, Cmd).
 api(Node, Cmd, Args) -> ?FS_MODULE:api(Node, Cmd, Args).
 api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:api(Node, Cmd, Args, Timeout).

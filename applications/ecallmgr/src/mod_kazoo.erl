@@ -125,9 +125,9 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
             {'error', 'exception'}
     end.
 
--spec api(atom(), string()) -> fs_api_return().
--spec api(atom(), string(), string()) -> fs_api_return().
--spec api(atom(), text(), string(), kz_timeout()) -> fs_api_return().
+-spec api(atom(), text()) -> fs_api_return().
+-spec api(atom(), text(), text()) -> fs_api_return().
+-spec api(atom(), text(), text(), kz_timeout()) -> fs_api_return().
 api(Node, Cmd) ->
     api(Node, Cmd, "").
 api(Node, Cmd, Args) ->
