@@ -33,7 +33,7 @@
 -define(DEFAULT_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_sample_rate">>, 8000)).
 -define(DEFAULT_STEREO_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_stereo_sample_rate">>, 16000)).
 
--type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
+-type fs_app() :: {ne_binary(), binary() | 'noop'} |
                   {ne_binary(), ne_binary(), atom()}.
 -type fs_apps() :: [fs_app(),...].
 
