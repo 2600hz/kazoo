@@ -159,7 +159,7 @@ participants(Name) ->
 participants_to_json(Participants) ->
     participants_to_json(Participants, []).
 
--spec participant_create(kz_proplist(), atom()) -> participant().
+-spec participant_create(kzd_freeswitch:data(), atom()) -> participant().
 participant_create(Props, Node) ->
     gen_server:call(?SERVER, {'participant_create', Props, Node}).
 
@@ -463,7 +463,7 @@ code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec conference_from_props(kz_proplist(), atom()) -> conference().
+-spec conference_from_props(kzd_freeswitch:data(), atom()) -> conference().
 conference_from_props(Props, Node) ->
     conference_from_props(Props, Node, #conference{}).
 
@@ -484,7 +484,7 @@ conference_from_props(Props, Node, Conference) ->
                          ,control_node = CtrlNode
                          }.
 
--spec participant_from_props(kz_proplist(), atom()) -> participant().
+-spec participant_from_props(kzd_freeswitch:data(), atom()) -> participant().
 participant_from_props(Props, Node) ->
     #participant{node=Node
                 ,uuid=kzd_freeswitch:call_id(Props)

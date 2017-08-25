@@ -62,7 +62,6 @@ start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -183,7 +182,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec init_props(kz_proplist(), kz_proplist()) -> kz_proplist().
+-spec init_props(kzd_freeswitch:data(), kz_proplist()) -> kzd_freeswitch:data().
 init_props(Props, Options) ->
     case props:get_is_true(<<"Publish-Channel-State">>, Props) of
         'undefined' ->
@@ -194,14 +193,14 @@ init_props(Props, Options) ->
         _Value -> Props
     end.
 
--spec handle_conference_event(atom(), ne_binaries(), kz_proplist(), kz_proplist()) -> 'ok'.
+-spec handle_conference_event(atom(), ne_binaries(), kzd_freeswitch:data(), kz_proplist()) -> 'ok'.
 handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
     Props = init_props(FSProps, Options),
     Action = props:get_value(<<"Action">>, Props),
     process_event(Action, Props, Node),
     maybe_publish_event(Action, Props, Node, Events).
 
--spec process_event(ne_binary(), kz_proplist(), atom()) -> any().
+-spec process_event(ne_binary(), kzd_freeswitch:data(), atom()) -> any().
 process_event(<<"conference-create">>, Props, Node) ->
     ecallmgr_fs_conferences:create(Props, Node),
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
