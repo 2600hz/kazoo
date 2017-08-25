@@ -393,10 +393,10 @@ authz_req(Props) ->
 
 -spec outbound_flags(kzd_freeswitch:data()) -> [binary()] | 'undefined'.
 outbound_flags(Props) ->
-    case kzd_freeswitch:ccv(Props, <<"Outbound-Flags">>) of
+    case kzd_freeswitch:outbound_flags(Props) of
         'undefined' -> 'undefined';
-        Flags when is_binary(Flags) -> binary:split(Flags, <<"|">>);
-        Flags -> Flags
+        <<_/binary>> = Flags -> binary:split(Flags, <<"|">>);
+        Flags when is_list(Flags) -> Flags
     end.
 
 -spec rating_req(ne_binary(), kzd_freeswitch:data()) -> kz_proplist().

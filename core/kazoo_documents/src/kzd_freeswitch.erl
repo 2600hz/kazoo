@@ -18,7 +18,9 @@
         ,other_leg_call_id/1
         ,call_direction/1, original_call_direction/1
         ,resource_type/1, resource_type/2
+
         ,channel_authorized/1
+        ,outbound_flags/1
         ,hunt_destination_number/1
         ,is_channel_recovering/1, is_channel_recovering/2
         ,is_consuming_global_resource/1, is_consuming_global_resource/2
@@ -61,6 +63,7 @@
 
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 -define(CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
+-define(CCV_HEADER(Key), <<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 
 -spec caller_id_name(data()) -> api_binary().
 -spec caller_id_name(data(), Default) -> ne_binary() | Default.
@@ -163,6 +166,10 @@ resource_type(Props, Default) ->
 channel_authorized(Props) ->
     ccv(Props, <<"Channel-Authorized">>).
 
+-spec outbound_flags(data()) -> api_binary() | ne_binaries().
+outbound_flags(Props) ->
+    ccv(Props, <<"Outbound-Flags">>).
+
 -spec hunt_destination_number(data()) -> api_binary().
 hunt_destination_number(Props) ->
     props:get_value(<<"Hunt-Destination-Number">>, Props).
@@ -228,11 +235,11 @@ to_did(Props) ->
                            ,Props
                            ).
 
--spec ccv(data(), ne_binary()) -> api_binary().
+-spec ccv(data(), ne_binary()) -> api_binary() | ne_binaries().
 ccv(Props, Key) ->
     ccv(Props, Key, 'undefined').
 
--spec ccv(data(), ne_binary(), Default) -> ne_binary() | Default.
+-spec ccv(data(), ne_binary(), Default) -> ne_binary() | ne_binaries() | Default.
 ccv(Props, Key, Default) ->
     props:get_value(Key, ccvs(Props), Default).
 
@@ -363,11 +370,11 @@ channel_vars_sort(ChannelVars) ->
 -spec channel_var_sort(tuple(), tuple()) -> boolean().
 channel_var_sort({A, _}, {B, _}) -> A =< B.
 
-custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
     [{Key, V} | Acc];
 custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     [{Key, V} | Acc];
-custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+custom_channel_vars_fold({?CCV_HEADER(Key), V}, Acc) ->
     case props:is_defined(Key, Acc) of
         'true' -> Acc;
         'false' -> [{Key, V} | Acc]
