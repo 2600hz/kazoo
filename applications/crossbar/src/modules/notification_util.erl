@@ -16,8 +16,9 @@
          maybe_notify_account_change/2
         ]).
 
--spec maybe_notify_account_change(kz_json:object(), kz_json:object()) -> 'ok'.
-maybe_notify_account_change(Old, New) ->
+-spec maybe_notify_account_change(kz_json:object(), cb_context:context()) -> 'ok'.
+maybe_notify_account_change(Old, Context) ->
+    New = cb_context:doc(Context),
     Filter = fun({K, V}) ->
                      case kz_json:get_value(K, New) of
                          V -> 'false';
@@ -25,21 +26,26 @@ maybe_notify_account_change(Old, New) ->
                      end
              end,
 
-    AccountId = kz_json:get_value(<<"id">>, New),
+    AccountId = kz_doc:id(New),
     Changed   = kz_json:filter(Filter, Old),
-    Notify    = fun(V) -> maybe_notify(AccountId, V) end,
+    Notify    = fun({K, _}) -> notify_account_change(AccountId, {K, kz_json:get_value(K, New)}, Context) end,
 
     kz_json:foreach(Notify, Changed).
 
--spec maybe_notify(api_binary(), {ne_binary(), kz_json:object()}) -> 'ok'.
-maybe_notify(Account, {<<"zones">>, Zones}) ->
-    lager:info("publishing zone change notification for ~p, zones: ~p", [Account, Zones]),
+-spec notify_account_change(api_binary(), {ne_binary(), kz_json:object()}, cb_context:context()) -> 'ok'.
+notify_account_change(AccountId, {<<"zones">>, Zones}, _Context) ->
+    lager:info("publishing zone change notification for ~p, zones: ~p", [AccountId, Zones]),
     Notify = [
-              {<<"Account-ID">>, Account}
+              {<<"Account-ID">>, AccountId}
              ,{<<"Zones">>, Zones}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapi_notifications:publish_account_zone_change(Notify);
 
-maybe_notify(_Account, {_Key, _Value}) ->
+notify_account_change(AccountId, {<<"pvt_enabled">>, IsEnabled}, Context) ->
+    lager:info("account ~s enabled has changed, sending registrations flush: pvt_enable: ~p", [AccountId, IsEnabled]),
+    crossbar_util:flush_registrations(Context),
+    crossbar_util:maybe_refresh_fs_xml('account', Context);
+
+notify_account_change(_Account, {_Key, _Value}, _Context) ->
     'ok'.
