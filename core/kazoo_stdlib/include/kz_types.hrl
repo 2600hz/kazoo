@@ -118,10 +118,11 @@
 -type kz_ip_list() :: ne_binaries().
 
 %% Recreate the non-exported types defined in the erlang supervisor source
--type sup_child_spec() :: supervisor:child_spec().
+-type sup_child_spec() :: supervisor:child_spec() | list().
 -type sup_child_specs() :: [sup_child_spec()].
 -type sup_start_flags() :: supervisor:sup_flags().
--type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
+
+-type sup_init_ret() :: {'ok', {supervisor:sup_flags(), [supervisor:child_spec()]}} |
                         'ignore'.
 
 -type sup_child_id() :: api_pid().
