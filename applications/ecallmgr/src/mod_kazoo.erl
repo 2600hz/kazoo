@@ -312,7 +312,7 @@ nixevent(Node, [_|_]=Events) ->
 nixevent(Node, Event) ->
     nixevent(Node, [Event]).
 
--spec sendevent(atom(), ne_binary(), list()) -> 'ok'.
+-spec sendevent(atom(), atom(), list()) -> 'ok'.
 sendevent(Node, EventName, Headers) ->
     gen_server:cast({'mod_kazoo', Node}, {'sendevent', EventName, Headers}).
 

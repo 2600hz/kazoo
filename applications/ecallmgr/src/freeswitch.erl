@@ -108,7 +108,7 @@ event(Node, Events, Timeout) -> ?FS_MODULE:event(Node, Events, Timeout).
 -spec nixevent(atom(), event() | [event()]) -> 'ok'.
 nixevent(Node, Event) -> ?FS_MODULE:nixevent(Node, Event).
 
--spec sendevent(atom(), ne_binary(), list()) -> 'ok'.
+-spec sendevent(atom(), atom(), list()) -> 'ok'.
 sendevent(Node, EventName, Headers) -> ?FS_MODULE:sendevent(Node, EventName, Headers).
 
 -spec sendevent_custom(atom(), atom(), list()) -> 'ok'.
