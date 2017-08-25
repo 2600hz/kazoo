@@ -151,7 +151,7 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"Body">>, get_body(Props) }
       ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
       ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
-      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+      ,{<<"Switch-Hostname">>, kzd_freeswitch:hostname(Props)}
       ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
       ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}

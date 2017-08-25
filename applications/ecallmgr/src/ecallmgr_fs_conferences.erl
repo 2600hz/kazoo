@@ -285,7 +285,6 @@ conference_resp(#conference{uuid=UUID
 is_moderator(#participant{conference_channel_vars=Vars}) ->
     props:is_true(<<"Is-Moderator">>, Vars, 'false').
 
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -337,7 +336,7 @@ handle_call({'conference_destroy', UUID}, _, State) ->
 handle_call({'participant_create', Props, Node}, _, State) ->
     Participant = participant_from_props(Props, Node),
     _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
-    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    UUID = kzd_freeswitch:conference_uuid(Props),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
             [#conference{account_id='undefined'}] ->
                 lager:info("failed to find account_id in conference ~s, adding", [UUID]),
@@ -471,11 +470,11 @@ conference_from_props(Props, Node) ->
 conference_from_props(Props, Node, Conference) ->
     CtrlNode = kz_term:to_atom(props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props), 'true'),
     Conference#conference{node=Node
-                         ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
-                         ,name=props:get_value(<<"Conference-Name">>, Props)
-                         ,profile_name=props:get_value(<<"Conference-Profile-Name">>, Props)
+                         ,uuid=kzd_freeswitch:conference_uuid(Props)
+                         ,name=kzd_freeswitch:conference_name(Props)
+                         ,profile_name=kzd_freeswitch:conference_profile_name(Props)
                          ,start_time = kz_time:current_tstamp()
-                         ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_term:to_binary(Node))
+                         ,switch_hostname=kzd_freeswitch:hostname(Props, kz_term:to_binary(Node))
                          ,switch_url=ecallmgr_fs_nodes:sip_url(Node)
                          ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
                          ,account_id = props:get_value(?GET_CCV(<<"Account-ID">>), Props)
@@ -488,11 +487,11 @@ conference_from_props(Props, Node, Conference) ->
 participant_from_props(Props, Node) ->
     #participant{node=Node
                 ,uuid=kzd_freeswitch:call_id(Props)
-                ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
-                ,conference_name=props:get_value(<<"Conference-Name">>, Props)
-                ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_time:current_tstamp())
-                ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
-                ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
+                ,conference_uuid=kzd_freeswitch:conference_uuid(Props)
+                ,conference_name=kzd_freeswitch:conference_name(Props)
+                ,join_time=kzd_freeswitch:join_time(Props)
+                ,caller_id_number=kzd_freeswitch:caller_id_number(Props)
+                ,caller_id_name=kzd_freeswitch:caller_id_name(Props)
                 ,custom_channel_vars=ecallmgr_util:custom_channel_vars(Props)
                 ,conference_channel_vars=ecallmgr_util:conference_channel_vars(Props)
                 }.
