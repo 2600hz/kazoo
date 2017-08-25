@@ -34,7 +34,8 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_proc(sup_child_spec()) -> sup_startchild_ret().
+-type start_args() :: [atom() | api_ne_binary() | kz_json:object()].
+-spec start_proc(start_args()) -> sup_startchild_ret().
 start_proc(Args) ->
     supervisor:start_child(?SERVER, Args).
 
