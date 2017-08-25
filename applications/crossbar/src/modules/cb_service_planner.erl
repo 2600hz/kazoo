@@ -220,7 +220,7 @@ summary_available_fields(Context) ->
 
 -spec read_service_plan_editable() -> kz_json:object().
 read_service_plan_editable() ->
-    Path = filename:join([code:priv_dir('crossbar'), "service_plane_editable_fields.json"]),
+    Path = filename:join([code:priv_dir('crossbar'), "service_plan_editable_fields.json"]),
     case file:read_file(Path) of
         {'ok', Bin} -> kz_json:decode(Bin);
         {'error', _Reason} ->
