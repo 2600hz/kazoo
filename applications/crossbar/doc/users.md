@@ -38,7 +38,7 @@ Key | Description | Type | Default | Required
 `formatters` |   | `object()` |   | `false`
 `hotdesk.enabled` | Determines if the user has hotdesking enabled | `boolean()` | `false` | `false`
 `hotdesk.id` | The users hotdesk id | `string(0..15)` |   | `false`
-`hotdesk.keep_logged_in_elsewhere` | Determines if user should be able to login to mutliple phones simultaneously | `boolean()` | `false` | `false`
+`hotdesk.keep_logged_in_elsewhere` | Determines if user should be able to login to multiple phones simultaneously | `boolean()` | `false` | `false`
 `hotdesk.pin` | The users hotdesk pin number | `string(4..15)` |   | `false`
 `hotdesk.require_pin` | Determines if user requires a pin to change the hotdesk state | `boolean()` | `false` | `false`
 `hotdesk` | The user hotdesk parameters | `object()` | `{}` | `false`

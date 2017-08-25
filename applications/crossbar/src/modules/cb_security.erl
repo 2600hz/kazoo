@@ -185,7 +185,15 @@ validate_auth_configs(Context, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    maybe_flush_config(crossbar_doc:save(Context)).
+    C1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            maybe_flush_config(C1),
+            RespJObj = maybe_add_multi_factor_metadata(cb_context:resp_data(Context)),
+            cb_context:set_resp_data(Context, RespJObj);
+        _ -> C1
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -196,7 +204,14 @@ post(Context) ->
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context()) -> cb_context:context().
 patch(Context) ->
-    maybe_flush_config(crossbar_doc:save(Context)).
+    C1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            maybe_flush_config(C1),
+            RespJObj = maybe_add_multi_factor_metadata(cb_context:resp_data(Context)),
+            cb_context:set_resp_data(Context, RespJObj);
+        _ -> C1
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -209,9 +224,7 @@ delete(Context) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
 
 maybe_flush_config(Context) ->
-    case cb_context:resp_status(Context) =:= 'success'
-        andalso cb_context:fetch(Context, 'flush', 'false')
-    of
+    case cb_context:fetch(Context, 'flush', 'false') of
         'true' ->
             kapps_account_config:flush(cb_context:account_id(Context), ?AUTH_CONFIG_CAT, <<"hierarchy_merge">>);
         'false' -> Context
@@ -240,22 +253,69 @@ summary_available(Context) ->
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
     ConfigId = kapps_config_util:account_doc_id(?AUTH_CONFIG_CAT),
-    add_inherited_config(crossbar_doc:load(ConfigId, Context, ?TYPE_CHECK_OPTION(<<"account_config">>))).
+    C1 = crossbar_doc:load(ConfigId, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            add_inherited_config(cb_context:set_resp_data(C1, kz_json:delete_key(<<"id">>, cb_context:resp_data(C1))));
+        _ ->
+            add_inherited_config(cb_context:set_resp_data(C1, kz_json:new()))
+    end.
 
 -spec add_inherited_config(cb_context:context()) -> cb_context:context().
 add_inherited_config(Context) ->
-    InheritedConfig = crossbar_auth:get_inherited_auth_config(cb_context:account_id(Context)),
-    AccountConfig = case cb_context:resp_status(Context) of
-                        'success' -> kz_json:delete_key(<<"id">>, cb_context:resp_data(Context));
-                        _ -> kz_json:new()
-                    end,
+    Props = [{<<"account">>
+             ,maybe_add_multi_factor_metadata(cb_context:resp_data(Context))
+             }
+            ,{<<"inherited_config">>
+             ,maybe_add_multi_factor_metadata(kz_json:from_list([{<<"auth_modules">>, crossbar_auth:get_inherited_config(Context)}]))
+             }
+            ],
+    crossbar_doc:handle_json_success(kz_json:from_list(Props), Context).
 
-    Doc = kz_json:from_list(
-            [{<<"account">>, AccountConfig}
-            ,{<<"inherited_config">>, InheritedConfig}
-            ]
-           ),
-    crossbar_doc:handle_json_success(Doc, Context).
+-spec maybe_add_multi_factor_metadata(kz_json:object()) -> kz_json:object().
+maybe_add_multi_factor_metadata(AuthConfig) ->
+    Fun = fun(K, V, Acc) ->
+                  case kz_json:get_value(<<"multi_factor">>, V) of
+                      'undefined' -> Acc;
+                      _MFA -> add_multi_factor_metadata(K, V, Acc)
+                  end
+          end,
+    kz_json:foldl(Fun, AuthConfig, kz_json:get_value(<<"auth_modules">>, AuthConfig, kz_json:new())).
+
+-spec add_multi_factor_metadata(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+add_multi_factor_metadata(AuthModule, JObj, AuthConfig) ->
+    AccountId = kz_json:get_value([<<"multi_factor">>, <<"account_id">>], JObj),
+    ConfigId = kz_json:get_value([<<"multi_factor">>, <<"configuration_id">>], JObj),
+
+    Path = [<<"auth_modules">>, AuthModule, <<"multi_factor">>, <<"_read_only">>],
+    case kz_term:is_not_empty(AccountId)
+        andalso kz_term:is_not_empty(ConfigId)
+        andalso get_metadata(AccountId, ConfigId)
+    of
+        'false' -> set_as_system(AuthConfig, Path);
+        'undefined' -> set_as_system(AuthConfig, Path);
+        Metadata ->
+            kz_json:set_value(Path, Metadata, AuthConfig)
+    end.
+
+-spec get_metadata(ne_binary(), ne_binary()) -> api_object().
+get_metadata(AccountId, ConfigId) ->
+    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConfigId) of
+        {'ok', JObj} ->
+            kz_json:from_list(
+              [{<<"name">>, kz_json:get_value(<<"name">>, JObj)}
+              ,{<<"provider_name">>, kz_json:get_value(<<"provider_name">>, JObj)}
+              ]);
+        _ -> 'undefined'
+    end.
+
+-spec set_as_system(kz_json:object(), kz_json:path()) -> kz_json:object().
+set_as_system(AuthConfig, Path) ->
+    Default = kz_json:from_list(
+                [{<<"name">>, <<"Default System Provider">>}
+                ,{<<"provider_name">>, kz_mfa_auth:default_provider()}
+                ]),
+    kz_json:set_value(Path, Default, AuthConfig).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -304,7 +364,7 @@ create_config_document(Context) ->
 
 check_multi_factor_setting(Context) ->
     ReqData = cb_context:fetch(Context, <<"orig_req_data">>, cb_context:req_data(Context)),
-    kz_json:foldl(fun check_multi_factor_setting/3, Context, kz_json:get_value(<<"auth_modules">>, ReqData)).
+    kz_json:foldl(fun check_multi_factor_setting/3, Context, kz_json:get_value(<<"auth_modules">>, ReqData, kz_json:new())).
 
 check_multi_factor_setting(AuthModule, JObj, Context) ->
     case has_configuration_id(JObj)
@@ -326,14 +386,26 @@ has_account_id_or_db(JObj) ->
         _AccountId -> 'true'
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Only allow to set the configuration id if the account who has the configuration is
+%% in the tree
+%% * if master is setting the config, allow
+%% * if the account is the same authenticated account, allow
+%% * if authenticated account is parent and wants to set its descendant's, allow
+%% * if a include_subaccounts, allow a child account set its parent's config
+%% @end
+%%--------------------------------------------------------------------
 -spec check_account_hierarchy(ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
 check_account_hierarchy(AuthModule, JObj, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    IsSysAdmin = cb_context:is_superduper_admin(AuthAccountId),
     AccountId = kz_json:get_ne_binary_value([<<"multi_factor">>, <<"account_id">>], JObj),
 
-    case IsSysAdmin
-        orelse kz_util:is_in_account_hierarchy(AccountId, AuthAccountId, 'true')
+    case cb_context:is_superduper_admin(AuthAccountId)
+        orelse kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
+        orelse kz_json:is_false([<<"multi_factor">>, <<"include_subaccounts">>], JObj)
+        orelse kz_util:is_in_account_hierarchy(AccountId, AuthAccountId)
     of
         'true' -> Context;
         'false' ->
@@ -367,7 +439,7 @@ read_attempt_log(?MATCH_MODB_PREFIX(Year, Month, _)=AttemptId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_attempt_view_result(kz_json:object()) -> kz_json:object().

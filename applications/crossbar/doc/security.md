@@ -16,9 +16,11 @@ Configuration is the merged result of the account's configuration and all its pa
 
 If you want to use multi factor authentication for a module, set the `multi_factor.enabled` to `true`. You can control if the multi factor settings can be applied to the account's children by `multi_factor.include_subaccounts`.
 
-When setting `configuration_id` of the multi-factor, you have to set the Account ID which contains the that configuration too.
+When setting `configuration_id` of the multi-factor, you have to set the Account ID which contains the that configuration.
 
-Only a parent Account or the same Account can set `configuration_id` and `account_id`.
+Only a parent Account or the same Account can set `configuration_id` and `account_id` unless `multi_factor.include_subaccounts` is `true` and a descendant account can use its parent `configuration_id`.
+
+See [Multi Factor Authentication API documentation](./multi_factor.md).
 
 #### Account Auth Configuration Schema
 
@@ -34,14 +36,14 @@ Key | Description | Type | Default | Required
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`enabled` | whether or not this authentication module is enabled | `boolean` |  | `true`
-`log_failed_attempts` | should log failed logging attempts | `boolean` | `true` | `false`
-`log_successful_attempts` | should log successful logging attempts | `boolean` | `false` | `false`
+`enabled` | whether or not this authentication module is enabled | `boolean` |  | `false`
+`log_failed_attempts` | should log failed logging attempts | `boolean` |  | `false`
+`log_successful_attempts` | should log successful logging attempts | `boolean` |  | `false`
 `multi_factor` | control multi factor authentications for this module | `object` |   | `false`
 `multi_factor.account_id` | ID of the account that contains the multi factor configuration | `string` |  | `false`
 `multi_factor.configuration_id` | document ID contains the multi factor configuration | `string` |  | `false`
-`multi_factor.enabled` | turn on/off multi factor authentications for this module | `boolean` |  | `true`
-`multi_factor.include_subaccounts` | should this multi factor authentication settings be applied when used by sub-accounts | `boolean` | `false` | `false`
+`multi_factor.enabled` | turn on/off multi factor authentications for this module | `boolean` |  | `false`
+`multi_factor.include_subaccounts` | should this multi factor authentication settings be applied when used by sub-accounts | `boolean` |  | `false`
 `token_auth_expiry_s` | expiration period of the JWT token (seconds) | `integer` |  | `false`
 
 #### Get a List of Available Auth Module
@@ -80,7 +82,7 @@ curl -v -X GET \
 
 #### Fetch All Configurations
 
-Get all configured authentocator module on the account alongside the default settings of merged result of account itself and its parents, reseller and system.
+Get all configured authenticator module on the account alongside the default settings of merged result of account itself and its parents, reseller and system.
 
 > GET /v2/accounts/{ACCOUNT_ID}/security
 
@@ -101,7 +103,14 @@ curl -v -X GET \
         "enabled": true,
         "token_auth_expiry_s": 3600,
         "log_failed_attempts": true,
-        "log_successful_attempts": true
+        "log_successful_attempts": true,
+        "multi_factor": {
+          "enabled": false,
+          "_read_only": {
+            "name": "Default System Provider",
+            "provider_name": "duo"
+          }
+        }
       },
       "cb_api_auth": {
         "enabled": true,
@@ -147,7 +156,7 @@ Customize modules config for the account. Set what settings you want here, cross
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "data": { "auth_modules" :{ "cb_user_auth": { "enabled": true, "token_auth_expiry_s": 604800}, "cb_api_auth": { "enabled": true } } } }'
+    -d '{ "data": { "auth_modules" :{ "cb_user_auth": { "token_auth_expiry_s": 604800 }, "cb_api_auth": { "enabled": false } } } }'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
@@ -158,16 +167,10 @@ curl -v -X POST \
   "data": {
     "auth_modules": {
       "cb_user_auth": {
-        "token_auth_expiry_s": 604800,
-        "enabled": true,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
+        "token_auth_expiry_s": 604800
       },
       "cb_api_auth": {
-        "token_auth_expiry_s": 604800,
-        "log_successful_attempts": true,
-        "log_failed_attempts": true,
-        "enabled": true
+        "enabled": false
       }
     },
     "id": "configs_crossbar.auth"
@@ -183,7 +186,7 @@ curl -v -X POST \
 
 #### Patch
 
-Patch fields of config for the account customization.
+Patch field(s) of config for the account customization.
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/security
 
@@ -191,7 +194,7 @@ Patch fields of config for the account customization.
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "data": { "auth_modules" :{ "cb_api_auth": { "enabled": false } } } }'
+    -d '{ "data": { "auth_modules" :{ "cb_api_auth": { "enabled": true } } } }'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
 ```
 
@@ -202,15 +205,9 @@ curl -v -X PATCH \
   "data": {
     "auth_modules": {
       "cb_user_auth": {
-        "token_auth_expiry_s": 604800,
-        "enabled": false,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
+        "token_auth_expiry_s": 604800
       },
       "cb_api_auth": {
-        "token_auth_expiry_s": 604800,
-        "log_successful_attempts": true,
-        "log_failed_attempts": true,
         "enabled": false
       }
     },
@@ -244,16 +241,51 @@ curl -v -X DELETE \
   "data": {
     "auth_modules": {
       "cb_user_auth": {
-        "token_auth_expiry_s": 604800,
-        "enabled": false,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
+        "token_auth_expiry_s": 604800
       },
       "cb_api_auth": {
-        "token_auth_expiry_s": 604800,
-        "log_successful_attempts": true,
-        "log_failed_attempts": true,
         "enabled": false
+      }
+    },
+    "id": "configs_crossbar.auth"
+  },
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE_HASH}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### Set Multi Factor Configuration for a Authentication Module
+
+> POST /v2/accounts/{ACCOUNT_ID}/security
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{ "data": { "auth_modules" :{ "cb_user_auth": { "multi_factor": { "enabled": true, "configuration_id": "c757665dca55edba2395df3ca6423f4f", "account_id": "a391d64a083b99232f6d2633c47432e3" } } } } }'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/security
+```
+
+##### Response
+
+```json
+{
+  "data": {
+    "auth_modules": {
+      "cb_user_auth": {
+        "multi_factor": {
+          "enabled": true,
+          "configuration_id": "c757665dca55edba2395df3ca6423f4f",
+          "account_id": "a391d64a083b99232f6d2633c47432e3",
+          "_read_only": {
+            "name": "a nice day",
+            "provider_name": "duo"
+          }
+        }
+        }
       }
     },
     "id": "configs_crossbar.auth"
@@ -288,7 +320,7 @@ curl -v -X GET \
       "auth_type": "jwt_auth_token",
       "auth_module": "cb_user_auth",
       "status": "success",
-      "message": "authentiaction resulted in token creation",
+      "message": "authentication resulted in token creation",
       "timestamp": 63667032239,
       "client_ip": "10.1.0.2"
     }
@@ -320,9 +352,7 @@ curl -v -X GET \
     "auth_type": "jwt_auth_token",
     "status": "success",
     "auth_module": "cb_user_auth",
-    "message": "authentiaction resulted in token creation",
-    "auth_config_origin": "system",
-    "multi_factor_config_origin": "system",
+    "message": "authentication resulted in token creation",
     "client_headers": {
       "host": "10.1.0.2:8000",
       "connection": "keep-alive",

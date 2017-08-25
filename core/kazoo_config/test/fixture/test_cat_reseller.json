@@ -18,6 +18,13 @@
         "bol_key": false,
         "f_key": 1.3,
         "i_key": 98765,
+        "obj_empty_test": {
+            "banana": "nadarim",
+            "obj_empty_sometimes": {
+                "from": "reseller",
+                "reseller": true
+            }
+        },
         "obj_key": {
             "from": "reseller"
         },

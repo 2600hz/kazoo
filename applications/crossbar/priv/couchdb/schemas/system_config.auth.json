@@ -4,6 +4,7 @@
     "description": "Schema for auth system_config",
     "properties": {
         "default_multi_factor_provider": {
+            "default": "duo",
             "description": "Default multi factor authentication provider name",
             "type": "string"
         },

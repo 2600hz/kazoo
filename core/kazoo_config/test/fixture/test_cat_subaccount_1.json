@@ -19,6 +19,11 @@
         "bol_key": false,
         "f_key": 1.5,
         "i_key": 3456,
+        "obj_empty_test": {
+            "obj_empty_sometimes": {
+                "1subaccount": true
+            }
+        },
         "obj_key": {
             "from": "subaccount1"
         }
