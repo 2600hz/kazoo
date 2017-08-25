@@ -165,10 +165,11 @@ get_user(DataJObj) ->
 current_account_dollars(?AN_ACCOUNT_ID) -> {ok, 38.6592}.
 
 low_balance_threshold(?AN_ACCOUNT_ID) ->
-    kz_account:low_balance_threshold(teletype_util:fixture("an_account.json")).
+    {ok,AccountJObj} = kz_json:fixture(?APP, "an_account.json"),
+    kz_account:low_balance_threshold(AccountJObj).
 
 fetch_user(?AN_ACCOUNT_ID, ?AN_ACCOUNT_USER_ID) ->
-    {ok, teletype_util:fixture("an_account_user.json")}.
+    kz_json:fixture(?APP, "an_account_user.json").
 -else.
 current_account_dollars(AccountId) ->
     wht_util:current_account_dollars(AccountId).

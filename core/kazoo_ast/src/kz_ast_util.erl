@@ -90,7 +90,8 @@ binary_match_to_binary(Match) when is_list(Match) ->
 
 binary_part_to_binary(?BINARY_STRING(V)) -> V;
 binary_part_to_binary(?SUB_BINARY(V)) -> V;
-binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms).
+binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms);
+binary_part_to_binary(?BINARY_FROM_ATOM(Atom)) -> atom_to_binary(Atom, utf8).
 
 %% user_auth -> User Auth
 -spec smash_snake(ne_binary()) -> iolist().

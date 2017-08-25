@@ -32,6 +32,7 @@
         ,get_failover/1
         ,get_endpoint_data/1
         ,get_account_id/1
+        ,get_kapps_call/1
         ]).
 
 -include("ts.hrl").
@@ -59,6 +60,7 @@ init(RouteReqJObj, Type) ->
                               ,route_req_jobj=RouteReqJObj
                               ,acctid=AccountId
                               ,acctdb=kz_util:format_account_id(AccountId, 'encoded')
+                              ,kapps_call=kapps_call:from_route_req(RouteReqJObj)
                               }
     end.
 
@@ -114,7 +116,7 @@ wait_for_win(State, _Timeout, {'error', 'timeout'}) ->
     {'lost', State}.
 
 -spec route_won(state(), kz_json:object()) -> {'won', state()}.
-route_won(#ts_callflow_state{amqp_worker=Worker}=State, RouteWin) ->
+route_won(#ts_callflow_state{amqp_worker=Worker, kapps_call=Call}=State, RouteWin) ->
     gen_listener:add_binding(Worker
                             ,'call'
                             ,[{'callid', kapi_route:call_id(RouteWin)}]
@@ -122,7 +124,10 @@ route_won(#ts_callflow_state{amqp_worker=Worker}=State, RouteWin) ->
 
     lager:info("callflow has received a route win, taking control of the call"),
 
-    {'won', State#ts_callflow_state{callctl_q=kapi_route:control_queue(RouteWin)}}.
+    {'won', State#ts_callflow_state{callctl_q=kapi_route:control_queue(RouteWin)
+                                   ,kapps_call=kapps_call:from_route_win(RouteWin, Call)
+                                   }
+    }.
 
 -spec wait_for_bridge(state(), api_integer()) ->
                              {'hangup' | 'error' | 'bridged', state()}.
@@ -383,3 +388,6 @@ is_success(Key, JObj) ->
     kz_json:get_value(Key, JObj) =:= <<"SUCCESS">>.
 is_success(Key, JObj, Default) ->
     kz_json:get_first_defined(Key, JObj, Default) =:= <<"SUCCESS">>.
+
+-spec get_kapps_call(state()) -> kapps_call:call().
+get_kapps_call(#ts_callflow_state{kapps_call=Call}) -> Call.

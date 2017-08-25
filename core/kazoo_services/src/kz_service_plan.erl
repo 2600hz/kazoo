@@ -34,7 +34,7 @@ fetch(PlanId, VendorId) ->
 
 -ifdef(TEST).
 fetch_plan(?A_MASTER_ACCOUNT_DB, ?A_MASTER_PLAN_ID) ->
-    {ok, kz_services_test:fixture("a_master_plans.json")}.
+    kz_json:fixture(?APP, "a_master_plans.json").
 -else.
 fetch_plan(VendorDb, PlanId) ->
     kz_datamgr:open_cache_doc(VendorDb, PlanId).

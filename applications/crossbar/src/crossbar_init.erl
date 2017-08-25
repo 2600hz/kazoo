@@ -268,7 +268,7 @@ maybe_start_ssl(Dispatch) ->
 
 -spec start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
 start_ssl(Dispatch) ->
-    try ssl_opts(code:lib_dir('crossbar')) of
+    try ssl_opts(code:lib_dir(?APP)) of
         SSLOpts ->
             lager:debug("trying to start SSL API server"),
             _SslStarted = ssl:start(),

@@ -56,10 +56,8 @@ domains_test_() ->
                }).
 
 init() ->
-    CrossbarDir = code:lib_dir('crossbar'),
-
-    DomainsSchema = load(CrossbarDir, ?DOMAINS_SCHEMA),
-    DomainHostsSchema = load(CrossbarDir, ?HOSTS_SCHEMA),
+    DomainsSchema = crossbar_load(?DOMAINS_SCHEMA),
+    DomainHostsSchema = crossbar_load(?HOSTS_SCHEMA),
 
     LoaderFun = fun A(?DOMAINS_SCHEMA) -> DomainsSchema;
                     A(?HOSTS_SCHEMA) -> DomainHostsSchema;
@@ -73,13 +71,9 @@ init() ->
           ,loader_fun=LoaderFun
           }.
 
-load(AppPath, Filename) ->
-    SchemaPath = filename:join([AppPath, "priv", "couchdb", "schemas"
-                               ,<<Filename/binary, ".json">>
-                               ]),
-    {'ok', SchemaFile} = file:read_file(SchemaPath),
-
-    kz_json:decode(SchemaFile).
+crossbar_load(Filename) ->
+    File = <<Filename/binary,".json">>,
+    kz_json:load_fixture_from_file(crossbar, "couchdb/schemas", File).
 
 stop(_) -> 'ok'.
 

@@ -141,10 +141,11 @@ find_admin([User|Users]) ->
 
 -ifdef(TEST).
 account_fetch(?AN_ACCOUNT_ID) ->
-    {ok, teletype_util:fixture("an_account.json")}.
+    kz_json:fixture(?APP, "an_account.json").
 
 list_users(?AN_ACCOUNT_DB) ->
-    UserJObj = kzd_user:set_priv_level(<<"admin">>, teletype_util:fixture("an_account_user.json")),
+    {ok,UserJObj0} = kz_json:fixture(?APP, "an_account_user.json"),
+    UserJObj = kzd_user:set_priv_level(<<"admin">>, UserJObj0),
     {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
 -else.
 account_fetch(AccountId) ->

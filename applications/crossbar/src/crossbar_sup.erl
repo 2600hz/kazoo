@@ -33,7 +33,7 @@
                   ]
        ).
 
--define(DISPATCH_FILE, [code:priv_dir('crossbar'), "/dispatch.conf"]).
+-define(DISPATCH_FILE, [code:priv_dir(?APP), "/dispatch.conf"]).
 
 %% ===================================================================
 %% API functions

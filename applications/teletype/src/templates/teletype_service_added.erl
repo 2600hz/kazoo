@@ -172,7 +172,7 @@ auth_user_data(DataJObj) ->
 
 -ifdef(TEST).
 fetch_user(?AN_ACCOUNT_ID, ?AN_ACCOUNT_USER_ID) ->
-    {ok, teletype_util:fixture("an_account_user.json")}.
+    kz_json:fixture(?APP, "an_account_user.json").
 -else.
 fetch_user(AccountId, UserId) -> kzd_user:fetch(AccountId, UserId).
 -endif.

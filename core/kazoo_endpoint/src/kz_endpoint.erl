@@ -20,6 +20,10 @@
         ,get_sip_realm/2, get_sip_realm/3
         ]).
 
+-ifdef(TEST).
+-export([attributes_keys/0]).
+-endif.
+
 -include("kazoo_endpoint.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -109,7 +113,7 @@ get(EndpointId, Call) ->
                                   {'ok', kz_json:object()} |
                                   kz_datamgr:data_error().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
-    case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
+    case kz_device:fetch(AccountDb, EndpointId) of
         {'ok', JObj} ->
             maybe_have_endpoint(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
@@ -187,27 +191,30 @@ maybe_format_endpoint(Endpoint, 'false') ->
 -spec merge_attributes(kz_json:object(), ne_binary()) -> kz_json:object().
 -spec merge_attributes(kz_json:object(), ne_binary(), ne_binaries()) -> kz_json:object().
 merge_attributes(Endpoint, Type) ->
-    Keys = [<<"name">>
-           ,<<"call_restriction">>
-           ,<<"music_on_hold">>
-           ,<<"ringtones">>
-           ,<<"caller_id">>
-           ,<<"caller_id_options">>
-           ,<<"do_not_disturb">>
-           ,<<"call_forward">>
-           ,<<"dial_plan">>
-           ,<<"metaflows">>
-           ,<<"media">>
-           ,<<"language">>
-           ,<<"record_call">>
-           ,<<"call_recording">>
-           ,<<"mobile">>
-           ,<<"presence_id">>
-           ,<<"call_waiting">>
-           ,?ATTR_LOWER_KEY
-           ,<<"formatters">>
-           ],
-    merge_attributes(Endpoint, Type, Keys).
+    merge_attributes(Endpoint, Type, attributes_keys()).
+
+attributes_keys() ->
+    [<<"name">>
+    ,<<"call_restriction">>
+    ,<<"music_on_hold">>
+    ,<<"ringtones">>
+    ,<<"caller_id">>
+    ,<<"caller_id_options">>
+    ,<<"do_not_disturb">>
+    ,<<"call_forward">>
+    ,<<"dial_plan">>
+    ,<<"metaflows">>
+    ,<<"media">>
+    ,<<"language">>
+    ,<<"record_call">>
+    ,<<"call_recording">>
+    ,<<"mobile">>
+    ,<<"presence_id">>
+    ,<<"call_waiting">>
+    ,<<"formatters">>
+    ,<<"outbound_flags">>
+    ,?ATTR_LOWER_KEY
+    ].
 
 merge_attributes(Owner, <<"user">>, Keys) ->
     case kz_account:fetch(kz_doc:account_id(Owner)) of
@@ -238,9 +245,6 @@ merge_attributes(Keys, AccountDoc, EndpointDoc, OwnerDoc) ->
                ).
 
 -spec merge_attribute(ne_binary(), api_object(), api_object(), api_object()) -> kz_json:object().
-merge_attribute(<<"call_restriction">>, Account, Endpoint, Owner) ->
-    Classifiers = kz_json:get_keys(knm_converters:available_classifiers()),
-    merge_call_restrictions(Classifiers, Account, Endpoint, Owner);
 merge_attribute(?ATTR_LOWER_KEY, _Account, Endpoint, Owner) ->
     FullKey = [?ATTR_LOWER_KEY, ?ATTR_UPPER_KEY],
     OwnerAttr = kz_json:get_integer_value(FullKey, Owner, 5),
@@ -249,6 +253,9 @@ merge_attribute(?ATTR_LOWER_KEY, _Account, Endpoint, Owner) ->
         'true' -> Endpoint;
         'false' -> kz_json:set_value(FullKey, OwnerAttr, Endpoint)
     end;
+merge_attribute(<<"call_restriction">>, Account, Endpoint, Owner) ->
+    Classifiers = kz_json:get_keys(knm_converters:available_classifiers()),
+    merge_call_restrictions(Classifiers, Account, Endpoint, Owner);
 merge_attribute(<<"name">> = Key, Account, Endpoint, Owner) ->
     Name = create_endpoint_name(kz_json:get_ne_value(<<"first_name">>, Owner)
                                ,kz_json:get_ne_value(<<"last_name">>, Owner)
@@ -313,6 +320,16 @@ merge_attribute(<<"call_recording">> = Key, Account, Endpoint, Owner) ->
     EndpointAttr = get_endpoint_record_call_properties(Endpoint),
     Merged = kz_json:merge([AccountAttr, OwnerAttr, EndpointAttr]),
     kz_json:set_value(Key, Merged, Endpoint);
+merge_attribute(<<"outbound_flags">>, Account, Endpoint, Owner) ->
+    Static = lists:flatten([kz_device:outbound_static_flags(Account)
+                           ,kz_device:outbound_static_flags(Owner)
+                           ,kz_device:outbound_static_flags(Endpoint)
+                           ]),
+    Dynamic = lists:flatten([kz_device:outbound_dynamic_flags(Account)
+                            ,kz_device:outbound_dynamic_flags(Owner)
+                            ,kz_device:outbound_dynamic_flags(Endpoint)
+                            ]),
+    kz_device:set_outbound_flags(Endpoint, Static, Dynamic);
 merge_attribute(Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
@@ -456,9 +473,8 @@ merge_call_restrictions([Classifier|Classifiers], Account, Endpoint, Owner) ->
     end.
 
 -spec get_user(ne_binary(), api_binary() | kz_json:object()) -> kz_json:object().
-get_user(_, 'undefined') -> kz_json:new();
 get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
-    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
+    case kzd_user:fetch(AccountDb, OwnerId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->
             lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
@@ -477,19 +493,17 @@ get_user(AccountDb, Endpoint) ->
 
 -spec get_users(ne_binary(), ne_binaries()) -> kzd_user:docs().
 get_users(AccountDb, OwnerIds) ->
-    get_users(AccountDb, OwnerIds, []).
-
--spec get_users(ne_binary(), ne_binaries(), kzd_user:docs()) -> kzd_user:docs().
-get_users(_, [], Users) ->
-    Users;
-get_users(AccountDb, [OwnerId|OwnerIds], Users) ->
-    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
-        {'ok', JObj} ->
-            get_users(AccountDb, OwnerIds, [JObj|Users]);
-        {'error', _R} ->
-            lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
-            get_users(AccountDb, OwnerIds, Users)
-    end.
+    %% Bulk fetch to fill the cache
+    _ = kz_datamgr:open_cache_docs(AccountDb, OwnerIds),
+    F = fun (UserId, UsersAcc) ->
+                case kzd_user:fetch(AccountDb, UserId) of
+                    {ok, UserJObj} -> [UserJObj|UsersAcc];
+                    {error, _R} ->
+                        lager:warning("failed to load endpoint owner ~s: ~p", [UserId, _R]),
+                        UsersAcc
+                end
+        end,
+    lists:foldl(F, [], OwnerIds).
 
 -spec fix_user_restrictions(kzd_user:doc()) -> kzd_user:doc().
 fix_user_restrictions(UserJObj) ->
@@ -517,10 +531,7 @@ convert_to_single_user(UserJObjs) ->
 singlfy_user_attr_keys(UserJObjs, AccJObj) ->
     PrecedenceKey = [?ATTR_LOWER_KEY, ?ATTR_UPPER_KEY],
     Value = lists:foldl(fun(UserJObj, V1) ->
-                                case kz_json:get_integer_value(PrecedenceKey, UserJObj, 5) of
-                                    V2 when V2 < V1 -> V2;
-                                    _ -> V1
-                                end
+                                min(V1, kz_json:get_integer_value(PrecedenceKey, UserJObj, 5))
                         end
                        ,5
                        ,UserJObjs

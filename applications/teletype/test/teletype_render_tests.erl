@@ -52,7 +52,8 @@ test_rendering(Module) ->
     TemplateId = Module:id(),
     TemplateIdStr = binary_to_list(TemplateId),
     Fixture = "notif__" ++ TemplateIdStr ++ ".json",
-    DataJObj = kz_json:normalize(teletype_util:fixture(Fixture)),
+    {ok,FixtureJObj} = kz_json:fixture(?APP, Fixture),
+    DataJObj = kz_json:normalize(FixtureJObj),
     Macros = Module:macros(DataJObj),
     CTs = teletype_templates:master_content_types(TemplateId),
     [{"Render "++ TemplateIdStr ++" "++ binary_to_list(CT) ++" using "++ Fixture

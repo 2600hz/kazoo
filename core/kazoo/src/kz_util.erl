@@ -63,6 +63,7 @@
 -export([write_file/2, write_file/3
         ,rename_file/2
         ,delete_file/1
+        ,delete_dir/1
         ,make_dir/1
         ]).
 
@@ -876,6 +877,28 @@ delete_file(Filename) ->
         {'error', _}=_E ->
             lager:error("deleting file ~s failed : ~p", [Filename, _E])
     end.
+
+%% @public
+-spec delete_dir(string()) -> 'ok'.
+delete_dir(Dir) ->
+    F = fun(D) -> 'ok' = file:del_dir(D) end,
+    lists:foreach(F, del_all_files([Dir], [])).
+
+-spec del_all_files(strings(), strings()) -> strings().
+del_all_files([], EmptyDirs) -> EmptyDirs;
+del_all_files([Dir | T], EmptyDirs) ->
+    {'ok', FilesInDir} = file:list_dir(Dir),
+    {Files, Dirs} = lists:foldl(fun(F, {Fs, Ds}) ->
+                                        Path = Dir ++ "/" ++ F,
+                                        case filelib:is_dir(Path) of
+                                            'true' ->
+                                                {Fs, [Path | Ds]};
+                                            'false' ->
+                                                {[Path | Fs], Ds}
+                                        end
+                                end, {[],[]}, FilesInDir),
+    lists:foreach(fun delete_file/1, Files),
+    del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
 
 %% @public
 -spec make_dir(file:filename_all()) -> 'ok'.

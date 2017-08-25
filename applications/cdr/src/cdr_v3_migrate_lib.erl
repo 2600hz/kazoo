@@ -26,14 +26,11 @@
 
 -include("cdr.hrl").
 
-%%%===================================================================
-%%% API
-%%%===================================================================
--spec get_prev_n_month_date_list(kz_datetime(), pos_integer()) -> kz_proplist().
+-spec get_prev_n_month_date_list(kz_datetime(), pos_integer()) -> ymds().
 get_prev_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
     get_prev_n_month_date_list(Year, Month, NumMonths).
 
--spec get_prev_n_month_date_list(kz_year(), kz_month(), pos_integer()) -> kz_proplist().
+-spec get_prev_n_month_date_list(kz_year(), kz_month(), pos_integer()) -> ymds().
 get_prev_n_month_date_list(Year, Month, NumMonths) ->
     SortDirection = 'DESC',
     DateRange = get_prev_n_months(Year, Month, NumMonths, SortDirection),
@@ -41,8 +38,8 @@ get_prev_n_month_date_list(Year, Month, NumMonths) ->
                         build_month_date_list(NextYear, NextMonth, SortDirection, Acc)
                 end, [], DateRange).
 
--spec get_next_n_month_date_list(kz_datetime(), pos_integer()) -> kz_proplist().
--spec get_next_n_month_date_list(kz_year(), kz_month(), pos_integer()) -> kz_proplist().
+-spec get_next_n_month_date_list(kz_datetime(), pos_integer()) -> ymds().
+-spec get_next_n_month_date_list(kz_year(), kz_month(), pos_integer()) -> ymds().
 get_next_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
     get_next_n_month_date_list(Year, Month, NumMonths).
 
@@ -53,7 +50,11 @@ get_next_n_month_date_list(Year, Month, NumMonths) ->
                         build_month_date_list(NextYear, NextMonth, SortDirection, Acc)
                 end, [], DateRange).
 
--spec build_month_date_list(kz_year(), kz_month(), atom(), list()) -> any().
+-type order() :: 'DESC' | 'ASC'.
+-type ymd() :: {kz_year(), kz_month(), pos_integer()}.
+-type ymds() :: [ymd()].
+
+-spec build_month_date_list(kz_year(), kz_month(), order(), ymds()) -> ymds().
 build_month_date_list(Year, Month, 'DESC', Acc) ->
     [{Year, Month, Day}
      || Day <- lists:seq(calendar:last_day_of_the_month(Year, Month), 1, -1)
@@ -63,23 +64,24 @@ build_month_date_list(Year, Month, 'ASC', Acc) ->
      || Day <- lists:seq(1, calendar:last_day_of_the_month(Year, Month))
     ] ++ Acc.
 
--spec get_test_account_details(pos_integer()) -> api_binaries().
+-spec get_test_account_details(integer()) -> [{ne_binary(), ne_binary(), ne_binary(), ne_binary()}].
 get_test_account_details(NumAccounts) ->
-    [{<<"v3migratetest", (kz_term:to_binary(io_lib:format("~3..0B",[X])))/binary>>
-     , <<"v3migratetest",(kz_term:to_binary(io_lib:format("~3..0B", [X])))/binary,".realm.com">>
-     , <<"v3testuser", (kz_term:to_binary(io_lib:format("~3..0B", [X])))/binary, "-user">>
-     , <<"v3password">>
-     } || X <- lists:seq(1, NumAccounts)].
+    [{<<"v3migratetest", XNum/binary>>
+     ,<<"v3migratetest", XNum/binary, ".realm.com">>
+     ,<<"v3testuser", XNum/binary, "-user">>
+     ,<<"v3password">>
+     }
+     || X <- lists:seq(1, NumAccounts),
+        XNum <- [kz_term:to_binary(io_lib:format("~3..0B",[X]))]
+    ].
 
 -spec generate_test_accounts(pos_integer(), pos_integer(), pos_integer()) -> 'ok'.
 generate_test_accounts(NumAccounts, NumMonths, NumCdrs) ->
-    CdrJObjFixture = kz_json:load_fixture_from_file('cdr', "fixtures/cdr.json"),
-    lists:foreach(fun(AccountDetail) ->
-                          generate_test_account(AccountDetail
-                                               ,NumMonths
-                                               ,NumCdrs
-                                               ,CdrJObjFixture)
-                  end, get_test_account_details(NumAccounts)).
+    CdrJObjFixture = kz_json:load_fixture_from_file(?APP, "fixtures/cdr.json"),
+    F = fun(AccountDetail) ->
+                generate_test_account(AccountDetail, NumMonths, NumCdrs, CdrJObjFixture)
+        end,
+    lists:foreach(F, get_test_account_details(NumAccounts)).
 
 -spec generate_test_account({ne_binary(),ne_binary(), ne_binary(), ne_binary()}
                            ,pos_integer(), pos_integer()
@@ -101,16 +103,15 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
             {'error', Reason}
     end.
 
--spec get_account_by_realm(ne_binary()) ->
-                                  {'ok', account_db()} | {'multiples', any()} | {'error', any()}.
+-spec get_account_by_realm(ne_binary()) -> {'ok', account_db()} |
+                                           {'multiples', any()} |
+                                           {'error', any()}.
 get_account_by_realm(AccountRealm) ->
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, [{'key', AccountRealm}]) of
+    ViewOptions = [{'key', AccountRealm}],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
+        {'ok', []} -> {'error', 'not_found'};
         {'ok', [JObj]} ->
-            AccountDb = kz_json:get_value([<<"value">>, <<"account_db">>], JObj),
-            _AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-            {'ok', AccountDb};
-        {'ok', []} ->
-            {'error', 'not_found'};
+            {ok, kz_json:get_value([<<"value">>, <<"account_db">>], JObj)};
         {'ok', [_|_]=JObjs} ->
             AccountDbs = [kz_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
             {'multiples', AccountDbs};
@@ -138,9 +139,7 @@ generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
 
 -spec delete_test_accounts() -> 'ok' | kz_std_return().
 delete_test_accounts() ->
-    lists:foreach(fun maybe_delete_test_account/1
-                 ,kapps_util:get_all_accounts()
-                 ).
+    lists:foreach(fun maybe_delete_test_account/1, kapps_util:get_all_accounts()).
 
 -spec maybe_get_migrate_account(account_db()) -> 'false' | kz_json:objects().
 maybe_get_migrate_account(AccountDb) ->
@@ -178,63 +177,53 @@ maybe_delete_test_account(AccountDb) ->
             kz_datamgr:db_delete(AccountDb)
     end.
 
--spec delete_account_database(account_id(), {kz_year(), kz_month()}) ->
-                                     'ok' | {'error', any()}.
+-type ym() :: {kz_year(), kz_month()}.
+-type yms() :: [ym()].
+
+-spec delete_account_database(account_id(), ym()) -> 'ok' | {'error', any()}.
 delete_account_database(AccountId, {Year, Month}) ->
     AccountMODb = kz_util:format_account_id(AccountId, Year, Month),
     kz_datamgr:db_delete(AccountMODb).
 
--spec get_prev_n_months(kz_year(), kz_month(), pos_integer()) -> kz_proplist().
+-spec get_prev_n_months(kz_year(), kz_month(), pos_integer()) -> yms().
 get_prev_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
     get_prev_n_months(Year, Month, NumMonths, 'ASC').
 
--spec get_prev_n_months(kz_year(), kz_month(), pos_integer(), atom()) -> kz_proplist().
+-spec get_prev_n_months(kz_year(), kz_month(), pos_integer(), atom()) -> yms().
 get_prev_n_months(Year, Month, NumMonths, 'ASC') when Month =< 12, Month > 0 ->
     lists:reverse(prev_n_months(Year, Month, NumMonths, []));
 get_prev_n_months(Year, Month, NumMonths, 'DESC') when Month =< 12, Month > 0 ->
     prev_n_months(Year, Month, NumMonths, []).
 
-
--spec get_next_n_months(kz_year(), kz_month(), pos_integer()) -> kz_proplist().
+-spec get_next_n_months(kz_year(), kz_month(), pos_integer()) -> yms().
 get_next_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->
     get_next_n_months(Year, Month, NumMonths, 'ASC').
 
--spec get_next_n_months(kz_year(), kz_month(), pos_integer(), atom()) -> kz_proplist().
+-spec get_next_n_months(kz_year(), kz_month(), pos_integer(), atom()) -> yms().
 get_next_n_months(Year, Month, NumMonths, 'ASC') when Month =< 11, Month > 0 ->
     next_n_months(Year, Month, NumMonths, []);
 get_next_n_months(Year, Month, NumMonths, 'DESC') when Month =< 12, Month > 0 ->
     lists:reverse(next_n_months(Year, Month, NumMonths, [])).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% @spec
-%% @end
-%%--------------------------------------------------------------------
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-prev_n_months(_, _, 0, Acc) ->
-    Acc;
+prev_n_months(_, _, 0, Acc) -> Acc;
 prev_n_months(CurrentYear, 1, NumMonths, Acc) ->
     prev_n_months(CurrentYear - 1, 12, NumMonths - 1, [{CurrentYear, 1} | Acc]);
 prev_n_months(CurrentYear, Month, NumMonths, Acc) ->
     prev_n_months(CurrentYear, Month -1, NumMonths - 1, [{CurrentYear, Month} | Acc]).
 
-next_n_months(_, _, 0, Acc) ->
-    Acc;
+next_n_months(_, _, 0, Acc) -> Acc;
 next_n_months(Year, 12, NumMonths, Acc) ->
     next_n_months(Year + 1, 1, NumMonths - 1, [{Year, 12} | Acc]);
 next_n_months(Year, Month, NumMonths, Acc) ->
     next_n_months(Year, Month + 1, NumMonths - 1, [{Year, Month} | Acc]).
 
--spec prev_month(kz_year(), kz_month()) -> {kz_year(), kz_month()}.
+-spec prev_month(kz_year(), kz_month()) -> ym().
 prev_month(Year, 1) ->
     {Year - 1, 12};
 prev_month(Year, Month) ->
     {Year, Month - 1}.
 
--spec next_month(kz_year(), kz_month()) -> {kz_year(), kz_month()}.
+-spec next_month(kz_year(), kz_month()) -> ym().
 next_month(Year, 12) ->
     {Year + 1, 1};
 next_month(Year, Month) ->

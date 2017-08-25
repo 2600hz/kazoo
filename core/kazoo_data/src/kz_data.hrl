@@ -8,9 +8,10 @@
 -define(CACHE_NAME, 'kazoo_data_cache').
 -define(KAZOO_DATA_PLAN_CACHE, 'kazoo_data_plan_cache').
 
--define(CONFIG_CAT, <<"datamgr">>).
+-define(APP, kazoo_data).
 -define(APP_NAME, <<"datamgr">>).
 -define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
 -record(data_connection, {id = {kz_time:current_tstamp(), kz_binary:rand_hex(4)}
                          ,app :: atom() | '$1'
@@ -34,8 +35,8 @@
 
 -record(copy_doc, {source_dbname  :: ne_binary()
                   ,source_doc_id  :: ne_binary()
-                  ,dest_dbname = 'undefined' :: api_binary()
-                  ,dest_doc_id = 'undefined' :: api_binary()
+                  ,dest_dbname :: api_binary()
+                  ,dest_doc_id :: api_binary()
                   }).
 -type copy_doc() :: #copy_doc{}.
 

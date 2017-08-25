@@ -12,7 +12,7 @@
 
 -include("kz_data.hrl").
 
--define(CACHE_PROFILE_FROM_FILE, kz_json:load_fixture_from_file('kazoo_data', "defaults", "perf.json")).
+-define(CACHE_PROFILE_FROM_FILE, kz_json:load_fixture_from_file(?APP, "defaults", "perf.json")).
 -define(CACHE_PROFILE_OPTS, [{'origin', [{'db', ?KZ_CONFIG_DB, ?CONFIG_CAT}]}
                             ,{'expires', 'infinity'}
                             ]).

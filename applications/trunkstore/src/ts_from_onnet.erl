@@ -57,10 +57,10 @@ maybe_onnet_data(State) ->
                     _ -> kz_json:new()
                 end
         end,
-    SrvOptions = kz_json:get_value([<<"server">>, <<"options">>], Options, kz_json:new()),
+    ServerOptions = kz_json:get_value([<<"server">>, <<"options">>], Options, kz_json:new()),
     case knm_converters:is_reconcilable(ToDID)
         orelse knm_converters:classify(ToDID) =:= <<"emergency">>
-        orelse kz_json:is_true(<<"hunt_non_reconcilable">>, SrvOptions, 'false')
+        orelse kz_json:is_true(<<"hunt_non_reconcilable">>, ServerOptions, 'false')
         orelse kapps_config:get_is_true(?CONFIG_CAT, <<"default_hunt_non_reconcilable">>, 'false')
     of
         'false' ->
@@ -72,22 +72,22 @@ maybe_onnet_data(State) ->
 onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     DIDOptions = kz_json:get_value(<<"DID_Opts">>, Options, kz_json:new()),
     AccountOptions = kz_json:get_value(<<"account">>, Options, kz_json:new()),
-    SrvOptions = kz_json:get_value([<<"server">>, <<"options">>], Options, kz_json:new()),
+    ServerOptions = kz_json:get_value([<<"server">>, <<"options">>], Options, kz_json:new()),
     RouteReq = ts_callflow:get_request_data(State),
     CustomSIPHeaders = kz_json:get_value(<<"Custom-SIP-Headers">>, RouteReq),
     MediaHandling = ts_util:get_media_handling([kz_json:get_value(<<"media_handling">>, DIDOptions)
-                                               ,kz_json:get_value(<<"media_handling">>, SrvOptions)
+                                               ,kz_json:get_value(<<"media_handling">>, ServerOptions)
                                                ,kz_json:get_value(<<"media_handling">>, AccountOptions)
                                                ]),
     SIPHeaders = ts_util:sip_headers([kz_json:get_value(<<"sip_headers">>, DIDOptions)
-                                     ,kz_json:get_value(<<"sip_headers">>, SrvOptions)
+                                     ,kz_json:get_value(<<"sip_headers">>, ServerOptions)
                                      ,kz_json:get_value(<<"sip_headers">>, AccountOptions)
                                      ,CustomSIPHeaders
                                      ]),
 
     EmergencyCallerID =
         case ts_util:caller_id([kz_json:get_value(<<"emergency_caller_id">>, DIDOptions)
-                               ,kz_json:get_value(<<"emergency_caller_id">>, SrvOptions)
+                               ,kz_json:get_value(<<"emergency_caller_id">>, ServerOptions)
                                ,kz_json:get_value(<<"emergency_caller_id">>, AccountOptions)
                                ])
         of
@@ -103,7 +103,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     OriginalCIdName = kz_json:get_value(<<"Caller-ID-Name">>, RouteReq),
     CallerID =
         case ts_util:caller_id([kz_json:get_value(<<"caller_id">>, DIDOptions)
-                               ,kz_json:get_value(<<"caller_id">>, SrvOptions)
+                               ,kz_json:get_value(<<"caller_id">>, ServerOptions)
                                ,kz_json:get_value(<<"caller_id">>, AccountOptions)
                                ])
         of
@@ -128,10 +128,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                  | EmergencyCallerID
                 ]
         end,
-    DIDFlags = ts_util:offnet_flags([kz_json:get_value(<<"DID_Opts">>, DIDOptions)
-                                    ,kz_json:get_value(<<"flags">>, SrvOptions)
-                                    ,kz_json:get_value(<<"flags">>, AccountOptions)
-                                    ]),
+
     Command = [KV
                || {_,V}=KV <- CallerID
                       ++ EmergencyCallerID
@@ -140,13 +137,13 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                          ,{<<"To-DID">>, ToDID}
                          ,{<<"Account-ID">>, AccountId}
                          ,{<<"Application-Name">>, <<"bridge">>}
-                         ,{<<"Flags">>, DIDFlags}
+                         ,{<<"Flags">>, get_flags(DIDOptions, ServerOptions, AccountOptions, State)}
                          ,{<<"Media">>, MediaHandling}
                          ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, DIDOptions)}
                          ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, DIDOptions)}
                          ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, DIDOptions)}
                          ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-                         ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"hunt_account_id">>, SrvOptions)}
+                         ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"hunt_account_id">>, ServerOptions)}
                          ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
                           | kz_api:default_headers(ts_callflow:get_worker_queue(State)
                                                   ,?APP_NAME, ?APP_VERSION
@@ -166,6 +163,36 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
             ts_callflow:send_hangup(State)
     after
         ts_callflow:cleanup_amqp(State)
+    end.
+
+-spec get_flags(kz_json:object(), kz_json:object(), kz_json:object(), ts_callflow:state()) -> ne_binaries().
+get_flags(DIDOptions, ServerOptions, AccountOptions, State) ->
+    Call = ts_callflow:get_kapps_call(State),
+    Flags = kz_attributes:get_flags(?APP_NAME, Call),
+    Routines = [fun get_offnet_flags/5
+               ,fun get_offnet_dynamic_flags/5
+               ],
+    lists:foldl(fun(F, A) -> F(DIDOptions, ServerOptions, AccountOptions, Call, A) end, Flags, Routines).
+
+-spec get_offnet_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) -> ne_binaries().
+get_offnet_flags(DIDOptions, ServerOptions, AccountOptions, _, Flags) ->
+    case ts_util:offnet_flags([kz_json:get_value(<<"DID_Opts">>, DIDOptions)
+                              ,kz_json:get_value(<<"flags">>, ServerOptions)
+                              ,kz_json:get_value(<<"flags">>, AccountOptions)
+                              ])
+    of
+        'undefined' -> Flags;
+        DIDFlags -> Flags ++ DIDFlags
+    end.
+
+-spec get_offnet_dynamic_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) -> ne_binaries().
+get_offnet_dynamic_flags(_, ServerOptions, AccountOptions, Call, Flags) ->
+    case ts_util:offnet_flags([kz_json:get_value(<<"dynamic_flags">>, ServerOptions)
+                              ,kz_json:get_value(<<"dynamic_flags">>, AccountOptions)
+                              ])
+    of
+        'undefined' -> Flags;
+        DynamicFlags -> kz_attributes:process_dynamic_flags(DynamicFlags, Flags, Call)
     end.
 
 send_park(State, Command) ->

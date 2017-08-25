@@ -48,10 +48,6 @@
 
 -include("teletype.hrl").
 
--ifdef(TEST).
--export([fixture/1]).
--endif.
-
 -define(TEMPLATE_RENDERING_ORDER, [{?TEXT_PLAIN, 3}
                                   ,{?TEXT_HTML, 2}
                                   ]).
@@ -357,7 +353,7 @@ user_params(UserJObj) ->
 -ifdef(TEST).
 timezone(UserJObj) ->
     ?AN_ACCOUNT_ID = kz_doc:account_id(UserJObj),
-    AccountJObj = fixture("an_account.json"),
+    {ok,AccountJObj} = kz_json:fixture(?APP, "an_account.json"),
     kz_account:timezone(AccountJObj).
 -else.
 timezone(UserJObj) -> kzd_user:timezone(UserJObj).
@@ -393,20 +389,11 @@ find_account_params(AccountId) ->
     end.
 
 -ifdef(TEST).
-fetch_account_for_params(?AN_ACCOUNT_ID) -> {ok, fixture("an_account.json")};
-fetch_account_for_params(?A_MASTER_ACCOUNT_ID) -> {ok, fixture("a_master_account.json")};
+fetch_account_for_params(?AN_ACCOUNT_ID) -> kz_json:fixture(?APP, "an_account.json");
+fetch_account_for_params(?A_MASTER_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_master_account.json");
 fetch_account_for_params(?MATCH_ACCOUNT_RAW(_)) -> {error, testing_too_hard}.
 -else.
 fetch_account_for_params(AccountId) -> kz_account:fetch(AccountId).
--endif.
-
--ifdef(TEST).
--spec fixture(nonempty_string()) -> kz_json:object().
-fixture(JSONFileName) ->
-    Path = filename:join([code:lib_dir(?APP), "test", JSONFileName]),
-    ?LOG_DEBUG("loading fixture: ~s", [Path]),
-    {ok, Bin} = file:read_file(Path),
-    kz_json:decode(Bin).
 -endif.
 
 -spec maybe_add_parent_params(ne_binary(), kz_json:object()) -> kz_proplist().
@@ -589,7 +576,8 @@ query_for_account_admin(AccountId) ->
 
 -ifdef(TEST).
 account_users(?AN_ACCOUNT_ID) ->
-    UserJObj = kzd_user:set_priv_level(<<"admin">>, fixture("an_account_user.json")),
+    {ok,UserJObj0} = kz_json:fixture(?APP, "an_account_user.json"),
+    UserJObj = kzd_user:set_priv_level(<<"admin">>, UserJObj0),
     {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
 -else.
 account_users(AccountId) ->
@@ -808,8 +796,7 @@ maybe_load_preview(Type, _Error, 'true') ->
                               {'ok', kz_json:object()} |
                               {'error', read_file_error()}.
 read_preview_doc(File) ->
-    AppDir = code:lib_dir('teletype'),
-    PreviewFile = filename:join([AppDir, "priv", "preview_data", <<File/binary, ".json">>]),
+    PreviewFile = filename:join([code:priv_dir(?APP), "preview_data", <<File/binary,".json">>]),
     case file:read_file(PreviewFile) of
         {'ok', JSON} ->
             lager:debug("read preview data from ~s: ~s", [PreviewFile, JSON]),

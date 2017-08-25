@@ -7,10 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_services_test).
 
--export([fixture/1]).
-
 -include_lib("eunit/include/eunit.hrl").
-
 -include("services.hrl").
 
 -define(CAT, <<"phone_numbers">>).
@@ -67,8 +64,8 @@ init(?MATCH_ACCOUNT_RAW(AccountId)) ->
           };
 
 init({ServicesFixture, ServicePlanFixture}) ->
-    ServicePlanJObj = fixture(ServicePlanFixture),
-    ServicesJObj = fixture(ServicesFixture),
+    {ok,ServicePlanJObj} = kz_json:fixture(?APP, ServicePlanFixture),
+    {ok,ServicesJObj} = kz_json:fixture(?APP, ServicesFixture),
     Overrides = kzd_services:plan_overrides(ServicesJObj, kz_doc:id(ServicePlanJObj)),
     #state{services_jobj = ServicesJObj
           ,services = kz_services:from_service_json(ServicesJObj, false)
@@ -76,16 +73,6 @@ init({ServicesFixture, ServicePlanFixture}) ->
           ,account_plan = kzd_service_plan:merge_overrides(ServicePlanJObj, Overrides)
           ,no_overrides = kz_json:is_empty(Overrides)
           }.
-
--spec fixture(nonempty_string()) -> binary() | kz_json:object().
-fixture(Filename) ->
-    Path = filename:join([code:lib_dir(?APP), "test", Filename]),
-    ?LOG_DEBUG("reading fixture ~s", [Path]),
-    {ok, Bin} = file:read_file(Path),
-    case lists:suffix(".json", Filename) of
-        false -> Bin;
-        true -> kz_json:decode(Bin)
-    end.
 
 services_json_to_record(#state{services = Services
                               ,services_jobj = JObj
