@@ -281,6 +281,7 @@ conference_resp(#conference{uuid=UUID
            ],
     {Name, kz_json:from_list(Resp)}.
 
+-spec is_moderator(participant()) -> boolean().
 is_moderator(#participant{conference_channel_vars=Vars}) ->
     props:is_true(<<"Is-Moderator">>, Vars, 'false').
 
@@ -485,20 +486,16 @@ conference_from_props(Props, Node, Conference) ->
 
 -spec participant_from_props(kz_proplist(), atom()) -> participant().
 participant_from_props(Props, Node) ->
-    participant_from_props(Props, Node, #participant{}).
-
--spec participant_from_props(kz_proplist(), atom(), participant()) -> participant().
-participant_from_props(Props, Node, Participant) ->
-    Participant#participant{node=Node
-                           ,uuid=kzd_freeswitch:call_id(Props)
-                           ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
-                           ,conference_name=props:get_value(<<"Conference-Name">>, Props)
-                           ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_time:current_tstamp())
-                           ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
-                           ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                           ,custom_channel_vars=ecallmgr_util:custom_channel_vars(Props)
-                           ,conference_channel_vars=ecallmgr_util:conference_channel_vars(Props)
-                           }.
+    #participant{node=Node
+                ,uuid=kzd_freeswitch:call_id(Props)
+                ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
+                ,conference_name=props:get_value(<<"Conference-Name">>, Props)
+                ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_time:current_tstamp())
+                ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
+                ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
+                ,custom_channel_vars=ecallmgr_util:custom_channel_vars(Props)
+                ,conference_channel_vars=ecallmgr_util:conference_channel_vars(Props)
+                }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
 participants_to_json([], JObjs) -> JObjs;
