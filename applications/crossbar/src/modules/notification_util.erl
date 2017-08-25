@@ -34,9 +34,9 @@ maybe_notify_account_change(Old, Context) ->
 
 -spec notify_account_change(api_binary(), {ne_binary(), kz_json:object()}, cb_context:context()) -> 'ok'.
 notify_account_change(AccountId, {<<"zones">>, Zones}, _Context) ->
-    lager:info("publishing zone change notification for ~p, zones: ~p", [Account, Zones]),
+    lager:info("publishing zone change notification for ~p, zones: ~p", [AccountId, Zones]),
     Notify = [
-              {<<"Account-ID">>, Account}
+              {<<"Account-ID">>, AccountId}
              ,{<<"Zones">>, Zones}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
