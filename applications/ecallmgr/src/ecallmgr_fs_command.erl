@@ -169,15 +169,13 @@ maybe_export_vars(Node, UUID, Props) ->
 api(Node, Cmd, Args) ->
     freeswitch:api(Node, Cmd, Args).
 
--spec api(atom(), api_ne_binary(), atom(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
+-spec api(atom(), api_ne_binary(), atom(), list()) -> ecallmgr_util:send_cmd_ret().
 api(_, _, _, []) -> 'ok';
 api(_Node, 'undefined', _Cmd, _Args) ->
     lager:warning("no UUID to run cmd on ~s: ~s: ~s", [_Node, _Cmd, _Args]);
 api(Node, UUID, Cmd, Args)
   when is_list(Args)->
-    api(Node, Cmd, list_to_binary([UUID, " ", ecallmgr_util:fs_args_to_binary(Args)]));
-api(Node, UUID, Cmd, Args) ->
-    api(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
+    api(Node, Cmd, list_to_binary([UUID, " ", ecallmgr_util:fs_args_to_binary(Args)])).
 
 -spec bgapi(atom(), atom(), binary()) -> ecallmgr_util:send_cmd_ret().
 bgapi(Node, Cmd, Args) ->
@@ -187,6 +185,4 @@ bgapi(Node, Cmd, Args) ->
 bgapi(_, _, _, []) -> 'ok';
 bgapi(Node, UUID, Cmd, Args)
   when is_list(Args)->
-    bgapi(Node, Cmd, list_to_binary([UUID, " ", ecallmgr_util:fs_args_to_binary(Args)]));
-bgapi(Node, UUID, Cmd, Args) ->
-    bgapi(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
+    bgapi(Node, Cmd, list_to_binary([UUID, " ", ecallmgr_util:fs_args_to_binary(Args)])).
