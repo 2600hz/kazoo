@@ -42,7 +42,7 @@
 
 -type fs_api_ok() :: {'ok', binary()}.
 -type fs_api_error():: {'error', 'timeout' | 'exception' | binary()}.
--type fs_api_return() :: fs_api_ok() | fs_api_error().
+-type fs_api_return() :: fs_api_ok() | fs_api_error() | 'ok'.
 -export_type([fs_api_ok/0
              ,fs_api_error/0
              ,fs_api_return/0
