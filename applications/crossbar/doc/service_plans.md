@@ -4,6 +4,8 @@
 
 Handle the service plans you can subscribe to.
 
+> **Note:** This is for see the available or current applied or applying service plans to an account. For creating your service offerings to your sub-accounts use (Service Planner API)[./service_planner.md].
+
 #### Schema
 
 Describes services offered to sub-accounts
