@@ -132,11 +132,11 @@ as_json_value(V, Default) ->
         'false' -> Default
     end.
 
--spec get_jsons(kz_json:path()) -> api_objects().
+-spec get_jsons(kz_json:path()) -> kz_json:objects().
 -spec get_jsons(kz_json:path(), Default) -> kz_json:objects() | Default.
 -spec get_jsons(kz_json:path(), Default, api_node_specific()) -> kz_json:objects() | Default.
 get_jsons(Key) ->
-    get_jsons(Key, 'undefined').
+    get_jsons(Key, []).
 get_jsons(Key, Default) ->
     as_jsons_value(get(Key, Default), Default).
 get_jsons(Key, Default, Node) ->
