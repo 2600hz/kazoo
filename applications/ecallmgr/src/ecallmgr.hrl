@@ -35,7 +35,7 @@
 
 -type fs_app() :: {ne_binary(), binary() | 'noop'} |
                   {ne_binary(), ne_binary(), atom()}.
--type fs_apps() :: [fs_app(),...].
+-type fs_apps() :: [fs_app()].
 
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |
