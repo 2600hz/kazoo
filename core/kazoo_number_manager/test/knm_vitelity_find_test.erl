@@ -22,7 +22,7 @@ find_test_() ->
                  {error, {already_started, Pid}} -> Pid
              end
      end
-    ,fun gen_server:stop/1
+    ,fun (Pid) -> ok = gen_server:stop(Pid) end
     ,fun (_ReturnOfSetup) ->
              [tollfree_tests(Options)
              ,local_number_tests(Options)

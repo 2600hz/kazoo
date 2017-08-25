@@ -80,7 +80,7 @@ find_other_test_() ->
                  {error, {already_started, Pid}} -> Pid
              end
      end
-    ,fun gen_server:stop/1
+    ,fun (Pid) -> ok = gen_server:stop(Pid) end
     ,fun (_ReturnOfSetup) ->
              [find_no_phonebook(Options)
              ,?_assertEqual([], knm_search:find([{prefix, <<"415">>}]))
