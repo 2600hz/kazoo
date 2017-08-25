@@ -173,7 +173,8 @@
                                >>).
 
 %% We pass Application custom channel variables with our own prefix
-%% When an event occurs, we include all prefixed vars in the API message
+%% When an event occurs, we include all prefixed vars in the API
+%% message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 
 -define(CCV(Key), <<?CHANNEL_VAR_PREFIX, Key/binary>>).
@@ -189,9 +190,10 @@
 -define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}]).
 -define(BRIDGE_CHANNEL_VAR_SEPARATOR, "!").
 
-%% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
-%% [{AMQP-Header, FS-var-name}]
-%% so FS-var-name of "foo_var" would become "foo_var=foo_val" in the channel/call string
+%% Call and Channel Vars that have a special prefix instead of the
+%% standard CHANNEL_VAR_PREFIX prefix [{AMQP-Header, FS-var-name}] so
+%% FS-var-name of "foo_var" would become "foo_var=foo_val" in the
+%% channel/call string
 -define(SPECIAL_CHANNEL_VARS, [{<<"Auto-Answer">>, <<"sip_auto_answer">>}
                               ,{<<"Auto-Answer-Suppress-Notify">>, <<"sip_auto_answer_suppress_notify">>}
                               ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
@@ -315,9 +317,9 @@
                               ,{<<"RTCP-MUX">>, <<"rtcp_mux">>}
                               ]).
 
-%% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
-%% Dialplan-related applications
-%% convert from FS-named applications to Kazoo-named Dialplan applications
+%% [{FreeSWITCH-App-Name, Kazoo-App-Name}] Dialplan-related
+%% applications convert from FS-named applications to Kazoo-named
+%% Dialplan applications
 -define(FS_APPLICATION_NAMES, [{<<"playback">>, <<"play">>}
                               ,{<<"playback">>, <<"tts">>}
                               ,{<<"play-file">>, <<"play">>}
