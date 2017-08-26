@@ -23,6 +23,27 @@
 
 -define(CB_LIST_SERVICE_PLANES, <<"service_plans/crossbar_listing">>).
 
+-define(ITEM_FIELDS,
+        kz_json:from_list(
+          [{<<"activation_charge">>, kz_json:new()}
+          ,{<<"discounts">>
+           ,kz_json:from_list(
+              [{<<"maximum">>, kz_json:new()}
+              ,{<<"rate">>, kz_json:new()}
+              ])
+           }
+          ,{<<"minimum">>, kz_json:new()}
+          ,{<<"rate">>, kz_json:new()}
+          ])
+       ).
+
+-define(UNDERSCORE_ALL_FIELDS,
+        kz_json:set_values([{<<"as">>, kz_json:new()}
+                           ,{<<"exceptions">>, kz_json:new()}
+                           ]
+                          ,?ITEM_FIELDS)
+       ).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -52,14 +73,18 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> boolean().
-authorize(Context) -> is_authorize(Context).
+-spec authorize(cb_context:context()) -> boolean() | {'halt', cb_context:context()}.
+authorize(Context) -> is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(cb_context:context(), path_token()) -> boolean().
-authorize(Context, _) -> is_authorize(Context).
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'halt', cb_context:context()}.
+authorize(Context, _) -> is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec is_authorize(cb_context:context()) -> boolean().
-is_authorize(Context) ->
+-spec is_authorize(cb_context:context(), req_verb(), req_nouns()) -> boolean() | {'halt', cb_context:context()}.
+is_authorize(_Context, ?HTTP_GET, [{<<"service_planner">>, _}]) ->
+    'true';
+is_authorize(Context, _, [{<<"service_planner">>, _}]) ->
+    {'halt', cb_context:add_system_error('forbidden', Context)};
+is_authorize(Context, _, _) ->
     AccountId = cb_context:account_id(Context),
     (kz_term:is_not_empty(AccountId)
      andalso AccountId =:= cb_context:auth_account_id(Context)
@@ -110,7 +135,12 @@ resource_exists(_PlanId) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_planner(Context, cb_context:req_verb(Context)).
+    case cb_context:req_nouns(Context) of
+        [{<<"service_planner">>, _}] ->
+            summary_available_fields(Context);
+        _ ->
+            validate_planner(Context, cb_context:req_verb(Context))
+    end.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, PlanId) ->
@@ -175,6 +205,49 @@ patch(Context, _PlanId) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _PlanId) ->
     crossbar_doc:delete(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns fixtures of what fields in service plans is customizable
+%% @end
+%%--------------------------------------------------------------------
+-spec summary_available_fields(cb_context:context()) -> cb_context:context().
+summary_available_fields(Context) ->
+    JObj = read_service_plan_editable(),
+    UIApps = kz_json:from_list(get_ui_apps(kapps_util:get_master_account_id())),
+    crossbar_doc:handle_json_success(kz_json:set_value(<<"ui_apps">>, UIApps, JObj), Context).
+
+-spec read_service_plan_editable() -> kz_json:object().
+read_service_plan_editable() ->
+    Path = filename:join([code:priv_dir('crossbar'), "service_plan_editable_fields.json"]),
+    case file:read_file(Path) of
+        {'ok', Bin} -> kz_json:decode(Bin);
+        {'error', _Reason} ->
+            lager:debug("failed to read file ~s: ~p", [Path, _Reason]),
+            kz_json:new()
+    end.
+
+-spec get_ui_apps({'ok', ne_binary()} | {'error', any()}) -> kz_proplist().
+get_ui_apps({'ok', MasterId}) ->
+    case kzd_apps_store:fetch(MasterId) of
+        {'ok', JObj} ->
+            Apps = kzd_apps_store:apps(JObj),
+            Fun = fun(_App, AppJObj, Acc) ->
+                          case kzd_app:name(AppJObj) of
+                              ?NE_BINARY=Name ->
+                                  [{Name, ?ITEM_FIELDS}|Acc];
+                              _ -> Acc
+                          end
+                  end,
+            kz_json:foldl(Fun, [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}], Apps);
+        {'error', _Reason} ->
+            lager:debug("failed to read master's app_store: ~p", [_Reason]),
+            [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}]
+    end;
+get_ui_apps({'error', _Reason}) ->
+    lager:debug("failed to get master account_id: ~p", [_Reason]),
+    [{<<"_all">>, ?UNDERSCORE_ALL_FIELDS}].
 
 %%--------------------------------------------------------------------
 %% @private

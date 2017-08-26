@@ -4,6 +4,8 @@
 
 Crossbar Service Planner allows you to add, edit, list and remove service plans on your reseller account.
 
+> **Note:** This is for creating and editing service plans that you want to offer to your own sub-accounts, to actually applying and see the current applied service plans to an account use (Service Plans API)[./service_plans.md].
+
 > **Note:** Only an user logged in with their reseller account is able to change their own service plan offerings.
 
 #### Service Plans Schema
@@ -71,7 +73,161 @@ Key | Description | Type | Default | Required
 `single_discount` | Whether to give a discount to the account | `boolean()` |   | `false`
 `single_discount_rate` | How much of a discount to apply, per-item | `number()` |   | `false`
 
-#### Create
+#### Available Fields To Customize
+
+> GET /v2/service_planner
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/service_planner
+```
+
+##### Response
+
+```json
+{
+  "data": {
+    "devices": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+      },
+      "landline": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    },
+    "limits": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+        }
+        "..."
+    },
+    "number_services": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+      },
+      "cnam": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    },
+    "phone_numbers": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+        },
+      "did_us": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    },
+    "ui_apps": {
+      "_all": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {},
+        "exceptions": {},
+        "as": {}
+      },
+      "accounts": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    },
+    "users": {
+      "_all": {
+        "activation_charge": {},
+        "as": {},
+        "discounts": {
+            "maximum": {},
+            "rate": {}
+        },
+        "exceptions": {},
+        "minimum": {},
+        "rate": {}
+        },
+      "admin": {
+        "activation_charge": {},
+        "discounts": {
+          "maximum": {},
+          "rate": {}
+        },
+        "minimum": {},
+        "rate": {}
+      }
+      "..."
+    }
+  },
+  "revision": "{REVISION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "{STATUS}",
+  "auth_token": "{AUTH_TOKEN}"
+}
+
+#### Create Service Plans
 
 > PUT /v2/accounts/{ACCOUNT_ID}/service_planner
 
@@ -101,17 +257,20 @@ curl -v -X GET \
     {
       "id": "7c88ae4fdd60263452b4a898ba00e4dd",
       "name": "Device Only",
-      "description": "Device Only Description"
+      "description": "Device Only Description",
+      "category": "SaaS Plans"
     },
     {
       "id": "7c88ae4fdd60263452b4a898ba0050af",
       "name": "Awesome Full Service",
-      "description": ""
+      "description": "",
+      "category": "SaaS Plans"
     },
     {
       "id": "7c88ae4fdd60263452b4a898ba003843",
       "name": "Site Sign-ups with Support",
-      "description": ""
+      "description": "",
+      "category": "SaaS Plans"
     }
   ],
   "revision": "{REVISION}",
@@ -175,6 +334,7 @@ curl -v -X GET \
     },
     "description": "",
     "name": "Awesome Full Service",
+    "category": "SaaS Plans",
     "plan": {
       "devices": {
         "_all": {
