@@ -1508,7 +1508,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Fetches the mailbox parameters from the datastore and loads the
+%% Fetches the mailbox parameters from the data store and loads the
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
@@ -1523,8 +1523,8 @@ get_mailbox_profile(Data, Call) ->
             lager:info("loaded voicemail box ~s", [MailboxId]),
             Default = #mailbox{},
 
-            %% dont check if the voicemail box belongs to the owner (by default) if the call was not
-            %% specificly to him, IE: calling a ring group and going to voicemail should not check
+            %% Don't check if the voicemail box belongs to the owner (by default) if the call was not
+            %% specifically to him, IE: calling a ring group and going to voicemail should not check
             LastAct = kapps_call:kvs_fetch('cf_last_action', Call),
             CheckIfOwner = (('undefined' =:= LastAct)
                             orelse ('cf_device' =:= LastAct)

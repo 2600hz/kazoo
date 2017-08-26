@@ -121,7 +121,7 @@
                 },
                 "message_retention_duration": {
                     "default": 93,
-                    "description": "callflow message retention duration",
+                    "description": "Voicemail message retention duration in days",
                     "type": "integer"
                 },
                 "migrate_interaccount_delay_ms": {
