@@ -1,7 +1,7 @@
 %% -*- coding: utf-8 -*-
 -module(call_inspector_maintenance_tests).
 
-%% ci_parsers_test: tests for module ci_chunk.
+%% @doc tests for module ci_chunk.
 
 -include_lib("eunit/include/eunit.hrl").
 -include("call_inspector.hrl").

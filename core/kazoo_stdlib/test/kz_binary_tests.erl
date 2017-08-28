@@ -164,24 +164,24 @@ truncate_binary_test_() ->
 
 %% from https://stackoverflow.com/questions/20830201/better-way-to-reverse-binary#20832625
 %% Bin size 4:
-%% kz_binary_test:rev in 0.171672s
-%% kz_binary_test:rev2 in 0.023417s
-%% kz_binary_test:reverse in 0.031123s
+%% kz_binary_tests:rev in 0.171672s
+%% kz_binary_tests:rev2 in 0.023417s
+%% kz_binary_tests:reverse in 0.031123s
 
 %% Bin size 16:
-%% kz_binary_test:rev in 0.635037s
-%% kz_binary_test:rev2 in 0.029335s
-%% kz_binary_test:reverse in 0.047751s
+%% kz_binary_tests:rev in 0.635037s
+%% kz_binary_tests:rev2 in 0.029335s
+%% kz_binary_tests:reverse in 0.047751s
 
 %% Bin size: 128
-%% kz_binary_test:rev in 3.322764s
-%% kz_binary_test:rev2 in 0.059977s
-%% kz_binary_test:reverse in 0.338276s
+%% kz_binary_tests:rev in 3.322764s
+%% kz_binary_tests:rev2 in 0.059977s
+%% kz_binary_tests:reverse in 0.338276s
 
 %% Bin size: 1024
-%% kz_binary_test:rev in 31.880859s
-%% kz_binary_test:rev2 in 0.363329s
-%% kz_binary_test:reverse in 1.530542s
+%% kz_binary_tests:rev in 31.880859s
+%% kz_binary_tests:rev2 in 0.363329s
+%% kz_binary_tests:reverse in 1.530542s
 
 -define(BIN, <<"75d46db34465e620c214bdeaf214eac1c87833851166fbbd59aeb0a35aa1bd901abac59eb53fe4c076261537632aefba8ab16889550f84bb51c6934a97ba813c">>).
 
