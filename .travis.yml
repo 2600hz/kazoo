@@ -10,6 +10,10 @@ notifications:
 otp_release:
   - 19.3
 
+env:
+  - USING_REBAR3=true
+  - USING_REBAR3=false
+
 sudo: required
 
 addons:
@@ -24,15 +28,21 @@ before_install:
   - set -e
 
 install:
-  - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x ./rebar3
-  - export PATH=$PATH:$PWD
+  - if [[ "$USING_REBAR3" = 'true' ]]; then wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x ./rebar3; fi
+  - export PATH="$PATH:$PWD"
 
 script:
-  - rebar3 compile
-  - DEBUG=1 rebar3 as test eunit
-  - ERLC_OPTS='-DPROPER' make compile-test
-  - make eunit
+  - |
+    if [[ "$USING_REBAR3" = 'true' ]]; then
+      rebar3 compile
+      APPS=$(echo core/*/ | sed 's%/ core/%,%g;s%core/%%;s%/%%')
+      APPS=$APPS,$(echo applications/*/ | sed 's%/ applications/%,%g;s%applications/%%;s%/%%')
+      DEBUG=1 rebar3 eunit --app=$APPS
+    else
+      ERLC_OPTS='-DPROPER' make compile-test
+      make eunit
+    fi
 # To run tests yourself: make compile-test && make test
 
 after_success:
-  - if [[ "$TRAVIS_REPO_SLUG" == '2600hz/kazoo' ]]; then make coverage-report; fi
+  - if [[ "$TRAVIS_REPO_SLUG" = '2600hz/kazoo' ]] && [[ "$USING_REBAR3" = 'false' ]]; then make coverage-report; fi
