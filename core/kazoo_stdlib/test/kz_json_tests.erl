@@ -169,9 +169,6 @@ no_dups(Key, ?JSON_WRAPPER(_)=JObj, Acc) ->
 no_dups(Key, Value, Acc) ->
     kz_json:set_value(Key, Value, Acc).
 
-are_all_properties_found(Merged, Favored) ->
-    kz_json:all(fun({K,V}) -> is_property_found(K, V, Merged) end, Favored).
-
 is_property_found(Key, ?JSON_WRAPPER(_)=Value, Merged) ->
     case kz_json:get_value(Key, Merged) of
         ?JSON_WRAPPER(_)=MergedV -> are_all_properties_found(Value, MergedV);
@@ -192,6 +189,9 @@ log_failure(Key, Value, Missing) ->
 
 -endif.
 
+
+are_all_properties_found(Merged, Favored) ->
+    kz_json:all(fun({K,V}) -> is_property_found(K, V, Merged) end, Favored).
 
 %% Once-failing tests found by PropEr
 merge_left_test_() ->
