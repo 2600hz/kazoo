@@ -148,39 +148,6 @@ prop_merge_left() ->
             end
            ).
 
-%% Once-failing tests found by PropEr
-merge_left_test_() ->
-    JObjs = [{kz_json:from_list([{<<"foo">>, kz_json:new()}])
-             ,kz_json:set_value([<<"foo">>, <<"bar">>], <<"baz">>, kz_json:new())
-             }
-            ,{kz_json:from_list([{<<164,157,198,86>>,<<>>}
-                                ,{<<141,91,80,224,4,15,58>>,<<123,90,22,250,127,8>>}
-                                ,{<<89,32,154,252,169,163,159>>,<<12,20,213,203>>}
-                                ,{<<"ï¿½ï¿½F">>,false}
-                                ,{<<158,113,31,162,148>>,kz_json:new()}
-                                ,{<<"ï¿½">>,kz_json:new()}
-                                ]
-                               )
-             ,kz_json:from_list([{<<"ï¿½">>, kz_json:from_list([{<<143,81,222,182,5>>,<<>>}
-                                                               ,{<<181,191,27,138,73,202>>,<<>>}
-                                                               ,{<<52,84,188,214,154,82>>,kz_json:new()}
-                                                               ])
-                                 }
-                                ])
-             }
-            ],
-    [[?_assert(are_all_properties_found(kz_json:merge(fun kz_json:merge_left/2, Left, Right)
-                                       ,Left
-                                       )
-              )
-     ,?_assert(are_all_properties_found(kz_json:merge(fun kz_json:merge_left/2, Right, Left)
-                                       ,Right
-                                       )
-              )
-     ]
-     || {Left, Right} <- JObjs
-    ].
-
 prop_to_map() ->
     ?FORALL(JObj, test_object()
            ,?WHENFAIL(?debugFmt("failed json->map->json on ~p~n", [JObj])
@@ -224,6 +191,41 @@ log_failure(Key, Value, Missing) ->
     ?debugFmt("failed to find ~p~nexpected: ~p~nfound: ~p~n", [Key, Value, Missing]).
 
 -endif.
+
+
+%% Once-failing tests found by PropEr
+merge_left_test_() ->
+    JObjs = [{kz_json:from_list([{<<"foo">>, kz_json:new()}])
+             ,kz_json:set_value([<<"foo">>, <<"bar">>], <<"baz">>, kz_json:new())
+             }
+            ,{kz_json:from_list([{<<164,157,198,86>>,<<>>}
+                                ,{<<141,91,80,224,4,15,58>>,<<123,90,22,250,127,8>>}
+                                ,{<<89,32,154,252,169,163,159>>,<<12,20,213,203>>}
+                                ,{<<"ï¿½ï¿½F">>,false}
+                                ,{<<158,113,31,162,148>>,kz_json:new()}
+                                ,{<<"ï¿½">>,kz_json:new()}
+                                ]
+                               )
+             ,kz_json:from_list([{<<"ï¿½">>, kz_json:from_list([{<<143,81,222,182,5>>,<<>>}
+                                                               ,{<<181,191,27,138,73,202>>,<<>>}
+                                                               ,{<<52,84,188,214,154,82>>,kz_json:new()}
+                                                               ])
+                                 }
+                                ])
+             }
+            ],
+    [[?_assert(are_all_properties_found(kz_json:merge(fun kz_json:merge_left/2, Left, Right)
+                                       ,Left
+                                       )
+              )
+     ,?_assert(are_all_properties_found(kz_json:merge(fun kz_json:merge_left/2, Right, Left)
+                                       ,Right
+                                       )
+              )
+     ]
+     || {Left, Right} <- JObjs
+    ].
+
 
 -define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}
                           ,{<<"d1k2">>, <<"d1v2">>}

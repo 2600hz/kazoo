@@ -21,7 +21,7 @@
 -module(kazoo_bindings_tests).
 
 -ifdef(PROPER).
-- include_lib("proper/include/proper.hrl").
+-include_lib("proper/include/proper.hrl").
 -endif.
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -102,7 +102,7 @@ expands_test_() ->
     {"Running PropEr tests"
     ,{'timeout'
      ,50000
-     ,?_assertEqual('true', proper:quickcheck(prop_expands(), [{'numtests', 10000}]))
+     ,?_assert(proper:quickcheck(prop_expands(), [{'numtests', 10000}]))
      }
     }.
 

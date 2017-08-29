@@ -71,13 +71,16 @@ init([RatedeckDb, ExpiresS]) ->
     {'ok', ?STATE_READY(trie:new(), RatedeckDb, start_expires_check_timer(ExpiresS))}.
 
 -spec start_expires_check_timer(pos_integer()) -> reference().
+start_expires_check_timer(ExpiresS) ->
+    erlang:start_timer(expires_check_time(ExpiresS), self(), ?CHECK_MSG(ExpiresS)).
+
+-spec expires_check_time(pos_integer()) -> pos_integer().
 -ifdef(PROPER).
-start_expires_check_timer(ExpiresS) ->
-    erlang:start_timer(1 * ?MILLISECONDS_IN_SECOND, self(), ?CHECK_MSG(ExpiresS)).
+expires_check_time(_) ->
+    1 * ?MILLISECONDS_IN_SECOND.
 -else.
-start_expires_check_timer(ExpiresS) ->
-    Check = (ExpiresS div 2) * ?MILLISECONDS_IN_SECOND,
-    erlang:start_timer(Check, self(), ?CHECK_MSG(ExpiresS)).
+expires_check_time(ExpiresS) ->
+    (ExpiresS div 2) * ?MILLISECONDS_IN_SECOND.
 -endif.
 
 -spec handle_call(any(), pid_ref(), state()) ->

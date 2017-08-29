@@ -1,13 +1,10 @@
-%% invoke with `proper:quickcheck(hon_trie_lru_pqc:correct())` or `correct_parallel`
--module(hon_trie_lru_pqc).
+-module(propNOT_hon_trie_lru).
 
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").
-
 -include_lib("eunit/include/eunit.hrl").
-
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -behaviour(proper_statem).
 
@@ -16,9 +13,6 @@
         ,next_state/3
         ,postcondition/3
         ,precondition/2
-
-        ,correct/0
-        ,correct_parallel/0
         ]).
 
 -define(EXPIRES_S, 2). % expire after 2 seconds
@@ -28,7 +22,7 @@
                }
        ).
 
-correct() ->
+prop_correct() ->
     ?FORALL(Cmds
            ,commands(?MODULE)
            ,?TRAPEXIT(
@@ -66,7 +60,7 @@ print_zip_item({{set, _Var, {call, M, F, As}}
                  ,[NowMs, Cache, M, F, args_to_list(As), Result]
                  ).
 
-correct_parallel() ->
+prop_correct_parallel() ->
     ?FORALL(Cmds
            ,parallel_commands(?MODULE)
            ,?TRAPEXIT(
@@ -172,10 +166,10 @@ phone_number() ->
           ]).
 
 rate_doc() ->
-    oneof([?JSON_WRAPPER([{<<"prefix">>, <<"1">>}, {<<"id">>, <<"1">>}])
-          ,?JSON_WRAPPER([{<<"prefix">>, <<"14">>}, {<<"id">>, <<"14">>}])
-          ,?JSON_WRAPPER([{<<"prefix">>, <<"141">>}, {<<"id">>, <<"141">>}])
-          ,?JSON_WRAPPER([{<<"prefix">>, <<"1415">>}, {<<"id">>, <<"1415">>}])
+    oneof([kz_json:from_list([{<<"prefix">>, <<"1">>}, {<<"id">>, <<"1">>}])
+          ,kz_json:from_list([{<<"prefix">>, <<"14">>}, {<<"id">>, <<"14">>}])
+          ,kz_json:from_list([{<<"prefix">>, <<"141">>}, {<<"id">>, <<"141">>}])
+          ,kz_json:from_list([{<<"prefix">>, <<"1415">>}, {<<"id">>, <<"1415">>}])
           ]).
 
 %% Helpers

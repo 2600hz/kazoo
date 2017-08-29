@@ -35,6 +35,7 @@ script:
   - |
     if [[ "$USING_REBAR3" = 'true' ]]; then
       rebar3 eunit --cover
+      rebar3 as test proper
       rebar3 cover
     else
       ERLC_OPTS='-DPROPER' make compile-test
