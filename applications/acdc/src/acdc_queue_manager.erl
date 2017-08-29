@@ -971,10 +971,13 @@ announcements_config(Config) ->
 cancel_position_announcements('false', Pids) -> Pids;
 cancel_position_announcements(Call, Pids) ->
     CallId = kapps_call:call_id(Call),
-    case maps:is_key(CallId, Pids) of
-        'true' ->
+    case catch maps:get(CallId, Pids) of
+        {'badkey', _} ->
+            lager:debug("did not have the announcements for call ~s", [CallId]),
+            Pids;
+        Pid ->
             lager:debug("cancelling announcements for ~s", [CallId]),
-            {Pid, Pids1} = maps:take(CallId, Pids),
+            Pids1 = maps:remove(CallId, Pids),
             acdc_announcements_sup:stop_announcements(Pid),
 
             %% Attempt to skip remaining announcement media, but don't flush hangups
@@ -985,10 +988,7 @@ cancel_position_announcements(Call, Pids) ->
                       ,{<<"Filter-Applications">>, [<<"play">>, <<"say">>, <<"play">>]}
                       ],
             kapps_call_command:send_command(Command, Call),
-            Pids1;
-        'false' ->
-            lager:debug("did not have the announcements for call ~s", [CallId]),
-            Pids
+            Pids1
     end.
 
 -spec remove_queue_member(api_binary(), mgr_state()) -> mgr_state().
