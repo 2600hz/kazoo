@@ -22,6 +22,8 @@
                ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
                ,moh :: api_ne_binary()
                ,current_member_calls = [] :: list() % ordered list of current members waiting
+               ,announcements_config = [] :: kz_proplist()
+               ,announcements_pids = #{} :: announcements_pids()
                }).
 -type mgr_state() :: #state{}.
 
