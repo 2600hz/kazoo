@@ -49,12 +49,8 @@ start_link() ->
 maybe_start_announcements(Manager, Call, Props) ->
     Enabled = props:get_is_true(<<"position_announcements_enabled">>, Props, 'false')
         orelse props:get_is_true(<<"wait_time_announcements_enabled">>, Props, 'false'),
-    case Enabled of
-        'true' ->
-            supervisor:start_child(?SERVER, [Manager, Call, Props]);
-        'false' ->
-            'false'
-    end.
+    Enabled
+        andalso supervisor:start_child(?SERVER, [Manager, Call, Props]).
 
 %%--------------------------------------------------------------------
 %% @doc
