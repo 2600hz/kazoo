@@ -33,20 +33,20 @@ Note: `htmldoc` is required only if [you want to be able to download PDFs](./ann
 
 ### Erlang
 
-Kazoo 4 targets Erlang 18+. There are a couple ways to install Erlang:
+Kazoo 4 targets Erlang 19+. There are a couple ways to install Erlang:
 
 1.  From Source
 
-    I prefer to use a tool like [kerl](https://github.com/yrashk/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
+    I prefer to use a tool like [kerl](https://github.com/kerl/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
 
     ```shell
-    curl -O https://raw.githubusercontent.com/yrashk/kerl/master/kerl
-    chmod a+x kerl
+    curl -O https://raw.githubusercontent.com/kerl/kerl/master/kerl
+    chmod +x kerl
     mv kerl /usr/bin
     kerl list releases
-    kerl build 18.2 r18.2 # this takes a while
-    kerl install r18.2 /usr/local/erlang
-    . /usr/local/erlang/activate
+    kerl build 19.3 19.3 # this takes a while
+    kerl install 19.3 /usr/local/otp-19.3
+    . /usr/local/otp-19.3/activate
     ```
 
 2.  Erlang Solutions

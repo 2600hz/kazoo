@@ -17,6 +17,12 @@ We hope that you agree and and are not inconvienced by this change. As always we
 
 ## Versions
 
+### 4.2
+
+1.  Erlang Version Support
+
+    Starting with Kazoo 4.2 Erlang support will target 19+ and will not be backward compatible with prior Erlang versions.
+
 
 ### 4.1
 

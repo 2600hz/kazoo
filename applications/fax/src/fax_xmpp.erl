@@ -277,14 +277,12 @@ wait_for_success(Username, Conn) ->
 start_all_printers() ->
     {'ok', Results} = kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxbox/cloud">>),
     List = kz_term:shuffle_list(
-             [ {crypto:rand_uniform(2000, 6000), Id, Jid}
-               || {Id, Jid, <<"claimed">>}
-                      <- [{kz_doc:id(Result)
-                          ,kz_json:get_value([<<"value">>,<<"xmpp_jid">>], Result)
-                          ,kz_json:get_value([<<"value">>,<<"state">>], Result)
-                          }
-                          || Result <- Results
-                         ]
+             [{2000 + rand:uniform(4000)
+              ,kz_doc:id(Result)
+              ,kz_json:get_value([<<"value">>,<<"xmpp_jid">>], Result)
+              }
+              || Result <- Results,
+                 <<"claimed">> =:= kz_json:get_ne_binary_value([<<"value">>,<<"state">>], Result)
              ]),
     [begin
          send_start_printer(Id, Jid),
