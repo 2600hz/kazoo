@@ -597,7 +597,7 @@ handle_cast({'handle_queue_member_add', JObj}, #state{current_member_calls=Curre
     {'noreply', State#state{current_member_calls = [Call | lists:keydelete(CallId, 2, CurrentCalls)]}};
 
 handle_cast({'handle_queue_member_remove', CallId}, State) ->
-    State1 = maybe_remove_queue_member(CallId, State),
+    State1 = remove_queue_member(CallId, State),
     {'noreply', State1};
 
 handle_cast(_Msg, State) ->
@@ -991,10 +991,10 @@ cancel_position_announcements(Call, Pids) ->
             Pids
     end.
 
--spec maybe_remove_queue_member(api_binary(), mgr_state()) -> mgr_state().
-maybe_remove_queue_member(CallId, #state{current_member_calls=CurrentCalls
-                                        ,announcements_pids=AnnouncementsPids
-                                        }=State) ->
+-spec remove_queue_member(api_binary(), mgr_state()) -> mgr_state().
+remove_queue_member(CallId, #state{current_member_calls=CurrentCalls
+                                  ,announcements_pids=AnnouncementsPids
+                                  }=State) ->
     lager:debug("removing call id ~s", [CallId]),
 
     AnnouncementsPids1 = cancel_position_announcements(lists:keyfind(CallId, 2, CurrentCalls), AnnouncementsPids),
