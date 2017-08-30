@@ -196,10 +196,14 @@ get_integer(Category, Key) ->
         'undefined' -> 'undefined';
         Else -> kz_term:to_integer(Else)
     end.
+
 get_integer(Category, Key, Default) ->
     get_integer(Category, Key, Default, kz_term:to_binary(node())).
 get_integer(Category, Key, Default, Node) ->
-    kz_term:to_integer(get(Category, Key, Default, Node)).
+    case get(Category, Key, Default, Node) of
+        'undefined' -> 'undefined';
+        Else -> kz_term:to_integer(Else)
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
