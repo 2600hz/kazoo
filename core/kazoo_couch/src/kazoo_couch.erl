@@ -92,7 +92,7 @@ get_admin_nodes() ->
     get_admin_nodes(Conn).
 
 get_admin_nodes(#server{}=Server) ->
-    get_admin_dbs(server_version(Server));
+    get_admin_nodes(server_version(Server));
 get_admin_nodes('bigcouch') -> <<"nodes">>;
 get_admin_nodes(_Driver) -> <<"_nodes">>.
 
