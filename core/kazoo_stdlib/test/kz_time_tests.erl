@@ -110,14 +110,6 @@ unitfy_and_timeout_test_() ->
     ,?_assertEqual(10, kz_time:milliseconds_to_seconds(10*1000))
     ].
 
-pad_month_test_() ->
-    [?_assertEqual(<<"10">>, kz_time:pad_month(10))
-    ,?_assertEqual(<<"10">>, kz_time:pad_month(<<"10">>))
-    ,?_assertEqual(<<"03">>, kz_time:pad_month(3))
-    ,?_assertEqual(<<"03">>, kz_time:pad_month(<<"3">>))
-    ,?_assertEqual(<<"03">>, kz_time:pad_month(<<"03">>))
-    ].
-
 rfc1036_test_() ->
     Tests = [{{{2015,4,7},{1,3,2}}, <<"Tue, 07 Apr 2015 01:03:02 GMT">>}
             ,{{{2015,12,12},{12,13,12}}, <<"Sat, 12 Dec 2015 12:13:12 GMT">>}
@@ -135,17 +127,6 @@ iso8601_test_() ->
             ,{63595733389, <<"2015-04-08T17:29:49">>}
             ],
     [?_assertEqual(Expected, kz_time:iso8601(Date))
-     || {Date, Expected} <- Tests
-    ].
-
-iso8601_date_test_() ->
-    Tests = [{{2015,4,7}, <<"2015-04-07">>}
-            ,{{{2015,4,7},{0,0,0}}, <<"2015-04-07">>}
-            ,{{{2015,4,7},{1,3,2}}, <<"2015-04-07">>}
-            ,{{{2015,12,12},{12,13,12}}, <<"2015-12-12">>}
-            ,{63595733389, <<"2015-04-08">>}
-            ],
-    [?_assertEqual(Expected, kz_time:iso8601_date(Date))
      || {Date, Expected} <- Tests
     ].
 
