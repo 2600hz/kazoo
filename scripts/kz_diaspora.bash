@@ -15,6 +15,17 @@ function replace_call {
     $(sed -i "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g" $FILE)
 }
 
+function replace_call_exact {
+    FROM=$1
+    TO=$2
+    OLD_FUN=$3
+    NEW_FUN=$4
+    FILE=$5
+
+    #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
+    $(sed -i "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g" $FILE)
+}
+
 function search_and_replace {
     declare -a FUNS=("${!1}")
     FROM=$2
@@ -24,6 +35,19 @@ function search_and_replace {
     for FUN in "${FUNS[@]}"; do
         for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
             replace_call $FROM $TO "$FUN" "$SUFFIX" $FILE
+        done
+    done
+}
+
+function search_and_replace_exact {
+    declare -a FUNS=("${!1}")
+    FROM=$2
+    TO=$3
+    TOFUN=$4
+
+    for FUN in "${FUNS[@]}"; do
+        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
+            replace_call $FROM $TO "$FUN" "$TOFUN" $FILE
         done
     done
 }
@@ -146,6 +170,15 @@ function kz_util_to_binary {
     search_and_replace_prefix special[@] "kz_binary" "kz_binary" "binary_"
 }
 
+function kz_time_to_date {
+    local fs=(iso8601_date)
+    local fs2=(pad_date
+               pad_month
+             )
+    search_and_replace_exact fs[@] "kz_time" "kz_date" "to_iso8601_extended"
+    search_and_replace fs2[@] "kz_time" "kz_date" ""
+}
+
 function kz_util_to_time {
     local fs=(current_tstamp
               current_unix_tstamp
@@ -239,6 +272,8 @@ echo "ensuring kz_binary is used"
 kz_util_to_binary
 echo "ensuring kz_time is used"
 kz_util_to_time
+echo "ensuring kz_time -> kz_date migration is performed"
+kz_time_to_date
 echo "ensuring kz_json:public/private are moved to kz_doc"
 kz_json_to_kz_doc
 echo "ensuring kz_json:to_querystring is moved to kz_http_util"
