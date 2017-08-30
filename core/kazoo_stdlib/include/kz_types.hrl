@@ -118,7 +118,7 @@
 -type kz_ip_list() :: ne_binaries().
 
 %% Recreate the non-exported types defined in the erlang supervisor source
--type sup_child_spec() :: supervisor:child_spec() | list().
+-type sup_child_spec() :: supervisor:child_spec().
 -type sup_child_specs() :: [sup_child_spec()].
 -type sup_start_flags() :: supervisor:sup_flags().
 
