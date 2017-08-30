@@ -307,4 +307,4 @@ debug_id(JObj) ->
     Created = kz_json:get_first_defined([<<"created">>, <<"pvt_created">>], JObj),
     CallId = kz_json:get_value(<<"call_id">>, JObj),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Created),
-    ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), CallId).
+    ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), CallId).

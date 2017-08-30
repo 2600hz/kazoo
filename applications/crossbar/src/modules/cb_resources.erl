@@ -544,7 +544,7 @@ on_successful_local_validation(Id, Context) ->
 on_successful_job_validation('undefined', Context) ->
     {Year, Month, _} = erlang:date(),
     Id = list_to_binary([kz_term:to_binary(Year)
-                        ,kz_time:pad_month(Month)
+                        ,kz_date:pad_month(Month)
                         ,"-"
                         ,kz_binary:rand_hex(8)
                         ]),
