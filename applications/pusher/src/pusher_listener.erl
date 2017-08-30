@@ -29,8 +29,8 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {subs_pid :: pid()
-               ,subs_ref :: reference()
+-record(state, {subs_pid :: api_pid()
+               ,subs_ref :: api_reference()
                }).
 -type state() :: #state{}.
 
