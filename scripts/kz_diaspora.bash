@@ -38,6 +38,19 @@ search_and_replace() {
     done
 }
 
+search_and_replace_exact() {
+    declare -a FUNS=("${!1}")
+    FROM=$2
+    TO=$3
+    TOFUN=$4
+
+    for FUN in "${FUNS[@]}"; do
+        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
+            replace $FROM $TO "$FUN" "$TOFUN" $FILE
+        done
+    done
+}
+
 replace_call_prefix() {
     FROM="$1"
     TO="$2"
@@ -190,6 +203,15 @@ kz_util_to_time() {
     search_and_replace fs[@] kz_util kz_time ''
 }
 
+kz_time_to_date() {
+    local fs=(iso8601_date)
+    local fs2=(pad_date
+               pad_month
+             )
+    search_and_replace_exact fs[@] "kz_time" "kz_date" "to_iso8601_extended"
+    search_and_replace fs2[@] "kz_time" "kz_date" ""
+}
+
 kz_json_to_kz_doc() {
     local fs=(get_public_keys
               public_fields
@@ -261,6 +283,8 @@ echo "ensuring kz_binary is used"
 kz_util_to_binary
 echo "ensuring kz_time is used"
 kz_util_to_time
+echo "ensuring kz_time -> kz_date migration is performed"
+kz_time_to_date
 echo "ensuring kz_json:public/private are moved to kz_doc"
 kz_json_to_kz_doc
 echo "ensuring kz_json:to_querystring is moved to kz_http_util"
