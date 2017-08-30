@@ -398,7 +398,7 @@ maybe_set_doc_modb_prefix(JObj) ->
         _ ->
             {Year, Month, _} = kz_term:to_date(kz_doc:created(JObj)),
             Id = <<(kz_term:to_binary(Year))/binary
-                   ,(kz_time:pad_month(Month))/binary
+                   ,(kz_date:pad_month(Month))/binary
                    ,"-"
                    ,(kz_doc:id(JObj))/binary
                  >>,

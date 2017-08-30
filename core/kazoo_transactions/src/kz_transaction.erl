@@ -734,8 +734,8 @@ prepare_rollup_transaction(Transaction) ->
 -spec prepare_topup_transaction(transaction()) -> transaction().
 prepare_topup_transaction(Transaction) ->
     {_, M, D} = erlang:date(),
-    Month = kz_time:pad_month(M),
-    Day = kz_time:pad_month(D),
+    Month = kz_date:pad_month(M),
+    Day = kz_date:pad_month(D),
     Id = <<"topup-", Month/binary, Day/binary>>,
     Transaction#kz_transaction{id=Id}.
 
@@ -759,7 +759,7 @@ create(Ledger, Amount, Type) ->
 modb_doc_id() ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:current_tstamp()),
     <<(kz_term:to_binary(Year))/binary
-      ,(kz_time:pad_month(Month))/binary
+      ,(kz_date:pad_month(Month))/binary
       ,"-"
       ,(kz_binary:rand_hex(16))/binary
     >>.

@@ -333,7 +333,7 @@ format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
 format_account_id(Account, Year, Month) when is_integer(Year),
                                              is_integer(Month) ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(Account),
-    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year), kz_time:pad_month(Month)).
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year), kz_date:pad_month(Month)).
 
 %%--------------------------------------------------------------------
 %% @public

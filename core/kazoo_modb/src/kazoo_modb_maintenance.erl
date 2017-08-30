@@ -274,7 +274,7 @@ dump_transactions(Account, Year, Month) ->
     View = <<"transactions/by_timestamp">>,
     ViewOptions = ['include_docs'
                   ,{'year', kz_term:to_binary(Year)}
-                  ,{'month', kz_time:pad_month(Month)}
+                  ,{'month', kz_date:pad_month(Month)}
                   ],
     case kazoo_modb:get_results(AccountId, View, ViewOptions) of
         {'ok', JObjs} ->

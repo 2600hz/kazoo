@@ -476,7 +476,7 @@ record_call_command(EndpointId, Inception, Data, Call) ->
     {Year, Month, _} = erlang:date(),
     CallId = kapps_call:call_id(Call),
     RecordingId = kz_binary:rand_hex(16),
-    MediaDocId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), RecordingId),
+    MediaDocId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), RecordingId),
     DefaultMediaName = get_media_name(kz_binary:rand_hex(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Media = [{<<"Application-Name">>, <<"record_call">>}
@@ -523,7 +523,7 @@ maybe_save_recording(_Pid, EndpointId, JObj) ->
     {Year, Month, _} = erlang:date(),
     AccountDb = kz_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     CallId = kz_call_event:call_id(JObj),
-    CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), CallId),
+    CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), CallId),
     DocId = kz_call_event:custom_channel_var(JObj, <<"Media-Recording-ID">>),
     InteractionId = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>),
     Url = kz_json:get_ne_binary_value(<<"url">>, Data),

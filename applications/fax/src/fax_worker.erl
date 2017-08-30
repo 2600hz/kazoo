@@ -775,7 +775,7 @@ move_doc(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), FromId),
+    ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), FromId),
     Options = ['override_existing_document'
               ,{'transform', fun(_, B) -> kz_json:set_value(<<"folder">>, <<"outbox">>, B) end}
               ],
