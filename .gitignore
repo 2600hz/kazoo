@@ -12,6 +12,7 @@
 *.d
 *.pid
 *.dump
+*.swp
 
 /.edts
 .project
