@@ -141,7 +141,7 @@ prop_set_value() ->
 
 prop_set_values() ->
     ?FORALL({KVs, Before, After}
-           ,{list(test_property()), test_proplist(), test_proplist()}
+           ,{unique_proplist(), test_proplist(), test_proplist()}
            ,?WHENFAIL(?debugFmt("Props = ~p ++ props:set_values(~p, ~p)~n", [Before, KVs, After])
                      ,begin
                           Props = Before ++ props:set_values(KVs, After),
@@ -166,11 +166,22 @@ prop_get_value() ->
             end
            ).
 
+prop_is_defined() ->
+    ?FORALL({Props, Existing, NonExisting}
+           ,test_proplist_and_keys()
+           ,?WHENFAIL(?debugFmt("exists props:is_defined(~p, ~p)~nnot props:is_defined(~p, ~p)~n"
+                               ,[Existing, Props, NonExisting, Props]
+                               )
+                     ,props:is_defined(Existing, Props)
+                      andalso 'false' =:= props:is_defined(NonExisting, Props)
+                     )
+           ).
+
 test_proplist() ->
     list(test_property()).
 
 test_property() ->
-    oneof([test_key()
+    oneof([atom()
           ,{test_key(), test_value()}
           ]).
 
@@ -183,10 +194,40 @@ test_key() ->
 test_proplist_and_kv() ->
     ?LET(Props
         ,?SUCHTHAT(UniqueProps
-                  ,?LET(GenProps, non_empty(test_proplist()), props:unique(GenProps))
+                  ,unique_proplist()
                   ,is_list(UniqueProps)
                   )
         ,{Props, elements(Props)}
+        ).
+
+unique_proplist() ->
+    ?LET(GenProps, non_empty(test_proplist()), props:unique(GenProps)).
+
+test_proplist_and_keys() ->
+
+    ?LET(Props
+        ,?SUCHTHAT(UniqueProps
+                  ,?LET(GenProps, non_empty(test_proplist()), props:unique(GenProps))
+                  ,is_list(UniqueProps)
+                  )
+        ,{Props, element_of(Props), not_oneof(Props)}
+        ).
+
+element_of(Props) ->
+    element_of(Props, rand:uniform()).
+
+element_of([K], _) -> as_key(K);
+element_of([K|_], Rand) when Rand < 0.5 -> as_key(K);
+element_of([_|Rest], _) -> element_of(Rest, rand:uniform()).
+
+as_key(A) when is_atom(A) -> A;
+as_key({K, _}) -> K.
+
+not_oneof(Props) ->
+    ?LET(K
+        ,test_key()
+        ,(not lists:member(K, Props))
+         andalso ('false' =:= lists:keyfind(K, 1, Props))
         ).
 
 -endif.
