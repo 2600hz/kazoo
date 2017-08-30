@@ -41,8 +41,8 @@
                    ,shards :: ne_binaries()
                    ,design_docs = [] :: ne_binaries()
                    ,heuristic :: heuristic()
-                   }
-       ).
+                   }).
+
 -type compactor() :: #compactor{}.
 -export_type([compactor/0]).
 
