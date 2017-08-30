@@ -18,6 +18,9 @@
         ,find_next_weekday/2
         ,normalize/1
         ,relative_difference/2
+
+        ,from_iso8601/1
+        ,to_iso8601/1
         ]).
 
 %% Utility Functions
@@ -121,6 +124,28 @@ find_next_weekday({Y, M, D}, Weekday) ->
         DOW ->
             normalize({Y, M, D + ( 7 - DOW ) + RefDOW})
     end.
+
+-spec from_iso8601(binary()) -> kz_date() | 'error'.
+from_iso8601(<<Year:4/binary, Month:2/binary, Day:2/binary>>) ->
+    {kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)};
+
+from_iso8601(<<Year:4/binary, "-", Month:2/binary, "-", Day:2/binary>>) ->
+    {kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)};
+
+from_iso8601(_NotValid) ->
+    'error'.
+
+-spec to_iso8601(kz_date()) -> binary().
+to_iso8601({Year, Month, Day}) ->
+    <<(pad_and_convert(Year))/binary, (pad_and_convert(Month))/binary, (pad_and_convert(Day))/binary>>.
+
+-spec pad_and_convert(integer()) -> binary().
+pad_and_convert(Int) when Int < 10 ->
+    <<"0", (kz_term:to_binary(Int))/binary>>;
+
+pad_and_convert(Int) ->
+    kz_term:to_binary(Int).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Convert the ordinal words to cardinal numbers representing
