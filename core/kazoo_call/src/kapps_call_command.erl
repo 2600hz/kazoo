@@ -54,8 +54,8 @@
         ,receive_fax/4
         ,b_receive_fax/1
         ]).
--export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
-        ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7, bridge/8, bridge/9
+        ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8, b_bridge/9
         ,unbridge/1, unbridge/2, unbridge/3
         ,b_bridge_wait/2
         ]).
@@ -1026,6 +1026,7 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) 
 -spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
 -spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), kapps_call:call()) -> 'ok'.
 -spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
 
 -spec b_bridge(kz_json:objects(), kapps_call:call()) ->
                       kapps_api_bridge_return().
@@ -1041,6 +1042,8 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) 
                       kapps_api_bridge_return().
 -spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), kapps_call:call()) ->
                       kapps_api_bridge_return().
+-spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), api_binary(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 
 bridge_command(Endpoints, Call) ->
     bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
@@ -1054,15 +1057,18 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) -
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
-bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
     [{<<"Application-Name">>, <<"bridge">>}
     ,{<<"Endpoints">>, Endpoints}
     ,{<<"Timeout">>, Timeout}
     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
     ,{<<"Ringback">>, kz_media_util:media_path(Ringback, kapps_call:account_id(Call))}
+    ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
     ,{<<"Dial-Endpoint-Method">>, Strategy}
     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-    ,{<<"Ignore-Forward">>, IgnoreFoward}
+    ,{<<"Ignore-Forward">>, IgnoreForward}
     ].
 
 bridge(Endpoints, Call) ->
@@ -1083,8 +1089,11 @@ bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     send_command(Command, Call).
-bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
-    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call),
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call),
+    send_command(Command, Call).
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call),
     send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
@@ -1107,6 +1116,9 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
     b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call),
+    b_bridge_wait(Timeout, Call).
+b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call),
     b_bridge_wait(Timeout, Call).
 
 -spec b_bridge_wait(pos_integer(), kapps_call:call()) -> kapps_api_bridge_return().
