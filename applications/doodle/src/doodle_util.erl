@@ -114,7 +114,7 @@ save_sms(JObj, 'undefined', Call) ->
     SmsDocId = kz_term:to_binary(
                  io_lib:format("~B~s-~s",
                                [Year
-                               ,kz_time:pad_month(Month)
+                               ,kz_date:pad_month(Month)
                                ,kapps_call:call_id(Call)
                                ])
                 ),

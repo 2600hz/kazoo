@@ -410,7 +410,7 @@ get_modb(Account, Year, Month) ->
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb, Options) ->
     {Y, M, _} = erlang:date(),
     ShouldCreateOld = props:get_is_true('allow_old_modb_creation', Options, 'false'),
-    case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
+    case {kz_term:to_binary(Y), kz_date:pad_month(M)} of
         {Year, Month} ->
             maybe_create(AccountMODb);
         {_Year, _Month} when ShouldCreateOld ->
