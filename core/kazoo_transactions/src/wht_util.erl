@@ -81,8 +81,8 @@ reasons() ->
      ,unknown() => ?CODE_UNKNOWN
      }.
 
--spec reasons(integer()) -> kz_proplist().
--spec reasons(integer(), integer()) -> kz_proplist().
+-spec reasons(integer()) -> ne_binaries().
+-spec reasons(integer(), integer()) -> ne_binaries().
 
 reasons(Min) ->
     reasons(Min, 10000).
