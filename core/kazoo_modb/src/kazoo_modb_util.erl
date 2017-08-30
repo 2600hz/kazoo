@@ -32,7 +32,7 @@ prev_year_month(Year, Month) -> {Year, Month-1}.
 
 prev_year_month_bin(Y, M) ->
     {Year, Month} = prev_year_month(Y, M),
-    {kz_term:to_binary(Year), kz_time:pad_month(Month)}.
+    {kz_term:to_binary(Year), kz_date:pad_month(Month)}.
 
 -spec prev_year_month_mod(ne_binary()) -> ne_binary().
 prev_year_month_mod(?MATCH_MODB_SUFFIX_RAW(AccountId, Year, Month)) ->
@@ -93,7 +93,7 @@ modb_id(Year, Month) ->
 -spec modb_id(ne_binary() | kz_year(), ne_binary() | kz_month(), ne_binary()) -> ne_binary().
 modb_id(Year, Month, Id) ->
     <<(kz_term:to_binary(Year))/binary
-      ,(kz_time:pad_month(Month))/binary
+      ,(kz_date:pad_month(Month))/binary
       ,"-"
       ,(Id)/binary
     >>.

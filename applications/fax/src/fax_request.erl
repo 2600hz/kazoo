@@ -317,7 +317,7 @@ get_fax_storage(Call) ->
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
     FaxDb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     FaxId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_time:pad_month(Month))/binary
+              ,(kz_date:pad_month(Month))/binary
               ,"-"
               ,(kz_binary:rand_hex(16))/binary
             >>,
@@ -525,7 +525,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
 
     ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
     CdrId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_time:pad_month(Month))/binary
+              ,(kz_date:pad_month(Month))/binary
               ,"-"
               ,(kapps_call:call_id(Call))/binary
             >>,
