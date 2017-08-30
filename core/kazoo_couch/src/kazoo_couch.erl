@@ -92,7 +92,7 @@ get_admin_nodes() ->
     get_admin_nodes(Conn).
 
 get_admin_nodes(#server{}=Server) ->
-    get_admin_dbs(server_version(Server));
+    get_admin_nodes(server_version(Server));
 get_admin_nodes('bigcouch') -> <<"nodes">>;
 get_admin_nodes(_Driver) -> <<"_nodes">>.
 
@@ -117,7 +117,7 @@ db_create(Server, DbName, Options) ->
 db_delete(Server, DbName) ->
     kz_couch_db:db_delete(Server, DbName).
 
--spec db_view_cleanup(kz_data:connection(), ne_binary()) -> any().
+-spec db_view_cleanup(kz_data:connection(), ne_binary()) -> boolean().
 db_view_cleanup(Server, DbName) ->
     kz_couch_db:db_view_cleanup(Server, DbName).
 
