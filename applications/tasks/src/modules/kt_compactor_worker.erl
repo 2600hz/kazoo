@@ -127,14 +127,14 @@ continue_compacting_shard(#compactor{shards=[Shard]}=Compactor) ->
     wait_for_compaction(compactor_admin(Compactor), Shard),
 
     %% cleans up old view indexes
-    lager:debug("  db view cleanup starting"),
+    lager:debug("  db view cleanup starting for shard ~s", [Shard]),
     kz_couch_db:db_view_cleanup(compactor_conn(Compactor), Shard),
 
     wait_for_compaction(compactor_admin(Compactor), Shard),
 
     %% compacts views
-    lager:debug("  design doc compaction starting"),
     Database = shard_to_database(Shard),
+    lager:debug("  design doc compaction starting for db ~s", [Database]),
     compact_design_docs(compactor_conn(Compactor), Database, compactor_design_docs(Compactor)),
 
     case get_db_disk_and_data(compactor_admin(Compactor), Shard) of
@@ -246,16 +246,16 @@ should_compact(Compactor, ?HEUR_RATIO) ->
 -spec get_db_disk_and_data(kz_data:connection(), ne_binary(), 0..3) ->
                                   {pos_integer(), pos_integer()} |
                                   'undefined' | 'not_found'.
-get_db_disk_and_data(Conn, Unencoded) ->
-    get_db_disk_and_data(Conn, Unencoded, 0).
+get_db_disk_and_data(Conn, DbName) ->
+    get_db_disk_and_data(Conn, DbName, 0).
 
-get_db_disk_and_data(_Conn, _Unencoded, 3=_N) ->
-    lager:warning("getting db info for ~s failed ~b times", [_Unencoded, _N]),
+get_db_disk_and_data(_Conn, _DbName, 3=_N) ->
+    lager:warning("getting db info for ~s failed ~b times", [_DbName, _N]),
     'undefined';
-get_db_disk_and_data(Conn, Unencoded, N) ->
+get_db_disk_and_data(Conn, DbName, N) ->
     N > 0
         andalso lager:debug("getting db info re-attempt ~p", [N]),
-    case kz_couch_db:db_info(Conn, encode_db(Unencoded)) of
+    case kz_couch_db:db_info(Conn, DbName) of
         {'ok', Info} ->
             {kz_json:get_integer_value(<<"disk_size">>, Info)
             ,kz_json:get_integer_value([<<"other">>, <<"data_size">>], Info)
@@ -263,15 +263,15 @@ get_db_disk_and_data(Conn, Unencoded, N) ->
         {'error', {'conn_failed',{'error','timeout'}}} ->
             lager:debug("timed out asking for info, waiting and trying again"),
             'ok' = timer:sleep(?MILLISECONDS_IN_SECOND),
-            get_db_disk_and_data(Conn, Unencoded, N+1);
+            get_db_disk_and_data(Conn, DbName, N+1);
         {'error', 'not_found'} ->
-            lager:debug("db '~s' not found, skipping", [Unencoded]),
+            lager:debug("db '~s' not found, skipping", [DbName]),
             'not_found';
         {'error', 'db_not_found'} ->
-            lager:debug("shard '~s' not found, skipping", [Unencoded]),
+            lager:debug("shard '~s' not found, skipping", [DbName]),
             'not_found';
         {'error', _E} ->
-            lager:debug("failed to lookup info: ~p", [_E]),
+            lager:debug("failed to lookup ~s info: ~p", [DbName, _E]),
             'undefined'
     end.
 
@@ -319,7 +319,7 @@ compactor_heuristic(#compactor{heuristic=Heuristic}) -> Heuristic.
                  compactor().
 new(Node, Heuristic, APIConn, AdminConn, Database) ->
     #compactor{node=Node
-              ,database=Database
+              ,database=kz_http_util:urlencode(Database)
               ,conn=APIConn
               ,admin=AdminConn
               ,heuristic=Heuristic
@@ -340,13 +340,9 @@ node_shards(Node, Unencoded, DbInfo) ->
      || Range <- Ranges
     ].
 
--spec encode_db(ne_binary()) -> ne_binary().
-encode_db(Database) ->
-    kz_http_util:urlencode(Database).
-
 -spec db_design_docs(kz_data:connection(), ne_binary()) -> ne_binaries().
 db_design_docs(Conn, D) ->
-    case kz_couch_view:all_design_docs(Conn, encode_db(D)) of
+    case kz_couch_view:all_design_docs(Conn, kz_http_util:urlencode(D)) of
         {'ok', Designs} ->
             [encode_design_doc(kz_doc:id(Design)) || Design <- Designs];
         {'error', _} -> []
