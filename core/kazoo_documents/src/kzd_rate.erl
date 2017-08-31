@@ -57,6 +57,7 @@ ensure_id(Rate, 'undefined') ->
     ID = list_to_binary([iso_country_code(Rate, <<"XX">>)
                         ,<<"-">>
                         ,prefix(Rate)
+                        ,rate_suffix(Rate)
                         ]),
     kz_doc:set_id(Rate, ID);
 ensure_id(Rate, ID) ->
@@ -282,3 +283,13 @@ carrier(Rate, Default) ->
 -spec set_carrier(doc(), ne_binary()) -> doc().
 set_carrier(Rate, Carrier) when is_binary(Carrier) ->
     kz_json:set_value(<<"pvt_carrier">>, Carrier, Rate).
+
+-spec rate_suffix(doc()) -> ne_binary().
+-spec rate_suffix(doc(), Default) -> ne_binary() | Default.
+rate_suffix(Rate) ->
+    rate_suffix(Rate, 'undefined').
+rate_suffix(Rate, Default) ->
+    case kz_json:get_ne_binary_value(<<"rate_suffix">>, Rate, Default) of
+        'undefined' -> <<>>;
+        RateSuffix -> <<"-", RateSuffix/binary>>
+    end.
