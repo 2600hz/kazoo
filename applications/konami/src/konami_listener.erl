@@ -70,7 +70,7 @@ handle_metaflow(JObj, Props) ->
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
     kapps_call:put_callid(Call),
 
-    _ = konami_code_fsm:start_fsm(
+    _ = konami_code_statem:start_fsm(
           kapps_call:kvs_store('consumer_pid', props:get_value('server', Props), Call)
                                  ,JObj
          ),

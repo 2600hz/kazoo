@@ -253,7 +253,7 @@ queue_name() -> gen_listener:queue_name(?SERVER).
 
 -spec relay_to_fsms(ne_binary(), ne_binary(), kz_json:object()) -> any().
 relay_to_fsms(CallId, Event, JObj) ->
-    [konami_code_fsm:event(FSM, CallId, Event, JObj)
+    [konami_code_statem:event(FSM, CallId, Event, JObj)
      || FSM <- fsms_for_callid(CallId)
     ].
 
@@ -277,7 +277,7 @@ metaflows() ->
 -spec relay_to_fsm(ne_binary(), ne_binary(), kz_json:object()) -> any().
 relay_to_fsm(CallId, Event, JObj) ->
     [FSM | _] = fsms_for_callid(CallId),
-    konami_code_fsm:event(FSM, CallId, Event, JObj).
+    konami_code_statem:event(FSM, CallId, Event, JObj).
 
 -spec relay_to_pids(ne_binary(), kz_json:object()) -> any().
 relay_to_pids(CallId, JObj) ->
