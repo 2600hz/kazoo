@@ -127,15 +127,14 @@ continue_compacting_shard(#compactor{shards=[Shard]}=Compactor) ->
     wait_for_compaction(compactor_admin(Compactor), Shard),
 
     %% cleans up old view indexes
-    lager:debug("  db view cleanup starting for shard ~s", [Shard]),
-    kz_couch_db:db_view_cleanup(compactor_conn(Compactor), Shard),
+    IsCleanup = kz_couch_db:db_view_cleanup(compactor_admin(Compactor), Shard),
+    lager:debug("  is shard view cleaning up started ~s: ~s", [Shard, IsCleanup]),
 
     wait_for_compaction(compactor_admin(Compactor), Shard),
 
     %% compacts views
-    Database = shard_to_database(Shard),
-    lager:debug("  design doc compaction starting for db ~s", [Database]),
-    compact_design_docs(compactor_conn(Compactor), Database, compactor_design_docs(Compactor)),
+    lager:debug("  design doc compaction starting for shard ~s", [Shard]),
+    compact_design_docs(compactor_admin(Compactor), Shard, compactor_design_docs(Compactor)),
 
     case get_db_disk_and_data(compactor_admin(Compactor), Shard) of
         'undefined' -> lager:debug("  finished compacting shard");
@@ -144,20 +143,13 @@ continue_compacting_shard(#compactor{shards=[Shard]}=Compactor) ->
             lager:debug("  finished compacting shard: ~p disk/~p data", [AfterDisk, AfterData])
     end.
 
--spec shard_to_database(ne_binary()) -> ne_binary().
-shard_to_database(<<"shards"
-                    ,_RangeAndSeparators:23/binary
-                    ,DbAndSuffix/binary
-                  >>) ->
-    binary:part(DbAndSuffix, 0, byte_size(DbAndSuffix)-11).
-
 -spec compact_design_docs(kz_data:connection(), ne_binary(), ne_binaries()) -> 'ok'.
 compact_design_docs(_Conn, _Shard, []) -> 'ok';
 compact_design_docs(Conn, Shard, DDs) ->
     try lists:split(?MAX_COMPACTING_VIEWS, DDs) of
         {Compact, Remaining} ->
-            lager:debug("  compacting chunk of views: ~p", [Compact]),
-            _ = [kz_couch_view:design_compact(Conn, Shard, DD) || DD <- Compact],
+            IsStarted = [{DD, kz_couch_view:design_compact(Conn, Shard, DD)} || DD <- Compact],
+            lager:debug("  is shard ~s compacting chunk of views started: ~p", [Shard, IsStarted]),
             wait_for_design_compaction(Conn, Shard, Compact),
             compact_design_docs(Conn, Shard, Remaining)
     catch

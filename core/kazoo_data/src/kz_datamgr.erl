@@ -373,7 +373,9 @@ db_view_cleanup(DbName) when ?VALID_DBNAME(DbName) ->
 db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_view_cleanup(Db);
-        {'error', _}=E -> E
+        {'error', _Reason} ->
+            lager:debug("failed to convert db name ~s: ~p", [DbName, _Reason]),
+            'false'
     end.
 
 -spec db_view_update(ne_binary(), views_listing()) -> boolean().

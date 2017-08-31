@@ -117,7 +117,7 @@ db_create(Server, DbName, Options) ->
 db_delete(Server, DbName) ->
     kz_couch_db:db_delete(Server, DbName).
 
--spec db_view_cleanup(kz_data:connection(), ne_binary()) -> any().
+-spec db_view_cleanup(kz_data:connection(), ne_binary()) -> boolean().
 db_view_cleanup(Server, DbName) ->
     kz_couch_db:db_view_cleanup(Server, DbName).
 
