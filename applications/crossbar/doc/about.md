@@ -31,4 +31,3 @@ curl -v -X GET \
     "status": "success"
 }
 ```
-
