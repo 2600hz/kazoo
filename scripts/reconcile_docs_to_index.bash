@@ -23,9 +23,11 @@ for doc in $docs; do
     check_index $doc
 done
 
-# if [[ $missing ]]; then
+if [[ 0 -lt $missing_count ]]; then
     ratio=$((100 * $missing_count / $doc_count))
     echo "Missing $missing_count / $doc_count: $ratio%"
-# fi
+    popd > /dev/null
+    exit 1
+fi
 
 popd > /dev/null
