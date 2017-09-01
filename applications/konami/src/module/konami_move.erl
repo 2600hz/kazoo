@@ -62,7 +62,7 @@ maybe_update_metaflow_control(_Data, Call, CallId, ControlQueue, 'a') ->
       kapps_call:set_control_queue(ControlQueue
                                   ,kapps_call:set_call_id(CallId, Call)
                                   )
-                               ,'a'
+                                  ,'a'
      ),
 
     {'stop', Call};
@@ -71,7 +71,7 @@ maybe_update_metaflow_control(_Data, Call, CallId, _ControlQueue, 'b') ->
 
     konami_code_statem:transfer_to(
       kapps_call:set_other_leg_call_id(CallId, Call)
-                               ,'b'
+                                  ,'b'
      ),
 
     {'stop', Call}.
