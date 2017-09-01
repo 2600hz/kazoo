@@ -14,9 +14,13 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `mode` | set caller privacy on calls, restricting the presentation some or full parts of Caller ID | `string('full' | 'name' | 'number' | 'yes')` | `full` | `false`
 
+
+
 #### Privacy Modes
 
-- *`full`*: anonymize both CIDName and CIDNumber
-- *`name`*: anonymize CIDName only
-- *`number`*: anonymize CIDNumber only
-- *`yes`*: anonymize both CIDName and CIDNumber
+Mode | Description
+---- | -----------
+`full` | anonymize both CIDName and CIDNumber
+`name` | anonymize CIDName only
+`number` | anonymize CIDNumber only
+`yes` | anonymize both CIDName and CIDNumber
