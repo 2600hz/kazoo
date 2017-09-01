@@ -154,8 +154,8 @@ compact_design_docs(Conn, Shard, DDs) ->
             compact_design_docs(Conn, Shard, Remaining)
     catch
         'error':'badarg' ->
-            lager:debug("  compacting last chunk of views: ~p", [DDs]),
-            _ = [kz_couch_view:design_compact(Conn, Shard, DD) || DD <- DDs],
+            IsStarted = [{DD, kz_couch_view:design_compact(Conn, Shard, DD)} || DD <- DDs],
+            lager:debug("  is shard ~s compacting last chunk of views started: ~p", [Shard, IsStarted]),
             wait_for_design_compaction(Conn, Shard, DDs)
     end.
 
