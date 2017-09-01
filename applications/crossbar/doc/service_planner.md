@@ -226,6 +226,7 @@ curl -v -X GET \
   "status": "{STATUS}",
   "auth_token": "{AUTH_TOKEN}"
 }
+```
 
 #### Create Service Plans
 

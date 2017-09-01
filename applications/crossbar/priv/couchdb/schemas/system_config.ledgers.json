@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.ledgers",
+    "description": "Schema for ledgers system_config",
+    "properties": {
+        "registered_ledgers": {
+            "default": [
+                {
+                    "friendly_name": "Per Minute VoIP",
+                    "name": "per-minute-voip"
+                },
+                {
+                    "friendly_name": "Mobile Data (100mB)",
+                    "name": "mobile_data"
+                },
+                {
+                    "friendly_name": "Support",
+                    "name": "support"
+                }
+            ],
+            "description": "ledgers registered_ledgers",
+            "items": {
+                "type": "object"
+            },
+            "type": "array"
+        }
+    },
+    "type": "object"
+}

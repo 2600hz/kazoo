@@ -20,6 +20,7 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
+-define(AVAILABLE, <<"available">>).
 -define(CREDIT, <<"credit">>).
 -define(DEBIT, <<"debit">>).
 
@@ -28,6 +29,13 @@
 -define(LEDGER_VIEW, <<"ledgers/listing_by_service_legacy">>).
 %%-define(LEDGER_VIEW, "ledgers/listing_by_service").
 %% TODO: make this change for 4.1
+
+-define(DEFAULT_AVIALABLE_LEDGERS,
+        [kz_json:from_list([{<<"name">>, <<"per-minute-voip">>}, {<<"friendly_name">>, <<"Per Minute VoIP">>}])
+        ,kz_json:from_list([{<<"name">>, <<"mobile_data">>}, {<<"friendly_name">>, <<"Mobile Data (100mB)">>}])
+        ,kz_json:from_list([{<<"name">>, <<"support">>}, {<<"friendly_name">>, <<"Support">>}])
+        ]
+       ).
 
 %%%===================================================================
 %%% API
@@ -61,6 +69,8 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET].
 
+allowed_methods(?AVAILABLE) ->
+    [?HTTP_GET];
 allowed_methods(?CREDIT) ->
     [?HTTP_PUT];
 allowed_methods(?DEBIT) ->
@@ -96,7 +106,7 @@ resource_exists(_, _) -> 'true'.
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) -> cb_simple_authz:authorize(Context).
 
--spec authorize(cb_context:context(), path_token()) -> boolean().
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'halt', cb_context:context()}.
 authorize(Context, Path) ->
     authorize_request(Context, Path, cb_context:req_verb(Context)).
 
@@ -104,11 +114,22 @@ authorize(Context, Path) ->
 authorize(Context, _Path, _Id) ->
     cb_simple_authz:authorize(Context).
 
--spec authorize_request(cb_context:context(), path_token(), http_method()) -> boolean().
+-spec authorize_request(cb_context:context(), path_token(), http_method()) ->
+                               boolean() |
+                               {'halt', cb_context:context()}.
 authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
     authorize_create(Context);
+authorize_request(Context, ?AVAILABLE, ?HTTP_GET) ->
+    case cb_context:req_nouns(Context) of
+        [{<<"ledgers">>, [?AVAILABLE]}] ->
+            kz_services:is_reseller(cb_context:auth_account_id(Context))
+                orelse cb_context:is_superduper_admin(Context);
+        _ -> {'halt', cb_context:add_system_error('forbidden', Context)}
+    end;
+authorize_request(Context, ?AVAILABLE, _) ->
+    {'halt', cb_context:add_system_error('forbidden', Context)};
 authorize_request(Context, _, ?HTTP_PUT) ->
     {'halt', cb_context:add_system_error('forbidden', Context)};
 authorize_request(Context, _, ?HTTP_GET) ->
@@ -153,6 +174,15 @@ validate(Context, ?DEBIT) ->
     ReqData = cb_context:req_data(Context),
     JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?DEBIT, ReqData),
     cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj));
+validate(Context, ?AVAILABLE) ->
+    Available = kapps_account_config:get_global(cb_context:auth_account_id(Context)
+                                               ,<<"ledgers">>
+                                               ,<<"registered_ledgers">>
+                                               ,?DEFAULT_AVIALABLE_LEDGERS),
+    Setters = [{fun cb_context:set_resp_status/2, 'success'}
+              ,{fun cb_context:set_resp_data/2, Available}
+              ],
+    cb_context:setters(Context, Setters);
 validate(Context, Id) ->
     validate_ledger(Context, Id, cb_context:req_verb(Context)).
 
