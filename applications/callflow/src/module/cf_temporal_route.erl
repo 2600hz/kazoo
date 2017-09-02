@@ -78,22 +78,18 @@ process_rules(Temporal, [#rule{enabled='false'
                               ,id=Id
                               ,name=Name
                               }|Rs], Call) ->
-    lager:info("time based rule ~s (~s) disabled", [Id, Name]),
+    lager:info("time based rule ~p (~s) disabled", [Id, Name]),
     process_rules(Temporal, Rs, Call);
 process_rules(_, [#rule{enabled='true'
                        ,id=Id
                        ,name=Name
-                       ,rule_set=RuleSet
                        }|_], _) ->
-    lager:info("time based rule ~s (~s) is forced active part of rule set? ~p", [Id, Name, RuleSet]),
-    case RuleSet of
-        'true' -> <<"rule_set">>;
-        'false' -> Id
-    end;
+    lager:info("time based rule ~p (~s) is forced active", [Id, Name]),
+    Id;
 process_rules(Temporal, [#rule{id=Id
                               , name=Name
                               , cycle = <<"">>}|Rs], Call) ->
-    lager:error("time based rule ~s (~s) is invalid, skipping", [Id, Name]),
+    lager:error("time based rule ~p (~s) is invalid, skipping", [Id, Name]),
     process_rules(Temporal, Rs, Call);
 process_rules(#temporal{local_sec=LSec
                        ,local_date={Y, M, D}
@@ -102,12 +98,11 @@ process_rules(#temporal{local_sec=LSec
                     ,name=Name
                     ,wtime_start=TStart
                     ,wtime_stop=TStop
-                    ,rule_set=RuleSet
                     }=Rule
                |Rules
               ]
              ,Call) ->
-    lager:info("processing temporal rule ~s (~s) part of rule set? ~p", [Id, Name, RuleSet]),
+    lager:info("processing temporal rule ~s (~s)", [Id, Name]),
     PrevDay = kz_date:normalize({Y, M, D - 1}),
     BaseDate = next_rule_date(Rule, PrevDay),
     BaseTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
@@ -121,10 +116,7 @@ process_rules(#temporal{local_sec=LSec
             process_rules(T, Rules, Call);
         {_, End} ->
             lager:info("within active time window until ~w", [calendar:gregorian_seconds_to_datetime(End)]),
-            case RuleSet of
-                'true' -> <<"rule_set">>;
-                'false' -> Id
-            end
+            Id
     end;
 process_rules(_, [], _) ->
     lager:info("continuing with default callflow"),
@@ -141,25 +133,24 @@ process_rules(_, [], _) ->
 get_temporal_rules(#temporal{local_sec=LSec
                             ,routes=Routes
                             ,timezone=TZ
-                            ,rule_set=RuleSet
                             }, Call) ->
-    get_temporal_rules(Routes, LSec, kapps_call:account_db(Call), RuleSet, TZ, []).
+    get_temporal_rules(Routes, LSec, kapps_call:account_db(Call), TZ, []).
 
--spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), rules()) -> rules().
-get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Rules) when is_binary(TZ) ->
+-spec get_temporal_rules(kz_proplist(), non_neg_integer(), ne_binary(), ne_binary(), rules()) -> rules().
+get_temporal_rules(Routes, LSec, AccountDb, TZ, Rules) when is_binary(TZ) ->
     Now = localtime:utc_to_local(calendar:universal_time()
                                 ,kz_term:to_list(TZ)
                                 ),
-    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules).
+    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules).
 
--spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), kz_datetime(), rules()) ->
+-spec get_temporal_rules(kz_proplist(), non_neg_integer(), ne_binary(), ne_binary(), kz_datetime(), rules()) ->
                                 rules().
-get_temporal_rules([], _, _, _, _, _, Rules) -> lists:reverse(Rules);
-get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
+get_temporal_rules([], _, _, _, _, Rules) -> lists:reverse(Rules);
+get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, Now, Rules) ->
     case kz_datamgr:open_cache_doc(AccountDb, Route) of
         {'error', _R} ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
-            get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
+            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
         {'ok', JObj} ->
             Days = lists:foldr(fun(Day, Acc) ->
                                        [kz_term:to_integer(Day)|Acc]
@@ -167,7 +158,7 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
                               ,[]
                               ,kz_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
                               ),
-            Rule = #rule{id = Route
+            Rule = #rule{id = Id
                         ,enabled =
                              kz_json:is_true(<<"enabled">>, JObj, 'undefined')
                         ,name =
@@ -191,16 +182,15 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
                              kz_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
                         ,wtime_stop =
                              kz_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
-                        ,rule_set = RuleSet
                         },
             case kz_date:relative_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
                 'future' ->
                     lager:warning("rule ~p is in the future discarding", [Rule#rule.name]),
-                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
+                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
                 'past' ->
-                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, [Rule | Rules]);
+                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [Rule | Rules]);
                 'equal' ->
-                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, [Rule | Rules])
+                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [Rule | Rules])
             end
     end.
 
@@ -210,22 +200,66 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
 %% Loads the temporal record with data from the db.
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_load_rules(kz_json:object(), kapps_call:call(), kz_proplist()) -> kz_proplist().
+maybe_load_rules(Data, _Call, Routes) ->
+    Rules = kz_json:get_value(<<"rules">>, Data, []),
+    lager:info("loaded ~p routes from rules", [length(Rules)]),
+    Routes ++ [{X, X} || X <- Rules].
+
+-spec maybe_load_branch_keys(kz_json:object(), kapps_call:call(), kz_proplist()) -> kz_proplist().
+maybe_load_branch_keys(_Data, Call, Routes) ->
+    {'branch_keys', Rules} = cf_exe:get_branch_keys(Call),
+    lager:info("loaded ~p routes from branch_keys", [length(Rules)]),
+    Routes ++ [{X, X} || X <- Rules].
+
+-spec maybe_load_rulesets(kz_json:object(), kapps_call:call(), kz_proplist()) -> kz_proplist().
+maybe_load_rulesets(Data, Call, Routes) ->
+    case kz_json:get_ne_binary_value(<<"rule_set">>, Data) of
+        'undefined' ->
+            lager:info("no rule_set id configured"),
+            Routes;
+
+        RuleSetId ->
+            lager:info("loading rules from rule_set ~p", [RuleSetId]),
+            Routes ++ [{X, <<"rule_set">>} || X <- get_rule_set(RuleSetId, Call)]
+    end.
+
+-spec maybe_expand_rulesets(kz_json:object(), kapps_call:call(), kz_proplist()) -> kz_proplist().
+maybe_expand_rulesets(_Data, Call, Rules) ->
+    try_load_rulesets(Call, lists:flatten(Rules), []).
+
+-spec try_load_rulesets(kapps_call:call(), kz_proplist(), kz_proplist()) -> kz_proplist().
+try_load_rulesets(_Call, [], Acc) ->
+    lists:flatten(Acc);
+
+try_load_rulesets(Call, [{_,<<"rule_set">>}=H|T], Acc) ->
+    try_load_rulesets(Call, T, Acc ++ [H]);
+
+try_load_rulesets(Call, [{H,_}|T], Acc) ->
+    UseRoutes = case get_rule_set(H, Call) of
+                    [] ->
+                        [{H, H}];
+                    SetVals ->
+                        lager:info("loaded ~p rules from rule_set ~p", [length(SetVals), H]),
+                        [{X, H} || X <- SetVals]
+                end,
+    try_load_rulesets(Call, T, Acc ++ UseRoutes).
+
 -spec get_temporal_route(kz_json:object(), kapps_call:call()) -> temporal().
 get_temporal_route(Data, Call) ->
-    lager:info("loading temporal route"),
-    Keys = case kz_json:get_list_value(<<"rules">>, Data, []) of
-               [] ->
-                   {'branch_keys', Rules} = cf_exe:get_branch_keys(Call),
-                   Rules;
-               Rules -> Rules
-           end,
-    {IsRuleSet, Routes} =
-        case kz_json:get_ne_binary_value(<<"rule_set">>, Data) of
-            'undefined' -> {'false', Keys};
-            RuleSetId -> {'true', get_rule_set(RuleSetId, Call)}
-        end,
+    lager:info("loading temporal route..."),
+
+    Routes = lists:foldl(fun(F, A) -> F(Data, Call, A) end
+                        ,[]
+                        ,[fun maybe_load_rules/3
+                         ,fun maybe_load_branch_keys/3
+                         ,fun maybe_load_rulesets/3
+                         ,fun maybe_expand_rulesets/3
+                         ]),
+
+    lager:info("routes are: ~p", [Routes]),
+
     load_current_time(#temporal{routes = Routes
-                               ,rule_set = IsRuleSet
                                ,timezone = cf_util:get_timezone(Data, Call)
                                ,interdigit_timeout =
                                     kz_json:get_integer_value(<<"interdigit_timeout">>
@@ -241,12 +275,15 @@ get_temporal_route(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_rule_set(ne_binary(), kapps_call:call()) -> ne_binaries().
-get_rule_set(RuleSetId, Call) ->
+get_rule_set({Id, Id}, Call) ->
+    get_rule_set(Id, Call);
+
+get_rule_set(Id, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    lager:info("loading temporal rule set ~s", [RuleSetId]),
-    case kz_datamgr:open_cache_doc(AccountDb, RuleSetId) of
+    lager:info("loading temporal rule set ~s", [Id]),
+    case kz_datamgr:open_cache_doc(AccountDb, Id) of
         {'error', _E} ->
-            lager:error("failed to load ~s in ~s", [RuleSetId, AccountDb]),
+            lager:error("failed to load ~s in ~s", [Id, AccountDb]),
             [];
         {'ok', JObj} -> kz_json:get_list_value(<<"temporal_rules">>, JObj, [])
     end.

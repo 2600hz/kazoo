@@ -51,7 +51,6 @@
               ,start_date = ?RULE_DEFAULT_START_DATE :: kz_date()
               ,wtime_start = ?RULE_DEFAULT_WTIME_START :: non_neg_integer()
               ,wtime_stop = ?RULE_DEFAULT_WTIME_STOP :: non_neg_integer()
-              ,rule_set  = 'false' :: boolean()
               }).
 
 -type rule() :: #rule{}.
@@ -60,12 +59,11 @@
 -record(temporal, {local_sec = 0 :: non_neg_integer()
                   ,local_date = {2011, 1, 1} :: kz_date()
                   ,local_time = {0, 0, 0} :: kz_time()
-                  ,routes = [] :: kz_json:path()
+                  ,routes = [] :: kz_proplist()
                   ,timezone :: api_binary()
                   ,prompts = #prompts{} :: prompts()
                   ,keys = #keys{} :: keys()
                   ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
-                  ,rule_set = 'false' :: boolean()
                   }).
 -type temporal() :: #temporal{}.
 
