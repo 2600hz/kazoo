@@ -239,7 +239,11 @@ get_ne_binary_value(Key, Props, Default) ->
 
 -spec get_keys(kz_proplist()) -> [kz_proplist_key()] | [].
 get_keys([]) -> [];
-get_keys(Props) -> [K || {K,_} <- Props].
+get_keys(Props) -> [as_key(KV) || KV <- Props].
+
+-spec as_key(kz_proplist_property()) -> atom() | kz_proplist_key().
+as_key(A) when is_atom(A) -> A;
+as_key({K, _}) -> K.
 
 -spec get_all_values(kz_proplist_key(), kz_proplist()) -> [kz_proplist_value()].
 get_all_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].

@@ -16,7 +16,7 @@ monday_failure_test_() ->
     Time = {11,47,7},
     Seconds = calendar:datetime_to_gregorian_seconds({Date, Time}),
 
-    Rule = {rule,<<"TESTRULEID">>,undefined,<<"TODTest">>,<<"weekly">>,1,[],[<<"monday">>],<<"first">>,1,Date,0,86400,false},
+    Rule = {rule,<<"TESTRULEID">>,undefined,<<"TODTest">>,<<"weekly">>,1,[],[<<"monday">>],<<"first">>,1,Date,0,86400},
     #rule{wtime_start=TStart}=Rule,
 
     PrevDay  = kz_date:normalize({Y, M, D - 1}),
