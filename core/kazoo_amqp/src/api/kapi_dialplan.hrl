@@ -247,6 +247,15 @@
                           ]).
 -define(SEND_DTMF_TYPES, [{<<"DTMFs">>, fun is_binary/1}]).
 
+-define(RECV_DTMF_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"DTMFs">>]).
+-define(OPTIONAL_RECV_DTMF_HEADERS, [<<"Insert-At">>]).
+-define(RECV_DTMF_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"recv_dtmf">>}
+                          ,?INSERT_AT_TUPLE
+                          ]).
+-define(RECV_DTMF_TYPES, [{<<"DTMFs">>, fun is_binary/1}]).
+
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
 -define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>, <<"Terminators">>
