@@ -52,6 +52,7 @@
         ,set/1, set_v/1
         ,set_terminators/1, set_terminators_v/1
         ,send_dtmf/1, send_dtmf_v/1
+        ,recv_dtmf/1, recv_dtmf_v/1
         ,tones/1, tones_req_tone/1, tones_v/1, tones_req_tone_v/1
         ,tones_req_tone_headers/1
         ,conference/1, conference_v/1
@@ -296,6 +297,19 @@ send_dtmf(JObj) -> send_dtmf(kz_json:to_proplist(JObj)).
 send_dtmf_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEND_DTMF_HEADERS, ?SEND_DTMF_VALUES, ?SEND_DTMF_TYPES);
 send_dtmf_v(JObj) -> send_dtmf_v(kz_json:to_proplist(JObj)).
+
+-spec recv_dtmf(api_terms()) -> api_formatter_return() .
+recv_dtmf(Prop) when is_list(Prop) ->
+    case recv_dtmf_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?RECV_DTMF_HEADERS, ?OPTIONAL_RECV_DTMF_HEADERS);
+        'false' -> {'error', "Prop failed validation for send_dtmf"}
+    end;
+recv_dtmf(JObj) -> recv_dtmf(kz_json:to_proplist(JObj)).
+
+-spec recv_dtmf_v(api_terms()) -> boolean().
+recv_dtmf_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?RECV_DTMF_HEADERS, ?RECV_DTMF_VALUES, ?RECV_DTMF_TYPES);
+recv_dtmf_v(JObj) -> recv_dtmf_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Create a tone on the channel - see wiki
