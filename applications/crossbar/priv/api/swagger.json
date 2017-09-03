@@ -11234,6 +11234,50 @@
             ],
             "type": "object"
         },
+        "kapi.dialplan.recv_dtmf": {
+            "description": "AMQP API for dialplan.recv_dtmf",
+            "properties": {
+                "Application-Name": {
+                    "enum": [
+                        "recv_dtmf"
+                    ],
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "DTMFs": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "call"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                },
+                "Insert-At": {
+                    "enum": [
+                        "head",
+                        "tail",
+                        "flush",
+                        "now"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Application-Name",
+                "Call-ID",
+                "DTMFs"
+            ],
+            "type": "object"
+        },
         "kapi.dialplan.redirect": {
             "description": "AMQP API for dialplan.redirect",
             "properties": {
