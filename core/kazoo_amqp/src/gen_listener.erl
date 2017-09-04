@@ -861,8 +861,14 @@ callback_handle_event(JObj
                                    {'EXIT', any()}.
 callback_handle_event(JObj, BasicDeliver, Module, ModuleState) ->
     case erlang:function_exported(Module, 'handle_event', 3) of
-        'true' -> catch Module:handle_event(JObj, BasicDeliver, ModuleState);
-        'false' -> catch Module:handle_event(JObj, ModuleState)
+        'true' ->
+            try Module:handle_event(JObj, BasicDeliver, ModuleState)
+            catch E:O -> lager:error("CRASH in handle_event ~p:~p", [E, O])
+            end;
+        'false' ->
+            try Module:handle_event(JObj, ModuleState)
+            catch E:O -> lager:error("CRASH in handle_event ~p:~p", [E, O])
+            end
     end.
 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name
