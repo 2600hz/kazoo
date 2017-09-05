@@ -31,7 +31,7 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'metaflow', [{'restrict_to', ['bindings']}]}
+-define(BINDINGS, [{'metaflow', [{'restrict_to', ['bind']}]}
                   ,{'route', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
