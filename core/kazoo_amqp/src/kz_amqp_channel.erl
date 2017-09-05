@@ -16,6 +16,13 @@
         ,consumer_broker/1
         ,remove_consumer_broker/0
         ]).
+-export([consumer_channel/0
+        ,consumer_channel/1
+        ,remove_consumer_channel/0
+        ]).
+-export([channel_publish_method/0
+        ,channel_publish_method/1
+        ]).
 -export([requisition/0
         ,requisition/1
         ,requisition/2
@@ -37,7 +44,10 @@
 -define(ASSIGNMENT_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -type consumer_pid() :: pid().
--export_type([consumer_pid/0]).
+-type consumer_channel() :: pid().
+-type publish_method() :: 'call' | 'cast'.
+
+-export_type([consumer_pid/0, consumer_channel/0, publish_method/0]).
 
 -spec consumer_pid() -> pid().
 consumer_pid() ->
@@ -54,6 +64,21 @@ consumer_pid(Pid) when is_pid(Pid) ->
 remove_consumer_pid() ->
     put('$kz_amqp_consumer_pid', 'undefined').
 
+-spec consumer_channel() -> pid() | kz_amqp_assignment().
+consumer_channel() ->
+    case get('$kz_amqp_consumer_channel') of
+        'undefined' -> kz_amqp_assignments:get_channel(?ASSIGNMENT_TIMEOUT);
+        Channel -> Channel
+    end.
+
+-spec consumer_channel(pid()) -> pid().
+consumer_channel(Channel) ->
+    put('$kz_amqp_consumer_channel', Channel).
+
+-spec remove_consumer_channel() -> 'undefined'.
+remove_consumer_channel() ->
+    put('$kz_amqp_consumer_channel', 'undefined').
+
 -spec consumer_broker() -> api_binary().
 consumer_broker() ->
     case get('$kz_amqp_consumer_broker') of
@@ -68,6 +93,20 @@ consumer_broker(Broker) when is_binary(Broker) ->
 -spec remove_consumer_broker() -> 'undefined'.
 remove_consumer_broker() ->
     put('$kz_amqp_consumer_broker', 'undefined').
+
+-spec channel_publish_method() -> publish_method().
+channel_publish_method() ->
+    case get('$kz_amqp_channel_publish_method') of
+        'undefined' -> 'call';
+        Method when is_atom(Method) -> Method;
+        _Else -> 'call'
+    end.
+
+-spec channel_publish_method(publish_method()) -> publish_method().
+channel_publish_method(Method)
+  when Method =:= 'cast';
+       Method =:= 'call' ->
+    put('$kz_amqp_channel_publish_method', Method).
 
 -spec requisition() -> boolean().
 requisition() -> requisition(consumer_pid()).
@@ -137,7 +176,7 @@ maybe_publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
 publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
     case maybe_split_routing_key(RoutingKey) of
         {'undefined', _} ->
-            basic_publish(kz_amqp_assignments:get_channel(?ASSIGNMENT_TIMEOUT)
+            basic_publish(consumer_channel()
                          ,BasicPub
                          ,AmqpMsg
                          );
@@ -148,17 +187,17 @@ publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
                          )
     end.
 
--spec basic_publish(kz_amqp_assignment() | {'error', 'no_channel'}, basic_publish(), amqp_msg()) -> 'ok'.
+-spec basic_publish(kz_amqp_assignment() | pid() | {'error', 'no_channel'}, basic_publish(), amqp_msg()) -> 'ok'.
 basic_publish(#kz_amqp_assignment{channel=Channel
                                  ,broker=_Broker
-                                 }
+                                 }=Assignment
              ,#'basic.publish'{exchange=_Exchange
                               ,routing_key=_RK
                               }=BasicPub
              ,AmqpMsg)
   when is_pid(Channel) ->
     assert_valid_amqp_method(BasicPub),
-    _ = amqp_channel:call(Channel, BasicPub, AmqpMsg),
+    _ = basic_publish(Assignment, BasicPub, AmqpMsg, channel_publish_method()),
     lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
                ,[_Exchange, _Broker, _RK, Channel]
                );
@@ -170,6 +209,17 @@ basic_publish({'error', 'no_channel'}
     lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
                );
+basic_publish(Channel
+             ,#'basic.publish'{exchange=_Exchange
+                              ,routing_key=_RK
+                              }=BasicPub
+             ,AmqpMsg)
+  when is_pid(Channel) ->
+    assert_valid_amqp_method(BasicPub),
+    _ = basic_publish(Channel, BasicPub, AmqpMsg, channel_publish_method()),
+    lager:debug("published to ~s(direct) exchange (routing key ~s) via ~p"
+               ,[_Exchange, _RK, Channel]
+               );
 basic_publish(_, #'basic.publish'{exchange=_Exchange
                                  ,routing_key=_RK
                                  }
@@ -177,6 +227,20 @@ basic_publish(_, #'basic.publish'{exchange=_Exchange
     lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
                ).
+
+-spec basic_publish(kz_amqp_assignment() | pid(), basic_publish(), amqp_msg(), atom()) -> 'ok'.
+basic_publish(#kz_amqp_assignment{channel=Channel}
+             ,#'basic.publish'{}=BasicPub
+             ,AmqpMsg
+             ,Method)
+  when is_pid(Channel) ->
+    amqp_channel:Method(Channel, BasicPub, AmqpMsg);
+basic_publish(Channel
+             ,#'basic.publish'{}=BasicPub
+             ,AmqpMsg
+             ,Method)
+  when is_pid(Channel) ->
+    amqp_channel:Method(Channel, BasicPub, AmqpMsg).
 
 -spec maybe_split_routing_key(binary()) -> {api_pid(), binary()}.
 maybe_split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->

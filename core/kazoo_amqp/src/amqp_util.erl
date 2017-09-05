@@ -469,7 +469,7 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
                   ,expiration = ?P_GET('expiration', Props) % expires time
 
                   ,message_id = ?P_GET('message_id', Props) % app message id
-                  ,timestamp = ?P_GET('timestamp', Props) % message timestamp
+                  ,timestamp = ?P_GET('timestamp', Props, kz_time:now_us()) % message timestamp
                   ,type = ?P_GET('type', Props) % message type
                   ,user_id = ?P_GET('user_id', Props) % creating user
                   ,app_id = ?P_GET('app_id', Props) % creating app

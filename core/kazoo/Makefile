@@ -32,11 +32,13 @@ $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 			print "from_extension(<<\"" $$i "\">>) -> <<\"" $$1 "\">>;"}}' \
 		| sort -u -t' ' -k1,1 \
 		>> $(GEN_OUT)
+	echo 'from_extension(<<"pem">>) -> <<"application/x-pem-file">>;' >> $(GEN_OUT)
 	echo 'from_extension(_) -> <<"application/octet-stream">>.' >> $(GEN_OUT)
 	echo >> $(GEN_OUT)
 	echo '-spec to_extensions(binary()) -> [binary()].' >> $(GEN_OUT)
 	echo 'to_extensions(<<"audio/mp3">>) -> [<<"mp3">>];' >> $(GEN_OUT)
 	echo 'to_extensions(<<"audio/wav">>) -> [<<"wav">>];' >> $(GEN_OUT)
+	echo 'to_extensions(<<"application/x-pem-file">>) -> [<<"pem">>];' >> $(GEN_OUT)
 	cat $(GEN_FILE) \
 		| grep -v ^# \
 		| awk '{ \

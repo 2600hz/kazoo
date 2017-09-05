@@ -37,6 +37,9 @@
         ,app_name/1
         ,app_version/1
         ,node/1
+        ,defer_response/1
+        ,from_pid/1
+        ,reply_to/1
         ]).
 
 -export([is_federated_event/1
@@ -120,6 +123,24 @@ call_id(Props) when is_list(Props) ->
     props:get_value(?KEY_API_CALL_ID, Props);
 call_id(JObj) ->
     kz_json:get_value(?KEY_API_CALL_ID, JObj).
+
+-spec defer_response(api_terms()) -> api_binary().
+defer_response(Props) when is_list(Props) ->
+    props:get_is_true(?KEY_DEFER_RESPONSE, Props);
+defer_response(JObj) ->
+    kz_json:is_true(?KEY_DEFER_RESPONSE, JObj).
+
+-spec from_pid(api_terms()) -> api_binary().
+from_pid(Props) when is_list(Props) ->
+    props:get_value(?KEY_REQUEST_FROM_PID, Props);
+from_pid(JObj) ->
+    kz_json:get_value(?KEY_REQUEST_FROM_PID, JObj).
+
+-spec reply_to(api_terms()) -> api_binary().
+reply_to(Props) when is_list(Props) ->
+    props:get_value(?KEY_REPLY_TO_PID, Props);
+reply_to(JObj) ->
+    kz_json:get_value(?KEY_REPLY_TO_PID, JObj).
 
 %%--------------------------------------------------------------------
 %% @doc Default Headers in all messages - see wiki

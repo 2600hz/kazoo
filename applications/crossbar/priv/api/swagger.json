@@ -7943,6 +7943,9 @@
         "kapi.conference.config_req": {
             "description": "AMQP API for conference.config_req",
             "properties": {
+                "Conference-ID": {
+                    "type": "string"
+                },
                 "Controls": {
                     "type": "string"
                 },

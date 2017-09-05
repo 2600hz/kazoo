@@ -25,5 +25,8 @@
 -define(KEY_ERROR_MESSAGE, <<"Error-Message">>).
 -define(KEY_REQUEST, <<"Request">>).
 
+-define(KEY_REQUEST_FROM_PID, <<"Request-From-PID">>).
+-define(KEY_REPLY_TO_PID, <<"Reply-To-PID">>).
+
 -define(KZ_API_LITERALS_HRL, 'true').
 -endif.

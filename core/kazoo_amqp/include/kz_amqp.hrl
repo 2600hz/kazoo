@@ -229,6 +229,8 @@
 -type basic_publish() :: #'basic.publish'{}.
 -type basic_deliver() :: #'basic.deliver'{}.
 -type amqp_msg() :: #'amqp_msg'{}.
+-type amqp_basic() :: #'P_basic'{}.
+-type amqp_deliver() :: {basic_deliver(), amqp_msg()}.
 
 -define(AMQP_HIDDEN_TAG, <<"hidden">>).
 

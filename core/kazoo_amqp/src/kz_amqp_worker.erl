@@ -38,6 +38,7 @@
         ,send_request/4
         ,checkout_worker/0, checkout_worker/1
         ,checkin_worker/1, checkin_worker/2
+        ,worker_pool/0, worker_pool/1
         ]).
 
 %% gen_listener callbacks
@@ -207,6 +208,9 @@ call(Req, PubFun, VFun, Timeout, Worker) when is_pid(Worker) ->
                          ,fudge_timeout(Timeout)
                          )
     catch
+        'exit':{timeout, _} ->
+            lager:warning("request timeout"),
+            {error, timeout};
         _E:R ->
             lager:warning("request failed: ~s: ~p", [_E, R]),
             {'error', R}
@@ -219,7 +223,7 @@ call(Req, PubFun, VFun, Timeout, Worker) when is_pid(Worker) ->
 -spec next_worker() -> pid() | {'error', pool_error()}.
 -spec next_worker(atom()) -> pid() | {'error', pool_error()}.
 next_worker() ->
-    next_worker(kz_amqp_sup:pool_name()).
+    next_worker(worker_pool()).
 
 next_worker(Pool) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
@@ -233,7 +237,7 @@ next_worker(Pool) ->
 
 -spec checkout_worker() -> {'ok', pid()} | {'error', pool_error()}.
 checkout_worker() ->
-    checkout_worker(kz_amqp_sup:pool_name()).
+    checkout_worker(worker_pool()).
 
 -spec checkout_worker(atom()) -> {'ok', pid()} | {'error', pool_error()}.
 checkout_worker(Pool) ->
@@ -248,7 +252,7 @@ checkout_worker(Pool) ->
 
 -spec checkin_worker(pid()) -> 'ok'.
 checkin_worker(Worker) ->
-    checkin_worker(Worker, kz_amqp_sup:pool_name()).
+    checkin_worker(Worker, worker_pool()).
 
 -spec checkin_worker(pid(), atom()) -> 'ok'.
 checkin_worker(Worker, Pool) ->
@@ -392,7 +396,7 @@ call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
 -spec cast(api_terms(), publish_fun()) -> cast_return().
 -spec cast(api_terms(), publish_fun(), pid() | atom()) -> cast_return().
 cast(Req, PubFun) ->
-    cast(Req, PubFun, kz_amqp_sup:pool_name()).
+    cast(Req, PubFun, worker_pool()).
 
 cast(Req, PubFun, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
@@ -1044,3 +1048,14 @@ relay_event(Pid, JObj) ->
     relay_event(Pid, JObj, fun erlang:send/2).
 relay_event(Pid, JObj, RelayFun) ->
     RelayFun(Pid, {'amqp_msg', JObj}).
+
+-spec worker_pool(atom()) -> atom().
+worker_pool(Pool) ->
+    put('$kz_amqp_worker_pool', Pool).
+
+-spec worker_pool() -> atom().
+worker_pool() ->
+    case get('$kz_amqp_worker_pool') of
+        'undefined' -> kz_amqp_sup:pool_name();
+        Pool -> Pool
+    end.

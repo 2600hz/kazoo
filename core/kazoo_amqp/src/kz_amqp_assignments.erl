@@ -647,9 +647,11 @@ notify_connection(#kz_amqp_assignment{connection=Connection}) ->
 
 -spec notify_consumer(kz_amqp_assignment()) -> 'ok'.
 notify_consumer(#kz_amqp_assignment{consumer=Consumer
-                                   ,reconnect=Reconnect}) ->
+                                   ,reconnect=Reconnect
+                                   ,channel=Channel
+                                   }) ->
     %% Trigger gen_server to continue with AMQP initialization
-    gen_server:cast(Consumer, {'kz_amqp_assignment', {'new_channel', Reconnect}}).
+    gen_server:cast(Consumer, {'kz_amqp_assignment', {'new_channel', Reconnect, Channel}}).
 
 -spec notify_watchers(kz_amqp_assignment()) -> kz_amqp_assignment().
 notify_watchers(#kz_amqp_assignment{watchers=Watchers}=Assignment) ->
