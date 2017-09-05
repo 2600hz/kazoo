@@ -10,10 +10,27 @@ elif [ -d /opt/kazoo/_rel/kazoo ]; then
     DEFAULT_ROOT="/opt/kazoo/_rel/kazoo"
 elif [ -d /opt/kazoo/bin ]; then
     DEFAULT_ROOT="/opt/kazoo"
+elif [ -d /kazoo/bin ]; then
+    DEFAULT_ROOT="/kazoo"
 else
     echo "Can't find Kazoo release root directory, is the release built?"
     exit -1
 fi
 
-"${DEFAULT_ROOT}"/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
+  while getopts "n:c:" optname
+    do
+      case "$optname" in
+        "n")
+      SUP_NODE_ARG=$OPTARG
+          ;;
+        "c")
+      SUP_COOKIE_ARG=$OPTARG
+          ;;
+      esac
+    done
+
+KAZOO_NODE=${SUP_NODE_ARG:-${KAZOO_NODE:-kazoo_apps}}
+KAZOO_COOKIE=${SUP_COOKIE_ARG:-${KAZOO_COOKIE:-change_me}}
+
+"${DEFAULT_ROOT}"/bin/kazoo escript lib/sup-*/priv/sup.escript -n ${KAZOO_NODE} -c ${KAZOO_COOKIE} ${@:$OPTIND}"
 exit $?
