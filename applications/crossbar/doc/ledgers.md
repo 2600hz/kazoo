@@ -29,12 +29,12 @@ Key | Description | Type | Default | Required
 
 List available ledger service sources.
 
-> GET /v2/ledgers
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/available
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/ledgers
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/available
 ```
 
 ```json

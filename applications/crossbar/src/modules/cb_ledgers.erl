@@ -121,15 +121,8 @@ authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
     authorize_create(Context);
-authorize_request(Context, ?AVAILABLE, ?HTTP_GET) ->
-    case cb_context:req_nouns(Context) of
-        [{<<"ledgers">>, [?AVAILABLE]}] ->
-            kz_services:is_reseller(cb_context:auth_account_id(Context))
-                orelse cb_context:is_superduper_admin(Context);
-        _ -> {'halt', cb_context:add_system_error('forbidden', Context)}
-    end;
-authorize_request(Context, ?AVAILABLE, _) ->
-    {'halt', cb_context:add_system_error('forbidden', Context)};
+authorize_request(_Context, ?AVAILABLE, ?HTTP_GET) ->
+    'true';
 authorize_request(Context, _, ?HTTP_PUT) ->
     {'halt', cb_context:add_system_error('forbidden', Context)};
 authorize_request(Context, _, ?HTTP_GET) ->
@@ -175,7 +168,7 @@ validate(Context, ?DEBIT) ->
     JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?DEBIT, ReqData),
     cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj));
 validate(Context, ?AVAILABLE) ->
-    Available = kapps_account_config:get_global(cb_context:auth_account_id(Context)
+    Available = kapps_account_config:get_global(cb_context:account_id(Context)
                                                ,<<"ledgers">>
                                                ,<<"registered_ledgers">>
                                                ,?DEFAULT_AVIALABLE_LEDGERS),
