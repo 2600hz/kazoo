@@ -26,6 +26,7 @@
         ,to_lower_string/1, to_upper_string/1
         ,to_upper_char/1
         ,to_lower_char/1
+        ,to_pid/1
 
         ,error_to_binary/1
         ]).
@@ -130,12 +131,19 @@ to_number(X) when is_list(X) ->
         'error':'badarg' -> list_to_float(X)
     end.
 
--spec to_list(atom() | list() | binary() | integer() | float()) -> list().
+-spec to_pid(list() | binary() | undefined) -> pid().
+to_pid(undefined) -> undefined;
+to_pid(X) when is_binary(X) -> to_pid(binary_to_list(X));
+to_pid(X) when is_list(X) -> list_to_pid(X).
+
+-spec to_list(pid() | atom() | list() | binary() | integer() | float()) -> list().
 to_list(X) when is_list(X) -> X;
 to_list(X) when is_float(X) -> kz_mochinum:digits(X);
 to_list(X) when is_integer(X) -> integer_to_list(X);
 to_list(X) when is_binary(X) -> binary_to_list(X);
-to_list(X) when is_atom(X) -> atom_to_list(X).
+to_list(X) when is_atom(X) -> atom_to_list(X);
+to_list(X) when is_pid(X) -> pid_to_list(X).
+
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
