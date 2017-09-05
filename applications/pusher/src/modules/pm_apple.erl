@@ -114,4 +114,15 @@ maybe_load_apns(App, ETS, CertBin, Host) ->
 -spec apns_topic(kz_json:object()) -> binary().
 apns_topic(JObj) ->
     TokenApp = kz_json:get_ne_binary_value(<<"Token-App">>, JObj),
-    re:replace(TokenApp, <<"\\.(?:dev|prod)$">>, <<>>, [{'return', 'binary'}]).
+    TokenType = kz_json:get_ne_binary_value(<<"Token-Type">>, JObj),
+    case kapps_config:get_ne_binary(<<"pusher">>
+                                   ,[TokenType, <<"apns_topic">>]
+                                   ,'undefined'
+                                   ,TokenApp
+                                   )
+    of
+        'undefined' ->
+            %% Retain the old behaviour
+            re:replace(TokenApp, <<"\\.(?:dev|prod)$">>, <<>>, [{'return', 'binary'}]);
+        APNsTopic -> APNsTopic
+    end.
