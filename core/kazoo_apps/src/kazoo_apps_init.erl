@@ -24,22 +24,34 @@ start_link() ->
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
+    set_cookie(),
+    set_loglevel().
+
+-spec set_cookie() -> 'true'.
+set_cookie() ->
+    Cookie = maybe_cookie_from_env(),
+    lager:info("setting ~s cookie to ~p", [?APP, Cookie]),
+    erlang:set_cookie(node(), Cookie).
+
+-spec maybe_cookie_from_env() -> atom().
+maybe_cookie_from_env() ->
+    case os:getenv("KAZOO_COOKIE", "noenv") of
+        "noenv" -> cookie_from_ini();
+        Cookie -> kz_term:to_atom(Cookie, 'true')
+    end.
+
+-spec cookie_from_ini() -> atom().
+cookie_from_ini() ->
     case kz_config:get_atom(?APP, 'cookie') of
         [] ->
-            lager:warning("failed to set ~s cookie trying node ~s", [?APP, node()]),
             [Name, _Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
             case kz_config:get_atom(kz_term:to_atom(Name, 'true'), 'cookie') of
-                [] ->
-                    lager:warning("failed to set ~s cookie for node ~s", [?APP, node()]);
-                [Cookie|_] ->
-                    erlang:set_cookie(node(), Cookie),
-                    lager:info("setting ~s cookie to ~p", [?APP, Cookie])
+                [] -> lager:warning("failed to get cookie for node ~s, generating one", [node()]),
+                      kz_term:to_atom(kz_binary:rand_hex(16), 'true');
+                [Cookie|_] -> Cookie
             end;
-        [Cookie|_] ->
-            erlang:set_cookie(node(), Cookie),
-            lager:info("setting ~s cookie to ~p", [?APP, Cookie])
-    end,
-    set_loglevel().
+        [Cookie|_] -> Cookie
+    end.
 
 -spec set_loglevel() -> 'ok'.
 set_loglevel() ->
