@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required
 
 #### Get Available Ledgers
 
-List available ledger service sources.
+List available ledger sources from the account's reseller.
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers/available
 
@@ -42,16 +42,11 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
-            "name": "support",
-            "friendly_name": "Support"
-        },
-        {
-            "name": "mobile_data",
-            "friendly_name": "Mobile Data (100mB)"
-        },
-        {
             "name": "per-minute-voip",
-            "friendly_name": "Per Minute VoIP"
+            "friendly_name": "Per Minute VoIP",
+            "markup_type": [
+                "percentage"
+            ]
         }
     ],
     "node": "{NODE}",

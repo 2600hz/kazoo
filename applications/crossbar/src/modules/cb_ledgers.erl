@@ -30,13 +30,6 @@
 %%-define(LEDGER_VIEW, "ledgers/listing_by_service").
 %% TODO: make this change for 4.1
 
--define(DEFAULT_AVIALABLE_LEDGERS,
-        [kz_json:from_list([{<<"name">>, <<"per-minute-voip">>}, {<<"friendly_name">>, <<"Per Minute VoIP">>}])
-        ,kz_json:from_list([{<<"name">>, <<"mobile_data">>}, {<<"friendly_name">>, <<"Mobile Data (100mB)">>}])
-        ,kz_json:from_list([{<<"name">>, <<"support">>}, {<<"friendly_name">>, <<"Support">>}])
-        ]
-       ).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -168,10 +161,7 @@ validate(Context, ?DEBIT) ->
     JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?DEBIT, ReqData),
     cb_context:validate_request_data(<<"ledgers">>, cb_context:set_req_data(Context, JObj));
 validate(Context, ?AVAILABLE) ->
-    Available = kapps_account_config:get_global(cb_context:account_id(Context)
-                                               ,<<"ledgers">>
-                                               ,<<"registered_ledgers">>
-                                               ,?DEFAULT_AVIALABLE_LEDGERS),
+    Available = kz_ledgers:available_ledgers(cb_context:account_id(Context)),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:set_resp_data/2, Available}
               ],
