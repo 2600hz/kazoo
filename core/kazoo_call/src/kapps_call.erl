@@ -132,6 +132,7 @@
 
 -ifdef(TEST).
 -export([eq/2]).
+-export([updateable_ccvs/2]).
 -endif.
 
 -include("kapps_call_command.hrl").
@@ -1077,9 +1078,23 @@ set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
 -else.
 set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = kz_json:set_values(Props, CCVs),
-    kapps_call_command:set(NewCCVs, 'undefined', Call),
+
+    maybe_update_call_ccvs(Call, Props, kz_json:to_proplist(CCVs)),
+
     handle_ccvs_update(NewCCVs, Call).
+
+-spec maybe_update_call_ccvs(call(), kz_proplist(), kz_proplist()) -> 'ok'.
+maybe_update_call_ccvs(Call, NewCCVs, ExistingCCVs) ->
+    case updateable_ccvs(NewCCVs, ExistingCCVs) of
+        [] -> 'ok';
+        Updates -> kapps_call_command:set(Updates, 'undefined', Call)
+    end.
+
 -endif.
+
+-spec updateable_ccvs(kz_proplist(), kz_proplist()) -> kz_proplist().
+updateable_ccvs(New, Existing) ->
+    New -- Existing.
 
 -spec update_custom_channel_vars([fun((kz_json:object()) -> kz_json:object()),...], call()) -> call().
 -ifdef(TEST).

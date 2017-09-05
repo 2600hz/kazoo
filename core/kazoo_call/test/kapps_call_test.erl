@@ -290,3 +290,24 @@ inbound_onnet_trunkstore_win() ->
     {ok,RouteWin} = kz_json:fixture(?APP, "fixtures/route_win/inbound-onnet-trunkstore.json"),
     'true' = kapi_route:win_v(RouteWin),
     RouteWin.
+
+updateable_test_() ->
+    %% {CCVsToSend, ExistingCCVs, NewCCVs}
+    Tests = [{[], [], []}
+
+            ,{[], [{k, v}], []}
+            ,{[{k, v}], [], [{k, v}]}
+            ,{[], [{k, v}], [{k, v}]}
+            ,{[{k, v1}], [{k, v}], [{k, v1}]}
+
+            ,{[], [{k0, v0}, {k1, v1}], []}
+            ,{[], [{k0, v0}, {k1, v1}], [{k0, v0}, {k1, v1}]}
+
+            ,{[{k0, v0}, {k1, v1}], [], [{k0, v0}, {k1, v1}]}
+            ,{[{k0, v9}], [{k0, v0}, {k1, v1}], [{k0, v9}]}
+            ,{[{k1, v9}], [{k0, v0}, {k1, v1}], [{k1, v9}]}
+            ,{[{k0, v9}, {k1, v9}], [{k0, v0}, {k1, v1}], [{k0, v9}, {k1, v9}]}
+            ],
+    [?_assertEqual(ToSend, kapps_call:updateable_ccvs(New, Existing))
+     || {ToSend, Existing, New} <- Tests
+    ].
