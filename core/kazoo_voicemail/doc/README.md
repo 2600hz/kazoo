@@ -25,27 +25,14 @@ All media recordings (private_media) remain in account db to be moved to message
 Kazoo datamanager handle of fetching the actual media attachment from account db anytime MODB documents attachemnt tries to be reached. This process is seamless from users and are handled entirely by
 Kazoo data layer.
 
-## System Config settings
+These are configurations (`system_config/callflow/voicemail`) for controlling migration process:
 
-These are configurations (`system_config/callflow`) for controlling migration process:
-
-Key | Description | Type | Default | Required
+Key | Description | Type | Default
 --- | ----------- | ---- | ------- | --------
-`voicemail.delete_after_notify` | callflow delete after notify | `boolean()` | `false` | `false`
-`voicemail.extension` | Default media file format for Callflow modules | `string()` | `mp3` | `false`
-`voicemail.force_require_pin` | If true, ignore the setting on the vmbox and require all users to enter a pin | `boolean()` | `false` | `false`
-`voicemail.max_box_number_length` | callflow maximum box number length | `integer()` | `15` | `false`
-`voicemail.max_login_attempts` | callflow max login attempts | `integer()` | `3` | `false`
-`voicemail.max_message_count` | callflow maximum message count | `integer()` | `100` | `false`
-`voicemail.max_message_length` | callflow maximum message length | `integer()` | `500` | `false`
-`voicemail.max_pin_length` | callflow maximum pin length | `integer()` | `6` | `false`
-`voicemail.message_retention_duration` | callflow message retention duration | `integer()` | `93` | `false`
-`voicemail.migrate_interaccount_delay_ms` | callflow migrate interaccount delay in milliseconds | `integer()` | `2000` | `false`
-`voicemail.migrate_max_bulk_insert` | callflow migrate maximum bulk insert | `integer()` | `2000` | `false`
-`voicemail.migrate_max_worker` | callflow migrate max worker | `integer()` | `10` | `false`
-`voicemail.min_message_size` | callflow minimum message size | `integer()` | `500` | `false`
-`voicemail.save_after_notify` | callflow save after notify | `boolean()` | `false` | `false`
-`voicemail.vm_message_foraward_type` | Enable or disable the ability to prepend a message when forwarding a voicemail message | `string()` | `only_forward` | `false`
+`migrate_max_mailbox_process` | How many mailbox must be process in iterations | `integer` | 10
+`migrate_interbox_delay_ms` | Control wait time between processing each mailbox batch iterations | `integer` | 1000
+`migrate_interaccount_delay_ms` | Control wait time between processing each account | `integer` | 10000
+
 
 ## New message
 
@@ -66,4 +53,4 @@ Callflow voicemail module uses `kvm_message:new_message/2` to record and store t
 
 ## Retention duration
 
-There is a new configuration parameter, `message_retention_duration`, that specifies how many days back are searched when listing voicemails.
+There is a new configuration parameter `message_retention_duration` under `system_config/callflow/voicemail` for how many days voicemail messages should be considered when accessing a voicemail box.
