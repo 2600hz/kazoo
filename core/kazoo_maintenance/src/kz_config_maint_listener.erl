@@ -70,6 +70,7 @@ send_resp(MaintJObj, Created) ->
 
     Resp = [{<<"Code">>, code(Created)}
            ,{<<"Message">>, message(Created)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
             | kz_api:default_headers(RespQueue, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_maintenance:publish_resp(RespQueue, Resp).
