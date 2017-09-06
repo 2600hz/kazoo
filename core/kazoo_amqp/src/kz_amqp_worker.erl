@@ -638,10 +638,13 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
             {'reply', Error, reset(State)}
     end;
 
-handle_call({'publish', ReqProp, PublishFun}
+handle_call({'publish', ReqProp0, PublishFun}
            ,{_Pid, _}
-           ,#state{client_from='relay'}=State
+           ,#state{client_from='relay'
+                  ,queue=Queue
+                  }=State
            ) ->
+    ReqProp = props:insert_value(?KEY_SERVER_ID, Queue, ReqProp0),
     case publish_api(PublishFun, ReqProp) of
         'ok' ->
             lager:debug("published message ~s for ~p", [kz_api:msg_id(ReqProp), _Pid]),
@@ -668,6 +671,7 @@ handle_call({'publish', ReqProp, PublishFun}
             };
         'ok' ->
             lager:debug("published message ~s for ~p", [kz_api:msg_id(ReqProp), Pid]),
+            lager:debug("published using ~p: ~p", [PublishFun, ReqProp]),
             {'reply', 'ok', reset(State)};
         {'error', _E}=Err ->
             lager:error("failed to publish message ~s for ~p: ~p", [kz_api:msg_id(ReqProp), Pid, _E]),
@@ -781,7 +785,7 @@ handle_cast({'event', MsgId, JObj}
     _ = kz_util:put_callid(JObj),
     lager:debug("recv message ~s", [MsgId]),
     Responses = [JObj | Resps],
-    case UntilFun(Responses, Acc) of
+    try UntilFun(Responses, Acc) of
         'true' ->
             lager:debug("responses have apparently met the criteria for the client, returning"),
             lager:debug("response for msg id ~s took ~bμs to return"
@@ -793,6 +797,11 @@ handle_cast({'event', MsgId, JObj}
             {'noreply', State#state{responses=Responses}, 'hibernate'};
         {'false', Acc0} ->
             {'noreply', State#state{responses=Responses, acc=Acc0}, 'hibernate'}
+    catch
+        _E:_R ->
+            lager:warning("supplied until_fun crashed: ~s: ~p", [_E, _R]),
+            lager:debug("pretending like until_fun returned false"),
+            {'noreply', State#state{responses=Responses}, 'hibernate'}
     end;
 handle_cast({'event', MsgId, JObj}
            ,#state{current_msg_id = MsgId
@@ -804,7 +813,7 @@ handle_cast({'event', MsgId, JObj}
     _ = kz_util:put_callid(JObj),
     lager:debug("recv message ~s", [MsgId]),
     Responses = [JObj | Resps],
-    case UntilFun(Responses) of
+    try UntilFun(Responses) of
         'true' ->
             lager:debug("responses have apparently met the criteria for the client, returning"),
             lager:debug("response for msg id ~s took ~bus to return"
@@ -813,6 +822,11 @@ handle_cast({'event', MsgId, JObj}
             gen_server:reply(From, {'ok', Responses}),
             {'noreply', reset(State), 'hibernate'};
         'false' ->
+            {'noreply', State#state{responses=Responses}, 'hibernate'}
+    catch
+        _E:_R ->
+            lager:warning("supplied until_fun crashed: ~s: ~p", [_E, _R]),
+            lager:debug("pretending like until_fun returned false"),
             {'noreply', State#state{responses=Responses}, 'hibernate'}
     end;
 handle_cast({'event', _MsgId, JObj}
@@ -976,6 +990,7 @@ reset(#state{req_timeout_ref = ReqRef
             'true' -> erlang:demonitor(ClientRef, ['flush']);
             'false' -> 'ok'
         end,
+    lager:debug("reset worker state"),
     State#state{client_pid = 'undefined'
                ,client_ref = 'undefined'
                ,client_from = 'undefined'
