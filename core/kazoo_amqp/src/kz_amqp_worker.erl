@@ -989,7 +989,7 @@ reset(#state{req_timeout_ref = ReqRef
             'true' -> erlang:demonitor(ClientRef, ['flush']);
             'false' -> 'ok'
         end,
-    lager:debug("reset worker state"),
+
     State#state{client_pid = 'undefined'
                ,client_ref = 'undefined'
                ,client_from = 'undefined'
