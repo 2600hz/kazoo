@@ -30,6 +30,7 @@
                   ,?SUPER('crossbar_module_sup')
                   ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                   ,?WORKER('crossbar_bindings')
+                  ,?WORKER('crossbar_maint_listener')
                   ]
        ).
 
