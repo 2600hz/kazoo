@@ -37,7 +37,10 @@
                                     ,?REFRESH_VIEWS
                                     ]}
                     ]).
--define(REQ_TYPES, [{<<"Classification">>, fun is_binary/1}
+-define(REQ_TYPES, [{<<"Classification">>, fun(C) -> is_binary(C)
+                                                         orelse is_atom(C)
+                                           end
+                    }
                    ,{<<"Database">>, fun is_binary/1}
                    ]).
 
