@@ -29,8 +29,10 @@ fi
       esac
     done
 
+shift $(($OPTIND - 1))
+
 KAZOO_NODE=${SUP_NODE_ARG:-${KAZOO_NODE:-kazoo_apps}}
 KAZOO_COOKIE=${SUP_COOKIE_ARG:-${KAZOO_COOKIE:-change_me}}
 
-"${DEFAULT_ROOT}"/bin/kazoo escript lib/sup-*/priv/sup.escript -n ${KAZOO_NODE} -c ${KAZOO_COOKIE} ${@:$OPTIND}"
+${DEFAULT_ROOT}/bin/kazoo escript lib/sup-*/priv/sup.escript -n ${KAZOO_NODE} -c ${KAZOO_COOKIE} $*
 exit $?
