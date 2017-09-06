@@ -257,7 +257,7 @@ create_sms_doc_id() ->
     {Year, Month, _} = erlang:date(),
     kz_term:to_binary(
       io_lib:format("~B~s-~s",[Year
-                              ,kz_time:pad_month(Month)
+                              ,kz_date:pad_month(Month)
                               ,kz_binary:rand_hex(16)
                               ])
      ).
