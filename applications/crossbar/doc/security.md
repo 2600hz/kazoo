@@ -99,42 +99,44 @@ curl -v -X GET \
   "data": {
     "account": {},
     "inherited_config": {
-      "cb_user_auth": {
-        "enabled": true,
-        "token_auth_expiry_s": 3600,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true,
-        "multi_factor": {
-          "enabled": false,
-          "_read_only": {
-            "name": "Default System Provider",
-            "provider_name": "duo"
+      "auth_modules": {
+        "cb_user_auth": {
+          "enabled": true,
+          "token_auth_expiry_s": 3600,
+          "log_failed_attempts": true,
+          "log_successful_attempts": true,
+          "multi_factor": {
+            "enabled": false,
+            "_read_only": {
+              "name": "Default System Provider",
+              "provider_name": "duo"
+            }
           }
+        },
+        "cb_api_auth": {
+          "enabled": true,
+          "token_auth_expiry_s": 3600,
+          "log_failed_attempts": true,
+          "log_successful_attempts": true
+        },
+        "cb_auth": {
+          "enabled": true,
+          "token_auth_expiry_s": 3600,
+          "log_failed_attempts": true,
+          "log_successful_attempts": true
+        },
+        "cb_ip_auth": {
+          "enabled": true,
+          "token_auth_expiry_s": 3600,
+          "log_failed_attempts": true,
+          "log_successful_attempts": true
+        },
+        "cb_ubiquiti_auth": {
+          "enabled": true,
+          "token_auth_expiry_s": 3600,
+          "log_failed_attempts": true,
+          "log_successful_attempts": true
         }
-      },
-      "cb_api_auth": {
-        "enabled": true,
-        "token_auth_expiry_s": 3600,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
-      },
-      "cb_auth": {
-        "enabled": true,
-        "token_auth_expiry_s": 3600,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
-      },
-      "cb_ip_auth": {
-        "enabled": true,
-        "token_auth_expiry_s": 3600,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
-      },
-      "cb_ubiquiti_auth": {
-        "enabled": true,
-        "token_auth_expiry_s": 3600,
-        "log_failed_attempts": true,
-        "log_successful_attempts": true
       }
     }
   },
