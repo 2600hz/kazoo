@@ -90,6 +90,7 @@
 -export_type([view_option/0, view_options/0
              ,view_listing/0, views_listing/0
              ,data_error/0, data_errors/0
+             ,db_classification/0
              ]).
 
 -include("kz_data.hrl").
@@ -1442,7 +1443,7 @@ max_bulk_read(ViewOptions) ->
     UpperBound = min(AskedFor, max_bulk_read()),
     max(UpperBound, 1).
 
--spec db_classification(text()) -> db_classifications().
+-spec db_classification(text()) -> db_classification().
 db_classification(DBName) -> kzs_util:db_classification(DBName).
 
 -spec format_error(any()) -> any().

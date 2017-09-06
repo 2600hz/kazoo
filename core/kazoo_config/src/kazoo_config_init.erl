@@ -69,7 +69,6 @@ set_zone(AppEnv) ->
     lager:notice("setting zone to ~p", [Zone]),
     application:set_env(?APP, 'zone', Zone).
 
-
 -spec reload() -> 'ok'.
 reload() ->
     set_env().

@@ -98,10 +98,17 @@
 -type view_listing() :: {ne_binary(), kz_json:object()}.
 -type views_listing() :: [view_listing()].
 
--type db_classifications() :: 'account' | 'modb' | 'acdc' |
-                              'numbers' | 'aggregate' | 'system' |
-                              'resource_selectors' | 'deprecated' |
-                              'undefined' | 'external' | 'provisioner'.
+-type db_classification() :: 'account' |
+                             'acdc' |
+                             'aggregate' |
+                             'deprecated' |
+                             'external' |
+                             'modb' |
+                             'numbers' |
+                             'provisioner' |
+                             'resource_selectors' |
+                             'system' |
+                             'undefined'.
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()} | 'ensure_other_dbs'].
 -type db_delete_options() :: ['ensure_other_dbs'].
