@@ -45,7 +45,7 @@
 -export([get_all_account_views/0]).
 -export([cleanup_voicemail_media/1]).
 -export([cleanup_orphan_modbs/0]).
--export([delete_system_media_references/0]).
+
 -export([migrate_system/0]).
 -export([validate_system_config/1, cleanup_system_config/1, validate_system_configs/0, cleanup_system_configs/0]).
 
@@ -233,7 +233,6 @@ blocking_refresh(Pause) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh() -> 'no_return'.
--spec refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
 -spec refresh(ne_binaries(), text() | non_neg_integer()) -> 'no_return'.
 -spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh() ->
@@ -249,7 +248,7 @@ refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
              ,[self(), length(Databases) + 1, Total, Database]),
-    _ = refresh(Database),
+    _ = old_refresh(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
             'true' -> 'ok'
@@ -265,56 +264,116 @@ get_databases() ->
 get_database_sort(Db1, Db2) ->
     kzs_util:db_priority(Db1) < kzs_util:db_priority(Db2).
 
-refresh(?KZ_CONFIG_DB) ->
-    kz_datamgr:db_create(?KZ_CONFIG_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
-    kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
-    cleanup_invalid_notify_docs(),
-    delete_system_media_references(),
-    accounts_config_deprecate_timezone_for_default_timezone();
-refresh(?KZ_DATA_DB) ->
+-spec refresh(ne_binary()) ->
+                     {kz_amqp_worker:request_return()
+                     ,kz_amqp_worker:request_return()
+                     }.
+refresh(Database) ->
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    kz_amqp_worker:relay_to(Worker, self()),
+
+    RefreshResult = do_refresh(Database, Worker),
+    kz_amqp_worker:checkin_worker(Worker),
+    print_refresh_result(RefreshResult).
+
+-spec print_refresh_result(tuple()) -> 'ok'.
+print_refresh_result({Db, Views}) ->
+    io:format('user', "db: ~p~nviews: ~p~n", [Db, Views]).
+
+do_refresh(Database, Worker) ->
+    Classification = kz_datamgr:db_classification(Database),
+    RefreshedDb = refresh_database(Database, Worker, Classification),
+    RefreshedViews = refresh_views(Database, Worker, Classification),
+    {RefreshedDb, RefreshedViews}.
+
+-spec refresh_database(ne_binary(), pid(), kz_datamgr:db_classification()) ->
+                              kz_amqp_worker:request_return().
+refresh_database(Database, Worker, Classification) ->
+    Req = [{<<"Action">>, <<"refresh_database">>}
+          ,{<<"Classification">>, Classification}
+          ,{<<"Database">>, Database}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req, fun kapi_maintenance:publish_req/1, Worker),
+    wait_for_response(10 * ?MILLISECONDS_IN_SECOND).
+
+wait_for_response(Timeout) ->
+    wait_for_response(Timeout, []).
+wait_for_response(Timeout, []) when Timeout =< 0 ->
+    {'error', 'timeout'};
+wait_for_response(Timeout, Resps) when Timeout =< 0 ->
+    {'ok', Resps};
+wait_for_response(Timeout, Resps) ->
+    Start = os:timestamp(),
+    receive
+        {'amqp_msg', JObj} ->
+            Left = kz_time:decr_timeout(Timeout, Start),
+            case kapi_maintenance:resp_v(JObj) of
+                'true' -> wait_for_response(Left, [JObj|Resps]);
+                'false' -> wait_for_response(Left, Resps)
+            end
+    after
+        Timeout -> wait_for_response(0, Resps)
+    end.
+
+-spec refresh_views(ne_binary(), pid(), kz_datamgr:db_classification()) ->
+                           kz_amqp_worker:request_return().
+refresh_views(Database, Worker, Classification) ->
+    Req = [{<<"Action">>, <<"refresh_views">>}
+          ,{<<"Classification">>, Classification}
+          ,{<<"Database">>, Database}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req
+                       ,fun kapi_maintenance:publish_req/1
+                       ,Worker
+                       ),
+    wait_for_response(30 * ?MILLISECONDS_IN_SECOND).
+
+-spec old_refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
+old_refresh(?KZ_DATA_DB) ->
     kz_datamgr:revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>);
-refresh(?KZ_OAUTH_DB) ->
+old_refresh(?KZ_OAUTH_DB) ->
     kz_datamgr:db_create(?KZ_OAUTH_DB),
     kazoo_oauth_maintenance:register_common_providers();
-refresh(?KZ_AUTH_DB) ->
+old_refresh(?KZ_AUTH_DB) ->
     kz_datamgr:db_create(?KZ_AUTH_DB),
     kazoo_auth_maintenance:register_common_providers(),
     kazoo_auth_maintenance:refresh();
-refresh(?KZ_WEBHOOKS_DB=Part) ->
+old_refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-refresh(?KZ_OFFNET_DB=Part) ->
+old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-refresh(?KZ_SERVICES_DB) ->
+old_refresh(?KZ_SERVICES_DB) ->
     kz_datamgr:db_create(?KZ_SERVICES_DB),
     kazoo_services_maintenance:refresh();
-refresh(?KZ_SIP_DB) ->
+old_refresh(?KZ_SIP_DB) ->
     kz_datamgr:db_create(?KZ_SIP_DB),
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
             ,kapps_util:get_view_json('registrar', <<"credentials.json">>)
             ,kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
             ],
     kapps_util:update_views(?KZ_SIP_DB, Views, 'true');
-refresh(?KZ_SCHEMA_DB) ->
+old_refresh(?KZ_SCHEMA_DB) ->
     kz_datamgr:db_create(?KZ_SCHEMA_DB),
     kz_datamgr:suppress_change_notice(),
     kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, 'crossbar', "schemas"),
     kz_datamgr:enable_change_notice(),
     'ok';
-refresh(?KZ_MEDIA_DB) ->
+old_refresh(?KZ_MEDIA_DB) ->
     kz_datamgr:db_create(?KZ_MEDIA_DB),
     kazoo_media_maintenance:refresh(),
     'ok';
-refresh(?KZ_RATES_DB) ->
+old_refresh(?KZ_RATES_DB) ->
     refresh_ratedeck_db(?KZ_RATES_DB);
-refresh(?KZ_ANONYMOUS_CDR_DB) ->
+old_refresh(?KZ_ANONYMOUS_CDR_DB) ->
     kz_datamgr:db_create(?KZ_ANONYMOUS_CDR_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
     'ok';
-refresh(?KZ_DEDICATED_IP_DB) ->
+old_refresh(?KZ_DEDICATED_IP_DB) ->
     kz_datamgr:db_create(?KZ_DEDICATED_IP_DB),
     kz_ip_utils:refresh_database();
-refresh(?KZ_ACCOUNTS_DB) ->
+old_refresh(?KZ_ACCOUNTS_DB) ->
     kz_datamgr:db_create(?KZ_ACCOUNTS_DB),
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
             ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
@@ -322,41 +381,41 @@ refresh(?KZ_ACCOUNTS_DB) ->
             ],
     kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'true'),
     'ok';
-refresh(?KZ_FAXES_DB) ->
+old_refresh(?KZ_FAXES_DB) ->
     kz_datamgr:db_create(?KZ_FAXES_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXES_VIEW_FILE),
     _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXBOX_VIEW_FILE),
     'ok';
-refresh(?KZ_PORT_REQUESTS_DB) ->
+old_refresh(?KZ_PORT_REQUESTS_DB) ->
     kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
     _ = kz_util:spawn(fun knm_port_request:migrate/0),
     'ok';
-refresh(?KZ_ACDC_DB) ->
+old_refresh(?KZ_ACDC_DB) ->
     kz_datamgr:db_create(?KZ_ACDC_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
     'ok';
-refresh(?KZ_CCCPS_DB) ->
+old_refresh(?KZ_CCCPS_DB) ->
     kz_datamgr:db_create(?KZ_CCCPS_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_CCCPS_DB, 'crossbar', <<"views/cccps.json">>),
     'ok';
-refresh(?KZ_TOKEN_DB) ->
+old_refresh(?KZ_TOKEN_DB) ->
     _ = kz_datamgr:db_create(?KZ_TOKEN_DB),
     kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
     'ok';
-refresh(?KZ_ALERTS_DB) ->
+old_refresh(?KZ_ALERTS_DB) ->
     _ = kz_datamgr:db_create(?KZ_ALERTS_DB),
     kz_datamgr:revise_doc_from_file(?KZ_ALERTS_DB, 'crossbar', "views/alerts.json"),
     'ok';
-refresh(?KZ_TASKS_DB) ->
+old_refresh(?KZ_TASKS_DB) ->
     _ = kz_datamgr:db_create(?KZ_TASKS_DB),
     _ = kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, 'tasks'),
     'ok';
-refresh(?KZ_PENDING_NOTIFY_DB) ->
+old_refresh(?KZ_PENDING_NOTIFY_DB) ->
     _ = kz_datamgr:db_create(?KZ_PENDING_NOTIFY_DB),
     kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, 'crossbar', "views/pending_notify.json"),
     'ok';
-refresh(Database) when is_binary(Database) ->
+old_refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of
         'account' -> refresh_account_db(Database);
         'modb' -> kazoo_modb:refresh_views(Database);
@@ -367,89 +426,6 @@ refresh(Database) when is_binary(Database) ->
         'ratedeck' -> refresh_ratedeck_db(Database);
         _Else -> 'ok'
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec cleanup_invalid_notify_docs() -> 'ok'.
-cleanup_invalid_notify_docs() ->
-    _ = kz_datamgr:db_archive(<<"system_config">>),
-    case kz_datamgr:all_docs(?KZ_CONFIG_DB, ['include_docs']) of
-        {'ok', JObjs} -> cleanup_invalid_notify_docs(JObjs);
-        {'error', _R} ->
-            lager:warning("unable to fetch all system config docs: ~p", [_R])
-    end.
-
--spec cleanup_invalid_notify_docs(kz_json:objects()) -> 'ok'.
-cleanup_invalid_notify_docs([]) -> 'ok';
-cleanup_invalid_notify_docs([JObj|JObjs]) ->
-    Id = kz_json:get_value(<<"id">>, JObj),
-    Doc = kz_json:get_value(<<"doc">>, JObj),
-    Type = kz_json:get_value(<<"pvt_type">>, Doc),
-    _ = maybe_remove_invalid_notify_doc(Type, Id, Doc),
-    cleanup_invalid_notify_docs(JObjs).
-
--spec maybe_remove_invalid_notify_doc(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
-maybe_remove_invalid_notify_doc(<<"notification">>, <<"notification", _/binary>>, _) -> 'ok';
-maybe_remove_invalid_notify_doc(<<"notification">>, _, JObj) ->
-    _ = kz_datamgr:del_doc(?KZ_CONFIG_DB, JObj),
-    'ok';
-maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Remove system_config/accounts timezone key and use only
-%% default_timezone
-%% @end
-%%--------------------------------------------------------------------
--spec accounts_config_deprecate_timezone_for_default_timezone() -> 'ok'.
--spec accounts_config_deprecate_timezone_for_default_timezone(kz_json:object()) -> 'ok'.
-accounts_config_deprecate_timezone_for_default_timezone() ->
-    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, <<"accounts">>) of
-        {'ok', AccountsConfig} ->
-            accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig);
-        {'error', E} ->
-            lager:warning("unable to fetch system_config/accounts: ~p", [E])
-    end.
-
-accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig) ->
-    PublicFields = kz_doc:public_fields(AccountsConfig),
-    case kz_json:get_keys(PublicFields) of
-        [] -> 'ok';
-        Keys ->
-            MigratedConfig = deprecate_timezone_for_default_timezone(Keys, AccountsConfig),
-            kz_datamgr:save_doc(?KZ_CONFIG_DB, MigratedConfig),
-            'ok'
-    end.
-
--spec deprecate_timezone_for_default_timezone(kz_json:keys(), kz_json:object()) ->
-                                                     kz_json:object().
-deprecate_timezone_for_default_timezone(Nodes, AccountsConfig) ->
-    lists:foldl(fun deprecate_timezone_for_node/2, AccountsConfig, Nodes).
-
--spec deprecate_timezone_for_node(kz_json:key(), kz_json:object()) ->
-                                         kz_json:object().
--spec deprecate_timezone_for_node(kz_json:key(), kz_json:object(), api_ne_binary(), api_ne_binary()) ->
-                                         kz_json:object().
-deprecate_timezone_for_node(Node, AccountsConfig) ->
-    Timezone = kz_json:get_value([Node, <<"timezone">>], AccountsConfig),
-    DefaultTimezone = kz_json:get_value([Node, <<"default_timezone">>], AccountsConfig),
-    deprecate_timezone_for_node(Node, AccountsConfig, Timezone, DefaultTimezone).
-
-deprecate_timezone_for_node(_Node, AccountsConfig, 'undefined', _Default) ->
-    AccountsConfig;
-deprecate_timezone_for_node(Node, AccountsConfig, Timezone, 'undefined') ->
-    io:format("setting default timezone to ~s for node ~s~n", [Timezone, Node]),
-    kz_json:set_value([Node, <<"default_timezone">>]
-                     ,Timezone
-                     ,kz_json:delete_key([Node, <<"timezone">>], AccountsConfig)
-                     );
-deprecate_timezone_for_node(Node, AccountsConfig, _Timezone, _Default) ->
-    kz_json:delete_key([Node, <<"timezone">>], AccountsConfig).
 
 -spec refresh_ratedeck_db(ne_binary()) -> 'ok'.
 refresh_ratedeck_db(RateDb) ->
@@ -1219,45 +1195,6 @@ show_status(CallId, 'true', Resp) ->
     lager:info("Media Server: ~s", [kz_json:get_value(<<"Switch-Hostname">>, Resp)]),
     lager:info("Responding App: ~s", [kz_json:get_value(<<"App-Name">>, Resp)]),
     lager:info("Responding Node: ~s", [kz_json:get_value(<<"Node">>, Resp)]).
-
--spec delete_system_media_references() -> 'ok'.
-delete_system_media_references() ->
-    DocId = kz_call_response:config_doc_id(),
-    case kz_datamgr:open_doc(?KZ_CONFIG_DB, DocId) of
-        {'ok', CallResponsesDoc} ->
-            delete_system_media_references(DocId, CallResponsesDoc);
-        {'error', 'not_found'} -> 'ok'
-    end.
-
--spec delete_system_media_references(ne_binary(), kz_json:object()) -> 'ok'.
-delete_system_media_references(DocId, CallResponsesDoc) ->
-    TheKey = <<"default">>,
-    Default = kz_json:get_value(TheKey, CallResponsesDoc),
-
-    case kz_json:map(fun remove_system_media_refs/2, Default) of
-        Default -> 'ok';
-        NewDefault ->
-            io:format("updating ~s with stripped system_media references~n", [DocId]),
-            NewCallResponsesDoc = kz_json:set_value(TheKey, NewDefault, CallResponsesDoc),
-            _Resp = kz_datamgr:save_doc(?KZ_CONFIG_DB, NewCallResponsesDoc),
-            'ok'
-    end.
-
--spec remove_system_media_refs(kz_json:path(), kz_json:objects()) ->
-                                      {kz_json:path(), kz_json:json_term()}.
-remove_system_media_refs(HangupCause, Config) ->
-    case kz_json:is_json_object(Config) of
-        'false' -> {HangupCause, Config};
-        'true' ->
-            {HangupCause
-            ,kz_json:foldl(fun remove_system_media_ref/3, kz_json:new(), Config)
-            }
-    end.
-
--spec remove_system_media_ref(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
-                                     kz_json:object().
-remove_system_media_ref(Key, <<"/system_media/", Value/binary>>, Acc) -> kz_json:set_value(Key, Value, Acc);
-remove_system_media_ref(Key, Value, Acc) -> kz_json:set_value(Key, Value, Acc).
 
 -spec last_migrate_version() -> ne_binary().
 last_migrate_version() ->
