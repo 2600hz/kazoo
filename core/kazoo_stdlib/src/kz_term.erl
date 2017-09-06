@@ -72,11 +72,11 @@ randomize_list(T, List) ->
                ).
 
 %% must be a term that can be changed to a list
--spec to_hex(binary() | string()) -> string().
+-spec to_hex(text()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
 
--spec to_hex_binary(binary() | string()) -> binary().
+-spec to_hex_binary(text()) -> binary().
 to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(to_hex_char(B div 16)), (to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
@@ -160,7 +160,7 @@ to_api_binary('undefined') -> 'undefined';
 to_api_binary(Arg) -> to_binary(Arg).
 
 %% the safer version, won't let you leak atoms
--spec to_atom(atom() | list() | binary() | integer() | float()) -> atom().
+-spec to_atom(text() | integer() | float()) -> atom().
 to_atom(X) when is_atom(X) -> X;
 to_atom(X) when is_list(X) -> list_to_existing_atom(X);
 to_atom(X) when is_binary(X) -> binary_to_existing_atom(X, utf8);
@@ -173,7 +173,7 @@ to_atom(X) -> to_atom(to_list(X)).
 %% if X is a list, the SafeList would be [nonempty_string(),...]
 %% etc. So to_atom will not coerce the type of X to match the types in SafeList
 %% when doing the lists:member/2
--spec to_atom(atom() | list() | binary() | integer() | float(), 'true' | list()) -> atom().
+-spec to_atom(text() | integer() | float(), boolean() | list()) -> atom().
 to_atom(X, _) when is_atom(X) -> X;
 to_atom(X, 'true') when is_list(X) -> list_to_atom(X);
 to_atom(X, 'true') when is_binary(X) -> binary_to_atom(X, utf8);
@@ -337,11 +337,11 @@ ceiling(X) ->
 to_hex_char(N) when N < 10 -> $0 + N;
 to_hex_char(N) when N < 16 -> $a - 10 + N.
 
--spec error_to_binary({'error', binary()} | binary()) -> binary().
+-spec error_to_binary(any()) -> binary().
 error_to_binary({'error', Reason}) ->
     error_to_binary(Reason);
 error_to_binary(Reason) ->
     try to_binary(Reason)
     catch
-        _:_ -> <<"Unknown Error">>
+        'error':'function_clause' -> <<"Unknown Error">>
     end.

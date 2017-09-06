@@ -33,7 +33,7 @@
 -type pids() :: [pid()].
 -type references() :: [reference()].
 
--type kz_proplist_key() :: atom() | binary() | string() | fun().
+-type kz_proplist_key() :: any().
 -type kz_proplist_value() :: any().
 -type kz_proplist_property() :: atom() | {kz_proplist_key(), kz_proplist_value()}.
 -type kz_proplist() :: [kz_proplist_property()].
@@ -121,7 +121,8 @@
 -type sup_child_spec() :: supervisor:child_spec().
 -type sup_child_specs() :: [sup_child_spec()].
 -type sup_start_flags() :: supervisor:sup_flags().
--type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
+
+-type sup_init_ret() :: {'ok', {supervisor:sup_flags(), [supervisor:child_spec()]}} |
                         'ignore'.
 
 -type sup_child_id() :: api_pid().

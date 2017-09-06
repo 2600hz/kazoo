@@ -8,50 +8,43 @@
 %%%-------------------------------------------------------------------
 -module(kzd_freeswitch).
 
--export([caller_id_name/1, caller_id_name/2
-        ,caller_id_number/1, caller_id_number/2
+-export([account_id/1, account_billing/1, account_trunk_usage/1
+        ,application_name/1, raw_application_name/1
+        ,authorizing_id/1
+        ,authorizing_type/1
+        ,call_direction/1, original_call_direction/1
+        ,call_id/1
         ,callee_id_name/1, callee_id_name/2
         ,callee_id_number/1, callee_id_number/2
-        ,dialed_number/1
-        ,call_id/1
-        ,origination_call_id/1
-        ,other_leg_call_id/1
-        ,call_direction/1, original_call_direction/1
-        ,resource_type/1, resource_type/2
+        ,caller_id_name/1, caller_id_name/2
+        ,caller_id_number/1, caller_id_number/2
+        ,ccvs/1, ccv/2, ccv/3
         ,channel_authorized/1
+        ,conference_name/1, conference_profile_name/1, conference_uuid/1
+        ,dialed_number/1
+        ,disposition/1
+        ,event_name/1
+        ,from_network_ip/1, from_network_port/1
+        ,from_tag/1, to_tag/1
+        ,hangup_code/1, hangup_cause/1
+        ,hostname/1, hostname/2
         ,hunt_destination_number/1
         ,is_channel_recovering/1, is_channel_recovering/2
         ,is_consuming_global_resource/1, is_consuming_global_resource/2
+        ,is_loopback/1, loopback_other_leg/1, loopback_leg_name/1
+        ,join_time/1, join_time/2
+        ,media_recorder/1
+        ,origination_call_id/1
+        ,other_leg_call_id/1
+        ,outbound_flags/1
+        ,presence_id/1, presence_direction/1
+        ,reseller_id/1, reseller_billing/1, reseller_trunk_usage/1
         ,resource_id/1
-
-        ,hangup_code/1, hangup_cause/1
-        ,disposition/1
-
+        ,resource_type/1, resource_type/2
+        ,to_did/1
         ,transfer_history/1
         ,transfer_source/1
-
-        ,authorizing_id/1
-        ,authorizing_type/1
-
-        ,account_id/1, account_billing/1, account_trunk_usage/1
-        ,reseller_id/1, reseller_billing/1, reseller_trunk_usage/1
-
-        ,from_network_ip/1, from_network_port/1
         ,user_agent/1
-
-        ,to_did/1
-
-        ,application_name/1, raw_application_name/1
-        ,event_name/1
-
-        ,ccvs/1, ccv/2, ccv/3
-
-        ,is_loopback/1, loopback_other_leg/1, loopback_leg_name/1
-
-        ,media_recorder/1
-
-        ,presence_id/1, presence_direction/1
-        ,from_tag/1, to_tag/1
         ]).
 
 -include("kz_documents.hrl").
@@ -61,6 +54,7 @@
 
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 -define(CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
+-define(CCV_HEADER(Key), <<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 
 -spec caller_id_name(data()) -> api_binary().
 -spec caller_id_name(data(), Default) -> ne_binary() | Default.
@@ -163,6 +157,10 @@ resource_type(Props, Default) ->
 channel_authorized(Props) ->
     ccv(Props, <<"Channel-Authorized">>).
 
+-spec outbound_flags(data()) -> api_binary() | ne_binaries().
+outbound_flags(Props) ->
+    ccv(Props, <<"Outbound-Flags">>).
+
 -spec hunt_destination_number(data()) -> api_binary().
 hunt_destination_number(Props) ->
     props:get_value(<<"Hunt-Destination-Number">>, Props).
@@ -228,11 +226,11 @@ to_did(Props) ->
                            ,Props
                            ).
 
--spec ccv(data(), ne_binary()) -> api_binary().
+-spec ccv(data(), ne_binary()) -> api_binary() | ne_binaries().
 ccv(Props, Key) ->
     ccv(Props, Key, 'undefined').
 
--spec ccv(data(), ne_binary(), Default) -> ne_binary() | Default.
+-spec ccv(data(), ne_binary(), Default) -> ne_binary() | ne_binaries() | Default.
 ccv(Props, Key, Default) ->
     props:get_value(Key, ccvs(Props), Default).
 
@@ -363,11 +361,11 @@ channel_vars_sort(ChannelVars) ->
 -spec channel_var_sort(tuple(), tuple()) -> boolean().
 channel_var_sort({A, _}, {B, _}) -> A =< B.
 
-custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
     [{Key, V} | Acc];
 custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     [{Key, V} | Acc];
-custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+custom_channel_vars_fold({?CCV_HEADER(Key), V}, Acc) ->
     case props:is_defined(Key, Acc) of
         'true' -> Acc;
         'false' -> [{Key, V} | Acc]
@@ -414,3 +412,29 @@ to_tag(Props) ->
 -spec origination_call_id(data()) -> api_binary().
 origination_call_id(Props) ->
     props:get_value(<<"variable_sip_origination_call_id">>, Props).
+
+-spec hostname(data()) -> api_ne_binary().
+-spec hostname(data(), Default) -> ne_binary() | Default.
+hostname(Props) ->
+    hostname(Props, 'undefined').
+hostname(Props, Default) ->
+    props:get_ne_binary_value(<<"FreeSWITCH-Hostname">>, Props, Default).
+
+-spec conference_name(data()) -> api_ne_binary().
+conference_name(Props) ->
+    props:get_ne_binary_value(<<"Conference-Name">>, Props).
+
+-spec conference_profile_name(data()) -> api_ne_binary().
+conference_profile_name(Props) ->
+    props:get_ne_binary_value(<<"Conference-Profile-Name">>, Props).
+
+-spec conference_uuid(data()) -> api_ne_binary().
+conference_uuid(Props) ->
+    props:get_ne_binary_value(<<"Conference-Unique-ID">>, Props).
+
+-spec join_time(data()) -> gregorian_seconds().
+-spec join_time(data(), Default) -> gregorian_seconds() | Default.
+join_time(Props) ->
+    join_time(Props, kz_time:current_tstamp()).
+join_time(Props, Default) ->
+    props:get_integer_value(<<"Join-Time">>, Props, Default).

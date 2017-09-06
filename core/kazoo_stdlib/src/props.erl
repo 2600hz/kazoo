@@ -100,23 +100,21 @@ filter(Fun, Props) when is_function(Fun, 1),
                         is_list(Props) ->
     [P || P <- Props, Fun(P)].
 
--spec filter_empty(kz_proplist()) -> kz_proplist().
+-spec filter_empty([{any(), any()} | atom()]) -> [{any(), any()} | atom()].
 filter_empty(Props) ->
-    [KV || KV <- Props,
-           case KV of
-               {_, V} -> not kz_term:is_empty(V);
-               _V -> 'true'
-           end
-    ].
+    filter(fun is_not_empty/1, Props).
+
+-spec is_not_empty(kz_proplist_property()) -> boolean().
+is_not_empty({_, V}) -> not kz_term:is_empty(V);
+is_not_empty(_V) -> 'true'.
 
 -spec filter_undefined(kz_proplist()) -> kz_proplist().
 filter_undefined(Props) ->
-    [KV || KV <- Props,
-           case KV of
-               {_, 'undefined'} -> 'false';
-               _ -> 'true'
-           end
-    ].
+    filter(fun is_not_undefined/1, Props).
+
+-spec is_not_undefined(kz_proplist_property()) -> boolean().
+is_not_undefined({_, 'undefined'}) -> 'false';
+is_not_undefined(_V) -> 'true'.
 
 -spec get_value(kz_proplist_key() | [kz_proplist_key()], kz_proplist()) -> any().
 -spec get_value(kz_proplist_key() | [kz_proplist_key()], kz_proplist(), Default) ->

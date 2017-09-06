@@ -14,6 +14,7 @@
 -define(EMPTY_JSON_OBJECT, ?JSON_WRAPPER([])).
 
 -type json_term() :: boolean()
+                   | 'null'
                    | json_string() | <<>>
                    | json_number()
                    | object()
@@ -24,16 +25,16 @@
                         | json_array().
 
 -type api_json_term() :: json_term() | 'undefined'.
--type json_terms() :: [json_term()] | [].
+-type json_terms() :: [json_term()].
 
 -type json_array()  :: json_terms().
 -type json_string() :: ne_binary().
 -type json_number() :: integer() | float().
 
 -type object() :: ?JSON_WRAPPER(json_proplist()) | ?EMPTY_JSON_OBJECT.
--type objects() :: [object()] | [].
+-type objects() :: [object()].
 
--type flat_proplist() :: [{keys(), flat_json_term()}] | [].
+-type flat_proplist() :: [{keys(), flat_json_term()}].
 -type flat_object() :: ?JSON_WRAPPER(flat_proplist()).
 -type flat_objects() :: [flat_object()].
 

@@ -11,8 +11,7 @@
 -include("kazoo_stdlib/include/kz_types.hrl").
 
 %% Date object functions
--export([
-         from_gregorian_seconds/2
+-export([from_gregorian_seconds/2
         ,from_iso_week/1
 
         ,find_next_weekday/2
@@ -21,8 +20,7 @@
         ]).
 
 %% Utility Functions
--export([
-         ordinal_to_position/1
+-export([ordinal_to_position/1
         ,wday_to_dow/1
         ,dow_to_wday/1
         ]).
@@ -31,12 +29,11 @@
 %% @doc Convert a gregorian seconds integer to kz_date taking into consideration timezone
 %% @end
 %%--------------------------------------------------------------------
--spec from_gregorian_seconds(non_neg_integer(), ne_binary()) -> kz_date().
-from_gregorian_seconds(Seconds, TZ) when is_integer(Seconds) ->
-    {Date, _} = localtime:utc_to_local(
-                  calendar:gregorian_seconds_to_datetime(Seconds)
+-spec from_gregorian_seconds(gregorian_seconds(), ne_binary()) -> kz_date().
+from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
+    {Date, _} = localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Seconds)
                                       ,kz_term:to_list(TZ)
-                 ),
+                                      ),
     Date.
 
 %%--------------------------------------------------------------------
@@ -106,7 +103,7 @@ relative_difference(Date1, Date2) ->
 %% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
--spec find_next_weekday(kz_date(), binary()) -> kz_date().
+-spec find_next_weekday(kz_date(), ne_binary()) -> kz_date().
 find_next_weekday({Y, M, D}, Weekday) ->
     RefDOW = wday_to_dow(Weekday),
     case calendar:day_of_the_week({Y, M, D}) of
@@ -127,7 +124,7 @@ find_next_weekday({Y, M, D}, Weekday) ->
 %% the position
 %% @end
 %%--------------------------------------------------------------------
--spec ordinal_to_position(binary()) -> 0..4.
+-spec ordinal_to_position(ne_binary()) -> 0..4.
 ordinal_to_position(<<"first">>) -> 0;
 ordinal_to_position(<<"second">>) -> 1;
 ordinal_to_position(<<"third">>) -> 2;
@@ -140,7 +137,7 @@ ordinal_to_position(<<"fifth">>) -> 4.
 %% position, in accordance with ISO 8601
 %% @end
 %%--------------------------------------------------------------------
--spec wday_to_dow(binary()) -> kz_daynum().
+-spec wday_to_dow(ne_binary()) -> kz_daynum().
 wday_to_dow(<<"monday">>) -> 1;
 wday_to_dow(<<"tuesday">>) -> 2;
 wday_to_dow(<<"wednesday">>) -> 3;
@@ -155,7 +152,7 @@ wday_to_dow(<<"sunday">>) -> 7.
 %% Map the position of a week day to its textual representation.
 %% @end
 %%--------------------------------------------------------------------
--spec dow_to_wday(kz_daynum()) -> binary().
+-spec dow_to_wday(kz_daynum()) -> ne_binary().
 dow_to_wday(1) -> <<"monday">>;
 dow_to_wday(2) -> <<"tuesday">>;
 dow_to_wday(3) -> <<"wednesday">>;
@@ -163,4 +160,3 @@ dow_to_wday(4) -> <<"thursday">>;
 dow_to_wday(5) -> <<"friday">>;
 dow_to_wday(6) -> <<"saturday">>;
 dow_to_wday(7) -> <<"sunday">>.
-

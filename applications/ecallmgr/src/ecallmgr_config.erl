@@ -33,6 +33,9 @@
 -include("ecallmgr.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
+-type node_specific() :: node() | ne_binary().
+-type api_node_specific() :: 'undefined' | node_specific().
+
 -spec flush() -> 'ok'.
 -spec flush(kz_json:path()) -> 'ok' | {'error', any()}.
 
@@ -43,10 +46,11 @@ flush() ->
 flush(Key) ->
     flush(Key, 'undefined').
 
--spec flush(api_binary(), api_ne_binary()) -> 'ok'.
+-spec flush(api_binary(), api_node_specific()) -> 'ok'.
 flush(Key, 'undefined') ->
     flush(Key, <<"undefined">>);
-flush(Key, Node) when not is_binary(Key), Key =/= 'undefined' ->
+flush(Key, Node) when not is_binary(Key),
+                      Key =/= 'undefined' ->
     flush(kz_term:to_binary(Key), Node);
 flush(Key, Node) when not is_binary(Node) ->
     flush(Key, kz_term:to_binary(Node));
@@ -74,7 +78,7 @@ flush_default(Key) ->
 -spec get(kz_json:path()) -> kz_json:api_json_term().
 -spec get(kz_json:path(), Default) ->
                  kz_json:json_term() | Default.
--spec get(kz_json:path(), Default, kz_json:path() | atom()) ->
+-spec get(kz_json:path(), Default, api_node_specific()) ->
                  kz_json:json_term() | Default.
 
 -ifdef(TEST).
@@ -112,27 +116,27 @@ get_default(Key, Default) ->
 
 -spec get_json(kz_json:path()) -> api_object().
 -spec get_json(kz_json:path(), Default) -> kz_json:object() | Default.
--spec get_json(kz_json:path(), Default, kz_json:path()) -> kz_json:object() | Default.
+-spec get_json(kz_json:path(), Default, api_node_specific()) -> kz_json:object() | Default.
 get_json(Key) ->
-    get_json(Key, undefined).
+    get_json(Key, 'undefined').
 get_json(Key, Default) ->
     as_json_value(get(Key, Default), Default).
 get_json(Key, Default, Node) ->
     as_json_value(get(Key, Default, Node), Default).
 
 -spec as_json_value(any(), api_object()) -> api_object().
-as_json_value(undefined, Default) -> Default;
+as_json_value('undefined', Default) -> Default;
 as_json_value(V, Default) ->
     case kz_json:is_json_object(V) of
         'true' -> V;
         'false' -> Default
     end.
 
--spec get_jsons(kz_json:path()) -> api_objects().
+-spec get_jsons(kz_json:path()) -> kz_json:objects().
 -spec get_jsons(kz_json:path(), Default) -> kz_json:objects() | Default.
--spec get_jsons(kz_json:path(), Default, kz_json:path()) -> kz_json:objects() | Default.
+-spec get_jsons(kz_json:path(), Default, api_node_specific()) -> kz_json:objects() | Default.
 get_jsons(Key) ->
-    get_jsons(Key, 'undefined').
+    get_jsons(Key, []).
 get_jsons(Key, Default) ->
     as_jsons_value(get(Key, Default), Default).
 get_jsons(Key, Default, Node) ->
@@ -141,14 +145,14 @@ get_jsons(Key, Default, Node) ->
 -spec as_jsons_value(any(), api_objects()) -> api_objects().
 as_jsons_value(V, Default) when is_list(V) ->
     case lists:all(fun kz_json:is_json_object/1, V) of
-        false -> Default;
-        true -> V
+        'false' -> Default;
+        'true' -> V
     end;
 as_jsons_value(_, Default) -> Default.
 
 -spec get_integer(kz_json:path()) -> api_integer().
 -spec get_integer(kz_json:path(), Default) -> integer() | Default.
--spec get_integer(kz_json:path(), Default, kz_json:path()) -> integer() | Default.
+-spec get_integer(kz_json:path(), Default, api_node_specific()) -> integer() | Default.
 get_integer(Key) ->
     get_integer(Key, 'undefined').
 
@@ -166,7 +170,7 @@ get_integer(Key, Default, Node) ->
 
 -spec get_boolean(kz_json:path()) -> api_boolean().
 -spec get_boolean(kz_json:path(), Default) -> boolean() | Default.
--spec get_boolean(kz_json:path(), Default, kz_json:path()) -> boolean() | Default.
+-spec get_boolean(kz_json:path(), Default, api_node_specific()) -> boolean() | Default.
 get_boolean(Key) ->
     get_boolean(Key, 'undefined').
 
@@ -184,7 +188,7 @@ get_boolean(Key, Default, Node) ->
 
 -spec is_true(kz_json:path()) -> boolean().
 -spec is_true(kz_json:path(), Default) -> boolean() | Default.
--spec is_true(kz_json:path(), Default, kz_json:path()) -> boolean() | Default.
+-spec is_true(kz_json:path(), Default, api_node_specific()) -> boolean() | Default.
 is_true(Key) ->
     kz_term:is_true(?MODULE:get(Key)).
 
@@ -202,9 +206,9 @@ is_true(Key, Default, Node) ->
 
 -spec get_ne_binary(kz_json:path()) -> api_ne_binary().
 -spec get_ne_binary(kz_json:path(), Default) -> ne_binary() | Default.
--spec get_ne_binary(kz_json:path(), Default, kz_json:path()) -> ne_binary() | Default.
+-spec get_ne_binary(kz_json:path(), Default, api_node_specific()) -> ne_binary() | Default.
 get_ne_binary(Key) ->
-    get_ne_binary(Key, undefined).
+    get_ne_binary(Key, 'undefined').
 
 get_ne_binary(Key, Default) ->
     case get(Key, Default) of
@@ -220,7 +224,7 @@ get_ne_binary(Key, Default, Node) ->
 
 -spec get_ne_binaries(kz_json:path()) -> ne_binaries().
 -spec get_ne_binaries(kz_json:path(), Default) -> ne_binaries() | Default.
--spec get_ne_binaries(kz_json:path(), Default, kz_json:path()) -> ne_binaries() | Default.
+-spec get_ne_binaries(kz_json:path(), Default, api_node_specific()) -> ne_binaries() | Default.
 get_ne_binaries(Key) ->
     get_ne_binaries(Key, []).
 
@@ -247,9 +251,9 @@ get_ne_binaries(Key, Default, Node) ->
 -spec fetch(kz_json:path()) -> kz_json:api_json_term().
 -spec fetch(kz_json:path(), Default) ->
                    kz_json:json_term() | Default.
--spec fetch(kz_json:path(), Default, kz_json:path() | pos_integer() | atom()) ->
+-spec fetch(kz_json:path(), Default, api_node_specific() | pos_integer()) ->
                    kz_json:json_term() | Default.
--spec fetch(kz_json:path(), Default, kz_json:path() | atom(), pos_integer()) ->
+-spec fetch(kz_json:path(), Default, api_node_specific(), pos_integer()) ->
                    kz_json:json_term() | Default.
 
 fetch(Key) ->
@@ -316,13 +320,13 @@ set_default(Key, Value) ->
 set_node(Key, Value) ->
     set_node(Key, Value, node()).
 
--spec set_node(kz_json:path(), kz_json:json_term(), ne_binary() | atom()) -> 'ok'.
+-spec set_node(kz_json:path(), kz_json:json_term(), node_specific()) -> 'ok'.
 set_node(Key, Value, Node) when is_atom(Node) ->
     set_node(Key, Value, kz_term:to_binary(Node));
 set_node(Key, Value, Node) ->
     set(Key, Value, Node, [{'node_specific', 'true'}]).
 
--spec set(kz_json:path(), kz_json:json_term(), kz_json:path(), kz_proplist()) -> 'ok'.
+-spec set(kz_json:path(), kz_json:json_term(), node_specific(), kz_proplist()) -> 'ok'.
 set(Key, Value, Node, Opt) when not is_binary(Key) ->
     set(kz_term:to_binary(Key), Value, Node, Opt);
 set(Key, Value, Node, Opt) ->
@@ -358,6 +362,6 @@ get_response_value(JObj, Default) ->
         Value -> Value
     end.
 
--spec cache_key(any(), atom() | ne_binary()) -> {?MODULE, any(), atom() | ne_binary()}.
+-spec cache_key(Key, Node) -> {?MODULE, Key, Node}.
 cache_key(K, Node) ->
     {?MODULE, K, Node}.

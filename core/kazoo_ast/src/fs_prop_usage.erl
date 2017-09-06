@@ -183,7 +183,7 @@ function_args('ecallmgr_fs_conferences') ->
      ,[?VAR(0, 'Props'), ?VAR(0, 'Node')]
      }
     ,{'participant_from_props'
-     ,[?VAR(0, 'Props'), ?VAR(0, 'Node'), ?VAR(0, 'CallInfo')]
+     ,[?VAR(0, 'Props'), ?VAR(0, 'Node')]
      }
     ];
 function_args('ecallmgr_fs_loopback') ->

@@ -42,7 +42,7 @@
 
 -type fs_api_ok() :: {'ok', binary()}.
 -type fs_api_error():: {'error', 'timeout' | 'exception' | binary()}.
--type fs_api_return() :: fs_api_ok() | fs_api_error().
+-type fs_api_return() :: fs_api_ok() | fs_api_error() | 'ok'.
 -export_type([fs_api_ok/0
              ,fs_api_error/0
              ,fs_api_return/0
@@ -125,9 +125,9 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
             {'error', 'exception'}
     end.
 
--spec api(atom(), string()) -> fs_api_return().
--spec api(atom(), string(), string()) -> fs_api_return().
--spec api(atom(), text(), string(), kz_timeout()) -> fs_api_return().
+-spec api(atom(), text()) -> fs_api_return().
+-spec api(atom(), text(), text()) -> fs_api_return().
+-spec api(atom(), text(), text(), kz_timeout()) -> fs_api_return().
 api(Node, Cmd) ->
     api(Node, Cmd, "").
 api(Node, Cmd, Args) ->
@@ -279,7 +279,7 @@ bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
         {'api', Result} -> Result
     end.
 
--type event() :: kz_json:object().
+-type event() :: atom() | kz_json:object().
 -spec event(atom(), event() | [event()]) -> 'ok' | {'error', 'timeout' | 'exception'}.
 -spec event(atom(), event() | [event()], pos_integer()) -> 'ok' | {'error', 'timeout' | 'exception'}.
 event(Node, Events) ->
@@ -312,7 +312,7 @@ nixevent(Node, [_|_]=Events) ->
 nixevent(Node, Event) ->
     nixevent(Node, [Event]).
 
--spec sendevent(atom(), ne_binary(), list()) -> 'ok'.
+-spec sendevent(atom(), atom(), list()) -> 'ok'.
 sendevent(Node, EventName, Headers) ->
     gen_server:cast({'mod_kazoo', Node}, {'sendevent', EventName, Headers}).
 

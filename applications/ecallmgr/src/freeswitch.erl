@@ -43,7 +43,7 @@
 
 -type fs_api_ok() :: {'ok', binary()}.
 -type fs_api_error():: {'error', 'timeout' | 'exception' | binary()}.
--type fs_api_return() :: fs_api_ok() | fs_api_error().
+-type fs_api_return() :: fs_api_ok() | fs_api_error() | 'ok'.
 -export_type([fs_api_ok/0
              ,fs_api_error/0
              ,fs_api_return/0
@@ -76,9 +76,9 @@ bind(Node, Type, Timeout) -> ?FS_MODULE:bind(Node, Type, Timeout).
 fetch_reply(Node, FetchID, Section, Reply) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply).
 fetch_reply(Node, FetchID, Section, Reply, Timeout) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Timeout).
 
--spec api(atom(), string()) -> fs_api_return().
--spec api(atom(), string(), string()) -> fs_api_return().
--spec api(atom(), text(), string(), kz_timeout()) -> fs_api_return().
+-spec api(atom(), text()) -> fs_api_return().
+-spec api(atom(), text(), text()) -> fs_api_return().
+-spec api(atom(), text(), text(), kz_timeout()) -> fs_api_return().
 api(Node, Cmd) -> ?FS_MODULE:api(Node, Cmd).
 api(Node, Cmd, Args) -> ?FS_MODULE:api(Node, Cmd, Args).
 api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:api(Node, Cmd, Args, Timeout).
@@ -99,7 +99,7 @@ bgapi(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi(Node, Cmd, Args,
 -spec bgapi(atom(), ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
 bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) -> ?FS_MODULE:bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun).
 
--type event() :: kz_json:object().
+-type event() :: atom() | kz_json:object().
 -spec event(atom(), event() | [event()]) -> 'ok' | {'error', 'timeout' | 'exception'}.
 -spec event(atom(), event() | [event()], pos_integer()) -> 'ok' | {'error', 'timeout' | 'exception'}.
 event(Node, Events) -> ?FS_MODULE:event(Node, Events).
@@ -108,7 +108,7 @@ event(Node, Events, Timeout) -> ?FS_MODULE:event(Node, Events, Timeout).
 -spec nixevent(atom(), event() | [event()]) -> 'ok'.
 nixevent(Node, Event) -> ?FS_MODULE:nixevent(Node, Event).
 
--spec sendevent(atom(), ne_binary(), list()) -> 'ok'.
+-spec sendevent(atom(), atom(), list()) -> 'ok'.
 sendevent(Node, EventName, Headers) -> ?FS_MODULE:sendevent(Node, EventName, Headers).
 
 -spec sendevent_custom(atom(), atom(), list()) -> 'ok'.

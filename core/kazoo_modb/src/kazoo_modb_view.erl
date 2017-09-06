@@ -8,7 +8,7 @@
 %%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(kazoo_modb_view).
--export([get_results/6, get_results/5]).
+-export([get_results/5, get_results/6]).
 -export_type([mapper_fun/0]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -25,36 +25,44 @@
                   {end_key_map, kz_json:path()}.
 -type options() :: [option()].
 
--spec get_results(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), options()) ->
-                         {kz_json:path(), kz_json:objects()}.
+-type last_key() :: 'undefined' | kz_json:path().
+
+-spec get_results(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds(), pos_integer(), options()) ->
+                         {last_key(), kz_json:objects()}.
 get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, StartTimestamp, EndTimestamp, Limit, Options) ->
     {StartKey, EndKey} = start_end_keys(StartTimestamp, EndTimestamp, Options),
-    CouchOptions = [{startkey, StartKey}, {endkey, EndKey} | props:get_value(couch_options, Options, [])],
-    Mapper = props:get_value(mapper, Options, fun kz_term:identity/1),
+    CouchOptions = [{'startkey', StartKey}
+                   ,{'endkey', EndKey}
+                    | props:get_value('couch_options', Options, [])
+                   ],
+    Mapper = props:get_value('mapper', Options, fun kz_term:identity/1),
     get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Limit, Mapper, CouchOptions).
 
--spec get_ordered(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), mapper_fun(), kz_datamgr:view_options()) ->
-                         {kz_json:path(), kz_json:objects()}.
+-spec get_ordered(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds(), pos_integer(), mapper_fun(), kz_datamgr:view_options()) ->
+                         {last_key(), kz_json:objects()}.
 get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Limit, Mapper, CouchOptions) when StartTimestamp >= EndTimestamp ->
     MODbs = lists:reverse(kazoo_modb:get_range(AccountId, EndTimestamp, StartTimestamp)),
-    CouchOpts = [descending | CouchOptions],
+    CouchOpts = ['descending' | CouchOptions],
     {_, LastKey, JObjs} =
-        lists:foldl(fun fold_query/2, {Limit, undefined, []}, [{Db, View, CouchOpts, Mapper} || Db <- MODbs ]),
+        lists:foldl(fun fold_query/2, {Limit, 'undefined', []}, [{Db, View, CouchOpts, Mapper} || Db <- MODbs ]),
     {LastKey, JObjs};
 
 get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Limit, Mapper, CouchOptions) when StartTimestamp < EndTimestamp ->
     MODbs = kazoo_modb:get_range(AccountId, StartTimestamp, EndTimestamp),
     {_, LastKey, JObjs} =
-        lists:foldl(fun fold_query/2, {Limit, undefined, []}, [{Db, View, CouchOptions, Mapper} || Db <- MODbs]),
+        lists:foldl(fun fold_query/2, {Limit, 'undefined', []}, [{Db, View, CouchOptions, Mapper} || Db <- MODbs]),
     {LastKey, JObjs}.
 
 -spec fold_query({ne_binary(), ne_binary(), kz_datamgr:view_options(), mapper_fun()}
-                ,{pos_integer(), api_integer(), kz_json:objects()}
+                ,{pos_integer(), last_key(), kz_json:objects()}
                 ) ->
-                        {pos_integer(), api_integer(), kz_json:objects()}.
-fold_query(_, {Limit, LastKey, Res} = Re)
-  when is_integer(Limit), Limit > 0, length(Res) == Limit, LastKey =/= undefined ->
-    Re;
+                        {pos_integer(), last_key(), kz_json:objects()}.
+fold_query(_, {Limit, LastKey, Res} = Acc)
+  when is_integer(Limit),
+       Limit > 0,
+       length(Res) == Limit,
+       LastKey =/= 'undefined' ->
+    Acc;
 fold_query({Db, View, CouchOpts, Mapper}, {Limit, LastKey, Res}) when is_integer(Limit), Limit > 0 ->
     Queried = erlang:length(Res),
     LimitWithLast = 1 + Limit - Queried,
@@ -82,7 +90,7 @@ apply_filter(Map, Objects) when is_function(Map, 1) ->
 apply_filter(Mapper, Objects) when is_function(Mapper, 2) ->
     lists:foldl(Mapper, [], Objects).
 
--spec last_key(api_integer(), kz_json:objects(), integer(), integer()) -> {api_integer(), kz_json:objects()}.
+-spec last_key(last_key(), kz_json:objects(), integer(), integer()) -> {last_key(), kz_json:objects()}.
 last_key(LastKey, [], _, _) ->
     {LastKey, []};
 last_key(LastKey, JObjs, Limit, Returned) when Returned < Limit ->
@@ -92,32 +100,38 @@ last_key(_LastKey, [Last|JObjs], Limit, Returned) when Returned == Limit ->
 
 %%% unlimited version
 
--spec get_results(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), options()) -> [kz_json:objects()].
+-spec get_results(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds(), options()) ->
+                         kz_json:objects().
 get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, StartTimestamp, EndTimestamp, Options) ->
     {StartKey, EndKey} = start_end_keys(StartTimestamp, EndTimestamp, Options),
-    CouchOptions = [{startkey, StartKey}, {endkey, EndKey} | props:get_value(couch_options, Options, [])],
-    Mapper = props:get_value(mapper, Options, fun kz_term:identity/1),
+    CouchOptions = [{'startkey', StartKey}
+                   ,{'endkey', EndKey}
+                    | props:get_value('couch_options', Options, [])
+                   ],
+    Mapper = props:get_value('mapper', Options, fun kz_term:identity/1),
     get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Mapper, CouchOptions).
 
--spec get_ordered(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), mapper_fun(), kz_datamgr:view_options()) -> kz_json:objects().
+-spec get_ordered(ne_binary(), ne_binary(), gregorian_seconds(), gregorian_seconds(), mapper_fun(), kz_datamgr:view_options()) ->
+                         kz_json:objects().
 get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Mapper, CouchOptions) when StartTimestamp >= EndTimestamp ->
     MODbs = lists:reverse(kazoo_modb:get_range(AccountId, EndTimestamp, StartTimestamp)),
-    CouchOpts = [descending | CouchOptions],
+    CouchOpts = ['descending' | CouchOptions],
     lists:flatten([ apply_filter(Mapper, unlimited_query(Db, View, CouchOpts)) || Db <- MODbs ]);
-
 get_ordered(AccountId, View, StartTimestamp, EndTimestamp, Mapper, CouchOptions) when StartTimestamp < EndTimestamp ->
     MODbs = kazoo_modb:get_range(AccountId, StartTimestamp, EndTimestamp),
     lists:flatten([ apply_filter(Mapper, unlimited_query(Db, View, CouchOptions)) || Db <- MODbs ]).
 
--spec unlimited_query(ne_binary(), ne_binary(), kz_datamgr:view_options()) -> kz_json:objects().
+-spec unlimited_query(ne_binary(), ne_binary(), kz_datamgr:view_options()) ->
+                             kz_json:objects().
 unlimited_query(Db, View, CouchOpts) ->
     case kazoo_modb:get_results(Db, View, CouchOpts) of
-        {ok, JObjs} -> JObjs;
-        {error, not_found} -> [];
-        {error, Error} -> throw(Error)
+        {'ok', JObjs} -> JObjs;
+        {'error', 'not_found'} -> [];
+        {'error', Error} -> throw(Error)
     end.
 
--spec start_end_keys(integer(), integer(), options()) -> {kz_json:path(), kz_json:path()}.
+-spec start_end_keys(gregorian_seconds(), gregorian_seconds(), options()) ->
+                            {kz_json:path(), kz_json:path()}.
 start_end_keys(StartTimestamp, EndTimestamp, Options) ->
     {StartKeyMap, EndKeyMap} = get_key_maps(Options),
     {StartKeyMap(StartTimestamp), EndKeyMap(EndTimestamp)}.

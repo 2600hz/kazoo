@@ -303,7 +303,7 @@ map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
         {[V|_], _Keys} -> kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
--spec conference_channel_vars(kz_proplist()) -> kz_proplist().
+-spec conference_channel_vars(kzd_freeswitch:data()) -> kz_proplist().
 conference_channel_vars(Props) ->
     [conference_channel_var_map(KV) || KV <- conference_channel_vars(Props, [])].
 
@@ -330,7 +330,7 @@ channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
 channel_var_map({Key, Other}) -> {Key, Other}.
 
 %% Extract custom channel variables to include in the event
--spec custom_channel_vars(kz_proplist()) -> kz_proplist().
+-spec custom_channel_vars(kzd_freeswitch:data()) -> kz_proplist().
 -spec custom_channel_vars(kz_proplist(), kz_proplist()) -> kz_proplist().
 -spec custom_channel_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
 custom_channel_vars(Props) ->

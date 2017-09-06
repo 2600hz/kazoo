@@ -255,7 +255,7 @@ process_schema(Filename, Definitions) ->
                     false -> KV;
                     true -> {Path, maybe_fix_ref(V)}
                 end
-                || {Path,V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
+                || {Path, V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
                    not lists:member(<<"patternProperties">>, Path),
                    not lists:member(<<"kazoo-validation">>, Path),
                    not lists:member(<<"oneOf">>, Path)
@@ -303,11 +303,11 @@ add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
     Parameters = make_parameters(Path, Method, SchemaParameter),
     BaseResponse = kz_json:from_list_recursive([{<<"200">>, [{<<"description">>, <<"request succeeded">>}]}]),
-    Vs = props:filter_empty(
-           [{[Path, Method], MethodJObj}
-           ,{[Path, Method, <<"parameters">>], Parameters}
-           ,{[Path, Method, <<"responses">>], BaseResponse}
-           ]),
+
+    Vs = props:filter_empty([{[Path, Method], MethodJObj}
+                            ,{[Path, Method, <<"parameters">>], Parameters}
+                            ,{[Path, Method, <<"responses">>], BaseResponse}
+                            ]),
     kz_json:insert_values(Vs, Acc).
 
 -spec make_parameters(ne_binary(), ne_binary(), api_object()) -> ne_binaries().

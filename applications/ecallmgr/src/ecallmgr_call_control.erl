@@ -192,7 +192,7 @@ fs_nodedown(Srv, Node) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | ne_binary() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | ne_binary() | kz_json:object()]) -> {'ok', state()}.
 init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     kz_util:put_callid(CallId),
     lager:debug("starting call control listener"),

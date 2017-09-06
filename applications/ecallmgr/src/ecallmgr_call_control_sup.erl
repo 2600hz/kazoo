@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2011-2017, 2600Hz
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end
@@ -7,8 +7,6 @@
 %%% @contributors
 %%% James Aimonetti <james@2600hz.org>
 %%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% Created :  2 Jan 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control_sup).
 
@@ -36,7 +34,8 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_proc(sup_child_spec()) -> sup_startchild_ret().
+-type start_args() :: [atom() | api_ne_binary() | kz_json:object()].
+-spec start_proc(start_args()) -> sup_startchild_ret().
 start_proc(Args) ->
     supervisor:start_child(?SERVER, Args).
 

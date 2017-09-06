@@ -35,13 +35,12 @@
 
 -type scheme() :: 'sip' | 'sips'.
 -record(sip_uri, {scheme = 'sip' :: scheme()
-                 ,user :: ne_binary()
-                 ,host :: ne_binary()
+                 ,user :: api_ne_binary()
+                 ,host :: api_ne_binary()
                  ,port = 5060 :: pos_integer()
                  }).
 -type sip_uri() :: #sip_uri{}.
 -export_type([sip_uri/0]).
-
 
 -spec uris(binary() | string() | uri()) -> [uri()] | 'error'.
 uris(Uri) -> nklib_parse_uri:uris(Uri).
@@ -53,8 +52,6 @@ ruri(Uri) -> nklib_unparse:uri3(Uri).
 -spec uri(uri()) -> binary().
 uri(#uri{scheme='undefined'}=Uri) -> nklib_unparse:uri(Uri#uri{scheme='sip'});
 uri(Uri) -> nklib_unparse:uri(Uri).
-
-
 
 -spec parse(ne_binary()) -> sip_uri().
 parse(Bin) ->

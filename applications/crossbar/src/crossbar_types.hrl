@@ -52,6 +52,9 @@
 -type validator_rule() :: {validator(), list()}.
 -type validator_rules() :: [validator_rule()].
 
+-type validation_error() :: jesse_error:error_reason().
+-type validation_errors() :: [validation_error()].
+
 -type couch_doc_path() :: ne_binaries().
 -type couch_schema() :: [{couch_doc_path(), validator_rules()}].
 

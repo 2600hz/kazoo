@@ -33,9 +33,9 @@
 -define(DEFAULT_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_sample_rate">>, 8000)).
 -define(DEFAULT_STEREO_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_stereo_sample_rate">>, 16000)).
 
--type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
+-type fs_app() :: {ne_binary(), binary() | 'noop'} |
                   {ne_binary(), ne_binary(), atom()}.
--type fs_apps() :: [fs_app(),...].
+-type fs_apps() :: [fs_app()].
 
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |
@@ -132,15 +132,15 @@
 -type conference() :: #conference{}.
 -type conferences() :: [conference()].
 
--record(participant, {uuid :: api_binary() | '$1' | '_'
+-record(participant, {uuid :: api_ne_binary() | '$1' | '_'
                      ,node :: atom() | '$2' | '_'
-                     ,conference_uuid :: api_binary() | '$1'| '_'
-                     ,conference_name :: api_binary() | '$1'| '_'
-                     ,join_time = kz_time:current_tstamp() :: non_neg_integer() | '_'
-                     ,caller_id_name :: api_binary() | '_'
-                     ,caller_id_number :: api_binary() | '_'
-                     ,conference_channel_vars :: kz_proplist() | '_'
-                     ,custom_channel_vars :: kz_proplist() | '_'
+                     ,conference_uuid :: api_ne_binary() | '$1'| '_'
+                     ,conference_name :: api_ne_binary() | '$1'| '_'
+                     ,join_time = kz_time:current_tstamp() :: gregorian_seconds() | '_'
+                     ,caller_id_name :: api_ne_binary() | '_'
+                     ,caller_id_number :: api_ne_binary() | '_'
+                     ,conference_channel_vars = [] :: kz_proplist() | '_'
+                     ,custom_channel_vars = [] :: kz_proplist() | '_'
                      }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
@@ -173,7 +173,8 @@
                                >>).
 
 %% We pass Application custom channel variables with our own prefix
-%% When an event occurs, we include all prefixed vars in the API message
+%% When an event occurs, we include all prefixed vars in the API
+%% message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 
 -define(CCV(Key), <<?CHANNEL_VAR_PREFIX, Key/binary>>).
@@ -189,9 +190,10 @@
 -define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}]).
 -define(BRIDGE_CHANNEL_VAR_SEPARATOR, "!").
 
-%% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
-%% [{AMQP-Header, FS-var-name}]
-%% so FS-var-name of "foo_var" would become "foo_var=foo_val" in the channel/call string
+%% Call and Channel Vars that have a special prefix instead of the
+%% standard CHANNEL_VAR_PREFIX prefix [{AMQP-Header, FS-var-name}] so
+%% FS-var-name of "foo_var" would become "foo_var=foo_val" in the
+%% channel/call string
 -define(SPECIAL_CHANNEL_VARS, [{<<"Auto-Answer">>, <<"sip_auto_answer">>}
                               ,{<<"Auto-Answer-Suppress-Notify">>, <<"sip_auto_answer_suppress_notify">>}
                               ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
@@ -315,9 +317,9 @@
                               ,{<<"RTCP-MUX">>, <<"rtcp_mux">>}
                               ]).
 
-%% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
-%% Dialplan-related applications
-%% convert from FS-named applications to Kazoo-named Dialplan applications
+%% [{FreeSWITCH-App-Name, Kazoo-App-Name}] Dialplan-related
+%% applications convert from FS-named applications to Kazoo-named
+%% Dialplan applications
 -define(FS_APPLICATION_NAMES, [{<<"playback">>, <<"play">>}
                               ,{<<"playback">>, <<"tts">>}
                               ,{<<"play-file">>, <<"play">>}

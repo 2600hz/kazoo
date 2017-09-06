@@ -296,13 +296,13 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
 
--spec sip_uri(kapps_call:call(), ne_binary()) -> kz_json:object().
+-spec sip_uri(kapps_call:call(), kzsip_uri:uri()) -> kz_json:object().
 sip_uri(Call, URI) ->
     lager:debug("maybe adding SIP endpoint: ~s", [kzsip_uri:encode(URI)]),
     SIPDevice = sip_device(URI),
     kz_endpoint:create_sip_endpoint(SIPDevice, kz_json:new(), Call).
 
--spec sip_device(ne_binary()) -> kz_device:doc().
+-spec sip_device(kzsip_uri:uri()) -> kz_device:doc().
 sip_device(URI) ->
     lists:foldl(fun({F, V}, D) -> F(D, V) end
                ,kz_device:new()
@@ -400,7 +400,7 @@ conference_id(Txts) ->
     MD5.
 
 
--spec add_conference_profile(kapps_call:call(), kz_proplist()) -> kz_json:object().
+-spec add_conference_profile(kapps_call:call(), kz_proplist()) -> kapps_call:call().
 add_conference_profile(Call, ConfProps) ->
     AccountId = kapps_call:account_id(Call),
     Profile = kz_json:from_list(

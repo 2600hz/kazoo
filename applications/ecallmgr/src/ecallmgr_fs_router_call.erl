@@ -181,7 +181,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), kzd_freeswitch:data()) -> 'ok'.
 process_route_req(Section, Node, FetchId, CallId, Props) ->
     kz_util:put_callid(CallId),
     case kz_term:is_true(props:get_value(<<"variable_recovered">>, Props)) of
@@ -194,7 +194,7 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
             ecallmgr_fs_router_util:reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
 
--spec do_process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec do_process_route_req(atom(), atom(), ne_binary(), ne_binary(), kzd_freeswitch:data()) -> 'ok'.
 do_process_route_req(Section, Node, FetchId, CallId, Props) ->
     Filtered = ecallmgr_fs_loopback:filter(Node, CallId, Props),
     case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, CallId, Filtered) of

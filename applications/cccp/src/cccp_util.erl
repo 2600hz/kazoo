@@ -272,9 +272,9 @@ build_presence(_, _) -> 'undefined'.
 
 -spec current_account_outbound_directions(ne_binary()) -> ne_binaries().
 current_account_outbound_directions(AccountId) ->
-    [kz_json:get_value(<<"destination">>, Channel)
+    [kz_json:get_ne_binary_value(<<"destination">>, Channel)
      || Channel <- current_account_channels(AccountId),
-        <<"outbound">> =:= kz_json:get_value(<<"direction">>, Channel)
+        <<"outbound">> =:= kz_json:get_ne_binary_value(<<"direction">>, Channel)
     ].
 
 -spec count_user_legs(ne_binary(), ne_binary()) -> integer().
@@ -288,12 +288,12 @@ count_user_legs(UserId, AccountId) ->
 
 -spec is_user_channel(kz_json:object(), ne_binary()) -> integer().
 is_user_channel(Channel, UserId) ->
-    case kz_json:get_value(<<"authorizing_id">>, Channel) of
+    case kz_json:get_ne_binary_value(<<"authorizing_id">>, Channel) of
         UserId -> 1;
         _ -> 0
     end.
 
--spec current_account_channels(ne_binary()) -> kz_proplist().
+-spec current_account_channels(ne_binary()) -> kz_json:objects().
 current_account_channels(AccountId) ->
     Req = [{<<"Realm">>, kz_account:fetch_realm(AccountId)}
           ,{<<"Usernames">>, []}
@@ -310,5 +310,5 @@ current_account_channels(AccountId) ->
             lager:info("cccp could not reach ecallmgr channels: ~p", [_R]),
             [];
         {_OK, [Resp|_]} ->
-            kz_json:get_value(<<"Channels">>, Resp, [])
+            kz_json:get_list_value(<<"Channels">>, Resp, [])
     end.

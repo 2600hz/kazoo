@@ -182,13 +182,11 @@ bypass_endpoint_media_enabled(Endpoint, BridgeProfile, ChannelProfile) ->
 handle_ccvs(DP, Node, UUID, _Channel, JObj) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     case kz_json:is_json_object(CCVs) of
+        'false' -> DP;
         'true' ->
             Args = ecallmgr_util:process_fs_kv(Node, UUID, kz_json:to_proplist(CCVs), 'set'),
             AppArgs = ecallmgr_util:fs_args_to_binary(Args),
-            [{"application", <<"kz_multiset ", AppArgs/binary>>}
-            ] ++ DP;
-        _ ->
-            DP
+            [{"application", <<"kz_multiset ", AppArgs/binary>>}] ++ DP
     end.
 
 -spec handle_loopback_key(boolean(), ne_binary(), kz_json:object()) -> kz_proplist().
@@ -307,23 +305,27 @@ build_endpoint_actions(Node, UUID, Endpoint) ->
             kz_json:set_value(?CHANNEL_ACTIONS_KEY, Var, Endpoint)
     end.
 
--spec build_endpoint_actions(atom(), ne_binary(), ne_binary(), kz_json:object(), ne_binaries()) -> ne_binaries().
+-type ep_actions() :: ne_binaries().
+
+-spec build_endpoint_actions(atom(), ne_binary(), ne_binary(), kz_json:object(), ep_actions()) ->
+                                    ep_actions().
 build_endpoint_actions(Node, UUID, K, V, Acc) ->
     Fun = fun(K1, V1, Acc1)-> build_endpoint_action(Node, UUID, K1, V1, Acc1) end,
     DP = kz_json:foldr(Fun, [], V),
     Acc ++ build_endpoint_action_dp(K, DP).
 
--spec build_endpoint_action(atom(), ne_binary(), ne_binary(), kz_json:object(), ne_binaries()) -> fs_apps().
+-spec build_endpoint_action(atom(), ne_binary(), ne_binary(), kz_json:object(), fs_apps()) ->
+                                   fs_apps().
 build_endpoint_action(Node, UUID, _K, V, Acc) ->
     lager:debug("building dialplan action for ~s", [_K]),
     DP = ecallmgr_call_command:fetch_dialplan(Node, UUID, V, self()),
     Acc ++ DP.
 
--spec build_endpoint_action_dp(ne_binary(), fs_apps()) -> ne_binaries().
+-spec build_endpoint_action_dp(ne_binary(), fs_apps()) -> ep_actions().
 build_endpoint_action_dp(K, DP) ->
     build_endpoint_action_dp(endpoint_action_cmd(K), DP, 1, []).
 
--spec build_endpoint_action_dp(ne_binary(), fs_apps(), pos_integer(), ne_binaries()) -> ne_binaries().
+-spec build_endpoint_action_dp(ne_binary(), fs_apps(), pos_integer(), ep_actions()) -> ep_actions().
 build_endpoint_action_dp(_K, [], _N, Acc) ->
     lists:reverse(Acc);
 build_endpoint_action_dp(K, [{App, Args} | DP], N, Acc) ->

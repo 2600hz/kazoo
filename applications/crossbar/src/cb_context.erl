@@ -119,9 +119,6 @@
        ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, false)
        ).
 
--type validation_error() :: jesse_error:error_reason().
--type validation_errors() :: [validation_error()].
-
 -type context() :: #cb_context{}.
 -type setter_fun_1() :: fun((context()) -> context()).
 -type setter_fun_2() :: fun((context(), any()) -> context()).
