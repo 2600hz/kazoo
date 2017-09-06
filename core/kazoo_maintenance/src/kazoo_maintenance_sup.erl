@@ -17,7 +17,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER('kz_config_maint_listener')]).
+-define(CHILDREN, [?WORKER('kapps_config_maint_listener')]).
 
 %% ===================================================================
 %% API functions
