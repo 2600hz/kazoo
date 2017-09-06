@@ -69,7 +69,7 @@ handle_req(MaintJObj, _Props) ->
 
 -spec send_resp(kapi_mainteannce:req()) -> 'ok'.
 send_resp(MaintJObj) ->
-    Resp = [{<<"Code">>, 200}
+    Resp = [{<<"Code">>, 202}
            ,{<<"Message">>, <<"Refreshing views in ", ?KZ_DATA_DB/binary>>}
            ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
