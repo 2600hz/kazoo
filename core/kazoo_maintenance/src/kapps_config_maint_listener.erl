@@ -68,7 +68,7 @@ handle_refresh(MaintJObj, ?KZ_CONFIG_DB) ->
     Created = kz_datamgr:db_create(?KZ_CONFIG_DB),
     _ = kz_util:spawn(fun cleanup_invalid_notify_docs/0, []),
     _ = kz_util:spawn(fun delete_system_media_references/0, []),
-    _ = kz_util:spwan(fun accounts_config_deprecate_timezone_for_default_timezone/0, []),
+    _ = kz_util:spawn(fun accounts_config_deprecate_timezone_for_default_timezone/0, []),
     send_resp(MaintJObj, Created).
 
 -spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
