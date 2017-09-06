@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(kz_config_maint_listener).
+-module(kapps_config_maint_listener).
 -behaviour(gen_listener).
 
 -export([start_link/0
@@ -35,7 +35,7 @@
                      ,[{<<"maintenance">>, <<"req">>}]
                      }
                     ]).
--define(QUEUE_NAME, <<"kz_config_maint_listener">>).
+-define(QUEUE_NAME, <<?MODULE_STRING>>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
@@ -61,7 +61,12 @@ start_link() ->
 -spec handle_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
 handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
+
+    handle_refresh(MaintJObj, kz_json:get_value(<<"Database">>, MaintJObj)).
+
+handle_refresh(MaintJObj, ?KZ_CONFIG_DB) ->
     Created = kz_datamgr:db_create(?KZ_CONFIG_DB),
+    _ = kz_util:spawn(fun cleanup_invalid_notify_docs/0, []),
     send_resp(MaintJObj, Created).
 
 -spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
@@ -173,3 +178,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec cleanup_invalid_notify_docs() -> 'ok'.
+cleanup_invalid_notify_docs() ->
+    _ = kz_datamgr:db_archive(<<"system_config">>),
+    case kz_datamgr:all_docs(?KZ_CONFIG_DB, ['include_docs']) of
+        {'ok', JObjs} -> cleanup_invalid_notify_docs(JObjs);
+        {'error', _R} ->
+            lager:warning("unable to fetch all system config docs: ~p", [_R])
+    end.
+
+-spec cleanup_invalid_notify_docs(kz_json:objects()) -> 'ok'.
+cleanup_invalid_notify_docs([]) -> 'ok';
+cleanup_invalid_notify_docs([JObj|JObjs]) ->
+    Id = kz_json:get_value(<<"id">>, JObj),
+    Doc = kz_json:get_value(<<"doc">>, JObj),
+    Type = kz_json:get_value(<<"pvt_type">>, Doc),
+    _ = maybe_remove_invalid_notify_doc(Type, Id, Doc),
+    cleanup_invalid_notify_docs(JObjs).
+
+-spec maybe_remove_invalid_notify_doc(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+maybe_remove_invalid_notify_doc(<<"notification">>, <<"notification", _/binary>>, _) -> 'ok';
+maybe_remove_invalid_notify_doc(<<"notification">>, _, JObj) ->
+    _ = kz_datamgr:del_doc(?KZ_CONFIG_DB, JObj),
+    'ok';
+maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
