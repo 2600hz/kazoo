@@ -331,9 +331,6 @@ refresh_views(Database, Worker, Classification) ->
     wait_for_response(30 * ?MILLISECONDS_IN_SECOND).
 
 -spec old_refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
-old_refresh(?KZ_OAUTH_DB) ->
-    kz_datamgr:db_create(?KZ_OAUTH_DB),
-    kazoo_oauth_maintenance:register_common_providers();
 old_refresh(?KZ_AUTH_DB) ->
     kz_datamgr:db_create(?KZ_AUTH_DB),
     kazoo_auth_maintenance:register_common_providers(),

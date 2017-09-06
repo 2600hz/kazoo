@@ -17,7 +17,9 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER('kapps_config_maint_listener')]).
+-define(CHILDREN, [?WORKER('kapps_config_maint_listener')
+                  ,?WORKER('kazoo_oauth_maint_listener')
+                  ]).
 
 %% ===================================================================
 %% API functions
