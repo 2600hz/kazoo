@@ -7,9 +7,9 @@
                   , stdlib
 
                   , kazoo
+                  , kazoo_amqp
 
                   , lager
-                  , zucchini
                   ]}
  , {mod, {kazoo_maintenance_app, []}}
  ]}.
