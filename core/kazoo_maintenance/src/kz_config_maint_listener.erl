@@ -66,14 +66,12 @@ handle_req(MaintJObj, _Props) ->
 
 -spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
 send_resp(MaintJObj, Created) ->
-    RespQueue = kz_api:server_id(MaintJObj),
-
     Resp = [{<<"Code">>, code(Created)}
            ,{<<"Message">>, message(Created)}
            ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
-            | kz_api:default_headers(RespQueue, ?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    kapi_maintenance:publish_resp(RespQueue, Resp).
+    kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
 -spec code(boolean()) -> 200 | 500.
 code('true') -> 200;

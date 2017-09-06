@@ -35,7 +35,7 @@
                      ,[{<<"maintenance">>, <<"req">>}]
                      }
                     ]).
--define(QUEUE_NAME, <<"teletype_maint_listener">>).
+-define(QUEUE_NAME, <<"crossbar_maint_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
@@ -66,21 +66,19 @@ handle_req(MaintJObj, _Props) ->
 
 -spec send_resp(kapi_mainteannce:req(), {'ok', kz_json:object()} | kz_datamgr:data_error()) -> 'ok'.
 send_resp(MaintJObj, Revised) ->
-    RespQueue = kz_api:server_id(MaintJObj),
-
     Resp = [{<<"Code">>, code(Revised)}
            ,{<<"Message">>, message(Revised)}
            ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
-            | kz_api:default_headers(RespQueue, ?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    kapi_maintenance:publish_resp(RespQueue, Resp).
+    kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
 -spec code({'ok', kz_json:object()} | kz_datamgr:data_error()) -> 200 | 500.
 code({'ok', _}) -> 200;
 code({'error', _}) -> 500.
 
 -spec message({'ok', kz_json:object()} | kz_datamgr:data_error()) -> ne_binary().
-message({'ok', _}) -> <<"Revised teletype views in ", (?KZ_CONFIG_DB)/binary>>;
+message({'ok', _}) -> <<"Revised crossbar views in ", (?KZ_CONFIG_DB)/binary>>;
 message({'error', E}) ->
     <<"Failed to review teletype views in "
       ,(?KZ_CONFIG_DB)/binary, ": ", (kz_term:to_binary(E))/binary
