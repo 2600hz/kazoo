@@ -32,6 +32,7 @@
                   ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
                   ,?WORKER('teletype_listener')
                   ,?WORKER('teletype_shared_listener')
+                  ,?WORKER('teletype_maint_listener')
                   ,?WORKER('teletype_bindings')
                   ]).
 
