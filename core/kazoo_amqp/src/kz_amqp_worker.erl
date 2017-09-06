@@ -671,7 +671,6 @@ handle_call({'publish', ReqProp, PublishFun}
             };
         'ok' ->
             lager:debug("published message ~s for ~p", [kz_api:msg_id(ReqProp), Pid]),
-            lager:debug("published using ~p: ~p", [PublishFun, ReqProp]),
             {'reply', 'ok', reset(State)};
         {'error', _E}=Err ->
             lager:error("failed to publish message ~s for ~p: ~p", [kz_api:msg_id(ReqProp), Pid, _E]),
