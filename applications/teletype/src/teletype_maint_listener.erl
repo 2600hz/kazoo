@@ -35,7 +35,7 @@
                      ,[{<<"maintenance">>, <<"req">>}]
                      }
                     ]).
--define(QUEUE_NAME, <<"teletype_maint_listener">>).
+-define(QUEUE_NAME, <<?MODULE_STRING>>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
