@@ -29760,9 +29760,6 @@
                             "description": "The audio media parameters",
                             "properties": {
                                 "codecs": {
-                                    "default": [
-                                        "PCMU"
-                                    ],
                                     "description": "A list of audio codecs the device supports",
                                     "items": {
                                         "enum": [
