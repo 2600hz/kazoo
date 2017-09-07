@@ -70,13 +70,11 @@ bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
 unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
--define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
 -define(FAXES_VIEW_FILE, <<"views/faxes.json">>).
 -define(FAXBOX_VIEW_FILE, <<"views/faxbox.json">>).
--define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
+
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
--define(SEARCH_VIEW_FILE, <<"views/search.json">>).
 
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
@@ -336,12 +334,6 @@ old_refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-old_refresh(?KZ_SIP_DB) ->
-    kz_datamgr:db_create(?KZ_SIP_DB),
-    Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-            ,kapps_util:get_view_json('registrar', <<"credentials.json">>)
-            ],
-    kapps_util:update_views(?KZ_SIP_DB, Views, 'true');
 old_refresh(?KZ_ANONYMOUS_CDR_DB) ->
     kz_datamgr:db_create(?KZ_ANONYMOUS_CDR_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
@@ -349,14 +341,6 @@ old_refresh(?KZ_ANONYMOUS_CDR_DB) ->
 old_refresh(?KZ_DEDICATED_IP_DB) ->
     kz_datamgr:db_create(?KZ_DEDICATED_IP_DB),
     kz_ip_utils:refresh_database();
-old_refresh(?KZ_ACCOUNTS_DB) ->
-    kz_datamgr:db_create(?KZ_ACCOUNTS_DB),
-    Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-            ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
-            ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
-            ],
-    kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'true'),
-    'ok';
 old_refresh(?KZ_FAXES_DB) ->
     kz_datamgr:db_create(?KZ_FAXES_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXES_VIEW_FILE),
