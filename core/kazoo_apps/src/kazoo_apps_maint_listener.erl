@@ -32,6 +32,8 @@
 %% define what databases or classifications we're interested in
 -define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_ACCOUNTS_DB)
                       ,kapi_maintenance:restrict_to_db(?KZ_DEDICATED_IP_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_TOKEN_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_ALERTS_DB)
 
                       ,kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_ACCOUNTS_DB)
