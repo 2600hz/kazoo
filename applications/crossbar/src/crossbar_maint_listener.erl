@@ -30,9 +30,18 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_SCHEMA_DB)
+
                       ,kapi_maintenance:restrict_to_views_db(?KZ_CONFIG_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_SCHEMA_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_MEDIA_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_PORT_REQUESTS_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_ACDC_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_CCCPS_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_TOKEN_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_ALERTS_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_PENDING_NOTIFY_DB)
+
                       ,kapi_maintenance:restrict_to_views_classification('ratedeck')
                       ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
@@ -90,6 +99,30 @@ handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_MEDIA_DB, _Class) ->
     send_resp(MaintJObj, Revised);
 handle_refresh(MaintJObj, <<"refresh_views">>, Database, 'ratedeck') ->
     Revised = kz_datamgr:revise_doc_from_file(Database, 'crossbar', <<"views/rates.json">>),
+    send_resp(MaintJObj, Revised);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SIP_DB, _Class) ->
+    View = kapps_util:get_view_json('crossbar', <<"views/resources.json">>),
+    case kapps_util:update_views(?KZ_SIP_DB, [View], 'true') of
+        'true' -> send_resp(MaintJObj, {'ok', MaintJObj});
+        'false' -> send_resp(MaintJObj, {'error', 'not_found'})
+    end;
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_PORT_REQUESTS_DB, _Class) ->
+    Revised = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
+    send_resp(MaintJObj, Revised);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_ACDC_DB, _Class) ->
+    Revised = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
+    send_resp(MaintJObj, Revised);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_CCCPS_DB, _Class) ->
+    Revised = kz_datamgr:revise_doc_from_file(?KZ_CCCPS_DB, 'crossbar', <<"views/cccps.json">>),
+    send_resp(MaintJObj, Revised);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_TOKEN_DB, _Class) ->
+    Revised = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    send_resp(MaintJObj, Revised);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_ALERTS_DB, _Class) ->
+    Revised = kz_datamgr:revise_doc_from_file(?KZ_ALERTS_DB, 'crossbar', "views/alerts.json"),
+    send_resp(MaintJObj, Revised);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_PENDING_NOTIFY_DB, _Class) ->
+    Revised = kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, 'crossbar', "views/pending_notify.json"),
     send_resp(MaintJObj, Revised).
 
 -spec send_resp(kapi_mainteannce:req(), {'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 'ok'.

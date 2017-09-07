@@ -338,7 +338,6 @@ old_refresh(?KZ_SIP_DB) ->
     kz_datamgr:db_create(?KZ_SIP_DB),
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
             ,kapps_util:get_view_json('registrar', <<"credentials.json">>)
-            ,kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
             ],
     kapps_util:update_views(?KZ_SIP_DB, Views, 'true');
 old_refresh(?KZ_ANONYMOUS_CDR_DB) ->
@@ -363,24 +362,19 @@ old_refresh(?KZ_FAXES_DB) ->
     'ok';
 old_refresh(?KZ_PORT_REQUESTS_DB) ->
     kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
     _ = kz_util:spawn(fun knm_port_request:migrate/0),
     'ok';
 old_refresh(?KZ_ACDC_DB) ->
     kz_datamgr:db_create(?KZ_ACDC_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
     'ok';
 old_refresh(?KZ_CCCPS_DB) ->
     kz_datamgr:db_create(?KZ_CCCPS_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_CCCPS_DB, 'crossbar', <<"views/cccps.json">>),
     'ok';
 old_refresh(?KZ_TOKEN_DB) ->
     _ = kz_datamgr:db_create(?KZ_TOKEN_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
     'ok';
 old_refresh(?KZ_ALERTS_DB) ->
     _ = kz_datamgr:db_create(?KZ_ALERTS_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_ALERTS_DB, 'crossbar', "views/alerts.json"),
     'ok';
 old_refresh(?KZ_TASKS_DB) ->
     _ = kz_datamgr:db_create(?KZ_TASKS_DB),
@@ -388,7 +382,6 @@ old_refresh(?KZ_TASKS_DB) ->
     'ok';
 old_refresh(?KZ_PENDING_NOTIFY_DB) ->
     _ = kz_datamgr:db_create(?KZ_PENDING_NOTIFY_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, 'crossbar', "views/pending_notify.json"),
     'ok';
 old_refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of
