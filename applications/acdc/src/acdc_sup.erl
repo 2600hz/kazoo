@@ -29,6 +29,7 @@
                   ,?WORKER('acdc_agent_manager')
                   ,?WORKER('acdc_init')
                   ,?WORKER('acdc_listener')
+                  ,?WORKER('acdc_maint_listener')
                   ]).
 
 %% ===================================================================
