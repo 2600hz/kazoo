@@ -40,6 +40,7 @@
                   ,?WORKER('fax_shared_listener')
                   ,?WORKER('fax_monitor')
                   ,?WORKER_ARGS('gen_smtp_server', ?SMTP_ARGS)
+                  ,?WORKER('fax_maint_listener')
                   ]).
 
 %% ===================================================================

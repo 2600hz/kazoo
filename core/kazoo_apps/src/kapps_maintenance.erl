@@ -71,8 +71,6 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
--define(FAXES_VIEW_FILE, <<"views/faxes.json">>).
--define(FAXBOX_VIEW_FILE, <<"views/faxbox.json">>).
 
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
 
@@ -290,11 +288,6 @@ old_refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-old_refresh(?KZ_FAXES_DB) ->
-    kz_datamgr:db_create(?KZ_FAXES_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXES_VIEW_FILE),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXBOX_VIEW_FILE),
-    'ok';
 old_refresh(?KZ_PORT_REQUESTS_DB) ->
     kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
     _ = kz_util:spawn(fun knm_port_request:migrate/0),
