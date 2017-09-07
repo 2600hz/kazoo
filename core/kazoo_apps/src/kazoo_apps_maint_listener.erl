@@ -31,8 +31,11 @@
 %% By convention, we put the options here in macros, but not required.
 %% define what databases or classifications we're interested in
 -define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_ACCOUNTS_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_DEDICATED_IP_DB)
+
                       ,kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_ACCOUNTS_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_DEDICATED_IP_DB)
                       ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
@@ -70,20 +73,29 @@ handle_req(MaintJObj, _Props) ->
                   ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
                   ).
 
+handle_refresh(MaintJObj, <<"refresh_database">>, Database) ->
+    refresh_database(MaintJObj, Database);
 handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SIP_DB) ->
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)],
     Updated = kapps_util:update_views(?KZ_SIP_DB, Views, 'true'),
     send_resp(MaintJObj, Updated);
-handle_refresh(MaintJObj, <<"refresh_database">>, ?KZ_ACCOUNTS_DB) ->
-    Created = kz_datamgr:db_create(?KZ_ACCOUNTS_DB),
-    send_resp(MaintJObj, Created);
 handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_ACCOUNTS_DB) ->
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
             ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
             ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
             ],
     Updated = kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'true'),
-    send_resp(MaintJObj, Updated).
+    send_resp(MaintJObj, Updated);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_DEDICATED_IP_DB) ->
+    Revised = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB
+                                                ,'kazoo_ips'
+                                                ,"views"
+                                                ),
+    send_resp(MaintJObj, Revised).
+
+refresh_database(MaintJObj, Database) ->
+    Created = kz_datamgr:db_create(Database),
+    send_resp(MaintJObj, Created).
 
 -spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
 send_resp(MaintJObj, Created) ->
