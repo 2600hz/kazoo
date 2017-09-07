@@ -39,6 +39,8 @@
                       ,kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_ACCOUNTS_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_DEDICATED_IP_DB)
+
+                      ,kapi_maintenance:restrict_to_views_type('modb')
                       ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
@@ -74,22 +76,26 @@ handle_req(MaintJObj, _Props) ->
     handle_refresh(MaintJObj
                   ,kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)
                   ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
+                  ,kz_json:get_ne_binary_value(<<"Classification">>, MaintJObj)
                   ).
 
-handle_refresh(MaintJObj, <<"refresh_database">>, Database) ->
+handle_refresh(MaintJObj, <<"refresh_views">>, Database, <<"modb">>) ->
+    kazoo_modb:refresh_views(Database),
+    send_resp(MaintJObj, 'true');
+handle_refresh(MaintJObj, <<"refresh_database">>, Database, _Class) ->
     refresh_database(MaintJObj, Database);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SIP_DB) ->
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SIP_DB, _Class) ->
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)],
     Updated = kapps_util:update_views(?KZ_SIP_DB, Views, 'true'),
     send_resp(MaintJObj, Updated);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_ACCOUNTS_DB) ->
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_ACCOUNTS_DB, _Class) ->
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
             ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
             ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
             ],
     Updated = kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'true'),
     send_resp(MaintJObj, Updated);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_DEDICATED_IP_DB) ->
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_DEDICATED_IP_DB, _Class) ->
     Revised = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB
                                                 ,'kazoo_ips'
                                                 ,"views"

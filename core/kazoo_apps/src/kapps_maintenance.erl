@@ -290,8 +290,6 @@ old_refresh(?KZ_OFFNET_DB=Part) ->
 old_refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of
         'account' -> refresh_account_db(Database);
-        'modb' -> kazoo_modb:refresh_views(Database);
-        'numbers' -> kazoo_number_manager_maintenance:refresh_numbers_db(Database);
         'system' ->
             kz_datamgr:db_create(Database),
             'ok';

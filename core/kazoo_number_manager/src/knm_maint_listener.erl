@@ -30,7 +30,9 @@
 
 %% By convention, we put the options here in macros, but not required.
 %% define what databases or classifications we're interested in
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_PORT_REQUESTS_DB)]).
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_PORT_REQUESTS_DB)
+                      ,kapi_maintenance:restrict_to_views_type('numbers')
+                      ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
                      ,[{<<"maintenance">>, <<"req">>}]
@@ -62,9 +64,19 @@ start_link() ->
 -spec handle_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
 handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
+    handle_refresh(MaintJObj
+                  ,kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)
+                  ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
+                  ,kz_json:get_ne_binary_value(<<"Classification">>, MaintJObj)
+                  ).
+
+handle_refresh(MaintJObj, <<"refresh_database">>, ?KZ_PORT_REQUESTS_DB, _Class) ->
     Created = kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
     _ = kz_util:spawn(fun knm_port_request:migrate/0),
-    send_resp(MaintJObj, Created).
+    send_resp(MaintJObj, Created);
+handle_refresh(MaintJObj, <<"refresh_views">>, Database, <<"numbers">>) ->
+    kazoo_number_manager_maintenance:refresh_numbers_db(Database),
+    send_resp(MaintJObj, 'true').
 
 -spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
 send_resp(MaintJObj, Created) ->
