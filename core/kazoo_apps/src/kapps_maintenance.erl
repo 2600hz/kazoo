@@ -334,10 +334,6 @@ old_refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-old_refresh(?KZ_ANONYMOUS_CDR_DB) ->
-    kz_datamgr:db_create(?KZ_ANONYMOUS_CDR_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
-    'ok';
 old_refresh(?KZ_DEDICATED_IP_DB) ->
     kz_datamgr:db_create(?KZ_DEDICATED_IP_DB),
     kz_ip_utils:refresh_database();
