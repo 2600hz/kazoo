@@ -125,7 +125,11 @@ handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_PENDING_NOTIFY_DB, _Class) ->
     Revised = kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, 'crossbar', "views/pending_notify.json"),
     send_resp(MaintJObj, Revised).
 
--spec send_resp(kapi_mainteannce:req(), {'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 'ok'.
+-type results() :: {'ok', kz_json:object()} |
+                   kz_datamgr:data_error() |
+                   boolean() | 'ok'.
+
+-spec send_resp(kapi_mainteannce:req(), results()) -> 'ok'.
 send_resp(MaintJObj, Revised) ->
     Resp = [{<<"Code">>, code(Revised)}
            ,{<<"Message">>, message(Revised)}
@@ -134,14 +138,16 @@ send_resp(MaintJObj, Revised) ->
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
--spec code({'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 200 | 500.
+-spec code(results()) -> 200 | 500.
 code({'ok', _}) -> 200;
 code('true') -> 200;
+code('ok') -> 200;
 code({'error', _}) -> 500;
 code('false') -> 500.
 
--spec message({'ok', kz_json:object()} | kz_datamgr:data_error()) -> ne_binary().
+-spec message(results()) -> ne_binary().
 message({'ok', _}) -> <<"Revised crossbar docs/views">>;
+message('ok') -> <<"Revised crossbar docs/views">>;
 message({'error', E}) ->
     <<"Failed to revise docs/views: ", (kz_term:to_binary(E))/binary>>;
 message('true') -> <<"Created database">>;

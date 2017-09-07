@@ -263,10 +263,11 @@ get_databases() ->
 get_database_sort(Db1, Db2) ->
     kzs_util:db_priority(Db1) < kzs_util:db_priority(Db2).
 
--spec refresh(ne_binary()) ->
-                     {kz_amqp_worker:request_return()
-                     ,kz_amqp_worker:request_return()
-                     }.
+-type refresh_result() :: {kz_amqp_worker:request_return()
+                          ,kz_amqp_worker:request_return()
+                          }.
+
+-spec refresh(ne_binary()) -> 'ok'.
 refresh(Database) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     kz_amqp_worker:relay_to(Worker, self()),
@@ -275,10 +276,11 @@ refresh(Database) ->
     kz_amqp_worker:checkin_worker(Worker),
     print_refresh_result(RefreshResult).
 
--spec print_refresh_result(tuple()) -> 'ok'.
+-spec print_refresh_result(refresh_result()) -> 'ok'.
 print_refresh_result({Db, Views}) ->
     io:format('user', "db: ~p~nviews: ~p~n", [Db, Views]).
 
+-spec do_refresh(ne_binary(), pid()) -> refresh_result().
 do_refresh(Database, Worker) ->
     Classification = kz_datamgr:db_classification(Database),
     RefreshedDb = refresh_database(Database, Worker, Classification),
@@ -1239,7 +1241,7 @@ get_error({error, Errors}) -> [ get_error(Error) || Error <- Errors ];
 get_error({Code, _Schema, Error, Value, Path}) -> {Code, Error, Value, Path};
 get_error(X) -> X.
 
--spec cleanup_system_config(ne_binary()) -> ok.
+-spec cleanup_system_config(ne_binary()) -> {'ok', kz_json:object()}.
 cleanup_system_config(Id) ->
     Doc = maybe_new(kapps_config:get_category(Id)),
     ErrorKeys = [ Key || {Key, _} <- validate_system_config(Id), Key =/= no_schema_for ],

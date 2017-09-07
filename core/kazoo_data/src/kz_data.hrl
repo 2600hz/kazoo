@@ -106,6 +106,7 @@
                              'modb' |
                              'numbers' |
                              'provisioner' |
+                             'ratedeck' |
                              'resource_selectors' |
                              'system' |
                              'undefined'.
