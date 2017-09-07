@@ -569,6 +569,10 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
             case ChannelUp
                 andalso ringback_parker(RingbackId, SlotNumber, Slot, Data, Call)
             of
+                'false' ->
+                    lager:info("parked call does not exist anymore, hangup"),
+                    _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
+                    cf_exe:stop(Call);                    
                 'intercepted' ->
                     lager:info("parked caller ringback was intercepted"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
