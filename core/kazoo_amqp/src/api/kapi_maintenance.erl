@@ -83,30 +83,34 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) ->
     resp_v(kz_json:to_proplist(JObj)).
 
+-define(REFRESH_DB_DB(Db), {'refresh_db', 'db', Db}).
+-define(REFRESH_DB_TYPE(Type), {'refresh_db', 'type', Type}).
+-define(REFRESH_VIEWS_DB(Db), {'refresh_views', 'db', Db}).
+-define(REFRESH_VIEWS_TYPE(Type), {'refresh_views', 'type', Type}).
+
 -type db_type() :: kz_datamgr:db_classification() | ne_binary().
--type binding() :: {'refresh_db', 'db', ne_binary()} |
-                   {'refresh_db', 'type', db_type()} |
-                   {'refresh_views', 'db', ne_binary()} |
-                   {'refresh_views', 'type', db_type()}.
+-type binding() :: ?REFRESH_DB_DB(ne_binary()) |
+                   ?REFRESH_DB_TYPE(db_type()) |
+                   ?REFRESH_VIEWS_DB(ne_binary()) |
+                   ?REFRESH_VIEWS_TYPE(db_type()).
 -type bind_prop() :: {'restrict_to', [binding()]}.
 -type binds() :: [bind_prop()].
 
--spec restrict_to_db(ne_binary()) -> {'refresh_db', 'db', ne_binary()}.
+-spec restrict_to_db(ne_binary()) -> ?REFRESH_DB_DB(ne_binary()).
 restrict_to_db(<<_/binary>>=Db) ->
-    {'refresh_db', 'db', Db}.
+    ?REFRESH_DB_DB(Db).
 
--spec restrict_to_classification(db_type()) -> {'refresh_db', 'type', db_type()}.
+-spec restrict_to_classification(db_type()) -> ?REFRESH_DB_TYPE(db_type()).
 restrict_to_classification(Classification) ->
-    {'refresh_db', 'type', Classification}.
+    ?REFRESH_DB_TYPE(Classification).
 
--spec restrict_to_views_db(ne_binary()) -> {'refresh_views', 'db', ne_binary()}.
+-spec restrict_to_views_db(ne_binary()) -> ?REFRESH_VIEWS_DB(ne_binary()).
 restrict_to_views_db(Db) ->
-    {'refresh_views', 'db', Db}.
+    ?REFRESH_VIEWS_DB(Db).
 
--spec restrict_to_views_classification(db_type()) -> {'refresh_views', 'type', db_type()}.
+-spec restrict_to_views_classification(db_type()) -> ?REFRESH_VIEWS_TYPE(db_type()).
 restrict_to_views_classification(Classification) ->
-    {'refresh_views', 'type', Classification}.
-
+    ?REFRESH_VIEWS_TYPE(Classification).
 
 -spec refresh_routing_db(ne_binary(), ne_binary()) -> ne_binary().
 refresh_routing_db(RefreshWhat, <<_/binary>>=Db) ->
@@ -126,44 +130,44 @@ refresh_routing(RefreshWhat, Classification, Database) ->
                   ,$.
                   ).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec bind_to_q(ne_binary(), binds(), kz_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), binds()) -> 'ok'.
+-spec bind_to_q(ne_binary(), 'undefined' | [binding()], kz_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
 
 bind_to_q(Queue, 'undefined', Props) ->
-    bind_to_q(Queue, [{'refresh_db', 'type', <<"*">>}], Props);
-bind_to_q(Queue, [{'refresh_db', 'db', Db}|Rest], Props) ->
+    bind_to_q(Queue, [?REFRESH_DB_TYPE(<<"*">>)], Props);
+bind_to_q(Queue, [?REFRESH_DB_DB(Db)|Rest], Props) ->
     amqp_util:bind_q_to_sysconf(Queue, refresh_routing_db(?REFRESH_DB, Db)),
     bind_to_q(Queue, Rest, Props);
-bind_to_q(Queue, [{'refresh_db', 'type', Classification}|Rest], Props) ->
+bind_to_q(Queue, [?REFRESH_DB_TYPE(Classification)|Rest], Props) ->
     amqp_util:bind_q_to_sysconf(Queue, refresh_routing_classification(?REFRESH_DB, Classification)),
     bind_to_q(Queue, Rest, Props);
-bind_to_q(Queue, [{'refresh_views', 'db', Db}|Rest], Props) ->
+bind_to_q(Queue, [?REFRESH_VIEWS_DB(Db)|Rest], Props) ->
     amqp_util:bind_q_to_sysconf(Queue, refresh_routing_db(?REFRESH_VIEWS, Db)),
     bind_to_q(Queue, Rest, Props);
-bind_to_q(Queue, [{'refresh_views', 'type', Classification}|Rest], Props) ->
+bind_to_q(Queue, [?REFRESH_VIEWS_TYPE(Classification)|Rest], Props) ->
     amqp_util:bind_q_to_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
     bind_to_q(Queue, Rest, Props);
 bind_to_q(_Queue, [], _Props) -> 'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec unbind_from_q(ne_binary(), binds(), kz_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), binds()) -> 'ok'.
+-spec unbind_from_q(ne_binary(), 'undefined' | [binding()], kz_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_from_q(Queue, props:get_value('restrict_to', Props), Props).
 
 unbind_from_q(Queue, 'undefined', Props) ->
-    unbind_from_q(Queue, [{'refresh', 'db', <<"*">>}], Props);
-unbind_from_q(Queue, [{'refresh', 'db', Db}|Rest], Props) ->
+    unbind_from_q(Queue, [?REFRESH_DB_TYPE(<<"*">>)], Props);
+unbind_from_q(Queue, [?REFRESH_DB_DB(Db)|Rest], Props) ->
     amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_DB, Db)),
     unbind_from_q(Queue, Rest, Props);
-unbind_from_q(Queue, [{'refresh', 'type', Classification}|Rest], Props) ->
+unbind_from_q(Queue, [?REFRESH_DB_TYPE(Classification)|Rest], Props) ->
     amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_DB, Classification)),
     unbind_from_q(Queue, Rest, Props);
-unbind_from_q(Queue, [{'refresh_views', 'db', Db}|Rest], Props) ->
+unbind_from_q(Queue, [?REFRESH_VIEWS_DB(Db)|Rest], Props) ->
     amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_VIEWS, Db)),
     unbind_from_q(Queue, Rest, Props);
-unbind_from_q(Queue, [{'refresh_views', 'type', Classification}|Rest], Props) ->
+unbind_from_q(Queue, [?REFRESH_VIEWS_TYPE(Classification)|Rest], Props) ->
     amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(_Queue, [], _Props) -> 'ok'.
