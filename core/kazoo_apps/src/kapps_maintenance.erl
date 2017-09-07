@@ -296,15 +296,6 @@ do_refresh(Database, Worker) ->
     RefreshedViews = kapi_maintenance:refresh_views(Database, Worker, Classification),
     {RefreshedDb, RefreshedViews}.
 
--spec old_refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
-old_refresh(?KZ_OFFNET_DB=Part) ->
-    kazoo_bindings:map(binding({'refresh', Part}), []);
-old_refresh(Database) when is_binary(Database) ->
-    case kz_datamgr:db_classification(Database) of
-        'account' -> refresh_account_db(Database);
-        _Else -> 'ok'
-    end.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
