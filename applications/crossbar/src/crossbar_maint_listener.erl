@@ -79,9 +79,9 @@ handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
 
     handle_refresh(MaintJObj
-                  ,kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)
-                  ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
-                  ,kz_json:get_ne_binary_value(<<"Classification">>, MaintJObj)
+                  ,kapi_maintenance:req_action(MaintJObj)
+                  ,kapi_maintenance:req_database(MaintJObj)
+                  ,kapi_maintenance:req_classification(MaintJObj)
                   ).
 
 -spec handle_refresh(kapi_maintenance:req(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.

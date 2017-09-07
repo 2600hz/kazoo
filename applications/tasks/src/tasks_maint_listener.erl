@@ -64,7 +64,7 @@ start_link() ->
 -spec handle_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
 handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
-    handle_refresh(MaintJObj, kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)).
+    handle_refresh(MaintJObj, kapi_maintenance:req_action(MaintJObj)).
 
 handle_refresh(MaintJObj, <<"refresh_database">>) ->
     Created = kz_datamgr:db_create(?KZ_TASKS_DB),

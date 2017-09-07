@@ -66,8 +66,8 @@ handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
 
     handle_refresh(MaintJObj
-                  ,kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)
-                  ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
+                  ,kapi_maintenance:req_action(MaintJObj)
+                  ,kapi_maintenance:req_database(MaintJObj)
                   ).
 
 handle_refresh(MaintJObj, <<"refresh_database">>, RateDb) ->
