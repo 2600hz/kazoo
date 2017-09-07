@@ -35,12 +35,14 @@
                       ,kapi_maintenance:restrict_to_db(?KZ_TOKEN_DB)
                       ,kapi_maintenance:restrict_to_db(?KZ_ALERTS_DB)
                       ,kapi_maintenance:restrict_to_db(?KZ_PENDING_NOTIFY_DB)
+                      ,kapi_maintenance:restrict_to_classification('system')
 
                       ,kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_ACCOUNTS_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_DEDICATED_IP_DB)
 
-                      ,kapi_maintenance:restrict_to_views_type('modb')
+                      ,kapi_maintenance:restrict_to_views_classification('modb')
+                      ,kapi_maintenance:restrict_to_views_classification('account')
                       ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
@@ -81,6 +83,9 @@ handle_req(MaintJObj, _Props) ->
 
 handle_refresh(MaintJObj, <<"refresh_views">>, Database, <<"modb">>) ->
     kazoo_modb:refresh_views(Database),
+    send_resp(MaintJObj, 'true');
+handle_refresh(MaintJObj, <<"refresh_views">>, Database, <<"account">>) ->
+    refresh_account_db(Database),
     send_resp(MaintJObj, 'true');
 handle_refresh(MaintJObj, <<"refresh_database">>, Database, _Class) ->
     refresh_database(MaintJObj, Database);
@@ -218,3 +223,55 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-define(VIEW_NUMBERS_ACCOUNT, <<"_design/numbers">>).
+
+-spec refresh_account_db(ne_binary()) -> 'ok'.
+refresh_account_db(Database) ->
+    AccountDb = kz_util:format_account_id(Database, 'encoded'),
+    AccountId = kz_util:format_account_id(Database, 'raw'),
+    _ = remove_depreciated_account_views(AccountDb),
+    _ = ensure_account_definition(AccountDb, AccountId),
+    %% ?VIEW_NUMBERS_ACCOUNT gets updated/created in KNM maintenance
+    AccountViews =
+        case kz_datamgr:open_doc(AccountDb, ?VIEW_NUMBERS_ACCOUNT) of
+            {error,_} ->
+                lists:keydelete(?VIEW_NUMBERS_ACCOUNT, 1, kapps_maintenance:get_all_account_views());
+            {ok, ViewJObj} ->
+                ViewListing = {?VIEW_NUMBERS_ACCOUNT, ViewJObj},
+                lists:keyreplace(?VIEW_NUMBERS_ACCOUNT, 1, kapps_maintenance:get_all_account_views(), ViewListing)
+        end,
+    _ = kapps_util:update_views(AccountDb, AccountViews, 'true'),
+    _ = kazoo_number_manager_maintenance:update_number_services_view(AccountDb),
+    kapps_account_config:migrate(AccountDb),
+    _ = kazoo_bindings:map(kapps_maintenance:binding({'refresh_account', AccountDb}), AccountId),
+    'ok'.
+
+-spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
+remove_depreciated_account_views(AccountDb) ->
+    _ = kz_datamgr:del_doc(AccountDb, <<"_design/limits">>),
+    _ = kz_datamgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
+    'ok'.
+
+-spec ensure_account_definition(ne_binary(), ne_binary()) -> 'ok'.
+ensure_account_definition(AccountDb, AccountId) ->
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
+        {'error', 'not_found'} -> get_definition_from_accounts(AccountDb, AccountId);
+        {'ok', _} -> 'ok'
+    end.
+
+-spec get_definition_from_accounts(ne_binary(), ne_binary()) -> 'ok'.
+get_definition_from_accounts(AccountDb, AccountId) ->
+    case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
+        {'ok', JObj} -> kz_datamgr:ensure_saved(AccountDb, kz_doc:delete_revision(JObj));
+        {'error', 'not_found'} ->
+            io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
+                     ,[AccountId]),
+            _ = kz_datamgr:db_archive(AccountDb),
+            kapps_maintenance:maybe_delete_db(AccountDb)
+    end.

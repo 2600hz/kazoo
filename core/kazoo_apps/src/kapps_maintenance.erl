@@ -22,6 +22,7 @@
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
         ,refresh_account_db/1
+        ,maybe_delete_db/1
         ]).
 -export([blocking_refresh/0
         ,blocking_refresh/1
@@ -41,21 +42,27 @@
 -export([migrate_media/0, migrate_media/1]).
 -export([purge_doc_type/2, purge_doc_type/3]).
 -export([call_id_status/1, call_id_status/2]).
--export([get_all_account_views/0]).
+
 -export([cleanup_voicemail_media/1]).
 -export([cleanup_orphan_modbs/0]).
 
 -export([migrate_system/0]).
 -export([validate_system_config/1, cleanup_system_config/1, validate_system_configs/0, cleanup_system_configs/0]).
 
--export([bind/3, unbind/3]).
+-export([bind/3, unbind/3
+        ,binding/1
+        ]).
 
--export([flush_account_views/0]).
--export([flush_getby_cache/0]).
+-export([flush_getby_cache/0
+        ,flush_account_views/0
+        ,get_all_account_views/0
+        ]).
 
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 -include("kazoo_apps.hrl").
 
+-type bind() :: 'migrate' | 'refresh' | 'refresh_account'.
+-spec binding(bind() | {bind(), ne_binary()}) -> ne_binary().
 binding('migrate') -> <<"maintenance.migrate">>;
 binding('refresh') -> <<"maintenance.refresh">>;
 binding('refresh_account') -> <<"maintenance.refresh.account">>;
@@ -76,7 +83,11 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
 
--define(VIEW_NUMBERS_ACCOUNT, <<"_design/numbers">>).
+-spec refresh_account_db(ne_binary()) -> 'ok'.
+refresh_account_db(Database) ->
+    Classification = 'account' = kz_datamgr:db_classification(Database),
+    kapi_maintenance:refresh_views(Database, Classification),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -228,26 +239,30 @@ blocking_refresh(Pause) ->
 %%--------------------------------------------------------------------
 -spec refresh() -> 'no_return'.
 -spec refresh(ne_binaries(), text() | non_neg_integer()) -> 'no_return'.
--spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
+-spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer(), pid()) -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
-    _ = flush_account_views(),
     refresh(Databases, 2 * ?MILLISECONDS_IN_SECOND).
 
 refresh(Databases, Pause) ->
     Total = length(Databases),
-    refresh(Databases, kz_term:to_integer(Pause), Total).
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    kz_amqp_worker:relay_to(Worker, self()),
 
-refresh([], _, _) -> 'no_return';
-refresh([Database|Databases], Pause, Total) ->
+    refresh(Databases, kz_term:to_integer(Pause), Total, Worker).
+
+refresh([], _, _, Worker) ->
+    kz_amqp_worker:checkin_worker(Worker),
+    'no_return';
+refresh([Database|Databases], Pause, Total, Worker) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
              ,[self(), length(Databases) + 1, Total, Database]),
-    _ = old_refresh(Database),
+    _ = do_refresh(Database, Worker),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
             'true' -> 'ok'
         end,
-    refresh(Databases, Pause, Total).
+    refresh(Databases, Pause, Total, Worker).
 
 -spec get_databases() -> ne_binaries().
 get_databases() ->
@@ -266,7 +281,6 @@ get_database_sort(Db1, Db2) ->
 refresh(Database) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     kz_amqp_worker:relay_to(Worker, self()),
-
     RefreshResult = do_refresh(Database, Worker),
     kz_amqp_worker:checkin_worker(Worker),
     print_refresh_result(RefreshResult).
@@ -283,92 +297,13 @@ do_refresh(Database, Worker) ->
     {RefreshedDb, RefreshedViews}.
 
 -spec old_refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
-old_refresh(?KZ_WEBHOOKS_DB=Part) ->
-    kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of
         'account' -> refresh_account_db(Database);
-        'system' ->
-            kz_datamgr:db_create(Database),
-            'ok';
         _Else -> 'ok'
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec refresh_account_db(ne_binary()) -> 'ok'.
-refresh_account_db(Database) ->
-    AccountDb = kz_util:format_account_id(Database, 'encoded'),
-    AccountId = kz_util:format_account_id(Database, 'raw'),
-    _ = remove_depreciated_account_views(AccountDb),
-    _ = ensure_account_definition(AccountDb, AccountId),
-    %% ?VIEW_NUMBERS_ACCOUNT gets updated/created in KNM maintenance
-    AccountViews =
-        case kz_datamgr:open_doc(AccountDb, ?VIEW_NUMBERS_ACCOUNT) of
-            {error,_} ->
-                lists:keydelete(?VIEW_NUMBERS_ACCOUNT, 1, get_all_account_views());
-            {ok, ViewJObj} ->
-                ViewListing = {?VIEW_NUMBERS_ACCOUNT, ViewJObj},
-                lists:keyreplace(?VIEW_NUMBERS_ACCOUNT, 1, get_all_account_views(), ViewListing)
-        end,
-    _ = kapps_util:update_views(AccountDb, AccountViews, 'true'),
-    _ = kazoo_number_manager_maintenance:update_number_services_view(AccountDb),
-    kapps_account_config:migrate(AccountDb),
-    _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
-    'ok'.
-
--spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
-remove_depreciated_account_views(AccountDb) ->
-    _ = kz_datamgr:del_doc(AccountDb, <<"_design/limits">>),
-    _ = kz_datamgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
-    'ok'.
-
--spec ensure_account_definition(ne_binary(), ne_binary()) -> 'ok'.
-ensure_account_definition(AccountDb, AccountId) ->
-    case kz_datamgr:open_doc(AccountDb, AccountId) of
-        {'error', 'not_found'} -> get_definition_from_accounts(AccountDb, AccountId);
-        {'ok', _} -> 'ok'
-    end.
-
--spec get_definition_from_accounts(ne_binary(), ne_binary()) -> 'ok'.
-get_definition_from_accounts(AccountDb, AccountId) ->
-    case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} -> kz_datamgr:ensure_saved(AccountDb, kz_doc:delete_revision(JObj));
-        {'error', 'not_found'} ->
-            io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
-                     ,[AccountId]),
-            _ = kz_datamgr:db_archive(AccountDb),
-            maybe_delete_db(AccountDb)
-    end.
-
--spec flush_account_views() -> 'ok'.
-flush_account_views() ->
-    put('account_views', 'undefined').
-
--spec get_all_account_views() -> kz_datamgr:views_listing().
-get_all_account_views() ->
-    case get('account_views') of
-        'undefined' ->
-            Views = fetch_all_account_views(),
-            put('account_views', Views),
-            Views;
-        Views -> Views
-    end.
-
--spec fetch_all_account_views() -> kz_datamgr:views_listing().
-fetch_all_account_views() ->
-    [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-    ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
-    ,kapps_util:get_view_json('webhooks', <<"webhooks.json">>)
-     |kapps_util:get_views_json('crossbar', "account")
-     ++ kapps_util:get_views_json('callflow', "views")
-    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1161,3 +1096,27 @@ validate_system_configs() ->
 flush_getby_cache() ->
     kz_cache:flush_local(?KAPPS_GETBY_CACHE),
     'ok'.
+
+-spec flush_account_views() -> 'ok'.
+flush_account_views() ->
+    put('account_views', 'undefined').
+
+
+-spec get_all_account_views() -> kz_datamgr:views_listing().
+get_all_account_views() ->
+    case get('account_views') of
+        'undefined' ->
+            Views = fetch_all_account_views(),
+            put('account_views', Views),
+            Views;
+        Views -> Views
+    end.
+
+-spec fetch_all_account_views() -> kz_datamgr:views_listing().
+fetch_all_account_views() ->
+    [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
+    ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
+    ,kapps_util:get_view_json('webhooks', <<"webhooks.json">>)
+     |kapps_util:get_views_json('crossbar', "account")
+     ++ kapps_util:get_views_json('callflow', "views")
+    ].

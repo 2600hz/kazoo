@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(crossbar_maint_listener).
+-module(webhooks_maint_listener).
 -behaviour(gen_listener).
 
 -export([start_link/0
@@ -21,7 +21,7 @@
         ,code_change/3
         ]).
 
--include("crossbar.hrl").
+-include("webhooks.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -29,21 +29,9 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_SCHEMA_DB)
-
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_CONFIG_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_SCHEMA_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_MEDIA_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_PORT_REQUESTS_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_ACDC_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_CCCPS_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_TOKEN_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_ALERTS_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_PENDING_NOTIFY_DB)
+%% define what databases or classifications we're interested in
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_WEBHOOKS_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_WEBHOOKS_DB)
-
-                      ,kapi_maintenance:restrict_to_views_classification('ratedeck')
                       ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
@@ -76,86 +64,29 @@ start_link() ->
 -spec handle_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
 handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
+    handle_refresh(MaintJObj, kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)).
 
-    handle_refresh(MaintJObj
-                  ,kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)
-                  ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
-                  ,kz_json:get_ne_binary_value(<<"Classification">>, MaintJObj)
-                  ).
-
--spec handle_refresh(kapi_maintenance:req(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-handle_refresh(MaintJObj, <<"refresh_database">>, Db, _Class) ->
-    Created = kz_datamgr:db_create(Db),
+handle_refresh(MaintJObj, <<"refresh_database">>) ->
+    Created = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
     send_resp(MaintJObj, Created);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_CONFIG_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SCHEMA_DB, _Class) ->
-    kz_datamgr:suppress_change_notice(),
-    Revised = kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, 'crossbar', "schemas"),
-    kz_datamgr:enable_change_notice(),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_MEDIA_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, 'crossbar', "account/media.json"),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, Database, 'ratedeck') ->
-    Revised = kz_datamgr:revise_doc_from_file(Database, 'crossbar', <<"views/rates.json">>),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SIP_DB, _Class) ->
-    View = kapps_util:get_view_json('crossbar', <<"views/resources.json">>),
-    case kapps_util:update_views(?KZ_SIP_DB, [View], 'true') of
-        'true' -> send_resp(MaintJObj, {'ok', MaintJObj});
-        'false' -> send_resp(MaintJObj, {'error', 'not_found'})
-    end;
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_PORT_REQUESTS_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_ACDC_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_CCCPS_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_CCCPS_DB, 'crossbar', <<"views/cccps.json">>),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_TOKEN_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_ALERTS_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_ALERTS_DB, 'crossbar', "views/alerts.json"),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_PENDING_NOTIFY_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, 'crossbar', "views/pending_notify.json"),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_WEBHOOKS_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
-    send_resp(MaintJObj, Revised).
+handle_refresh(MaintJObj, <<"refresh_views">>) ->
+    _ = webhooks_maintenance:reset_webhooks_list(),
+    send_resp(MaintJObj, 'true').
 
--type results() :: {'ok', kz_json:object()} |
-                   kz_datamgr:data_error() |
-                   boolean() | 'ok'.
-
--spec send_resp(kapi_mainteannce:req(), results()) -> 'ok'.
-send_resp(MaintJObj, Revised) ->
-    Resp = [{<<"Code">>, code(Revised)}
-           ,{<<"Message">>, message(Revised)}
+-spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
+send_resp(MaintJObj, Results) ->
+    Resp = [{<<"Code">>, code(Results)}
+           ,{<<"Message">>, message(Results)}
            ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
--spec code(results()) -> 200 | 500.
-code({'ok', _}) -> 200;
 code('true') -> 200;
-code('ok') -> 200;
-code({'error', _}) -> 500;
 code('false') -> 500.
 
--spec message(results()) -> ne_binary().
-message({'ok', _}) -> <<"Revised crossbar docs/views">>;
-message('ok') -> <<"Revised crossbar docs/views">>;
-message({'error', E}) ->
-    <<"Failed to revise docs/views: ", (kz_term:to_binary(E))/binary>>;
-message('true') -> <<"Created database">>;
-message('false') -> <<"Failed to create database">>.
+message('true') -> <<"Success">>;
+message('false') -> <<"Failure">>.
 
 %%%===================================================================
 %%% gen_server callbacks
