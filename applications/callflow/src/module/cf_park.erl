@@ -355,6 +355,7 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                     {'error', 'occupied'};
                 _Else ->
                     lager:info("slot is availabled because parked call '~s' no longer exists: ~p", [ParkedCallId, _Else]),
+                    _ = kz_datamgr:del_doc(kapps_call:account_db(Call), ?SLOT_DOC_ID(SlotNumber)),
                     do_save_slot(SlotNumber, Slot, Call)
             end
     end.
