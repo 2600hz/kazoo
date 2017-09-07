@@ -99,7 +99,7 @@ handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SCHEMA_DB, _Class) ->
 handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_MEDIA_DB, _Class) ->
     Revised = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, 'crossbar', "account/media.json"),
     send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, Database, 'ratedeck') ->
+handle_refresh(MaintJObj, <<"refresh_views">>, Database, <<"ratedeck">>) ->
     Revised = kz_datamgr:revise_doc_from_file(Database, 'crossbar', <<"views/rates.json">>),
     send_resp(MaintJObj, Revised);
 handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SIP_DB, _Class) ->
