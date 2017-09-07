@@ -53,7 +53,6 @@
 -export([flush_account_views/0]).
 -export([flush_getby_cache/0]).
 
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 -include("kazoo_apps.hrl").
 
@@ -288,10 +287,6 @@ old_refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-old_refresh(?KZ_PORT_REQUESTS_DB) ->
-    kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
-    _ = kz_util:spawn(fun knm_port_request:migrate/0),
-    'ok';
 old_refresh(?KZ_ACDC_DB) ->
     kz_datamgr:db_create(?KZ_ACDC_DB),
     'ok';
