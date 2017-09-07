@@ -345,12 +345,6 @@ old_refresh(?KZ_SIP_DB) ->
             ,kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
             ],
     kapps_util:update_views(?KZ_SIP_DB, Views, 'true');
-old_refresh(?KZ_SCHEMA_DB) ->
-    kz_datamgr:db_create(?KZ_SCHEMA_DB),
-    kz_datamgr:suppress_change_notice(),
-    kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, 'crossbar', "schemas"),
-    kz_datamgr:enable_change_notice(),
-    'ok';
 old_refresh(?KZ_MEDIA_DB) ->
     kz_datamgr:db_create(?KZ_MEDIA_DB),
     kazoo_media_maintenance:refresh(),

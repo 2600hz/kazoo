@@ -29,7 +29,10 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_views_db(?KZ_CONFIG_DB)]).
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_views_db(?KZ_CONFIG_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_SCHEMA_DB)
+                      ,kapi_maintenance:restrict_to_views_db(?KZ_SCHEMA_DB)
+                      ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
                      ,[{<<"maintenance">>, <<"req">>}]
@@ -61,10 +64,25 @@ start_link() ->
 -spec handle_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
 handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
+
+    handle_refresh(MaintJObj
+                  ,kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)
+                  ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
+                  ).
+
+handle_refresh(MaintJObj, <<"refresh_database">>, Db) ->
+    Created = kz_datamgr:db_create(Db),
+    send_resp(MaintJObj, Created);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_CONFIG_DB) ->
+    Revised = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
+    send_resp(MaintJObj, Revised);
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SCHEMA_DB) ->
+    kz_datamgr:suppress_change_notice(),
+    Revised = kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, 'crossbar', "schemas"),
+    kz_datamgr:enable_change_notice(),
     send_resp(MaintJObj, Revised).
 
--spec send_resp(kapi_mainteannce:req(), {'ok', kz_json:object()} | kz_datamgr:data_error()) -> 'ok'.
+-spec send_resp(kapi_mainteannce:req(), {'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 'ok'.
 send_resp(MaintJObj, Revised) ->
     Resp = [{<<"Code">>, code(Revised)}
            ,{<<"Message">>, message(Revised)}
@@ -73,16 +91,18 @@ send_resp(MaintJObj, Revised) ->
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
--spec code({'ok', kz_json:object()} | kz_datamgr:data_error()) -> 200 | 500.
+-spec code({'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 200 | 500.
 code({'ok', _}) -> 200;
-code({'error', _}) -> 500.
+code('true') -> 200;
+code({'error', _}) -> 500;
+code('false') -> 500.
 
 -spec message({'ok', kz_json:object()} | kz_datamgr:data_error()) -> ne_binary().
-message({'ok', _}) -> <<"Revised crossbar views in ", (?KZ_CONFIG_DB)/binary>>;
+message({'ok', _}) -> <<"Revised crossbar docs/views">>;
 message({'error', E}) ->
-    <<"Failed to review teletype views in "
-      ,(?KZ_CONFIG_DB)/binary, ": ", (kz_term:to_binary(E))/binary
-    >>.
+    <<"Failed to revise docs/views: ", (kz_term:to_binary(E))/binary>>;
+message('true') -> <<"Created database">>;
+message('false') -> <<"Failed to create database">>.
 
 %%%===================================================================
 %%% gen_server callbacks
