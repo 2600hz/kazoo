@@ -28,6 +28,7 @@
                   ,?WORKER('kz_account_crawler')
                    %% Standalone tasks
                   ,?WORKER('kz_notify_resend')
+                  ,?WORKER('tasks_maint_listener')
                   ]).
 
 %% ===================================================================

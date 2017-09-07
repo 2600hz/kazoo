@@ -287,10 +287,6 @@ old_refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-old_refresh(?KZ_TASKS_DB) ->
-    _ = kz_datamgr:db_create(?KZ_TASKS_DB),
-    _ = kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, 'tasks'),
-    'ok';
 old_refresh(?KZ_PENDING_NOTIFY_DB) ->
     _ = kz_datamgr:db_create(?KZ_PENDING_NOTIFY_DB),
     'ok';
