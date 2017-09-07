@@ -33,7 +33,8 @@
 -define(SYSTEM_PARKED_TYPE, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"parked_presence_type">>, ?DEFAULT_PARKED_TYPE)).
 -define(ACCOUNT_PARKED_TYPE(A), kapps_account_config:get(A, ?MOD_CONFIG_CAT, <<"parked_presence_type">>, ?SYSTEM_PARKED_TYPE)).
 -define(PRESENCE_TYPE_KEY, <<"Presence-Type">>).
--define(PARK_DELAY_CHECK_TIME, ?MILLISECONDS_IN_SECOND * 10).
+-define(PARK_DELAY_CHECK_TIME_KEY, <<"valet_reservation_cleanup_time_ms">>).
+-define(PARK_DELAY_CHECK_TIME(C), kapps_account_config:get_global(kapps_call:account_id(C), ?MOD_CONFIG_CAT, ?PARK_DELAY_CHECK_TIME_KEY, ?MILLISECONDS_IN_SECOND * 3)).
 -define(PARKING_APP_NAME, <<"park">>).
 
 %%--------------------------------------------------------------------
@@ -219,7 +220,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             _ = kapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
             _ = kapps_call_command:b_say(kz_term:to_binary(SlotNumber), Call),
             _ = kapps_call_command:wait_for_hangup(),
-            _ = timer:apply_after(?PARK_DELAY_CHECK_TIME, ?MODULE, 'maybe_cleanup_slot', [SlotNumber, Call, cf_exe:callid(Call)]),
+            _ = timer:apply_after(?PARK_DELAY_CHECK_TIME(Call), ?MODULE, 'maybe_cleanup_slot', [SlotNumber, Call, cf_exe:callid(Call)]),
             cf_exe:transfer(Call);
         %% blind transfer and but the provided slot number is occupied
         {_, {'error', 'occupied'}} ->
