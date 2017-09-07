@@ -33,24 +33,29 @@
 
 -include_lib("amqp_util.hrl").
 
+-define(EVENT_CAT, <<"maintenance">>).
+-define(KEY_ACTION, <<"Action">>).
+-define(KEY_CLASSIFICATION, <<"Classification">>).
+-define(KEY_DATABASE, <<"Database">>).
+
 -define(REFRESH_DB, <<"refresh_database">>).
 -define(REFRESH_VIEWS, <<"refresh_views">>).
 
--define(REQ_HEADERS, [<<"Action">>]).
--define(OPTIONAL_REQ_HEADERS, [<<"Classification">>
-                              ,<<"Database">>
+-define(REQ_HEADERS, [?KEY_ACTION]).
+-define(OPTIONAL_REQ_HEADERS, [?KEY_CLASSIFICATION
+                              ,?KEY_DATABASE
                               ]).
 -define(REQ_VALUES, [{<<"Event-Name">>, <<"req">>}
-                    ,{<<"Event-Category">>, <<"maintenance">>}
-                    ,{<<"Action">>, [?REFRESH_DB
-                                    ,?REFRESH_VIEWS
-                                    ]}
+                    ,{<<"Event-Category">>, ?EVENT_CAT}
+                    ,{?KEY_ACTION, [?REFRESH_DB
+                                   ,?REFRESH_VIEWS
+                                   ]}
                     ]).
--define(REQ_TYPES, [{<<"Classification">>, fun(C) -> is_binary(C)
-                                                         orelse is_atom(C)
-                                           end
+-define(REQ_TYPES, [{?KEY_CLASSIFICATION, fun(C) -> is_binary(C)
+                                                        orelse is_atom(C)
+                                          end
                     }
-                   ,{<<"Database">>, fun is_binary/1}
+                   ,{?KEY_DATABASE, fun is_binary/1}
                    ]).
 
 -spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -71,7 +76,7 @@ req_v(JObj) ->
 -define(RESP_HEADERS, [<<"Code">>]).
 -define(OPTIONAL_RESP_HEADERS, [<<"Message">>]).
 -define(RESP_VALUES, [{<<"Event-Name">>, <<"resp">>}
-                     ,{<<"Event-Category">>, <<"maintenance">>}
+                     ,{<<"Event-Category">>, ?EVENT_CAT}
                      ]).
 -define(RESP_TYPES, [{<<"Message">>, fun is_binary/1}
                     ,{<<"Code">>, fun is_integer/1}
@@ -131,7 +136,7 @@ refresh_routing_classification(RefreshWhat, Classification) ->
 
 -spec refresh_routing(ne_binary(), db_type(), ne_binary()) -> ne_binary().
 refresh_routing(RefreshWhat, Classification, Database) ->
-    kz_binary:join([<<"maintenance">>
+    kz_binary:join([?EVENT_CAT
                    ,RefreshWhat
                    ,amqp_util:encode(kz_term:to_binary(Classification))
                    ,amqp_util:encode(Database)
@@ -207,17 +212,17 @@ routing_key(Req) ->
     routing_key(Req, fun kz_json:get_value/2).
 
 routing_key(Req, Get) ->
-    routing_key(Req, Get, Get(<<"Action">>, Req)).
+    routing_key(Req, Get, Get(?KEY_ACTION, Req)).
 
 routing_key(Req, Get, ?REFRESH_DB) ->
     refresh_routing(?REFRESH_DB
-                   ,Get(<<"Classification">>, Req)
-                   ,Get(<<"Database">>, Req)
+                   ,Get(?KEY_CLASSIFICATION, Req)
+                   ,Get(?KEY_DATABASE, Req)
                    );
 routing_key(Req, Get, ?REFRESH_VIEWS) ->
     refresh_routing(?REFRESH_VIEWS
-                   ,Get(<<"Classification">>, Req)
-                   ,Get(<<"Database">>, Req)
+                   ,Get(?KEY_CLASSIFICATION, Req)
+                   ,Get(?KEY_DATABASE, Req)
                    ).
 
 
@@ -242,9 +247,9 @@ refresh_database(Database, Classification) ->
     refresh_database(Database, Worker, Classification).
 
 refresh_database(Database, Worker, Classification) ->
-    Req = [{<<"Action">>, <<"refresh_database">>}
-          ,{<<"Classification">>, Classification}
-          ,{<<"Database">>, Database}
+    Req = [{?KEY_ACTION, <<"refresh_database">>}
+          ,{?KEY_CLASSIFICATION, Classification}
+          ,{?KEY_DATABASE, Database}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_maintenance:publish_req/1, Worker),
@@ -273,9 +278,9 @@ refresh_views(Database, Classification) ->
     Result.
 
 refresh_views(Database, Worker, Classification) ->
-    Req = [{<<"Action">>, <<"refresh_views">>}
-          ,{<<"Classification">>, Classification}
-          ,{<<"Database">>, Database}
+    Req = [{?KEY_ACTION, <<"refresh_views">>}
+          ,{?KEY_CLASSIFICATION, Classification}
+          ,{?KEY_DATABASE, Database}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req
@@ -310,12 +315,12 @@ wait_for_response(Timeout, Resps) ->
 
 -spec req_action(req()) -> api_ne_binary().
 req_action(Req) ->
-    kz_json:get_ne_binary_value(<<"Action">>, Req).
+    kz_json:get_ne_binary_value(?KEY_ACTION, Req).
 
 -spec req_database(req()) -> api_ne_binary().
 req_database(Req) ->
-    kz_json:get_ne_binary_value(<<"Database">>, Req).
+    kz_json:get_ne_binary_value(?KEY_DATABASE, Req).
 
 -spec req_classification(req()) -> api_ne_binary().
 req_classification(Req) ->
-    kz_json:get_ne_binary_value(<<"Classification">>, Req).
+    kz_json:get_ne_binary_value(?KEY_CLASSIFICATION, Req).
