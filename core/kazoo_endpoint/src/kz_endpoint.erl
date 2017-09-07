@@ -473,6 +473,7 @@ merge_call_restrictions([Classifier|Classifiers], Account, Endpoint, Owner) ->
     end.
 
 -spec get_user(ne_binary(), api_binary() | kz_json:object()) -> kz_json:object().
+get_user(_AccountDb, 'undefined') -> kz_json:new();
 get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
     case kzd_user:fetch(AccountDb, OwnerId) of
         {'ok', JObj} -> JObj;
