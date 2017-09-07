@@ -355,6 +355,7 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                     {'error', 'occupied'};
                 _Else ->
                     lager:info("slot is availabled because parked call '~s' no longer exists: ~p", [ParkedCallId, _Else]),
+                    _ = kz_datamgr:del_doc(kapps_call:account_db(Call), ?SLOT_DOC_ID(SlotNumber)),
                     do_save_slot(SlotNumber, Slot, Call)
             end
     end.
@@ -572,7 +573,7 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                 'false' ->
                     lager:info("parked call does not exist anymore, hangup"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
-                    cf_exe:stop(Call);                    
+                    cf_exe:stop(Call);
                 'intercepted' ->
                     lager:info("parked caller ringback was intercepted"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
