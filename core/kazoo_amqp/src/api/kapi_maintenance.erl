@@ -253,7 +253,7 @@ refresh_database(Database, Worker, Classification) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_maintenance:publish_req/1, Worker),
-    wait_for_response(10 * ?MILLISECONDS_IN_SECOND).
+    wait_for_response(10 * ?MILLISECONDS_IN_SECOND, 1).
 
 -spec refresh_views(ne_binary()) ->
                            kz_amqp_worker:request_return().
@@ -287,27 +287,29 @@ refresh_views(Database, Worker, Classification) ->
                        ,fun kapi_maintenance:publish_req/1
                        ,Worker
                        ),
-    wait_for_response(30 * ?MILLISECONDS_IN_SECOND).
+    wait_for_response(30 * ?MILLISECONDS_IN_SECOND, 1).
 
 
--spec wait_for_response(kz_timeout()) ->
+-spec wait_for_response(kz_timeout(), non_neg_integer()) ->
                                kz_amqp_worker:request_return().
--spec wait_for_response(kz_timeout(), kz_json:objects()) ->
+-spec wait_for_response(kz_timeout(), non_neg_integer(), kz_json:objects()) ->
                                kz_amqp_worker:request_return().
-wait_for_response(Timeout) ->
-    wait_for_response(Timeout, []).
-wait_for_response(Timeout, []) when Timeout =< 0 ->
+wait_for_response(Timeout, Responses) ->
+    wait_for_response(Timeout, Responses, []).
+wait_for_response(Timeout, _Responses, []) when Timeout =< 0 ->
     {'error', 'timeout'};
-wait_for_response(Timeout, Resps) when Timeout =< 0 ->
+wait_for_response(Timeout, _Responses, Resps) when Timeout =< 0 ->
     {'ok', Resps};
-wait_for_response(Timeout, Resps) ->
+wait_for_response(_Timeout, 0, Resps) ->
+    {'ok', Resps};
+wait_for_response(Timeout, Responses, Resps) ->
     Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             Left = kz_time:decr_timeout(Timeout, Start),
             case kapi_maintenance:resp_v(JObj) of
-                'true' -> wait_for_response(Left, [JObj|Resps]);
-                'false' -> wait_for_response(Left, Resps)
+                'true' -> wait_for_response(Left, Responses-1, [JObj|Resps]);
+                'false' -> wait_for_response(Left, Responses, Resps)
             end
     after
         Timeout -> wait_for_response(0, Resps)
