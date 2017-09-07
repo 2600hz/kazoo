@@ -22,7 +22,6 @@
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
         ,refresh_account_db/1
-        ,refresh_ratedeck_db/1
         ]).
 -export([blocking_refresh/0
         ,blocking_refresh/1
@@ -342,8 +341,6 @@ old_refresh(?KZ_SIP_DB) ->
             ,kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
             ],
     kapps_util:update_views(?KZ_SIP_DB, Views, 'true');
-old_refresh(?KZ_RATES_DB) ->
-    refresh_ratedeck_db(?KZ_RATES_DB);
 old_refresh(?KZ_ANONYMOUS_CDR_DB) ->
     kz_datamgr:db_create(?KZ_ANONYMOUS_CDR_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
@@ -401,17 +398,8 @@ old_refresh(Database) when is_binary(Database) ->
         'system' ->
             kz_datamgr:db_create(Database),
             'ok';
-        'ratedeck' -> refresh_ratedeck_db(Database);
         _Else -> 'ok'
     end.
-
--spec refresh_ratedeck_db(ne_binary()) -> 'ok'.
-refresh_ratedeck_db(RateDb) ->
-    kz_datamgr:db_create(RateDb),
-    kz_datamgr:revise_docs_from_folder(RateDb, 'hotornot', "views"),
-    _ = kz_datamgr:revise_doc_from_file(RateDb, 'crossbar', <<"views/rates.json">>),
-    kz_datamgr:load_fixtures_from_folder(RateDb, 'hotornot'),
-    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(crossbar_maint_listener).
+-module(hotornot_maint_listener).
 -behaviour(gen_listener).
 
 -export([start_link/0
@@ -21,7 +21,7 @@
         ,code_change/3
         ]).
 
--include("crossbar.hrl").
+-include("hotornot.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -29,10 +29,8 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_SCHEMA_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_CONFIG_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_SCHEMA_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_MEDIA_DB)
+%% define what databases or classifications we're interested in
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_classification('ratedeck')
                       ,kapi_maintenance:restrict_to_views_classification('ratedeck')
                       ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
@@ -70,49 +68,34 @@ handle_req(MaintJObj, _Props) ->
     handle_refresh(MaintJObj
                   ,kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)
                   ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
-                  ,kz_json:get_ne_binary_value(<<"Classification">>, MaintJObj)
                   ).
 
--spec handle_refresh(kapi_maintenance:req(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-handle_refresh(MaintJObj, <<"refresh_database">>, Db, _Class) ->
-    Created = kz_datamgr:db_create(Db),
+handle_refresh(MaintJObj, <<"refresh_database">>, RateDb) ->
+    Created = kz_datamgr:db_create(RateDb),
     send_resp(MaintJObj, Created);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_CONFIG_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SCHEMA_DB, _Class) ->
-    kz_datamgr:suppress_change_notice(),
-    Revised = kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, 'crossbar', "schemas"),
-    kz_datamgr:enable_change_notice(),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_MEDIA_DB, _Class) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, 'crossbar', "account/media.json"),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, Database, 'ratedeck') ->
-    Revised = kz_datamgr:revise_doc_from_file(Database, 'crossbar', <<"views/rates.json">>),
+handle_refresh(MaintJObj, <<"refresh_views">>, RateDb) ->
+    Revised = kz_datamgr:revise_docs_from_folder(RateDb, 'hotornot', "views"),
+    kz_datamgr:load_fixtures_from_folder(RateDb, 'hotornot'),
     send_resp(MaintJObj, Revised).
 
--spec send_resp(kapi_mainteannce:req(), {'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 'ok'.
-send_resp(MaintJObj, Revised) ->
-    Resp = [{<<"Code">>, code(Revised)}
-           ,{<<"Message">>, message(Revised)}
+-spec send_resp(kapi_mainteannce:req(), boolean() | tuple()) -> 'ok'.
+send_resp(MaintJObj, Result) ->
+    Resp = [{<<"Code">>, code(Result)}
+           ,{<<"Message">>, message(Result)}
            ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
--spec code({'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 200 | 500.
-code({'ok', _}) -> 200;
 code('true') -> 200;
-code({'error', _}) -> 500;
-code('false') -> 500.
+code({'ok', _}) -> 200;
+code('false') -> 500;
+code({'error', _}) -> 500.
 
--spec message({'ok', kz_json:object()} | kz_datamgr:data_error()) -> ne_binary().
-message({'ok', _}) -> <<"Revised crossbar docs/views">>;
-message({'error', E}) ->
-    <<"Failed to revise docs/views: ", (kz_term:to_binary(E))/binary>>;
-message('true') -> <<"Created database">>;
-message('false') -> <<"Failed to create database">>.
+message('true') -> <<"Created databse">>;
+message({'ok', _}) -> <<"Refreshed database">>;
+message('false') -> <<"Failed to create database">>;
+message({'error', _}) -> <<"Failed to refresh database">>.
 
 %%%===================================================================
 %%% gen_server callbacks
