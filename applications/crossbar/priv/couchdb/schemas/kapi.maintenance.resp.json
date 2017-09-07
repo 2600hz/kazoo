@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.maintenance.resp",
+    "description": "AMQP API for maintenance.resp",
+    "properties": {
+        "Code": {
+            "type": "integer"
+        },
+        "Event-Category": {
+            "enum": [
+                "maintenance"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "resp"
+            ],
+            "type": "string"
+        },
+        "Message": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Code"
+    ],
+    "type": "object"
+}

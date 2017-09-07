@@ -13357,6 +13357,67 @@
             },
             "type": "object"
         },
+        "kapi.maintenance.req": {
+            "description": "AMQP API for maintenance.req",
+            "properties": {
+                "Action": {
+                    "enum": [
+                        "refresh_database",
+                        "refresh_views"
+                    ],
+                    "type": "string"
+                },
+                "Classification": {
+                    "type": "string"
+                },
+                "Database": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "maintenance"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "req"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Action"
+            ],
+            "type": "object"
+        },
+        "kapi.maintenance.resp": {
+            "description": "AMQP API for maintenance.resp",
+            "properties": {
+                "Code": {
+                    "type": "integer"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "maintenance"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Code"
+            ],
+            "type": "object"
+        },
         "kapi.media.error": {
             "description": "AMQP API for media.error",
             "properties": {
