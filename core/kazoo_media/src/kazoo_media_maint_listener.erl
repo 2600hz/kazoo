@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(crossbar_maint_listener).
+-module(kazoo_media_maint_listener).
 -behaviour(gen_listener).
 
 -export([start_link/0
@@ -21,7 +21,7 @@
         ,code_change/3
         ]).
 
--include("crossbar.hrl").
+-include("kazoo_media.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -29,11 +29,8 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_views_db(?KZ_CONFIG_DB)
-                      ,kapi_maintenance:restrict_to_db(?KZ_SCHEMA_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_SCHEMA_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_MEDIA_DB)
-                      ]).
+%% define what databases or classifications we're interested in
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_MEDIA_DB)]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
                      ,[{<<"maintenance">>, <<"req">>}]
@@ -65,46 +62,25 @@ start_link() ->
 -spec handle_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
 handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
+    Created = kz_datamgr:db_create(?KZ_MEDIA_DB),
+    kazoo_media_maintenance:refresh(),
 
-    handle_refresh(MaintJObj
-                  ,kz_json:get_ne_binary_value(<<"Action">>, MaintJObj)
-                  ,kz_json:get_ne_binary_value(<<"Database">>, MaintJObj)
-                  ).
+    send_resp(MaintJObj, Created).
 
-handle_refresh(MaintJObj, <<"refresh_database">>, Db) ->
-    Created = kz_datamgr:db_create(Db),
-    send_resp(MaintJObj, Created);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_CONFIG_DB) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_SCHEMA_DB) ->
-    kz_datamgr:suppress_change_notice(),
-    Revised = kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, 'crossbar', "schemas"),
-    kz_datamgr:enable_change_notice(),
-    send_resp(MaintJObj, Revised);
-handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_MEDIA_DB) ->
-    Revised = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, 'crossbar', "account/media.json"),
-    send_resp(MaintJObj, Revised).
-
--spec send_resp(kapi_mainteannce:req(), {'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 'ok'.
-send_resp(MaintJObj, Revised) ->
-    Resp = [{<<"Code">>, code(Revised)}
-           ,{<<"Message">>, message(Revised)}
+-spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
+send_resp(MaintJObj, Created) ->
+    Resp = [{<<"Code">>, code(Created)}
+           ,{<<"Message">>, message(Created)}
            ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
--spec code({'ok', kz_json:object()} | kz_datamgr:data_error() | boolean()) -> 200 | 500.
-code({'ok', _}) -> 200;
+-spec code(boolean()) -> 200 | 500.
 code('true') -> 200;
-code({'error', _}) -> 500;
 code('false') -> 500.
 
--spec message({'ok', kz_json:object()} | kz_datamgr:data_error()) -> ne_binary().
-message({'ok', _}) -> <<"Revised crossbar docs/views">>;
-message({'error', E}) ->
-    <<"Failed to revise docs/views: ", (kz_term:to_binary(E))/binary>>;
+-spec message(boolean()) -> ne_binary().
 message('true') -> <<"Created database">>;
 message('false') -> <<"Failed to create database">>.
 

@@ -342,10 +342,6 @@ old_refresh(?KZ_SIP_DB) ->
             ,kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
             ],
     kapps_util:update_views(?KZ_SIP_DB, Views, 'true');
-old_refresh(?KZ_MEDIA_DB) ->
-    kz_datamgr:db_create(?KZ_MEDIA_DB),
-    kazoo_media_maintenance:refresh(),
-    'ok';
 old_refresh(?KZ_RATES_DB) ->
     refresh_ratedeck_db(?KZ_RATES_DB);
 old_refresh(?KZ_ANONYMOUS_CDR_DB) ->
