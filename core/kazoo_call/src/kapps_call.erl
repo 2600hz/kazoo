@@ -1087,7 +1087,7 @@ set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
 maybe_update_call_ccvs(Call, NewCCVs, ExistingCCVs) ->
     case updateable_ccvs(NewCCVs, ExistingCCVs) of
         [] -> 'ok';
-        Updates -> kapps_call_command:set(Updates, 'undefined', Call)
+        Updates -> kapps_call_command:set(kz_json:from_list(Updates), 'undefined', Call)
     end.
 
 -endif.
