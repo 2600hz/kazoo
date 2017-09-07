@@ -281,62 +281,15 @@ print_refresh_result({Db, Views}) ->
 -spec do_refresh(ne_binary(), pid()) -> refresh_result().
 do_refresh(Database, Worker) ->
     Classification = kz_datamgr:db_classification(Database),
-    RefreshedDb = refresh_database(Database, Worker, Classification),
-    RefreshedViews = refresh_views(Database, Worker, Classification),
+    RefreshedDb = kapi_maintenance:refresh_database(Database, Worker, Classification),
+    RefreshedViews = kapi_maintenance:refresh_views(Database, Worker, Classification),
     {RefreshedDb, RefreshedViews}.
-
--spec refresh_database(ne_binary(), pid(), kz_datamgr:db_classification()) ->
-                              kz_amqp_worker:request_return().
-refresh_database(Database, Worker, Classification) ->
-    Req = [{<<"Action">>, <<"refresh_database">>}
-          ,{<<"Classification">>, Classification}
-          ,{<<"Database">>, Database}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    kz_amqp_worker:cast(Req, fun kapi_maintenance:publish_req/1, Worker),
-    wait_for_response(10 * ?MILLISECONDS_IN_SECOND).
-
-wait_for_response(Timeout) ->
-    wait_for_response(Timeout, []).
-wait_for_response(Timeout, []) when Timeout =< 0 ->
-    {'error', 'timeout'};
-wait_for_response(Timeout, Resps) when Timeout =< 0 ->
-    {'ok', Resps};
-wait_for_response(Timeout, Resps) ->
-    Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
-            Left = kz_time:decr_timeout(Timeout, Start),
-            case kapi_maintenance:resp_v(JObj) of
-                'true' -> wait_for_response(Left, [JObj|Resps]);
-                'false' -> wait_for_response(Left, Resps)
-            end
-    after
-        Timeout -> wait_for_response(0, Resps)
-    end.
-
--spec refresh_views(ne_binary(), pid(), kz_datamgr:db_classification()) ->
-                           kz_amqp_worker:request_return().
-refresh_views(Database, Worker, Classification) ->
-    Req = [{<<"Action">>, <<"refresh_views">>}
-          ,{<<"Classification">>, Classification}
-          ,{<<"Database">>, Database}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    kz_amqp_worker:cast(Req
-                       ,fun kapi_maintenance:publish_req/1
-                       ,Worker
-                       ),
-    wait_for_response(30 * ?MILLISECONDS_IN_SECOND).
 
 -spec old_refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
 old_refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-old_refresh(?KZ_DEDICATED_IP_DB) ->
-    kz_datamgr:db_create(?KZ_DEDICATED_IP_DB),
-    kz_ip_utils:refresh_database();
 old_refresh(?KZ_FAXES_DB) ->
     kz_datamgr:db_create(?KZ_FAXES_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXES_VIEW_FILE),
