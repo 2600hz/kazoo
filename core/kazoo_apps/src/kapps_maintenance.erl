@@ -335,9 +335,6 @@ old_refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 old_refresh(?KZ_OFFNET_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
-old_refresh(?KZ_SERVICES_DB) ->
-    kz_datamgr:db_create(?KZ_SERVICES_DB),
-    kazoo_services_maintenance:refresh();
 old_refresh(?KZ_SIP_DB) ->
     kz_datamgr:db_create(?KZ_SIP_DB),
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
