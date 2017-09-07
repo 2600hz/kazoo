@@ -11,6 +11,10 @@
         ,publish_resp/2, publish_resp/3
         ]).
 
+-export([refresh_database/1, refresh_database/2, refresh_database/3
+        ,refresh_views/1, refresh_views/2, refresh_views/3
+        ]).
+
 -export([restrict_to_db/1
         ,restrict_to_classification/1
         ,restrict_to_views_db/1
@@ -210,3 +214,91 @@ routing_key(Req, Get, ?REFRESH_VIEWS) ->
                    ,Get(<<"Classification">>, Req)
                    ,Get(<<"Database">>, Req)
                    ).
+
+
+-spec refresh_database(ne_binary()) ->
+                              kz_amqp_worker:request_return().
+-spec refresh_database(ne_binary(), pid() | kz_datamgr:db_classification()) ->
+                              kz_amqp_worker:request_return().
+-spec refresh_database(ne_binary(), pid(), kz_datamgr:db_classification()) ->
+                              kz_amqp_worker:request_return().
+refresh_database(Database) ->
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    kz_amqp_worker:relay_to(Worker, self()),
+    Result = refresh_database(Database, Worker, kz_datamgr:db_classification(Database)),
+    kz_amqp_worker:checkin_worker(Worker),
+    Result.
+
+refresh_database(Database, Worker) when is_pid(Worker) ->
+    refresh_database(Database, Worker, kz_datamgr:db_classification(Database));
+refresh_database(Database, Classification) ->
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    kz_amqp_worker:relay_to(Worker, self()),
+    refresh_database(Database, Worker, Classification).
+
+refresh_database(Database, Worker, Classification) ->
+    Req = [{<<"Action">>, <<"refresh_database">>}
+          ,{<<"Classification">>, Classification}
+          ,{<<"Database">>, Database}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req, fun kapi_maintenance:publish_req/1, Worker),
+    wait_for_response(10 * ?MILLISECONDS_IN_SECOND).
+
+-spec refresh_views(ne_binary()) ->
+                           kz_amqp_worker:request_return().
+-spec refresh_views(ne_binary(), pid() | kz_datamgr:db_classification()) ->
+                           kz_amqp_worker:request_return().
+-spec refresh_views(ne_binary(), pid(), kz_datamgr:db_classification()) ->
+                           kz_amqp_worker:request_return().
+refresh_views(Database) ->
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    kz_amqp_worker:relay_to(Worker, self()),
+    Result = refresh_views(Database, Worker, kz_datamgr:db_classification(Database)),
+    kz_amqp_worker:checkin_worker(Worker),
+    Result.
+
+refresh_views(Database, Worker) when is_pid(Worker) ->
+    refresh_views(Database, Worker, kz_datamgr:db_classification(Database));
+refresh_views(Database, Classification) ->
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    kz_amqp_worker:relay_to(Worker, self()),
+    Result = refresh_views(Database, Worker, Classification),
+    kz_amqp_worker:checkin_worker(Worker),
+    Result.
+
+refresh_views(Database, Worker, Classification) ->
+    Req = [{<<"Action">>, <<"refresh_views">>}
+          ,{<<"Classification">>, Classification}
+          ,{<<"Database">>, Database}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req
+                       ,fun kapi_maintenance:publish_req/1
+                       ,Worker
+                       ),
+    wait_for_response(30 * ?MILLISECONDS_IN_SECOND).
+
+
+-spec wait_for_response(kz_timeout()) ->
+                               kz_amqp_worker:request_return().
+-spec wait_for_response(kz_timeout(), kz_json:objects()) ->
+                               kz_amqp_worker:request_return().
+wait_for_response(Timeout) ->
+    wait_for_response(Timeout, []).
+wait_for_response(Timeout, []) when Timeout =< 0 ->
+    {'error', 'timeout'};
+wait_for_response(Timeout, Resps) when Timeout =< 0 ->
+    {'ok', Resps};
+wait_for_response(Timeout, Resps) ->
+    Start = os:timestamp(),
+    receive
+        {'amqp_msg', JObj} ->
+            Left = kz_time:decr_timeout(Timeout, Start),
+            case kapi_maintenance:resp_v(JObj) of
+                'true' -> wait_for_response(Left, [JObj|Resps]);
+                'false' -> wait_for_response(Left, Resps)
+            end
+    after
+        Timeout -> wait_for_response(0, Resps)
+    end.
