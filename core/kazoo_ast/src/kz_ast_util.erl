@@ -161,8 +161,10 @@ app_modules(App) ->
     case application:get_key(App, 'modules') of
         {'ok', Modules} -> Modules;
         'undefined' ->
-            'ok' = application:load(App),
-            app_modules(App)
+            case application:load(App) of
+                'ok' -> app_modules(App);
+                _ -> []
+            end
     end.
 
 
