@@ -21,6 +21,11 @@
         ,restrict_to_views_classification/1
         ]).
 
+-export([req_action/1
+        ,req_database/1
+        ,req_classification/1
+        ]).
+
 -export_type([req/0, resp/0]).
 
 -type req() :: api_terms().
@@ -302,3 +307,15 @@ wait_for_response(Timeout, Resps) ->
     after
         Timeout -> wait_for_response(0, Resps)
     end.
+
+-spec req_action(req()) -> api_ne_binary().
+req_action(Req) ->
+    kz_json:get_ne_binary_value(<<"Action">>, Req).
+
+-spec req_database(req()) -> api_ne_binary().
+req_database(Req) ->
+    kz_json:get_ne_binary_value(<<"Database">>, Req).
+
+-spec req_classification(req()) -> api_ne_binary().
+req_classification(Req) ->
+    kz_json:get_ne_binary_value(<<"Classification">>, Req).
