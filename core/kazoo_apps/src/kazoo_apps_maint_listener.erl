@@ -97,7 +97,10 @@ refresh_database(MaintJObj, Database) ->
     Created = kz_datamgr:db_create(Database),
     send_resp(MaintJObj, Created).
 
--spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
+-type results() :: boolean() |
+                   'ok'.
+
+-spec send_resp(kapi_mainteannce:req(), results()) -> 'ok'.
 send_resp(MaintJObj, Created) ->
     Resp = [{<<"Code">>, code(Created)}
            ,{<<"Message">>, message(Created)}
@@ -107,9 +110,11 @@ send_resp(MaintJObj, Created) ->
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
 code('true') -> 200;
+code('ok') -> 200;
 code('false') -> 500.
 
 message('true') -> <<"Success">>;
+message('ok') -> <<"Success">>;
 message('false') -> <<"Failed">>.
 
 %%%===================================================================
