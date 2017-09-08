@@ -247,13 +247,25 @@ refresh_database(Database, Classification) ->
     refresh_database(Database, Worker, Classification).
 
 refresh_database(Database, Worker, Classification) ->
+    OldCallId = kz_util:get_callid(),
+    MsgId = msg_id(Database),
+    kz_util:put_callid(MsgId),
+
     Req = [{?KEY_ACTION, <<"refresh_database">>}
           ,{?KEY_CLASSIFICATION, Classification}
           ,{?KEY_DATABASE, Database}
+          ,{?KEY_MSG_ID, MsgId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
-    wait_for_response(10 * ?MILLISECONDS_IN_SECOND, 1).
+
+    Resp = wait_for_response(MsgId, 10 * ?MILLISECONDS_IN_SECOND),
+    kz_util:put_callid(OldCallId),
+    Resp.
+
+-spec msg_id(ne_binary()) -> ne_binary().
+msg_id(Database) ->
+    kz_binary:join([<<"refresh">>, Database, kz_binary:rand_hex(8)], $-).
 
 -spec refresh_views(ne_binary()) ->
                            kz_amqp_worker:request_return().
@@ -278,42 +290,67 @@ refresh_views(Database, Classification) ->
     Result.
 
 refresh_views(Database, Worker, Classification) ->
+    OldCallId = kz_util:get_callid(),
+    MsgId = msg_id(Database),
+    kz_util:put_callid(MsgId),
+
     Req = [{?KEY_ACTION, <<"refresh_views">>}
           ,{?KEY_CLASSIFICATION, Classification}
           ,{?KEY_DATABASE, Database}
+          ,{?KEY_MSG_ID, MsgId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kz_amqp_worker:cast(Req
-                       ,fun ?MODULE:publish_req/1
-                       ,Worker
-                       ),
-    wait_for_response(30 * ?MILLISECONDS_IN_SECOND, 1).
 
+    kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
 
--spec wait_for_response(kz_timeout(), non_neg_integer()) ->
+    Resp = wait_for_response(MsgId, 30 * ?MILLISECONDS_IN_SECOND),
+    kz_util:put_callid(OldCallId),
+    Resp.
+
+-spec wait_for_response(ne_binary(), kz_timeout()) ->
                                kz_amqp_worker:request_return().
--spec wait_for_response(kz_timeout(), non_neg_integer(), kz_json:objects()) ->
+-spec wait_for_response(ne_binary(), kz_timeout(), kz_json:objects()) ->
                                kz_amqp_worker:request_return().
-wait_for_response(Timeout, Responses) ->
-    wait_for_response(Timeout, Responses, []).
-wait_for_response(Timeout, _Responses, []) when Timeout =< 0 ->
+wait_for_response(MsgId, Timeout) ->
+    wait_for_response(MsgId, Timeout, []).
+
+wait_for_response(_MsgId, Timeout, []) when Timeout =< 0 ->
+    lager:debug("timed out waiting for responses"),
     {'error', 'timeout'};
-wait_for_response(Timeout, _Responses, Resps) when Timeout =< 0 ->
-    {'ok', Resps};
-wait_for_response(_Timeout, 0, Resps) ->
-    {'ok', Resps};
-wait_for_response(Timeout, Responses, Resps) ->
+wait_for_response(MsgId, Timeout, Resps) when Timeout =< 0 ->
+    clear_mailbox(MsgId, Resps);
+wait_for_response(MsgId, Timeout, Resps) ->
     Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             Left = kz_time:decr_timeout(Timeout, Start),
-            case ?MODULE:resp_v(JObj) of
-                'true' -> wait_for_response(Left, Responses-1, [JObj|Resps]);
-                'false' -> wait_for_response(Left, Responses, Resps)
+            case ?MODULE:resp_v(JObj)
+                andalso MsgId =:= kz_api:msg_id(JObj)
+            of
+                'true' ->
+                    clear_mailbox(MsgId, [JObj|Resps]);
+                'false' ->
+                    wait_for_response(MsgId, Left, Resps)
             end
     after
-        Timeout -> wait_for_response(0, Responses, Resps)
+        Timeout -> wait_for_response(MsgId, 0, Resps)
     end.
+
+-spec clear_mailbox(ne_binary(), kz_json:objects()) ->
+                           {'ok', kz_json:objects()}.
+clear_mailbox(MsgId, Resps) ->
+    receive
+        {'amqp_msg', JObj} ->
+            case ?MODULE:resp_v(JObj)
+                andalso MsgId =:= kz_api:msg_id(JObj)
+            of
+                'true' -> clear_mailbox(MsgId, [JObj|Resps]);
+                'false' -> clear_mailbox(MsgId, Resps)
+            end
+    after 1000 ->
+            {'ok', Resps}
+    end.
+
 
 -spec req_action(req()) -> api_ne_binary().
 req_action(Req) ->
