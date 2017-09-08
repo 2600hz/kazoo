@@ -75,7 +75,7 @@ handle_refresh(MaintJObj, <<"refresh_views">>, RateDb) ->
     kz_datamgr:load_fixtures_from_folder(RateDb, 'hotornot'),
     send_resp(MaintJObj, Revised).
 
--type results() :: boolean() | 'ok'.
+-type results() :: 'ok'.
 
 -spec send_resp(kapi_mainteannce:req(), results()) -> 'ok'.
 send_resp(MaintJObj, Result) ->
@@ -86,13 +86,9 @@ send_resp(MaintJObj, Result) ->
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
-code('true') -> 200;
-code('ok') -> 200;
-code('false') -> 500.
+code('ok') -> 200.
 
-message('true') -> <<"Created databse">>;
-message('ok') -> <<"Refreshed database">>;
-message('false') -> <<"Failed to create database">>.
+message('ok') -> <<"Refreshed database">>.
 
 %%%===================================================================
 %%% gen_server callbacks

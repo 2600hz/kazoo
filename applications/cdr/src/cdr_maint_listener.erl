@@ -73,8 +73,7 @@ handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_ANONYMOUS_CDR_DB) ->
     Revised = kz_datamgr:revise_doc_from_file(?KZ_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
     send_resp(MaintJObj, Revised).
 
--type results() :: boolean() |
-                   {'ok', kz_json:object()} |
+-type results() :: {'ok', kz_json:object()} |
                    kz_datamgr:data_error().
 
 -spec send_resp(kapi_mainteannce:req(), results()) -> 'ok'.
@@ -86,14 +85,10 @@ send_resp(MaintJObj, Results) ->
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
-code('true') -> 200;
 code({'ok', _}) -> 200;
-code('false') -> 500;
 code({'error', _}) -> 500.
 
-message('true') -> <<"Success">>;
 message({'ok', _}) -> <<"Success">>;
-message('false') -> <<"Failure">>;
 message({'error', _}) -> <<"Failure">>.
 
 %%%===================================================================

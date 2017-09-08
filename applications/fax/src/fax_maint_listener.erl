@@ -74,7 +74,7 @@ handle_refresh(MaintJObj, <<"refresh_views">>) ->
     _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXBOX_VIEW_FILE),
     send_resp(MaintJObj, 'true').
 
--spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
+-spec send_resp(kapi_mainteannce:req(), 'true') -> 'ok'.
 send_resp(MaintJObj, Results) ->
     Resp = [{<<"Code">>, code(Results)}
            ,{<<"Message">>, message(Results)}
@@ -83,11 +83,9 @@ send_resp(MaintJObj, Results) ->
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
-code('true') -> 200;
-code('false') -> 500.
+code('true') -> 200.
 
-message('true') -> <<"Success">>;
-message('false') -> <<"Failure">>.
+message('true') -> <<"Success">>.
 
 %%%===================================================================
 %%% gen_server callbacks

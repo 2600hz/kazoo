@@ -71,7 +71,7 @@ handle_refresh(MaintJObj, <<"refresh_views">>) ->
     kapps_util:update_views(?RESOURCES_DB, Views, 'true'),
     send_resp(MaintJObj, 'true').
 
--spec send_resp(kapi_mainteannce:req(), boolean()) -> 'ok'.
+-spec send_resp(kapi_mainteannce:req(), 'true') -> 'ok'.
 send_resp(MaintJObj, Results) ->
     Resp = [{<<"Code">>, code(Results)}
            ,{<<"Message">>, message(Results)}
@@ -80,11 +80,9 @@ send_resp(MaintJObj, Results) ->
            ],
     kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
 
-code('true') -> 200;
-code('false') -> 500.
+code('true') -> 200.
 
-message('true') -> <<"Success">>;
-message('false') -> <<"Failure">>.
+message('true') -> <<"Success">>.
 
 %%%===================================================================
 %%% gen_server callbacks

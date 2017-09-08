@@ -148,16 +148,14 @@ send_resp(MaintJObj, Revised) ->
 code({'ok', _}) -> 200;
 code('true') -> 200;
 code('ok') -> 200;
-code({'error', _}) -> 500;
-code('false') -> 500.
+code({'error', _}) -> 500.
 
 -spec message(results()) -> ne_binary().
 message({'ok', _}) -> <<"Revised crossbar docs/views">>;
 message('ok') -> <<"Revised crossbar docs/views">>;
 message({'error', E}) ->
     <<"Failed to revise docs/views: ", (kz_term:to_binary(E))/binary>>;
-message('true') -> <<"Created database">>;
-message('false') -> <<"Failed to create database">>.
+message('true') -> <<"Created database">>.
 
 %%%===================================================================
 %%% gen_server callbacks
