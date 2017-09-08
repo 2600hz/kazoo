@@ -480,7 +480,7 @@ presence_id(Endpoint, Call) ->
 presence_id(Endpoint, Call, Default) ->
     PresenceId = kz_device:presence_id(Endpoint, Default),
     case kz_term:is_empty(PresenceId) of
-        'true' -> Default;
+        'true' -> maybe_fix_presence_id_realm(Default, Endpoint, Call);
         'false' -> maybe_fix_presence_id_realm(PresenceId, Endpoint, Call)
     end.
 
