@@ -81,8 +81,8 @@ reasons() ->
      ,unknown() => ?CODE_UNKNOWN
      }.
 
--spec reasons(integer()) -> kz_proplist().
--spec reasons(integer(), integer()) -> kz_proplist().
+-spec reasons(integer()) -> ne_binaries().
+-spec reasons(integer(), integer()) -> ne_binaries().
 
 reasons(Min) ->
     reasons(Min, 10000).
@@ -153,7 +153,7 @@ current_balance(Account) ->
 
 -spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> balance_ret().
 previous_balance(Account, Year, Month) ->
-    Options = [{'year', kz_term:to_binary(Year)}, {'month', kz_time:pad_month(Month)}],
+    Options = [{'year', kz_term:to_binary(Year)}, {'month', kz_date:pad_month(Month)}],
     get_balance(Account, Options).
 
 -spec get_balance(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
@@ -502,13 +502,13 @@ collapse_call_transactions(Transactions) ->
 -spec modb(ne_binary()) -> 'ok'.
 modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
-    case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
+    case {kz_term:to_binary(Y), kz_date:pad_month(M)} of
         {Year, Month} -> rollup_current_modb(AccountMODb, 3);
         _ -> lager:debug("~s is not current month, ignoring...", [AccountMODb])
     end;
 modb(?MATCH_MODB_SUFFIX_ENCODED(_AccountId, Year, Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
-    case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
+    case {kz_term:to_binary(Y), kz_date:pad_month(M)} of
         {Year, Month} -> rollup_current_modb(AccountMODb, 3);
         _ -> lager:debug("~s is not current month, ignoring...", [AccountMODb])
     end;

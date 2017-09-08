@@ -71,7 +71,7 @@ maybe_add_id(Ledger) ->
         'undefined' ->
             {Year, Month, _} = erlang:date(),
             [{<<"_id">>, <<(kz_term:to_binary(Year))/binary
-                           ,(kz_time:pad_month(Month))/binary
+                           ,(kz_date:pad_month(Month))/binary
                            ,"-"
                            ,(create_hash(Ledger))/binary
                          >>}
