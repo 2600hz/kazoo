@@ -439,6 +439,8 @@ audio_macro([{'play', MediaName}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{'play', MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
+audio_macro([{'play', MediaName, Terminators, Leg}|T], Call, Queue) ->
+    audio_macro(T, Call, [play_command(MediaName, Terminators, Leg, Call) | Queue]);
 audio_macro([{'prompt', PromptName}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName)
                                       ,?ANY_DIGIT
@@ -449,6 +451,14 @@ audio_macro([{'prompt', PromptName}|T], Call, Queue) ->
 audio_macro([{'prompt', PromptName, Lang}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName, Lang)
                                       ,?ANY_DIGIT
+                                      ,Call
+                                      )
+                          | Queue
+                         ]);
+audio_macro([{'prompt', PromptName, Lang, Leg}|T], Call, Queue) ->
+    audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName, Lang)
+                                      ,?ANY_DIGIT
+                                      ,Leg
                                       ,Call
                                       )
                           | Queue
