@@ -11,6 +11,7 @@
 
 -define(CACHE_NAME, 'pusher_cache').
 
+-define(DEFAULT_APNS_HOST, <<"api.push.apple.com">>).
 -define(TOKEN_KEY, <<"Token-ID">>).
 -define(TOKEN_PROXY_KEY, <<"Proxy-Path">>).
 

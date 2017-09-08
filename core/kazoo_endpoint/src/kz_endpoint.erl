@@ -1072,6 +1072,8 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
                                  kz_json:object().
 create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
     SIPJObj = kz_json:get_json_value(<<"sip">>, Endpoint),
+    PushJObj = push_properties(Endpoint),
+    PushHeaders = push_headers(PushJObj),
     SIPEndpoint = kz_json:from_list(
                     props:filter_empty(
                       [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
@@ -1104,7 +1106,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Codecs">>, get_codecs(Endpoint)}
                       ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
                       ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, PushHeaders, Call)}
                       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
                       ,{<<"Flags">>, get_outbound_flags(Endpoint)}
                       ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
@@ -1144,9 +1146,10 @@ maybe_build_failover(Endpoint, Clid, Call) ->
 
 -spec maybe_build_push_failover(kz_json:object(), clid(), kapps_call:call()) -> api_object().
 maybe_build_push_failover(Endpoint, Clid, Call) ->
-    case kz_json:get_value(<<"push">>, Endpoint) of
-        'undefined' -> 'undefined';
-        PushJObj -> build_push_failover(Endpoint, Clid, PushJObj, Call)
+    PushJObj = push_properties(Endpoint),
+    case kz_json:is_empty(PushJObj) of
+        'true' -> 'undefined';
+        'false' -> build_push_failover(Endpoint, Clid, PushJObj, Call)
     end.
 
 -spec build_push_failover(kz_json:object(), clid(), kz_json:object(), kapps_call:call()) -> api_object().
@@ -1157,9 +1160,7 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
     ToRealm = get_sip_realm(Endpoint, kapps_call:account_id(Call)),
     ToUser = <<ToUsername/binary, "@", ToRealm/binary>>,
     Proxy = kz_json:get_value(<<"Token-Proxy">>, PushJObj),
-    PushHeaders = kz_json:foldl(fun(K, V, Acc) ->
-                                        kz_json:set_value(<<"X-KAZOO-PUSHER-", K/binary>>, V, Acc)
-                                end, kz_json:new(), PushJObj),
+    PushHeaders = push_headers(PushJObj),
     kz_json:from_list(
       props:filter_empty(
         [{<<"Invite-Format">>, <<"route">>}
@@ -1188,6 +1189,23 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
         ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
         ,{<<"Metaflows">>, kz_json:get_value(<<"metaflows">>, Endpoint)}
         ])).
+
+-spec push_properties(kz_json:object()) -> kz_json:object().
+push_properties(Endpoint) ->
+    PushJObj = kz_json:get_json_value(<<"push">>, Endpoint, kz_json:new()),
+    case kz_json:get_ne_binary_value(<<"Token-Type">>, PushJObj) of
+        'undefined' -> PushJObj;
+        TokenType ->
+            TokenApp = kz_json:get_ne_binary_value(<<"Token-App">>, PushJObj),
+            ExtraHeaders = kapps_config:get_json(<<"pusher">>, [TokenType, <<"extra_headers">>], kz_json:new(), TokenApp),
+            kz_json:merge(PushJObj, ExtraHeaders)
+    end.
+
+-spec push_headers(kz_json:object()) -> kz_json:object().
+push_headers(PushJObj) ->
+    kz_json:map(fun(K, V) ->
+                        {<<"X-KAZOO-PUSHER-", K/binary>>, V}
+                end, PushJObj).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -81,9 +81,9 @@ handle_reg_success(JObj, _Props) ->
 -spec maybe_process_reg_success(api_binary(), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
 maybe_process_reg_success('undefined', _JObj) -> 'ok';
 maybe_process_reg_success(UA, JObj) ->
-    OriginalContact = kz_json:get_value(<<"Original-Contact">>, JObj),
+    Contact = kz_json:get_value(<<"Contact">>, JObj),
 
-    [#uri{opts=A, ext_opts=B}] = kzsip_uri:uris(OriginalContact),
+    [#uri{opts=A, ext_opts=B}] = kzsip_uri:uris(Contact),
     Params = A ++ B,
 
     TokenKey = kz_json:get_value(?TOKEN_KEY, UA),
