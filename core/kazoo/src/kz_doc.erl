@@ -320,7 +320,7 @@ attachment(JObj, AName, Default) ->
 
 -spec attachment_length(kz_json:object(), ne_binary()) -> api_integer().
 attachment_length(JObj, AName) ->
-    attachment_property(JObj, AName, <<"length">>).
+    attachment_property(JObj, AName, <<"length">>, fun kz_json:get_integer_value/1).
 
 -spec attachment_content_type(kz_json:object()) -> api_binary().
 -spec attachment_content_type(kz_json:object(), ne_binary()) -> api_binary().
@@ -339,9 +339,14 @@ attachment_content_type(JObj, AName, DefaultContentType) ->
         ContentType -> ContentType
     end.
 
--spec attachment_property(kz_json:object(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
+-spec attachment_property(kz_json:object(), ne_binary(), kz_json:path()) ->
+                                 kz_json:api_json_term().
+-spec attachment_property(kz_json:object(), ne_binary(), kz_json:path(), fun((kz_json:path(), kz_json:object()) -> kz_json:api_json_term())) ->
+                                 kz_json:api_json_term().
 attachment_property(JObj, AName, Key) ->
-    kz_json:get_value(Key, attachment(JObj, AName, kz_json:new())).
+    attachment_property(JObj, AName, Key, fun kz_json:get_value/2).
+attachment_property(JObj, AName, Key, Get) ->
+    Get(Key, attachment(JObj, AName, kz_json:new())).
 
 -spec delete_attachments(kz_json:object()) -> kz_json:object().
 delete_attachments(JObj) ->
