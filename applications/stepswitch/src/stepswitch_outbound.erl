@@ -83,6 +83,7 @@ maybe_add_call_id(_, JObj) -> JObj.
 maybe_force_originate_outbound(Props, JObj) ->
     case knm_number_options:should_force_outbound(Props)
         orelse kz_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+        orelse kapi_offnet_resource:hunt_account_id(JObj) /= 'undefined'
     of
         'false' -> local_originate(Props, JObj);
         'true' -> maybe_originate(knm_number_options:number(Props), JObj)
@@ -114,6 +115,7 @@ handle_sms_req(OffnetReq) ->
 maybe_force_outbound(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
         orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
+        orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
     of
         'false' -> local_extension(Props, OffnetReq);
         'true' -> maybe_bridge(knm_number_options:number(Props), OffnetReq)
@@ -129,6 +131,7 @@ maybe_force_outbound(Props, OffnetReq) ->
 maybe_force_outbound_sms(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
         orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
+        orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
     of
         'false' -> local_sms(Props, OffnetReq);
         'true' -> maybe_sms(knm_number_options:number(Props), OffnetReq)
