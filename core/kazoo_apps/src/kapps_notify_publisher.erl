@@ -107,10 +107,10 @@ handle_error(NotifyType, Req, Error) ->
               ]),
     JObj = kz_doc:update_pvt_parameters(kz_json:from_list_recursive(Props)
                                        ,'undefined'
-                                       , [{'type', <<"failed_notify">>}
-                                         ,{'account_id', find_account_id(Req)}
-                                         ,{'account_db', ?KZ_PENDING_NOTIFY_DB}
-                                         ]
+                                       ,[{'type', <<"failed_notify">>}
+                                        ,{'account_id', find_account_id(Req)}
+                                        ,{'account_db', ?KZ_PENDING_NOTIFY_DB}
+                                        ]
                                        ),
     save_pending_notification(NotifyType, JObj, 2).
 

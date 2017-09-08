@@ -281,20 +281,14 @@ get_database_sort(Db1, Db2) ->
 refresh(Database) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     kz_amqp_worker:relay_to(Worker, self()),
-    RefreshResult = do_refresh(Database, Worker),
-    kz_amqp_worker:checkin_worker(Worker),
-    print_refresh_result(RefreshResult).
-
--spec print_refresh_result(refresh_result()) -> 'ok'.
-print_refresh_result({Db, Views}) ->
-    io:format('user', "db: ~p~nviews: ~p~n", [Db, Views]).
+    _ = do_refresh(Database, Worker),
+    kz_amqp_worker:checkin_worker(Worker).
 
 -spec do_refresh(ne_binary(), pid()) -> refresh_result().
 do_refresh(Database, Worker) ->
     Classification = kz_datamgr:db_classification(Database),
-    RefreshedDb = kapi_maintenance:refresh_database(Database, Worker, Classification),
-    RefreshedViews = kapi_maintenance:refresh_views(Database, Worker, Classification),
-    {RefreshedDb, RefreshedViews}.
+    _ = kapi_maintenance:refresh_database(Database, Worker, Classification),
+    _ = kapi_maintenance:refresh_views(Database, Worker, Classification).
 
 %%--------------------------------------------------------------------
 %% @public
