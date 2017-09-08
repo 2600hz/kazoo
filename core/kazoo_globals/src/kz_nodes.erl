@@ -91,6 +91,7 @@
                ,zone = 'local' :: atom()
                ,version :: ne_binary()
                ,zones = [] :: kz_proplist()
+               ,me = 'undefined' :: kz_node() | 'undefined'
                }).
 -type nodes_state() :: #state{}.
 
@@ -623,24 +624,36 @@ handle_info('expire_nodes', #state{node=ThisNode, tab=Tab}=State) ->
     _ = kz_util:spawn(fun notify_expire/2, [Nodes, State]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
+
 handle_info({'heartbeat', Ref}
            ,#state{heartbeat_ref=Ref
                   ,tab=Tab
+                  ,me=Me
                   }=State
            ) ->
     Heartbeat = ?HEARTBEAT,
     Reference = erlang:make_ref(),
+    _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     try create_node(Heartbeat, State) of
         Node ->
             _ = ets:insert(Tab, Node),
-            kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1)
+            kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1),
+            {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
+        'exit' : {'timeout' , _} when Me =/= 'undefined' ->
+            NewMe = Me#kz_node{expires=Heartbeat},
+            _ = ets:insert(Tab, NewMe),
+            lager:notice("timeout creating node sending old data"),
+            {'noreply', State#state{heartbeat_ref=Reference, me=NewMe}};
+        'exit' : {'timeout' , _} ->
+            lager:warning("timeout creating node, no data to send"),
+            {'noreply', State#state{heartbeat_ref=Reference}};
         _E:_N ->
             lager:error("error creating node ~p : ~p", [_E, _N]),
-            kz_util:log_stacktrace()
-    end,
-    _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
-    {'noreply', State#state{heartbeat_ref=Reference}};
+            kz_util:log_stacktrace(),
+            {'noreply', State#state{heartbeat_ref=Reference}}
+    end;
+
 handle_info({'DOWN', Ref, 'process', Pid, _}
            ,#state{notify_new=NewSet
                   ,notify_expire=ExpireSet
