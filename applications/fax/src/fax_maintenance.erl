@@ -181,7 +181,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
     FaxMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     FaxId = <<(kz_term:to_binary(Year))/binary
-              ,(kz_time:pad_month(Month))/binary
+              ,(kz_date:pad_month(Month))/binary
               ,"-"
               ,DocId/binary
             >>,
@@ -406,7 +406,7 @@ migrate_outbound_fax(JObj) ->
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
 
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month),FromId),
+    ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month),FromId),
 
     case kazoo_modb:move_doc(FromDB, FromId, ToDB, ToId, ?OVERRIDE_DOCS) of
         {'ok', _} -> io:format("document ~s/~s moved to ~s/~s~n", [FromDB, FromId, ToDB, ToId]);

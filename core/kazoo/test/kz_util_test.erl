@@ -203,7 +203,7 @@ account_formats_test_() ->
     TS = kz_time:current_tstamp(),
     Now = os:timestamp(),
     Year = kz_term:to_binary(Y),
-    Month = kz_time:pad_month(M),
+    Month = kz_date:pad_month(M),
 
     MODbId = list_to_binary([AccountId, "-", Year, Month]),
     MODbEn = list_to_binary([AccountDbEn, "-", Year, Month]),

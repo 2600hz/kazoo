@@ -445,8 +445,8 @@ timestamp_to_braintree('undefined') ->
     timestamp_to_braintree(kz_time:current_tstamp());
 timestamp_to_braintree(Timestamp) ->
     {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    <<(kz_time:pad_month(M))/binary, "/"
-      ,(kz_time:pad_month(D))/binary, "/"
+    <<(kz_date:pad_month(M))/binary, "/"
+      ,(kz_date:pad_month(D))/binary, "/"
       ,(kz_term:to_binary(Y))/binary
     >>.
 
@@ -534,7 +534,7 @@ already_charged_transaction(Code , _, Code, Transaction) ->
     >> = kz_json:get_value(<<"created_at">>, Transaction),
     Id = kz_doc:id(Transaction),
     {YearNow, M, D} = erlang:date(),
-    case {kz_term:to_binary(YearNow), kz_time:pad_month(M), kz_time:pad_month(D)} of
+    case {kz_term:to_binary(YearNow), kz_date:pad_month(M), kz_date:pad_month(D)} of
         {Year, Month, Day} ->
             lager:warning("found transaction matching code and date (~s)", [Id]),
             'true';

@@ -18,6 +18,10 @@
         ,find_next_weekday/2
         ,normalize/1
         ,relative_difference/2
+
+        ,from_iso8601/1
+        ,to_iso8601/1
+        ,to_iso8601_extended/1
         ]).
 
 %% Utility Functions
@@ -25,6 +29,9 @@
          ordinal_to_position/1
         ,wday_to_dow/1
         ,dow_to_wday/1
+
+        ,pad_month/1
+        ,pad_day/1
         ]).
 
 %%--------------------------------------------------------------------
@@ -121,6 +128,45 @@ find_next_weekday({Y, M, D}, Weekday) ->
         DOW ->
             normalize({Y, M, D + ( 7 - DOW ) + RefDOW})
     end.
+
+-spec from_iso8601(binary()) -> kz_date() | 'error'.
+from_iso8601(<<Year:4/binary, Month:2/binary, Day:2/binary>>) ->
+    {kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)};
+
+from_iso8601(<<Year:4/binary, "-", Month:2/binary, "-", Day:2/binary>>) ->
+    {kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)};
+
+from_iso8601(_NotValid) ->
+    'error'.
+
+-spec to_iso8601(calendar:date() | calendar:datetime() | gregorian_seconds()) -> ne_binary().
+to_iso8601({Year, Month, Day}) ->
+    Y = kz_term:to_binary(Year),
+    M = kz_binary:pad_left(kz_term:to_binary(Month), 2, <<"0">>),
+    D = kz_binary:pad_left(kz_term:to_binary(Day), 2, <<"0">>),
+
+    <<Y/binary, M/binary, D/binary>>;
+
+to_iso8601({{_Y,_M,_D}=Date, _}) ->
+    to_iso8601(Date);
+
+to_iso8601(Timestamp) ->
+    to_iso8601(calendar:gregorian_seconds_to_datetime(Timestamp)).
+
+-spec to_iso8601_extended(calendar:date() | calendar:datetime() | gregorian_seconds()) -> ne_binary().
+to_iso8601_extended({Year, Month, Day}) ->
+    Y = kz_term:to_binary(Year),
+    M = kz_binary:pad_left(kz_term:to_binary(Month), 2, <<"0">>),
+    D = kz_binary:pad_left(kz_term:to_binary(Day), 2, <<"0">>),
+
+    <<Y/binary, "-", M/binary, "-", D/binary>>;
+
+to_iso8601_extended({{_Y,_M,_D}=Date, _}) ->
+    to_iso8601_extended(Date);
+
+to_iso8601_extended(Timestamp) ->
+    to_iso8601_extended(calendar:gregorian_seconds_to_datetime(Timestamp)).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Convert the ordinal words to cardinal numbers representing
@@ -164,3 +210,10 @@ dow_to_wday(5) -> <<"friday">>;
 dow_to_wday(6) -> <<"saturday">>;
 dow_to_wday(7) -> <<"sunday">>.
 
+-spec pad_month(kz_month() | ne_binary()) -> ne_binary().
+pad_month(Month) ->
+    kz_binary:pad_left(kz_term:to_binary(Month), 2, <<"0">>).
+
+-spec pad_day(kz_day() | ne_binary()) -> ne_binary().
+pad_day(Day) ->
+    kz_binary:pad_left(kz_term:to_binary(Day), 2, <<"0">>).
