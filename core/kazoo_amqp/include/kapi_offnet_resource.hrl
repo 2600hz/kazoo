@@ -1,7 +1,5 @@
 -ifndef(KAPI_OFFNET_RESOURCE_HRL).
 
--include_lib("kazoo_amqp/src/amqp_util.hrl").
-
 -define(KEY_ACCOUNT_ID, <<"Account-ID">>).
 -define(KEY_ACCOUNT_REALM, <<"Account-Realm">>).
 -define(KEY_APPLICATION_DATA, <<"Application-Data">>).
