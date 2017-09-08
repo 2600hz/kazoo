@@ -289,7 +289,8 @@ handle_cast(_Msg, State) ->
 handle_info({'remove_history', Pid}, State) ->
     _ = remove(Pid),
     {'noreply', State};
-handle_info({'DOWN', _, 'process', _Pid, 'shutdown'}, State) -> State;
+handle_info({'DOWN', _, 'process', _Pid, 'shutdown'}, State) ->
+    {'noreply', State};
 handle_info({'DOWN', _, 'process', Pid, _Reason}
            ,#state{connections=Connections}=State) ->
     case sets:is_element(Pid, Connections) of
