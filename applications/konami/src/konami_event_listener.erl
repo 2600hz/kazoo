@@ -159,7 +159,7 @@ add_call_binding(CallId, Events) when is_binary(CallId) ->
     gen_listener:b_add_binding(?SERVER, ?META_BINDINGS(CallId));
 add_call_binding(Call, Events) ->
     gen_listener:cast(?SERVER, {'add_account_events', kapps_call:account_id(Call)}),
-    catch gproc:reg(?KONAMI_REG({'fsm', kapps_call:account_id(Call)})),
+    catch gproc:reg(?KONAMI_REG({'pid', kapps_call:account_id(Call)})),
     add_call_binding(kapps_call:call_id_direct(Call), Events).
 
 -spec rm_call_binding(api_binary() | kapps_call:call()) -> 'ok'.
@@ -253,7 +253,7 @@ queue_name() -> gen_listener:queue_name(?SERVER).
 
 -spec relay_to_fsms(ne_binary(), ne_binary(), kz_json:object()) -> any().
 relay_to_fsms(CallId, Event, JObj) ->
-    [konami_code_fsm:event(FSM, CallId, Event, JObj)
+    [konami_code_statem:event(FSM, CallId, Event, JObj)
      || FSM <- fsms_for_callid(CallId)
     ].
 
@@ -277,7 +277,7 @@ metaflows() ->
 -spec relay_to_fsm(ne_binary(), ne_binary(), kz_json:object()) -> any().
 relay_to_fsm(CallId, Event, JObj) ->
     [FSM | _] = fsms_for_callid(CallId),
-    konami_code_fsm:event(FSM, CallId, Event, JObj).
+    konami_code_statem:event(FSM, CallId, Event, JObj).
 
 -spec relay_to_pids(ne_binary(), kz_json:object()) -> any().
 relay_to_pids(CallId, JObj) ->

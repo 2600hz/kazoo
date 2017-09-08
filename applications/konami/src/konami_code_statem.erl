@@ -5,29 +5,30 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
--module(konami_code_fsm).
--behaviour(gen_fsm).
+-module(konami_code_statem).
+
+-behaviour(gen_statem).
 
 %% API
--export([start_fsm/2
+-export([start/2
         ,event/4
         ,transfer_to/2
         ]).
 
-%% gen_fsm callbacks
+%% gen_statem callbacks
 -export([init/1
+        ,callback_mode/0
 
-        ,unarmed/2, unarmed/3
-        ,armed/2, armed/3
+        ,unarmed/3
+        ,armed/3
 
-        ,handle_event/3
-        ,handle_sync_event/4
-        ,handle_info/3
         ,terminate/3
         ,code_change/4
-        ,format_status/2
         ]).
+
+-export([format_status/2]).
 
 -include("konami.hrl").
 
@@ -82,27 +83,27 @@
 %%% API
 %%%===================================================================
 
--spec start_fsm(kapps_call:call(), kz_json:object()) -> any().
-start_fsm(Call, JObj) ->
-    gen_fsm:start_link(?MODULE, {Call, JObj}, []).
+-spec start(kapps_call:call(), kz_json:object()) -> any().
+start(Call, JObj) ->
+    gen_statem:start_link(?MODULE, {Call, JObj}, []).
 
 -spec event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
-event(FSM, CallId, <<"DTMF">>, JObj) ->
-    gen_fsm:send_event(FSM, {'dtmf'
-                            ,CallId
-                            ,kz_call_event:dtmf_digit(JObj)
-                            });
-event(FSM, CallId, Event, JObj) ->
-    gen_fsm:send_all_state_event(FSM, ?EVENT(CallId, Event, JObj)).
+event(ServerRef, CallId, <<"DTMF">>, JObj) ->
+    gen_statem:cast(ServerRef, {'dtmf'
+                               ,CallId
+                               ,kz_call_event:dtmf_digit(JObj)
+                               });
+event(ServerRef, CallId, Event, JObj) ->
+    gen_statem:cast(ServerRef, ?EVENT(CallId, Event, JObj)).
 
 -spec transfer_to(kapps_call:call(), 'a' | 'b') -> 'ok'.
 transfer_to(Call, Leg) ->
-    gen_fsm:send_all_state_event(kapps_call:kvs_fetch(?MODULE, Call)
-                                ,{'transfer_to', Call, Leg}
-                                ).
+    gen_statem:cast(kapps_call:kvs_fetch(?MODULE, Call)
+                   ,{'transfer_to', Call, Leg}
+                   ).
 
 %%%===================================================================
-%%% gen_fsm callbacks
+%%% gen_statem callbacks
 %%%===================================================================
 
 -spec init({kapps_call:call(), kz_json:object()}) -> {'ok', 'unarmed', state()}.
@@ -113,7 +114,7 @@ init({Call, JObj}) ->
 
     maybe_add_call_event_bindings(Call, ListenOn),
 
-    lager:debug("starting Konami FSM, listening on '~s'", [ListenOn]),
+    lager:debug("starting Konami statem, listening on '~s'", [ListenOn]),
 
     BEndpointId = b_endpoint_id(JObj, ListenOn),
 
@@ -137,88 +138,78 @@ init({Call, JObj}) ->
                             ,b_endpoint_id=BEndpointId
                             }}.
 
--spec unarmed(any(), state()) -> handle_fsm_ret(state()).
--spec unarmed(any(), atom(), state()) -> handle_sync_event_ret(state()).
-unarmed({'dtmf', CallId, BindingDigit}, #state{call_id=CallId
-                                              ,listen_on='a'
-                                              ,binding_digit=BindingDigit
-                                              }=State) ->
+-spec callback_mode() -> 'state_functions'.
+callback_mode() ->
+    'state_functions'.
+
+-spec unarmed(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+unarmed('cast', {'dtmf', CallId, BindingDigit}, #state{call_id=CallId
+                                                      ,listen_on='a'
+                                                      ,binding_digit=BindingDigit
+                                                      }=State) ->
     lager:debug("recv binding digit ~s, arming a-leg", [BindingDigit]),
     ?WSD_NOTE(CallId, 'right', <<"arming">>),
     {'next_state', 'armed', arm_aleg(State)};
-unarmed({'dtmf', CallId, BindingDigit}, #state{call_id=CallId
-                                              ,listen_on='ab'
-                                              ,binding_digit=BindingDigit
-                                              }=State) ->
+unarmed('cast', {'dtmf', CallId, BindingDigit}, #state{call_id=CallId
+                                                      ,listen_on='ab'
+                                                      ,binding_digit=BindingDigit
+                                                      }=State) ->
     lager:debug("recv binding digit ~s, arming a leg", [BindingDigit]),
     ?WSD_NOTE(CallId, 'right', <<"arming">>),
     {'next_state', 'armed', arm_aleg(State)};
 
-unarmed({'dtmf', CallId, BindingDigit}, #state{other_leg=CallId
-                                              ,listen_on='ab'
-                                              ,binding_digit=BindingDigit
-                                              }=State) ->
+unarmed('cast', {'dtmf', CallId, BindingDigit}, #state{other_leg=CallId
+                                                      ,listen_on='ab'
+                                                      ,binding_digit=BindingDigit
+                                                      }=State) ->
     lager:debug("recv binding digit '~s', arming b leg ~s", [BindingDigit, CallId]),
     ?WSD_NOTE(CallId, 'right', <<"arming">>),
     {'next_state', 'armed', arm_bleg(State)};
-unarmed({'dtmf', CallId, BindingDigit}, #state{other_leg=CallId
-                                              ,listen_on='b'
-                                              ,binding_digit=BindingDigit
-                                              }=State) ->
+unarmed('cast', {'dtmf', CallId, BindingDigit}, #state{other_leg=CallId
+                                                      ,listen_on='b'
+                                                      ,binding_digit=BindingDigit
+                                                      }=State) ->
     lager:debug("recv binding digit '~s', arming b leg ~s", [BindingDigit, CallId]),
     ?WSD_NOTE(CallId, 'right', <<"arming">>),
     {'next_state', 'armed', arm_bleg(State)};
 
-unarmed({'dtmf', _CallId, _DTMF}, #state{call_id=_Id
-                                        ,other_leg=_Oleg
-                                        ,listen_on=_ListenOn
-                                        }=State) ->
+unarmed('cast', {'dtmf', _CallId, _DTMF}, #state{call_id=_Id
+                                                ,other_leg=_Oleg
+                                                ,listen_on=_ListenOn
+                                                }=State) ->
     lager:debug("ignoring dtmf '~s' from ~s while unarmed", [_DTMF, _CallId]),
     lager:debug("call id '~s' other_leg '~s' listen_on '~s'", [_Id, _Oleg, _ListenOn]),
     {'next_state', 'unarmed', State};
-unarmed(_Event, #state{call_id=_CallId
-                      ,other_leg=_OtherLeg
-                      ,listen_on=_LO
-                      }=State) ->
-    lager:debug("unhandled unarmed/2: ~p", [_Event]),
-    lager:debug("listen_on: '~s' call id: '~s' other leg: '~s'", [_LO, _CallId, _OtherLeg]),
-    {'next_state', 'unarmed', State, 'hibernate'}.
+unarmed('cast', Evt, State) ->
+    handle_event(Evt, ?FUNCTION_NAME, State);
+unarmed('info', _, State) ->
+    {'next_state', ?FUNCTION_NAME, State}.
 
-unarmed(_Event, _From, State) ->
-    lager:debug("unhandled unarmed/3: ~p", [_Event]),
-    {'reply', {'error', 'not_implemented'}, 'unarmed', State}.
-
--spec armed(any(), state()) -> handle_fsm_ret(state()).
--spec armed(any(), atom(), state()) -> handle_sync_event_ret(state()).
-armed({'dtmf', CallId, DTMF}, #state{call_id=CallId
-                                    ,a_leg_armed='true'
-                                    }=State) ->
+-spec armed(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+armed('cast', {'dtmf', CallId, DTMF}, #state{call_id=CallId
+                                            ,a_leg_armed='true'
+                                            }=State) ->
     {'next_state', 'armed', add_aleg_dtmf(State, DTMF)};
-armed({'dtmf', CallId, DTMF}, #state{other_leg=CallId
-                                    ,b_leg_armed='true'
-                                    }=State) ->
+armed('cast', {'dtmf', CallId, DTMF}, #state{other_leg=CallId
+                                            ,b_leg_armed='true'
+                                            }=State) ->
     {'next_state', 'armed', add_bleg_dtmf(State, DTMF)};
-armed({'timeout', Ref, 'digit_timeout'}, #state{a_digit_timeout_ref = Ref
-                                               ,call_id=_CallId
-                                               }=State) ->
+armed('cast', Evt, State) ->
+    handle_event(Evt, ?FUNCTION_NAME, State);
+armed('info', {'timeout', Ref, 'digit_timeout'}, #state{a_digit_timeout_ref = Ref
+                                                       ,call_id=_CallId
+                                                       }=State) ->
     lager:debug("disarming 'a' leg"),
     _ = maybe_handle_aleg_code(State),
     ?WSD_NOTE(_CallId, 'right', <<"disarming">>),
     {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
-armed({'timeout', Ref, 'digit_timeout'}, #state{b_digit_timeout_ref = Ref
-                                               ,other_leg=_OtherLeg
-                                               }=State) ->
+armed('info', {'timeout', Ref, 'digit_timeout'}, #state{b_digit_timeout_ref = Ref
+                                                       ,other_leg=_OtherLeg
+                                                       }=State) ->
     lager:debug("disarming 'b' leg"),
     _ = maybe_handle_bleg_code(State),
     ?WSD_NOTE(_OtherLeg, 'right', <<"disarming">>),
-    {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
-armed(_Event, State) ->
-    lager:debug("unhandled armed/2: ~p", [_Event]),
-    {'next_state', 'armed', State}.
-
-armed(_Event, _From, State) ->
-    lager:debug("unhandled armed/3: ~p", [_Event]),
-    {'reply', {'error', 'not_implemented'}, 'armed', State}.
+    {'next_state', 'unarmed', disarm_state(State), 'hibernate'}.
 
 -spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
@@ -273,16 +264,6 @@ handle_event(_Event
     lager:debug("listen_on: '~s' call id: '~s' other leg: '~s'", [_LO, _CallId, _OtherLeg]),
     {'next_state', StateName, State}.
 
--spec handle_sync_event(any(), {pid(),any()}, atom(), state()) -> handle_sync_event_ret(state()).
-handle_sync_event(_Event, _From, StateName, State) ->
-    lager:debug("unhandled sync_event in ~s: ~p", [StateName, _Event]),
-    {'reply', {'error', 'not_implemented'}, StateName, State}.
-
--spec handle_info(state(), atom(), state()) -> handle_fsm_ret(state()).
-handle_info(_Info, StateName, State) ->
-    lager:debug("unhandled msg in ~s: ~p", [StateName, _Info]),
-    {'next_state', StateName, State}.
-
 -spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{call_id=CallId
                                      ,other_leg=OtherLeg
@@ -292,7 +273,7 @@ terminate(_Reason, _StateName, #state{call_id=CallId
     konami_event_listener:rm_konami_binding(CallId),
     konami_event_listener:rm_konami_binding(OtherLeg),
     ?WSD_STOP(),
-    lager:debug("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
+    lager:debug("statem terminating while in ~s: ~p", [_StateName, _Reason]).
 
 -spec code_change(any(), atom(), state(), any()) -> {ok, atom(), state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
@@ -482,14 +463,14 @@ handle_pattern_metaflow(Call, P, DTMFLeg) ->
 
 -spec arm_aleg(state()) -> state().
 arm_aleg(#state{digit_timeout=Timeout}=State) ->
-    State#state{a_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
+    State#state{a_digit_timeout_ref = erlang:start_timer(Timeout, self(), 'digit_timeout')
                ,a_collected_dtmf = <<>>
                ,a_leg_armed='true'
                }.
 
 -spec arm_bleg(state()) -> state().
 arm_bleg(#state{digit_timeout=Timeout}=State) ->
-    State#state{b_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
+    State#state{b_digit_timeout_ref = erlang:start_timer(Timeout, self(), 'digit_timeout')
                ,b_collected_dtmf = <<>>
                ,b_leg_armed='true'
                }.
@@ -515,7 +496,7 @@ add_aleg_dtmf(#state{a_collected_dtmf=Collected
                     }=State, DTMF) ->
     lager:debug("a recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     maybe_cancel_timer(OldRef),
-    State#state{a_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
+    State#state{a_digit_timeout_ref = erlang:start_timer(Timeout, self(), 'digit_timeout')
                ,a_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
@@ -527,7 +508,7 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                     }=State, DTMF) ->
     lager:debug("b recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     maybe_cancel_timer(OldRef),
-    State#state{b_digit_timeout_ref = gen_fsm:start_timer(Timeout, 'digit_timeout')
+    State#state{b_digit_timeout_ref = erlang:start_timer(Timeout, self(), 'digit_timeout')
                ,b_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
