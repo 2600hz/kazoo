@@ -220,6 +220,7 @@ is_admin_db(<<"_users">>, 'couchdb_1_6') -> 'true';
 is_admin_db(<<"_nodes">>, 'couchdb_1_6') -> 'true';
 is_admin_db(<<"dbs">>, 'bigcouch') -> 'true';
 is_admin_db(<<"users">>, 'bigcouch') -> 'true';
+is_admin_db(<<"nodes">>, 'bigcouch') -> 'true';
 is_admin_db(_Db, _Driver) -> 'false'.
 
 -spec maybe_use_admin_conn(kz_data:connection()) -> kz_data:connection().
