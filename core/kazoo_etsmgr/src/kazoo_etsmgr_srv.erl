@@ -216,6 +216,8 @@ handle_info({'found_me', Pid}, #state{table_id=Tbl
     {'noreply', State#state{give_away_pid=Pid
                            ,find_me_pid_ref='undefined'
                            }, 'hibernate'};
+handle_info({'DOWN', _Ref, 'process', _Pid, 'shutdown'}, State) ->
+    {'noreply', State};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{table_id=Tbl
                                                           ,find_me_pid_ref={Pid, Ref}
                                                           }=State) ->
@@ -261,6 +263,7 @@ find_me(Fun, Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
+terminate('shutdown', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:debug("ETS mgr going down: ~p", [_Reason]).
 
