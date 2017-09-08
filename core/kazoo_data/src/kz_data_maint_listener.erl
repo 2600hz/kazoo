@@ -31,7 +31,17 @@
 
 %% By convention, we put the options here in macros, but not required.
 %% define what databases or classifications we're interested in
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_DATA_DB)]).
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_classification('ratedeck')
+                      ,kapi_maintenance:restrict_to_db(?KZ_SIP_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_SCHEMA_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_OFFNET_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_WEBHOOKS_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_ANONYMOUS_CDR_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_FAXES_DB)
+                      ,kapi_maintenance:restrict_to_db(?KZ_TASKS_DB)
+
+                      ,kapi_maintenance:restrict_to_db(?KZ_DATA_DB)
+                      ]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
                      ,[{<<"maintenance">>, <<"req">>}]
@@ -64,15 +74,25 @@ start_link() ->
 -spec handle_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
 handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
+
+    handle_refresh(MaintJObj
+                  ,kapi_maintenance:req_action(MaintJObj)
+                  ,kapi_maintenance:req_database(MaintJObj)
+                  ).
+
+handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_DATA_DB) ->
     _ = kz_util:spawn(fun() ->
                               kz_datamgr:revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>)
                       end),
-    send_resp(MaintJObj).
+    send_resp(MaintJObj, 202);
+handle_refresh(MaintJObj, <<"refresh_database">>, Database) ->
+    _ = kz_datamgr:db_create(Database),
+    send_resp(MaintJObj, 200).
 
--spec send_resp(kapi_mainteannce:req()) -> 'ok'.
-send_resp(MaintJObj) ->
-    Resp = [{<<"Code">>, 202}
-           ,{<<"Message">>, <<"Refreshing views in ", ?KZ_DATA_DB/binary>>}
+-spec send_resp(kapi_mainteannce:req(), 200 | 202) -> 'ok'.
+send_resp(MaintJObj, Code) ->
+    Resp = [{<<"Code">>, Code}
+           ,{<<"Message">>, <<"Success">>}
            ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],

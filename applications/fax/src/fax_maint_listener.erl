@@ -34,9 +34,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 %% define what databases or classifications we're interested in
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_FAXES_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_FAXES_DB)
-                      ]).
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_views_db(?KZ_FAXES_DB)]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
                      ,[{<<"maintenance">>, <<"req">>}]
@@ -71,9 +69,6 @@ handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
     handle_refresh(MaintJObj, kapi_maintenance:req_action(MaintJObj)).
 
-handle_refresh(MaintJObj, <<"refresh_database">>) ->
-    Created = kz_datamgr:db_create(?KZ_FAXES_DB),
-    send_resp(MaintJObj, Created);
 handle_refresh(MaintJObj, <<"refresh_views">>) ->
     _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXES_VIEW_FILE),
     _ = kz_datamgr:revise_doc_from_file(?KZ_FAXES_DB, 'fax', ?FAXBOX_VIEW_FILE),

@@ -35,9 +35,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 %% define what databases or classifications we're interested in
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_SIP_DB)
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)
-                      ]).
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)]).
 -define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_req'}
                      ,[{<<"maintenance">>, <<"req">>}]

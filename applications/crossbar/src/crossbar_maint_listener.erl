@@ -30,9 +30,7 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(RESTRICTIONS, [kapi_maintenance:restrict_to_db(?KZ_SCHEMA_DB)
-
-                      ,kapi_maintenance:restrict_to_views_db(?KZ_CONFIG_DB)
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_views_db(?KZ_CONFIG_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_SCHEMA_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_MEDIA_DB)
                       ,kapi_maintenance:restrict_to_views_db(?KZ_SIP_DB)
@@ -87,9 +85,6 @@ handle_req(MaintJObj, _Props) ->
                   ).
 
 -spec handle_refresh(kapi_maintenance:req(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-handle_refresh(MaintJObj, <<"refresh_database">>, Db, _Class) ->
-    Created = kz_datamgr:db_create(Db),
-    send_resp(MaintJObj, Created);
 handle_refresh(MaintJObj, <<"refresh_views">>, ?KZ_CONFIG_DB, _Class) ->
     Revised = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
     send_resp(MaintJObj, Revised);
