@@ -1237,6 +1237,9 @@ print_summary({[#registration{username=Username
                              ,expires=Expires
                              ,last_registration=LastRegistration
                              ,call_id=CallId
+                             ,proxy=Proxy
+                             ,proxy_ip=ProxyIP
+                             ,proxy_port=ProxyPort
                              }
                ]
               ,Continuation
@@ -1246,16 +1249,10 @@ print_summary({[#registration{username=Username
     Remaining = (LastRegistration + Expires) - kz_time:current_tstamp(),
     Props = breakup_contact(Contact),
     Hostport = props:get_first_defined(['received', 'hostport'], Props),
-    _ = case props:get_value('fs_path', Props) of
-            'undefined' ->
-                io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
-                         ,[User, Hostport, <<>>, CallId, Remaining]
-                         );
-            Path ->
-                io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
-                         ,[User, Hostport, Path, CallId, Remaining]
-                         )
-        end,
+    Path = proxy_path(Proxy, ProxyIP, ProxyPort),
+    io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
+             ,[User, Hostport, Path, CallId, Remaining]
+             ),
     print_summary(ets:select(Continuation), Count + 1).
 
 -spec print_details(ets_continuation()) -> 'ok'.
@@ -1297,6 +1294,18 @@ breakup_contact(Contact) when is_binary(Contact) ->
     find_contact_parameters(Parameters, [{'uri', Uri}, {'hostport', Hostport}]);
 breakup_contact(Contact) ->
     breakup_contact(kz_term:to_binary(Contact)).
+
+-spec proxy_path(api_binary(), api_binary(), api_integer()) -> binary().
+proxy_path('undefined', 'undefined', 'undefined') -> <<>>;
+proxy_path('undefined', 'undefined', Port) -> proxy_path('undefined', <<>>, Port);
+proxy_path('undefined', IP, 'undefined') -> IP;
+proxy_path('undefined', IP, Port) -> <<IP/binary, ":", (kz_term:to_binary(Port))/binary>>;
+proxy_path(Proxy, _, Port) ->
+    Proxy1 = binary:replace(Proxy, <<"sip:">>, <<>>),
+    case binary:match(Proxy1, <<":">>) of
+        'nomatch' -> <<Proxy1/binary, ":", (kz_term:to_binary(Port))/binary>>;
+        _ -> Proxy1
+    end.
 
 -spec find_contact_parameters(ne_binaries(), kz_proplist()) -> kz_proplist().
 find_contact_parameters([], Props) -> Props;
