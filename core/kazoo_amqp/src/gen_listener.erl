@@ -712,10 +712,10 @@ handle_confirm(Confirm, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate('shutdown'=Reason, #state{module=Module
-                        ,module_state=ModuleState
-                        }) ->
-    _ = (catch Module:terminate(Reason, ModuleState)),
+terminate('shutdown', #state{module=Module
+                            ,module_state=ModuleState
+                            }) ->
+    _ = (catch Module:terminate('shutdown', ModuleState)),
     'ok';
 terminate(Reason, #state{module=Module
                         ,module_state=ModuleState
