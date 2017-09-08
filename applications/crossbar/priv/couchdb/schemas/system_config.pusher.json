@@ -12,9 +12,18 @@
             "default": {},
             "description": "pusher apple",
             "properties": {
+                "apns_topic": {
+                    "description": "APNs topic for push notifications payload",
+                    "type": "string"
+                },
                 "certificate": {
                     "description": "PEM-encoded key and certificate",
                     "type": "string"
+                },
+                "extra_headers": {
+                    "default": {},
+                    "description": "Additional headers for INVITEs sent to push devices in the UA",
+                    "type": "object"
                 },
                 "host": {
                     "default": "api.push.apple.com",
