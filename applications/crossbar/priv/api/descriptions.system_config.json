@@ -86,6 +86,7 @@
     "callflow.park.default_ringback_timeout": "callflow.park default ringback timeout",
     "callflow.park.parked_presence_type": "callflow.park parked presence type",
     "callflow.park.presence_id": "use this presence_id",
+    "callflow.park.valet_reservation_cleanup_time_ms": "time in ms to allow a valet parking to complete",
     "callflow.post_answer_delay": "callflow post answer delay",
     "callflow.resources.default_emit_account_id": "callflow.resources default emit account id",
     "callflow.ring_ready_offnet": "callflow ring ready offnet",
