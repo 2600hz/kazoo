@@ -118,6 +118,7 @@ handle_info('timeout', State) ->
         {'ok', []} -> {'noreply', State, ?POLLING_INTERVAL};
         {'ok', AccountIds} ->
             _ = distribute_accounts(AccountIds),
+            _ = garbage_collect(),
             {'noreply', State, ?POLLING_INTERVAL};
         {'error', _Reason} ->
             lager:debug("failed to fetch fax account jobs: ~p", [_Reason]),
