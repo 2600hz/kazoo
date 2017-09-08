@@ -198,9 +198,9 @@
 
 -record(kz_amqp_connection, {broker :: ne_binary() | '_'
                             ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{} | '_'
-                            ,manager :: pid() | '_'
-                            ,connection :: pid() | '_'
-                            ,connection_ref :: reference() | '_'
+                            ,manager :: api_pid() | '_'
+                            ,connection :: api_pid() | '_'
+                            ,connection_ref :: api_reference() | '_'
                             ,channel :: api_pid() | '$1' | '_'
                             ,channel_ref :: api_reference() | '$1' | '_'
                             ,reconnect_ref :: api_reference() | '_'

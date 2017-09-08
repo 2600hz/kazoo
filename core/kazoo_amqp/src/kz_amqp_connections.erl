@@ -33,6 +33,8 @@
 -export([brokers_with_tag/1, brokers_with_tag/2, broker_with_tag/1]).
 -export([is_zone_available/1, is_tag_available/1, is_hidden_broker/1]).
 
+-export([connections/1]).
+
 -export([start_link/0]).
 
 -export([init/1
@@ -356,6 +358,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info({'DOWN', _Ref, 'process', _Connection, 'shutdown'}, State) ->
+    {'noreply', State};
 handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->
     lager:warning("connection ~p went down: ~p"
                  ,[Connection, _Reason]),
@@ -499,3 +503,11 @@ is_tag_available(Tag) -> broker_with_tag(Tag) =/= 'undefined'.
 
 -spec is_hidden_broker(list()) -> boolean().
 is_hidden_broker(Tags) -> lists:member(?AMQP_HIDDEN_TAG, Tags).
+
+-spec connections(ne_binary()) -> [pid()].
+connections(Broker=?NE_BINARY) ->
+    Pattern = #kz_amqp_connections{broker=Broker
+                                  ,connection='$1'
+                                  ,_='_'
+                                  },
+    [Connection || [Connection] <- ets:match(?TAB, Pattern)].

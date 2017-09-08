@@ -845,6 +845,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info({'DOWN', _ClientRef, 'process', _Pid, 'shutdown'}, State) ->
+    {'noreply', State};
 handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}
            ,#state{current_msg_id = _MsgId
                   ,client_ref = ClientRef
@@ -941,6 +943,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
+terminate('shutdown', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:debug("amqp worker terminating: ~p", [_Reason]).
 
