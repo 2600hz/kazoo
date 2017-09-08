@@ -194,6 +194,7 @@ is_cb_module(Mod) ->
 -spec start_link() -> 'ignore'.
 start_link() ->
     _ = init(),
+    garbage_collect(self()),
     'ignore'.
 
 -spec init() -> 'ok'.
