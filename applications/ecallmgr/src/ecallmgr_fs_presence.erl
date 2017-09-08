@@ -218,7 +218,7 @@ realm(Props) ->
 get_user_realm(Props) ->
     case binary:split(from(Props), <<"@">>, ['global']) of
         [Username, Realm | _] -> {Username, Realm};
-        From -> {From, realm(Props)}
+        [From] -> {From, realm(Props)}
     end.
 
 -spec from(kz_proplist()) -> ne_binary().
