@@ -21,7 +21,12 @@
         ,code_change/3
         ]).
 
--include("reg.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include_lib("kazoo_amqp/include/kz_amqp.hrl").
+
+-define(APP_NAME, <<"registrar">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(SERVER, ?MODULE).
 
@@ -57,6 +62,7 @@ start_link() ->
                             ,{'queue_name', ?QUEUE_NAME}       % optional to include
                             ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                             ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ,{'declare_exchanges', [{?EXCHANGE_SYSCONF, ?TYPE_SYSCONF}]}
                             ]
                            ,[]
                            ).

@@ -22,6 +22,7 @@
         ]).
 
 -include("cccp.hrl").
+-include_lib("kazoo_amqp/include/kz_amqp.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -52,6 +53,7 @@ start_link() ->
                             ,{'queue_name', ?QUEUE_NAME}       % optional to include
                             ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                             ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ,{'declare_exchanges', [{?EXCHANGE_SYSCONF, ?TYPE_SYSCONF}]}
                             ]
                            ,[]
                            ).

@@ -23,6 +23,7 @@
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
+    kapi_maintenance:declare_exchanges(),
     kazoo_maintenance_sup:start_link().
 
 %%--------------------------------------------------------------------
