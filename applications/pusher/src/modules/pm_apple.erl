@@ -121,8 +121,11 @@ apns_topic(JObj) ->
                                    ,TokenApp
                                    )
     of
-        'undefined' ->
-            %% Retain the old behaviour
-            re:replace(TokenApp, <<"\\.(?:dev|prod)$">>, <<>>, [{'return', 'binary'}]);
+        'undefined' -> default_apns_topic(TokenApp);
         APNsTopic -> APNsTopic
     end.
+
+%% Retains the old behaviour
+-spec default_apns_topic(ne_binary()) -> ne_binary().
+default_apns_topic(TokenApp) ->
+    re:replace(TokenApp, <<"\\.(?:dev|prod)$">>, <<>>, [{'return', 'binary'}]).
