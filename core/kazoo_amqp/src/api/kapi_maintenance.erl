@@ -312,7 +312,7 @@ wait_for_response(Timeout, Responses, Resps) ->
                 'false' -> wait_for_response(Left, Responses, Resps)
             end
     after
-        Timeout -> wait_for_response(0, Resps)
+        Timeout -> wait_for_response(0, Responses, Resps)
     end.
 
 -spec req_action(req()) -> api_ne_binary().
