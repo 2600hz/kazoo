@@ -22,6 +22,11 @@
             "default": "early",
             "description": "callflow.park parked presence type",
             "type": "string"
+        },
+        "valet_reservation_cleanup_time_ms": {
+            "default": 3000,
+            "description": "callflow park valet_reservation_cleanup_time_ms",
+            "type": "integer"
         }
     },
     "type": "object"
