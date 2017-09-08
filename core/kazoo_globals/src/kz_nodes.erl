@@ -647,7 +647,7 @@ handle_info({'heartbeat', Ref}
             {'noreply', State#state{heartbeat_ref=Reference, me=NewMe}};
         'exit' : {'timeout' , _} ->
             lager:warning("timeout creating node, no data to send"),
-            {'noreply', State#state{heartbeat_ref=Reference}};            
+            {'noreply', State#state{heartbeat_ref=Reference}};
         _E:_N ->
             lager:error("error creating node ~p : ~p", [_E, _N]),
             kz_util:log_stacktrace(),
