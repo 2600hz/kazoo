@@ -287,8 +287,9 @@ refresh(Database) ->
 -spec do_refresh(ne_binary(), pid()) -> refresh_result().
 do_refresh(Database, Worker) ->
     Classification = kz_datamgr:db_classification(Database),
-    _ = kapi_maintenance:refresh_database(Database, Worker, Classification),
-    _ = kapi_maintenance:refresh_views(Database, Worker, Classification).
+    {kapi_maintenance:refresh_database(Database, Worker, Classification)
+    ,kapi_maintenance:refresh_views(Database, Worker, Classification)
+    }.
 
 %%--------------------------------------------------------------------
 %% @public
