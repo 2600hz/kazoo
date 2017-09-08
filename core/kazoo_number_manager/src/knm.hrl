@@ -43,7 +43,7 @@
 -define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
 -define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
 
--define(DEFAULT_FEATURES_ALLOWED_SYSTEM, ?ALL_KNM_FEATURES).
+-define(DEFAULT_FEATURES_ALLOWED_SYSTEM, ?KAZOO_NUMBER_FEATURES ++ ?ADMIN_ONLY_FEATURES).
 
 -define(PORT_IN_MODULE_NAME
        ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)
