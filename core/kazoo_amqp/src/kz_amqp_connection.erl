@@ -15,6 +15,7 @@
 -export([new_exchange/2]).
 -export([create_prechannel/1]).
 -export([disconnect/1]).
+-export([unmanaged_channel/1]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -97,6 +98,8 @@ init([#kz_amqp_connection{}=Connection]) ->
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('get_connection', _, Connection) ->
     {'reply', Connection, Connection};
+handle_call('open_channel', _, Connection) ->
+    {'reply', open_channel(Connection), Connection};
 handle_call('stop', _, Connection) ->
     {'stop', 'normal', 'ok', disconnected(Connection)};
 handle_call({'new_exchange', _}
@@ -161,6 +164,8 @@ handle_cast(_Msg, Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info({'DOWN', _Ref, 'process', _Pid, 'shutdown'}, Connection) ->
+    {'noreply', Connection};
 handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}
            ,#kz_amqp_connection{available='false'}=Connection
            ) ->
@@ -522,3 +527,7 @@ declare_exchanges(#kz_amqp_connection{channel=Channel
     end;
 declare_exchanges(#kz_amqp_connection{}=Connection, _) ->
     disconnected(Connection#kz_amqp_connection{exchanges_initialized='false'}).
+
+-spec unmanaged_channel(pid()) -> {'ok', pid()} | {'error', any()}.
+unmanaged_channel(Pid) ->
+    gen_server:call(Pid, 'open_channel').
