@@ -34,17 +34,6 @@
             ],
             "type": "object"
         },
-        "account_config.callflow.park": {
-            "description": "Schema for callflow.park account_config",
-            "properties": {
-                "valet_reservation_cleanup_time_ms": {
-                    "default": 3000,
-                    "description": "callflow park valet_reservation_cleanup_time_ms",
-                    "type": "integer"
-                }
-            },
-            "type": "object"
-        },
         "account_config.cdr": {
             "description": "Schema for cdr account_config",
             "properties": {
