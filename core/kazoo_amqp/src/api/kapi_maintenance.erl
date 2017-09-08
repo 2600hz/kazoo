@@ -252,7 +252,7 @@ refresh_database(Database, Worker, Classification) ->
           ,{?KEY_DATABASE, Database}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kz_amqp_worker:cast(Req, fun kapi_maintenance:publish_req/1, Worker),
+    kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
     wait_for_response(10 * ?MILLISECONDS_IN_SECOND, 1).
 
 -spec refresh_views(ne_binary()) ->
@@ -284,7 +284,7 @@ refresh_views(Database, Worker, Classification) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req
-                       ,fun kapi_maintenance:publish_req/1
+                       ,fun ?MODULE:publish_req/1
                        ,Worker
                        ),
     wait_for_response(30 * ?MILLISECONDS_IN_SECOND, 1).
@@ -307,7 +307,7 @@ wait_for_response(Timeout, Responses, Resps) ->
     receive
         {'amqp_msg', JObj} ->
             Left = kz_time:decr_timeout(Timeout, Start),
-            case kapi_maintenance:resp_v(JObj) of
+            case ?MODULE:resp_v(JObj) of
                 'true' -> wait_for_response(Left, Responses-1, [JObj|Resps]);
                 'false' -> wait_for_response(Left, Responses, Resps)
             end
