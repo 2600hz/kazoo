@@ -488,7 +488,8 @@ presence_id(Endpoint, Call, Default) ->
         'false' -> maybe_fix_presence_id_realm(PresenceId, Endpoint, Call)
     end.
 
--spec maybe_fix_presence_id_realm(ne_binary(), kz_json:object(), kapps_call:call()) -> ne_binary().
+-spec maybe_fix_presence_id_realm(ne_binary(), kz_json:object(), kapps_call:call()) -> api_ne_binary().
+maybe_fix_presence_id_realm('undefined', _Endpoint, _Call) -> 'undefined';
 maybe_fix_presence_id_realm(PresenceId, Endpoint, Call) ->
     case binary:match(PresenceId, <<"@">>) of
         'nomatch' ->
