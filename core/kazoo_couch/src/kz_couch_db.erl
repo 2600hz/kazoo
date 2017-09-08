@@ -219,4 +219,15 @@ do_db_compact(#db{}=Db) ->
 
 -spec do_db_view_cleanup(db()) -> boolean().
 do_db_view_cleanup(#db{}=Db) ->
-    'ok' =:= ?RETRY_504(couchbeam:view_cleanup(Db)).
+    case ?RETRY_504(couchbeam:view_cleanup(Db)) of
+        {'ok', JObj} -> kz_json:is_true(<<"ok">>, JObj);
+        {'error', {'conn_failed', {'error', 'timeout'}}} ->
+            lager:debug("connection timed out"),
+            'false';
+        {'error', 'not_found'} ->
+            lager:debug("db_view_cleanup failed because db wasn't found"),
+            'false';
+        {'error', _E} ->
+            lager:debug("failed to clean up views: ~p", [_E]),
+            'false'
+    end.

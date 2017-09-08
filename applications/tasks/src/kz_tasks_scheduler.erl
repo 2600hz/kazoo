@@ -201,14 +201,18 @@ maybe_strip_columns(Columns, CSVPath, ColumnsWritten) ->
     {ok, Bin} = file:read_file(CSVPath),
     {FullHeader, CSV} = kz_csv:take_row(Bin),
     lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
-    true = ColumnsWritten < length(FullHeader),
-    OutputPath = <<CSVPath/binary, "_reversed">>,
-    Header = [Column || Column <- FullHeader,
-                        sets:is_element(Column, Columns)
-             ],
-    strip_columns(FullHeader, Header, CSV, OutputPath),
-    lager:debug("mv ~s ~s", [OutputPath, CSVPath]),
-    ok = file:rename(OutputPath, CSVPath).
+    case length(FullHeader) of
+        ColumnsWritten -> ok;
+        MightHaveEmpty when ColumnsWritten < MightHaveEmpty ->
+            OutputPath = <<CSVPath/binary, "_reversed">>,
+            Header = [Column || Column <- FullHeader,
+                                sets:is_element(Column, Columns)
+                     ],
+            strip_columns(FullHeader, Header, CSV, OutputPath),
+            lager:debug("mv ~s ~s", [OutputPath, CSVPath]),
+            ok = file:rename(OutputPath, CSVPath);
+        _DamnYouMoreColumn -> throw({error, <<"more columns were written">>})
+    end.
 
 strip_columns(FullHeader, Header, CSV, OutputPath) ->
     case kz_csv:take_mapped_row(FullHeader, CSV) of
