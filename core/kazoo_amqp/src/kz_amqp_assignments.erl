@@ -206,6 +206,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info({'DOWN', _Ref, 'process', _Pid, 'shutdown'}, State) ->
+    {'noreply', State};
 handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
     erlang:demonitor(Ref, ['flush']),
     handle_down_msg(find_reference(Ref), Reason),
@@ -226,6 +228,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
+terminate('shutdown', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:debug("AMQP assignments terminating: ~p", [_Reason]).
 
