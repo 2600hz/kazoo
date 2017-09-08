@@ -325,9 +325,9 @@ attachment_length(JObj, AName) ->
 attachment_length(JObj, AName, Default) ->
     attachment_property(JObj, AName, <<"length">>, Default, fun kz_json:get_integer_value/3).
 
--spec attachment_content_type(kz_json:object()) -> api_binary().
--spec attachment_content_type(kz_json:object(), ne_binary()) -> api_binary().
--spec attachment_content_type(kz_json:object(), ne_binary(), ne_binary()) -> ne_binary().
+-spec attachment_content_type(kz_json:object()) -> api_ne_binary().
+-spec attachment_content_type(kz_json:object(), ne_binary()) -> api_ne_binary().
+-spec attachment_content_type(kz_json:object(), ne_binary(), Default) -> Default | ne_binary().
 attachment_content_type(JObj) ->
     case kz_json:get_values(attachments(JObj, kz_json:new())) of
         {[], []} -> 'undefined';
