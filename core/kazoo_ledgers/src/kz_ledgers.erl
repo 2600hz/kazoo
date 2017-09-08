@@ -10,7 +10,17 @@
 
 -include("kzl.hrl").
 
--export([get/1, get/3]).
+-export([get/1, get/3
+        ,available_ledgers/1
+        ]).
+
+-define(DEFAULT_AVIALABLE_LEDGERS,
+        [kz_json:from_list([{<<"name">>, <<"per-minute-voip">>}
+                           ,{<<"friendly_name">>, <<"Per Minute VoIP">>}
+                           ,{<<"markup_type">>, [<<"percentage">>]}
+                           ])
+        ]
+       ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -59,3 +69,7 @@ get(Account, CreatedFrom, CreatedTo)
     catch
         throw:_R -> {error, _R}
     end.
+
+-spec available_ledgers(api_binary()) -> kz_json:objects().
+available_ledgers(AccountId) ->
+    kapps_account_config:get_global(AccountId, <<"ledgers">>, <<"registered_ledgers">>, ?DEFAULT_AVIALABLE_LEDGERS).

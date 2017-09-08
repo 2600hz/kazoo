@@ -71,6 +71,16 @@ curl -v -X PUT \
 
 #### Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/available
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/available
+```
+
+#### Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{LEDGER_ENTRY_ID}
 
 ```shell

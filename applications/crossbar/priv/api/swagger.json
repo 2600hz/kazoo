@@ -213,6 +213,33 @@
             },
             "type": "object"
         },
+        "account_config.ledgers": {
+            "description": "Schema for ledgers account_config",
+            "properties": {
+                "registered_ledgers": {
+                    "default": [
+                        {
+                            "friendly_name": "Per Minute VoIP",
+                            "name": "per-minute-voip"
+                        },
+                        {
+                            "friendly_name": "Mobile Data (100mB)",
+                            "name": "mobile_data"
+                        },
+                        {
+                            "friendly_name": "Support",
+                            "name": "support"
+                        }
+                    ],
+                    "description": "ledgers registered_ledgers",
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
         "account_config.media": {
             "description": "Schema for media account_config",
             "properties": {
@@ -26878,6 +26905,33 @@
             },
             "type": "object"
         },
+        "system_config.ledgers": {
+            "description": "Schema for ledgers system_config",
+            "properties": {
+                "registered_ledgers": {
+                    "default": [
+                        {
+                            "friendly_name": "Per Minute VoIP",
+                            "name": "per-minute-voip"
+                        },
+                        {
+                            "friendly_name": "Mobile Data (100mB)",
+                            "name": "mobile_data"
+                        },
+                        {
+                            "friendly_name": "Support",
+                            "name": "support"
+                        }
+                    ],
+                    "description": "ledgers registered_ledgers",
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
         "system_config.media": {
             "description": "Schema for media system_config",
             "properties": {
@@ -34786,6 +34840,23 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/ledgers": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/ledgers/available": {
             "get": {
                 "parameters": [
                     {

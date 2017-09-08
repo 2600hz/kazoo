@@ -2,11 +2,9 @@
 
 #### About Ledgers
 
-#### Schema
+#### Ledgers Schema
 
 ledgers document
-
-
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -27,7 +25,37 @@ Key | Description | Type | Default | Required
 `usage.unit` | Usage unit | `string()` |   | `true`
 `usage` | Usage for ledger | `object()` |   | `true`
 
+#### Get Available Ledgers
 
+List available ledger sources from the account's reseller.
+
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/available
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/available
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "name": "per-minute-voip",
+            "friendly_name": "Per Minute VoIP",
+            "markup_type": [
+                "percentage"
+            ]
+        }
+    ],
+    "node": "{NODE}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "{VERSION}"
+}
+```
 
 #### Fetch
 
