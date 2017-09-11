@@ -872,7 +872,7 @@ from_json(JObj, State) ->
 -spec kapps_from_json(api_terms()) -> kapps_info().
 -spec whapp_from_json(binary(), kz_json:object()) -> {binary(), whapp_info()}.
 -spec whapp_info_from_json(ne_binary(), kz_json:object()) -> whapp_info().
--spec whapp_info_from_json(ne_binary(), kz_json:object(), {kz_json:json_terms(), kz_json:keys()}) -> whapp_info().
+-spec whapp_info_from_json(ne_binary(), whapp_info(), {kz_json:json_terms(), kz_json:keys()}) -> whapp_info().
 
 kapps_from_json(Whapps) when is_list(Whapps) ->
     [{Whapp, #whapp_info{}} || Whapp <- Whapps];
@@ -892,7 +892,9 @@ whapp_info_from_json(Key, Info, {[V | V1], [<<"Roles">> | K1]}) ->
 whapp_info_from_json(<<"kamailio">> = Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
     whapp_info_from_json(Key, Info#whapp_info{startup=kz_time:unix_seconds_to_gregorian_seconds(V)}, {V1, K1});
 whapp_info_from_json(Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
-    whapp_info_from_json(Key, Info#whapp_info{startup=V}, {V1, K1}).
+    whapp_info_from_json(Key, Info#whapp_info{startup=V}, {V1, K1});
+whapp_info_from_json(Key, Info, {[_V | V1], [_K | K1]}) ->
+    whapp_info_from_json(Key, Info, {V1, K1}).
 
 -spec kapps_to_json(kapps_info()) -> kz_json:object().
 -spec whapp_to_json({ne_binary(), whapp_info()}) -> {ne_binary(), kz_json:object()}.
