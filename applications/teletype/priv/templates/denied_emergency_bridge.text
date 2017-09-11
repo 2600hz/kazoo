@@ -1,7 +1,7 @@
                 Denied Emergency Call
 
 Account '{{account.name}}' attempted an emergency service call
-but the call was blockedbecause the Emergency Caller ID or/and
+but the call was blocked because the Emergency Caller ID or/and
 the Emergency address was not configured!
 
 
