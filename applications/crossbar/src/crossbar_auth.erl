@@ -17,23 +17,23 @@
 
 -include("crossbar.hrl").
 
--define(DEFAULT_METHOD_CONFIG,
+-define(DEFAULT_METHOD_CONFIG(LogSuccess),
         kz_json:from_list(
           [{<<"enabled">>, 'true'}
           ,{<<"token_auth_expiry_s">>, ?SECONDS_IN_HOUR}
           ,{<<"log_failed_attempts">>, 'true'}
-          ,{<<"log_successful_attempts">>, 'true'}
+          ,{<<"log_successful_attempts">>, LogSuccess}
           ]
          )
        ).
 
 -define(DEFAULT_AUTH_CONFIG,
         kz_json:from_list(
-          [{<<"cb_user_auth">>, ?DEFAULT_METHOD_CONFIG}
-          ,{<<"cb_api_auth">>, ?DEFAULT_METHOD_CONFIG}
-          ,{<<"cb_auth">>, ?DEFAULT_METHOD_CONFIG}
-          ,{<<"cb_ip_auth">>, ?DEFAULT_METHOD_CONFIG}
-          ,{<<"cb_ubiquiti_auth">>, ?DEFAULT_METHOD_CONFIG}
+          [{<<"cb_user_auth">>, ?DEFAULT_METHOD_CONFIG('true')}
+          ,{<<"cb_api_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
+          ,{<<"cb_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
+          ,{<<"cb_ip_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
+          ,{<<"cb_ubiquiti_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
           ]
          )
        ).
