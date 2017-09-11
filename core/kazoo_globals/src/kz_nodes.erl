@@ -11,8 +11,9 @@
 
 -export([start_link/0]).
 -export([is_up/1]).
--export([whapp_count/1
-        ,whapp_count/2
+-export([whapp_count/1, whapp_count/2
+        ,whapp_role_count/2, whapp_role_count/3
+        ,node_role_count/1, node_role_count/2
         ,whapp_oldest_node/1
         ,whapp_oldest_node/2
         ]).
@@ -1074,4 +1075,120 @@ node_encoded() ->
             application:set_env(?APP_NAME_ATOM, 'node_encoded', Encoded),
             Encoded;
         {'ok', Encoded} -> Encoded
+    end.
+
+-spec whapp_role_count(text(), text()) -> integer().
+whapp_role_count(Whapp, Role) ->
+    whapp_role_count(Whapp, Role, 'false').
+
+-spec whapp_role_count(text(), text(), text() | boolean() | 'remote') -> integer().
+whapp_role_count(Whapp, Role, Arg) when not is_atom(Arg) ->
+    whapp_role_count(Whapp, Role, kz_term:to_atom(Arg, 'true'));
+whapp_role_count(Whapp, Role, 'false') ->
+    MatchSpec = [{#kz_node{kapps='$1'
+                          ,zone = local_zone()
+                          ,_ = '_'
+                          }
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
+                 }],
+    determine_whapp_role_count(kz_term:to_binary(Whapp), kz_term:to_binary(Role), MatchSpec);
+whapp_role_count(Whapp, Role, 'true') ->
+    MatchSpec = [{#kz_node{kapps='$1'
+                          ,_ = '_'
+                          }
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
+                 }],
+    determine_whapp_role_count(kz_term:to_binary(Whapp), kz_term:to_binary(Role), MatchSpec);
+whapp_role_count(Whapp, Role, 'remote') ->
+    Zone = local_zone(),
+    MatchSpec = [{#kz_node{kapps='$1'
+                          ,zone='$2'
+                          ,_ = '_'
+                          }
+                 ,[{'andalso'
+                   ,{'=/=', '$1', []}
+                   ,{'=/=', '$2', {'const', Zone}}
+                   }]
+                 ,['$1']
+                 }],
+    determine_whapp_role_count(kz_term:to_binary(Whapp), kz_term:to_binary(Role), MatchSpec);
+whapp_role_count(Whapp, Role, Unhandled) ->
+    lager:debug("invalid parameters ~p , ~p , ~p", [Whapp, Role, Unhandled]),
+    0.
+
+-spec determine_whapp_role_count(ne_binary(), ne_binary(), ets:match_spec()) -> non_neg_integer().
+determine_whapp_role_count(Whapp, Role, MatchSpec) ->
+    lists:foldl(fun(Whapps, Acc) when is_list(Whapps) ->
+                        determine_whapp_role_count_fold(Whapps, Role, Acc, Whapp)
+                end
+               ,0
+               ,ets:select(?MODULE, MatchSpec)
+               ).
+
+-spec determine_whapp_role_count_fold(kapps_info(), ne_binary(), non_neg_integer(), ne_binary()) -> non_neg_integer().
+determine_whapp_role_count_fold(Whapps, Role, Acc, Whapp) ->
+    case props:is_defined(Whapp, Whapps)
+        andalso lists:member(Role, (props:get_value(Whapp, Whapps))#whapp_info.roles)
+    of
+        'true' -> Acc + 1;
+        'false' -> Acc
+    end.
+
+-spec node_role_count(text()) -> integer().
+node_role_count(Role) ->
+    node_role_count(Role, 'false').
+
+-spec node_role_count(text(), text() | boolean() | 'remote') -> integer().
+node_role_count(Role, Arg) when not is_atom(Arg) ->
+    node_role_count(Role, kz_term:to_atom(Arg, 'true'));
+node_role_count(Role, 'false') ->
+    MatchSpec = [{#kz_node{roles='$1'
+                          ,zone = local_zone()
+                          ,_ = '_'
+                          }
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
+                 }],
+    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
+node_role_count(Role, 'true') ->
+    MatchSpec = [{#kz_node{roles='$1'
+                          ,_ = '_'
+                          }
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
+                 }],
+    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
+node_role_count(Role, 'remote') ->
+    Zone = local_zone(),
+    MatchSpec = [{#kz_node{roles='$1'
+                          ,zone='$2'
+                          ,_ = '_'
+                          }
+                 ,[{'andalso'
+                   ,{'=/=', '$1', []}
+                   ,{'=/=', '$2', {'const', Zone}}
+                   }]
+                 ,['$1']
+                 }],
+    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
+node_role_count(Role, Unhandled) ->
+    lager:debug("invalid parameters ~p , ~p , ~p", [Role, Unhandled]),
+    0.
+
+-spec determine_node_role_count(ne_binary(), ets:match_spec()) -> non_neg_integer().
+determine_node_role_count(Role, MatchSpec) ->
+    lists:foldl(fun(Roles, Acc) when is_list(Roles) ->
+                        determine_node_role_count_fold(Roles, Acc, Role)
+                end
+               ,0
+               ,ets:select(?MODULE, MatchSpec)
+               ).
+
+-spec determine_node_role_count_fold(kz_proplist(), non_neg_integer(), ne_binary()) -> non_neg_integer().
+determine_node_role_count_fold(Roles, Acc, Role) ->
+    case props:is_defined(Role, Roles) of
+        'true' -> Acc + 1;
+        'false' -> Acc
     end.

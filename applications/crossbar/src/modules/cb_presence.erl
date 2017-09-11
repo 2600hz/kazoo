@@ -196,7 +196,7 @@ search_req(Context, SearchType, Username) ->
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Count = kz_nodes:whapp_count(<<"kamailio">>, 'true'),
+    Count = kz_nodes:node_role_count(<<"Presence">>, 'true'),
     lager:debug("requesting presence ~s from ~B servers", [SearchType, Count]),
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_presence:publish_search_req/1
