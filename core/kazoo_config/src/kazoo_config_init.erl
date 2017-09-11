@@ -64,10 +64,21 @@ set_env() ->
 
 set_zone(AppEnv) ->
     erlang:put(?SETTINGS_KEY, AppEnv),
-    [Local] = kz_config:get(kz_config:get_node_section_name(), 'zone', ['local']),
-    Zone = kz_term:to_atom(Local, 'true'),
+    Zone = maybe_zone_from_env(),
     lager:notice("setting zone to ~p", [Zone]),
     application:set_env(?APP, 'zone', Zone).
+
+-spec maybe_zone_from_env() -> atom().
+maybe_zone_from_env() ->
+    case os:getenv("KAZOO_ZONE", "noenv") of
+        "noenv" -> zone_from_ini();
+        Zone -> kz_term:to_atom(Zone, 'true')
+    end.
+
+-spec zone_from_ini() -> atom().
+zone_from_ini() ->
+    [Local] = kz_config:get(kz_config:get_node_section_name(), 'zone', ['local']),
+    kz_term:to_atom(Local, 'true').
 
 -spec reload() -> 'ok'.
 reload() ->
