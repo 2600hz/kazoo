@@ -30,5 +30,9 @@
                        ,'webhooks'
                        ]).
 
+-define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
+-define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
+-define(SEARCH_VIEW_FILE, <<"views/search.json">>).
+
 -define(KAZOO_APPS_HRL, 'true').
 -endif.

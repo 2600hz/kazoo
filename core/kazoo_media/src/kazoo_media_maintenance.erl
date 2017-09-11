@@ -242,7 +242,15 @@ maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
 
 -spec refresh() -> 'ok'.
 refresh() ->
-    kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, 'crossbar', "account/media.json"),
+    Req = [{<<"Database">>, ?KZ_MEDIA_DB}
+          ,{<<"Classification">>, kz_datamgr:db_classification(?KZ_MEDIA_DB)}
+          ,{<<"Action">>, <<"refresh_views">>}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    {'ok', _} = kz_amqp_worker:call(Req
+                                   ,fun kapi_maintenance:publish_req/1
+                                   ,fun kapi_maintenance:resp_v/1
+                                   ),
     'ok'.
 
 -spec maybe_migrate_system_config(ne_binary()) -> 'ok'.

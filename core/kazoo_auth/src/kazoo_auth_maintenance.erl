@@ -43,7 +43,6 @@ register_auth_app_key(AppId, PemFile) ->
 refresh() ->
     kz_datamgr:revise_views_from_folder(?KZ_AUTH_DB, 'kazoo_auth').
 
-
 -spec register_common_providers() -> 'ok'.
 register_common_providers() ->
     kz_datamgr:revise_docs_from_folder(?KZ_AUTH_DB, 'kazoo_auth', "providers").

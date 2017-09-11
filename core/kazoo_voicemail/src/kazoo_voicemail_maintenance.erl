@@ -110,7 +110,8 @@ recover_missing_metadata(MODb) ->
             recover_missing_metadata(MODb, JObjs);
         {'error', 'not_found'} ->
             ?LOG("  adding view ~s", [?VIEW_MISSING_METADATA]),
-            kapps_maintenance:refresh(MODb),
+            _ = kapi_maintenance:refresh_database(MODb),
+            _ = kapi_maintenance:refresh_views(MODb),
             recover_missing_metadata(MODb);
         {'error', 'timeout'} ->
             timer:sleep(1000),
@@ -127,7 +128,7 @@ recover_missing_metadata(MODb, JObjs) ->
 
 -spec maybe_rebuild_message_metadata(kz_json:object()) -> kz_json:object().
 maybe_rebuild_message_metadata(JObj) ->
-    case kz_json:get_keys(<<"_attachments">>, JObj) of
+    case kz_doc:attachment_names(JObj) of
         [AttachmentName|_] -> rebuild_message_metadata(JObj, AttachmentName);
         _Else ->
             ?LOG("  ~s missing attachment, skipping", [kz_json:get_value(<<"_id">>, JObj)]),
@@ -138,11 +139,11 @@ maybe_rebuild_message_metadata(JObj) ->
 rebuild_message_metadata(JObj, AttachmentName) ->
     MediaId = kz_json:get_value(<<"_id">>, JObj),
     ?LOG("  rebuilding metadata for ~s", [MediaId]),
-    Length = kz_json:get_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
+    Length = kz_doc:attachment_length(JObj, AttachmentName, 0),
     AccountId = kz_doc:account_id(JObj),
     CIDNumber = kz_privacy:anonymous_caller_id_number(AccountId),
     CIDName = <<"Recovered Voicemail Message">>,
-    Timestamp = kz_json:get_value(<<"pvt_created">>, JObj, kz_time:current_tstamp()),
+    Timestamp = kz_doc:created(JObj, kz_time:current_tstamp()),
     Routines = [{fun kapps_call:set_to/2, <<CIDNumber/binary, "@nodomain">>}
                ,{fun kapps_call:set_from/2, <<CIDNumber/binary, "@nodomain">>}
                ,{fun kapps_call:set_call_id/2, kz_binary:rand_hex(12)}
@@ -168,13 +169,12 @@ renotify(Account, MessageId) ->
             Call = rebuild_kapps_call(JObj, AccountId),
             BoxId = kzd_box_message:source_id(JObj),
             Metadata = kzd_box_message:metadata(JObj),
-            Length = kz_json:get_value(<<"length">>, Metadata, 0),
+            Length = kz_json:get_integer_value(<<"length">>, Metadata, 0),
             Props = [{<<"Transcribe-Voicemail">>, 'false'}],
-            log_renotify_result(
-              MessageId
+            log_renotify_result(MessageId
                                ,BoxId
                                ,kvm_util:publish_saved_notify(MessageId, BoxId, Call, Length, Props)
-             )
+                               )
     end.
 
 -spec log_renotify_result(ne_binary(), ne_binary(), kz_amqp_worker:request_return()) -> 'ok'.

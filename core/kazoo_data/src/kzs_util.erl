@@ -20,7 +20,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_classification(text()) -> db_classifications().
+-spec db_classification(text()) -> db_classification().
 db_classification(Db) when not is_binary(Db) ->
     db_classification(kz_term:to_binary(Db));
 db_classification(<<"_users">>) -> 'external';

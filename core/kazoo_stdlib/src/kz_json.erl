@@ -1127,7 +1127,7 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
                                     object() |
                                     {'error', atom()}.
 
--spec load_fixture_from_file(atom(), nonempty_string() | ne_binary(), ne_binary()) ->
+-spec load_fixture_from_file(atom(), nonempty_string() | ne_binary(), iodata()) ->
                                     object() |
                                     {'error', atom()}.
 

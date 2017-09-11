@@ -56,9 +56,9 @@ open_cache_doc(DbName, DocId, Options) ->
 
 -spec maybe_cache(ne_binary(), ne_binary(), kz_proplist(), data_error() | {'ok', kz_json:object()}) ->
                          'ok'.
-maybe_cache(DbName, DocId, Options, {error, _}=E) ->
+maybe_cache(DbName, DocId, Options, {'error', _}=E) ->
     maybe_cache_failure(DbName, DocId, Options, E);
-maybe_cache(DbName, DocId, _, {ok, JObj}) ->
+maybe_cache(DbName, DocId, _, {'ok', JObj}) ->
     add_to_doc_cache(DbName, DocId, JObj).
 
 -spec open_cache_doc(map(), text(), ne_binary(), kz_proplist()) ->
@@ -105,15 +105,15 @@ fetch_locals(DbName, DocIds) ->
 -type docs_returned() :: [doc_returned()].
 -spec disassemble_jobjs(ne_binary(), kz_proplist(), kz_json:objects()) -> docs_returned().
 disassemble_jobjs(DbName, Options, JObjs) ->
-    [case kz_json:get_ne_value(<<"doc">>, JObj) of
-         undefined ->
+    [case kz_json:get_json_value(<<"doc">>, JObj) of
+         'undefined' ->
              %% Reason is not_found for when documents were deleted.
-             Reason = kz_json:get_ne_value(<<"error">>, JObj, <<"not_found">>),
-             _ = maybe_cache_failure(DbName, DocId, Options, {error, Reason}),
-             {DocId, error, Reason};
+             Reason = kz_json:get_ne_binary_value(<<"error">>, JObj, <<"not_found">>),
+             _ = maybe_cache_failure(DbName, DocId, Options, {'error', kz_term:to_atom(Reason)}),
+             {DocId, 'error', Reason};
          Doc ->
              _ = add_to_doc_cache(DbName, DocId, Doc),
-             {DocId, ok, Doc}
+             {DocId, 'ok', Doc}
      end
      || JObj <- JObjs,
         DocId <- [kz_json:get_ne_value(<<"key">>, JObj)]
@@ -143,7 +143,7 @@ remove_cache_options(Options) ->
 
 -spec maybe_cache_failure(ne_binary(), ne_binary(), kz_proplist(), data_error()) -> 'ok'.
 -spec maybe_cache_failure(ne_binary(), ne_binary(), kz_proplist(), data_error(), atoms()) -> 'ok'.
-maybe_cache_failure(DbName, DocId, Options, Error) ->
+maybe_cache_failure(DbName, DocId, Options, {'error', _}=Error) ->
     case props:get_value('cache_failures', Options) of
         ErrorCodes when is_list(ErrorCodes) ->
             maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes);
@@ -155,7 +155,7 @@ maybe_cache_failure(DbName, DocId, Options, Error) ->
 maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
     _ = lists:member(ErrorCode, ErrorCodes)
         andalso add_to_doc_cache(DbName, DocId, Error),
-    ok.
+    'ok'.
 
 -spec add_to_doc_cache(ne_binary(), ne_binary(), kz_json:object() | data_error()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->
@@ -170,7 +170,7 @@ add_to_doc_cache(DbName, DocId, CacheValue) ->
             kz_cache:store_local(?CACHE_NAME, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
 
--spec cache_if_not_media(kz_proplist(), ne_binary(), ne_binary(), kz_json:object() | data_error()) -> 'ok'.
+-spec cache_if_not_media(kz_proplist(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %% NOTE: this is currently necessary because when a http_put is issued to
     %%   freeswitch and the media is uploaded it goes directly to bigcouch
@@ -191,6 +191,8 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     end.
 
 -spec expires_policy_value(ne_binary(), kz_json:object() | data_error()) -> kz_timeout().
+expires_policy_value(_DbName, {'error', _}) ->
+    ?DEFAULT_CACHE_PERIOD;
 expires_policy_value(DbName, CacheValue) ->
     Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
     Type = kz_doc:type(CacheValue, <<"no_type">>),

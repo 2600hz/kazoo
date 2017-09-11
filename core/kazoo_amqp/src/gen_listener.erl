@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2017, 2600Hz
 %%% @doc
 %%%
@@ -1262,9 +1262,9 @@ maybe_channel_flow('true') ->
     amqp_util:flow_control();
 maybe_channel_flow(_) -> 'ok'.
 
--spec maybe_declare_exchanges(kz_proplist()) ->
+-spec maybe_declare_exchanges(declare_exchanges()) ->
                                      command_ret().
--spec maybe_declare_exchanges(kz_amqp_assignment(), kz_proplist()) ->
+-spec maybe_declare_exchanges(kz_amqp_assignment(), declare_exchanges()) ->
                                      command_ret().
 maybe_declare_exchanges([]) -> 'ok';
 maybe_declare_exchanges(Exchanges) ->
@@ -1276,7 +1276,7 @@ maybe_declare_exchanges(Channel, [{Ex, Type, Opts} | Exchanges]) ->
 maybe_declare_exchanges(Channel, [{Ex, Type} | Exchanges]) ->
     declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type), Exchanges).
 
--spec declare_exchange(kz_amqp_assignment(), kz_amqp_exchange(), kz_proplist()) -> command_ret().
+-spec declare_exchange(kz_amqp_assignment(), kz_amqp_exchange(), declare_exchanges()) -> command_ret().
 declare_exchange(Channel, Exchange, Exchanges) ->
     case kz_amqp_channel:command(Channel, Exchange) of
         {'ok', _} -> maybe_declare_exchanges(Channel, Exchanges);

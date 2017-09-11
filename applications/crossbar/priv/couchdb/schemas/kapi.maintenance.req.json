@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.maintenance.req",
+    "description": "AMQP API for maintenance.req",
+    "properties": {
+        "Action": {
+            "enum": [
+                "refresh_database",
+                "refresh_views"
+            ],
+            "type": "string"
+        },
+        "Classification": {
+            "type": "string"
+        },
+        "Database": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "maintenance"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "req"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Action"
+    ],
+    "type": "object"
+}

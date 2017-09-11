@@ -21,6 +21,7 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     start_modules(),
+    garbage_collect(self()),
     'ignore'.
 
 -spec bind(ne_binary(), module(), atom()) -> 'ok'.
@@ -60,7 +61,6 @@ start_modules([Module | Remaining]) ->
     start_modules(Remaining);
 start_modules([]) ->
     lager:info("started all teletype modules").
-
 
 -spec filter_out_failed(any()) -> boolean().
 filter_out_failed('ok') -> 'true';

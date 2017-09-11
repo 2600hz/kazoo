@@ -578,8 +578,7 @@ new_exchange(Exchange, Type, Options) ->
 declare_exchange(Exchange, Type) ->
     declare_exchange(Exchange, Type, []).
 declare_exchange(Exchange, Type, Options) ->
-    #'exchange.declare'{
-       exchange = Exchange
+    #'exchange.declare'{exchange = Exchange
                        ,type = Type
                        ,passive = ?P_GET('passive', Options, 'false')
                        ,durable = ?P_GET('durable', Options, 'false')
@@ -587,7 +586,7 @@ declare_exchange(Exchange, Type, Options) ->
                        ,internal = ?P_GET('internal', Options, 'false')
                        ,nowait = ?P_GET('nowait', Options, 'false')
                        ,arguments = ?P_GET('arguments', Options, [])
-      }.
+                       }.
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -1161,14 +1160,13 @@ flow_control_reply(Active) ->
 -spec access_request(kz_proplist()) -> #'access.request'{}.
 access_request() -> access_request([]).
 access_request(Options) ->
-    #'access.request'{
-       realm = ?P_GET('realm', Options, <<"/data">>)
+    #'access.request'{realm = ?P_GET('realm', Options, <<"/data">>)
                      ,exclusive = ?P_GET('exclusive', Options, 'false')
                      ,passive = ?P_GET('passive', Options, 'true')
                      ,active = ?P_GET('active', Options, 'true')
                      ,write = ?P_GET('write', Options, 'true')
                      ,read = ?P_GET('read', Options, 'true')
-      }.
+                     }.
 
 %%------------------------------------------------------------------------------
 %% @public

@@ -26,6 +26,7 @@
                  , kazoo_caches
                  , kazoo_web
                  , kazoo_globals
+                 , kazoo_maintenance
                  ]}
  ,{mod, {kazoo_apps_app, []}}
  ]}.

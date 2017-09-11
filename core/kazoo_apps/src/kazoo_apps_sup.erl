@@ -21,6 +21,7 @@
 -define(CHILDREN, [?SUPER('kz_hooks_listener_sup')
                   ,?WORKER('kazoo_apps_init')
                   ,?WORKER('kapps_controller')
+                  ,?WORKER('kazoo_apps_maint_listener')
                   ]).
 
 %% ===================================================================

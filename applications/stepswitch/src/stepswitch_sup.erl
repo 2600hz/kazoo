@@ -28,6 +28,7 @@
                   ,?SUPER('stepswitch_cnam_pool_sup')
                   ,?SUPER('stepswitch_request_sup')
                   ,?WORKER('stepswitch_listener')
+                  ,?WORKER('stepswitch_maint_listener')
                   ]).
 
 %% ===================================================================
