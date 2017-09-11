@@ -59,6 +59,7 @@
                      ,callid :: api_binary() | '_'
                      ,caller_id_name :: api_binary() | '_'
                      ,caller_id_number :: api_binary() | '_'
+                     ,queue_id :: api_binary() | '_'
                      ,is_archived = 'false' :: boolean() | '$1' | '$2' | '_'
          }).
 -type status_stat() :: #status_stat{}.

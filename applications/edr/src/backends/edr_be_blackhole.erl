@@ -39,13 +39,13 @@ init(_Other)->
 -spec push(state(), event()) -> 'ok'.
 push(_State, #event{account_id='undefined'})->
     'ok';
-push(_State, Event)->
+push(_State, Event=#event{app_name=AppName, app_version=AppVersion})->
     FormatterOptions = kz_json:from_list([{<<"include_metadata">>, 'true'}
                                          ,{<<"normalize">>, 'false'}
                                          ,{<<"encode">>, 'false'}
                                          ]),
     Formatted = edr_fmt_json:format_event(FormatterOptions, Event),
-    kapi_edr_blackhole:publish_event(kz_json:set_values(kz_api:default_headers(<<"edr">>, <<"event">>, ?APP_NAME, ?APP_VERSION), Formatted)).
+    kapi_edr_blackhole:publish_event(kz_json:set_values(kz_api:default_headers(<<"edr">>, <<"event">>, AppName, AppVersion), Formatted)).
 
 -spec stop(state(), any()) -> 'ok'.
 stop(_State, _Reason)->

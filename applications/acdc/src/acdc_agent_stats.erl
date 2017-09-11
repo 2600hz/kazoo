@@ -12,8 +12,8 @@
         ,agent_logged_in/2
         ,agent_logged_out/2
         ,agent_pending_logged_out/2
-        ,agent_connecting/3, agent_connecting/5
-        ,agent_connected/3, agent_connected/5
+        ,agent_connecting/3, agent_connecting/6
+        ,agent_connected/3, agent_connected/6
         ,agent_wrapup/3
         ,agent_paused/3
         ,agent_outbound/3
@@ -45,7 +45,6 @@ status_table_opts() ->
 
 -spec agent_ready(ne_binary(), ne_binary()) -> 'ok'.
 agent_ready(AccountId, AgentId) ->
-    log_state_change(AccountId, AgentId, 'ready'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -53,13 +52,13 @@ agent_ready(AccountId, AgentId) ->
              ,{<<"Status">>, <<"ready">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_ready/1
                              ).
 
 -spec agent_logged_in(ne_binary(), ne_binary()) -> 'ok'.
 agent_logged_in(AccountId, AgentId) ->
-    log_agent_event(AccountId, AgentId, 'logged_in'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -67,13 +66,13 @@ agent_logged_in(AccountId, AgentId) ->
              ,{<<"Status">>, <<"logged_in">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_logged_in/1
                              ).
 
 -spec agent_logged_out(ne_binary(), ne_binary()) -> 'ok'.
 agent_logged_out(AccountId, AgentId) ->
-    log_agent_event(AccountId, AgentId, 'logged_out'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -81,6 +80,7 @@ agent_logged_out(AccountId, AgentId) ->
              ,{<<"Status">>, <<"logged_out">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_logged_out/1
                              ).
@@ -88,7 +88,6 @@ agent_logged_out(AccountId, AgentId) ->
 -spec agent_pending_logged_out(ne_binary(), ne_binary()) ->
                                       'ok'.
 agent_pending_logged_out(AccountId, AgentId) ->
-    log_agent_event(AccountId, AgentId, 'pending_logged_out'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -96,18 +95,18 @@ agent_pending_logged_out(AccountId, AgentId) ->
              ,{<<"Status">>, <<"pending_logged_out">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_pending_logged_out/1
                              ).
 
 -spec agent_connecting(ne_binary(), ne_binary(), ne_binary()) ->
                               'ok'.
--spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary(), api_binary()) ->
                               'ok'.
 agent_connecting(AccountId, AgentId, CallId) ->
-    agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined').
-agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
-    log_state_change(AccountId, AgentId, 'ringing'),
+    agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined', 'undefined').
+agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -116,20 +115,21 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
              ,{<<"Call-ID">>, CallId}
              ,{<<"Caller-ID-Name">>, CallerIDName}
              ,{<<"Caller-ID-Number">>, CallerIDNumber}
+             ,{<<"Queue-ID">>, QueueId}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_connecting/1
                              ).
 
 -spec agent_connected(ne_binary(), ne_binary(), ne_binary()) ->
                              'ok'.
--spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary(), api_binary()) ->
                              'ok'.
 agent_connected(AccountId, AgentId, CallId) ->
-    agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined').
-agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
-    log_state_change(AccountId, AgentId, 'answered'),
+    agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined', 'undefined').
+agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -138,15 +138,16 @@ agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
              ,{<<"Call-ID">>, CallId}
              ,{<<"Caller-ID-Name">>, CallerIDName}
              ,{<<"Caller-ID-Number">>, CallerIDNumber}
+             ,{<<"Queue-ID">>, QueueId}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_connected/1
                              ).
 
 -spec agent_wrapup(ne_binary(), ne_binary(), integer()) -> 'ok'.
 agent_wrapup(AccountId, AgentId, WaitTime) ->
-    log_state_change(AccountId, AgentId, 'wrapup'),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -155,6 +156,7 @@ agent_wrapup(AccountId, AgentId, WaitTime) ->
              ,{<<"Wait-Time">>, WaitTime}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_wrapup/1
                              ).
@@ -163,7 +165,6 @@ agent_wrapup(AccountId, AgentId, WaitTime) ->
 agent_paused(AccountId, AgentId, 'undefined') ->
     lager:debug("undefined pause time for ~s(~s)", [AgentId, AccountId]);
 agent_paused(AccountId, AgentId, PauseTime) ->
-    log_state_change(AccountId, AgentId, 'paused', [{<<"pause_time">>, PauseTime}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -172,13 +173,13 @@ agent_paused(AccountId, AgentId, PauseTime) ->
              ,{<<"Pause-Time">>, PauseTime}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_paused/1
                              ).
 
 -spec agent_outbound(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 agent_outbound(AccountId, AgentId, CallId) ->
-    log_state_change(AccountId, AgentId, 'outbound', [{<<"call_id">>, CallId}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
@@ -187,6 +188,7 @@ agent_outbound(AccountId, AgentId, CallId) ->
              ,{<<"Call-ID">>, CallId}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    log_status_change(AccountId, Prop),
     kapps_util:amqp_pool_send(Prop
                              ,fun kapi_acdc_stats:publish_status_outbound/1
                              ).
@@ -224,6 +226,7 @@ handle_status_stat(JObj, Props) ->
                                    ,pause_time=acdc_stats_util:pause_time(EventName, JObj)
                                    ,caller_id_name=acdc_stats_util:caller_id_name(EventName, JObj)
                                    ,caller_id_number=acdc_stats_util:caller_id_number(EventName, JObj)
+                                   ,queue_id=acdc_stats_util:queue_id(EventName, JObj)
                          }
                       }
                      ).
@@ -391,6 +394,7 @@ status_stat_to_doc(#status_stat{id=Id
                                ,callid=CallId
                                ,caller_id_name=CIDName
                                ,caller_id_number=CIDNum
+                               ,queue_id=QueueId
                                }) ->
     Prop = [{<<"_id">>, Id}
            ,{<<"call_id">>, CallId}
@@ -401,6 +405,7 @@ status_stat_to_doc(#status_stat{id=Id
            ,{<<"pause_time">>, PT}
            ,{<<"caller_id_name">>, CIDName}
            ,{<<"caller_id_number">>, CIDNum}
+           ,{<<"queue_id">>, QueueId}
            ],
     kz_doc:update_pvt_parameters(kz_json:from_list(Prop)
                                 ,acdc_stats_util:db_name(AccountId)
@@ -453,21 +458,6 @@ archive_status_fold(#status_stat{account_id=AccountId}=Stat, Acc) ->
     Doc = status_stat_to_doc(Stat),
     dict:update(AccountId, fun(L) -> [Doc | L] end, [Doc], Acc).
 
-
-log_state_change(AccountId, AgentId, NewStateName) ->
-    log_state_change(AccountId, AgentId, NewStateName, []).
-log_state_change(AccountId, AgentId, NewStateName, ExtraProps) ->
-    Body = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
-                                                    ,{<<"agent_id">>, AgentId}
-                                                    ,{<<"transition_to">>, NewStateName}
-                                                     | ExtraProps])),
-    kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).
-
-log_agent_event(AccountId, AgentId, Event) ->
-    log_agent_event(AccountId, AgentId, Event, []).
-log_agent_event(AccountId, AgentId, Event, ExtraProps) ->
-    Body = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
-                                                    ,{<<"agent_id">>, AgentId}
-                                                    ,{<<"event">>, Event}
-                                                     | ExtraProps])),
+log_status_change(AccountId, Prop) ->
+    Body = kz_json:normalize(kz_json:from_list([{<<"Event">>, <<"agent_status_change">>} | Prop])),
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

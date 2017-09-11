@@ -606,7 +606,7 @@ ready({'member_connect_win', JObj}, #state{agent_listener=AgentListener
                     CIDName = kapps_call:caller_id_name(Call),
                     CIDNum = kapps_call:caller_id_number(Call),
 
-                    acdc_agent_stats:agent_connecting(AccountId, AgentId, CallId, CIDName, CIDNum),
+                    acdc_agent_stats:agent_connecting(AccountId, AgentId, CallId, CIDName, CIDNum, QueueId),
                     lager:info("trying to ring agent endpoints(~p)", [length(UpdatedEPs)]),
                     lager:debug("notifications for the queue: ~p", [kz_json:get_value(<<"Notifications">>, JObj)]),
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
@@ -729,6 +729,7 @@ ringing({'originate_started', ACallId}, #state{agent_listener=AgentListener
                                               ,account_id=AccountId
                                               ,agent_id=AgentId
                                               ,queue_notifications=Ns
+                                              ,member_call_queue_id=QueueId
                                               }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent_listener:member_connect_accepted(AgentListener, ACallId),
@@ -738,7 +739,7 @@ ringing({'originate_started', ACallId}, #state{agent_listener=AgentListener
     CIDName = kapps_call:caller_id_name(MemberCall),
     CIDNum = kapps_call:caller_id_number(MemberCall),
 
-    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum),
+    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum, QueueId),
 
     {'next_state', 'answered', State#state{agent_call_id=ACallId
                                           ,connect_failures=0
@@ -792,6 +793,7 @@ ringing({'channel_bridged', MemberCallId}, #state{member_call_id=MemberCallId
                                                  ,account_id=AccountId
                                                  ,agent_id=AgentId
                                                  ,queue_notifications=Ns
+                                                 ,member_call_queue_id=QueueId
                                                  }=State) ->
     lager:debug("agent phone has been connected to caller"),
     acdc_agent_listener:member_connect_accepted(AgentListener),
@@ -801,7 +803,7 @@ ringing({'channel_bridged', MemberCallId}, #state{member_call_id=MemberCallId
     CIDName = kapps_call:caller_id_name(MemberCall),
     CIDNum = kapps_call:caller_id_number(MemberCall),
 
-    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum),
+    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum, QueueId),
 
     {'next_state', 'answered', State#state{connect_failures=0}};
 ringing({'channel_bridged', _CallId}, State) ->
@@ -872,6 +874,7 @@ ringing({'channel_answered', OtherCallId}, #state{account_id=AccountId
                                                  ,member_call_id=MemberCallId
                                                  ,agent_listener=AgentListener
                                                  ,outbound_call_ids=OutboundCallIds
+                                                 ,member_call_queue_id=QueueId
                                                  }=State) ->
     case lists:member(OtherCallId, OutboundCallIds) of
         'true' ->
@@ -884,7 +887,7 @@ ringing({'channel_answered', OtherCallId}, #state{account_id=AccountId
             CIDName = kapps_call:caller_id_name(MemberCall),
             CIDNum = kapps_call:caller_id_number(MemberCall),
 
-            acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum),
+            acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum, QueueId),
 
             acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID),
 
@@ -902,6 +905,7 @@ ringing({'originate_resp', ACallId}, #state{agent_listener=AgentListener
                                            ,account_id=AccountId
                                            ,agent_id=AgentId
                                            ,queue_notifications=Ns
+                                           ,member_call_queue_id=QueueId
                                            }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent_listener:member_connect_accepted(AgentListener, ACallId),
@@ -911,7 +915,7 @@ ringing({'originate_resp', ACallId}, #state{agent_listener=AgentListener
     CIDName = kapps_call:caller_id_name(MemberCall),
     CIDNum = kapps_call:caller_id_number(MemberCall),
 
-    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum),
+    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum, QueueId),
 
     {'next_state', 'answered', State#state{agent_call_id=ACallId
                                           ,connect_failures=0

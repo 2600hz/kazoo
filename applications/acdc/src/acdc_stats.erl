@@ -71,9 +71,6 @@
                   ,api_binary()
                   ) -> 'ok' | {'error', any()}.
 call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
-    log_queue_event(AccountId, QueueId, CallId, 'call_waiting', [{<<"caller_id_name">>, CallerIdName}
-                                                                ,{<<"caller_id_number">>, CallerIdNumber}
-                                                                ]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -84,11 +81,11 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
              ,{<<"Caller-Priority">>, CallerPriority}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'waiting', Prop),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_waiting/1).
 
 -spec call_abandoned(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_abandoned(AccountId, QueueId, CallId, Reason) ->
-    log_queue_event(AccountId, QueueId, CallId, 'abandoned', [{<<"reason">>, Reason}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -97,11 +94,11 @@ call_abandoned(AccountId, QueueId, CallId, Reason) ->
              ,{<<"Abandon-Timestamp">>, kz_time:current_tstamp()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'abandoned', Prop),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_abandoned/1).
 
 -spec call_handled(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_handled(AccountId, QueueId, CallId, AgentId) ->
-    log_queue_event(AccountId, QueueId, CallId, 'answered', [{<<"agent_id">>, AgentId}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -110,11 +107,11 @@ call_handled(AccountId, QueueId, CallId, AgentId) ->
              ,{<<"Handled-Timestamp">>, kz_time:current_tstamp()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'handled', Prop),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_handled/1).
 
 -spec call_missed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
-    log_queue_event(AccountId, QueueId, CallId, 'missed', [{<<"reason">>, ErrReason}]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -124,13 +121,11 @@ call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
              ,{<<"Miss-Timestamp">>, kz_time:current_tstamp()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'missed', Prop),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_missed/1).
 
 -spec call_processed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
-    log_queue_event(AccountId, QueueId, CallId, 'answered', [{<<"agent_id">>, AgentId}
-                                                            ,{<<"hung_up_by">>, Initiator}
-                                                            ]),
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
@@ -140,6 +135,7 @@ call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
              ,{<<"Hung-Up-By">>, Initiator}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'processed', Prop),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_processed/1).
 
 -spec agent_ready(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
@@ -920,12 +916,8 @@ create_call_stat(Id, JObj, Props) ->
 update_call_stat(Id, Updates, Props) ->
     gen_listener:cast(props:get_value('server', Props), {'update_call', Id, Updates}).
 
-%%log_queue_event(AccountId, QueueId, CallId, EventName) ->
-%%    log_queue_event(AccountId, QueueId, CallId, EventName, []).
-log_queue_event(AccountId, QueueId, CallId, EventName, ExtraProps) ->
-    Body = kz_json:from_list(props:filter_undefined([{<<"account_id">>, AccountId}
-                                                    ,{<<"queue_id">>, QueueId}
-                                                    ,{<<"call_id">>, CallId}
-                                                    ,{<<"event">>, EventName}
-                                                     | ExtraProps])),
+call_state_change(AccountId, Status, Prop) ->
+    Body = kz_json:normalize(kz_json:from_list([{<<"Event">>, <<"call_status_change">>}
+                                               ,{<<"Status">>, Status}
+                                                | Prop])),
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).
