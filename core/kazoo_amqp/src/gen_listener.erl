@@ -87,7 +87,7 @@
         ,execute/2
         ]).
 
--export([federated_event/3]).
+-export([federated_event/4]).
 -export([delayed_cast/3
         ]).
 -export([distribute_event/3]).
@@ -347,9 +347,9 @@ rm_binding(Srv, {Binding, Props}) ->
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {'rm_binding', kz_term:to_binary(Binding), Props}).
 
--spec federated_event(server_ref(), kz_json:object(), basic_deliver()) -> 'ok'.
-federated_event(Srv, JObj, BasicDeliver) ->
-    gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver}).
+-spec federated_event(server_ref(), kz_json:object(), basic_deliver(), amqp_basic()) -> 'ok'.
+federated_event(Srv, JObj, BasicDeliver, BasicData) ->
+    gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver, BasicData}).
 
 -spec execute(server_ref(), module(), atom(), [any()]) -> 'ok'.
 execute(Srv, Module, Function, Args) ->
@@ -498,11 +498,11 @@ handle_cast({'kz_amqp_assignment', {'new_channel', 'true', Channel}}, State) ->
 handle_cast({'kz_amqp_assignment', {'new_channel', 'false', Channel}}, State) ->
     _ = kz_amqp_channel:consumer_channel(Channel),
     {'noreply', handle_amqp_channel_available(State)};
-handle_cast({'federated_event', JObj, BasicDeliver}, #state{params=Params}=State) ->
+handle_cast({'federated_event', JObj, BasicDeliver, BasicData}, #state{params=Params}=State) ->
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, BasicDeliver, State]),
+        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {BasicDeliver, BasicData}, State]),
                    {'noreply', State};
-        'false' -> {'noreply', distribute_event(JObj, BasicDeliver, State)}
+        'false' -> {'noreply', distribute_event(JObj, {BasicDeliver, BasicData}, State)}
     end;
 handle_cast({'$execute', Module, Function, Args}
            ,#state{federators=[]}=State) ->
