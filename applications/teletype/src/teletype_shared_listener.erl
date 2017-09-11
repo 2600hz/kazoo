@@ -32,7 +32,7 @@
                      }
                     ]).
 
--define(BINDINGS, [{'notifications', [?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)]}
+-define(BINDINGS, [{'notifications', ?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)}
                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"teletype_shared_listener">>).
