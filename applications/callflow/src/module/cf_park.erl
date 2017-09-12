@@ -139,8 +139,8 @@ retrieve(SlotNumber, Call) ->
                     {'ok', 'retrieved'};
                                                 %                    kapps_call_command:wait_for_hangup();
                 {'error', _E}=E ->
-                    update_presence(<<"terminated">>, Slot),
                     lager:debug("failed to retrieve slot: ~p", [_E]),
+                    _ = cleanup_slot(SlotNumber, ParkedCall, kapps_call:account_db(Call)),
                     E
             end;
         {'error', _} ->
