@@ -137,7 +137,7 @@
                ,selector_marks = [] :: [tuple()]
                ,privacy_mode = 'undefined' :: api_binary()
                ,classifier = 'undefined' :: api_binary()
-               ,classifier_enable = 'undefined' :: api_boolean()
+               ,classifier_enable = 'true' :: boolean()
                }).
 
 -type resource() :: #resrc{}.
@@ -449,8 +449,34 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
                                     kz_json:objects().
 resources_to_endpoints(Resources, Number, OffnetJObj) ->
     ResourceMap = lists:foldl(fun resource_classifier_map/2, maps:new(), Resources),
-    ConfigClassifiers = kz_json:to_proplist(knm_converters:available_classifiers()),
-    classifier_resources_to_endpoints(ConfigClassifiers, ResourceMap, Number, OffnetJObj).
+    Classification = knm_converters:classify(Number),
+    case maps:get(Classification, ResourceMap, 'undefined') of
+        'undefined' ->
+            %% No endpoints found based on resources with classifiers, look up by
+            %% resources that doesn't have classifier
+            lager:debug("no resources satisfy classifier look up, matching against resource rules..."),
+            RuleResources = maps:get('no_classification', ResourceMap),
+            build_endpoints_from_resources(RuleResources, Number, OffnetJObj);
+        ClassifiedResources ->
+            lager:debug("found resources to satisy classifier ~s (number ~s), building against classification rules..."
+                       ,[Classification, Number]
+                       ),
+            FilteredClassifiedResources = [Resource || Resource <- ClassifiedResources,
+                                                       is_enabled_classifier(Resource)
+                                          ],
+            build_endpoints_from_resources(FilteredClassifiedResources, Number, OffnetJObj)
+    end.
+
+-spec is_enabled_classifier(resource()) -> boolean().
+is_enabled_classifier(#resrc{id=Id
+                            ,name=Name
+                            ,classifier=Classifier
+                            ,classifier_enable='false'
+                            }
+                     ) ->
+    lager:debug("resource ~s (id ~s) classifier ~s is disabled, skipping", [Name, Id, Classifier]),
+    'false';
+is_enabled_classifier(_) -> 'true'.
 
 -spec resource_classifier_map(resource(), map()) -> map().
 resource_classifier_map(Resource, Map) ->
@@ -461,46 +487,21 @@ resource_classifier_map(Resource, Map) ->
     Resources = maps:get(Classification, Map, []),
     maps:put(Classification, [Resource|Resources], Map).
 
--spec classifier_resources_to_endpoints(kz_proplist(), map(), ne_binary(), kapi_offnet_resource:req()) ->
-                                               kz_json:objects().
-classifier_resources_to_endpoints([], ResourceMap, Number, OffnetJObj) ->
-    %% No endpoints found based on resrouces with classifiers, look up by
-    %% resources that doesn't have classifier
-    lager:debug("no classifiers satisfy resource look up, matching against resource rules..."),
-    Resources = maps:get('no_classification', ResourceMap, []),
-    Fun = fun(Resource, Endpoints) ->
-                  maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints)
-          end,
-    lists:foldr(Fun, [], Resources);
-classifier_resources_to_endpoints([{Class, _}|Classes], ResourceMap, Number, OffnetJObj) ->
-    case maps:get(Class, ResourceMap, 'undefined') of
-        'undefined' ->
-            classifier_resources_to_endpoints(Classes, ResourceMap, Number, OffnetJObj);
-        ClassRsrcs ->
-            case resources_to_endpoints(ClassRsrcs, Number, OffnetJObj, []) of
-                'classifier_disabled' -> [];
-                [] ->
-                    lager:debug("no resources with classifier ~s matched to route number ~s", [Class, Number]),
-                    classifier_resources_to_endpoints(Classes, ResourceMap, Number, OffnetJObj);
-                Endpoints ->
-                    lager:debug("classifier ~s satisfies resource look up to route number ~s", [Class, Number]),
-                    Endpoints
-            end
+-spec build_endpoints_from_resources(resources(), ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+-spec build_endpoints_from_resources(resources(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) -> kz_json:objects().
+
+build_endpoints_from_resources(Resources, Number, OffnetJObj) ->
+    build_endpoints_from_resources(Resources, Number, OffnetJObj, []).
+
+build_endpoints_from_resources([], _Number, _OffnetJObj, Endpoints) -> Endpoints;
+build_endpoints_from_resources([Resource|Resources], Number, OffnetJObj, Endpoints) ->
+    case maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints) of
+        {'error', _} -> build_endpoints_from_resources(Resources, Number, OffnetJObj, Endpoints);
+        MoreEndpoints -> build_endpoints_from_resources(Resources, Number, OffnetJObj, MoreEndpoints)
     end.
 
--spec resources_to_endpoints(resources(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects() | 'classifier_disabled') ->
-                                    'classifier_disabled' |
-                                    kz_json:objects().
-resources_to_endpoints(_Resources, _Number, _OffnetJObj, 'classifier_disabled') ->
-    'classifier_disabled';
-resources_to_endpoints([], _Number, _OffnetJObj, Endpoints) ->
-    Endpoints;
-resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
-    MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints),
-    resources_to_endpoints(Resources, Number, OffnetJObj, MoreEndpoints).
-
 -spec maybe_resource_to_endpoints(resource(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
-                                         'classifier_disabled' |
+                                         {'error', 'no_match'} |
                                          kz_json:objects().
 maybe_resource_to_endpoints(#resrc{id=Id
                                   ,name=Name
@@ -511,7 +512,6 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                   ,weight=Weight
                                   ,proxies=Proxies
                                   ,classifier=Classifier
-                                  ,classifier_enable=ClassifierEnabled
                                   }
                            ,Number
                            ,OffnetJObj
@@ -521,13 +521,8 @@ maybe_resource_to_endpoints(#resrc{id=Id
                          'false' -> kapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
                          'true' -> check_diversion_fields(OffnetJObj)
                      end,
-    DisabledByClassifier = kz_term:is_ne_binary(Classifier)
-        andalso (not ClassifierEnabled),
     case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
-        {'error','no_match'} -> Endpoints;
-        {'ok', _NumberMatch} when DisabledByClassifier ->
-            lager:debug("classifier ~s is disabled by resource ~s (matched number ~s)", [Classifier, Id, _NumberMatch]),
-            'classifier_disabled';
+        {'error', 'no_match'}=Error -> Error;
         {'ok', NumberMatch} ->
             _MaybeClassifier = case kz_term:is_ne_binary(Classifier) of
                                    'true' -> Classifier;
@@ -1013,7 +1008,7 @@ resource_from_jobj(JObj) ->
                      ,proxies=kz_json:to_proplist(<<"Proxies">>, JObj)
                      ,privacy_mode=kz_json:get_ne_value(<<"privacy_mode">>, JObj)
                      ,classifier=kz_json:get_ne_value(<<"classifier">>, JObj)
-                     ,classifier_enable=kz_json:get_ne_value(<<"classifier_enable">>, JObj)
+                     ,classifier_enable=kz_json:is_true(<<"classifier_enable">>, JObj, 'true')
                      },
     Gateways = gateways_from_jobjs(kz_json:get_value(<<"gateways">>, JObj, [])
                                   ,Resource
@@ -1043,9 +1038,9 @@ resource_codecs(JObj) ->
 
 -spec resource_rules(kz_json:object()) -> rules().
 resource_rules(JObj) ->
-    lager:info("compiling resource rules for ~s / ~s"
-              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj)]),
     Rules = kz_json:get_value(<<"rules">>, JObj, []),
+    lager:info("compiling resource rules for ~s / ~s: ~p"
+              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj), Rules]),
     resource_rules(Rules, []).
 
 -spec resource_rules(ne_binaries(), rules()) -> rules().
@@ -1061,7 +1056,7 @@ resource_rules([Rule|Rules], CompiledRules) ->
 
 -spec resource_cid_rules(kz_json:object()) -> rules().
 resource_cid_rules(JObj) ->
-    lager:info("compiling resource rules for ~s / ~s"
+    lager:info("compiling caller id rules for ~s / ~s"
               ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj)]),
     Rules = kz_json:get_value(<<"cid_rules">>, JObj, []),
     resource_rules(Rules, []).
@@ -1239,7 +1234,7 @@ gateway_dialstring(#gateway{route=Route}, _) ->
 -spec get_resrc_proxies(resource()) -> kz_proplist().
 -spec get_resrc_selector_marks(resource()) -> kz_proplist().
 -spec get_resrc_classifier(resource()) -> api_binary().
--spec get_resrc_classifier_enable(resource()) -> api_boolean().
+-spec get_resrc_classifier_enable(resource()) -> boolean().
 
 get_resrc_id(#resrc{id=Id}) -> Id.
 get_resrc_rev(#resrc{rev=Rev}) -> Rev.
