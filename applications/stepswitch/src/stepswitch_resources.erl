@@ -469,11 +469,11 @@ resources_to_endpoints(Resources, Number, OffnetJObj) ->
 
 -spec is_enabled_classifier(resource()) -> boolean().
 is_enabled_classifier(#resrc{id=Id
-                             ,name=Name
-                             ,classifier=Classifier
-                             ,classifier_enable='false'
-                             }
-                      ) ->
+                            ,name=Name
+                            ,classifier=Classifier
+                            ,classifier_enable='false'
+                            }
+                     ) ->
     lager:debug("resource ~s (id ~s) classifier ~s is disabled, skipping", [Name, Id, Classifier]),
     'false';
 is_enabled_classifier(_) -> 'true'.
@@ -491,7 +491,7 @@ resource_classifier_map(Resource, Map) ->
 -spec build_endpoints_from_resources(resources(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) -> kz_json:objects().
 
 build_endpoints_from_resources(Resources, Number, OffnetJObj) ->
-     build_endpoints_from_resources(Resources, Number, OffnetJObj, []).
+    build_endpoints_from_resources(Resources, Number, OffnetJObj, []).
 
 build_endpoints_from_resources([], _Number, _OffnetJObj, Endpoints) -> Endpoints;
 build_endpoints_from_resources([Resource|Resources], Number, OffnetJObj, Endpoints) ->
