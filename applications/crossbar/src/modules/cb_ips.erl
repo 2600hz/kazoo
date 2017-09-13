@@ -10,10 +10,12 @@
 -module(cb_ips).
 
 -export([init/0
+        ,authorize/1
         ,allowed_methods/0, allowed_methods/1
         ,resource_exists/0, resource_exists/1
         ,validate/1, validate/2
         ,post/1 ,post/2
+        ,put/1
         ,delete/2
         ]).
 
@@ -35,11 +37,22 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.ips">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.ips">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.ips">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.ips">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.ips">>, ?MODULE, 'put'),
     crossbar_bindings:bind(<<"*.execute.delete.ips">>, ?MODULE, 'delete').
+
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context)).
+
+authorize(Context, [{<<"ips">>, []}]) ->
+    cb_context:is_superduper_admin(Context);
+authorize(_Context, _Nouns) ->
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -51,7 +64,7 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 allowed_methods(?ASSIGNED) ->
     [?HTTP_GET];
@@ -98,6 +111,8 @@ validate(Context, PathToken) ->
 -spec validate_ips(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 validate_ips(Context, ?HTTP_GET) ->
     load_available(Context);
+validate_ips(Context, ?HTTP_PUT) ->
+    maybe_create_ip(Context);
 validate_ips(Context, ?HTTP_POST) ->
     maybe_assign_ips(Context).
 
@@ -113,7 +128,6 @@ validate_ips(Context, IP, ?HTTP_POST) ->
     validate_ip_not_in_use(Context, IP);
 validate_ips(Context, IP, ?HTTP_DELETE) ->
     release_ip(Context, IP).
-
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
@@ -144,6 +158,20 @@ post(Context, Ip) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _DocId) -> Context.
+
+-spec put(cb_context:context()) -> cb_context:context().
+put(Context) ->
+    ReqData = cb_context:req_data(Context),
+    IP = kz_json:get_ne_binary_value(<<"ip">>, ReqData),
+    Zone = kz_json:get_ne_binary_value(<<"zone">>, ReqData),
+    Host = kz_json:get_ne_binary_value(<<"host">>, ReqData),
+
+    case kz_ip:create(IP, Zone, Host) of
+        {'ok', IPJObj} ->
+            crossbar_doc:handle_json_success(kz_doc:leak_fields(IPJObj), Context);
+        {'error', Error} ->
+            crossbar_doc:handle_datamgr_errors(Error, IP, Context)
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -247,6 +275,21 @@ load_ip(Context, Id) ->
                                        ,Context
                                        )
     end.
+
+-define(IP_SCHEMA, kz_json:from_list([{<<"type">>, <<"string">>}])).
+-define(HOST_SCHEMA, kz_json:from_list([{<<"type">>, <<"string">>}])).
+-define(ZONE_SCHEMA, kz_json:from_list([{<<"type">>, <<"string">>}])).
+
+-define(CREATE_IP_SCHEMA
+       ,kz_json:from_list([{<<"ip">>, ?IP_SCHEMA}
+                          ,{<<"host">>, ?HOST_SCHEMA}
+                          ,{<<"zone">>, ?ZONE_SCHEMA}
+                          ])
+       ).
+
+-spec maybe_create_ip(cb_context:context()) -> cb_context:context().
+maybe_create_ip(Context) ->
+    cb_context:validate_request_data(?CREATE_IP_SCHEMA, Context).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -735,11 +735,14 @@ response(#cb_context{resp_error_code=Code
                                    context().
 validate_request_data(SchemaId, Context) ->
     validate_request_data(SchemaId, Context, 'undefined').
+
 validate_request_data(SchemaId, Context, OnSuccess) ->
     validate_request_data(SchemaId, Context, OnSuccess, 'undefined').
+
 validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
     SchemaRequired = fetch(Context, 'ensure_valid_schema', ?SHOULD_ENSURE_SCHEMA_IS_VALID),
     validate_request_data(SchemaId, Context, OnSuccess, OnFailure, SchemaRequired).
+
 validate_request_data('undefined', Context, OnSuccess, _OnFailure, 'false') ->
     lager:error("schema id or schema JSON not defined, continuing anyway"),
     validate_passed(Context, OnSuccess);
