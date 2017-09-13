@@ -45,7 +45,7 @@
 -export([filter/2, filter/3
         ,filtermap/2
         ,map/2
-        ,foldl/3,foldr/3
+        ,foldl/3, foldr/3
         ,find/2, find/3
         ,find_first_defined/2, find_first_defined/3
         ,find_value/3, find_value/4
