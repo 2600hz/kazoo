@@ -15,6 +15,7 @@
 -export([update_pvt_parameters/2, update_pvt_parameters/3
         ,public_fields/1, public_fields/2, get_public_keys/1
         ,private_fields/1, is_private_key/1
+        ,leak_private_fields/1
 
         ,attachments/1, attachments/2
         ,stub_attachments/1, stub_attachments/2
@@ -48,6 +49,10 @@
         ]).
 
 -export([update_pvt_modified/1]).
+
+-ifdef(TEST).
+-export([remove_pvt/1]).
+-endif.
 
 -define(PVT_FUNS, [fun add_pvt_vsn/3
                   ,fun add_pvt_account_id/3
@@ -244,6 +249,25 @@ private_fields(JObjs) when is_list(JObjs) ->
     [private_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) ->
     kz_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
+
+-spec leak_private_fields(kz_json:object()) -> kz_json:object().
+leak_private_fields(JObj) ->
+    kz_json:foldl(fun leak_private_field/3, JObj, JObj).
+
+leak_private_field(<<"_read_only">>, _Value, JObj) -> JObj;
+leak_private_field(Key, Value, JObj) ->
+    case is_private_key(Key) of
+        'false' -> JObj;
+        'true' ->
+            kz_json:set_value([<<"_read_only">>, remove_pvt(Key)]
+                             ,Value
+                             ,kz_json:delete_key(Key, JObj)
+                             )
+    end.
+
+remove_pvt(<<"_", Key/binary>>) -> Key;
+remove_pvt(<<"pvt_", Key/binary>>) -> Key;
+remove_pvt(Key) -> Key.
 
 -spec attachments(kz_json:object()) -> api_object().
 -spec attachments(kz_json:object(), Default) -> kz_json:object() | Default.
