@@ -17,8 +17,12 @@ Key | Description | Type | Default | Required
 `bookkeepers` |   | `object()` |   | `false`
 `category` | Optional category used for grouping service plans | `string()` |   | `false`
 `description` | Describes the service plan offering | `string()` |   | `false`
+`manual_recurring.name` | A friendly name for the item | `string()` |   | `false`
+`manual_recurring.quantity` | How many of the item are allowed | `integer()` |   | `false`
+`manual_recurring.rates` | Item's rate | `number()` |   | `false`
+`manual_recurring` | Monthly recurring items | `object()` |   | `false`
 `name` | A friendly name for the service plan | `string(1..128)` |   | `true`
-`plan./^[0-9a-zA-Z_]+$/` |   | `object()` |   | `false`
+`plan./.+/` | Category name | `object()` |   | `false`
 `plan` | Outlines the service plan for various services | `object()` |   | `true`
 
 ##### bookkeepers
@@ -30,15 +34,6 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `braintree` |   | `object()` |   | `false`
 `local` |   | `object()` |   | `false`
-
-##### service_plan
-
-Describes a service plan
-
-
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`.+` | Category name | `object()` |   | `false`
 
 ##### service_plan.category
 
@@ -68,6 +63,7 @@ Key | Description | Type | Default | Required
 `discounts.cumulative.rate` | The discount to apply, up to maximum Items (if applicable) | `number()` |   | `false`
 `discounts.cumulative` |   | `object()` |   | `false`
 `discounts` |   | `object()` |   | `false`
+`markup_type` | How rate for this usage is calculated | `string('fixed_price' | 'percentage')` |   | `false`
 `minimum` | The minimum quantity to charge for, if 'quantity' is less than 'minimum' | `integer()` |   | `false`
 `name` | Friendly name for this Item | `string()` |   | `false`
 `quantity` | How many of the item are allowed | `integer()` |   | `false`

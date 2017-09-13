@@ -15,6 +15,24 @@
             "description": "Describes the service plan offering",
             "type": "string"
         },
+        "manual_recurring": {
+            "description": "Monthly recurring items",
+            "properties": {
+                "name": {
+                    "description": "A friendly name for the item",
+                    "type": "string"
+                },
+                "quantity": {
+                    "description": "How many of the item are allowed",
+                    "type": "integer"
+                },
+                "rates": {
+                    "description": "Item's rate",
+                    "type": "number"
+                }
+            },
+            "type": "object"
+        },
         "name": {
             "description": "A friendly name for the service plan",
             "maxLength": 128,
@@ -24,8 +42,9 @@
         "plan": {
             "description": "Outlines the service plan for various services",
             "patternProperties": {
-                "^[0-9a-zA-Z_]+$": {
-                    "$ref": "service_plan",
+                ".+": {
+                    "$ref": "service_plan.category",
+                    "description": "Category name",
                     "type": "object"
                 }
             },
