@@ -11,10 +11,91 @@
         ,correct_parallel/0
         ]).
 
+-export([list_ips/2
+        ,assign_ips/3
+        ,remove_ip/3
+        ,fetch_ip/3
+        ,assign_ip/3
+        ,fetch_hosts/2
+        ,fetch_zones/2
+        ,fetch_assigned/2
+        ,create_ip/2
+
+        ,ips_url/0, ips_url/1
+        ]).
+
 -export([cleanup/0, cleanup/1]).
+
+-export_type([dedicated/0]).
 
 -include_lib("proper/include/proper.hrl").
 -include("kazoo_proper.hrl").
+
+-define(DEDICATED(IP, Host, Zone), {'dedicated', IP, Host, Zone}).
+-type dedicated() :: ?DEDICATED(ne_binary(), ne_binary(), ne_binary()).
+
+-spec ips_url() -> string().
+-spec ips_url(pqc_cb_accounts:account_id()) -> string().
+ips_url() ->
+    string:join([pqc_cb_api:v2_base_url(), "ips"], "/").
+
+ips_url(AccountId) ->
+    string:join([pqc_cb_accounts:account_url(AccountId), "ips"], "/").
+
+-spec list_ips(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
+                      {'ok', kz_json:objects()} |
+                      {'error', 'not_found'}.
+list_ips(API, AccountId) ->
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:get/2
+                                ,ips_url(AccountId)
+                                ,pqc_cb_api:request_headers(API)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("listing IPs errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_value(<<"data">>, kz_json:decode(Response))}
+    end.
+
+-spec assign_ips(pqc_cb_api:state(), pqc_cb_accounts:account_id(), [dedicated()]) ->
+                        {'ok', kz_json:objects()} |
+                        {'error', 'not_found'}.
+assign_ips(_API, _AccountId, _IPs) -> 'ok'.
+
+-spec remove_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
+                       {'ok', kz_json:object()} |
+                       {'error', 'not_found'}.
+remove_ip(_API, _AccountId, _IP) -> 'ok'.
+
+-spec fetch_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', 'not_found'}.
+fetch_ip(_API, _AccountId, _IP) -> 'ok'.
+
+-spec assign_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
+                       {'ok', kz_json:object()} |
+                       {'error', 'not_found'}.
+assign_ip(_API, _AccountId, _IP) -> 'ok'.
+
+-spec fetch_hosts(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
+                         {'ok', ne_binaries()} |
+                         {'error', 'not_found'}.
+fetch_hosts(_API, _AccountId) -> 'ok'.
+
+-spec fetch_zones(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
+                         {'ok', ne_binaries()} |
+                         {'error', 'not_found'}.
+fetch_zones(_API, _AccountId) -> 'ok'.
+
+-spec fetch_assigned(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
+                            {'ok', [dedicated()]} |
+                            {'error', 'not_found'}.
+fetch_assigned(_API, _AccountId) -> 'ok'.
+
+-spec create_ip(pqc_cb_api:state(), dedicated()) -> 'ok'.
+create_ip(_API, _IP) -> 'ok'.
 
 -define(ACCOUNT_NAMES, [<<"account_for_ips">>]).
 
@@ -34,15 +115,32 @@ cleanup(API) ->
 
 -spec command(any()) -> proper_types:type().
 command(Model) ->
-    _API = pqc_kazoo_model:api(Model),
+    API = pqc_kazoo_model:api(Model),
 
     AccountName = account_name(),
-    _AccountId = pqc_cb_accounts:symbolic_account_id(Model, AccountName),
+    AccountId = pqc_cb_accounts:symbolic_account_id(Model, AccountName),
 
-    oneof([pqc_cb_accounts:command(Model, AccountName)]).
+    oneof([pqc_cb_accounts:command(Model, AccountName)
+          ,{'call', ?MODULE, 'list_ips', [API, AccountId]}
+          ,{'call', ?MODULE, 'assign_ips', [API, AccountId, ips()]}
+          ,{'call', ?MODULE, 'remove_ip', [API, AccountId, ip()]}
+          ,{'call', ?MODULE, 'fetch_ip', [API, AccountId, ip()]}
+          ,{'call', ?MODULE, 'assign_ip', [API, AccountId, ip()]}
+          ,{'call', ?MODULE, 'fetch_hosts', [API, AccountId]}
+          ,{'call', ?MODULE, 'fetch_zones', [API, AccountId]}
+          ,{'call', ?MODULE, 'fetch_assigned', [API, AccountId]}
+          ,{'call', ?MODULE, 'create_ip', [API, ip()]}
+          ]
+         ).
 
 account_name() ->
     oneof(?ACCOUNT_NAMES).
+
+ip() ->
+    oneof([?DEDICATED(<<"1.2.3.4">>, <<"a.host.com">>, <<"zone-1">>)]).
+
+ips() ->
+    non_empty(ip()).
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->

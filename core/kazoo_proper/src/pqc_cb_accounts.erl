@@ -13,7 +13,12 @@
 
 -export([account_url/1]).
 
+-export_type([account_id/0]).
+
 -include("kazoo_proper.hrl").
+
+-type account_id() :: {'call', 'pqc_kazoo_model', 'account_id_by_name', [pqc_cb_api:state() | proper_types:type()]} |
+                      ne_binary().
 
 -spec command(pqc_kazoo_model:model(), ne_binary() | proper_types:type()) ->
                      {'call', ?MODULE, 'create_account', [pqc_cb_api:state() | proper_types:term()]}.
@@ -21,7 +26,7 @@ command(Model, Name) ->
     {'call', ?MODULE, 'create_account', [pqc_kazoo_model:api(Model), Name]}.
 
 -spec symbolic_account_id(pqc_kazoo_model:model(), ne_binary() | proper_types:type()) ->
-                                 {'call', 'pqc_kazoo_model', 'account_id_by_name', [pqc_cb_api:state() | proper_types:type()]}.
+                                 account_id().
 symbolic_account_id(Model, Name) ->
     {'call', 'pqc_kazoo_model', 'account_id_by_name', [Model, Name]}.
 
