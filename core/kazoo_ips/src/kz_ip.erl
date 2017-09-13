@@ -74,11 +74,13 @@ create(IP, Zone, Host) ->
             kz_ip_utils:refresh_database(fun() -> create(IP, Zone, Host) end);
         {'ok', SavedJObj} ->
             lager:debug("created dedicated ip ~s in zone ~s on host ~s"
-                       ,[IP, Zone, Host]),
+                       ,[IP, Zone, Host]
+                       ),
             {'ok', from_json(SavedJObj)};
         {'error', _R}=E ->
             lager:debug("unable to create dedicated ip ~s: ~p"
-                       ,[IP, _R]),
+                       ,[IP, _R]
+                       ),
             E
     end.
 
