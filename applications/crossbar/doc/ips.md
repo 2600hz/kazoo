@@ -1,6 +1,6 @@
-### Ips
+### IPs
 
-#### About Ips
+#### About IPs
 
 The IPs API allows users to manage the IP addresses assigned to their accounts. In the future they will be able to fully manage dedicated IPs.
 
