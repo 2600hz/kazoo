@@ -6,7 +6,7 @@ Handle the service plans you can subscribe to.
 
 > **Note:** This is for see the available or current applied or applying service plans to an account. For creating your service offerings to your sub-accounts use (Service Planner API)[./service_planner.md].
 
-#### Schema
+#### Service Plan Schema
 
 Describes services offered to sub-accounts
 
@@ -14,7 +14,7 @@ Describes services offered to sub-accounts
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`bookkeepers` |   | `object()` |   | `false`
+`bookkeepers` |   | [#/definitions/bookkeepers](#bookkeepers) |   | `false`
 `category` | Optional category used for grouping service plans | `string()` |   | `false`
 `description` | Describes the service plan offering | `string()` |   | `false`
 `manual_recurring.name` | A friendly name for the item | `string()` |   | `false`
@@ -63,11 +63,11 @@ Key | Description | Type | Default | Required
 `discounts.cumulative.rate` | The discount to apply, up to maximum Items (if applicable) | `number()` |   | `false`
 `discounts.cumulative` |   | `object()` |   | `false`
 `discounts` |   | `object()` |   | `false`
-`markup_type` | How rate for this usage is calculated | `string('fixed_price' | 'percentage')` |   | `false`
+`markup_type` | How rate for this usage is calculated | `string('fixed_price' or 'percentage' or 'rate')` |   | `false`
 `minimum` | The minimum quantity to charge for, if 'quantity' is less than 'minimum' | `integer()` |   | `false`
 `name` | Friendly name for this Item | `string()` |   | `false`
 `quantity` | How many of the item are allowed | `integer()` |   | `false`
-`rate` | How much is the item billed, per-item | `number()` |   | `false`
+`rate` | The rate to charge | `number()` |   | `false`
 `rates./^[0-9]+$/` | The rate to charge when under the quantity indicated in the key | `number()` |   | `false`
 `rates` | Tiers of rates based on quantities | `object()` |   | `false`
 `single_discount` | Whether to give a discount to the account | `boolean()` |   | `false`

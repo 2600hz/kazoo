@@ -2,6 +2,42 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "service_plan.item",
     "description": "Describes a service plan item",
+    "oneOf": [
+        {
+            "properties": {
+                "markup_type": {
+                    "enum": [
+                        "fixed_price",
+                        "percentage"
+                    ]
+                },
+                "name": {
+                    "required": true
+                },
+                "rate": {
+                    "required": true
+                }
+            }
+        },
+        {
+            "properties": {
+                "markup_type": {
+                    "enum": [
+                        "rate"
+                    ]
+                },
+                "name": {
+                    "required": true
+                },
+                "rate": {
+                    "required": true
+                },
+                "rates": {
+                    "required": true
+                }
+            }
+        }
+    ],
     "properties": {
         "activation_charge": {
             "description": "What to charge when activating an Item",
@@ -43,10 +79,6 @@
         },
         "markup_type": {
             "description": "How rate for this usage is calculated",
-            "enum": [
-                "fixed_price",
-                "percentage"
-            ],
             "type": "string"
         },
         "minimum": {
@@ -62,7 +94,7 @@
             "type": "integer"
         },
         "rate": {
-            "description": "How much is the item billed, per-item",
+            "description": "The rate to charge",
             "type": "number"
         },
         "rates": {
