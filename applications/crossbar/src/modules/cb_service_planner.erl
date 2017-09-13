@@ -285,67 +285,9 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    maybe_check_ledgers(cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), kzd_service_plan:type())));
+    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), kzd_service_plan:type()));
 on_successful_validation(Id, Context) ->
-    C1 = maybe_check_ledgers(Context),
-    case cb_context:resp_status(C1) of
-        'success' -> crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(kzd_service_plan:type()));
-        _ -> C1
-    end.
-
--spec maybe_check_ledgers(cb_context:context()) -> cb_context:context().
-maybe_check_ledgers(Context) ->
-    Doc = cb_context:doc(Context),
-    io:format("~n Doc ~p~n", [Doc]),
-    case kz_json:get_value([<<"plan">>, <<"ledgers">>], Doc) of
-        'undefined' -> Context;
-        Ledger ->
-            Fun = fun(Key, Item, ContextAcc) -> has_correct_keys(ContextAcc, Key, Item, kz_json:get_value(<<"markup_type">>, Item)) end,
-            io:format("~n Ledger ~p~n", [Ledger]),
-            kz_json:foldl(Fun, Context, Ledger)
-    end.
-
--spec has_correct_keys(cb_context:context(), ne_binary(), kz_json:object(), api_binary()) -> cb_context:context().
-has_correct_keys(Context, Key, Item, <<"rate">>) ->
-    case {kz_json:get_value(<<"rate">>, Item), kz_json:get_value(<<"rates">>, Item)} of
-        {'undefined', 'undefined'} ->
-            failed_validate(Context, Key, <<"missing 'rate' and 'rates' keys">>);
-        {'undefined', _} ->
-            failed_validate(Context, Key, <<"missing 'rate' key">>);
-        {_, 'undefined'} ->
-            failed_validate(Context, Key, <<"missing 'rates' key">>);
-        _ -> Context
-    end;
-has_correct_keys(Context, Key, Item, ?NE_BINARY=_MarkupType) ->
-    io:format("~n _MarkupType ~p~n", [_MarkupType]),
-    case {kz_json:get_value(<<"rate">>, Item), kz_json:get_value(<<"rates">>, Item)} of
-        {'undefined', _} ->
-            failed_validate(Context, Key, <<"missing 'rate' key">>);
-        {_, 'undefined'} -> Context;
-        {_, _} ->
-            failed_validate(Context, Key, <<"can not have both 'rate' and 'rates' with this markup_type">>)
-    end;
-has_correct_keys(Context, Key, _, _) ->
-    KeyPath = <<"plan.ledgers.", (Key)/binary, ".markup_type">>,
-    Target = [<<"fixed_price">>, <<"percentage">>, <<"rate">>],
-    Message = <<"Value not found in enumerated list of values">>,
-    ErrorJObj = kz_json:from_list_recursive([{KeyPath, [{<<"enum">>, [{<<"message">>, Message}, {<<"target">>, Target}]}]}]),
-    failed_validate(Context, Key, ErrorJObj).
-
-failed_validate(Context, Key, Error) ->
-    Errors = kz_json:merge_jobjs(create_validate_error_message(Key, Error), cb_context:validation_errors(Context)),
-    Setters = [{fun cb_context:set_resp_error_code/2, 400}
-              ,{fun cb_context:set_resp_status/2, 'error'}
-              ,{fun cb_context:set_resp_error_msg/2, <<"validation failed">>}
-              ,{fun cb_context:set_resp_data/2, kz_json:new()}
-              ,{fun cb_context:set_validation_errors/2, Errors}
-              ],
-    cb_context:setters(Context, Setters).
-
-create_validate_error_message(Key, ?NE_BINARY=Message) ->
-    KeyPath = <<"plan.ledgers.", (Key)/binary>>,
-    kz_json:from_list_recursive([{KeyPath, [{<<"required">>, [{<<"message">>, Message}]}]}]);
-create_validate_error_message(_, ErrorJObj) -> ErrorJObj.
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(kzd_service_plan:type())).
 
 %%--------------------------------------------------------------------
 %% @private

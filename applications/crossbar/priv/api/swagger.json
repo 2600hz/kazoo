@@ -23831,6 +23831,11 @@
                 },
                 "markup_type": {
                     "description": "How rate for this usage is calculated",
+                    "enum": [
+                        "fixed_price",
+                        "percentage",
+                        "rate"
+                    ],
                     "type": "string"
                 },
                 "minimum": {

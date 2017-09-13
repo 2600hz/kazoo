@@ -59,7 +59,7 @@ Key | Description | Type | Default | Required
 `discounts.cumulative.rate` | The discount to apply, up to maximum Items (if applicable) | `number()` |   | `false`
 `discounts.cumulative` |   | `object()` |   | `false`
 `discounts` |   | `object()` |   | `false`
-`markup_type` | How rate for this usage is calculated | `string()` |   | `false`
+`markup_type` | How rate for this usage is calculated | `string('fixed_price' | 'percentage' | 'rate')` |   | `false`
 `minimum` | The minimum quantity to charge for, if 'quantity' is less than 'minimum' | `integer()` |   | `false`
 `name` | Friendly name for this Item | `string()` |   | `false`
 `quantity` | How many of the item are allowed | `integer()` |   | `false`
