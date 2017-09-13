@@ -27,9 +27,9 @@
                         "Invite-Format": {
                             "description": "When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.",
                             "enum": [
-                                "push_and_invite",
+                                "invite",
                                 "push",
-                                "invite"
+                                "push_and_invite"
                             ],
                             "type": "string"
                         }
