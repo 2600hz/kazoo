@@ -41,6 +41,14 @@
             },
             "type": "object"
         },
+        "markup_type": {
+            "description": "How rate for this usage is calculated",
+            "enum": [
+                "fixed_price",
+                "percentage"
+            ],
+            "type": "string"
+        },
         "minimum": {
             "description": "The minimum quantity to charge for, if 'quantity' is less than 'minimum'",
             "type": "integer"

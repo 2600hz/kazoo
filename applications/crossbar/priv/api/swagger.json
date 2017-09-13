@@ -23769,9 +23769,6 @@
             ],
             "type": "object"
         },
-        "service_plan": {
-            "description": "Describes a service plan"
-        },
         "service_plan.category": {
             "description": "Describes a service plan category",
             "properties": {
@@ -23832,6 +23829,14 @@
                     },
                     "type": "object"
                 },
+                "markup_type": {
+                    "description": "How rate for this usage is calculated",
+                    "enum": [
+                        "fixed_price",
+                        "percentage"
+                    ],
+                    "type": "string"
+                },
                 "minimum": {
                     "description": "The minimum quantity to charge for, if 'quantity' is less than 'minimum'",
                     "type": "integer"
@@ -23877,6 +23882,24 @@
                 "description": {
                     "description": "Describes the service plan offering",
                     "type": "string"
+                },
+                "manual_recurring": {
+                    "description": "Monthly recurring items",
+                    "properties": {
+                        "name": {
+                            "description": "A friendly name for the item",
+                            "type": "string"
+                        },
+                        "quantity": {
+                            "description": "How many of the item are allowed",
+                            "type": "integer"
+                        },
+                        "rates": {
+                            "description": "Item's rate",
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
                 },
                 "name": {
                     "description": "A friendly name for the service plan",
