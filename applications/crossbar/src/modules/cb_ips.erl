@@ -47,12 +47,13 @@ init() ->
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
+    cb_context:put_reqid(Context),
     authorize(Context, cb_context:req_nouns(Context)).
 
 authorize(Context, [{<<"ips">>, []}]) ->
     cb_context:is_superduper_admin(Context);
 authorize(_Context, _Nouns) ->
-    'false'.
+    'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,9 +103,11 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
+    cb_context:put_reqid(Context),
     validate_ips(Context, cb_context:req_verb(Context)).
 
 validate(Context, PathToken) ->
+    cb_context:put_reqid(Context),
     validate_ips(Context, PathToken, cb_context:req_verb(Context)).
 
 -spec validate_ips(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -170,6 +173,7 @@ put(Context) ->
     Zone = kz_json:get_ne_binary_value(<<"zone">>, ReqData),
     Host = kz_json:get_ne_binary_value(<<"host">>, ReqData),
 
+    lager:debug("creating ip ~p", [ReqData]),
     case kz_ip:create(IP, Zone, Host) of
         {'ok', IPJObj} ->
             lager:debug("created ip ~s: ~p", [IP, IPJObj]),
