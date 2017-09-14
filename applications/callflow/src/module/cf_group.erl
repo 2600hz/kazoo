@@ -85,11 +85,10 @@ build_endpoints(JObj, Call) ->
     lists:flatten(
       [Endpoint
        || {_, {'ok', Endpoint}} <-
-              lists:foldl(
-                fun(F, E) -> F(E, Members, Call) end
+              lists:foldl(fun(F, E) -> F(E, Members, Call) end
                          ,[]
                          ,Routines
-               )
+                         )
       ]
      ).
 
