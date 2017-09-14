@@ -103,7 +103,7 @@ assign_ips(API, AccountId, Dedicateds) ->
                        {'ok', kz_json:object()} |
                        {'error', 'not_found'}.
 remove_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([200, 404]
                                 ,fun kz_http:delete/2
                                 ,ip_url(AccountId, IP)
                                 ,pqc_cb_api:request_headers(API)
@@ -230,7 +230,7 @@ create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
                        {'ok', kz_json:object()} |
                        {'error', 'not_found'}.
 delete_ip(API, ?DEDICATED(IP, _Host, _Zone)) ->
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([200, 404]
                                 ,fun kz_http:delete/2
                                 ,ip_url(IP)
                                 ,pqc_cb_api:request_headers(API)
