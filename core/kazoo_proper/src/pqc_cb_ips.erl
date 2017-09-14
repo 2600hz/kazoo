@@ -11,6 +11,7 @@
         ,correct_parallel/0
         ]).
 
+%% Crossbar API requests
 -export([list_ips/2
         ,assign_ips/3
         ,remove_ip/3
@@ -20,9 +21,9 @@
         ,fetch_zones/2
         ,fetch_assigned/2
         ,create_ip/2
-
-        ,ips_url/0, ips_url/1
         ]).
+
+-export([ips_url/0, ips_url/1]).
 
 -export([cleanup/0, cleanup/1]).
 
@@ -266,7 +267,47 @@ initial_state() ->
 
 -spec next_state(pqc_kazoo_model:model(), any(), any()) -> pqc_kazoo_model:model().
 next_state(Model, APIResp, {'call', _, 'create_account', _Args}=Call) ->
-    pqc_cb_accounts:next_state(Model, APIResp, Call).
+    pqc_cb_accounts:next_state(Model, APIResp, Call);
+next_state(Model, _APIResp, {'call', ?MODULE, 'list_ips', [_API, _AccountId]}) ->
+    Model;
+next_state(Model, _APIResp, {'call', ?MODULE, 'assign_ips', [_API, AccountId, Dedicateds]}) ->
+    pqc_util:transition_if(Model
+                          ,[{fun pqc_kazoo_model:does_account_exist/2, [AccountId]}
+                           ,{fun do_dedicated_ips_exist/2, [Dedicateds]}
+                           ,{fun are_dedicated_ips_unassigned/2, [Dedicateds]}
+                           ,{fun assign_dedicated_ips/3, [AccountId, Dedicateds]}
+                           ]
+                          );
+next_state(Model, _APIResp, {'call', ?MODULE, 'remove_ip', [_API, AccountId, ?DEDICATED(IP, _, _)]}) ->
+    pqc_util:transition_if(Model
+                          ,[{fun pqc_kazoo_model:does_account_exist/2, [AccountId]}
+                           ,{fun pqc_kazoo_model:does_ip_exist/2, [IP]}
+                           ,{fun pqc_kazoo_model:is_ip_assigned/3, [AccountId, IP]}
+                           ,{fun pqc_kazoo_model:unassign_dedicated_ip/2, [IP]}
+                           ]
+                          );
+next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_ip', [_API, _AccountId, _Dedicated]}) ->
+    Model;
+next_state(Model, _APIResp, {'call', ?MODULE, 'assign_ip', [_API, AccountId, ?DEDICATED(IP, _, _)]}) ->
+    pqc_util:transition_if(Model
+                          ,[{fun pqc_kazoo_model:does_account_exist/2, [AccountId]}
+                           ,{fun pqc_kazoo_model:does_ip_exist/2, [IP]}
+                           ,{fun pqc_kazoo_model:is_ip_unassigned/3, [IP]}
+                           ,{fun pqc_kazoo_model:assign_dedicated_ip/3, [AccountId, IP]}
+                           ]
+                          );
+next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_hosts', [_API, _AccountId]}) ->
+    Model;
+next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_zones', [_API, _AccountId]}) ->
+    Model;
+next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_assigned', [_API, _AccountId]}) ->
+    Model;
+next_state(Model, _APIResp, {'call', ?MODULE, 'create_ip', [_API, ?DEDICATED(IP, Host, Zone)]}) ->
+    pqc_util:transition_if(Model
+                          ,[{fun pqc_kazoo_model:is_ip_missing/2, [IP]}
+                           ,{fun pqc_kazoo_model:add_dedicated_ip/4, [IP, Host, Zone]}
+                           ]
+                          ).
 
 -spec precondition(pqc_kazoo_model:model(), any()) -> boolean().
 precondition(_Model, _Call) -> 'true'.
@@ -318,3 +359,28 @@ correct_parallel() ->
                end
               )
            ).
+
+%%% Helpers
+-spec do_dedicated_ips_exist(pqc_kazoo_model:model(), [dedicated()]) ->
+                                    boolean().
+do_dedicated_ips_exist(Model, Dedicateds) ->
+    lists:all(fun(?DEDICATED(IP, _, _)) -> pqc_kazoo_model:does_ip_exist(Model, IP) end
+             ,Dedicateds
+             ).
+
+-spec are_dedicated_ips_unassigned(pqc_kazoo_model:model(), [dedicated()]) ->
+                                          boolean().
+are_dedicated_ips_unassigned(Model, Dedicateds) ->
+    lists:all(fun(?DEDICATED(IP, _, _)) -> pqc_kazoo_model:is_ip_unassigned(Model, IP) end
+             ,Dedicateds
+             ).
+
+-spec assign_dedicated_ips(pqc_kazoo_model:model(), pqc_cb_accounts:account_id(), [dedicated()]) ->
+                                  pqc_kazoo_model:model().
+assign_dedicated_ips(Model, AccountId, Dedicateds) ->
+    lists:foldl(fun(?DEDICATED(IP, _, _), Mdl) ->
+                        pqc_kazoo_model:assign_dedicated_ip(Mdl, AccountId, IP)
+                end
+               ,Model
+               ,Dedicateds
+               ).
