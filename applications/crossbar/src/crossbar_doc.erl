@@ -102,7 +102,7 @@ pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
 pagination_page_size(Context, _Version) ->
     case cb_context:req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
-        V -> kz_term:to_integer(V)
+        V -> try kz_term:to_integer(V) catch _:_ -> 'undefined' end
     end.
 
 %%--------------------------------------------------------------------

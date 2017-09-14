@@ -179,10 +179,10 @@
                     ,host_url = <<>> :: binary()
                     }).
 
--define(MAX_RANGE, kapps_config:get_integer(?CONFIG_CAT
-                                           ,<<"maximum_range">>
-                                           ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
-                                           )
+-define(MAX_RANGE, kapps_config:get_pos_integer(?CONFIG_CAT
+                                               ,<<"maximum_range">>
+                                               ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
+                                               )
        ).
 
 -define(OPTION_EXPECTED_TYPE, 'expected_type').
