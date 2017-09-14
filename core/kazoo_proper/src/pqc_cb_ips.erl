@@ -36,11 +36,15 @@
 
 -spec ips_url() -> string().
 -spec ips_url(pqc_cb_accounts:account_id()) -> string().
+-spec ip_url(pqc_cb_accounts:account_id(), ne_binary()) -> string().
 ips_url() ->
     string:join([pqc_cb_api:v2_base_url(), "ips"], "/").
 
 ips_url(AccountId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "ips"], "/").
+
+ip_url(AccountId, IP) ->
+    string:join([pqc_cb_accounts:account_url(AccountId), "ips", kz_term:to_list(IP)], "/").
 
 -spec list_ips(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
                       {'ok', kz_json:objects()} |
@@ -56,46 +60,158 @@ list_ips(API, AccountId) ->
             ?DEBUG("listing IPs errored: ~p", [_E]),
             {'error', 'not_found'};
         Response ->
-            {'ok', kz_json:get_value(<<"data">>, kz_json:decode(Response))}
+            {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
     end.
 
 -spec assign_ips(pqc_cb_api:state(), pqc_cb_accounts:account_id(), [dedicated()]) ->
                         {'ok', kz_json:objects()} |
                         {'error', 'not_found'}.
-assign_ips(_API, _AccountId, _IPs) -> 'ok'.
+assign_ips(API, AccountId, Dedicateds) ->
+    IPs = [IP || ?DEDICATED(IP, _, _) <- Dedicateds],
+    Envelope = pqc_cb_api:create_envelope(IPs),
+
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:post/3
+                                ,ips_url(AccountId)
+                                ,pqc_cb_api:request_headers(API)
+                                ,kz_json:encode(Envelope)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("assigning IPs errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
+    end.
+
 
 -spec remove_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
                        {'ok', kz_json:object()} |
                        {'error', 'not_found'}.
-remove_ip(_API, _AccountId, _IP) -> 'ok'.
+remove_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:delete/2
+                                ,ip_url(AccountId, IP)
+                                ,pqc_cb_api:request_headers(API)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("removing IP errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_json_value(<<"data">>, kz_json:decode(Response))}
+    end.
 
 -spec fetch_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
                       {'ok', kz_json:object()} |
                       {'error', 'not_found'}.
-fetch_ip(_API, _AccountId, _IP) -> 'ok'.
+fetch_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:get/2
+                                ,ip_url(AccountId, IP)
+                                ,pqc_cb_api:request_headers(API)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("fetching IP errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_json_value(<<"data">>, kz_json:decode(Response))}
+    end.
 
 -spec assign_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
                        {'ok', kz_json:object()} |
                        {'error', 'not_found'}.
-assign_ip(_API, _AccountId, _IP) -> 'ok'.
+assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
+    Envelope = pqc_cb_api:create_envelope(kz_json:new()),
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:post/3
+                                ,ip_url(AccountId, IP)
+                                ,pqc_cb_api:request_headers(API)
+                                ,kz_json:encode(Envelope)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("assigning IP errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_json_value(<<"data">>, kz_json:decode(Response))}
+    end.
 
 -spec fetch_hosts(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
                          {'ok', ne_binaries()} |
                          {'error', 'not_found'}.
-fetch_hosts(_API, _AccountId) -> 'ok'.
+fetch_hosts(API, AccountId) ->
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:get/2
+                                ,ip_url(AccountId, "hosts")
+                                ,pqc_cb_api:request_headers(API)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("fetch hosts errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
+    end.
 
 -spec fetch_zones(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
                          {'ok', ne_binaries()} |
                          {'error', 'not_found'}.
-fetch_zones(_API, _AccountId) -> 'ok'.
+fetch_zones(API, AccountId) ->
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:get/2
+                                ,ip_url(AccountId, "zones")
+                                ,pqc_cb_api:request_headers(API)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("fetch zones errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
+    end.
 
 -spec fetch_assigned(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
-                            {'ok', [dedicated()]} |
+                            {'ok', kz_json:objects()} |
                             {'error', 'not_found'}.
-fetch_assigned(_API, _AccountId) -> 'ok'.
+fetch_assigned(API, AccountId) ->
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:get/2
+                                ,ip_url(AccountId, "assigned")
+                                ,pqc_cb_api:request_headers(API)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("fetch zones errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
+    end.
 
--spec create_ip(pqc_cb_api:state(), dedicated()) -> 'ok'.
-create_ip(_API, _IP) -> 'ok'.
+-spec create_ip(pqc_cb_api:state(), dedicated()) ->
+                       {'ok', kz_json:object()} |
+                       {'error', 'not_found'}.
+create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
+    Data = kz_json:from_list([{<<"ip">>, IP}
+                             ,{<<"host">>, Host}
+                             ,{<<"zone">>, Zone}
+                             ]),
+    Envelope = pqc_cb_api:create_envelope(Data),
+    case pqc_cb_api:make_request([200]
+                                ,fun kz_http:put/3
+                                ,ips_url()
+                                ,pqc_cb_api:request_headers(API)
+                                ,kz_json:encode(Envelope)
+                                )
+    of
+        {'error', _E} ->
+            ?DEBUG("create ip errored: ~p", [_E]),
+            {'error', 'not_found'};
+        Response ->
+            {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
+    end.
+
 
 -define(ACCOUNT_NAMES, [<<"account_for_ips">>]).
 
