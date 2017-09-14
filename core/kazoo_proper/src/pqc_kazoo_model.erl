@@ -9,6 +9,7 @@
         ,number_data/2
         ,ratedeck/1, ratedeck/2
         ,dedicated_ip/2
+        ,account_ips/2
 
          %% Predicates
         ,has_accounts/1
@@ -33,6 +34,7 @@
         ,remove_number_from_account/2
         ,transition_number_state/3
         ,add_dedicated_ip/4
+        ,remove_dedicated_ip/2
         ,assign_dedicated_ip/3
         ,unassign_dedicated_ip/2
         ]).
@@ -76,7 +78,9 @@
        ).
 -type model() :: #kazoo_model{}.
 
--export_type([model/0]).
+-export_type([model/0
+             ,dedicated_ip/0
+             ]).
 
 -spec new(pqc_cb_api:state()) -> model().
 new(API) ->
@@ -114,6 +118,18 @@ ratedeck(#kazoo_model{'ratedecks'=Ratedecks}, Name) ->
 -spec dedicated_ip(model(), ne_binary()) -> dedicated_ip() | 'undefined'.
 dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}, IP) ->
     maps:get(IP, IPs, 'undefined').
+
+-spec account_ips(model(), ne_binary()) -> [{ne_binary(), dedicated_ip()}].
+account_ips(#kazoo_model{'dedicated_ips'=IPs}, AccountId) ->
+    maps:fold(fun(IP, IPInfo, Acc) ->
+                      case maps:get('assigned_to', IPInfo, 'undefined') of
+                          AccountId -> [{IP, IPInfo} | Acc];
+                          _ -> Acc
+                      end
+              end
+             ,[]
+             ,IPs
+             ).
 
 -spec has_accounts(model()) -> boolean().
 has_accounts(#kazoo_model{'accounts'=Accounts}) ->
@@ -296,6 +312,10 @@ add_dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}=Model, IP, Host, Zone) ->
                     }
         end,
     Model#kazoo_model{'dedicated_ips'=UpdatedIPs}.
+
+-spec remove_dedicated_ip(model(), ne_binary()) -> model().
+remove_dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}=Model, IP) ->
+    Model#kazoo_model{'dedicated_ips'=maps:remove(IP, IPs)}.
 
 -spec assign_dedicated_ip(model(), ne_binary(), ne_binary()) ->
                                  model().
