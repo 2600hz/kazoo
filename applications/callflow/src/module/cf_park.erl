@@ -137,7 +137,6 @@ retrieve(SlotNumber, Call) ->
                     _ = publish_retrieved(Call, SlotNumber),
                     _ = cleanup_slot(SlotNumber, ParkedCall, kapps_call:account_db(Call)),
                     {'ok', 'retrieved'};
-                                                %                    kapps_call_command:wait_for_hangup();
                 {'error', _E}=E ->
                     lager:debug("failed to retrieve slot: ~p", [_E]),
                     _ = cleanup_slot(SlotNumber, ParkedCall, kapps_call:account_db(Call)),
@@ -219,7 +218,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             %% Caller parked in slot number...
             _ = kapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
             _ = kapps_call_command:b_say(kz_term:to_binary(SlotNumber), Call),
-            _ = kapps_call_command:wait_for_hangup(),
+            _ = wait_for_hangup(Call),
             _ = timer:apply_after(?PARK_DELAY_CHECK_TIME, ?MODULE, 'maybe_cleanup_slot', [SlotNumber, Call, cf_exe:callid(Call)]),
             cf_exe:transfer(Call);
         %% blind transfer and but the provided slot number is occupied
@@ -241,6 +240,13 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             _ = publish_parked(Call, SlotNumber),
             update_presence(Slot),
             wait_for_pickup(SlotNumber, Slot, Data, Call)
+    end.
+
+-spec wait_for_hangup(kapps_call:call()) -> {'ok', 'channel_hungup'} | {'error', 'timeout'}.
+wait_for_hangup(Call) ->
+    case cf_exe:is_channel_destroyed(Call) of
+        'false' -> kapps_call_command:wait_for_hangup(?MILLISECONDS_IN_SECOND * 30);
+        'true' -> {'ok', 'channel_hungup'}
     end.
 
 %%--------------------------------------------------------------------
@@ -493,6 +499,7 @@ load_parked_call(JObj) ->
 
 -spec maybe_cleanup_slot(ne_binary(), kapps_call:call(), ne_binary()) -> 'ok'.
 maybe_cleanup_slot(SlotNumber, Call, OldCallId) ->
+    _ = kz_util:put_callid(OldCallId),
     ParkedCalls = get_parked_calls(Call),
     AccountDb   = kapps_call:account_db(Call),
 
