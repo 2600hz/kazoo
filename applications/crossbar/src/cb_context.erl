@@ -781,6 +781,7 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
 -spec validate_failed(kz_json:object(), context(), validation_errors(), after_fun()) -> context().
 validate_failed(SchemaJObj, Context, Errors, OnFailure) ->
     lager:debug("validation failed ~s: ~p", [kz_doc:id(SchemaJObj), Errors]),
+    % io:format("~n Errors ~p~n~n", [Errors]),
     Context1 = failed(Context, Errors),
     case is_function(OnFailure, 1) of
         'true' -> OnFailure(Context1);
