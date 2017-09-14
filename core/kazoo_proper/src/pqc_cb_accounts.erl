@@ -94,7 +94,7 @@ check_accounts_db(Name) ->
             kz_datamgr:del_docs(?KZ_ACCOUNTS_DB, JObjs)
     end.
 
--spec account_url(ne_binary() | map()) -> string().
+-spec account_url(account_id() | map()) -> string().
 account_url(#{}=API) ->
     account_url(pqc_cb_api:auth_account_id(API));
 account_url(AccountId) ->
