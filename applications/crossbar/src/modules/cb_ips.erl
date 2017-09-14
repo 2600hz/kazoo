@@ -127,7 +127,10 @@ validate_ips(Context, IP, ?HTTP_GET) ->
 validate_ips(Context, IP, ?HTTP_POST) ->
     validate_ip_not_in_use(Context, IP);
 validate_ips(Context, IP, ?HTTP_DELETE) ->
-    release_ip(Context, IP).
+    case kz_ip:fetch(IP) of
+        {'ok', _} -> cb_context:set_resp_status(Context, 'success');
+        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, IP, Context)
+    end.
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
@@ -139,25 +142,26 @@ post(Context) ->
                 end
         end,
     ReqData = cb_context:req_data(Context),
-    Ips = kz_json:get_value(<<"ips">>, ReqData, []),
+    IPs = kz_json:get_value(<<"ips">>, ReqData, []),
     Props = [{<<"type">>, <<"ips">>}
-            ,{<<"dedicated">>, erlang:length(Ips)}
+            ,{<<"dedicated">>, erlang:length(IPs)}
             ],
     crossbar_services:maybe_dry_run(Context, Callback, Props).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, Ip) ->
+post(Context, IP) ->
     Callback =
         fun() ->
                 case cb_context:resp_status(Context) of
-                    'success' -> assign_ip(Context, Ip);
+                    'success' -> assign_ip(Context, IP);
                     _ -> Context
                 end
         end,
     crossbar_services:maybe_dry_run(Context, Callback, <<"ips">>).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _DocId) -> Context.
+delete(Context, IP) ->
+    release_or_delete_ip(Context, IP, cb_context:req_nouns(Context)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -168,8 +172,10 @@ put(Context) ->
 
     case kz_ip:create(IP, Zone, Host) of
         {'ok', IPJObj} ->
+            lager:debug("created ip ~s: ~p", [IP, IPJObj]),
             crossbar_doc:handle_json_success(kz_doc:leak_fields(IPJObj), Context);
         {'error', Error} ->
+            lager:debug("failed to create ip ~s: ~p", [IP, Error]),
             crossbar_doc:handle_datamgr_errors(Error, IP, Context)
     end.
 
@@ -361,12 +367,12 @@ assign_ips(Context, [], RespData) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                             ,RespData
                             );
-assign_ips(Context, [Ip|Ips], RespData) ->
+assign_ips(Context, [IP|IPs], RespData) ->
     AccountId = cb_context:account_id(Context),
-    case kz_ip:assign(AccountId, Ip) of
-        {'ok', IP} ->
-            IPJSON = kz_ip:to_json(IP),
-            assign_ips(Context, Ips, [clean_ip(IPJSON)|RespData]);
+    case kz_ip:assign(AccountId, IP) of
+        {'ok', AssignedIP} ->
+            IPJSON = kz_ip:to_json(AssignedIP),
+            assign_ips(Context, IPs, [clean_ip(IPJSON)|RespData]);
         {'error', Reason} ->
             cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
@@ -380,11 +386,11 @@ assign_ips(Context, [Ip|Ips], RespData) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_ip(cb_context:context(), ne_binary()) -> cb_context:context().
-assign_ip(Context, Ip) ->
+assign_ip(Context, IP) ->
     AccountId = cb_context:account_id(Context),
-    case kz_ip:assign(AccountId, Ip) of
-        {'ok', IP} ->
-            IPJSON = kz_ip:to_json(IP),
+    case kz_ip:assign(AccountId, IP) of
+        {'ok', AssignedIP} ->
+            IPJSON = kz_ip:to_json(AssignedIP),
             cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,clean_ip(IPJSON)
                                     );
@@ -400,6 +406,12 @@ assign_ip(Context, Ip) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec release_or_delete_ip(cb_context:context(), ne_binary(), req_nouns()) -> cb_context:context().
+release_or_delete_ip(Context, IP, [{<<"ips">>, [IP]}]) ->
+    delete_ip(Context, IP);
+release_or_delete_ip(Context, IP, [{<<"ips">>, [IP]}, {<<"accounts">>, [_]}]) ->
+    release_ip(Context, IP).
+
 -spec release_ip(cb_context:context(), ne_binary()) -> cb_context:context().
 release_ip(Context, Id) ->
     case kz_ip:release(Id) of
@@ -409,10 +421,13 @@ release_ip(Context, Id) ->
                                     ,clean_ip(IPJSON)
                                     );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault'
-                                       ,kz_json:from_list([{<<"cause">>, Reason}])
-                                       ,Context
-                                       )
+            crossbar_doc:handle_datamgr_errors(Reason, Id, Context)
+    end.
+
+delete_ip(Context, IP) ->
+    case kz_ip:delete(IP) of
+        {'ok', Deleted} -> crossbar_doc:handle_json_success(Context, Deleted);
+        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, IP, Context)
     end.
 
 %%--------------------------------------------------------------------
