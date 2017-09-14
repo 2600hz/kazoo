@@ -63,7 +63,7 @@ test_proplist() ->
     list(test_property()).
 
 test_property() ->
-    oneof([test_key()
+    oneof([atom()
           ,{test_key(), test_value()}
           ]).
 
