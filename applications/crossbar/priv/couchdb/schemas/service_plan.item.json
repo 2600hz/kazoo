@@ -45,7 +45,8 @@
             "description": "How rate for this usage is calculated",
             "enum": [
                 "fixed_price",
-                "percentage"
+                "percentage",
+                "rate"
             ],
             "type": "string"
         },
@@ -62,7 +63,7 @@
             "type": "integer"
         },
         "rate": {
-            "description": "How much is the item billed, per-item",
+            "description": "The rate to charge",
             "type": "number"
         },
         "rates": {
