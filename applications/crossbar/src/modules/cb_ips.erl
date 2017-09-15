@@ -52,8 +52,7 @@ authorize(Context) ->
 
 authorize(Context, [{<<"ips">>, []}]) ->
     cb_context:is_superduper_admin(Context);
-authorize(_Context, _Nouns) ->
-    'true'.
+authorize(_Context, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -366,21 +365,37 @@ error_ip_assigned(Context, IP) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_ips(cb_context:context()) -> cb_context:context().
--spec assign_ips(cb_context:context(), ne_binaries(), kz_json:objects()) -> cb_context:context().
 assign_ips(Context) ->
     ReqData = cb_context:req_data(Context),
-    assign_ips(Context, kz_json:get_value(<<"ips">>, ReqData, []), []).
+    {Context1, RespData} =
+        lists:foldl(fun maybe_assign_ip/2, {Context, []}, kz_json:get_list_value(<<"ips">>, ReqData, [])),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            crossbar_doc:handle_json_success(RespData, Context1);
+        _ -> Context1
+    end.
 
-assign_ips(Context, [], RespData) ->
-    cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
-                            ,RespData
-                            );
-assign_ips(Context, [IP|IPs], RespData) ->
+-spec reconcile_services([api_ne_binary()]) -> 'ok'.
+reconcile_services(AccountIds) ->
+    _ = [kz_services:reconcile(AccountId, <<"ips">>)
+         || AccountId <- AccountIds,
+            'undefined' =/= AccountId
+        ],
+    'ok'.
+
+maybe_assign_ip(IP, {Context, RespData}) ->
     AccountId = cb_context:account_id(Context),
-    case kz_ip:assign(AccountId, IP) of
+    case kz_ip:fetch(IP) of
+        {'ok', JObj} -> maybe_assign_ip(Context, AccountId, JObj, RespData);
+        {'error', Reason} ->
+            {crossbar_doc:handle_datamgr_errors(Reason, IP, Context), RespData}
+    end.
+
+maybe_assign_ip(Context, AccountId, IPJObj, RespData) ->
+    case kz_ip:assign(AccountId, IPJObj) of
         {'ok', AssignedIP} ->
-            IPJSON = kz_ip:to_json(AssignedIP),
-            assign_ips(Context, IPs, [clean_ip(IPJSON)|RespData]);
+            _ = reconcile_services([kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, IPJObj), AccountId]),
+            {Context, [clean_ip(kz_ip:to_json(AssignedIP)) | RespData]};
         {'error', Reason} ->
             cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
