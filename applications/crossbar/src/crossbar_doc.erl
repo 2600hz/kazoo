@@ -23,7 +23,6 @@
         ,current_doc_vsn/0
         ,update_pvt_parameters/2
         ,start_key/1, start_key/2
-        ,pagination_page_size/0, pagination_page_size/1
         ,has_qs_filter/1
         ,filtered_doc_by_qs/2, filtered_doc_by_qs/3
         ]).
@@ -56,9 +55,6 @@
                   ,fun add_pvt_auth/2
                   ]).
 
--define(PAGINATION_PAGE_SIZE
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
-
 -type direction() :: 'ascending' | 'descending'.
 
 -type startkey() :: kz_json:api_json_term().
@@ -88,22 +84,6 @@
                           ,direction = 'ascending' :: direction()
                           }).
 -type load_view_params() :: #load_view_params{}.
-
--spec pagination_page_size() -> pos_integer().
--spec pagination_page_size(cb_context:context()) -> api_pos_integer().
--spec pagination_page_size(cb_context:context(), ne_binary()) -> api_pos_integer().
-pagination_page_size() ->
-    ?PAGINATION_PAGE_SIZE.
-
-pagination_page_size(Context) ->
-    pagination_page_size(Context, cb_context:api_version(Context)).
-
-pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
-pagination_page_size(Context, _Version) ->
-    case cb_context:req_value(Context, <<"page_size">>) of
-        'undefined' -> pagination_page_size();
-        V -> try kz_term:to_integer(V) catch _:_ -> 'undefined' end
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -355,7 +335,7 @@ patch_the_doc(RequestData, ExistingDoc) ->
 load_view(View, Options, Context) ->
     load_view(View, Options, Context
              ,start_key(Options, Context)
-             ,pagination_page_size(Context)
+             ,cb_context:pagination_page_size(Context)
              ,'undefined'
              ).
 
@@ -364,12 +344,12 @@ load_view(View, Options, Context, FilterFun)
        is_function(FilterFun, 3) ->
     load_view(View, Options, Context
              ,start_key(Options, Context)
-             ,pagination_page_size(Context)
+             ,cb_context:pagination_page_size(Context)
              ,FilterFun
              );
 load_view(View, Options, Context, StartKey) ->
     load_view(View, Options, Context, StartKey
-             ,pagination_page_size(Context)
+             ,cb_context:pagination_page_size(Context)
              ).
 
 load_view(View, Options, Context, StartKey, PageSize) ->

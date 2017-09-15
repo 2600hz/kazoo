@@ -6,12 +6,11 @@
 %%% @contributors
 %%%   Roman Galeev
 %%%-------------------------------------------------------------------
-
 -module(crossbar_view).
--include("crossbar.hrl").
+
 -export([load/3]).
 
--define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
+-include("crossbar.hrl").
 
 -spec load(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, ViewName, Options) ->
@@ -31,7 +30,7 @@ load(Context, ViewName, Options) ->
     {StartKey, EndKey} = get_range(Context),
     case is_paged(Context) of
         'true' ->
-            PageSize = page_size(Context),
+            PageSize = cb_context:pagination_page_size(Context),
             {LastKey, JObjs} = kazoo_modb_view:get_results(AccountId, ViewName, StartKey, EndKey, PageSize, ModbViewOptions),
             format_response(Context, StartKey, LastKey, PageSize, JObjs);
         'false' ->
@@ -88,18 +87,6 @@ ascending_start_key(Context) ->
 ascending_end_key(Context, StartKey) ->
     Default = StartKey + ?MAX_RANGE,
     one_of(Context, [<<"end_key">>, <<"created_to">>], Default).
-
--spec page_size() -> integer().
--spec page_size(cb_context:context()) -> integer().
-
-page_size() -> ?PAGINATION_PAGE_SIZE.
-page_size(Context) -> page_size(Context, cb_context:api_version(Context)).
-page_size(_Context, ?VERSION_1) -> undefined;
-page_size(Context, _Version) ->
-    case cb_context:req_value(Context, <<"page_size">>) of
-        undefined -> page_size();
-        V -> kz_term:to_integer(V)
-    end.
 
 -spec add_paging(integer(), integer(), integer(), kz_json:object()) -> kz_json:object().
 add_paging(StartKey, PageSize, NextStartKey, JObj) ->

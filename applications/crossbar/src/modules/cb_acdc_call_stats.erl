@@ -235,7 +235,7 @@ create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
 
 -spec pagination_page_size(cb_context:context()) -> pos_integer().
 pagination_page_size(Context) ->
-    case crossbar_doc:pagination_page_size(Context) of
+    case cb_context:pagination_page_size(Context) of
         'undefined' -> 'undefined';
         PageSize -> PageSize + 1
     end.

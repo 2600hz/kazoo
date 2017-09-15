@@ -71,6 +71,7 @@
         "pagination_page_size": {
             "default": 50,
             "description": "crossbar pagination page size",
+            "minimum": 1,
             "type": "integer"
         },
         "port": {

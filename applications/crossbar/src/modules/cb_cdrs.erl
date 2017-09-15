@@ -462,7 +462,7 @@ create_summary_view_options(_, _, CreatedFrom, CreatedTo) ->
 -spec pagination_page_size(cb_context:context()) -> api_pos_integer().
 pagination_page_size(Context) ->
     case cb_context:should_paginate(Context)
-        andalso crossbar_doc:pagination_page_size(Context)
+        andalso cb_context:pagination_page_size(Context)
     of
         'false' -> 'undefined';
         'undefined' -> 'undefined';

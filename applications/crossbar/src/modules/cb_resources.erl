@@ -458,7 +458,7 @@ jobs_summary(Context) ->
             crossbar_doc:load_view(?JOBS_LIST
                                   ,[{'startkey', CreatedFrom}
                                    ,{'endkey', CreatedTo}
-                                   ,{'limit', crossbar_doc:pagination_page_size(Context)}
+                                   ,{'limit', cb_context:pagination_page_size(Context)}
                                    ,{'databases', databases(Context, CreatedFrom, CreatedTo)}
                                    ]
                                   ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
