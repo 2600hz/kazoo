@@ -9,6 +9,8 @@
         ,number_data/2
         ,ratedeck/1, ratedeck/2
         ,dedicated_ip/2
+        ,dedicated_zones/1
+        ,dedicated_hosts/1
         ,account_ips/2
 
          %% Predicates
@@ -118,6 +120,20 @@ ratedeck(#kazoo_model{'ratedecks'=Ratedecks}, Name) ->
 -spec dedicated_ip(model(), ne_binary()) -> dedicated_ip() | 'undefined'.
 dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}, IP) ->
     maps:get(IP, IPs, 'undefined').
+
+-spec dedicated_zones(model()) -> ne_binaries().
+dedicated_zones(#kazoo_model{'dedicated_ips'=IPs}) ->
+    maps:fold(fun(_IP, #{'zone' := Zone}, Zones) -> [Zone | Zones] end
+             ,[]
+             ,IPs
+             ).
+
+-spec dedicated_hosts(model()) -> ne_binaries().
+dedicated_hosts(#kazoo_model{'dedicated_ips'=IPs}) ->
+    maps:fold(fun(_IP, #{'host' := Host}, Hosts) -> [Host | Hosts] end
+             ,[]
+             ,IPs
+             ).
 
 -spec account_ips(model(), ne_binary()) -> [{ne_binary(), dedicated_ip()}].
 account_ips(#kazoo_model{'dedicated_ips'=IPs}, AccountId) ->
