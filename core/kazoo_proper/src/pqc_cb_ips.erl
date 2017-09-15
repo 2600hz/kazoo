@@ -63,6 +63,8 @@ ip_url(AccountId, IP) ->
 -spec list_ips(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
                       {'ok', kz_json:objects()} |
                       {'error', 'not_found'}.
+list_ips(_API, 'undefined') ->
+    {'error', 'not_found'};
 list_ips(API, AccountId) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
@@ -80,6 +82,8 @@ list_ips(API, AccountId) ->
 -spec assign_ips(pqc_cb_api:state(), pqc_cb_accounts:account_id(), [dedicated()]) ->
                         {'ok', kz_json:objects()} |
                         {'error', 'not_found'}.
+assign_ips(_API, 'undefined', _Dedicateds) ->
+    {'error', 'not_found'};
 assign_ips(API, AccountId, Dedicateds) ->
     IPs = [IP || ?DEDICATED(IP, _, _) <- Dedicateds],
     Envelope = pqc_cb_api:create_envelope(IPs),
@@ -102,6 +106,8 @@ assign_ips(API, AccountId, Dedicateds) ->
 -spec remove_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
                        {'ok', kz_json:object()} |
                        {'error', 'not_found'}.
+remove_ip(_API, 'undefined', _Dedicated) ->
+    {'error', 'not_found'};
 remove_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
     case pqc_cb_api:make_request([200, 404]
                                 ,fun kz_http:delete/2
@@ -119,6 +125,8 @@ remove_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
 -spec fetch_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
                       {'ok', kz_json:object()} |
                       {'error', 'not_found'}.
+fetch_ip(_API, 'undefined', _Dedicated) ->
+    {'error', 'not_found'};
 fetch_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
@@ -136,6 +144,8 @@ fetch_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
 -spec assign_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
                        {'ok', kz_json:object()} |
                        {'error', 'not_found'}.
+assign_ip(_API, 'undefined', _Dedicated) ->
+    {'error', 'not_found'};
 assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
     Envelope = pqc_cb_api:create_envelope(kz_json:new()),
     case pqc_cb_api:make_request([200]
@@ -155,6 +165,8 @@ assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
 -spec fetch_hosts(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
                          {'ok', ne_binaries()} |
                          {'error', 'not_found'}.
+fetch_hosts(_API, 'undefined') ->
+    {'error', 'not_found'};
 fetch_hosts(API, AccountId) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
@@ -172,6 +184,8 @@ fetch_hosts(API, AccountId) ->
 -spec fetch_zones(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
                          {'ok', ne_binaries()} |
                          {'error', 'not_found'}.
+fetch_zones(_API, 'undefined') ->
+    {'error', 'not_found'};
 fetch_zones(API, AccountId) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
@@ -189,6 +203,8 @@ fetch_zones(API, AccountId) ->
 -spec fetch_assigned(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
                             {'ok', kz_json:objects()} |
                             {'error', 'not_found'}.
+fetch_assigned(_API, 'undefined') ->
+    {'error', 'not_found'};
 fetch_assigned(API, AccountId) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
@@ -223,7 +239,7 @@ create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
             ?DEBUG("create ip errored: ~p", [_E]),
             {'error', 'not_found'};
         Response ->
-            {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
+            {'ok', kz_json:get_value([<<"data">>, <<"_read_only">>], kz_json:decode(Response))}
     end.
 
 -spec delete_ip(pqc_cb_api:state(), dedicated()) ->
@@ -298,6 +314,12 @@ seq() ->
 
 -spec command(any()) -> proper_types:type().
 command(Model) ->
+    command(Model, pqc_kazoo_model:has_accounts(Model)).
+
+command(Model, 'false') ->
+    AccountName = account_name(),
+    pqc_cb_accounts:command(Model, AccountName);
+command(Model, 'true') ->
     API = pqc_kazoo_model:api(Model),
 
     AccountName = account_name(),
