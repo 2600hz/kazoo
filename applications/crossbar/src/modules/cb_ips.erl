@@ -199,7 +199,7 @@ put(Context) ->
 -spec load_available(cb_context:context()) -> cb_context:context().
 load_available(Context) ->
     QS = cb_context:query_string(Context),
-    Zone = kz_json:get_value(<<"zone">>, QS),
+    Zone = kz_json:get_ne_binary_value(<<"zone">>, QS),
     case kz_ips:available(Zone) of
         {'ok', JObjs} ->
             cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
