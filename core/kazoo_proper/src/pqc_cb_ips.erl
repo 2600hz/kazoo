@@ -333,7 +333,7 @@ seq() ->
             [?INFO("st: ~p", [S]) || S <- ST]
     after
         pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
-        delete_ip(API, IP),
+        _ = delete_ip(API, IP),
         pqc_cb_api:cleanup(API)
     end,
     ?INFO("seq finished running: ~p", [API]),
