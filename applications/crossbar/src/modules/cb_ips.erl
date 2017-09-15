@@ -42,7 +42,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.ips">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.ips">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.ips">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.ips">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.ips">>, ?MODULE, 'put'),
     crossbar_bindings:bind(<<"*.execute.delete.ips">>, ?MODULE, 'delete').
 
 -spec authorize(cb_context:context()) -> boolean().
@@ -173,11 +173,15 @@ put(Context) ->
     Zone = kz_json:get_ne_binary_value(<<"zone">>, ReqData),
     Host = kz_json:get_ne_binary_value(<<"host">>, ReqData),
 
-    lager:debug("creating ip ~p", [ReqData]),
     case kz_ip:create(IP, Zone, Host) of
         {'ok', IPJObj} ->
-            lager:debug("created ip ~s: ~p", [IP, IPJObj]),
-            crossbar_doc:handle_json_success(kz_doc:leak_fields(IPJObj), Context);
+            JObj = kz_doc:leak_private_fields(IPJObj),
+            cb_context:setters(Context
+                              ,[{fun cb_context:set_doc/2, JObj}
+                               ,{fun cb_context:set_resp_status/2, 'success'}
+                               ,{fun cb_context:set_resp_data/2, JObj}
+                               ,{fun cb_context:set_resp_etag/2, crossbar_doc:rev_to_etag(JObj)}
+                               ]);
         {'error', Error} ->
             lager:debug("failed to create ip ~s: ~p", [IP, Error]),
             crossbar_doc:handle_datamgr_errors(Error, IP, Context)
