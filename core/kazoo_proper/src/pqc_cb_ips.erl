@@ -352,8 +352,7 @@ command(Model, 'true') ->
     AccountName = account_name(),
     AccountId = pqc_cb_accounts:symbolic_account_id(Model, AccountName),
 
-    oneof([pqc_cb_accounts:command(Model, AccountName)
-          ,{'call', ?MODULE, 'list_ips', [API]}
+    oneof([{'call', ?MODULE, 'list_ips', [API]}
           ,{'call', ?MODULE, 'assign_ips', [API, AccountId, ips()]}
           ,{'call', ?MODULE, 'remove_ip', [API, AccountId, ip()]}
           ,{'call', ?MODULE, 'fetch_ip', [API, AccountId, ip()]}
