@@ -187,7 +187,7 @@ fetch(AccountId, MsgIds) ->
 
 fetch(AccountId, MsgIds, BoxId) ->
     DbsRange = kvm_util:create_range_dbs(AccountId, MsgIds),
-    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(),
+    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(AccountId),
     Fun = fun(Db, Ids, ResDict) ->
                   fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp)
           end,
@@ -335,7 +335,7 @@ normalize_view_results(JObj, Acc) ->
 %% @private
 %% @doc Normalize fetch/update bulk result
 %% Note: Optional checks message belonging to the BoxId
-%% Note: It always returns a dict which contains secceeded and failed
+%% Note: It always returns a dict which contains succeeded and failed
 %%       messages operation
 %% @end
 %%--------------------------------------------------------------------
@@ -358,10 +358,7 @@ normalize_bulk_results1(_Method, _BoxId, _, [], Dict) ->
     Dict;
 normalize_bulk_results1(Method, BoxId, RetenTimestamp, [JObj | JObjs], Dict) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
-    IsPrior = is_prior_to_retention(
-                kzd_box_message:utc_seconds(kz_json:get_value(<<"doc">>, JObj))
-                                   ,RetenTimestamp
-               ),
+    IsPrior = is_prior_to_retention(kzd_box_message:utc_seconds(kz_json:get_value(<<"doc">>, JObj)), RetenTimestamp),
     NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
                   andalso kz_json:get_value(<<"error">>, JObj)
               of
