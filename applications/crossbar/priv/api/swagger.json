@@ -24570,7 +24570,8 @@
                             "description": "Default media file format for Callflow modules",
                             "type": "string"
                         }
-                    }
+                    },
+                    "type": "object"
                 },
                 "calls_consume_tokens": {
                     "default": true,
@@ -24681,7 +24682,7 @@
                         },
                         "message_retention_duration": {
                             "default": 93,
-                            "description": "callflow message retention duration",
+                            "description": "Voicemail message retention duration in days",
                             "type": "integer"
                         },
                         "migrate_interaccount_delay_ms": {
@@ -24714,7 +24715,8 @@
                             "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
                             "type": "string"
                         }
-                    }
+                    },
+                    "type": "object"
                 }
             },
             "type": "object"
@@ -30256,7 +30258,7 @@
                 },
                 "delete_after_notify": {
                     "default": false,
-                    "description": "Delete the voicemail after the notification has been sent (Voicemail is not stored in the database if this option is selected)",
+                    "description": "Move the voicemail to delete folder after the notification has been sent",
                     "type": "boolean"
                 },
                 "is_setup": {
@@ -30340,7 +30342,7 @@
                 },
                 "save_after_notify": {
                     "default": false,
-                    "description": "Save the voicemail after the notification has been sent (This setting will override delete_after_notify)",
+                    "description": "Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify)",
                     "type": "boolean"
                 },
                 "skip_greeting": {

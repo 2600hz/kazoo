@@ -10,7 +10,8 @@
                     "description": "Default media file format for Callflow modules",
                     "type": "string"
                 }
-            }
+            },
+            "type": "object"
         },
         "calls_consume_tokens": {
             "default": true,
@@ -121,7 +122,7 @@
                 },
                 "message_retention_duration": {
                     "default": 93,
-                    "description": "callflow message retention duration",
+                    "description": "Voicemail message retention duration in days",
                     "type": "integer"
                 },
                 "migrate_interaccount_delay_ms": {
@@ -154,7 +155,8 @@
                     "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
                     "type": "string"
                 }
-            }
+            },
+            "type": "object"
         }
     },
     "type": "object"

@@ -137,7 +137,8 @@ fetch(AccountId, MessageId, BoxId) ->
             case kvm_util:check_msg_belonging(BoxId, JObj) of
                 'false' -> {'error', 'not_found'};
                 'true' ->
-                    {'ok', kvm_util:maybe_set_deleted_by_retention(JObj)}
+                    RetentionSeconds = kvm_util:retention_seconds(AccountId),
+                    {'ok', kvm_util:maybe_set_deleted_by_retention(JObj, RetentionSeconds)}
             end;
         {'error', _E} = Error ->
             lager:debug("failed to open message ~s:~p", [MessageId, _E]),
