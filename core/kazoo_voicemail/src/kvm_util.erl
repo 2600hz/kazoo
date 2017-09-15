@@ -147,7 +147,7 @@ retention_seconds(_) ->
 
 -spec retention_days(ne_binary()) -> integer().
 retention_days(AccountId) ->
-    case kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]) of
+    case kapps_account_config:get_pos_integer(AccountId, ?CF_CONFIG_CAT, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]) of
         'undefined' -> ?RETENTION_DAYS;
         Days -> try kz_term:to_integer(Days) catch _:_ -> ?RETENTION_DAYS end
     end.
