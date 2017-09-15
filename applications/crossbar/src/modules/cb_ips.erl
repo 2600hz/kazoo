@@ -435,7 +435,7 @@ release_ip(Context, Id) ->
 -spec delete_ip(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_ip(Context, IP) ->
     case kz_ip:delete(IP) of
-        {'ok', Deleted} -> crossbar_doc:handle_json_success(Context, Deleted);
+        {'ok', Deleted} -> crossbar_doc:handle_json_success(Deleted, Context);
         {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, IP, Context)
     end.
 
