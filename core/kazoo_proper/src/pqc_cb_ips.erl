@@ -17,8 +17,8 @@
         ,remove_ip/3
         ,fetch_ip/3
         ,assign_ip/3
-        ,fetch_hosts/2
-        ,fetch_zones/2
+        ,fetch_hosts/1
+        ,fetch_zones/1
         ,fetch_assigned/2
         ,create_ip/2
         ,delete_ip/2
@@ -76,6 +76,7 @@ list_ips(API, AccountId) ->
             ?DEBUG("listing IPs errored: ~p", [_E]),
             {'error', 'not_found'};
         Response ->
+            ?DEBUG("listing IPs: ~s", [Response]),
             {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
     end.
 
@@ -162,15 +163,13 @@ assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
             {'ok', kz_json:get_json_value(<<"data">>, kz_json:decode(Response))}
     end.
 
--spec fetch_hosts(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
+-spec fetch_hosts(pqc_cb_api:state()) ->
                          {'ok', ne_binaries()} |
                          {'error', 'not_found'}.
-fetch_hosts(_API, 'undefined') ->
-    {'error', 'not_found'};
-fetch_hosts(API, AccountId) ->
+fetch_hosts(API) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
-                                ,ip_url(AccountId, "hosts")
+                                ,ip_url("hosts")
                                 ,pqc_cb_api:request_headers(API)
                                 )
     of
@@ -181,15 +180,13 @@ fetch_hosts(API, AccountId) ->
             {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
     end.
 
--spec fetch_zones(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
+-spec fetch_zones(pqc_cb_api:state()) ->
                          {'ok', ne_binaries()} |
                          {'error', 'not_found'}.
-fetch_zones(_API, 'undefined') ->
-    {'error', 'not_found'};
-fetch_zones(API, AccountId) ->
+fetch_zones(API) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
-                                ,ip_url(AccountId, "zones")
+                                ,ip_url("zones")
                                 ,pqc_cb_api:request_headers(API)
                                 )
     of
@@ -221,14 +218,14 @@ fetch_assigned(API, AccountId) ->
 
 -spec create_ip(pqc_cb_api:state(), dedicated()) ->
                        {'ok', kz_json:object()} |
-                       {'error', 'not_found'}.
+                       {'error', 'not_found' | 'conflict'}.
 create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
     Data = kz_json:from_list([{<<"ip">>, IP}
                              ,{<<"host">>, Host}
                              ,{<<"zone">>, Zone}
                              ]),
     Envelope = pqc_cb_api:create_envelope(Data),
-    case pqc_cb_api:make_request([201]
+    case pqc_cb_api:make_request([201, 409]
                                 ,fun kz_http:put/3
                                 ,ips_url()
                                 ,pqc_cb_api:request_headers(API)
@@ -239,7 +236,13 @@ create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
             ?DEBUG("create ip errored: ~p", [_E]),
             {'error', 'not_found'};
         Response ->
-            {'ok', kz_json:get_value([<<"data">>, <<"_read_only">>], kz_json:decode(Response))}
+            JObj = kz_json:decode(Response),
+            case kz_json:get_integer_value(<<"error">>, JObj) of
+                'undefined' ->
+                    {'ok', kz_json:get_value([<<"data">>, <<"_read_only">>], JObj)};
+                409 ->
+                    {'error', 'conflict'}
+            end
     end.
 
 -spec delete_ip(pqc_cb_api:state(), dedicated()) ->
@@ -256,10 +259,15 @@ delete_ip(API, ?DEDICATED(IP, _Host, _Zone)) ->
             ?DEBUG("delete ip errored: ~p", [_E]),
             {'error', 'not_found'};
         Response ->
-            {'ok', kz_json:get_list_value(<<"data">>, kz_json:decode(Response))}
+            JObj = kz_json:decode(Response),
+            case kz_json:get_integer_value(<<"error">>, JObj) of
+                404 -> {'error', 'not_found'};
+                _ -> {'ok', kz_json:get_list_value(<<"data">>, JObj)}
+            end
     end.
 
 -define(ACCOUNT_NAMES, [<<"account_for_ips">>]).
+-define(DEDICATED_IPS, [?DEDICATED(<<"1.2.3.4">>, <<"a.host.com">>, <<"zone-1">>)]).
 
 -spec cleanup() -> any().
 -spec cleanup(pqc_cb_api:state()) -> any().
@@ -272,6 +280,7 @@ cleanup() ->
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
     _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
+    _ = [delete_ip(API, Dedicated) || Dedicated <- ?DEDICATED_IPS],
 
     pqc_cb_api:cleanup(API).
 
@@ -301,18 +310,19 @@ seq() ->
         AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
         ?INFO("created account ~s", [AccountId]),
 
-        {'ok', []} = list_ips(API, AccountId),
+        {'ok', IPs} = list_ips(API, AccountId),
+        ?INFO("ips available: ~p", [IPs]),
 
         {'ok', Assigned} = assign_ip(API, AccountId, IP),
-        ?INFO("assigned ~s: ~p", [IP, Assigned]),
+        ?INFO("assigned ~p: ~p", [IP, Assigned]),
 
         {'ok', Fetched} = fetch_ip(API, AccountId, IP),
-        ?INFO("fetched ~s: ~p", [IP, Fetched]),
+        ?INFO("fetched ~p: ~p", [IP, Fetched]),
 
-        {'ok', Hosts} = fetch_hosts(API, AccountId),
+        {'ok', Hosts} = fetch_hosts(API),
         ?INFO("hosts: ~p", [Hosts]),
 
-        {'ok', Zones} = fetch_zones(API, AccountId),
+        {'ok', Zones} = fetch_zones(API),
         ?INFO("zones: ~p", [Zones]),
 
         {'ok', AssignedIPs} = fetch_assigned(API, AccountId),
@@ -350,8 +360,8 @@ command(Model, 'true') ->
           ,{'call', ?MODULE, 'remove_ip', [API, AccountId, ip()]}
           ,{'call', ?MODULE, 'fetch_ip', [API, AccountId, ip()]}
           ,{'call', ?MODULE, 'assign_ip', [API, AccountId, ip()]}
-          ,{'call', ?MODULE, 'fetch_hosts', [API, AccountId]}
-          ,{'call', ?MODULE, 'fetch_zones', [API, AccountId]}
+          ,{'call', ?MODULE, 'fetch_hosts', [API]}
+          ,{'call', ?MODULE, 'fetch_zones', [API]}
           ,{'call', ?MODULE, 'fetch_assigned', [API, AccountId]}
           ,{'call', ?MODULE, 'create_ip', [API, ip()]}
           ,{'call', ?MODULE, 'delete_ip', [API, ip()]}
@@ -362,7 +372,7 @@ account_name() ->
     oneof(?ACCOUNT_NAMES).
 
 ip() ->
-    oneof([?DEDICATED(<<"1.2.3.4">>, <<"a.host.com">>, <<"zone-1">>)]).
+    oneof(?DEDICATED_IPS).
 
 ips() ->
     non_empty(ip()).
@@ -404,9 +414,9 @@ next_state(Model, _APIResp, {'call', ?MODULE, 'assign_ip', [_API, AccountId, ?DE
                            ,{fun pqc_kazoo_model:assign_dedicated_ip/3, [AccountId, IP]}
                            ]
                           );
-next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_hosts', [_API, _AccountId]}) ->
+next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_hosts', [_API]}) ->
     Model;
-next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_zones', [_API, _AccountId]}) ->
+next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_zones', [_API]}) ->
     Model;
 next_state(Model, _APIResp, {'call', ?MODULE, 'fetch_assigned', [_API, _AccountId]}) ->
     Model;
@@ -468,18 +478,17 @@ postcondition(Model, {'call', ?MODULE, 'assign_ip', [_API, AccountId, ?DEDICATED
              )
         andalso all_requested_are_listed(AccountId, [Dedicated], [AssignedIP]);
 postcondition(_Model, {'call', ?MODULE, 'assign_ip', [_API, _AccountId, _Dedicated]}, {'error', 'not_found'}) -> 'true';
-postcondition(Model, {'call', ?MODULE, 'fetch_hosts', [_API, AccountId]}, {'ok', Hosts}) ->
-    lists:all(fun({_IP, #{'host' := Host}}) ->
-                      lists:member(Host, Hosts)
-              end
-             ,pqc_kazoo_model:account_ips(Model, AccountId)
-             );
-postcondition(Model, {'call', ?MODULE, 'fetch_zones', [_API, AccountId]}, {'ok', Zones}) ->
-    lists:all(fun({_IP, #{'zone' := Zone}}) ->
-                      lists:member(Zone, Zones)
-              end
-             ,pqc_kazoo_model:account_ips(Model, AccountId)
-             );
+postcondition(Model, {'call', ?MODULE, 'fetch_zones', [_API]}, {'ok', Zones}) ->
+    lists:usort(Zones) =:= lists:usort(pqc_kazoo_model:dedicated_zones(Model));
+postcondition(Model, {'call', ?MODULE, 'fetch_zones', [_API]}, {'error', 'not_found'}) ->
+    [] =:= pqc_kazoo_model:dedicated_zones(Model);
+postcondition(Model, {'call', ?MODULE, 'fetch_hosts', [_API]}, {'ok', Hosts}) ->
+    lists:usort(Hosts) =:= lists:usort(pqc_kazoo_model:dedicated_hosts(Model));
+postcondition(Model, {'call', ?MODULE, 'fetch_hosts', [_API]}, {'error', 'not_found'}) ->
+    [] =:= pqc_kazoo_model:dedicated_hosts(Model);
+
+postcondition(_Model, {'call', ?MODULE, 'fetch_assigned', [_API, 'undefined']}, {'error', 'not_found'}) ->
+    'true';
 postcondition(Model, {'call', ?MODULE, 'fetch_assigned', [_API, AccountId]}, {'ok', []}) ->
     [] =:= pqc_kazoo_model:account_ips(Model, AccountId);
 postcondition(Model, {'call', ?MODULE, 'fetch_assigned', [_API, AccountId]}, {'ok', ListedIPs}) ->
@@ -491,6 +500,12 @@ postcondition(Model, {'call', ?MODULE, 'fetch_assigned', [_API, AccountId]}, {'o
 postcondition(Model, {'call', ?MODULE, 'fetch_assigned', [_API, AccountId]}, {'error', 'not_found'}) ->
     [] =:= pqc_kazoo_model:account_ips(Model, AccountId);
 postcondition(Model, {'call', ?MODULE, 'create_ip', [_API, ?DEDICATED(IP, _, _)]}, {'ok', _CreatedIP}) ->
+    'undefined' =:= pqc_kazoo_model:dedicated_ip(Model, IP);
+postcondition(Model, {'call', ?MODULE, 'create_ip', [_API, ?DEDICATED(IP, _, _)]}, {'error', 'conflict'}) ->
+    'undefined' =/= pqc_kazoo_model:dedicated_ip(Model, IP);
+postcondition(Model, {'call', ?MODULE, 'delete_ip', [_API, ?DEDICATED(IP, _, _)]}, {'ok', _Deleted}) ->
+    'undefined' =/= pqc_kazoo_model:dedicated_ip(Model, IP);
+postcondition(Model, {'call', ?MODULE, 'delete_ip', [_API, ?DEDICATED(IP, _, _)]}, {'error', 'not_found'}) ->
     'undefined' =:= pqc_kazoo_model:dedicated_ip(Model, IP).
 
 -spec correct() -> any().
