@@ -6,23 +6,6 @@ The IPs API allows users to manage the IP addresses assigned to their accounts. 
 
 The common use case is adding proxy IPs that must be used when routing calls to upstream resources. If the upstream requires traffic to come from a specific set of IPs, adding those IPs here will cause outbound calls to carriers to be routed through the IP(s) supplied.
 
-#### Adding IPs to the system
-
-IPs need to be configured by the system admin using the `sup kazoo_ips_maintenance add {IP} {ZONE} {HOST}` command:
-
-```shell
-sup kazoo_ips_maintenance add "1.2.3.4" "us-east" "proxy1.us-east.myswitch.com"
-added IP 1.2.3.4 to available dedicated ips
-```
-
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`{IP}` | The IP address of the proxy | `string` |   | `true`
-`{ZONE}` | The Kazoo zone this proxy is assigned  | `string` |   | `true`
-`{HOST}` | The Hostname associated with the IP | `string` | | `true`
-
-Once you've added IPs to the system, you can assign those to different customer accounts to proxy their calls through using the below Crossbar APIs.
-
 #### Schema
 
 IP addresses assigned to the account
@@ -245,4 +228,37 @@ curl -v -X GET \
     "revision": "{REVISION}",
     "status": "success"
 }
+```
+
+
+### Adding IPs to the system
+
+#### Via SUP
+
+IPs can be configured by the system admin using the `sup kazoo_ips_maintenance add {IP} {ZONE} {HOST}` command:
+
+```shell
+sup kazoo_ips_maintenance add "1.2.3.4" "us-east" "proxy1.us-east.myswitch.com"
+added IP 1.2.3.4 to available dedicated ips
+```
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`{IP}` | The IP address of the proxy | `string` |   | `true`
+`{ZONE}` | The Kazoo zone this proxy is assigned  | `string` |   | `true`
+`{HOST}` | The Hostname associated with the IP | `string` | | `true`
+
+Once you've added IPs to the system, you can assign those to different customer accounts to proxy their calls through using the below Crossbar APIs.
+
+#### Via API
+
+This requires a superduper admin auth token:
+
+> PUT /v2/ips
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"ip":"1.2.3.4", "zone":"us-east", "host":"proxy1.us-east.myswitch.com"}}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
 ```
