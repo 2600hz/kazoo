@@ -12,7 +12,7 @@
         ]).
 
 %% Crossbar API requests
--export([list_ips/2
+-export([list_ips/1
         ,assign_ips/3
         ,remove_ip/3
         ,fetch_ip/3
@@ -60,15 +60,13 @@ ip_url(IP) ->
 ip_url(AccountId, IP) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "ips", kz_term:to_list(IP)], "/").
 
--spec list_ips(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
+-spec list_ips(pqc_cb_api:state()) ->
                       {'ok', kz_json:objects()} |
                       {'error', 'not_found'}.
-list_ips(_API, 'undefined') ->
-    {'error', 'not_found'};
-list_ips(API, AccountId) ->
+list_ips(API) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
-                                ,ips_url(AccountId)
+                                ,ips_url()
                                 ,pqc_cb_api:request_headers(API)
                                 )
     of
@@ -310,7 +308,7 @@ seq() ->
         AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
         ?INFO("created account ~s", [AccountId]),
 
-        {'ok', IPs} = list_ips(API, AccountId),
+        {'ok', IPs} = list_ips(API),
         ?INFO("ips available: ~p", [IPs]),
 
         {'ok', Assigned} = assign_ip(API, AccountId, IP),
@@ -355,7 +353,7 @@ command(Model, 'true') ->
     AccountId = pqc_cb_accounts:symbolic_account_id(Model, AccountName),
 
     oneof([pqc_cb_accounts:command(Model, AccountName)
-          ,{'call', ?MODULE, 'list_ips', [API, AccountId]}
+          ,{'call', ?MODULE, 'list_ips', [API]}
           ,{'call', ?MODULE, 'assign_ips', [API, AccountId, ips()]}
           ,{'call', ?MODULE, 'remove_ip', [API, AccountId, ip()]}
           ,{'call', ?MODULE, 'fetch_ip', [API, AccountId, ip()]}
@@ -386,7 +384,7 @@ initial_state() ->
 -spec next_state(pqc_kazoo_model:model(), any(), any()) -> pqc_kazoo_model:model().
 next_state(Model, APIResp, {'call', _, 'create_account', _Args}=Call) ->
     pqc_cb_accounts:next_state(Model, APIResp, Call);
-next_state(Model, _APIResp, {'call', ?MODULE, 'list_ips', [_API, _AccountId]}) ->
+next_state(Model, _APIResp, {'call', ?MODULE, 'list_ips', [_API]}) ->
     Model;
 next_state(Model, _APIResp, {'call', ?MODULE, 'assign_ips', [_API, AccountId, Dedicateds]}) ->
     pqc_util:transition_if(Model
@@ -439,16 +437,17 @@ precondition(_Model, _Call) -> 'true'.
 -spec postcondition(pqc_kazoo_model:model(), any(), any()) -> boolean().
 postcondition(Model, {'call', _, 'create_account', _Args}=Call, APIResult) ->
     pqc_cb_accounts:postcondition(Model, Call, APIResult);
-postcondition(Model, {'call', ?MODULE, 'list_ips', [_API, AccountId]}, {'ok', []}) ->
-    [] =:= pqc_kazoo_model:account_ips(Model, AccountId);
-postcondition(Model, {'call', ?MODULE, 'list_ips', [_API, AccountId]}, {'ok', ListedIPs}) ->
+postcondition(Model, {'call', ?MODULE, 'list_ips', [_API]}, {'ok', []}) ->
+    [] =:= pqc_kazoo_model:dedicated_ips(Model);
+postcondition(Model, {'call', ?MODULE, 'list_ips', [_API]}, {'ok', ListedIPs}) ->
     lists:all(fun({IP, IPInfo}) ->
                       is_ip_listed(IP, IPInfo, ListedIPs)
               end
-             ,pqc_kazoo_model:account_ips(Model, AccountId)
+             ,pqc_kazoo_model:dedicated_ips(Model)
              );
-postcondition(Model, {'call', ?MODULE, 'list_ips', [_API, AccountId]}, {'error', 'not_found'}) ->
-    [] =:= pqc_kazoo_model:account_ips(Model, AccountId);
+postcondition(Model, {'call', ?MODULE, 'list_ips', [_API]}, {'error', 'not_found'}) ->
+    [] =:= pqc_kazoo_model:dedicated_ips(Model);
+
 postcondition(Model, {'call', ?MODULE, 'assign_ips', [_API, AccountId, Dedicateds]}, {'ok', ListedIPs}) ->
     lists:all(fun({IP, IPInfo}) ->
                       not is_ip_listed(IP, IPInfo, ListedIPs)
