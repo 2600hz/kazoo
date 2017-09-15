@@ -299,7 +299,25 @@ seq() ->
 
         AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
         AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
-        ?INFO("created account ~s", [AccountId])
+        ?INFO("created account ~s", [AccountId]),
+
+        {'ok', []} = list_ips(API, AccountId),
+
+        {'ok', Assigned} = assign_ip(API, AccountId, IP),
+        ?INFO("assigned ~s: ~p", [IP, Assigned]),
+
+        {'ok', Fetched} = fetch_ip(API, AccountId, IP),
+        ?INFO("fetched ~s: ~p", [IP, Fetched]),
+
+        {'ok', Hosts} = fetch_hosts(API, AccountId),
+        ?INFO("hosts: ~p", [Hosts]),
+
+        {'ok', Zones} = fetch_zones(API, AccountId),
+        ?INFO("zones: ~p", [Zones]),
+
+        {'ok', AssignedIPs} = fetch_assigned(API, AccountId),
+        ?INFO("assigned ips: ~p", [AssignedIPs])
+
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
@@ -310,7 +328,8 @@ seq() ->
         delete_ip(API, IP),
         pqc_cb_api:cleanup(API)
     end,
-    ?INFO("seq finished running").
+    ?INFO("seq finished running: ~p", [API]),
+    io:format("seq finished running: ~p", [API]).
 
 -spec command(any()) -> proper_types:type().
 command(Model) ->
