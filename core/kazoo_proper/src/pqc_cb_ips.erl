@@ -440,11 +440,7 @@ postcondition(Model, {'call', _, 'create_account', _Args}=Call, APIResult) ->
 postcondition(Model, {'call', ?MODULE, 'list_ips', [_API]}, {'ok', []}) ->
     [] =:= pqc_kazoo_model:dedicated_ips(Model);
 postcondition(Model, {'call', ?MODULE, 'list_ips', [_API]}, {'ok', ListedIPs}) ->
-    lists:all(fun({IP, IPInfo}) ->
-                      is_ip_listed(IP, IPInfo, ListedIPs)
-              end
-             ,pqc_kazoo_model:dedicated_ips(Model)
-             );
+    are_all_ips_listed(pqc_kazoo_model:dedicated_ips(Model), ListedIPs, 'false');
 postcondition(Model, {'call', ?MODULE, 'list_ips', [_API]}, {'error', 'not_found'}) ->
     [] =:= pqc_kazoo_model:dedicated_ips(Model);
 
@@ -576,16 +572,33 @@ assign_dedicated_ips(Model, AccountId, Dedicateds) ->
                ,Dedicateds
                ).
 
+-spec are_all_ips_listed([{ne_binary(), pqc_kazoo_model:dedicated_ip()}], kz_json:objects(), boolean()) ->
+                                boolean().
+are_all_ips_listed([], [], _CheckHost) -> 'true';
+are_all_ips_listed(_ModelIPs, [], _CheckHost) -> 'false';
+are_all_ips_listed([], _ListedIPs, _CheckHost) -> 'false';
+are_all_ips_listed(ModelIPs, ListedIPs, CheckHost) ->
+    lists:all(fun({IP, IPInfo}) ->
+                      is_ip_listed(IP, IPInfo, ListedIPs, CheckHost)
+              end
+             ,ModelIPs
+             ).
+
 -spec is_ip_listed(ne_binary(), pqc_kazoo_model:dedicated_ip(), kz_json:objects()) ->
                           boolean().
 is_ip_listed(IP, IPInfo, ListedIPs) ->
+    is_ip_listed(IP, IPInfo, ListedIPs, 'true').
+
+is_ip_listed(IP, IPInfo, ListedIPs, CheckHost) ->
     Host = maps:get('host', IPInfo, 'undefined'),
     Zone = maps:get('zone', IPInfo, 'undefined'),
 
     lists:any(fun(ListedIP) ->
                       IP =:= kz_json:get_ne_binary_value(<<"ip">>, ListedIP)
-                          andalso Host =:= kz_json:get_ne_binary_value(<<"host">>, ListedIP)
                           andalso Zone =:= kz_json:get_ne_binary_value(<<"zone">>, ListedIP)
+                          andalso (CheckHost =:= 'false'
+                                   orelse Host =:= kz_json:get_ne_binary_value(<<"host">>, ListedIP)
+                                  )
               end
              ,ListedIPs
              ).
