@@ -65,6 +65,7 @@
         "maximum_range": {
             "default": 2682000,
             "description": "crossbar maximum range",
+            "minimum": 1,
             "type": "integer"
         },
         "pagination_page_size": {
