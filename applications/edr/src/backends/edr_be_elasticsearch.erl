@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(edr_be_elasticsearch).
 
--behaviour(gen_backend).
+-behaviour(gen_edr_backend).
 
 -include("../edr.hrl").
 
@@ -26,9 +26,8 @@
 -type state() :: #state{}.
 
 -spec start_link(backend()) -> startlink_ret().
-start_link(Args) ->
-    gen_backend:start_link(?MODULE, Args, []).
-
+start_link(Backend) ->
+    gen_edr_backend:start_link(?MODULE, Backend).
 
 -spec init(backend())-> init_ret(state()).
 init(#backend{options=ConnectionInfo})->
@@ -45,9 +44,8 @@ init(#backend{options=ConnectionInfo})->
 init(_Other)->
     'ignore'.
 
-
--spec push(state(), event()) -> work_result().
-push(#state{options=Opts, url=Url}, #event{timestamp=Timestamp, body=Data})->
+-spec push(state(), edr_event()) -> work_result().
+push(#state{options=Opts, url=Url}, #edr_event{timestamp=Timestamp, body=Data})->
     RawBody = kz_json:from_list([{<<"Timestamp">>, Timestamp}
                                 ,{<<"Edr">>, Data}
                                 ]),

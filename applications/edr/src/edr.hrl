@@ -1,16 +1,19 @@
--ifndef(EDR_HRL).
--define(EDR_HRL, 'true').
+-ifndef(EDR_APP_HRL).
+-define(EDR_APP_HRL, 'true').
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include_lib("kazoo_edr/include/edr.hrl").
 
 -define(APP_NAME, <<"edr">>).
 -define(APP_VERSION, <<"4.0.0">>).
+
 -record(backend, {name         :: ne_binary()
                  ,type         :: ne_binary()
                  ,enabled      :: boolean()
                  ,options      :: kz_json:object()
+                 ,bindings     :: [edr_binding()]
                  }).
 
 -type backend() :: #backend{}.
@@ -19,17 +22,4 @@
                      {'ok', S, timeout() | 'hibernate'} |
                      {'stop', any()} |
                      'ignore'.
-
--record(event, {account_id     :: api_binary()
-               ,account_tree   :: api_ne_binaries()
-               ,app_name       :: ne_binary()
-               ,app_version    :: ne_binary()
-               ,body           :: ne_binary()
-               ,id             :: ne_binary()
-               ,severity       :: edr_severity()
-               ,timestamp      :: ne_binary()
-               ,gregorian_time :: pos_integer()
-               ,verbosity      :: edr_verbosity()
-               }).
--type event() :: #event{}.
 -endif.

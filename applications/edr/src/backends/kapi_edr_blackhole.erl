@@ -48,6 +48,7 @@ event_v(JObj) -> event_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
+    %% TODO: Use a better routing key that lets us filter better
     Verbosity = props:get_value(<<"verbosity">>, Props, <<"*">>),
     Exact = props:get_is_true(<<"exact">>, Props, 'false'),
     AccountId = props:get_value(<<"account_id">>, Props, <<"*">>),

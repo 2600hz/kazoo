@@ -5,8 +5,9 @@
 %%% @end
 %%% @contributors
 %%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
+%%%    Conversant Ltd (Max Lay)
 %%%-------------------------------------------------------------------
--module(gen_backend).
+-module(gen_edr_backend).
 
 -behaviour(gen_server).
 
@@ -16,10 +17,6 @@
         ,stop/1
         ]).
 
--export([formatter/2
-        ,formatter_options/1
-        ]).
-
 %% gen_server callbacks
 -export([init/1
         ,handle_call/3
@@ -27,11 +24,10 @@
         ,handle_info/2
         ,terminate/2
         ,code_change/3
-        ,start_link/3
+        ,start_link/2
         ]).
 
 -record(state, {module_state :: any()
-               ,tags :: kz_json:object()
                ,module :: module()
                ,name :: ne_binary()
                }).
@@ -41,46 +37,39 @@
 %%% Callbacks
 %%%-------------------------------------------------------------------
 -callback(init(backend())-> init_ret(ModuleState :: any())).
--callback(push(ModuleState :: any(), Event :: event()) -> work_result()).
+-callback(push(ModuleState :: any(), Event :: edr_event()) -> work_result()).
 -callback(stop(ModuleState :: any(), Reason :: any()) -> 'ok').
 -callback(async_response_handler(Response :: any()) -> work_result()).
 %%-------------------------------------------------------------------
 %%
 %%-------------------------------------------------------------------
--spec start_link(module(), backend(), any()) -> startlink_ret().
-start_link(Module, #backend{}=Args, Opts)->
-    gen_server:start_link(?MODULE, {Module, Args}, Opts);
-start_link(_Module,_Other,_Opts) ->
+-spec start_link(module(), backend()) -> startlink_ret().
+start_link(Module, #backend{}=Backend)->
+    gen_server:start_link(?MODULE, {Module, Backend}, []);
+start_link(_Module, _Other) ->
     lager:error("not started: bad backend format: ~p", [_Other]),
     'ignore'.
 
 -spec init({module(), backend()})-> init_ret(state()).
-init({Mod, #backend{enabled='true', name=Name} = Backend})->
+init({Mod, #backend{name=Name, bindings=Bindings}=Backend})->
     case Mod:init(Backend) of
-        {'ok', ModState} -> {'ok', #state{module_state=ModState, module=Mod, name=Name}};
-        _ -> 'ignore'
+        {'ok', ModState} ->
+            edr_bindings:bind(Bindings, ?MODULE, 'push', self()),
+            {'ok', #state{module_state=ModState, module=Mod, name=Name}};
+        _ ->
+            'ignore'
     end;
 init(_Other) ->
+    lager:error("init ignore ~p", [_Other]),
     'ignore'.
 
--spec push(pid(), event())-> 'ok'.
+-spec push(pid(), edr_event())-> 'ok'.
 push(Pid, Event)->
     gen_server:cast(Pid, {'push', Event}).
 
 -spec stop(pid())-> 'ok'.
 stop(Pid)->
     gen_server:cast(Pid, 'stop').
-
--spec formatter(kz_json:object(), module()) -> module().
-formatter(Options, Default)->
-    case kz_json:get_value([<<"formatter">>, <<"type">>], Options) of
-        'undefined' -> Default;
-        Type -> kz_term:to_atom("edr_fmt_" ++ binary_to_list(Type))
-    end.
-
--spec formatter_options(kz_json:object()) -> kz_json:object().
-formatter_options(Options)->
-    kz_json:get_value([<<"formatter">>, <<"options">>], Options, kz_json:new()).
 
 %%--------------------------------------------------------------------
 %% Func: handle_call/3
@@ -96,13 +85,8 @@ handle_call(_Request, _From, _State) ->
 %% Returns: {noreply, State}
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
-handle_cast({'push', Event=#event{}}, State=#state{module_state=ModState, module=Mod}) ->
-    lager:error("push"),
-    WorkResult = case should_push(State, Event) of
-                     'true' -> Mod:push(ModState, Event);
-                     _False -> 'ok'
-                 end,
-    case WorkResult of
+handle_cast({'push', Event=#edr_event{}}, State=#state{module_state=ModState, module=Mod}) ->
+    case Mod:push(ModState, Event) of
         {'exit', Reason}-> {'stop', Reason, State};
         {'error',Reason}-> {'noreply', handle_error(Reason, State)};
         _Ok -> {'noreply', State}
@@ -152,9 +136,3 @@ code_change(_OldVsn, _State, _Extra) ->
 handle_error(Reason, #state{name=N, module=M} = State)->
     lager:debug("error in ~s|~s|~p: ~s", [N, M, node(), Reason]),
     State.
-
-%%------------------------------------------------------------------
-%% Internal functions
-%%------------------------------------------------------------------
-%% Always push
-should_push(_, _)-> 'true'.

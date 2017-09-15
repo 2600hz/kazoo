@@ -2,13 +2,14 @@
  [
   {description, "Event Data Record application"},
   {vsn, "4.0.0"},
-  {registered, [edr_sup, edr_listener]},
+  {registered, [edr_sup]},
   {modules, []},
   {applications, [ kernel
                  , stdlib
 
                  , kazoo_apps
                  , kazoo_auth
+                 , kazoo_edr
 
                  , lager
                  , ranch

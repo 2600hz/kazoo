@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(edr_be_skel).
 
--behaviour(gen_backend).
+-behaviour(gen_edr_backend).
 
 -include("../edr.hrl").
 
@@ -24,8 +24,8 @@
 -type state() :: #state{}.
 
 -spec start_link(backend()) -> startlink_ret().
-start_link(Args) ->
-    gen_backend:start_link(?MODULE, Args, []).
+start_link(Backend) ->
+    gen_edr_backend:start_link(?MODULE, Backend).
 
 -spec init(backend())-> init_ret(state()).
 init(#backend{})->
@@ -33,7 +33,7 @@ init(#backend{})->
 init(_Other)->
     'ignore'.
 
--spec push(state(), event()) -> 'ok'.
+-spec push(state(), edr_event()) -> 'ok'.
 push(_State, _Event)->
     'ok'.
 

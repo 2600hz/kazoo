@@ -13,4 +13,4 @@
 %%%-------------------------------------------------------------------
 %%% Callbacks
 %%%-------------------------------------------------------------------
--callback(format_event(Options :: kz_json:object(), Event :: event()) -> ne_binary()).
+-callback(format_event(Options :: kz_json:object(), Event :: edr_event()) -> ne_binary()).

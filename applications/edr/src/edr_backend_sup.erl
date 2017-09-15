@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
+%%%    Conversant Ltd (Max Lay)
 %%%-------------------------------------------------------------------
 -module(edr_backend_sup).
 
@@ -12,7 +13,7 @@
 
 -export([init/1
         ,start_link/0
-        ,start_backend/1, start_backend/3
+        ,start_backend/1
         ,stop_backend/1
         ,get_running_backends/0
         ]).
@@ -25,28 +26,22 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
--spec get_running_backends()-> [{Id :: ne_binary(), pid(), [module()]}].
-get_running_backends()->
+-spec get_running_backends() -> [{Id :: ne_binary(), pid(), [module()]}].
+get_running_backends() ->
     [{Id, Pid, Module} || {Id, Pid, _Type, Module} <- supervisor:which_children(?SERVER), Pid =/= 'undefined'].
 
+-spec registered_backends() -> [backend()].
+registered_backends() ->
+    [edr_util:backend_from_json(Backend) || Backend <- edr_maintenance:registered_backends()].
+
 -spec start_backend(ne_binary()) -> {'error', 'not_registred'} | sup_startchild_ret().
--spec start_backend(ne_binary(), ne_binary(), kz_json:object()) -> sup_startchild_ret().
-start_backend(Name)->
-    Backends = kapps_config:get(<<"edr">>, <<"backends">>, kz_json:new()),
-    case kz_json:get_value(Name, Backends) of
-        'undefined' -> {'error', 'not_registred'};
-        JBackend ->
-            Type = kz_json:get_value(<<"type">>, JBackend),
-            JOpts = kz_json:get_value(<<"options">>, JBackend),
-            start_backend(Name, Type, JOpts)
-    end.
-start_backend(Name, Type, Opts)->
+start_backend(Name) when is_binary(Name) ->
+    case [B || B <- registered_backends(), B#backend.name =:= Name] of
+        [] -> {'error', 'not_registred'};
+        [Backend] -> start_backend(Backend)
+    end;
+start_backend(#backend{type=Type, name=Name}=Backend) ->
     Module = kz_term:to_atom("edr_be_" ++ binary_to_list(Type)),
-    Backend = #backend{name=Name
-                      ,type=Type
-                      ,options=Opts
-                      ,enabled='true'
-                      },
     lager:info("starting backend ~s", [Module]),
     supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(Name, Module, [Backend], 'transient')).
 

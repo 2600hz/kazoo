@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(edr_be_file).
 
--behaviour(gen_backend).
+-behaviour(gen_edr_backend).
 
 -include("../edr.hrl").
 
@@ -28,16 +28,14 @@
 -type state() :: #state{}.
 
 -spec start_link(backend()) -> startlink_ret().
-start_link(Args) ->
-    gen_backend:start_link(?MODULE, Args, []).
+start_link(Backend) ->
+    gen_edr_backend:start_link(?MODULE, Backend).
 
 -spec init(backend())-> init_ret(state()).
 init(#backend{options=Options})->
     %% Default to JSON formatter
-    Formatter = gen_backend:formatter(Options, 'edr_fmt_json'),
-    FormatterOptions = gen_backend:formatter_options(Options),
-    lager:debug("formatter ~s", [Formatter]),
-    lager:debug("formatter options ~s", [kz_json:encode(FormatterOptions)]),
+    Formatter = edr_util:formatter(Options, 'edr_fmt_json'),
+    FormatterOptions = edr_util:formatter_options(Options),
     case kz_json:get_value(<<"path">>, Options) of
         'undefined' ->
             lager:error("no path, stopping backend"),
@@ -50,7 +48,7 @@ init(#backend{options=Options})->
 init(_Other)->
     'ignore'.
 
--spec push(state(), event()) -> 'ok' | {'error', any()}.
+-spec push(state(), edr_event()) -> 'ok' | {'error', any()}.
 push(#state{pid=Pid, formatter=Formatter, formatter_options=FormatterOptions}, Event)->
     case file:write(Pid, io_lib:format("~s~n", [Formatter:format_event(FormatterOptions, Event)])) of
         'ok' -> 'ok';

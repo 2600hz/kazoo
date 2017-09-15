@@ -13,6 +13,7 @@
         ,bindings/2
         ]).
 
+-include_lib("kazoo_edr/include/edr.hrl").
 -include("blackhole/src/blackhole.hrl").
 
 -spec init() -> any().

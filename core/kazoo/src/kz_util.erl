@@ -18,6 +18,7 @@
         ,format_resource_selectors_db/1
         ,normalize_account_name/1
         ,account_update/1, account_update/2
+        ,account_tree/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
@@ -584,6 +585,15 @@ account_update(Account, UpdateFun) ->
         {'ok', AccountJObj} ->
             account_update(UpdateFun(AccountJObj))
     end.
+
+-spec account_tree(api_binary()) -> api_binaries() | 'undefined'.
+account_tree('undefined') ->
+  'undefined';
+account_tree(AccountId) ->
+  case kz_account:fetch(AccountId) of
+    {'ok', Doc} -> kz_account:tree(Doc);
+    _ -> 'undefined'
+  end.
 
 %%--------------------------------------------------------------------
 %% @public

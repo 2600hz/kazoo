@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(edr_be_blackhole).
 
--behaviour(gen_backend).
+-behaviour(gen_edr_backend).
 
 -include("../edr.hrl").
 
@@ -25,21 +25,19 @@
 
 -spec start_link(backend()) -> startlink_ret().
 start_link(Args) ->
-    gen_backend:start_link(?MODULE, Args, []).
+    gen_edr_backend:start_link(?MODULE, Args).
 
 -spec init(backend())-> init_ret(state()).
 init(#backend{})->
-    %% Do not persist
     lager:info("starting bh_edr"),
-    'ok' = blackhole_maintenance:start_module(<<"bh_edr">>, 'false'),
     {'ok', #state{}};
 init(_Other)->
     'ignore'.
 
--spec push(state(), event()) -> 'ok'.
-push(_State, #event{account_id='undefined'})->
+-spec push(state(), edr_event()) -> 'ok'.
+push(_State, #edr_event{account_id='undefined'})->
     'ok';
-push(_State, Event=#event{app_name=AppName, app_version=AppVersion})->
+push(_State, Event=#edr_event{app_name=AppName, app_version=AppVersion})->
     FormatterOptions = kz_json:from_list([{<<"include_metadata">>, 'true'}
                                          ,{<<"normalize">>, 'false'}
                                          ,{<<"encode">>, 'false'}
