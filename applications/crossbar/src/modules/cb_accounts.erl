@@ -1016,14 +1016,12 @@ start_key(Context) ->
 
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
-    cb_context:set_resp_envelope(
-      cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
-                                ,lists:foldl(
-                                   fun fix_envelope_fold/2
-                                            ,cb_context:resp_envelope(Context)
-                                            ,[<<"start_key">>, <<"next_start_key">>]
-                                  )
-     ).
+    RespData = lists:reverse(cb_context:resp_data(Context)),
+    RespEnv = lists:foldl(fun fix_envelope_fold/2
+                         ,cb_context:resp_envelope(Context)
+                         ,[<<"start_key">>, <<"next_start_key">>]
+                         ),
+    cb_context:set_resp_envelope(cb_context:set_resp_data(Context, RespData), RespEnv).
 
 -spec fix_envelope_fold(binary(), kz_json:object()) -> kz_json:object().
 fix_envelope_fold(Key, JObj) ->
