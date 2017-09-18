@@ -20,7 +20,6 @@
 
 -include("edr.hrl").
 
--define(CHILDREN, []).
 -define(SERVER, ?MODULE).
 
 %% ===================================================================
@@ -40,15 +39,23 @@ start_backend(Name) when is_binary(Name) ->
         [] -> {'error', 'not_registred'};
         [Backend] -> start_backend(Backend)
     end;
-start_backend(#backend{type=Type, name=Name}=Backend) ->
-    Module = kz_term:to_atom("edr_be_" ++ binary_to_list(Type)),
-    lager:info("starting backend ~s", [Module]),
-    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(Name, Module, [Backend], 'transient')).
+start_backend(#backend{name=Name}=Backend) ->
+    lager:info("starting backend ~s", [Name]),
+    supervisor:start_child(?SERVER, startup_child(Backend)).
 
 -spec stop_backend(ne_binary()) -> 'ok' | {'error', any()}.
 stop_backend(Name)->
     _ = supervisor:terminate_child(?SERVER, Name),
     supervisor:delete_child(?SERVER, Name).
+
+-spec get_startup_children() -> [supervisor:child_spec()].
+get_startup_children() ->
+    [startup_child(B) || B <- registered_backends(), kz_term:is_true(B#backend.enabled)].
+
+-spec startup_child(backend()) -> supervisor:child_spec().
+startup_child(#backend{type=Type, name=Name}=Backend) ->
+    Module = kz_term:to_atom("edr_be_" ++ binary_to_list(Type)),
+    ?WORKER_NAME_ARGS_TYPE(Name, Module, [Backend], 'transient').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -80,4 +87,4 @@ init([]) ->
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, get_startup_children()}}.
