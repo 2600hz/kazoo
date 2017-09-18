@@ -45,6 +45,11 @@
         ,transfer_history/1
         ,transfer_source/1
         ,user_agent/1
+
+        ,core_uuid/1
+        ,fetch_uuid/1
+        ,fetch_winning_pid/1
+        ,switch_url/1, switch_uri/1
         ]).
 
 -include("kz_documents.hrl").
@@ -413,13 +418,6 @@ to_tag(Props) ->
 origination_call_id(Props) ->
     props:get_value(<<"variable_sip_origination_call_id">>, Props).
 
--spec hostname(data()) -> api_ne_binary().
--spec hostname(data(), Default) -> ne_binary() | Default.
-hostname(Props) ->
-    hostname(Props, 'undefined').
-hostname(Props, Default) ->
-    props:get_ne_binary_value(<<"FreeSWITCH-Hostname">>, Props, Default).
-
 -spec conference_name(data()) -> api_ne_binary().
 conference_name(Props) ->
     props:get_ne_binary_value(<<"Conference-Name">>, Props).
@@ -438,3 +436,52 @@ join_time(Props) ->
     join_time(Props, kz_time:current_tstamp()).
 join_time(Props, Default) ->
     props:get_integer_value(<<"Join-Time">>, Props, Default).
+
+-spec core_uuid(data()) -> api_binary().
+core_uuid(Props) ->
+    props:get_value(<<"Core-UUID">>, Props).
+
+-spec fetch_uuid(data()) -> api_binary().
+fetch_uuid(Props) ->
+    props:get_first_defined([<<"Fetch-UUID">>
+                            ,<<"variable_Fetch-UUID">>
+                            ]
+                           ,Props
+                           ).
+
+-spec fetch_winning_pid(data()) -> api_binary().
+fetch_winning_pid(Props) ->
+    props:get_first_defined([<<"Fetch-Winning-PID">>
+                            ,<<"variable_Fetch-Winning-PID">>
+                            ]
+                           ,Props
+                           ).
+
+-spec switch_url(data()) -> api_binary().
+switch_url(Props) ->
+    case props:get_first_defined([<<"Switch-URL">>, <<"variable_Switch-URL">>], Props) of
+        undefined -> props:get_first_defined([<<"variable_sofia_profile_url">>
+                                             ,<<"sofia_profile_url">>
+                                             ],Props);
+        SwitchURL -> SwitchURL
+    end.
+
+-spec switch_uri(data()) -> api_binary().
+switch_uri(Props) ->
+    case props:get_first_defined([<<"Switch-URI">>, <<"variable_Switch-URI">>], Props) of
+        undefined -> case switch_url(Props) of
+                         undefined -> undefined;
+                         SwitchURL -> case binary:split(SwitchURL, <<"@">>) of
+                                          [_, SwitchURIHost] -> <<"sip:", SwitchURIHost/binary>>;
+                                          _Else -> undefined
+                                      end
+                     end;
+        SwitchURI -> SwitchURI
+    end.
+
+-spec hostname(data()) -> api_ne_binary().
+-spec hostname(data(), Default) -> ne_binary() | Default.
+hostname(Props) ->
+    hostname(Props, 'undefined').
+hostname(Props, Default) ->
+    props:get_ne_binary_value(<<"FreeSWITCH-Hostname">>, Props, Default).

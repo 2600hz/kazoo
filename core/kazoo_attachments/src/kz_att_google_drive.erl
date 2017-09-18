@@ -33,30 +33,6 @@
 %% API functions
 %% ====================================================================
 
--spec encode_multipart([tuple()], binary()) -> binary().
-encode_multipart(Parts, Boundary) ->
-    encode_multipart(Parts, Boundary, <<>>).
-
--spec encode_multipart([tuple()], binary(), binary()) -> binary().
-encode_multipart([], Boundary, Encoded) ->
-    Close = <<"\r\n--" , Boundary/binary, "--">>,
-    <<Encoded/binary, Close/binary>>;
-encode_multipart([{Body, Headers} | Parts], Boundary, Encoded) ->
-    Delimiter = <<"\r\n--" ,Boundary/binary, "\r\n">>,
-    H = encode_multipart_headers(Headers),
-    Acc = <<Encoded/binary, Delimiter/binary, H/binary, Body/binary>>,
-    encode_multipart(Parts, Boundary, Acc).
-
--spec encode_multipart_headers(kz_proplist()) -> binary().
-encode_multipart_headers(Headers) ->
-    encode_multipart_headers(Headers, <<>>).
-
--spec encode_multipart_headers(kz_proplist(), binary()) -> binary().
-encode_multipart_headers([], Encoded) -> <<Encoded/binary, "\r\n">>;
-encode_multipart_headers([{K, V} | Headers], Encoded) ->
-    Acc = <<Encoded/binary, K/binary, ": ", V/binary, "\r\n">>,
-    encode_multipart_headers(Headers, Acc).
-
 -spec get_json_from_url(ne_binary(), kz_proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
     case kz_http:get(kz_term:to_list(Url), ReqHeaders, [{ssl, [{versions, ['tlsv1.2']}]}]) of
@@ -120,64 +96,57 @@ resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
             end
     end.
 
--spec resolve_ids(binary(), binary()) -> binaries().
-resolve_ids(Path, Authorization) ->
-    lager:debug("resolving path ~s", [Path]),
-    Ids = binary:split(Path, <<"/">>, [global ,trim_all]),
-    resolve_ids(Ids, [<<"root">>], Authorization).
-
--spec combined_path(api_binary(), api_binary()) -> api_binary().
-combined_path('undefined', 'undefined') -> 'undefined';
-combined_path('undefined', Path) -> Path;
-combined_path(Path, 'undefined') -> Path;
-combined_path(BasePath, OtherPath) ->
-    filename:join(BasePath, OtherPath).
-
--spec get_path(map()) -> api_binary().
-get_path(Settings) ->
-    BasePath = maps:get(folder_base_path, Settings, undefined),
-    OtherPath = maps:get(folder_path, Settings, undefined),
-    combined_path(BasePath, OtherPath).
-
--spec resolve_path(map(), binary()) -> binaries().
-resolve_path(Settings, Authorization) ->
-    case get_path(Settings) of
-        undefined ->
-            lager:debug("no folder_path, saving to root"),
-            [<<"root">>];
-        Path -> resolve_ids(Path, Authorization)
-    end.
-
--spec resolve_folder(map(), binary()) -> list().
-resolve_folder(Settings, Authorization) ->
+-spec resolve_folder(map(), ne_binaries(), binary()) -> ne_binaries().
+resolve_folder(Settings, PathTokens, Authorization) ->
     case maps:get(folder_id, Settings, undefined) of
         undefined ->
             lager:debug("no folder_id defined, looking for folder_path"),
-            [lists:last(resolve_path(Settings, Authorization))];
+            [lists:last(resolve_ids(PathTokens, [<<"root">>], Authorization))];
         Path -> [Path]
     end.
 
+-spec resolve_path(map(), attachment_info(), binary()) -> {ne_binaries(), ne_binary()}.
+resolve_path(Settings, AttInfo, Authorization) ->
+    Url = gdrive_format_url(Settings, AttInfo),
+    PathTokens = binary:split(Url, <<"/">>, ['global', 'trim_all']),
+    Name = lists:last(PathTokens),
+    Folder = resolve_folder(Settings, lists:droplast(PathTokens), Authorization),
+    {Folder, Name}.
+
+-spec gdrive_default_fields() -> kz_proplist().
+gdrive_default_fields() ->
+    [{group, [{arg, <<"id">>}
+             ,<<"_">>
+             ,{arg, <<"attachment">>}
+             ]}
+    ].
+
+-spec gdrive_format_url(map(), attachment_info()) -> ne_binary().
+gdrive_format_url(Map, AttInfo) ->
+    kz_att_util:format_url(Map, AttInfo, gdrive_default_fields()).
+
 -spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
-put_attachment(#{oauth_doc_id := TokenDocId}=Settings, _DbName, _DocId, AName, Contents, Options) ->
+put_attachment(#{oauth_doc_id := TokenDocId}=Settings, DbName, DocId, AName, Contents, Options) ->
     {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_TOKEN_OPTIONS),
     CT = kz_mime:from_filename(AName),
-    Folder = resolve_folder(Settings, Authorization),
-    case send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents) of
+    {Folder, Name} = resolve_path(Settings, {DbName, DocId, AName}, Authorization),
+    case send_attachment(Authorization, Folder, TokenDocId, Name, CT, Options, Contents) of
         {error, _E} when Folder /= [<<"root">>] ->
-            send_attachment(Authorization, [<<"root">>], TokenDocId, AName, CT, Options, Contents);
-        {ok, _}=OK -> OK
+            send_attachment(Authorization, [<<"root">>], TokenDocId, Name, CT, Options, Contents);
+        Else -> Else
     end.
 
 -spec gdrive_post(binary(), kz_proplist(), binary()) -> gdrive_result().
 gdrive_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->
-            case kz_json:get_value(<<"id">>, kz_json:decode(ResponseBody)) of
-                undefined -> ok;
-                ContentId -> {ok, ContentId, ResponseHeaders}
+            BodyJObj = kz_json:decode(ResponseBody),
+            case kz_json:get_value(<<"id">>, BodyJObj) of
+                undefined -> {error, 'return_id_missing'};
+                ContentId -> {ok, ContentId, [{<<"body">>, BodyJObj} | kz_att_util:headers_as_binaries(ResponseHeaders)]}
             end;
         _E ->
-            lager:debug("GDRIVE ERROR ~p", [_E]),
+            lager:error("GDRIVE ERROR ~p", [_E]),
             {'error', 'google_drive_error'}
     end.
 
@@ -207,7 +176,7 @@ send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents)
 
     Boundary = <<"------", (kz_binary:rand_hex(16))/binary>>,
 
-    Body = encode_multipart([JsonPart, FilePart], Boundary),
+    Body = kz_att_util:encode_multipart([JsonPart, FilePart], Boundary),
     ContentType = kz_term:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
     Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, ContentType}
@@ -215,27 +184,12 @@ send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents)
     case gdrive_post(?DRV_MULTIPART_FILE_URL, Headers, Body) of
         {ok, ContentId, ResponseHeaders} ->
             Data = base64:encode(term_to_binary({TokenDocId, ContentId})),
-            Metadata = [ convert_kv(KV) || KV <- ResponseHeaders, filter_kv(KV)],
             {'ok', [{'attachment', [{<<"gdrive">>, Data}
-                                   ,{<<"metadata">>, kz_json:from_list(Metadata)}
+                                   ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}
                                    ]}
                    ]};
         Else -> Else
     end.
-
-
--spec filter_kv(tuple()) -> boolean().
-filter_kv({"x-guploader-uploadid", _V}) -> 'true';
-filter_kv(_KV) -> 'false'.
-
--spec convert_kv(tuple()) -> tuple().
-convert_kv({K, V})
-  when is_list(K) ->
-    convert_kv({kz_term:to_binary(K), V});
-convert_kv({K, V})
-  when is_list(V) ->
-    convert_kv({K, kz_term:to_binary(V)});
-convert_kv(KV) -> KV.
 
 -spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) ->
                               {'ok', iodata()} |
@@ -251,7 +205,7 @@ fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
             case kz_http:get(Url, Headers) of
                 {'ok', 200, _ResponseHeaders, ResponseBody} -> {'ok', ResponseBody};
                 _E ->
-                    lager:debug("GDRIVE FETCH ERROR ~p", [_E]),
+                    lager:error("GDRIVE FETCH ERROR ~p", [_E]),
                     {'error', 'not_found'}
             end
     end.

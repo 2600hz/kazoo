@@ -24,17 +24,40 @@ schema for AWS attachment entry
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `handler` | What AWS service to use | `string('s3')` |   | `true`
-`name` | Friendly name for this configuration | `string()` |   | `false`
 `settings.bucket` | Bucket name to store data to | `string()` |   | `true`
+`settings.bucket_access_method` | how to access the host. | `string('auto' | 'host' | 'path')` |   | `false`
 `settings.bucket_after_host` | use bucket after host as part of url | `boolean()` |   | `false`
-`settings.folder_base_path` | Base path to use as a prefix when saving files | `string()` |   | `false`
-`settings.folder_path` | Custom path to use as a prefix when saving files | `string()` |   | `false`
 `settings.host` | the s3 host | `string()` |   | `false`
 `settings.key` | AWS Key to use | `string()` |   | `true`
 `settings.port` | port to use | `integer()` |   | `false`
+`settings.region` | the region where the bucket is located | `string()` |   | `false`
 `settings.scheme` | scheme to use to access host | `string('http' | 'https')` |   | `false`
 `settings.secret` | AWS Secret to use | `string()` |   | `true`
 `settings` | AWS API settings | `object()` |   | `true`
+
+##### storage.attachment.azure
+
+schema for azure attachment entry
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`handler` | What handler module to use | `string('azure')` |   | `true`
+`settings.account` | the azure account name | `string()` |   | `true`
+`settings.container` | the azure container where the files should be saved | `string()` |   | `true`
+`settings.key` | the azure api key | `string()` |   | `true`
+`settings` | Settings for the Azure account | `object()` |   | `true`
+
+##### storage.attachment.dropbox
+
+schema for dropbox attachment entry
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`handler` | What handler module to use | `string('dropbox')` |   | `true`
+`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true`
+`settings` | Settings for the DropBox account | `object()` |   | `true`
 
 ##### storage.attachment.google_drive
 
@@ -44,12 +67,30 @@ schema for google drive attachment entry
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `handler` | What handler module to use | `string('google_drive')` |   | `true`
-`name` | Friendly name for this configuration | `string()` |   | `false`
-`settings.folder_base_path` | base folder path | `string()` |   | `false`
 `settings.folder_id` | Folder ID in which to store the file, if any | `string()` |   | `false`
-`settings.folder_path` | folder path | `string()` |   | `false`
-`settings.oauth_doc_id` | Doc ID in the system 'oauth' database | `string()` |   | `true`
+`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true`
 `settings` | Settings for the Google Drive account | `object()` |   | `true`
+
+##### storage.attachment.google_storage
+
+schema for google storage attachment entry
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`handler` | What handler module to use | `string('google_storage')` |   | `true`
+`settings` | Settings for the Google Storage account | `object()` |   | `true`
+
+##### storage.attachment.onedrive
+
+schema for OneDrive attachment entry
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`handler` | What handler module to use | `string('onedrive')` |   | `true`
+`settings.oauth_doc_id` | Doc ID in the system 'auth' database | `string()` |   | `true`
+`settings` | Settings for the OneDrive account | `object()` |   | `true`
 
 ##### storage.attachments
 
@@ -58,7 +99,11 @@ Keys are 32-character identifiers to be used in storage plans
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`^[a-z,0-9]{32}$` | Configuration for the supported storage backends | [#/definitions/storage.attachment.aws](#storageattachment.aws) | [#/definitions/storage.attachment.google_drive](#storageattachment.google_drive) |   | `false`
+`^[a-z,0-9]{32}$.field_list` | list of field to compose destination url | `array()` |   | `false`
+`^[a-z,0-9]{32}$.field_separator` | toplevel, field separator to compose destination url | `string()` |   | `false`
+`^[a-z,0-9]{32}$.folder_base_path` | base folder path | `string()` |   | `false`
+`^[a-z,0-9]{32}$.name` | Friendly name for this configuration | `string()` |   | `false`
+`^[a-z,0-9]{32}$` | Configuration for the supported storage backends | `object()` |   | `false`
 
 ##### storage.connection.couchdb
 
@@ -128,6 +173,7 @@ schema for attachment ref type storage plan
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `handler` |   | `string()` |   | `false`
+`params.folder_path` | folder path | `string()` |   | `false`
 `params` |   | `object()` |   | `false`
 `stub` |   | `boolean()` |   | `false`
 
