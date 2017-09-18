@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Roman Galeev
 %%%-------------------------------------------------------------------
--module(crossbar_view).
+-module(crossbar_modb_view).
 
 -export([load/3]).
 

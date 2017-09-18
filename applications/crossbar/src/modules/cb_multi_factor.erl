@@ -138,12 +138,10 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
-    crossbar_view:load(Context
-                      ,?CB_LIST_ATTEMPT_LOG
-                      ,[{mapper, fun normalize_attempt_view_result/1}
-                       ,{key_map, <<"multi_factor">>}
-                       ]
-                      );
+    Options = [{mapper, fun normalize_attempt_view_result/1}
+              ,{key_map, <<"multi_factor">>}
+              ],
+    crossbar_modb_view:load(Context, ?CB_LIST_ATTEMPT_LOG, Options);
 validate(Context, ConfigId) ->
     case cb_context:req_nouns(Context) of
         [{<<"multi_factor">>, _}] ->
