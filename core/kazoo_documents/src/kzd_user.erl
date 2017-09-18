@@ -51,7 +51,7 @@
 email(User) ->
     email(User, 'undefined').
 email(User, Default) ->
-    kz_json:get_value(?KEY_EMAIL, User, Default).
+    kz_json:get_ne_binary_value(?KEY_EMAIL, User, Default).
 
 -spec voicemail_notification_enabled(doc()) -> boolean().
 -spec voicemail_notification_enabled(doc(), Default) -> boolean() | Default.

@@ -302,6 +302,8 @@
 -define(OPTIONAL_PASSWORD_RECOVERY_HEADERS, [<<"Account-DB">>
                                             ,<<"First-Name">>
                                             ,<<"Last-Name">>
+                                            ,<<"Timezone">>
+                                            ,<<"User-ID">>
                                                  | ?DEFAULT_OPTIONAL_HEADERS
                                             ]).
 -define(PASSWORD_RECOVERY_VALUES, [{<<"Event-Category">>, <<"notification">>}

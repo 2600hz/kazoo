@@ -15178,7 +15178,13 @@
                 "Text": {
                     "type": "string"
                 },
+                "Timezone": {
+                    "type": "string"
+                },
                 "To": {
+                    "type": "string"
+                },
+                "User-ID": {
                     "type": "string"
                 }
             },
