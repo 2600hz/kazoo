@@ -666,13 +666,10 @@ fold_bind_results([#kz_responder{module=M
             lager:debug("error: ~p", [_E]),
             E;
         {'EXIT', {'undef', [{_M, _F, _A, _}|_]}} ->
-            ST = erlang:get_stacktrace(),
-            log_undefined(M, F, length(Payload), ST),
+            lager:debug("undefined function ~s:~s/~b", [M, F, length(Payload)]),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         {'EXIT', _E} ->
-            ST = erlang:get_stacktrace(),
             lager:error("~s:~s/~p died unexpectedly: ~p", [M, F, length(Payload), _E]),
-            kz_util:log_stacktrace(ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         'ok' ->
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
@@ -717,7 +714,7 @@ log_undefined(M, F, Length, ST) ->
     kz_util:log_stacktrace(ST).
 
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
-    lager:error("unable to find function clause for ~s:~s/~b", [M, F, Length]);
+    lager:info("unable to find function clause for ~s:~s/~b", [M, F, Length]);
 log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
     lager:error("unable to find function clause for ~s:~s(~s) in ~s:~p"
                ,[RealM, RealF

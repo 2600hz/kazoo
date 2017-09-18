@@ -353,9 +353,9 @@ handle_call({'should_ignore_member_call', {AccountId, QueueId, CallId}=K}, _, #s
 handle_call({'up_next', CallId}, _, #state{strategy_state=SS
                                           ,current_member_calls=CurrentCalls
                                           }=State) ->
-    Available = ss_size(SS, 'free'),
-    Reply = up_next_fold(lists:reverse(CurrentCalls), CallId, Available),
-    {'reply', Reply, State};
+    FreeAgents = ss_size(SS, 'free'),
+    Position = call_position(CallId, lists:reverse(CurrentCalls)),
+    {'reply', FreeAgents >= Position, State};
 
 handle_call('config', _, #state{account_id=AccountId
                                ,queue_id=QueueId
@@ -395,6 +395,10 @@ handle_call('current_agents', _, #state{strategy='mi'
                                        ,strategy_state=#strategy_state{agents=L}
                                        }=State) ->
     {'reply', L, State};
+
+handle_call({'queue_position', CallId}, _, #state{current_member_calls=CurrentCalls}=State) ->
+    Position = call_position(CallId, lists:reverse(CurrentCalls)),
+    {'reply', Position, State};
 
 handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
@@ -548,6 +552,8 @@ handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
 handle_cast({'add_queue_member', JObj}, #state{account_id=AccountId
                                               ,queue_id=QueueId
                                               ,current_member_calls=CurrentCalls
+                                              ,announcements_config=AnnouncementsConfig
+                                              ,announcements_pids=AnnouncementsPids
                                               }=State) ->
     Position = length(CurrentCalls)+1,
     Call = kapps_call:set_custom_channel_var(<<"Queue-Position">>
@@ -571,7 +577,16 @@ handle_cast({'add_queue_member', JObj}, #state{account_id=AccountId
 
     acdc_util:presence_update(AccountId, QueueId, ?PRESENCE_RED_FLASH),
 
+    %% Schedule position/wait time announcements
+    AnnouncementsPids1 = case acdc_announcements_sup:maybe_start_announcements(self(), Call, AnnouncementsConfig) of
+                             'false' -> AnnouncementsPids;
+                             {'ok', Pid} ->
+                                 CallId = kapps_call:call_id(Call),
+                                 AnnouncementsPids#{CallId => Pid}
+                         end,
+
     {'noreply', State#state{current_member_calls=[Call | CurrentCalls]
+                           ,announcements_pids=AnnouncementsPids1
                            }};
 
 handle_cast({'handle_queue_member_add', JObj}, #state{current_member_calls=CurrentCalls}=State) ->
@@ -581,10 +596,9 @@ handle_cast({'handle_queue_member_add', JObj}, #state{current_member_calls=Curre
 
     {'noreply', State#state{current_member_calls = [Call | lists:keydelete(CallId, 2, CurrentCalls)]}};
 
-handle_cast({'handle_queue_member_remove', CallId}, #state{current_member_calls=CurrentCalls}=State) ->
-    lager:debug("removing call id ~s", [CallId]),
-
-    {'noreply', State#state{current_member_calls=lists:keydelete(CallId, 2, CurrentCalls)}};
+handle_cast({'handle_queue_member_remove', CallId}, State) ->
+    State1 = remove_queue_member(CallId, State),
+    {'noreply', State1};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -901,6 +915,19 @@ update_strategy_state(Srv, 'mi', #strategy_state{agents=AgentL}) ->
 update_strategy_state(Srv, L) ->
     [gen_listener:cast(Srv, {'sync_with_agent', A}) || A <- L].
 
+-spec call_position(ne_binary(), [kapps_call:call()]) -> api_integer().
+-spec call_position(ne_binary(), [kapps_call:call()], pos_integer()) -> pos_integer().
+call_position(CallId, Calls) ->
+    call_position(CallId, Calls, 1).
+
+call_position(_, [], _) ->
+    'undefined';
+call_position(CallId, [Call|Calls], Position) ->
+    case kapps_call:call_id(Call) of
+        CallId -> Position;
+        _ -> call_position(CallId, Calls, Position + 1)
+    end.
+
 -spec ss_size(strategy_state(), 'free' | 'logged_in') -> integer().
 ss_size(#strategy_state{agents=Agents}, 'logged_in') ->
     case queue:is_queue(Agents) of
@@ -919,22 +946,6 @@ ss_size(#strategy_state{agents=Agents
 ss_size(#strategy_state{agents=Agents}=SS, 'free') ->
     ss_size(SS#strategy_state{agents=queue:to_list(Agents)}, 'free').
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns true if CallId is within the first Max elements of Calls
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec up_next_fold([kapps_call:call()], ne_binary(), integer()) -> boolean().
-up_next_fold(Calls, _, Max) when Max >= length(Calls) -> 'true';
-up_next_fold(_, _, 0) -> 'false';
-up_next_fold([Call|Calls], CallId, Max) ->
-    case kapps_call:call_id(Call) of
-        CallId -> 'true';
-        _ -> up_next_fold(Calls, CallId, Max-1)
-    end.
-
 maybe_start_queue_workers(QueueSup, AgentCount) ->
     WSup = acdc_queue_sup:workers_sup(QueueSup),
     case acdc_queue_workers_sup:worker_count(WSup) of
@@ -947,4 +958,47 @@ update_properties(QueueJObj, State) ->
     State#state{
       enter_when_empty=kz_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
                ,moh=kz_json:get_ne_value(<<"moh">>, QueueJObj)
+               ,announcements_config=announcements_config(QueueJObj)
      }.
+
+-spec announcements_config(kz_json:object()) -> kz_proplist().
+announcements_config(Config) ->
+    kz_json:recursive_to_proplist(
+      kz_json:get_json_value(<<"announcements">>, Config, kz_json:new())).
+
+-spec cancel_position_announcements(kapps_call:call() | 'false', map()) ->
+                                           map().
+cancel_position_announcements('false', Pids) -> Pids;
+cancel_position_announcements(Call, Pids) ->
+    CallId = kapps_call:call_id(Call),
+    case catch maps:get(CallId, Pids) of
+        {'badkey', _} ->
+            lager:debug("did not have the announcements for call ~s", [CallId]),
+            Pids;
+        Pid ->
+            lager:debug("cancelling announcements for ~s", [CallId]),
+            Pids1 = maps:remove(CallId, Pids),
+            acdc_announcements_sup:stop_announcements(Pid),
+
+            %% Attempt to skip remaining announcement media, but don't flush hangups
+            NoopId = kz_datamgr:get_uuid(),
+            Command = [{<<"Application-Name">>, <<"noop">>}
+                      ,{<<"Msg-ID">>, NoopId}
+                      ,{<<"Insert-At">>, <<"now">>}
+                      ,{<<"Filter-Applications">>, [<<"play">>, <<"say">>, <<"play">>]}
+                      ],
+            kapps_call_command:send_command(Command, Call),
+            Pids1
+    end.
+
+-spec remove_queue_member(api_binary(), mgr_state()) -> mgr_state().
+remove_queue_member(CallId, #state{current_member_calls=CurrentCalls
+                                  ,announcements_pids=AnnouncementsPids
+                                  }=State) ->
+    lager:debug("removing call id ~s", [CallId]),
+
+    AnnouncementsPids1 = cancel_position_announcements(lists:keyfind(CallId, 2, CurrentCalls), AnnouncementsPids),
+
+    State#state{current_member_calls=lists:keydelete(CallId, 2, CurrentCalls)
+               ,announcements_pids=AnnouncementsPids1
+               }.

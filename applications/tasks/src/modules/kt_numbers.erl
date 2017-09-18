@@ -440,8 +440,11 @@ list_number(N) ->
      }.
 
 -spec account_name(api_ne_binary()) -> api_ne_binary().
-account_name(undefined) -> undefined;
-account_name(AccountId) -> quote(kapps_util:get_account_name(AccountId)).
+account_name(MaybeAccountId) ->
+    case kz_account:fetch_name(MaybeAccountId) of
+        undefined -> undefined;
+        Name -> quote(Name)
+    end.
 
 -spec quote(api_ne_binary()) -> api_ne_binary().
 quote(undefined) -> undefined;

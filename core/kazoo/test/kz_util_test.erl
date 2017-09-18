@@ -149,10 +149,6 @@ is_account_expired_test_() ->
     [?_assertEqual(false, kz_util:is_account_expired(undefined))
     ].
 
-get_account_realm_test_() ->
-    [?_assertEqual(undefined, kz_util:get_account_realm(undefined, ?AN_ACCOUNT_ID))
-    ].
-
 try_load_module_test_() ->
     [?_assertEqual(false, kz_util:try_load_module(undefined))
     ,?_assertEqual(false, kz_util:try_load_module("undefined"))
@@ -203,7 +199,7 @@ account_formats_test_() ->
     TS = kz_time:current_tstamp(),
     Now = os:timestamp(),
     Year = kz_term:to_binary(Y),
-    Month = kz_time:pad_month(M),
+    Month = kz_date:pad_month(M),
 
     MODbId = list_to_binary([AccountId, "-", Year, Month]),
     MODbEn = list_to_binary([AccountDbEn, "-", Year, Month]),

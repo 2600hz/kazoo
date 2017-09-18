@@ -18,6 +18,7 @@
 
 -export([get_first_defined/2, get_first_defined/3]).
 -export([get_binary_boolean/2, get_binary_boolean/3]).
+-export([get_boolean_value/2, get_boolean_value/3]).
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_number_value/2, get_number_value/3]).
 -export([get_float_value/2, get_float_value/3]).
@@ -39,6 +40,7 @@
         ,is_valid_json_object/1
         ,is_json_term/1
         ]).
+-export([is_defined/2]).
 
 -export([filter/2, filter/3
         ,filtermap/2
@@ -76,6 +78,9 @@
 -export([from_list/1, from_list_recursive/1, merge_jobjs/2]).
 
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
+-ifdef(TEST).
+-export([fixture/2]).
+-endif.
 
 -export([normalize_jobj/1
         ,normalize_jobj/3
@@ -184,6 +189,10 @@ log_big_binary(<<Bin:500/binary, Rest/binary>>) ->
 log_big_binary(Bin) ->
     lager:debug("bin: ~w", [Bin]).
 
+-spec is_defined(path(), object()) -> boolean().
+is_defined(Path, JObj) ->
+    'undefined' =/= get_value(Path, JObj).
+
 -spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
@@ -274,7 +283,7 @@ recursive_from_list(X) when is_list(X) ->
         'false' -> [recursive_from_list(Xn) || Xn <- X]
     end;
 recursive_from_list(X) when is_binary(X) -> X;
-recursive_from_list({_Y, _M, _D}=Date) -> kz_time:iso8601_date(Date);
+recursive_from_list({_Y, _M, _D}=Date) -> kz_date:to_iso8601_extended(Date);
 recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
 recursive_from_list(_Else) -> null.
 
@@ -484,8 +493,10 @@ order_by(Path, Ids, ListOfJObjs)
         ],
     [erase(Id) || Id <- Ids].
 
--spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
--spec to_proplist(path(), object() | objects()) -> json_proplist() | json_proplists().
+-spec to_proplist(object() | objects()) ->
+                         json_proplist() | json_proplists() | flat_proplist().
+-spec to_proplist(path(), object() | objects()) ->
+                         json_proplist() | json_proplists() | flat_proplist().
 %% Convert a json object to a proplist
 %% only top-level conversion is supported
 to_proplist(JObjs) when is_list(JObjs) -> [to_proplist(JObj) || JObj <- JObjs];
@@ -677,6 +688,16 @@ get_atom_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> safe_cast(Value, Default, fun kz_term:to_atom/1)
+    end.
+
+-spec get_boolean_value(path(), object() | objects()) -> api_atom().
+-spec get_boolean_value(path(), object() | objects(), Default) -> atom() | Default.
+get_boolean_value(Key, JObj) ->
+    get_boolean_value(Key, JObj, 'undefined').
+get_boolean_value(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        'undefined' -> Default;
+        Value -> safe_cast(Value, Default, fun kz_term:to_boolean/1)
     end.
 
 -spec get_integer_value(path(), object() | objects()) -> api_integer().
@@ -916,11 +937,11 @@ insert_values(KVs, JObj) ->
 insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
 
--spec set_value(path(), json_term(), object() | objects()) -> object() | objects().
+-spec set_value(path(), json_term() | 'null', object() | objects()) -> object() | objects().
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
--spec set_value1(keys(), json_term(), object() | objects()) -> object() | objects().
+-spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, []) when not is_integer(Key) ->
     set_value1(Keys, Value, new());
 set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
@@ -930,7 +951,7 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
         'true' ->
             try
                 %% Create a new object with the next key as a property
-                JObjs ++ [ set_value1(T, Value, set_value1([hd(T)], [], new())) ]
+                JObjs ++ [set_value1(T, Value, set_value1([hd(T)], [], new()))]
             catch
                 %% There are no more keys in the list, add it unless not an object
                 _:_ ->
@@ -1062,8 +1083,8 @@ no_prune([K], JObj) when not is_list(JObj) ->
         [] -> new();
         L -> from_list(L)
     end;
-no_prune([K|T], Array) when is_list(Array) ->
-    {Less, [V|More]} = lists:split(kz_term:to_integer(K)-1, Array),
+no_prune([K|T], Array) when is_list(Array), is_integer(K) ->
+    {Less, [V|More]} = lists:split(K-1, Array),
     case {is_json_object(V), T, V} of
         {'true', [_|_]=Keys, JObj} ->
             Less ++ [no_prune(Keys, JObj)] ++ More;
@@ -1100,16 +1121,15 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Read a json fixture file from the filesystem into memory
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fixture_from_file(atom(), nonempty_string() | ne_binary()) ->
-                                {'ok', object()} |
-                                {'error', atom()}.
+                                    object() |
+                                    {'error', atom()}.
 
--spec load_fixture_from_file(atom(), nonempty_string() | ne_binary(), ne_binary()) ->
-                                {'ok', object()} |
-                                {'error', atom()}.
+-spec load_fixture_from_file(atom(), nonempty_string() | ne_binary(), iodata()) ->
+                                    object() |
+                                    {'error', atom()}.
 
 load_fixture_from_file(App, File) ->
     load_fixture_from_file(App, <<"couchdb">>, File).
@@ -1129,7 +1149,18 @@ load_fixture_from_file(App, Dir, File) ->
             {'error', Reason}
     end.
 
-
+-ifdef(TEST).
+-spec fixture(atom(), file:filename_all()) -> {ok,object()} | {error,any()}.
+fixture(App, Path0) when is_atom(App) ->
+    Path = filename:join(code:lib_dir(App, test), Path0),
+    io:format(user, "reading fixture from ~s\n", [Path]),
+    case file:read_file(Path) of
+        {ok, Bin} -> {ok, decode(Bin)};
+        {error, _R}=E ->
+            io:format(user, "error fetching ~s: ~p\n", [Path0, _R]),
+            E
+    end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @doc

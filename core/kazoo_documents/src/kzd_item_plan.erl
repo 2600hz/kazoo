@@ -126,10 +126,10 @@ cumulative_discount(ItemPlan) ->
 cumulative_discount(ItemPlan, Default) ->
     kz_json:get_json_value([?DISCOUNTS, ?CUMULATIVE], ItemPlan, Default).
 
--spec activation_charge(doc()) -> api_object().
--spec activation_charge(doc(), Default) -> kz_json:object() | Default.
+-spec activation_charge(doc()) -> float().
+-spec activation_charge(doc(), Default) -> float() | Default.
 activation_charge(ItemPlan) ->
-    activation_charge(ItemPlan, 0).
+    activation_charge(ItemPlan, 0.0).
 activation_charge(ItemPlan, Default) ->
     kz_json:get_float_value(?ACTIVATION_CHARGE, ItemPlan, Default).
 

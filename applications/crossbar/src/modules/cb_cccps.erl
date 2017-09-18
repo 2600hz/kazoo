@@ -46,7 +46,7 @@ init() ->
 maybe_init_db() ->
     case kz_datamgr:db_exists(<<"cccps">>) of
         'true' ->
-            _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, 'crossbar', <<"views/cccps.json">>),
+            _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, ?APP, <<"views/cccps.json">>),
             'ok';
         'false' -> init_db()
     end.
@@ -54,7 +54,7 @@ maybe_init_db() ->
 -spec init_db() -> 'ok'.
 init_db() ->
     kz_datamgr:db_create(<<"cccps">>),
-    _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, 'crossbar', <<"views/cccps.json">>),
+    _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, ?APP, <<"views/cccps.json">>),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -244,7 +244,7 @@ on_successful_validation(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

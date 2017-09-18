@@ -2,6 +2,8 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(CATCH_ALL, <<"_">>).
+-define(HARD_DELETE, 'false').
+-define(SOFT_DELETE, 'true').
 
 -type crossbar_status() :: 'success' | 'error' | 'fatal' | 'halt'.
 -type crossbar_module_result() :: {crossbar_status(), kz_proplist()} |
@@ -49,6 +51,9 @@
                    | 'width'.
 -type validator_rule() :: {validator(), list()}.
 -type validator_rules() :: [validator_rule()].
+
+-type validation_error() :: jesse_error:error_reason().
+-type validation_errors() :: [validation_error()].
 
 -type couch_doc_path() :: ne_binaries().
 -type couch_schema() :: [{couch_doc_path(), validator_rules()}].

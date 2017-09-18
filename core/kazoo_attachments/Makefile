@@ -1,9 +1,7 @@
 ROOT = ../..
 PROJECT = kazoo_attachments
 
-##EBINS = $(wildcard $(ROOT)/deps/couchbeam-*/ebin)
-
-SOURCES = src/aws/*.erl src/*.erl
+SOURCES = src/*.erl
 
 all: compile
 

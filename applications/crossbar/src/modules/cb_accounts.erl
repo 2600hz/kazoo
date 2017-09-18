@@ -26,7 +26,9 @@
         ]).
 
 -export([notify_new_account/1]).
--export([is_unique_realm/2]).
+-export([is_unique_realm/2
+        ,is_unique_account_name/2
+        ]).
 
 %% needed for API docs in cb_api_endpoints
 -export([allowed_methods_on_account/2]).
@@ -289,7 +291,7 @@ post(Context, AccountId) ->
 
     case cb_context:resp_status(Context1) of
         'success' ->
-            _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, cb_context:doc(Context1)]),
+            _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
             _ = kz_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
 
             JObj = cb_context:doc(Context1),
@@ -1138,7 +1140,7 @@ account_from_tree(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -1262,7 +1264,7 @@ load_account_db(Context, [AccountId|_]) ->
 load_account_db(Context, AccountId) when is_binary(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', JObj} ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kz_util:format_account_db(AccountId),
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
             ResellerId = kz_services:find_reseller_id(AccountId),
             cb_context:setters(Context
@@ -1273,7 +1275,8 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
                                ,{fun cb_context:set_reseller_id/2, ResellerId}
                                ]);
         {'error', 'not_found'} ->
-            Msg = kz_json:from_list([{<<"cause">>, AccountId}]),
+            Msg = kz_json:from_list([{<<"cause">>, AccountId}
+                                    ]),
             cb_context:add_system_error('bad_identifier', Msg, Context);
         {'error', _R} ->
             crossbar_util:response_db_fatal(Context)
@@ -1492,7 +1495,7 @@ maybe_is_unique_account_name(AccountId, Name) ->
         'false' -> 'true'
     end.
 
--spec is_unique_account_name(api_binary(), ne_binary()) -> boolean().
+-spec is_unique_account_name(api_ne_binary(), ne_binary()) -> boolean().
 is_unique_account_name(AccountId, Name) ->
     AccountName = kz_util:normalize_account_name(Name),
     ViewOptions = [{'key', AccountName}],
@@ -1566,7 +1569,9 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
 delete_remove_services(Context) ->
     case kz_services:delete(cb_context:account_id(Context)) of
         {'ok', _} -> delete_free_numbers(Context);
-        _ -> crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
+        _Err ->
+            lager:error("failed to delete services: ~p", [_Err]),
+            crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
     end.
 
 -spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().

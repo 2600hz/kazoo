@@ -30,11 +30,11 @@ load(Context, ViewName, Options) ->
                         ]),
     {StartKey, EndKey} = get_range(Context),
     case is_paged(Context) of
-        true ->
+        'true' ->
             PageSize = page_size(Context),
             {LastKey, JObjs} = kazoo_modb_view:get_results(AccountId, ViewName, StartKey, EndKey, PageSize, ModbViewOptions),
             format_response(Context, StartKey, LastKey, PageSize, JObjs);
-        false ->
+        'false' ->
             JObjs = kazoo_modb_view:get_results(AccountId, ViewName, StartKey, EndKey, ModbViewOptions),
             crossbar_doc:handle_datamgr_success(JObjs, Context)
     end.
@@ -114,7 +114,7 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 remove_paging(JObj) ->
     kz_json:delete_keys([<<"start_key">>, <<"page_size">>, <<"next_start_key">>], JObj).
 
--spec format_response(cb_context:context(), integer(), api_integer(), integer(), kz_json:objects()) ->
+-spec format_response(cb_context:context(), pos_integer(), api_integer(), pos_integer(), kz_json:objects()) ->
                              cb_context:context().
 format_response(Context, _, undefined, _PageSize, JObjs) ->
     Envelope = remove_paging(cb_context:resp_envelope(Context)),

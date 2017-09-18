@@ -29,7 +29,9 @@
 
 -type authz_reply() :: boolean() | {'true', kz_json:object()}.
 
--spec authorize(kz_proplist(), ne_binary(), atom()) -> authz_reply().
+-export_type([authz_reply/0]).
+
+-spec authorize(kzd_freeswitch:data(), ne_binary(), atom()) -> authz_reply().
 authorize(Props, CallId, Node) ->
     kz_util:put_callid(CallId),
     AuthorizeReply = is_mobile_device(Props, Node),
@@ -47,7 +49,7 @@ authorized_log({'true', _}) -> "";
 authorized_log('true') -> "";
 authorized_log('false') -> " not".
 
--spec kill_channel(kz_proplist(), atom()) -> 'ok'.
+-spec kill_channel(kzd_freeswitch:data(), atom()) -> 'ok'.
 -spec kill_channel(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
 
 kill_channel(Props, Node) ->
@@ -69,7 +71,7 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
 
 -spec is_mobile_device(kzd_freeswitch:data(), atom()) -> authz_reply().
 is_mobile_device(Props, Node) ->
-    kzd_freeswitch:authorizing_type(Props) =:= <<"mobile">>
+    <<"mobile">> =:=  kzd_freeswitch:authorizing_type(Props)
         orelse maybe_authorized_channel(Props, Node).
 
 -spec maybe_authorized_channel(kzd_freeswitch:data(), atom()) -> authz_reply().
@@ -287,8 +289,8 @@ rate_channel_resp(Props, Node, {'error', _R}) ->
     lager:debug("rate request lookup failed: ~p", [_R]),
 
     %% disconnect only per_minute channels
-    case kzd_freeswitch:account_billing(Props) =:= <<"per_minute">>
-        orelse kzd_freeswitch:reseller_billing(Props) =:= <<"per_minute">>
+    case <<"per_minute">> =:= kzd_freeswitch:account_billing(Props)
+        orelse <<"per_minute">> =:= kzd_freeswitch:reseller_billing(Props)
     of
         'true' -> maybe_kill_unrated_channel(Props, Node);
         'false' -> 'ok'
@@ -393,10 +395,10 @@ authz_req(Props) ->
 
 -spec outbound_flags(kzd_freeswitch:data()) -> [binary()] | 'undefined'.
 outbound_flags(Props) ->
-    case kzd_freeswitch:ccv(Props, <<"Outbound-Flags">>) of
+    case kzd_freeswitch:outbound_flags(Props) of
         'undefined' -> 'undefined';
-        Flags when is_binary(Flags) -> binary:split(Flags, <<"|">>);
-        Flags -> Flags
+        <<_/binary>> = Flags -> binary:split(Flags, <<"|">>);
+        Flags when is_list(Flags) -> Flags
     end.
 
 -spec rating_req(ne_binary(), kzd_freeswitch:data()) -> kz_proplist().

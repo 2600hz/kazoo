@@ -286,8 +286,17 @@ maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
     case lists:member(AuthType, ?AUTZH_TYPES_FOR_OUTBOUND)
         andalso kz_endpoint:get(AuthId, AccountDb)
     of
-        {'ok', Endpoint} -> kz_json:get_value(<<"outbound_flags">>, Endpoint);
+        {'ok', Endpoint} -> get_outbound_flags(Endpoint);
         _ -> 'undefined'
+    end.
+
+-spec get_outbound_flags(kz_json:object()) -> api_binary().
+get_outbound_flags(Endpoint) ->
+%%% TODO: without a kapps_call we can not support dynamic
+%%%     flags yet
+    case kz_device:outbound_static_flags(Endpoint) of
+        [] -> 'undefined';
+        Flags -> Flags
     end.
 
 -spec send_response(j5_request:request()) -> 'ok'.

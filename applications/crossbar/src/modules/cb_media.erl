@@ -119,7 +119,8 @@ resource_exists(?LANGUAGES, _Language) -> 'true';
 resource_exists(?PROMPTS, _PromptId) -> 'true';
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
--spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context()) -> boolean() |
+                                         {'halt', cb_context:context()}.
 authorize(Context) ->
     authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
 
@@ -516,12 +517,12 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
 maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
     Context.
 
--spec delete_type(boolean() | cb_context:context()) -> 'permanent' | 'soft'.
+-spec delete_type(boolean() | cb_context:context()) -> ?HARD_DELETE | ?SOFT_DELETE.
 delete_type('true') ->
-    'permanent';
+    ?HARD_DELETE;
 
 delete_type('false') ->
-    'soft';
+    ?SOFT_DELETE;
 
 delete_type(Context) ->
     Prompt = kzd_media:is_prompt(cb_context:resp_data(Context)),
@@ -887,7 +888,7 @@ maybe_add_prompt_fields(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->

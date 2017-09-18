@@ -40,6 +40,7 @@ endif
 ERLC_OPTS += -Iinclude -Isrc -I../ +'{parse_transform, lager_transform}'
 ## Use pedantic flags when compiling apps from applications/ & core/
 ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec
+#ERLC_OPTS += +warn_untyped_record
 
 ELIBS = $(ERL_LIBS):$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
 
@@ -63,12 +64,12 @@ ebin/$(PROJECT).app: $(SOURCES)
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 
-json: JSON = $(if $(wildcard priv/), $(shell find priv/ -name '*.json'))
+json: JSON = $(shell find . -name '*.json')
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 
 
-compile-test: clean-test $(COMPILE_MOAR) test/$(PROJECT).app
+compile-test: clean-test $(COMPILE_MOAR) test/$(PROJECT).app json
 
 test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(TEST_SOURCES)

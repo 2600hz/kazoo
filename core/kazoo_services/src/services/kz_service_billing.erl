@@ -7,10 +7,11 @@
 %%% VCCS Telecom
 %%%-------------------------------------------------------------------
 -module(kz_service_billing).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(SERVICE_CATEGORY, <<"billing">>).
 

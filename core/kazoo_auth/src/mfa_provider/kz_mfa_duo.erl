@@ -109,7 +109,7 @@ verify_response(#{<<"integration_key">> := IKey
                  ,<<"secret_key">> := SKey
                  ,<<"application_secret_key">> := AKey
                  }=Identity, SigResponse) ->
-    lager:debug("verifing duo payload ~s", [SigResponse]),
+    lager:debug("verifying duo payload ~s", [SigResponse]),
     case binary:split(SigResponse, ?AUTH_PART_SEP, ['global']) of
         ?SIG_RESP(AuthSig, AppSig) ->
             AuthUser = parse_value(IKey, SKey, AuthSig, ?AUTH_PREFIX),

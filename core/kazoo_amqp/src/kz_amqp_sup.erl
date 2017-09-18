@@ -49,6 +49,7 @@
          ,{'name', {'local', Pool}}
          ,{'size', Size}
          ,{'max_overflow', Overflow}
+         ,{'strategy', 'fifo'}
          ,{'neg_resp_threshold', ?POOL_THRESHOLD}
          ,{'amqp_broker', Broker}
          ,{'amqp_queuename_start', Pool}
@@ -83,7 +84,8 @@ pools() ->
 pool_name() ->
     case get('$amqp_pool') of
         'undefined' -> ?POOL_NAME;
-        Name -> Name
+        Name -> lager:debug("using pool with name ~s", [Name]),
+                Name
     end.
 
 -spec add_amqp_pool(atom() | binary(), binary(), integer(), integer()) -> sup_startchild_ret().
@@ -176,6 +178,7 @@ init([]) ->
                ,{'name', {'local', ?POOL_NAME}}
                ,{'size', PoolSize}
                ,{'max_overflow', PoolOverflow}
+               ,{'strategy', 'fifo'}
                ,{'neg_resp_threshold', PoolThreshold}
                ],
 

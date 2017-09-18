@@ -2,17 +2,14 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include("knm_phone_number.hrl").
 
--define(APP, kazoo_number_manager).
+-define(APP, 'kazoo_number_manager').
 -define(APP_VERSION, <<"4.0.0">>).
--define(APP_NAME, atom_to_binary(?APP, utf8)).
+-define(APP_NAME, atom_to_binary(?APP, 'utf8')).
 
 -define(CACHE_NAME, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
-
--define(PORT_IN_MODULE_NAME,
-        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)).
 
 -define(IS_US_TOLLFREE(Prefix)
        ,Prefix == <<"800">>
@@ -43,25 +40,29 @@
             orelse Prefix == <<"88*">>
        ).
 
-
 -define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
 -define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
 
--define(LOCAL_FEATURE_OVERRIDE,
-        kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"local_feature_override">>, 'false')).
-
--define(FEATURES_ALLOWED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)).
-
--define(FEATURES_DENIED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)).
-
 -define(DEFAULT_FEATURES_ALLOWED_SYSTEM, ?ALL_KNM_FEATURES).
--define(FEATURES_ALLOWED_SYSTEM(Default),
-        kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
 
+-define(PORT_IN_MODULE_NAME
+       ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)
+       ).
+-define(FEATURES_ALLOWED_RESELLER(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)
+       ).
+-define(FEATURES_DENIED_RESELLER(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)
+       ).
+-define(FEATURES_ALLOWED_SYSTEM(Default)
+       ,kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)
+       ).
+-define(LOCAL_FEATURE_OVERRIDE
+       ,kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"local_feature_override">>, 'false')
+       ).
 
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 -define(START_BLOCK, <<"+14158867900">>).
 -define(END_BLOCK, <<"+14158897909">>).
 
@@ -75,6 +76,7 @@
 -define(TEST_IN_SERVICE_MDN, <<"+15551233324">>).
 -define(TEST_IN_SERVICE_BAD_CARRIER_NUM, <<"+15551233337">>).
 -define(TEST_IN_SERVICE_WITH_HISTORY_NUM, <<"+15551255693">>).
+-define(TEST_RESERVED_NUM, <<"+14252151010">>).
 -define(TEST_CREATE_TOLL, <<"+18887771111">>).
 -define(TEST_EXISTING_TOLL, <<"+18005551212">>).
 -define(TEST_OLD1_NUM, <<"+15045551226">>).
@@ -104,6 +106,7 @@
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
 -define(CHILD_ACCOUNT_ID,    <<"child_account_670a04df0014d0b27a">>).
 -define(CHILD_ACCOUNT_DB,    <<"account%2Fch%2Fil%2Fd_account_670a04df0014d0b27a">>).
+-define(UNRELATED_ACCOUNT_ID, <<"unrelated_account_b113394f16cb71">>).
 
 -define(PVT_TREE, [?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID]).
 
@@ -148,7 +151,7 @@
           [{<<"_id">>, ?TEST_IN_SERVICE_MDN}
           ,{<<"_rev">>, <<"4-7dd6a1523e81a4e3c2689140ed3a8e69">>}
           ,{?PVT_MODIFIED, 63565934349}
-          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, ?CARRIER_MDN}
@@ -185,6 +188,20 @@
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
           ,{?PVT_USED_BY, <<"callflow">>}
+          ])).
+
+-define(RESERVED_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_RESERVED_NUM}
+          ,{<<"_rev">>, <<"2-7dddead523e81a4e3c2689140ed3abeef">>}
+          ,{?PVT_MODIFIED, 63565935527}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
+          ,{?PVT_STATE, ?NUMBER_STATE_RESERVED}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
+          ,{?PVT_CREATED, 63565935000}
           ])).
 
 -define(EXISTING_TOLL
@@ -408,10 +425,10 @@
            }])
        ).
 
--define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
+-define(LOG_ERROR(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_WARN(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
 -else.
 -define(LOG_ERROR(F,A), lager:error(F,A)).
 -define(LOG_WARN(F,A), lager:warning(F,A)).

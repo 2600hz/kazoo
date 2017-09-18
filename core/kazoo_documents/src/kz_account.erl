@@ -16,11 +16,12 @@
         ,get_inherited_value/2
         ,get_inherited_value/3
 
-        ,name/1, name/2, set_name/2
-        ,realm/1, realm/2, set_realm/2
+        ,fetch_name/1, name/1, name/2, set_name/2
+        ,fetch_realm/1, realm/1, realm/2, set_realm/2
         ,language/1, language/2, set_language/2
         ,timezone/1, timezone/2, set_timezone/2, default_timezone/0
         ,parent_account_id/1
+        ,get_parent_account/1, get_parent_account_id/1
         ,tree/1, tree/2 ,set_tree/2
         ,notification_preference/1, set_notification_preference/2
         ,is_enabled/1, enable/1, disable/1
@@ -80,8 +81,6 @@
 -define(SENT_INITIAL_REGISTRATION, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]).
 -define(SENT_INITIAL_CALL, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]).
 
--define(PVT_TYPE, <<"account">>).
-
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
@@ -97,31 +96,22 @@ get_inherited_value(Account, ValueFun, Default) ->
     case check_account(Account, ValueFun) of
         'undefined' ->
             check_reseller(Account, ValueFun, Default);
-
-        Value ->
-            Value
+        Value -> Value
     end.
 
 -spec check_account(api_binary(), fun()) -> any().
 check_account(Account, ValueFun) ->
     case fetch(Account) of
-        {'error', _Err} ->
-            'undefined';
-
-        {'ok', JObj} ->
-            ValueFun(JObj)
+        {'error', _Err} -> 'undefined';
+        {'ok', JObj} -> ValueFun(JObj)
     end.
 
 -spec check_reseller(api_binary(), fun(), any()) -> any().
 check_reseller(Account, ValueFun, Default) ->
     Reseller = kz_services:find_reseller_id(Account),
-
     case check_account(Reseller, ValueFun) of
-        'undefined' ->
-            Default;
-
-        Value ->
-            Value
+        'undefined' -> Default;
+        Value -> Value
     end.
 
 %%--------------------------------------------------------------------
@@ -131,7 +121,7 @@ check_reseller(Account, ValueFun, Default) ->
 %%--------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
-    kz_doc:set_type(kz_json:new(), ?PVT_TYPE).
+    kz_doc:set_type(kz_json:new(), type()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -139,7 +129,7 @@ new() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec type() -> ne_binary().
-type() -> ?PVT_TYPE.
+type() -> <<"account">>.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -155,30 +145,47 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary()) -> {'ok', doc()} |
-                             {'error', any()}.
+-spec fetch(api_ne_binary()) -> {'ok', doc()} |
+                                {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
-fetch(<<_/binary>> = Account) ->
+fetch(Account=?NE_BINARY) ->
     fetch(Account, 'account').
 
--spec fetch(api_binary(), 'account' | 'accounts') -> {'ok', doc()} |
-                                                     {'error', any()}.
+-spec fetch(api_ne_binary(), 'account' | 'accounts') -> {'ok', doc()} |
+                                                        {'error', any()}.
 fetch('undefined', _) ->
     {'error', 'invalid_db_name'};
 fetch(Account, 'account') ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    kz_datamgr:open_cache_doc(AccountDb, AccountId, [{'cache_failures',false}]);
+    open_cache_doc(AccountDb, AccountId);
 fetch(AccountId, 'accounts') ->
-    kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId, [{'cache_failures',false}]).
+    open_cache_doc(?KZ_ACCOUNTS_DB, AccountId).
+
+-ifdef(TEST).
+open_cache_doc(_, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    kz_json:fixture(?APP, <<"fixtures/account/", AccountId/binary, ".json">>).
+-else.
+open_cache_doc(Db, AccountId) ->
+    kz_datamgr:open_cache_doc(Db, AccountId, [{cache_failures,false}]).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec name(doc()) -> api_binary().
+-spec fetch_name(ne_binary()) -> api_ne_binary().
+fetch_name(Account) ->
+    case fetch(Account) of
+        {ok, JObj} -> name(JObj);
+        {error, _R} ->
+            lager:error("error opening account doc ~p", [Account]),
+            undefined
+    end.
+
+-spec name(doc()) -> api_ne_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(JObj) ->
     name(JObj, 'undefined').
@@ -199,7 +206,21 @@ set_name(JObj, Name) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec realm(doc()) -> api_binary().
+-spec fetch_realm(ne_binary()) -> api_ne_binary().
+fetch_realm(Account) ->
+    case fetch(Account) of
+        {ok, JObj} -> realm(JObj);
+        {error, _R} ->
+            lager:error("error opening account doc ~p", [Account]),
+            undefined
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec realm(doc()) -> api_ne_binary().
 -spec realm(doc(), Default) -> ne_binary() | Default.
 realm(JObj) ->
     realm(JObj, 'undefined').
@@ -466,6 +487,33 @@ parent_account_id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec get_parent_account(ne_binary()) -> {'ok', doc()} | {'error', any()}.
+get_parent_account(AccountId) ->
+    case get_parent_account_id(AccountId) of
+        'undefined' -> {'error', 'not_found'};
+        ParentId ->
+            fetch(ParentId)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_parent_account_id(ne_binary()) -> api_binary().
+get_parent_account_id(AccountId) ->
+    case fetch(AccountId) of
+        {'ok', JObj} -> parent_account_id(JObj);
+        {'error', _R} ->
+            lager:debug("failed to open account's ~s parent: ~p", [AccountId, _R]),
+            'undefined'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec tree(doc()) -> ne_binaries().
 -spec tree(doc(), Default) -> ne_binaries() | Default.
 tree(JObj) ->
@@ -672,7 +720,8 @@ is_trial_account(JObj) ->
 %%--------------------------------------------------------------------
 -spec is_reseller(doc()) -> boolean().
 is_reseller(JObj) ->
-    kz_json:is_true(?RESELLER, JObj).
+    kz_json:is_true(?RESELLER, JObj)
+        orelse is_superduper_admin(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -690,7 +739,6 @@ promote(JObj) ->
 %%--------------------------------------------------------------------
 -spec demote(doc()) -> doc().
 demote(JObj) ->
-    io:format("demote~n", []),
     kz_json:set_value(?RESELLER, 'false', JObj).
 
 %%--------------------------------------------------------------------

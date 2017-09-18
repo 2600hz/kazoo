@@ -159,6 +159,10 @@
 -define(SUB_BINARY(Value)
        ,{'bin_element',_,?BINARY_MATCH([?BINARY_STRING(Value)]),'default',['binary']}
        ).
+-define(BINARY_FROM_ATOM(Atom)
+       ,{'bin_element',_,?FUN_ARGS(atom_to_binary, [?ATOM(Atom), ?ATOM(utf8)]),'default',['binary']}
+       ).
+
 -define(BINARY(Value), {'bin',_, [?BINARY_STRING(Value)]}).
 -define(BINARY_MATCH(Matches)
        ,{'bin',_,Matches}

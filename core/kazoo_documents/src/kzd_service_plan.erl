@@ -8,6 +8,7 @@
 -module(kzd_service_plan).
 
 -export([new/0
+        ,type/0
         ,account_id/1, account_id/2
         ,overrides/1, overrides/2
         ,merge_overrides/2
@@ -50,7 +51,11 @@
 -define(BOOKKEEPERS, <<"bookkeepers">>).
 
 -spec new() -> doc().
-new() -> kz_json:new().
+new() ->
+    kz_doc:set_type(kz_json:new(), type()).
+
+-spec type() -> ne_binary().
+type() -> <<"service_plan">>.
 
 -spec all_items_key() -> ne_binary().
 all_items_key() -> ?ALL.
@@ -73,15 +78,13 @@ overrides(Plan, Default) ->
 merge_overrides(Plan, Overrides) ->
     kz_json:merge(Plan, kz_json:from_list([{?PLAN, Overrides}])).
 
--spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> api_float().
+-spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> float().
 -spec item_activation_charge(doc(), ne_binary(), ne_binary(), Default) -> float() | Default.
 item_activation_charge(Plan, Category, Item) ->
-    item_activation_charge(Plan, Category, Item, 0).
+    item_activation_charge(Plan, Category, Item, 0.0).
 item_activation_charge(Plan, Category, Item, Default) ->
-    ItemConfig = kz_json:get_json_value([?PLAN, Category, Item]
-                                       ,Plan
-                                       ,kz_json:new()
-                                       ),
+    Path = [?PLAN, Category, Item],
+    ItemConfig = kz_json:get_json_value(Path, Plan, kz_json:new()),
     kzd_item_plan:activation_charge(ItemConfig, Default).
 
 -spec category_activation_charge(doc(), ne_binary()) -> float().

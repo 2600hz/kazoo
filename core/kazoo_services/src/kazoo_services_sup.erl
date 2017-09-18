@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -26,6 +26,7 @@
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                   ,?WORKER('kz_services_modb')
                   ,?WORKER('kz_service_sync')
+                  ,?WORKER('kazoo_services_maint_listener')
                   ]).
 
 %% ===================================================================

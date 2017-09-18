@@ -53,11 +53,11 @@ params(Module)
     ,{subject, Module:subject()}
     ,{category, Module:category()}
     ,{friendly_name, Module:friendly_name()}
-    ,{to, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)}
-    ,{from, teletype_util:default_from_address(ModConfigCat)}
-    ,{cc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-    ,{bcc, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])}
-    ,{reply_to, teletype_util:default_reply_to(ModConfigCat)}
+    ,{to, Module:to(ModConfigCat)}
+    ,{from, Module:from(ModConfigCat)}
+    ,{cc, Module:cc(ModConfigCat)}
+    ,{bcc, Module:bcc(ModConfigCat)}
+    ,{reply_to, Module:reply_to(ModConfigCat)}
     ,{html, TemplateId}
     ,{text, TemplateId}
     ].
@@ -93,7 +93,9 @@ build_renderer(TemplateId, ContentType, Template) ->
     ModuleName = renderer_name(TemplateId, ContentType),
     case kz_template:compile(Template, ModuleName,[{'auto_escape', 'false'}]) of
         {'ok', _} -> 'ok';
-        {'error', _} -> throw({'error', 'failed_template', ModuleName})
+        {'error', _E} ->
+            lager:debug("failed to render '~s': ~p", [TemplateId, _E]),
+            throw({'error', 'failed_template', ModuleName})
     end.
 
 -type template_attachment() :: {ne_binary(), binary()}.
@@ -184,7 +186,7 @@ templates_source(TemplateId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     ResellerId = teletype_util:find_reseller_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
-    case teletype_util:find_account_id(DataJObj) of
+    case kapi_notifications:account_id(DataJObj) of
         'undefined' -> ?KZ_CONFIG_DB;
         AccountId -> templates_source(TemplateId, AccountId)
     end.
@@ -296,7 +298,8 @@ render_master(?NE_BINARY=TemplateId, ?NE_BINARY=ContentType, Macros) ->
         {'ok', IOList} ->
             iolist_to_binary(IOList);
         {'error', _R} ->
-            throw({'error', 'template_error'})
+            lager:debug("failed to render '~s': ~p", [TemplateId, _R]),
+            throw({'error', 'template_error', <<"failed to render template ", TemplateId/binary>>})
     end.
 
 -spec render_accounts(ne_binary(), ne_binary(), macros()) -> kz_proplist().
@@ -640,7 +643,7 @@ update_macro(MacroKey, MacroValue, {_IsUpdated, TemplateJObj}=Acc) ->
 %%--------------------------------------------------------------------
 -spec attachment_name(ne_binary()) -> ne_binary().
 attachment_name(ContentType) ->
-    kz_binary:clean(<<"template.", (kz_http_util:urlencode(ContentType))/binary>>).
+    kz_binary:clean(<<"template.", ContentType/binary>>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -707,8 +710,8 @@ write_templates_to_disk(TemplateId, Params) ->
                                      {'ok', binary()} |
                                      {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 read_template_from_disk(TemplateId, Type) ->
-    File = template_filename(TemplateId, Type),
-    file:read_file(File).
+    file:read_file(
+      template_filename(TemplateId, Type)).
 
 -spec write_template_to_disk(ne_binary(), {'html' | 'text', binary()}) -> 'ok'.
 write_template_to_disk(TemplateId, {Type, Template}) ->
@@ -718,7 +721,4 @@ write_template_to_disk(TemplateId, {Type, Template}) ->
 -spec template_filename(ne_binary(), 'html' | 'text') -> file:filename_all().
 template_filename(TemplateId, Type) ->
     Basename = iolist_to_binary([TemplateId, ".", kz_term:to_list(Type)]),
-    filename:join([code:priv_dir('teletype')
-                  ,"templates"
-                  ,Basename
-                  ]).
+    filename:join([code:priv_dir(?APP), "templates", Basename]).

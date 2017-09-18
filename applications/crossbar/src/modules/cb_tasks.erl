@@ -17,7 +17,7 @@
         ,content_types_provided/1, content_types_provided/2, content_types_provided/3
         ,validate/1, validate/2, validate/3
         ,put/1
-        ,patch/2
+        ,patch/2, patch/3
         ,delete/2
 
         ,to_csv/1
@@ -33,6 +33,7 @@
 -define(RD_RECORDS, <<"records">>).
 -define(RV_FILENAME, <<"file_name">>).
 
+-define(PATH_STOP, <<"stop">>).
 -define(PATH_OUTPUT, <<"output">>).
 -define(PATH_INPUT, <<"input">>).
 
@@ -70,9 +71,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
-    case {cb_context:req_verb(Context)
-         ,cb_context:req_nouns(Context)
-         } of
+    case {cb_context:req_verb(Context), cb_context:req_nouns(Context)} of
         {?HTTP_GET, [{<<"tasks">>, []}]} -> 'true';
         {?HTTP_PUT, [{<<"tasks">>, []}]} ->
             cb_context:is_superduper_admin(Context);
@@ -111,6 +110,8 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_TaskId) ->
     [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE].
+allowed_methods(_TaskId, ?PATH_STOP) ->
+    [?HTTP_PATCH];
 allowed_methods(_TaskId, ?PATH_INPUT) ->
     [?HTTP_GET];
 allowed_methods(_TaskId, ?PATH_OUTPUT) ->
@@ -129,6 +130,7 @@ allowed_methods(_TaskId, ?PATH_OUTPUT) ->
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_TaskId) -> 'true'.
+resource_exists(_TaskId, ?PATH_STOP) -> 'true';
 resource_exists(_TaskId, ?PATH_INPUT) -> 'true';
 resource_exists(_TaskId, ?PATH_OUTPUT) -> 'true'.
 
@@ -185,14 +187,39 @@ ctp(Context) ->
 -spec to_csv({cowboy_req:req(), cb_context:context()}) ->
                     {cowboy_req:req(), cb_context:context()}.
 to_csv({Req, Context}) ->
-    Filename = requested_attachment_name(Context),
+    Filename = download_filename(Context, requested_attachment_name(Context)),
     Headers = props:set_values([{<<"content-type">>, <<"text/csv">>}
                                ,{<<"content-disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
                                ]
                               ,cowboy_req:get('resp_headers', Req)
                               ),
-    {'ok', Req1} = cowboy_req:reply(200, Headers, cb_context:resp_data(Context), Req),
-    {Req1, Context}.
+    {Req, cb_context:set_resp_headers(Context, Headers)}.
+
+-spec download_filename(cb_context:context(), ne_binary()) -> ne_binary().
+download_filename(Context, ?KZ_TASKS_ANAME_OUT) ->
+    TaskJObj = cb_context:doc(Context),
+
+    Category = kzd_task:category(TaskJObj),
+    Action = kzd_task:action(TaskJObj),
+    TaskId = kz_doc:id(TaskJObj),
+
+    <<Category/binary, "_"
+      ,Action/binary, "_"
+      ,TaskId/binary, "_out.csv"
+    >>;
+download_filename(Context, ?KZ_TASKS_ANAME_IN) ->
+    TaskJObj = cb_context:doc(Context),
+
+    Category = kzd_task:category(TaskJObj),
+    Action = kzd_task:action(TaskJObj),
+    TaskId = kz_doc:id(TaskJObj),
+
+    <<Category/binary, "_"
+      ,Action/binary, "_"
+      ,TaskId/binary, "_in.csv"
+    >>;
+download_filename(_Context, Name) ->
+    Name.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -209,16 +236,19 @@ to_csv({Req, Context}) ->
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_tasks(Context, cb_context:req_verb(Context)).
+
 validate(Context, PathToken) ->
     validate_tasks(Context, PathToken, cb_context:req_verb(Context)).
+
+validate(Context, TaskId, ?PATH_STOP) ->
+    validate_tasks(Context, TaskId, cb_context:req_verb(Context));
 validate(Context, TaskId, CSV) ->
     CSVFile = csv_path_to_file(CSV),
     QS = cb_context:query_string(Context),
-    AdjustedQS = kz_json:set_values([{<<"csv_name">>, CSVFile}
-                                    ,{<<"accept">>, <<"text/csv">>}
-                                    ]
-                                   ,QS
-                                   ),
+    Values = [{<<"csv_name">>, CSVFile}
+             ,{<<"accept">>, <<"text/csv">>}
+             ],
+    AdjustedQS = kz_json:set_values(Values, QS),
     AdjustedContext = cb_context:set_query_string(Context, AdjustedQS),
     validate(AdjustedContext, TaskId).
 
@@ -327,6 +357,8 @@ task_account_id(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+
 patch(Context, TaskId) ->
     Req = [{<<"Task-ID">>, TaskId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -344,6 +376,24 @@ patch(Context, TaskId) ->
             cb_context:add_system_error('bad_identifier', Msg, Context);
         Task ->
             crossbar_util:response(Task, Context)
+    end.
+
+patch(Context, TaskId, ?PATH_STOP) ->
+    Req = [{<<"Task-ID">>, TaskId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    {ok, Resp} = kz_amqp_worker:call(Req
+                                    ,fun kapi_tasks:publish_stop_req/1
+                                    ,fun kapi_tasks:stop_resp_v/1
+                                    ),
+    case kapi_tasks:reply(Resp) =:= <<"not_running">> of
+        false -> crossbar_util:response(kapi_tasks:reply(Resp), Context);
+        true ->
+            Msg = kz_json:from_list(
+                    [{<<"reason">>, <<"task is not running">>}
+                    ,{<<"cause">>, TaskId}
+                    ]),
+            cb_context:add_system_error(bad_identifier, Msg, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -459,9 +509,12 @@ handle_read_result(TaskId, OrigContext, ReadContext) ->
     case cb_context:resp_data(ReadContext) of
         [] -> crossbar_util:response_bad_identifier(TaskId, OrigContext);
         [TaskJObj] ->
-            lager:debug("task: ~p", [TaskJObj]),
             JObj = kz_json:set_value(<<"_read_only">>, TaskJObj, kz_json:new()),
-            cb_context:set_resp_data(ReadContext, JObj)
+            cb_context:setters(ReadContext
+                              ,[{fun cb_context:set_doc/2, JObj}
+                               ,{fun cb_context:set_resp_data/2, JObj}
+                               ]
+                              )
     end.
 
 read_attachment(TaskId, Context, AccountId) ->
@@ -480,10 +533,7 @@ read_attachment(TaskId, Context, AccountId) ->
 
 -spec requested_attachment_name(cb_context:context()) -> ne_binary().
 requested_attachment_name(Context) ->
-    cb_context:req_value(Context
-                        ,<<"csv_name">>
-                        ,?KZ_TASKS_ANAME_OUT
-                        ).
+    cb_context:req_value(Context, <<"csv_name">>, ?KZ_TASKS_ANAME_OUT).
 
 -spec csv_path_to_file(ne_binary()) -> ne_binary().
 csv_path_to_file(?PATH_INPUT) ->

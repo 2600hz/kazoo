@@ -130,6 +130,11 @@
 
 -export([is_recording/1, set_is_recording/2]).
 
+-ifdef(TEST).
+-export([eq/2]).
+-export([updateable_ccvs/2]).
+-endif.
+
 -include("kapps_call_command.hrl").
 
 -record(kapps_call, {call_id :: api_binary()                       %% The UUID of the call
@@ -1073,9 +1078,23 @@ set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
 -else.
 set_custom_channel_vars(Props, #kapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = kz_json:set_values(Props, CCVs),
-    kapps_call_command:set(NewCCVs, 'undefined', Call),
+
+    maybe_update_call_ccvs(Call, Props, kz_json:to_proplist(CCVs)),
+
     handle_ccvs_update(NewCCVs, Call).
+
+-spec maybe_update_call_ccvs(call(), kz_proplist(), kz_proplist()) -> 'ok'.
+maybe_update_call_ccvs(Call, NewCCVs, ExistingCCVs) ->
+    case updateable_ccvs(NewCCVs, ExistingCCVs) of
+        [] -> 'ok';
+        Updates -> kapps_call_command:set(kz_json:from_list(Updates), 'undefined', Call)
+    end.
+
 -endif.
+
+-spec updateable_ccvs(kz_proplist(), kz_proplist()) -> kz_proplist().
+updateable_ccvs(New, Existing) ->
+    New -- Existing.
 
 -spec update_custom_channel_vars([fun((kz_json:object()) -> kz_json:object()),...], call()) -> call().
 -ifdef(TEST).
@@ -1374,56 +1393,7 @@ set_is_recording(IsRecording, #kapps_call{}=Call) ->
 is_recording(#kapps_call{is_recording=IsRecording}) ->
     IsRecording.
 
-%% EUNIT TESTING
 -ifdef(TEST).
-
-
--define(UPDATERS, [fun(C) -> set_call_id(<<"123456789ABCDEF">>, C) end
-                  ,fun(C) -> set_control_queue(<<"control_queue">>, C) end
-                  ,fun(C) -> set_controller_queue(<<"controller_queue">>, C) end
-                  ,fun(C) -> set_caller_id_name(<<"caller_id_name">>, C) end
-                  ,fun(C) -> set_caller_id_number(<<"caller_id_number">>, C) end
-                  ,fun(C) -> set_callee_id_name(<<"callee_id_name">>, C) end
-                  ,fun(C) -> set_callee_id_number(<<"callee_id_number">>, C) end
-                  ,fun(C) -> set_request(<<"request_user@request_domain">>, C) end
-                  ,fun(C) -> set_from(<<"from_user@from_domain">>, C) end
-                  ,fun(C) -> set_to(<<"to_user@to_domain">>, C) end
-                  ,fun(C) -> set_account_db(<<"account%2F12%2F3456789">>, C) end
-                  ,fun(C) -> set_account_id(<<"123456789">>, C) end
-                  ,fun(C) -> set_authorizing_id(<<"987654321">>, C) end
-                  ,fun(C) -> set_authorizing_type(<<"test">>, C) end
-                  ,fun(C) -> set_owner_id(<<"abcdefghi">>, C) end
-                  ,fun(C) -> set_fetch_id(<<"1234567890ABCDEFG">>, C) end
-                  ,fun(C) -> set_bridge_id(<<"1234567890ABCDEF">>, C) end
-                  ,fun(C) -> set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
-                  ,fun(C) -> set_custom_channel_var(<<"key2">>, 2600, C) end
-                  ,fun(C) -> set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
-                  ,fun(C) -> kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
-                  ,fun(C) -> kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
-                  ,fun(C) -> kvs_store(<<"kvs_key_2">>, kz_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
-                  ]).
-
-%% TODO: I am out of the alloted time for this module, please add during another refactor
-from_route_request_test() ->
-    'ok'.
-
-%% TODO: I am out of the alloted time for this module, please add during another refactor
-from_route_win_test() ->
-    'ok'.
-
-json_conversion_test() -> 'ok'.
-    %% Call1 = lists:foldr(fun(F, C) -> F(C) end, new(), ?UPDATERS),
-    %% _Call2 = from_json(to_json(Call1)).
-    %% TODO: These are equal, but the order of the CCVs json headers
-    %%       is reversed.... and I am out of time for this module
-    %%       You're just goind to have to take my word it works hehe ;)
-%%    ?assertEqual(Call1, Call2).
-
-encode_decode_test() ->
-    Call = exec(?UPDATERS, new()),
-    Call1 = from_json(to_json(Call)),
-    ?assert(eq(Call, Call1)).
-
 eq(Call, Call1) ->
     eq(tuple_to_list(Call), tuple_to_list(Call1), 1).
 eq([], [], _) -> 'true';
@@ -1439,5 +1409,4 @@ eq([V1|C1], [V2|C2], #kapps_call.ccvs=Pos) ->
 eq([V1|_], [V2|_], Pos) ->
     ?debugFmt("at ~p, vary:~n~p~n~p~n", [Pos, V1, V2]),
     'false'.
-
 -endif.

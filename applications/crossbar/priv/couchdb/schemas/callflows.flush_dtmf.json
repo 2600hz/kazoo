@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.flush_dtmf",
+    "description": "Validator for the flush_dtmf callflow's data object",
+    "properties": {
+        "collection_name": {
+            "default": "default",
+            "description": "Flush collected DTMF in a named key",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

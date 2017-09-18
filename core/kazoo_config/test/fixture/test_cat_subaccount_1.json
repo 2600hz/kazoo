@@ -1,0 +1,31 @@
+{
+    "_id": "configs_test_cat",
+    "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
+    "one_root_key": "subaccount1",
+    "pvt_account_db": "account%2F5b%2Fb4%2Fa2b6323bd02a77f1049669073643",
+    "pvt_account_id": "5bb4a2b6323bd02a77f1049669073643",
+    "pvt_created": 63668324118,
+    "pvt_modified": 63668324118,
+    "pvt_node": "kazoo_apps@test.com",
+    "pvt_type": "account_config",
+    "root_obj_key": {
+        "1subaccount": "1subaccount_only",
+        "b_empty_list": [],
+        "b_key": "subaccount1",
+        "b_keys": [
+            "OneSubAccount1",
+            "TwoSubAccount1"
+        ],
+        "bol_key": false,
+        "f_key": 1.5,
+        "i_key": 3456,
+        "obj_empty_test": {
+            "obj_empty_sometimes": {
+                "1subaccount": true
+            }
+        },
+        "obj_key": {
+            "from": "subaccount1"
+        }
+    }
+}

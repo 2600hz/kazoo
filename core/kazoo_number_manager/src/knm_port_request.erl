@@ -330,7 +330,7 @@ transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
                          _ -> undefined
                      end,
     #{auth_account_id => AuthAccountId
-     ,auth_account_name => kapps_util:get_account_name(AuthAccountId)
+     ,auth_account_name => kz_account:fetch_name(AuthAccountId)
      ,auth_user_id => OptionalUserId
      ,user_first_name => FirstName
      ,user_last_name => LastName

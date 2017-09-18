@@ -117,6 +117,10 @@ expression_to_schema(?MOD_FUN_ARGS(Source='ecallmgr_config', F, Args), Schemas) 
     config_to_schema(Source, F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
 expression_to_schema(?MOD_FUN_ARGS(Source='kapps_account_config', F='get_global', Args), Schemas) ->
     config_to_schema(Source, F, Args, Schemas);
+expression_to_schema(?MOD_FUN_ARGS(Source='kapps_account_config', F='get_hierarchy', Args), Schemas) ->
+    config_to_schema(Source, F, Args, Schemas);
+expression_to_schema(?MOD_FUN_ARGS(Source='kapps_account_config', F='get_with_strategy', Args), Schemas) ->
+    config_to_schema(Source, F, Args, Schemas);
 expression_to_schema(_Expression, Schema) ->
     Schema.
 
@@ -138,15 +142,38 @@ config_to_schema(Source, F='get_global', [_Account, Cat, K, Default], Schemas) -
         'undefined' -> Schemas;
         Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
     end;
+config_to_schema(Source, F='get_hierarchy', [Account, Cat, K], Schemas) ->
+    config_to_schema(Source, F, [Account, Cat, K, 'undefined'], Schemas);
+config_to_schema(Source, F='get_hierarchy', [_Account, Cat, K, Default], Schemas) ->
+    Document = category_to_document(Cat),
+    case key_to_key_path(K) of
+        'undefined' -> Schemas;
+        Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
+    end;
+config_to_schema(Source, F='get_with_strategy', [Strategy, Account, Cat, K], Schemas) ->
+    config_to_schema(Source, F, [Strategy, Account, Cat, K, 'undefined'], Schemas);
+config_to_schema(Source, F='get_with_strategy', [?BINARY_MATCH([?BINARY_STRING(Strategy)]), _Account, Cat, K, Default], Schemas)
+  when Strategy =:= "hierarchy_merge";
+       Strategy =:= "global";
+       Strategy =:= "global_merge" ->
+    Document = category_to_document(Cat),
+    case key_to_key_path(K) of
+        'undefined' -> Schemas;
+        Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
+    end;
+config_to_schema(_, 'get_with_strategy', _Args, Schemas) ->
+    Schemas;
 config_to_schema(Source, F, [Cat, K], Schemas) ->
     config_to_schema(Source, F, [Cat, K, 'undefined'], Schemas);
 config_to_schema(Source, F, [Cat, K, Default, _Node], Schemas) ->
     config_to_schema(Source, F, [Cat, K, Default], Schemas);
 config_to_schema(Source, F, [Cat, K, Default], Schemas) ->
     Document = category_to_document(Cat),
+
     case key_to_key_path(K) of
         'undefined' -> Schemas;
-        Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
+        Key ->
+            config_key_to_schema(Source, F, Document, Key, Default, Schemas)
     end.
 
 config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
@@ -154,6 +181,7 @@ config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
 config_key_to_schema(Source, F, Document, Key, Default, Schemas) ->
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     Path = [Document, ?FIELD_PROPERTIES | Key],
+
     kz_json:set_value(Path, Properties, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -213,6 +241,8 @@ guess_type('get_integer', _) -> <<"integer">>;
 guess_type('get_float', _) -> <<"float">>;
 guess_type('get_atom', _) -> <<"string">>;
 guess_type('get_global', Default) -> guess_type_by_default(Default);
+guess_type('get_hierarchy', Default) -> guess_type_by_default(Default);
+guess_type('get_with_strategy', Default) -> guess_type_by_default(Default);
 guess_type('set_default', _) -> 'undefined';
 guess_type('set', Default) -> guess_type_by_default(Default);
 guess_type('set_string', _) -> <<"string">>;
@@ -260,15 +290,13 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"strin
 
 guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
-    Description = fetch_description(DescriptionKey),
-    case undefined =:= Description of
-        false -> ok;
-        true ->
-            io:format("\nYou need to add the key \"~s\" in ~s\n"
-                     ,[DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]
-                     ),
-            halt(1)
-    end,
+
+    Description =
+        case fetch_description(DescriptionKey) of
+            'undefined' ->
+                kz_binary:join(binary:split(DescriptionKey, <<".">>, ['global']), <<" ">>);
+            D -> D
+        end,
     kz_json:from_list(
       [{?SOURCE, SourceModule}
       ,{<<"description">>, Description}
@@ -279,10 +307,9 @@ guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
 guess_properties(Document, Source, [Key], Type, Default)
   when is_binary(Key) ->
     guess_properties(Document, Source, Key, Type, Default);
-guess_properties(Document, Source, [Key, ?FIELD_PROPERTIES], Type, Default) ->
-    guess_properties(Document, Source, Key, Type, Default);
-guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
-    guess_properties(Document, Source, Rest, Type, Default).
+guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES|_]=Keys, Type, Default) ->
+    JustKeys = [K || K <- Keys, ?FIELD_PROPERTIES =/= K],
+    guess_properties(Document, Source, kz_binary:join(JustKeys, $.), Type, Default).
 
 type([undefined]) ->
     [{?FIELD_TYPE, <<"array">>}];

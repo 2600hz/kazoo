@@ -22,7 +22,6 @@
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
--export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1, is_account_expired/1]).
 -export([maybe_disable_account/1
         ,disable_account/1
@@ -65,6 +64,7 @@
 -export([write_file/2, write_file/3
         ,rename_file/2
         ,delete_file/1
+        ,delete_dir/1
         ,make_dir/1
         ]).
 
@@ -105,24 +105,26 @@ log_stacktrace() ->
     ST = erlang:get_stacktrace(),
     log_stacktrace(ST).
 
-log_stacktrace(ST) ->
-    lager:error("stacktrace:"),
-    Printer = fun ({M, F, A, Info}) -> log_stacktrace_mfa(M, F, A, Info) end,
-    lists:foreach(Printer, ST).
-
 -ifdef(TEST).
-log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
-    io:format(user, "st: ~s:~s/~b at (~b)\n", [M, F, Arity, props:get_value('line', Info, 0)]);
-log_stacktrace_mfa(M, F, Args, Info) ->
-    io:format(user, "st: ~s:~s at ~p\n", [M, F, props:get_value('line', Info, 0)]),
-    lists:foreach(fun (Arg) -> io:format(user, "args: ~p\n", [Arg]) end, Args).
+-define(LOG_ERROR(F), io:format(user, "ERROR ~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
+-define(LOG_ERROR(F,A), io:format(user, "ERROR ~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
 -else.
-log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
-    lager:error("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
-log_stacktrace_mfa(M, F, Args, Info) ->
-    lager:error("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    lists:foreach(fun (Arg) -> lager:error("args: ~p", [Arg]) end, Args).
+-define(LOG_ERROR(F,A), lager:error(F,A)).
+-define(LOG_ERROR(F), lager:error(F)).
 -endif.
+
+log_stacktrace(ST) ->
+    ?LOG_ERROR("stacktrace:"),
+    _ = [log_stacktrace_mfa(M, F, A, Info)
+         || {M, F, A, Info} <- ST
+        ],
+    'ok'.
+
+log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
+    ?LOG_ERROR("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
+log_stacktrace_mfa(M, F, Args, Info) ->
+    ?LOG_ERROR("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
+    lists:foreach(fun (Arg) -> ?LOG_ERROR("args: ~p", [Arg]) end, Args).
 
 -define(LOG_LEVELS, ['emergency'
                     ,'alert'
@@ -332,7 +334,7 @@ format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
 format_account_id(Account, Year, Month) when is_integer(Year),
                                              is_integer(Month) ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(Account),
-    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year), kz_time:pad_month(Month)).
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year), kz_date:pad_month(Month)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -345,6 +347,7 @@ format_account_id(Account, Year, Month) when is_integer(Year),
 -spec format_account_mod_id(api_binary(), gregorian_seconds() | kz_now()) -> api_binary().
 -spec format_account_mod_id(api_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
                                    api_binary().
+
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
 
@@ -406,13 +409,16 @@ normalize_account_name(AccountName) ->
           is_alphanumeric(Char)
     >>.
 
-is_alphanumeric(Char) ->
-    (Char >= $a
-     andalso Char =< $z
-    )
-        orelse (Char >= $0
-                andalso Char =< $9
-               ).
+is_alphanumeric(Char)
+  when Char >= $a,
+       Char =< $z ->
+    true;
+is_alphanumeric(Char)
+  when Char >= $0,
+       Char =< $9 ->
+    true;
+is_alphanumeric(_) ->
+    false.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -452,7 +458,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
                     'false'
             end;
         {'error', _R} ->
-            lager:debug("failed to get the ancestory of the account ~s: ~p", [AccountId, _R]),
+            lager:debug("failed to get the ancestry of the account ~s: ~p", [AccountId, _R]),
             'false'
     end.
 
@@ -594,26 +600,6 @@ account_tree(AccountId) ->
     {'ok', Doc} -> kz_account:tree(Doc);
     _ -> 'undefined'
   end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Retrieves the account realm
-%% @end
-%%--------------------------------------------------------------------
--spec get_account_realm(api_binary()) -> api_binary().
--spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
-get_account_realm(Account) ->
-    get_account_realm(format_account_db(Account), format_account_id(Account)).
-
-get_account_realm('undefined', _) -> 'undefined';
-get_account_realm(Db, AccountId) ->
-    case kz_datamgr:open_cache_doc(Db, AccountId) of
-        {'ok', JObj} -> kz_account:realm(JObj);
-        {'error', _R} ->
-            lager:debug("error while looking up account realm in ~s: ~p", [AccountId, _R]),
-            'undefined'
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -901,6 +887,28 @@ delete_file(Filename) ->
         {'error', _}=_E ->
             lager:error("deleting file ~s failed : ~p", [Filename, _E])
     end.
+
+%% @public
+-spec delete_dir(string()) -> 'ok'.
+delete_dir(Dir) ->
+    F = fun(D) -> 'ok' = file:del_dir(D) end,
+    lists:foreach(F, del_all_files([Dir], [])).
+
+-spec del_all_files(strings(), strings()) -> strings().
+del_all_files([], EmptyDirs) -> EmptyDirs;
+del_all_files([Dir | T], EmptyDirs) ->
+    {'ok', FilesInDir} = file:list_dir(Dir),
+    {Files, Dirs} = lists:foldl(fun(F, {Fs, Ds}) ->
+                                        Path = Dir ++ "/" ++ F,
+                                        case filelib:is_dir(Path) of
+                                            'true' ->
+                                                {Fs, [Path | Ds]};
+                                            'false' ->
+                                                {[Path | Fs], Ds}
+                                        end
+                                end, {[],[]}, FilesInDir),
+    lists:foreach(fun delete_file/1, Files),
+    del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
 
 %% @public
 -spec make_dir(file:filename_all()) -> 'ok'.

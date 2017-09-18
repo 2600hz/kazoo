@@ -13,7 +13,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3
-        ,public_fields/1, get_public_keys/1
+        ,public_fields/1, public_fields/2, get_public_keys/1
         ,private_fields/1, is_private_key/1
 
         ,attachments/1, attachments/2
@@ -26,9 +26,9 @@
         ,attachment_revision/1
         ,compare_attachments/2
 
-        ,attachment_length/2
+        ,attachment_length/2, attachment_length/3
         ,attachment_content_type/1, attachment_content_type/2, attachment_content_type/3
-        ,attachment_property/3
+        ,attachment_property/3, attachment_property/4
         ,delete_attachments/1, delete_attachment/2
         ,maybe_remove_attachments/1, maybe_remove_attachments/2
 
@@ -197,10 +197,17 @@ add_pvt_document_hash(JObj, _, _) ->
 %%--------------------------------------------------------------------
 -spec public_fields(kz_json:object() | kz_json:objects()) ->
                            kz_json:object() | kz_json:objects().
-public_fields(JObjs) when is_list(JObjs) ->
-    [public_fields(J) || J <- JObjs];
-public_fields(JObj) ->
-    kz_json:set_value(<<"id">>, id(JObj, 'null'), filter_public_fields(JObj)).
+public_fields(Thing) ->
+    public_fields(Thing, 'true').
+
+-spec public_fields(kz_json:object() | kz_json:objects(), boolean()) ->
+                           kz_json:object() | kz_json:objects().
+public_fields(JObjs, IncludeId) when is_list(JObjs) ->
+    [public_fields(J, IncludeId) || J <- JObjs];
+public_fields(JObj, 'true') ->
+    kz_json:set_value(<<"id">>, id(JObj, 'null'), filter_public_fields(JObj));
+public_fields(JObj, 'false') ->
+    filter_public_fields(JObj).
 
 -spec filter_public_fields(kz_json:object()) -> kz_json:object().
 filter_public_fields(JObj) ->
@@ -234,7 +241,7 @@ is_private_key(_) -> 'false'.
 -spec private_fields(kz_json:object() | kz_json:objects()) ->
                             kz_json:object() | kz_json:objects().
 private_fields(JObjs) when is_list(JObjs) ->
-    [public_fields(JObj) || JObj <- JObjs];
+    [private_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) ->
     kz_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
@@ -312,29 +319,38 @@ attachment(JObj, AName, Default) ->
     kz_json:get_value(AName, attachments(JObj, kz_json:new()), Default).
 
 -spec attachment_length(kz_json:object(), ne_binary()) -> api_integer().
+-spec attachment_length(kz_json:object(), ne_binary(), Default) -> non_neg_integer() | Default.
 attachment_length(JObj, AName) ->
-    attachment_property(JObj, AName, <<"length">>).
+    attachment_length(JObj, AName, 'undefined').
+attachment_length(JObj, AName, Default) ->
+    attachment_property(JObj, AName, <<"length">>, Default, fun kz_json:get_integer_value/3).
 
--spec attachment_content_type(kz_json:object()) -> api_binary().
--spec attachment_content_type(kz_json:object(), ne_binary()) -> api_binary().
--spec attachment_content_type(kz_json:object(), ne_binary(), ne_binary()) -> ne_binary().
+-spec attachment_content_type(kz_json:object()) -> api_ne_binary().
+-spec attachment_content_type(kz_json:object(), ne_binary()) -> api_ne_binary().
+-spec attachment_content_type(kz_json:object(), ne_binary(), Default) -> Default | ne_binary().
 attachment_content_type(JObj) ->
     case kz_json:get_values(attachments(JObj, kz_json:new())) of
         {[], []} -> 'undefined';
         {[_Attachment|_], [AName|_]} ->
-            attachment_property(JObj, AName, <<"content_type">>)
+            attachment_content_type(JObj, AName)
     end.
 attachment_content_type(JObj, AName) ->
-    attachment_property(JObj, AName, <<"content_type">>).
-attachment_content_type(JObj, AName, DefaultContentType) ->
-    case attachment_content_type(JObj, AName) of
-        'undefined' -> DefaultContentType;
-        ContentType -> ContentType
-    end.
+    attachment_content_type(JObj, AName, 'undefined').
+attachment_content_type(JObj, AName, Default) ->
+    attachment_property(JObj, AName, <<"content_type">>, Default, fun kz_json:get_ne_binary_value/3).
 
--spec attachment_property(kz_json:object(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
+-spec attachment_property(kz_json:object(), ne_binary(), kz_json:path()) ->
+                                 kz_json:api_json_term().
+-spec attachment_property(kz_json:object(), ne_binary(), kz_json:path(), Default) ->
+                                 Default | kz_json:json_term().
+-spec attachment_property(kz_json:object(), ne_binary(), kz_json:path(), Default, fun((kz_json:path(), kz_json:object(), Default) -> Default | kz_json:json_term())) ->
+                                 Default | kz_json:json_term().
 attachment_property(JObj, AName, Key) ->
-    kz_json:get_value(Key, attachment(JObj, AName, kz_json:new())).
+    attachment_property(JObj, AName, Key, 'undefined').
+attachment_property(JObj, AName, Key, Default) ->
+    attachment_property(JObj, AName, Key, Default, fun kz_json:get_value/3).
+attachment_property(JObj, AName, Key, Default, Get) when is_function(Get, 3) ->
+    Get(Key, attachment(JObj, AName, kz_json:new()), Default).
 
 -spec delete_attachments(kz_json:object()) -> kz_json:object().
 delete_attachments(JObj) ->

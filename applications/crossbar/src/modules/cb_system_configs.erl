@@ -39,7 +39,7 @@
 -spec init() -> 'ok'.
 init() ->
     _ = kz_datamgr:db_create(?KZ_CONFIG_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, ?APP, <<"views/system_configs.json">>),
 
     _ = crossbar_bindings:bind(<<"*.authorize.system_configs">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.system_configs">>, ?MODULE, 'allowed_methods'),
@@ -254,7 +254,7 @@ patch(Context, Id, Node) ->
 -spec delete(cb_context:context(), path_token(), path_token(), api_object() | kz_json:objects()) ->
                     cb_context:context().
 delete(Context, _Id) ->
-    crossbar_doc:delete(Context, 'permanent').
+    crossbar_doc:delete(Context, ?HARD_DELETE).
 
 delete(Context, Id, Node) ->
     delete(Context, Id, Node, cb_context:doc(Context)).
@@ -300,7 +300,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), ne_binaries()) -> ne_binaries().

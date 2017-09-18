@@ -1,0 +1,33 @@
+{
+    "_id": "configs_test_cat",
+    "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
+    "one_root_key": "reseller",
+    "pvt_account_db": "account%2F12%2F3c%2Fa0424ec8acf3acc1f87ac81f2123",
+    "pvt_account_id": "123ca0424ec8acf3acc1f87ac81f2123",
+    "pvt_created": 63668324118,
+    "pvt_modified": 63668324118,
+    "pvt_node": "kazoo_apps@test.com",
+    "pvt_type": "account_config",
+    "root_obj_key": {
+        "b_empty_list": [],
+        "b_key": "reseller",
+        "b_keys": [
+            "OneReseller",
+            "TwoResellers"
+        ],
+        "bol_key": false,
+        "f_key": 1.3,
+        "i_key": 98765,
+        "obj_empty_test": {
+            "banana": "nadarim",
+            "obj_empty_sometimes": {
+                "from": "reseller",
+                "reseller": true
+            }
+        },
+        "obj_key": {
+            "from": "reseller"
+        },
+        "reseller": "reseller_only"
+    }
+}

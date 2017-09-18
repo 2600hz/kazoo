@@ -74,8 +74,7 @@ number_tree(DID, AccountDoc) ->
 -spec print_tree(ne_binaries()) -> 'ok'.
 print_tree([]) -> 'ok';
 print_tree([AccountId|Tree]) ->
-    {'ok', AccountDoc} = kz_datamgr:open_cache_doc(<<"accounts">>, AccountId),
-    io:format(" ~s(~s) ->", [kz_account:name(AccountDoc), kz_doc:id(AccountDoc)]),
+    io:format(" ~s(~s) ->", [kz_account:fetch_name(AccountId), AccountId]),
     print_tree(Tree).
 
 %%--------------------------------------------------------------------
@@ -130,11 +129,9 @@ cnam_flush() ->
 -spec refresh() -> 'ok'.
 refresh() ->
     lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
-    kz_datamgr:db_create(?RESOURCES_DB), % RESOURCES_DB = KZ_OFFNET_DB
-    Views = [kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
-             | kapps_util:get_views_json('stepswitch', "views")
-            ],
-    kapps_util:update_views(?RESOURCES_DB, Views, 'true'),
+    kapi_maintenance:refresh_database(?RESOURCES_DB),
+    kapi_maintenance:refresh_views(?RESOURCES_DB),
+
     case catch kz_datamgr:all_docs(?RESOURCES_DB, ['include_docs']) of
         {'error', _} -> 'ok';
         {'EXIT', _E} ->

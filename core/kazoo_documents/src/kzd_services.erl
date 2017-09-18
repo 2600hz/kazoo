@@ -11,6 +11,7 @@
         ,is_reseller/1, is_reseller/2
         ,reseller_id/1, reseller_id/2
         ,is_dirty/1, is_dirty/2
+        ,is_deleted/1, is_deleted/2
         ,status/1, status/2
         ,tree/1, tree/2
         ,reason/1, reason/2
@@ -54,11 +55,9 @@
 -define(IS_RESELLER, <<"pvt_reseller">>).
 -define(RESELLER_ID, <<"pvt_reseller_id">>).
 -define(IS_DIRTY, <<"pvt_dirty">>).
+-define(IS_DELETED, <<"pvt_deleted">>).
 -define(STATUS, <<"pvt_status">>).
--define(STATUS_GOOD, <<"good_standing">>).
--define(STATUS_DELINQUENT, <<"delinquent">>).
 -define(TREE, <<"pvt_tree">>).
--define(TYPE, <<"service">>).
 -define(PLANS, <<"plans">>).
 -define(QUANTITIES, <<"quantities">>).
 -define(TRANSACTIONS, <<"transactions">>).
@@ -97,10 +96,17 @@ is_dirty(JObj) ->
 is_dirty(JObj, Default) ->
     kz_json:is_true(?IS_DIRTY, JObj, Default).
 
+-spec is_deleted(doc()) -> boolean().
+-spec is_deleted(doc(), Default) -> boolean() | Default.
+is_deleted(JObj) ->
+    is_deleted(JObj, 'false').
+is_deleted(JObj, Default) ->
+    kz_json:is_true(?IS_DELETED, JObj, Default).
+
 -spec status(doc()) -> ne_binary().
 -spec status(doc(), Default) -> ne_binary() | Default.
 status(JObj) ->
-    status(JObj, ?STATUS_GOOD).
+    status(JObj, status_good()).
 status(JObj, Default) ->
     kz_json:get_value(?STATUS, JObj, Default).
 
@@ -127,17 +133,15 @@ reason_code(JObj, Default) ->
 
 -spec type() -> ne_binary().
 -spec type(kz_json:object()) -> ne_binary().
-type() -> ?TYPE.
+type() -> <<"service">>.
 type(JObj) ->
-    kz_doc:type(JObj, ?TYPE).
+    kz_doc:type(JObj, type()).
 
 -spec status_good() -> ne_binary().
-status_good() ->
-    ?STATUS_GOOD.
+status_good() -> <<"good_standing">>.
 
 -spec status_delinquent() -> ne_binary().
-status_delinquent() ->
-    ?STATUS_DELINQUENT.
+status_delinquent() -> <<"delinquent">>.
 
 -spec plans(doc()) -> kz_json:object().
 -spec plans(doc(), Default) -> kz_json:object() | Default.
@@ -148,7 +152,7 @@ plans(JObj, Default) ->
 
 -spec plan_ids(doc()) -> ne_binaries().
 plan_ids(JObj) ->
-    kz_json:get_keys(plans(JObj)).
+    kz_json:get_keys(?PLANS, JObj).
 
 -spec plan(doc(), ne_binary()) -> kz_json:object().
 -spec plan(doc(), ne_binary(), Default) -> kz_json:object() | Default.
@@ -229,7 +233,7 @@ set_reason_code(JObj, Code) when is_integer(Code) ->
 
 -spec set_type(doc()) -> doc().
 set_type(JObj) ->
-    kz_doc:set_type(JObj, ?TYPE).
+    kz_doc:set_type(JObj, type()).
 
 -spec set_plans(doc(), kz_json:object()) -> doc().
 set_plans(JObj, Plans) ->

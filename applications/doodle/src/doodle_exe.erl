@@ -483,7 +483,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
     CallId = kapps_call:call_id_direct(Call),
     SmsId = kapps_call:kvs_fetch(<<"sms_docid">>, Call),
     Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
-    case {kapps_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
+    case {kz_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
             ExeFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
             TransferFetchId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),

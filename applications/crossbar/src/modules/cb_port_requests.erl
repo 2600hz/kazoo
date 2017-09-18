@@ -771,15 +771,15 @@ transitions_to_submitted(Timeline) ->
              kz_json:get_ne_binary_value([?PORT_TRANSITION, <<"new">>], JObj) =:= ?PORT_SUBMITTED
     ].
 
--spec prepare_timeline(cb_context:context(), kz_json:object()) -> kz_json:object().
+-spec prepare_timeline(cb_context:context(), kz_json:object()) -> kz_json:objects().
 prepare_timeline(Context, Doc) ->
     Comments = kz_json:get_list_value(<<"comments">>, filter_private_comments(Context, Doc), []),
     Transitions = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
     Indexed = [{kz_json:get_integer_value(?TRANSITION_TIMESTAMP, JObj), JObj}
                || JObj <- Comments ++ Transitions
               ],
-    {_, NewDoc} = lists:unzip(lists:keysort(1, Indexed)),
-    NewDoc.
+    {_, NewDocs} = lists:unzip(lists:keysort(1, Indexed)),
+    NewDocs.
 
 -spec timeline(cb_context:context()) -> cb_context:context().
 timeline(Context) ->
@@ -807,12 +807,14 @@ run_comment_filter(JObj) ->
 
 -spec normalize_summary_results(cb_context:context()) -> cb_context:context().
 normalize_summary_results(Context) ->
-    Dict = lists:foldl(
-             fun(JObj, D) ->
-                     AccountId = kz_json:get_value(<<"account_id">>, JObj),
-                     NewJObj   = filter_private_comments(Context, JObj),
-                     dict:append_list(AccountId, [NewJObj], D)
-             end, dict:new(), cb_context:resp_data(Context)),
+    Dict = lists:foldl(fun(JObj, D) ->
+                               AccountId = kz_json:get_value(<<"account_id">>, JObj),
+                               NewJObj   = filter_private_comments(Context, JObj),
+                               dict:append_list(AccountId, [NewJObj], D)
+                       end
+                      ,dict:new()
+                      ,cb_context:resp_data(Context)
+                      ),
     Names = get_account_names(dict:fetch_keys(Dict)),
     JObj = [kz_json:from_list(
               [{<<"account_id">>, AccountId}

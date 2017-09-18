@@ -202,9 +202,9 @@
 
 -record(kz_amqp_connection, {broker :: ne_binary() | '_'
                             ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{} | '_'
-                            ,manager :: pid() | '_'
-                            ,connection :: pid() | '_'
-                            ,connection_ref :: reference() | '_'
+                            ,manager :: api_pid() | '_'
+                            ,connection :: api_pid() | '_'
+                            ,connection_ref :: api_reference() | '_'
                             ,channel :: api_pid() | '$1' | '_'
                             ,channel_ref :: api_reference() | '$1' | '_'
                             ,reconnect_ref :: api_reference() | '_'
@@ -233,6 +233,8 @@
 -type basic_publish() :: #'basic.publish'{}.
 -type basic_deliver() :: #'basic.deliver'{}.
 -type amqp_msg() :: #'amqp_msg'{}.
+-type amqp_basic() :: #'P_basic'{}.
+-type amqp_deliver() :: {basic_deliver(), amqp_msg()}.
 
 -define(AMQP_HIDDEN_TAG, <<"hidden">>).
 

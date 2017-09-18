@@ -33,7 +33,6 @@
                    }).
 -type auth_user() :: #auth_user{}.
 
-
 -define(GSM_CACHED_METHOD, <<"gsm_cached">>).
 -define(GSM_A3A8_METHOD, <<"gsm_a3a8">>).
 -define(GSM_ROAMING_METHOD, <<"gsm_roaming">>).

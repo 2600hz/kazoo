@@ -205,7 +205,6 @@ copy_doc(Src, Dst, CopySpec, Options) ->
     SaveFun = default_copy_function(props:is_defined(?COPY_DOC_OVERRIDE_PROPERTY, Options)),
     copy_doc(Src, Dst, CopySpec, SaveFun, props:delete(?COPY_DOC_OVERRIDE_PROPERTY, Options)).
 
-
 -spec copy_doc(map(), map(), copy_doc(), copy_function(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
                       data_error().

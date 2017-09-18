@@ -19,6 +19,10 @@
 
 -include("callflow.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
@@ -36,8 +40,9 @@ handle(Data, Call) ->
             'undefined' -> <<>>;
             <<_/binary>> = D -> D
         end,
+    AlreadyCollected1 = truncate_after_terminator(AlreadyCollected, terminators(Data)),
 
-    maybe_collect_more_digits(Data, kapps_call:set_dtmf_collection('undefined', Call), AlreadyCollected).
+    maybe_collect_more_digits(Data, kapps_call:set_dtmf_collection('undefined', Call), AlreadyCollected1).
 
 -spec maybe_collect_more_digits(kz_json:object(), kapps_call:call(), binary()) -> 'ok'.
 maybe_collect_more_digits(Data, Call, AlreadyCollected) ->
@@ -77,6 +82,20 @@ collect_more_digits(Data, Call, AlreadyCollected, MaxDigits) ->
         {'error', _E} ->
             lager:debug("failed to collect DTMF: ~p", [_E])
     end.
+
+-spec truncate_after_terminator(binary(), ne_binaries()) -> binary().
+truncate_after_terminator(AlreadyCollected, Terminators) ->
+    hd(binary:split(AlreadyCollected, Terminators)).
+
+-ifdef(TEST).
+truncate_after_terminator_test_() ->
+    [?_assertEqual(<<"1234">>, truncate_after_terminator(<<"1234#456#789">>, [<<"#">>, <<"*">>]))
+    ,?_assertEqual(<<"1234">>, truncate_after_terminator(<<"1234">>, [<<"#">>]))
+    ,?_assertEqual(<<"123">>, truncate_after_terminator(<<"123#">>, [<<"#">>, <<"*">>]))
+    ,?_assertEqual(<<"1">>, truncate_after_terminator(<<"1*2#3">>, [<<"#">>, <<"*">>]))
+    ,?_assertEqual(<<>>, truncate_after_terminator(<<"#234">>, [<<"#">>]))
+    ].
+-endif.
 
 -spec collection_name(kz_json:object()) -> ne_binary().
 collection_name(Data) ->

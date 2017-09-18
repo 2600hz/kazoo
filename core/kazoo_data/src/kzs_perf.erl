@@ -12,7 +12,7 @@
 
 -include("kz_data.hrl").
 
--define(CACHE_PROFILE_FROM_FILE, kz_json:load_fixture_from_file('kazoo_data', "defaults", "perf.json")).
+-define(CACHE_PROFILE_FROM_FILE, kz_json:load_fixture_from_file(?APP, "defaults", "perf.json")).
 -define(CACHE_PROFILE_OPTS, [{'origin', [{'db', ?KZ_CONFIG_DB, ?CONFIG_CAT}]}
                             ,{'expires', 'infinity'}
                             ]).
@@ -78,7 +78,7 @@ profile_match(Mod, Fun, Arity) ->
 -spec do_profile({atom(), atom(), arity()}, list(), map()) -> any().
 do_profile({Mod, Fun, _Arity}, Args, PD) ->
     [Plan, DbName | Others] = Args,
-    {Time, Result} = timer:tc(fun() -> erlang:apply(Mod, Fun, Args) end),
+    {Time, Result} = timer:tc(Mod, Fun, Args),
     From = kz_util:calling_process(),
     FromList = [{kz_term:to_atom(<<"from_", (kz_term:to_binary(K))/binary>>, true), V} || {K,V} <- maps:to_list(From)],
     MD = FromList ++ maps:to_list(maps:merge(Plan, PD)),
@@ -90,6 +90,6 @@ do_profile({Mod, Fun, _Arity}, Args, PD) ->
                ,{'from', From}
                 | MD
                ],
-               "execution of {~s:~s} in database ~s with args ~p took ~b",
+               "execution of {~s:~s} in database ~s with args ~p took ~b μs",
                [Mod, Fun, DbName, Others, Time]),
     Result.

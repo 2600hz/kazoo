@@ -240,7 +240,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
     unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
 
 unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
-    lager:debug("unsolicitated mwi updated disabled : ~s", [_AccountDb]);
+    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                   ,'include_docs'
@@ -288,7 +288,7 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
     unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
 
 unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
-    lager:debug("unsolicitated mwi updated disabled : ~s", [_AccountDb]);
+    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
     case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
         {'error', _}=E -> E;
@@ -304,7 +304,7 @@ maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
     maybe_send_endpoint_mwi_update(AccountDb, JObj, kz_device:unsolicitated_mwi_updates(JObj)).
 
 maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
-    lager:debug("unsolicitated mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
+    lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     Username = kz_device:sip_username(JObj),
@@ -706,7 +706,7 @@ find_user_endpoints(UserIds, DeviceIds, Call) ->
 
 -spec find_channels(ne_binaries(), kapps_call:call()) -> kz_json:objects().
 find_channels(Usernames, Call) ->
-    Realm = kz_util:get_account_realm(kapps_call:account_id(Call)),
+    Realm = kz_account:fetch_realm(kapps_call:account_id(Call)),
     lager:debug("finding channels for realm ~p, usernames ~p", [Realm, Usernames]),
     Req = [{<<"Realm">>, Realm}
           ,{<<"Usernames">>, Usernames}

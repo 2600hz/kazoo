@@ -53,6 +53,7 @@
         ,remove_allowed_feature_on_system_config/1
         ,reset_allowed_features_to_defaults_on_system_config/0
         ]).
+-export([ensure_adminonly_features_are_reachable/0]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
        ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
@@ -296,6 +297,7 @@ fix_number(Num, AuthBy, AccountDb) ->
 
 -spec migrate() -> 'ok'.
 migrate() ->
+    ensure_adminonly_features_are_reachable(),
     _ = refresh_numbers_dbs(),
     pforeach(fun migrate/1, kapps_util:get_all_accounts()),
     migrate_unassigned_numbers().
@@ -854,3 +856,15 @@ add_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
 -spec remove_allowed_feature_on_system_config(ne_binary()) -> no_return.
 remove_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
     edit_allowed_feature_permissions_on_system_config(fun lists:delete/2, Feature).
+
+%% @public
+-spec ensure_adminonly_features_are_reachable() -> no_return.
+ensure_adminonly_features_are_reachable() ->
+    Configured = knm_providers:system_allowed_features(),
+    case lists:usort(?ADMIN_ONLY_FEATURES) -- Configured of
+        [] -> no_return;
+        ToAdd ->
+            io:format("Adding the following admin-only number features to system_config: ~s"
+                     ,[list_features(ToAdd)]),
+            set_features_on_system_config(ToAdd ++ Configured)
+    end.

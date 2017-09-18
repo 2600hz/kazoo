@@ -13,7 +13,24 @@
             "type": "string"
         },
         "custom_sip_headers": {
-            "description": "Custom SIP Headers to include on the outgoing INVITE",
+            "anyOf": [
+                {
+                    "$ref": "custom_sip_headers"
+                },
+                {
+                    "properties": {
+                        "in": {
+                            "$ref": "custom_sip_headers",
+                            "description": "Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint"
+                        },
+                        "out": {
+                            "$ref": "custom_sip_headers",
+                            "description": "Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint"
+                        }
+                    }
+                }
+            ],
+            "description": "A property list of SIP headers",
             "type": "object"
         },
         "do_not_normalize": {

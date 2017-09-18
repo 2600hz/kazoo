@@ -247,8 +247,6 @@ pages:
     - 'core/kazoo_services/doc/bookkeepers.md'
   - 'Kazoo PropEr':
     - 'core/kazoo_proper/doc/README.md'
-  - 'APNS':
-    - 'core/apns/Readme.md'
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'

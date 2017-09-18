@@ -21,11 +21,13 @@
 -export([features_denied/1]).
 -export([system_allowed_features/0]).
 
--define(CNAM_PROVIDER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, <<"knm_cnam_notifier">>)).
+-define(CNAM_PROVIDER(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, <<"knm_cnam_notifier">>)
+       ).
 
--define(E911_PROVIDER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, <<"knm_dash_e911">>)).
+-define(E911_PROVIDER(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, <<"knm_dash_e911">>)
+       ).
 
 -define(SYSTEM_PROVIDERS, kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"providers">>)).
 
@@ -90,12 +92,21 @@ available_features(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec service_name(ne_binary(), ne_binary()) -> ne_binary().
+-ifdef(TEST).
+service_name(?FEATURE_E911, _AccountId) ->
+    service_name(?E911_PROVIDER(_AccountId));
+service_name(?FEATURE_CNAM, _AccountId) ->
+    service_name(?CNAM_PROVIDER(_AccountId));
+service_name(Feature, _) ->
+    service_name(Feature).
+-else.
 service_name(?FEATURE_E911, AccountId) ->
     service_name(?E911_PROVIDER(AccountId));
 service_name(?FEATURE_CNAM, AccountId) ->
     service_name(?CNAM_PROVIDER(AccountId));
 service_name(Feature, _) ->
     service_name(Feature).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -111,11 +122,9 @@ e911_caller_name(_Number, 'undefined') -> ?E911_NAME_DEFAULT.
 e911_caller_name(_Number, ?NE_BINARY=Name) -> Name;
 e911_caller_name(Number, 'undefined') ->
     AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:name(JObj, ?E911_NAME_DEFAULT);
-        {'error', _Error} ->
-            lager:error("error opening account doc ~p", [AccountId]),
-            ?E911_NAME_DEFAULT
+    case kz_account:fetch_name(AccountId) of
+        undefined -> ?E911_NAME_DEFAULT;
+        Name -> Name
     end.
 -endif.
 
@@ -208,10 +217,13 @@ reseller_allowed_features(#feature_parameters{assigned_to = AccountId}=_Params) 
 
 -spec system_allowed_features() -> ne_binaries().
 system_allowed_features() ->
-    Features = case ?SYSTEM_PROVIDERS of
-                   undefined -> ?FEATURES_ALLOWED_SYSTEM(?DEFAULT_FEATURES_ALLOWED_SYSTEM);
-                   Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
-               end,
+    Features =
+        lists:usort(
+          case ?SYSTEM_PROVIDERS of
+              'undefined' -> ?FEATURES_ALLOWED_SYSTEM(?DEFAULT_FEATURES_ALLOWED_SYSTEM);
+              Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
+          end
+         ),
     ?LOG_DEBUG("allowed features from system config: ~s", [?PP(Features)]),
     Features.
 
@@ -220,6 +232,7 @@ system_allowed_features() ->
 number_allowed_features(#feature_parameters{num = ?TEST_OLD5_1_NUM}) ->
     AllowedFeatures = [?FEATURE_CNAM
                       ,?FEATURE_E911
+                      ,?FEATURE_FORCE_OUTBOUND
                       ,?FEATURE_RENAME_CARRIER
                       ],
     ?LOG_DEBUG("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
@@ -227,6 +240,7 @@ number_allowed_features(#feature_parameters{num = ?TEST_OLD5_1_NUM}) ->
 number_allowed_features(#feature_parameters{num = ?TEST_VITELITY_NUM}) ->
     AllowedFeatures = [?FEATURE_CNAM
                       ,?FEATURE_E911
+                      ,?FEATURE_FORCE_OUTBOUND
                       ,?FEATURE_PREPEND
                       ,?FEATURE_RENAME_CARRIER
                       ],
@@ -386,6 +400,8 @@ provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
 provider_module(?FEATURE_RENAME_CARRIER, _) ->
     ?PROVIDER_RENAME_CARRIER;
+provider_module(?FEATURE_FORCE_OUTBOUND, _) ->
+    ?PROVIDER_FORCE_OUTBOUND;
 provider_module(Other, _) ->
     ?LOG_DEBUG("unmatched feature provider ~p, allowing", [Other]),
     Other.

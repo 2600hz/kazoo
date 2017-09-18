@@ -11,7 +11,7 @@
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-        ,authorize/1
+        ,authorize/1, authorize/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_provided/2
         ,content_types_accepted/2
@@ -88,7 +88,7 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
 
 allowed_methods(?SMTP_LOG) ->
     [?HTTP_GET];
@@ -104,15 +104,21 @@ allowed_methods(?CUSTOMER_UPDATE, ?MESSAGE) ->
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
+    authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(cb_context:context(), req_nouns(), api_binary()) -> boolean().
-authorize(_Context, [{<<"notifications">>, [?NE_BINARY=_Id]}], 'undefined') ->
-    lager:debug("allowing system notifications request"),
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _Id) ->
+    authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize(cb_context:context(), http_method(), req_nouns()) -> boolean().
+authorize(_Context, ?HTTP_GET, [{<<"notifications">>, _}]) ->
     'true';
-authorize(_Context, [{<<"notifications">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
+authorize(Context, _, [{<<"notifications">>, _}]) ->
+    lager:debug("allowing system notifications mutation request"),
+    cb_context:is_superduper_admin(Context);
+authorize(_Context, _, [{<<"notifications">>, _}, {<<"accounts">>, [?NE_BINARY=_AccountId]}]) ->
     'true';
-authorize(_Context, _Nouns, _AccountId) ->
+authorize(_Context, _, _Nouns) ->
     'false'.
 
 %%--------------------------------------------------------------------
@@ -259,25 +265,37 @@ validate(Context, ?CUSTOMER_UPDATE, ?MESSAGE) ->
 validate_notifications(Context, ?HTTP_GET) ->
     summary(Context);
 validate_notifications(Context, ?HTTP_PUT) ->
-    create(Context).
+    validate_action(Context, ?HTTP_PUT, cb_context:req_value(Context, <<"action">>), cb_context:account_id(Context));
+validate_notifications(Context, ?HTTP_DELETE) ->
+    validate_action(Context, ?HTTP_DELETE, cb_context:req_value(Context, <<"action">>), cb_context:account_id(Context)).
+
+-spec validate_action(cb_context:context(), http_method(), api_binary(), api_binary()) -> cb_context:context().
+validate_action(Context, ?HTTP_PUT, 'undefined', _AccountId) ->
+    create(Context);
+validate_action(Context, _Method, Action, 'undefined') ->
+    Resp = [{<<"message">>, <<"Can not perform mutation action on top-level notification templates">>}],
+    cb_context:add_validation_error(Action, <<"forbidden">>, kz_json:from_list(Resp), Context);
+validate_action(Context, ?HTTP_PUT, <<"force_system">>, AccountId) ->
+    force_system_templates(Context, AccountId);
+validate_action(Context, ?HTTP_DELETE, <<"remove_customizations">>, AccountId) ->
+    remove_account_customizations(Context, AccountId);
+validate_action(Context, _Method, Action, _AccountId) ->
+    Resp = [{<<"cause">>, Action}
+           ,{<<"message">>, <<"Unknown mutation action">>}
+           ],
+    cb_context:add_validation_error(Action, <<"forbidden">>, kz_json:from_list(Resp), Context).
 
 validate_notification(Context, Id, ?HTTP_GET) ->
     maybe_read(Context, Id);
 validate_notification(Context, Id, ?HTTP_POST) ->
     maybe_update(Context, Id);
 validate_notification(Context, Id, ?HTTP_DELETE) ->
-    validate_delete_notification(Context, Id).
+    validate_delete(Context, Id, cb_context:account_id(Context)).
 
--spec validate_delete_notification(cb_context:context(), path_token()) ->
-                                          cb_context:context().
--spec validate_delete_notification(cb_context:context(), path_token(), ne_binary()) ->
-                                          cb_context:context().
-validate_delete_notification(Context, Id) ->
-    validate_delete_notification(Context, Id, cb_context:account_id(Context)).
-
-validate_delete_notification(Context, Id, 'undefined') ->
+-spec validate_delete(cb_context:context(), path_token(), api_binary()) -> cb_context:context().
+validate_delete(Context, Id, 'undefined') ->
     disallow_delete(Context, kz_notification:resp_id(Id));
-validate_delete_notification(Context, Id, _AccountId) ->
+validate_delete(Context, Id, _AccountId) ->
     lager:debug("trying to remove notification from account ~s", [_AccountId]),
     read(Context, Id, 'account').
 
@@ -288,7 +306,7 @@ disallow_delete(Context, Id) ->
         [{<<"target">>, Id}
         ,{<<"message">>, <<"Top-level notification template cannot be deleted">>}
         ],
-    cb_context:add_validation_error(Id, <<"disallow">>, kz_json:from_list(Resp), Context).
+    cb_context:add_validation_error(Id, <<"forbidden">>, kz_json:from_list(Resp), Context).
 
 -spec may_be_validate_recipient_id(cb_context:context()) -> cb_context:context().
 may_be_validate_recipient_id(Context) ->
@@ -323,7 +341,7 @@ validate_recipient_id(RecipientId, Context) ->
 sender_account_id(Context) ->
     sender_account_id(Context, cb_context:account_id(Context)).
 
--spec sender_account_id(cb_context:context(), ne_binary()|'undefined') -> ne_binary().
+-spec sender_account_id(cb_context:context(), api_ne_binary()) -> ne_binary().
 sender_account_id(Context, 'undefined') ->
     cb_context:auth_account_id(Context);
 sender_account_id(_Context, AccountId) ->
@@ -337,10 +355,14 @@ sender_account_id(_Context, AccountId) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Context1 = crossbar_doc:save(Context),
-    case cb_context:resp_status(Context1) of
-        'success' -> leak_doc_id(Context1);
-        _Status -> Context1
+    case cb_context:req_value(Context, <<"action">>) of
+        'undefined' ->
+            Context1 = crossbar_doc:save(Context),
+            case cb_context:resp_status(Context1) of
+                'success' -> leak_doc_id(Context1);
+                _Status -> Context1
+            end;
+        _ -> Context
     end.
 
 %%--------------------------------------------------------------------
@@ -390,7 +412,7 @@ set_system_macros(Context) ->
 post(Context, ?CUSTOMER_UPDATE, ?MESSAGE) ->
     case kz_amqp_worker:call(build_customer_update_payload(Context)
                             ,fun kapi_notifications:publish_customer_update/1
-                            ,fun kapi_notifications:customer_update_v/1
+                            ,fun kapi_notifications:notify_update_v/1
                             )
     of
         {'ok', _Resp} ->
@@ -482,6 +504,8 @@ headers(<<"port_request_admin">>) ->
     kapi_notifications:headers(<<"port_request">>);
 headers(<<"fax_inbound_error_to_email_filtered">>) ->
     kapi_notifications:headers(<<"fax_inbound_error_to_email">>);
+headers(<<"fax_outbound_smtp_error_to_email">>) ->
+    kapi_notifications:headers(<<"fax_outbound_smtp_error">>);
 headers(<<"transaction_failed">>) ->
     kapi_notifications:headers(<<"transaction">>);
 headers(Id) ->
@@ -492,6 +516,8 @@ maybe_add_extra_data(<<"fax_inbound_error_to_email">>, API) ->
     props:set_value(<<"Fax-Result-Code">>, <<"500">>, API);
 maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
     props:set_value(<<"Fax-Result-Code">>, <<"49">>, API);
+maybe_add_extra_data(<<"fax_outbound_smtp_error_to_email">>, API) ->
+    props:set_value(<<"Errors">>, [<<"Not Deliverable">>], API);
 maybe_add_extra_data(<<"transaction">>, API) ->
     props:set_value(<<"Success">>, 'true', API);
 maybe_add_extra_data(<<"transaction_failed">>, API) ->
@@ -517,6 +543,8 @@ publish_fun(<<"fax_inbound_to_email">>) ->
     fun kapi_notifications:publish_fax_inbound/1;
 publish_fun(<<"fax_outbound_error_to_email">>) ->
     fun kapi_notifications:publish_fax_outbound_error/1;
+publish_fun(<<"fax_outbound_smtp_error_to_email">>) ->
+    fun kapi_notifications:publish_fax_outbound_smtp_error/1;
 publish_fun(<<"fax_outbound_to_email">>) ->
     fun kapi_notifications:publish_fax_outbound/1;
 publish_fun(<<"first_occurrence">>) ->
@@ -601,7 +629,7 @@ maybe_delete(Context, Id, [?MEDIA_VALUE(Type, SubType, _, _, _)]) ->
 
 -spec delete_doc(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_doc(Context, Id) ->
-    Context1 = crossbar_doc:delete(Context, 'permanent'),
+    Context1 = crossbar_doc:delete(Context, ?HARD_DELETE),
     case cb_context:resp_status(Context1) of
         'success' ->
             kz_datamgr:flush_cache_doc(cb_context:account_db(Context), Id),
@@ -899,8 +927,8 @@ try_parent_attachments(Context, Id, AccountId, ParentAccountId, ResellerId) ->
     ParentNotificationContext = crossbar_doc:load(Id
                                                  ,masquerade(Context, ParentAccountId)
                                                  ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())),
-    Doc = cb_context:doc(ParentNotificationContext),
-    case kz_doc:attachments(Doc) of
+    ParentDoc = cb_context:doc(ParentNotificationContext),
+    case kz_doc:attachments(ParentDoc) of
         'undefined' -> merge_ancestor_attachments(Context, Id, ParentAccountId, ResellerId);
         Attachments ->
             lager:debug("found attachments in account ~s", [ParentAccountId]),
@@ -1120,7 +1148,7 @@ update_template(Context, Id, FileJObj) ->
 
 -spec attachment_name_by_content_type(ne_binary()) -> ne_binary().
 attachment_name_by_content_type(CT) ->
-    <<"template.", (kz_http_util:urlencode(CT))/binary>>.
+    kz_binary:clean(<<"template.", CT/binary>>).
 
 -spec attachment_name_by_media_type(ne_binary()) -> ne_binary().
 attachment_name_by_media_type(CT) ->
@@ -1422,3 +1450,82 @@ maybe_update_db(Context) ->
 -spec normalize_view_result(kz_json:object()) -> kz_json:object().
 normalize_view_result(JObj) ->
     kz_json:get_value(<<"value">>, JObj).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Remove Template Customization from an account
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_account_customizations(cb_context:context(), ne_binary()) -> cb_context:context().
+remove_account_customizations(Context, AccountId) ->
+    ToRemove = list_templates_from_db(kz_util:format_account_db(AccountId)),
+    Result = remove_customization(AccountId, ToRemove),
+    Setters = [{fun cb_context:set_resp_status/2, 'success'}
+              ,{fun cb_context:set_resp_data/2, Result}
+              ],
+    cb_context:setters(Context, Setters).
+
+-spec remove_customization(ne_binary(), ne_binaries()) -> kz_json:object().
+remove_customization(_, []) ->
+    kz_json:from_list([{<<"message">>, <<"no template customization(s) found">>}]);
+remove_customization(AccountId, Ids) ->
+    lager:debug("removing ~b template customization(s) from ~s~n", [length(Ids), AccountId]),
+    case kz_datamgr:del_docs(kz_util:format_account_db(AccountId), Ids) of
+        {'ok', JObjs} ->
+            Result = [{kz_notification:resp_id(kz_doc:id(J)), kz_term:to_binary(kz_json:get_value(<<"error">>, J, <<"deleted">>))}
+                      || J <- JObjs
+                     ],
+            kz_json:from_list(Result);
+        {'error', _Reason} ->
+            Msg = io_lib:format("failed to remove customization: ~p", [_Reason]),
+            lager:debug(Msg),
+            kz_json:from_list([{<<"message">>, Msg}])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Forcing System's Templates to an account by first removing
+%% account's customization and then copy the templates from
+%% system_config to account's db.
+%% @end
+%%--------------------------------------------------------------------
+-spec force_system_templates(cb_context:context(), ne_binary()) -> cb_context:context().
+force_system_templates(Context, AccountId) ->
+    ToRemove = list_templates_from_db(kz_util:format_account_db(AccountId)),
+    _ = remove_customization(AccountId, ToRemove),
+    ToCopy = list_templates_from_db(?KZ_CONFIG_DB),
+    Result = force_system_default(AccountId, ToCopy),
+    Setters = [{fun cb_context:set_resp_status/2, 'success'}
+              ,{fun cb_context:set_resp_data/2, Result}
+              ],
+    cb_context:setters(Context, Setters).
+
+-spec force_system_default(ne_binary(), ne_binaries()) -> kz_json:object().
+force_system_default(_, []) ->
+    kz_json:from_list([{<<"message">>, <<"no system template found">>}]);
+force_system_default(AccountId, Ids) ->
+    lager:debug("forcing ~b system default template(s) for account ~s~n", [length(Ids), AccountId]),
+    AccountDb = kz_util:format_account_db(AccountId),
+    kz_json:from_list([copy_from_system_to_account(AccountDb, Id) || Id <- Ids]).
+
+-spec copy_from_system_to_account(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+copy_from_system_to_account(AccountDb, Id) ->
+    case kz_datamgr:copy_doc(?KZ_CONFIG_DB, Id, AccountDb, Id, []) of
+        {'ok', _} -> {kz_notification:resp_id(Id), <<"replaced">>};
+        {'error', Reason} -> {kz_notification:resp_id(Id), kz_term:to_binary(Reason)}
+    end.
+
+-spec list_templates_from_db(ne_binary()) -> ne_binaries().
+list_templates_from_db(Db) ->
+    ViewOpts = [{'startkey', <<"notification.">>}
+               ,{'endkey', <<"notification.zzz">>}
+               ],
+    case kz_datamgr:all_docs(Db, ViewOpts) of
+        {'ok', Results} ->
+            [kz_doc:id(Result) || Result <- Results];
+        {'error', _E} ->
+            lager:debug("failed to query existing notifications: ~p~n", [_E]),
+            []
+    end.

@@ -44,6 +44,7 @@ Key | Description | Type | Default | Required
 `media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
 `media.ignore_early_media` | The option to determine if early media from the device should always be ignored | `boolean()` |   | `false`
 `media.progress_timeout` | The progress timeout to apply to the device (seconds) | `integer()` |   | `false`
+`media.rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` |   | `false`
 `media.video.codecs.[]` |   | `string()` |   | `false`
 `media.video.codecs` | A list of video codecs the device supports | `array(string('VP8' | 'H264' | 'H263' | 'H261'))` | `[]` | `false`
 `media.video` | The video media parameters | `object()` | `{}` | `false`
@@ -70,7 +71,10 @@ Key | Description | Type | Default | Required
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false`
-`sip.custom_sip_headers` | A property list of SIP headers beging with the prefix 'X-' | `object()` |   | `false`
+`sip.custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
+`sip.custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false`
+`sip.custom_sip_headers.^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`
+`sip.custom_sip_headers` | A property list of SIP headers | `object()` |   | `false`
 `sip.expire_seconds` | The time, in seconds, sent to the provisioner for the registration period that the device should be configured with. | `integer()` | `300` | `false`
 `sip.ignore_completed_elsewhere` | When set to false the phone should not consider ring group calls answered elsewhere as missed | `boolean()` |   | `false`
 `sip.invite_format` | The SIP request URI invite format | `string('username' | 'npan' | '1npan' | 'e164' | 'route' | 'contact')` | `contact` | `false`
@@ -143,6 +147,15 @@ Key | Description | Type | Default | Required
 `internal.name` | The caller id name for the object type | `string(0..35)` |   | `false`
 `internal.number` | The caller id name for the object type | `string(0..35)` |   | `false`
 `internal` | The default caller ID used when dialing internal extensions | `object()` |   | `false`
+
+##### custom_sip_headers
+
+Custom SIP headers applied to an INVITE
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`
 
 ##### dialplans
 

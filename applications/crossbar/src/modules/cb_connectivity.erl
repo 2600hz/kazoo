@@ -144,7 +144,7 @@ delete(Context, _) ->
 -spec registration_update(cb_context:context()) -> 'ok'.
 registration_update(Context) ->
     crossbar_util:flush_registrations(
-      kz_util:get_account_realm(cb_context:account_id(Context))
+      kz_account:fetch_realm(cb_context:account_id(Context))
      ).
 
 %%--------------------------------------------------------------------
@@ -276,7 +276,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

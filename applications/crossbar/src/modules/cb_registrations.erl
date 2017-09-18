@@ -242,5 +242,5 @@ count_registrations(Context) ->
 get_realm(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> <<"all">>;
-        AccountId -> kz_util:get_account_realm(AccountId)
+        AccountId -> kz_account:fetch_realm(AccountId)
     end.

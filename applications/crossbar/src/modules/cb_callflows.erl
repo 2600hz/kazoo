@@ -196,37 +196,20 @@ validate_request(CallflowId, Context) ->
         [] -> validate_patterns(CallflowId, Context);
         OriginalNumbers
           when is_list(OriginalNumbers) ->
-            validate_callflow_schema(CallflowId, normalize_numbers(OriginalNumbers, Context));
+            validate_callflow_schema(CallflowId, normalize_numbers(Context, OriginalNumbers));
         OriginalNumbers ->
-            error_numbers_not_array(Context, OriginalNumbers)
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Value is not of type array">>}
+                    ,{<<"cause">>, OriginalNumbers}
+                    ]),
+            cb_context:add_validation_error(<<"numbers">>, <<"type">>, Msg, Context)
     end.
 
--spec error_numbers_not_array(cb_context:context(), kz_json:json_term()) ->
-                                     cb_context:context().
-error_numbers_not_array(Context, OriginalNumbers) ->
-    cb_context:add_validation_error(<<"numbers">>
-                                   ,<<"type">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Value is not of type array">>}
-                                      ,{<<"cause">>, OriginalNumbers}
-                                      ])
-                                   ,Context
-                                   ).
-
--spec normalize_numbers(ne_binaries(), cb_context:context()) -> cb_context:context().
-normalize_numbers(Ns, Context) ->
-    normalize_numbers(Ns, cb_context:account_id(Context), Context).
-
--spec normalize_numbers(ne_binaries(), api_binary(), cb_context:context()) -> cb_context:context().
-normalize_numbers(Ns, 'undefined', Context) ->
-    set_request_numbers(Context, [knm_converters:normalize(N) || N <- Ns]);
-normalize_numbers(Ns, AccountId, Context) ->
-    set_request_numbers(Context, [knm_converters:normalize(N, AccountId) || N <- Ns]).
-
--spec set_request_numbers(cb_context:context(), binaries()) -> cb_context:context().
-set_request_numbers(Context, Numbers) ->
-    JObj = kz_json:set_value(<<"numbers">>, Numbers, cb_context:req_data(Context)),
-    cb_context:set_req_data(Context, JObj).
+-spec normalize_numbers(cb_context:context(), ne_binaries()) -> cb_context:context().
+normalize_numbers(Context, Nums) ->
+    Normalized = knm_converters:normalize(Nums, cb_context:account_id(Context)),
+    NewReqData = kz_json:set_value(<<"numbers">>, Normalized, cb_context:req_data(Context)),
+    cb_context:set_req_data(Context, NewReqData).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -242,35 +225,20 @@ validate_patch(CallflowId, Context) ->
 validate_patterns(CallflowId, Context) ->
     case request_patterns(Context) of
         [] ->
-            error_numbers_required(Context);
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Callflows must be assigned at least one number or pattern">>}
+                    ]),
+            cb_context:add_validation_error(<<"numbers">>, <<"required">>, Msg, Context);
         Patterns
           when is_list(Patterns) ->
             validate_callflow_schema(CallflowId, Context);
         Patterns ->
-            error_patterns_not_array(Context, Patterns)
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Value is not of type array">>}
+                    ,{<<"cause">>, Patterns}
+                    ]),
+            cb_context:add_validation_error(<<"patterns">>, <<"type">>, Msg, Context)
     end.
-
--spec error_numbers_required(cb_context:context()) -> cb_context:context().
-error_numbers_required(Context) ->
-    cb_context:add_validation_error(<<"numbers">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Callflows must be assigned at least one number or pattern">>}]
-                                     )
-                                   ,Context
-                                   ).
-
--spec error_patterns_not_array(cb_context:context(), kz_json:json_term()) ->
-                                      cb_context:context().
-error_patterns_not_array(Context, Patterns) ->
-    cb_context:add_validation_error(<<"patterns">>
-                                   ,<<"type">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Value is not of type array">>}
-                                      ,{<<"cause">>, Patterns}
-                                      ])
-                                   ,Context
-                                   ).
 
 -spec validate_uniqueness(api_binary(), cb_context:context()) -> cb_context:context().
 validate_uniqueness(CallflowId, Context) ->
@@ -311,14 +279,11 @@ add_number_conflict(Context, JObj) ->
     Id = kz_doc:id(JObj),
     Name = kz_json:get_ne_binary_value([<<"value">>, <<"name">>], JObj, <<>>),
     Number = kz_json:get_value(<<"key">>, JObj),
-    cb_context:add_validation_error(<<"numbers">>
-                                   ,<<"unique">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Number ", Number/binary, " exists in callflow ", Id/binary, " ", Name/binary>>}
-                                      ,{<<"cause">>, Number}
-                                      ])
-                                   ,Context
-                                   ).
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"Number ", Number/binary, " exists in callflow ", Id/binary, " ", Name/binary>>}
+            ,{<<"cause">>, Number}
+            ]),
+    cb_context:add_validation_error(<<"numbers">>, <<"unique">>, Msg, Context).
 
 -spec validate_unique_patterns(cb_context:context(), api_binary()) -> cb_context:context().
 validate_unique_patterns(Context, CallflowId) ->
@@ -352,14 +317,11 @@ add_pattern_conflict(Context, JObj) ->
     Id = kz_doc:id(JObj),
     Name = kz_json:get_ne_binary_value([<<"value">>, <<"name">>], JObj, <<>>),
     Pattern = kz_json:get_value(<<"key">>, JObj),
-    cb_context:add_validation_error(<<"patterns">>
-                                   ,<<"unique">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Pattern ", Pattern/binary, " exists in callflow ", Id/binary, " ", Name/binary>>}
-                                      ,{<<"cause">>, Pattern}
-                                      ])
-                                   ,Context
-                                   ).
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"Pattern ", Pattern/binary, " exists in callflow ", Id/binary, " ", Name/binary>>}
+            ,{<<"cause">>, Pattern}
+            ]),
+    cb_context:add_validation_error(<<"patterns">>, <<"unique">>, Msg, Context).
 
 -spec validate_callflow_schema(api_binary(), cb_context:context()) -> cb_context:context().
 validate_callflow_schema(CallflowId, Context) ->
@@ -383,7 +345,7 @@ on_successful_validation(CallflowId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->

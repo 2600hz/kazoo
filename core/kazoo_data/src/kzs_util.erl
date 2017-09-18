@@ -20,7 +20,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_classification(text()) -> db_classifications().
+-spec db_classification(text()) -> db_classification().
 db_classification(Db) when not is_binary(Db) ->
     db_classification(kz_term:to_binary(Db));
 db_classification(<<"_users">>) -> 'external';
@@ -28,6 +28,7 @@ db_classification(<<"_dbs">>) -> 'external';
 db_classification(<<"users">>) -> 'external';
 db_classification(<<"dbs">>) -> 'external';
 db_classification(<<"_nodes">>) -> 'external';
+db_classification(<<"nodes">>) -> 'external';
 db_classification(<<"_replicator">>) -> 'external';
 db_classification(<<"_global_changes">>) -> 'external';
 db_classification(<<"ts">>) -> 'deprecated';

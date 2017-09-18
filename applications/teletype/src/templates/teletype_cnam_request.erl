@@ -9,7 +9,7 @@
 -module(teletype_cnam_request).
 
 -export([init/0
-        ,handle_cnam_request/1
+        ,handle_req/1
         ]).
 
 -include("teletype.hrl").
@@ -53,13 +53,20 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"cnam_request">>, ?MODULE, 'handle_cnam_request').
+    teletype_bindings:bind(<<"cnam_request">>, ?MODULE, 'handle_req').
 
 
--spec handle_cnam_request(kz_json:object()) -> 'ok'.
-handle_cnam_request(JObj) ->
-    'true' = kapi_notifications:cnam_request_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:cnam_request_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
+
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
@@ -102,7 +109,7 @@ process_req(DataJObj) ->
 
     {'ok', TemplateMetaJObj} =
         teletype_templates:fetch_notification(?TEMPLATE_ID
-                                             ,teletype_util:find_account_id(DataJObj)
+                                             ,kapi_notifications:account_id(DataJObj)
                                              ),
 
     Subject =

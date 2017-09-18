@@ -303,7 +303,7 @@ summary(Context) ->
     ListOfNumProps = cb_context:resp_data(Context1),
     NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), ListOfNumProps),
     Service = kz_services:fetch(cb_context:account_id(Context)),
-    Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
+    Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, Service),
     NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
                                     ,{<<"casquade_quantity">>, Quantity}
                                     ]),

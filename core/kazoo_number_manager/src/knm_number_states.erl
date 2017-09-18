@@ -172,11 +172,15 @@ to_in_service(T, ?NUMBER_STATE_AVAILABLE) ->
 to_in_service(T, ?NUMBER_STATE_RESERVED) ->
     knm_numbers:pipe(T
                     ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RESERVED) end
-                     ,fun authorize/1
+                     ,fun authorize_subaccount/1
                      ,fun move_to_in_service_state/1
                      ]);
 to_in_service(T, State) ->
     invalid_state_transition(T, State, ?NUMBER_STATE_IN_SERVICE).
+
+-spec authorize_subaccount(t()) -> t().
+authorize_subaccount(T) ->
+    knm_numbers:do_in_wrap(fun knm_phone_number:is_reserved_from_parent/1, T).
 
 -spec authorize(t()) -> t().
 authorize(T) ->

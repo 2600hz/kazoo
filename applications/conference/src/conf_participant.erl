@@ -331,7 +331,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
                                ,server=Srv
                                }) ->
     CallId = kapps_call:call_id(Call),
-    case {kapps_util:get_event_type(JObj)
+    case {kz_util:get_event_type(JObj)
          ,kz_json:get_value(<<"Call-ID">>, JObj)
          }
     of
@@ -440,8 +440,7 @@ notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
     end.
 
 
--spec bridge_to_conference(ne_binary(), kapps_conference:conference(), kapps_call:call(), conf_pronounced_name:name_pronounced()) ->
-                                  'ok'.
+-spec bridge_to_conference(ne_binary(), kapps_conference:conference(), kapps_call:call(), conf_pronounced_name:name_pronounced()) -> ok.
 bridge_to_conference(Route, Conference, Call, Name) ->
     lager:debug("bridging to conference running at '~s'", [Route]),
     Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
@@ -471,15 +470,9 @@ bridge_to_conference(Route, Conference, Call, Name) ->
 
 -spec get_account_realm(kapps_call:call()) -> ne_binary().
 get_account_realm(Call) ->
-    case kapps_call:account_id(Call) of
-        'undefined' -> <<"unknown">>;
-        AccountId ->
-            case kz_account:fetch(AccountId) of
-                {'ok', JObj} -> kz_account:realm(JObj, <<"unknown">>);
-                {'error', R} ->
-                    lager:debug("error while looking up account realm: ~p", [R]),
-                    <<"unknown">>
-            end
+    case kz_account:fetch_realm(kapps_call:account_id(Call)) of
+        undefined -> <<"unknown">>;
+        Realm -> Realm
     end.
 
 -spec name_pronounced_headers(conf_pronounced_name:name_pronounced()) -> kz_proplist().

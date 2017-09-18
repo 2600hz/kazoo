@@ -10,22 +10,23 @@ pages:
     - 'applications/crossbar/doc/schemas.md'
     - 'applications/crossbar/doc/402.md'
   - 'Authentication':
-    - 'applications/crossbar/doc/auth.md'
-    - 'applications/crossbar/doc/user_authentication.md'
     - 'applications/crossbar/doc/api_authentication.md'
-    - 'applications/crossbar/doc/ip_auth.md'
+    - 'applications/crossbar/doc/auth.md'
     - 'applications/crossbar/doc/basic_auth.md'
-    - 'applications/crossbar/doc/token_auth.md'
+    - 'applications/crossbar/doc/ip_auth.md'
     - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
     - 'applications/crossbar/doc/security.md'
     - 'applications/crossbar/doc/shared_auth.md'
+    - 'applications/crossbar/doc/token_auth.md'
     - 'applications/crossbar/doc/ubiquiti_auth.md'
+    - 'applications/crossbar/doc/user_authentication.md'
   - 'Account Management':
     - 'applications/crossbar/doc/accounts.md'
     - 'applications/crossbar/doc/allotments.md'
     - 'applications/crossbar/doc/limits.md'
     - 'applications/crossbar/doc/port_requests.md'
     - 'applications/crossbar/doc/search.md'
+    - 'applications/crossbar/doc/service_planner.md'
     - 'applications/crossbar/doc/service_plans.md'
     - 'applications/crossbar/doc/services.md'
     - 'applications/crossbar/doc/transactions.md'
@@ -36,14 +37,14 @@ pages:
   - 'Branding':
     - 'applications/crossbar/doc/notifications.md'
   - 'Connectivity':
+    - 'applications/crossbar/doc/access_lists.md'
     - 'applications/crossbar/doc/connectivity.md'
     - 'applications/crossbar/doc/ips.md'
-    - 'applications/crossbar/doc/rates.md'
-    - 'applications/crossbar/doc/resources.md'
-    - 'applications/crossbar/doc/resource_templates.md'
-    - 'applications/crossbar/doc/resource_selectors.md'
     - 'applications/crossbar/doc/rate_limits.md'
-    - 'applications/crossbar/doc/access_lists.md'
+    - 'applications/crossbar/doc/rates.md'
+    - 'applications/crossbar/doc/resource_selectors.md'
+    - 'applications/crossbar/doc/resource_templates.md'
+    - 'applications/crossbar/doc/resources.md'
   - 'Media Management':
     - 'applications/crossbar/doc/media.md'
   - 'Misc':
@@ -87,27 +88,30 @@ pages:
   - 'Storage':
     - 'applications/crossbar/doc/storage.md'
   - 'System Management':
-    - 'applications/crossbar/doc/apps_store.md'
+    - 'applications/crossbar/doc/alerts.md'
     - 'applications/crossbar/doc/apps_link.md'
+    - 'applications/crossbar/doc/apps_store.md'
     - 'applications/crossbar/doc/braintree.md'
     - 'applications/crossbar/doc/call_inspector.md'
+    - 'applications/crossbar/doc/configs.md'
     - 'applications/crossbar/doc/configuration.md'
     - 'applications/crossbar/doc/maintenance.md'
+    - 'applications/crossbar/doc/migrations.md'
     - 'applications/crossbar/doc/rate_limiting.md'
     - 'applications/crossbar/doc/reverse_proxy.md'
     - 'applications/crossbar/doc/securing_crossbar.md'
     - 'applications/crossbar/doc/sup.md'
-    - 'applications/crossbar/doc/tasks.md'
-    - 'applications/crossbar/doc/configs.md'
     - 'applications/crossbar/doc/system_configs.md'
+    - 'applications/crossbar/doc/tasks.md'
     - 'applications/crossbar/doc/token_restrictions.md'
   - 'Deprecated':
     - 'applications/crossbar/doc/bulk.md'
     - 'applications/crossbar/doc/global_provisioner_templates.md'
     - 'applications/crossbar/doc/local_provisioner_templates.md'
-    - 'applications/crossbar/doc/signup.md'
     - 'applications/crossbar/doc/onboard.md'
     - 'applications/crossbar/doc/onboarding.md'
+    - 'applications/crossbar/doc/signup.md'
+    - 'applications/crossbar/doc/templates.md'
 - 'Integrations':
   - 'Pivot':
     - 'Intro': 'applications/pivot/doc/README.md'
@@ -160,6 +164,7 @@ pages:
     - 'applications/acdc/doc/architecture.md'
     - 'applications/acdc/doc/todo.md'
     - 'applications/acdc/doc/ui.md'
+    - 'Call Stats': 'applications/crossbar/doc/acdc_call_stats.md'
   - 'Ananke':
     - 'applications/ananke/doc/README.md'
   - 'Callflows':
@@ -209,8 +214,10 @@ pages:
         - 'Feature Code': 'applications/callflow/doc/group_pickup_feature.md'
     - 'Faxbox': 'applications/callflow/doc/faxbox.md'
     - 'Callflow Branching': 'applications/callflow/doc/callflow.md'
-    - 'Collect DTMF': 'applications/callflow/doc/collect_dtmf.md'
-    - 'Send DTMF': 'applications/callflow/doc/send_dtmf.md'
+    - 'DTMF':
+        - 'Collect DTMF': 'applications/callflow/doc/collect_dtmf.md'
+        - 'Send DTMF': 'applications/callflow/doc/send_dtmf.md'
+        - 'Flush DTMF': 'applications/callflow/doc/flush_dtmf.md'
     - 'Intercom': 'applications/callflow/doc/intercom.md'
     - 'Set Call Variable': 'applications/callflow/doc/set_variable.md'
     - 'Intercept':
@@ -236,6 +243,8 @@ pages:
     - 'After Bridge': 'applications/callflow/doc/after_bridge.md'
     - 'Set': 'applications/callflow/doc/set.md'
     - 'Branch BNumber': 'applications/callflow/doc/branch_bnumber.md'
+    - 'Deprecated':
+        - 'Offnet': 'applications/callflow/doc/offnet.md'
   - 'Call Inspector':
     - 'applications/call_inspector/doc/README.md'
   - 'CCCP':
@@ -311,7 +320,9 @@ pages:
   - 'Tasks':
     - 'applications/tasks/doc/README.md'
     - 'applications/tasks/doc/compaction.md'
+    - 'applications/tasks/doc/kz_notify_resender.md'
     - 'applications/tasks/doc/maintenance.md'
+    - 'applications/tasks/doc/notify_resend_maintenance.md'
     - 'applications/tasks/doc/rates.md'
   - 'Teletype':
     - 'applications/teletype/doc/README.md'
@@ -329,6 +340,7 @@ pages:
     - 'core/kazoo_media/doc/README.md'
   - 'Kazoo Apps':
     - 'core/kazoo_apps/doc/README.md'
+    - 'core/kazoo_apps/doc/kapps_notify_publisher.md'
   - 'GCM':
     - 'core/gcm/README.md'
   - 'Kazoo Translator':
@@ -356,13 +368,16 @@ pages:
   - 'Kazoo OAuth':
     - 'core/kazoo_oauth/doc/README.md'
   - 'Kazoo Multi-factor Authentication':
-    - 'core/kazoo_auth/doc/multi_factor.md'
+    - 'Multifactor': 'core/kazoo_auth/doc/multi_factor.md'
+    - 'OAuth': 'core/kazoo_auth/doc/oauth.md'
   - 'Kazoo Voicemail':
     - 'core/kazoo_voicemail/doc/README.md'
   - 'Kazoo Bindings':
     - 'core/kazoo_bindings/doc/README.md'
   - 'Kazoo Core':
     - 'core/kazoo/doc/README.md'
+  - 'Kazoo Speech':
+      - 'core/kazoo_speech/doc/README.md'
   - 'Kazoo MODB':
     - 'core/kazoo_modb/doc/README.md'
   - 'Kazoo CouchDB':
@@ -387,8 +402,9 @@ pages:
     - 'core/kazoo_services/doc/bookkeepers.md'
   - 'Kazoo PropEr':
     - 'core/kazoo_proper/doc/README.md'
-  - 'APNS':
-    - 'core/apns/Readme.md'
+    - 'core/kazoo_proper/doc/rates.md'
+  - 'Kazoo Performance Testing':
+      - 'core/kazoo_perf/doc/maintenance.md'
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'

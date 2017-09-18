@@ -545,12 +545,18 @@ normalize_envelope_keys_foldl(K, V, JObj) -> kz_json:set_value(kz_json:normalize
 %% Determines if the request envelope is valid
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_request_envelope(kz_json:object(), cb_context:context()) -> 'true' | jesse_error:error().
+-spec is_valid_request_envelope(kz_json:object(), cb_context:context()) -> 'true' | validation_errors().
 is_valid_request_envelope(Envelope, Context) ->
-    lists:member(cb_context:api_version(Context), ?NO_ENVELOPE_VERSIONS)
-        orelse validate_request_envelope(Envelope).
+    case requires_envelope(Context) of
+        'true' -> validate_request_envelope(Envelope);
+        'false' -> 'true'
+    end.
 
--spec validate_request_envelope(kz_json:object()) -> 'true' | jesse_error:error().
+-spec requires_envelope(cb_context:context()) -> boolean().
+requires_envelope(Context) ->
+    not lists:member(cb_context:api_version(Context), ?NO_ENVELOPE_VERSIONS).
+
+-spec validate_request_envelope(kz_json:object()) -> 'true' | validation_errors().
 validate_request_envelope(Envelope) ->
     case kz_json_schema:validate(?ENVELOPE_SCHEMA, Envelope) of
         {'ok', _} -> 'true';

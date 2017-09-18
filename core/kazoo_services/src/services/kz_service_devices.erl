@@ -6,11 +6,12 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_devices).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1]).
 -export([reconcile/2]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -define(CATEGORY, <<"devices">>).
 

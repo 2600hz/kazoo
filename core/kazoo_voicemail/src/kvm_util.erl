@@ -16,6 +16,7 @@
         ,check_msg_belonging/2
         ,get_change_vmbox_funs/4, get_change_vmbox_funs/5
 
+        ,retention_days/1
         ,retention_seconds/0, retention_seconds/1
         ,maybe_set_deleted_by_retention/1, maybe_set_deleted_by_retention/2
 
@@ -57,7 +58,7 @@ get_db(AccountId, Year, Month) ->
 -spec get_range_db(ne_binary()) -> ne_binaries().
 -spec get_range_db(ne_binary(), pos_integer()) -> ne_binaries().
 get_range_db(AccountId) ->
-    get_range_db(AccountId, ?RETENTION_DAYS).
+    get_range_db(AccountId, retention_days(AccountId)).
 
 get_range_db(AccountId, Days) ->
     To = kz_time:current_tstamp(),
@@ -131,13 +132,25 @@ check_msg_belonging(_BoxId, _JObj, _SourceId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec retention_seconds() -> pos_integer().
--spec retention_seconds(pos_integer()) -> pos_integer().
+-spec retention_seconds() -> integer().
 retention_seconds() ->
     retention_seconds(?RETENTION_DAYS).
 
-retention_seconds(Days) ->
-    ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR.
+-spec retention_seconds(integer() | api_binary()) -> integer().
+retention_seconds(Days) when is_integer(Days)
+                             andalso Days > 0 ->
+    ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR;
+retention_seconds(?NE_BINARY=AccountId) ->
+    retention_seconds(retention_days(AccountId));
+retention_seconds(_) ->
+    retention_seconds(?RETENTION_DAYS).
+
+-spec retention_days(ne_binary()) -> integer().
+retention_days(AccountId) ->
+    case kapps_account_config:get_pos_integer(AccountId, ?CF_CONFIG_CAT, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]) of
+        'undefined' -> ?RETENTION_DAYS;
+        Days -> try kz_term:to_integer(Days) catch _:_ -> ?RETENTION_DAYS end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -146,7 +159,7 @@ retention_seconds(Days) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_set_deleted_by_retention(kz_json:object()) -> kz_json:object().
--spec maybe_set_deleted_by_retention(kz_json:object(), pos_integer()) -> kz_json:object().
+-spec maybe_set_deleted_by_retention(kz_json:object(), integer()) -> kz_json:object().
 maybe_set_deleted_by_retention(JObj) ->
     maybe_set_deleted_by_retention(JObj, retention_seconds()).
 
@@ -176,7 +189,7 @@ get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, ToId) ->
     Timestamp = kz_time:current_tstamp(),
     {{Y, M, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     Year = kz_term:to_binary(Y),
-    Month = kz_time:pad_month(M),
+    Month = kz_date:pad_month(M),
 
     NewId = case ToId of
                 'undefined' -> kazoo_modb_util:modb_id(Year, Month, kz_binary:rand_hex(16));

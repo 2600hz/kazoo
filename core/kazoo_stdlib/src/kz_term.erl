@@ -26,6 +26,7 @@
         ,to_lower_string/1, to_upper_string/1
         ,to_upper_char/1
         ,to_lower_char/1
+        ,to_pid/1
 
         ,error_to_binary/1
         ]).
@@ -71,11 +72,11 @@ randomize_list(T, List) ->
                ).
 
 %% must be a term that can be changed to a list
--spec to_hex(binary() | string()) -> string().
+-spec to_hex(text()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
 
--spec to_hex_binary(binary() | string()) -> binary().
+-spec to_hex_binary(text()) -> binary().
 to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(to_hex_char(B div 16)), (to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
@@ -113,7 +114,7 @@ to_float(X, notstrict) when is_binary(X) ->
 to_float(X, S) when is_list(X) ->
     try list_to_float(X)
     catch
-        'error':'badarg' when S =:= 'notstrict' -> list_to_integer(X)*1.0 %% "500" -> 500.0
+        'error':'badarg' when S =:= 'notstrict' -> 1.0 * list_to_integer(X)
     end;
 to_float(X, 'strict') when is_integer(X) -> erlang:error('badarg');
 to_float(X, 'notstrict') when is_integer(X) -> X * 1.0.
@@ -130,12 +131,19 @@ to_number(X) when is_list(X) ->
         'error':'badarg' -> list_to_float(X)
     end.
 
--spec to_list(atom() | list() | binary() | integer() | float()) -> list().
+-spec to_pid(list() | binary() | undefined) -> pid().
+to_pid(undefined) -> undefined;
+to_pid(X) when is_binary(X) -> to_pid(binary_to_list(X));
+to_pid(X) when is_list(X) -> list_to_pid(X).
+
+-spec to_list(pid() | atom() | list() | binary() | integer() | float()) -> list().
 to_list(X) when is_list(X) -> X;
 to_list(X) when is_float(X) -> kz_mochinum:digits(X);
 to_list(X) when is_integer(X) -> integer_to_list(X);
 to_list(X) when is_binary(X) -> binary_to_list(X);
-to_list(X) when is_atom(X) -> atom_to_list(X).
+to_list(X) when is_atom(X) -> atom_to_list(X);
+to_list(X) when is_pid(X) -> pid_to_list(X).
+
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
@@ -152,7 +160,7 @@ to_api_binary('undefined') -> 'undefined';
 to_api_binary(Arg) -> to_binary(Arg).
 
 %% the safer version, won't let you leak atoms
--spec to_atom(atom() | list() | binary() | integer() | float()) -> atom().
+-spec to_atom(text() | integer() | float()) -> atom().
 to_atom(X) when is_atom(X) -> X;
 to_atom(X) when is_list(X) -> list_to_existing_atom(X);
 to_atom(X) when is_binary(X) -> binary_to_existing_atom(X, utf8);
@@ -165,7 +173,7 @@ to_atom(X) -> to_atom(to_list(X)).
 %% if X is a list, the SafeList would be [nonempty_string(),...]
 %% etc. So to_atom will not coerce the type of X to match the types in SafeList
 %% when doing the lists:member/2
--spec to_atom(atom() | list() | binary() | integer() | float(), 'true' | list()) -> atom().
+-spec to_atom(text() | integer() | float(), boolean() | list()) -> atom().
 to_atom(X, _) when is_atom(X) -> X;
 to_atom(X, 'true') when is_list(X) -> list_to_atom(X);
 to_atom(X, 'true') when is_binary(X) -> binary_to_atom(X, utf8);
@@ -213,7 +221,7 @@ always_false(_) -> 'false'.
 -spec is_ne_binary(any()) -> boolean().
 is_ne_binary(V) ->
     is_binary(V)
-        andalso is_not_empty(V).
+        andalso not is_empty(V).
 
 -spec is_api_ne_binary(any()) -> boolean().
 is_api_ne_binary(undefined) -> true;
@@ -239,16 +247,13 @@ is_boolean(_) -> 'false'.
 is_empty(0) -> 'true';
 is_empty([]) -> 'true';
 is_empty("0") -> 'true';
-is_empty("false") -> 'true';
 is_empty("NULL") -> 'true';
 is_empty("undefined") -> 'true';
 is_empty(<<>>) -> 'true';
 is_empty(<<"0">>) -> 'true';
-is_empty(<<"false">>) -> 'true';
 is_empty(<<"NULL">>) -> 'true';
 is_empty(<<"undefined">>) -> 'true';
 is_empty('null') -> 'true';
-is_empty('false') -> 'true';
 is_empty('undefined') -> 'true';
 is_empty(Float) when is_float(Float), Float =:= 0.0 -> 'true';
 is_empty(MaybeJObj) ->
@@ -258,7 +263,7 @@ is_empty(MaybeJObj) ->
     end.
 
 -spec is_not_empty(any()) -> boolean().
-is_not_empty(Term) -> (not is_empty(Term)).
+is_not_empty(Term) -> not is_empty(Term).
 
 -spec is_proplist(any()) -> boolean().
 is_proplist(Term) when is_list(Term) ->
@@ -271,25 +276,25 @@ identity(X) -> X.
 -spec to_lower_binary(any()) -> api_binary().
 to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
-to_lower_binary(Else) -> to_lower_binary(?MODULE:to_binary(Else)).
+to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
 
 -spec to_lower_string(any()) -> 'undefined' | list().
 to_lower_string('undefined') -> 'undefined';
 to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
 to_lower_string(Else) ->
-    to_lower_string(?MODULE:to_list(Else)).
+    to_lower_string(to_list(Else)).
 
 
 -spec to_upper_binary(any()) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
-to_upper_binary(Else) -> to_upper_binary(?MODULE:to_binary(Else)).
+to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).
 
 -spec to_upper_string(any()) -> 'undefined' | list().
 to_upper_string('undefined') -> 'undefined';
 to_upper_string(L) when is_list(L) -> [to_upper_char(C) || C <- L];
-to_upper_string(Else) -> to_upper_string(?MODULE:to_list(Else)).
+to_upper_string(Else) -> to_upper_string(to_list(Else)).
 
 -spec to_upper_char(char()) -> char().
 to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
@@ -306,7 +311,7 @@ to_lower_char(C) -> C.
 
 -spec a1hash(ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
-    ?MODULE:to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
+    to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
 %% found via trapexit
 -spec floor(integer() | float()) -> integer().
@@ -332,11 +337,11 @@ ceiling(X) ->
 to_hex_char(N) when N < 10 -> $0 + N;
 to_hex_char(N) when N < 16 -> $a - 10 + N.
 
--spec error_to_binary({'error', binary()} | binary()) -> binary().
+-spec error_to_binary(any()) -> binary().
 error_to_binary({'error', Reason}) ->
     error_to_binary(Reason);
 error_to_binary(Reason) ->
     try to_binary(Reason)
     catch
-        _:_ -> <<"Unknown Error">>
+        'error':'function_clause' -> <<"Unknown Error">>
     end.

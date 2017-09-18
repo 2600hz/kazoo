@@ -12,6 +12,10 @@
             "description": "CID to authorize",
             "type": "string"
         },
+        "comment": {
+            "description": "Some notes regarding what this pin/cid for",
+            "type": "string"
+        },
         "max_concurent_calls_per_user": {
             "description": "Calls per user limit. Counts all user's legs and compares to max_concurent_calls_per_user multiplied by 2",
             "type": "integer"

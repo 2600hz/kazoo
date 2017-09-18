@@ -74,15 +74,14 @@
 %%------------------------------------------------------------------------------
 %% Records
 %%------------------------------------------------------------------------------
--record(directory_user, {
-          first_name :: ne_binary()
+-record(directory_user, {first_name :: ne_binary()
                         ,last_name :: ne_binary()
                         ,full_name :: ne_binary()
                         ,first_last_keys :: ne_binary() % DTMF-version of first, last
                         ,last_first_keys :: ne_binary() % DTMF-version of last, first
                         ,callflow_id :: ne_binary() % what callflow to use on match
                         ,name_audio_id :: api_binary() % pre-recorded audio of user's name
-         }).
+                        }).
 -type directory_user() :: #directory_user{}.
 -type directory_users() :: [directory_user()].
 

@@ -21,6 +21,9 @@
         ,trace_pid/1
         ,stop_trace/1
         ]).
+-export([open_document/2
+        ,open_document_cached/2
+        ]).
 
 -spec flush() -> 'ok'.
 flush() ->
@@ -75,3 +78,19 @@ start_trace(Filters) ->
 stop_trace(Ref) ->
     {'ok', Filename} = kz_data_tracing:stop_trace(Ref),
     io:format("trace stopped, see log at ~s~n", [Filename]).
+
+
+-spec open_document(ne_binary(), ne_binary()) -> no_return.
+open_document(Db, Id) ->
+    print(kz_datamgr:open_doc(Db, Id)).
+
+-spec open_document_cached(ne_binary(), ne_binary()) -> no_return.
+open_document_cached(Db, Id) ->
+    print(kz_datamgr:open_cache_doc(Db, Id)).
+
+print({ok, JSON}) ->
+    io:format("~s\n", [kz_json:encode(JSON)]),
+    no_return;
+print({error, R}) ->
+    io:format("ERROR: ~p\n", [R]),
+    no_return.

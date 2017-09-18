@@ -10,6 +10,8 @@
 
 -export([add_responder/3
         ,rm_responder/3
+        ,responder/1
+        ,responder_mfa/2
         ]).
 
 -include("listener_types.hrl").
@@ -25,7 +27,10 @@ add_responder(Responders, Responder, Keys) when is_atom(Responder) ->
     add_responder(Responders, {Responder, ?DEFAULT_CALLBACK}, Keys);
 add_responder(Responders, Responder, Keys) ->
     _ = maybe_init_responder(Responder, is_responder_known(Responders, Responder)),
-    lists:foldr(fun maybe_add_mapping/2, Responders, [{Evt, Responder} || Evt <- Keys]).
+    case responder(Responder) of
+        'undefined' -> Responders;
+        ResponderMFA -> lists:foldr(fun maybe_add_mapping/2, Responders, [{Evt, ResponderMFA} || Evt <- Keys])
+    end.
 
 -spec rm_responder(responders(), responder_callback(), kz_json:json_proplist()) -> responders().
 %% remove all events for responder
@@ -72,6 +77,29 @@ maybe_add_mapping(Mapping, Acc) ->
         'true' -> Acc;
         'false' -> [Mapping | Acc]
     end.
+
+-spec filter_responder_fun([tuple()], atom()) -> [tuple()].
+filter_responder_fun(Exports, Fun) ->
+    lists:filter(fun({ExportedFun, _}) -> ExportedFun =:= Fun end, Exports).
+
+-spec responder_mfa(module(), atom()) -> mfa() | 'undefined'.
+responder_mfa(Module, Fun) ->
+    Exports = Module:module_info(exports),
+    case filter_responder_fun(Exports, Fun) of
+        [] -> 'undefined';
+        [{_, I} | _] -> {Module, Fun, I}
+    end.
+
+-spec responder({module(), atom()} | responder_callback_fun()) -> responder() | 'undefined'.
+responder({Module, Fun}) ->
+    responder_mfa(Module, Fun);
+responder(CallbackFun)
+  when is_function(CallbackFun, 2);
+       is_function(CallbackFun, 3);
+       is_function(CallbackFun, 4) ->
+    {'arity', Arity} = erlang:fun_info(CallbackFun,arity),
+    {CallbackFun, Arity};
+responder(_) -> 'undefined'.
 
 -spec maybe_init_responder(responder_callback(), boolean()) -> 'ok'.
 maybe_init_responder({Responder, _Fun}, 'true') when is_atom(Responder) ->

@@ -2,14 +2,14 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "auth.app",
     "additionalProperties": true,
-    "description": "app description for authentication providers",
+    "description": "application description for authentication providers",
     "properties": {
         "client_id": {
-            "description": "client_id, usually appplication id for oauth providers",
+            "description": "client_id, usually application id for OAuth providers",
             "type": "string"
         },
         "email": {
-            "description": "email for app",
+            "description": "email for application",
             "type": "string"
         },
         "provider": {
@@ -17,7 +17,7 @@
             "type": "string"
         },
         "secret": {
-            "description": "secret for app",
+            "description": "secret for application",
             "type": "string"
         }
     },

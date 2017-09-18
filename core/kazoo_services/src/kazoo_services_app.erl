@@ -9,7 +9,7 @@
 
 -behaviour(application).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 -export([start/2, stop/1]).
 

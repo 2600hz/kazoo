@@ -8,14 +8,20 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 ### Further Module Name Changes in Core
 
-Over the years as the code base grew and new authors joined the team the core module naming has become increasingly inconsistent. In order to make module names predictable, remove obscure references (such as wht\\\_\*) and adhear to stronger coding standars we will be making these consistent. This will be the last refactor to core and as before the `scripts/wh-to-kz.sh` script will be extended to provide developers with a tool to refactor any modules they have created.
+As the code base has grown and new authors have joined the team over the years, the core module naming has become increasingly inconsistent. In order to make module names predictable, remove obscure references (such as wht\\\_\*) and adhere to stronger coding standards, we will be making these consistent. This will be the last refactor to core and as before the `scripts/wh-to-kz.sh` script will be extended to provide developers with a tool to refactor any modules they have created.
 
-This final refactor has been contentious as we discussed the value a consistent naming scheme in core would bring. This has delayed the final phase of the renaming initiative but we are now preparing to preform this action. We feel that the benefits outweigh disadvantages and understand that once 4.0 has been released as stable will not have an oppertunaty to correct this until the next major version.
+This final refactor has been contentious as we discussed the value a consistent naming scheme in core would bring. This has delayed the final phase of the renaming initiative but we are now preparing to preform this action. We feel that the benefits outweigh disadvantages and understand that once 4.0 has been released as stable we will not have an opportunity to correct this until the next major version.
 
-We hope that you agree and and are not inconvienced by this change. As always we are here to help or answer any questions! Thank you for your understaning.
+We hope that you agree and are not inconvenienced by this change. As always we are here to help or answer any questions! Thank you for your understanding.
 
 
 ## Versions
+
+### 4.2
+
+1.  Erlang Version Support
+
+    Starting with Kazoo 4.2 Erlang support will target 19+ and will not be backward compatible with prior Erlang versions.
 
 
 ### 4.1
@@ -49,7 +55,7 @@ We hope that you agree and and are not inconvienced by this change. As always we
 
 5.  Authorizing-ID
 
-    Currently, inbound calls from carriers don't have a Authorizing-ID but if the device has a redirection the CDR will have the Authorizing-ID header. this will change in version 4 as we believe the inbound leg should not have the Authorizing-ID set, so the CDR for inbound call (leg a) will not have the Authorizing-ID. The b-leg will have the Authorizing-ID set to the device that redirect the call. Restrictions will still be applied based on the device that redirected the call.
+    Currently, inbound calls from carriers don't have a Authorizing-ID but if the device has a redirection the CDR will have the Authorizing-ID header. This will change in version 4 as we believe the inbound leg should not have the Authorizing-ID set, so the CDR for inbound call (leg a) will not have the Authorizing-ID. The b-leg will have the Authorizing-ID set to the device that redirect the call. Restrictions will still be applied based on the device that redirected the call.
 
 6.  Auth Token
 
@@ -61,7 +67,7 @@ We hope that you agree and and are not inconvienced by this change. As always we
 
 7.  WebHooks
 
-    Webhook trigger for federated messages is dropped. we now require that at least one instance of the webhooks app is running in each zone for the webhook to be triggered.
+    Webhook trigger for federated messages is dropped. We now require that at least one instance of the webhooks app is running in each zone for the webhook to be triggered.
 
     Added new option `include_subaccounts` which will process the hook for subaccount events.
 

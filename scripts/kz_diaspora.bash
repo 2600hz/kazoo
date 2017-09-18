@@ -1,77 +1,100 @@
-#!/bin/bash
+#!/bin/bash -e
 
-pushd $(dirname $0) > /dev/null
+pushd "$(dirname "$0")" >/dev/null
 
-ROOT=$(pwd -P)/..
+ROOT="$(pwd -P)"/..
 
-function replace_call {
-    FROM=$1
-    TO=$2
-    OLD_FUN=$3
-    NEW_FUN=${3%$4}
-    FILE=$5
-
-    #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
-    $(sed -i "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g" $FILE)
+replace() {
+    local M0=$1
+    local F0=$2
+    local M1=$3
+    local F1=$4
+    for FILE in $(grep -Irl $M0:$F0 "$ROOT"/{core,applications}); do
+        sed -i "s%$M0:$F0%$M1:$F1%g" "$FILE"
+    done
 }
 
-function search_and_replace {
+replace_call() {
+    FROM="$1"
+    TO="$2"
+    OLD_FUN="$3"
+    NEW_FUN="${3%$4}"
+    FILE="$5"
+
+    #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
+    sed -i "s%$FROM:$OLD_FUN%$TO:$NEW_FUN%g" "$FILE"
+}
+
+search_and_replace() {
+    declare -a FUNS=("${!1}")
+    FROM="$2"
+    TO="$3"
+    SUFFIX="$4"
+
+    for FUN in "${FUNS[@]}"; do
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+            replace_call $FROM $TO "$FUN" "$SUFFIX" "$FILE"
+        done
+    done
+}
+
+search_and_replace_exact() {
     declare -a FUNS=("${!1}")
     FROM=$2
     TO=$3
-    SUFFIX=$4
+    TOFUN=$4
 
     for FUN in "${FUNS[@]}"; do
         for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
-            replace_call $FROM $TO "$FUN" "$SUFFIX" $FILE
+            replace $FROM $TO "$FUN" "$TOFUN" $FILE
         done
     done
 }
 
-function replace_call_prefix {
-    FROM=$1
-    TO=$2
-    OLD_FUN=$3
-    NEW_FUN=${3#$4}
-    FILE=$5
+replace_call_prefix() {
+    FROM="$1"
+    TO="$2"
+    OLD_FUN="$3"
+    NEW_FUN="${3#$4}"
+    FILE="$5"
 
     #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
-    $(sed -i "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g" $FILE)
+    sed -i "s%$FROM:$OLD_FUN%$TO:$NEW_FUN%g" "$FILE"
 }
 
-function search_and_replace_prefix {
+search_and_replace_prefix() {
     declare -a FUNS=("${!1}")
-    FROM=$2
-    TO=$3
-    PREFIX=$4
+    FROM="$2"
+    TO="$3"
+    PREFIX="$4"
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in $(grep -rl "$FROM:$FUN" $ROOT/{core,applications}); do
-            replace_call_prefix $FROM $TO "$FUN" "$PREFIX" $FILE
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+            replace_call_prefix $FROM $TO "$FUN" "$PREFIX" "$FILE"
         done
     done
 }
 
-function replace_call_with_prefix {
-    FROM=$1
-    TO=$2
-    OLD_FUN=$3
+replace_call_with_prefix() {
+    FROM="$1"
+    TO="$2"
+    OLD_FUN="$3"
     NEW_FUN="$4$3"
-    FILE=$5
+    FILE="$5"
 
     #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
-    $(sed -i "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g" $FILE)
+    sed -i "s%$FROM:$OLD_FUN%$TO:$NEW_FUN%g" "$FILE"
 }
 
-function search_and_replace_with_prefix {
+search_and_replace_with_prefix() {
     declare -a FUNS=("${!1}")
-    FROM=$2
-    TO=$3
-    PREFIX=$4
+    FROM="$2"
+    TO="$3"
+    PREFIX="$4"
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
-            replace_call_with_prefix $FROM $TO "$FUN" "$PREFIX" $FILE
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+            replace_call_with_prefix $FROM $TO "$FUN" "$PREFIX" "$FILE"
         done
     done
 }
@@ -79,7 +102,7 @@ function search_and_replace_with_prefix {
 # Functions moved from kz_util into more appropriately-named modules
 # Run this to convert references from kz_util:* to the new module names
 
-function kz_util_to_term {
+kz_util_to_term() {
     local fs=(shuffle_list
               to_integer
               to_float
@@ -115,10 +138,10 @@ function kz_util_to_term {
               floor
               ceiling
              )
-    search_and_replace fs[@] "kz_util" "kz_term" ""
+    search_and_replace fs[@] kz_util kz_term ''
 }
 
-function kz_util_to_binary {
+kz_util_to_binary() {
     local fs=(rand_hex_binary
               hexencode_binary
               from_hex_binary
@@ -141,12 +164,12 @@ function kz_util_to_binary {
               binary_reverse
              )
     local special=(binary_md5 binary_reverse)
-    search_and_replace fs[@] "kz_util" "kz_binary" "_binary"
-    search_and_replace special[@] "kz_util" "kz_binary" "binary_"
-    search_and_replace_prefix special[@] "kz_binary" "kz_binary" "binary_"
+    search_and_replace             fs[@] kz_util   kz_binary _binary
+    search_and_replace        special[@] kz_util   kz_binary binary_
+    search_and_replace_prefix special[@] kz_binary kz_binary binary_
 }
 
-function kz_util_to_time {
+kz_util_to_time() {
     local fs=(current_tstamp
               current_unix_tstamp
               decr_timeout
@@ -177,45 +200,81 @@ function kz_util_to_time {
               unix_timestamp_to_gregorian_seconds
               weekday
              )
-    search_and_replace fs[@] "kz_util" "kz_time" ""
+    search_and_replace fs[@] kz_util kz_time ''
 }
 
-function kz_json_to_kz_doc {
+kz_time_to_date() {
+    local fs=(iso8601_date)
+    local fs2=(pad_date
+               pad_month
+             )
+    search_and_replace_exact fs[@] "kz_time" "kz_date" "to_iso8601_extended"
+    search_and_replace fs2[@] "kz_time" "kz_date" ""
+}
+
+kz_json_to_kz_doc() {
     local fs=(get_public_keys
               public_fields
               private_fields
               is_private_key
              )
-    search_and_replace fs[@] "kz_json" "kz_doc" ""
+    search_and_replace fs[@] kz_json kz_doc ''
 }
 
-function kz_json_to_kz_http {
+kz_json_to_kz_http() {
     local fs=(to_querystring)
-    search_and_replace_with_prefix fs[@] "kz_json" "kz_http_util" "json_"
+    search_and_replace_with_prefix fs[@] kz_json kz_http_util json_
 }
 
-function props_to_kz_http {
+props_to_kz_http() {
     local fs=(to_querystring)
-    search_and_replace_with_prefix fs[@] "props" "kz_http_util" "props_"
+    search_and_replace_with_prefix fs[@] props kz_http_util props_
 }
 
-function kapps_speech_to_kazoo_speech {
+kapps_speech_to_kazoo_speech() {
     local fs=(create)
 
     local asrs=(asr_freeform
                 asr_commands
                )
 
-    search_and_replace fs[@] "kapps_speech" "kazoo_tts" ""
-    search_and_replace_prefix asrs[@] "kapps_speech" "kazoo_asr" "asr_"
+    search_and_replace fs[@] kapps_speech kazoo_tts ''
+    search_and_replace_prefix asrs[@] kapps_speech kazoo_asr asr_
 }
 
-function kz_media_recording_to_kzc_recording {
-    FROM="kz_media_recording"
-    TO="kzc_recording"
-    for FILE in `grep -rl "$FROM:" $ROOT/{core,applications}`; do
-            replace_call $FROM $TO "" "" $FILE
+kz_media_recording_to_kzc_recording() {
+    FROM=kz_media_recording
+    TO=kzc_recording
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+            replace_call $FROM $TO '' '' "$FILE"
+    done
+}
+
+kz_includes() {
+    INCLUDES=(kz_databases.hrl
+              kz_log.hrl
+              kz_types.hrl
+             )
+    FROM=kazoo/include
+    TO=kazoo_stdlib/include
+
+    for FILE in $(grep -Irl $FROM/ "$ROOT"/{core,applications}); do
+        for INCLUDE in "${INCLUDES[@]}"; do
+            sed -i "s%$FROM/$INCLUDE%$TO/$INCLUDE%g" "$FILE"
         done
+    done
+}
+
+dedupe() {
+    replace crossbar_util get_account_doc kz_account fetch
+
+    replace       kz_util get_account_realm kz_account fetch_realm
+    replace crossbar_util get_account_realm kz_account fetch_realm
+
+    replace  kapps_util get_account_name kz_account fetch_name
+    replace kz_services account_name     kz_account fetch_name
+
+    replace kapps_util get_event_type kz_util get_event_type
 }
 
 echo "ensuring kz_term is used"
@@ -224,6 +283,8 @@ echo "ensuring kz_binary is used"
 kz_util_to_binary
 echo "ensuring kz_time is used"
 kz_util_to_time
+echo "ensuring kz_time -> kz_date migration is performed"
+kz_time_to_date
 echo "ensuring kz_json:public/private are moved to kz_doc"
 kz_json_to_kz_doc
 echo "ensuring kz_json:to_querystring is moved to kz_http_util"
@@ -234,5 +295,9 @@ echo "ensuring kapps_speech to kazoo_speech"
 kapps_speech_to_kazoo_speech
 echo "ensuring kz_media_recording to kzc_recording"
 kz_media_recording_to_kzc_recording
+echo "ensuring includes from kazoo are moved to kazoo_stdlib"
+kz_includes
+echo 'ensuring utility calls are not duplicated all over the place'
+dedupe
 
-popd > /dev/null
+popd >/dev/null

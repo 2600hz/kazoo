@@ -10,6 +10,7 @@
 
 %%--------------------------------------------------------------------
 -define(KAPPS_CONFIG_ORIGIN_BINDINGS, [[{'type', <<"account">>}]
+                                      ,[{'type', <<"account_config">>}]
                                       ,[{'db', ?KZ_CONFIG_DB}]
                                       ]).
 

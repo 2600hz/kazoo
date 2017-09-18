@@ -2,8 +2,6 @@
 -behaviour(gen_server).
 
 -include("pusher.hrl").
--include_lib("apns/include/apns.hrl").
--include_lib("apns/include/localized.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -60,14 +58,18 @@ maybe_send_push_notification(Pid, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
     Sender = kz_json:get_value(<<"Alert-Body">>, JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    apns:send_message(Pid, #apns_msg{device_token = kz_term:to_list(TokenID)
-                                    ,sound = <<"ring.caf">>
-                                    ,extra = [{<<"call-id">>, CallId}]
-                                    ,alert = #loc_alert{args = [Sender]
-                                                       ,key = <<"IC_MSG">>
-                                                       }
-                                    }
-                     ).
+    APNsTopic = apns_topic(JObj),
+    apns:push_notification(Pid
+                          ,TokenID
+                          ,#{aps => #{alert => #{'loc-key' => <<"IC_MSG">>
+                                                ,'loc-args' => [Sender]
+                                                }
+                                     ,sound => <<"ring.caf">>
+                                     }
+                            ,'call-id' => CallId
+                            }
+                          ,#{apns_topic => APNsTopic}
+                          ).
 
 -spec get_apns(api_binary(), ets:tid()) -> api_pid().
 get_apns('undefined', _) -> 'undefined';
@@ -79,15 +81,25 @@ get_apns(App, ETS) ->
 
 -spec maybe_load_apns(api_binary(), ets:tid()) -> api_pid().
 maybe_load_apns(App, ETS) ->
-    maybe_load_apns(App, ETS, kapps_config:get_binary(?CONFIG_CAT, <<"apple">>, 'undefined', App)).
+    CertBin = kapps_config:get_ne_binary(?CONFIG_CAT, [<<"apple">>, <<"certificate">>], 'undefined', App),
+    Host = kapps_config:get_ne_binary(?CONFIG_CAT, [<<"apple">>, <<"host">>], ?DEFAULT_APNS_HOST, App),
+    maybe_load_apns(App, ETS, CertBin, Host).
 
--spec maybe_load_apns(api_binary(), ets:tid(), api_binary()) -> api_pid().
-maybe_load_apns(App, _, 'undefined') ->
+-spec maybe_load_apns(api_binary(), ets:tid(), api_ne_binary(), ne_binary()) -> api_pid().
+maybe_load_apns(App, _, 'undefined', _) ->
     lager:debug("apple pusher certificate for app ~s not found", [App]),
     'undefined';
-maybe_load_apns(App, ETS, CertBin) ->
+maybe_load_apns(App, ETS, CertBin, Host) ->
     {Key, Cert} = pusher_util:binary_to_keycert(CertBin),
-    case apns:connect(#apns_connection{cert=Cert, key=Key}) of
+    Connection = #{name => 'undefined'
+                  ,apple_host => kz_term:to_list(Host)
+                  ,apple_port => 443
+                  ,certdata => Cert
+                  ,keydata => Key
+                  ,timeout => 10000
+                  ,type => 'certdata'
+                  },
+    case apns:connect(Connection) of
         {'ok', Pid} ->
             ets:insert(ETS, {App, Pid}),
             Pid;
@@ -98,3 +110,22 @@ maybe_load_apns(App, ETS, CertBin) ->
             lager:error("Error loading apns ~p", [Reason]),
             'undefined'
     end.
+
+-spec apns_topic(kz_json:object()) -> binary().
+apns_topic(JObj) ->
+    TokenApp = kz_json:get_ne_binary_value(<<"Token-App">>, JObj),
+    TokenType = kz_json:get_ne_binary_value(<<"Token-Type">>, JObj),
+    case kapps_config:get_ne_binary(<<"pusher">>
+                                   ,[TokenType, <<"apns_topic">>]
+                                   ,'undefined'
+                                   ,TokenApp
+                                   )
+    of
+        'undefined' -> default_apns_topic(TokenApp);
+        APNsTopic -> APNsTopic
+    end.
+
+%% Retains the old behaviour
+-spec default_apns_topic(ne_binary()) -> ne_binary().
+default_apns_topic(TokenApp) ->
+    re:replace(TokenApp, <<"\\.(?:dev|prod)$">>, <<>>, [{'return', 'binary'}]).

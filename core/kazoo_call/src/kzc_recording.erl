@@ -169,9 +169,9 @@ init([Call, Data]) ->
     {Year, Month, _} = erlang:date(),
     AccountDb = kz_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     CallId = kapps_call:call_id(Call),
-    CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), CallId),
+    CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), CallId),
     RecordingId = kz_binary:rand_hex(16),
-    DocId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), RecordingId),
+    DocId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), RecordingId),
     InteractionId = kapps_call:custom_channel_var(<<?CALL_INTERACTION_ID>>, Call),
     DefaultMediaName = get_media_name(kz_binary:rand_hex(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
@@ -576,6 +576,8 @@ handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=Account
     ,{field, <<"cdr_id">>}
     ,<<"&interaction_id=">>
     ,{field, <<"interaction_id">>}
+    ,<<"&owner_id=">>
+    ,{field, <<"owner_id">>}
     ,<<"&account_id=">>
     ,AccountId
     ].

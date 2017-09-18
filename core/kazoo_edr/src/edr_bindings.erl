@@ -107,7 +107,8 @@ push(#binding_payload{module=Module, function=Fun, binding=Binding, payload=Payl
 -spec should_push(edr_binding(), edr_event()) -> boolean().
 should_push(#edr_binding{account_id=AccountId, include_descendants=true}
            ,#edr_event{account_tree=AccountTree}) ->
-    AccountTree =/= 'undefined' andalso lists:member(AccountId, AccountTree);
+    AccountTree =/= 'undefined'
+    andalso lists:member(AccountId, AccountTree);
 should_push(_Binding, _Event) ->
     'true'.
 

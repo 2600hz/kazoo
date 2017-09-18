@@ -481,7 +481,7 @@ run_start_cmds(Node, Options, Parent, 'true') ->
     run_start_cmds(Node, Options, Parent, ?FS_CMDS(Node));
 run_start_cmds(Node, Options, Parent, 'false') ->
     lager:debug("node ~s is not considered restarting, trying reconnect cmds first", [Node]),
-    Cmds = case ecallmgr_config:get_jsons(<<"fs_reconnect_cmds">>) of
+    Cmds = case ecallmgr_config:get_jsons(<<"fs_reconnect_cmds">>, 'undefined') of
                'undefined' -> ?FS_CMDS(Node);
                ReconCmds -> ReconCmds
            end,
@@ -506,26 +506,22 @@ sync(Parent) ->
     sync_interfaces(Parent),
     sync_capabilities(Parent).
 
--spec process_cmds(atom(), kz_proplist(), kz_json:object() | ne_binaries()) -> cmd_results().
+-spec process_cmds(atom(), kz_proplist(), kz_json:objects()) -> cmd_results().
 process_cmds(_Node, _Options, []) ->
     lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the kapps running sysconf?"),
     [];
 process_cmds(Node, Options, Cmds) when is_list(Cmds) ->
-    lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Options, Cmd, Acc) end, [], Cmds);
-process_cmds(Node, Options, Cmds) ->
-    case kz_json:is_json_object(Cmds) of
-        'true' -> process_cmd(Node, Options, Cmds, []);
-        'false' ->
-            lager:debug("recv something other than a list for fs_cmds: ~p", [Cmds]),
-            {'error', 'retry'}
-    end.
+    lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Options, Cmd, Acc) end, [], Cmds).
 
 -spec process_cmd(atom(), kz_proplist(), kz_json:object(), cmd_results()) -> cmd_results().
 process_cmd(Node, Options, JObj, Acc0) ->
     kz_json:foldl(fun(ApiCmd, ApiArg, Acc) ->
                           lager:debug("process ~s: ~s: ~s", [Node, ApiCmd, ApiArg]),
                           process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
-                  end, Acc0, JObj).
+                  end
+                 ,Acc0
+                 ,JObj
+                 ).
 
 -spec process_cmd(atom(), kz_proplist(), ne_binary(), kz_json:json_term(), cmd_results()) -> cmd_results().
 -spec process_cmd(atom(), kz_proplist(), ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
@@ -623,8 +619,7 @@ probe_capabilities(Node, PossibleCapabilities) ->
     kz_util:put_callid(Node),
     F = fun(Capability) -> maybe_add_capability(Node, Capability) end,
     lists:foreach(F, PossibleCapabilities),
-    lager:notice("fs sync complete"),
-    ok.
+    lager:notice("fs sync complete").
 
 -spec maybe_add_capability(atom(), kz_json:object()) -> any().
 maybe_add_capability(Node, Capability) ->

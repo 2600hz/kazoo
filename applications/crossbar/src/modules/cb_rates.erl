@@ -65,7 +65,7 @@ init() ->
 
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_RATES_DB),
-    kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, 'crossbar', "views/rates.json").
+    kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, "views/rates.json").
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
@@ -158,21 +158,26 @@ validate(Context, ?NUMBER, Phonenumber) ->
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
-    summary(cb_context:set_account_db(Context, ?KZ_RATES_DB));
+    summary(cb_context:set_account_db(Context, ratedeck_db(Context)));
 validate_rates(Context, ?HTTP_PUT) ->
-    create(cb_context:set_account_db(Context, ?KZ_RATES_DB));
+    create(cb_context:set_account_db(Context, ratedeck_db(Context)));
 validate_rates(Context, ?HTTP_POST) ->
-    check_uploaded_file(cb_context:set_account_db(Context, ?KZ_RATES_DB)).
+    check_uploaded_file(cb_context:set_account_db(Context, ratedeck_db(Context))).
 
 -spec validate_rate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_rate(Context, Id, ?HTTP_GET) ->
-    read(Id, cb_context:set_account_db(Context, ?KZ_RATES_DB));
+    read(Id, cb_context:set_account_db(Context, ratedeck_db(Context)));
 validate_rate(Context, Id, ?HTTP_POST) ->
-    update(Id, cb_context:set_account_db(Context, ?KZ_RATES_DB));
+    update(Id, cb_context:set_account_db(Context, ratedeck_db(Context)));
 validate_rate(Context, Id, ?HTTP_PATCH) ->
-    validate_patch(Id, cb_context:set_account_db(Context, ?KZ_RATES_DB));
+    validate_patch(Id, cb_context:set_account_db(Context, ratedeck_db(Context)));
 validate_rate(Context, Id, ?HTTP_DELETE) ->
-    read(Id, cb_context:set_account_db(Context, ?KZ_RATES_DB)).
+    read(Id, cb_context:set_account_db(Context, ratedeck_db(Context))).
+
+-spec ratedeck_db(cb_context:context()) -> ne_binary().
+ratedeck_db(Context) ->
+    RatedeckId = cb_context:req_value(Context, <<"ratedeck_id">>, ?KZ_RATES_DB),
+    kzd_ratedeck:format_ratedeck_db(RatedeckId).
 
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
@@ -341,7 +346,7 @@ error_no_file(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

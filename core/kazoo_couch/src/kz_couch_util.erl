@@ -50,7 +50,7 @@ retry504s(_Fun, 3) ->
     {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
     kazoo_stats:increment_counter(<<"bigcouch-request">>),
-    case catch Fun() of
+    try Fun() of
         {'error', {'ok', 504, _, _}} ->
             kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
             timer:sleep(100 * (Cnt+1)),
@@ -58,7 +58,7 @@ retry504s(Fun, Cnt) ->
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', kz_term:to_integer(ErrCode)};
-%%% couchbeam doesn't pass 202 as acceptable
+        %% couchbeam doesn't pass 202 as acceptable
         {'error', {'bad_response',{202, _Headers, Body}}} ->
             {'ok', kz_json:decode(Body)};
         {'error', {'bad_response',{204, _Headers, _Body}}} ->
@@ -73,14 +73,13 @@ retry504s(Fun, Cnt) ->
         {'error', Other} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', format_error(Other)};
-        {'ok', _Other}=OK -> OK;
-        {'EXIT', _E} ->
+        OK -> OK
+    catch _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("exception running fun: ~p", [_E]),
+            lager:debug("exception running fun: ~p:~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
-            retry504s(Fun, Cnt+1);
-        OK -> OK
+            retry504s(Fun, Cnt+1)
     end.
 
 %%------------------------------------------------------------------------------
@@ -199,8 +198,9 @@ db_url(#server{}=Conn, DbName) ->
 %%------------------------------------------------------------------------------
 -spec get_db(kz_data:connection(), ne_binary()) -> db().
 -spec get_db(kz_data:connection(), ne_binary(), couch_version()) -> db().
-get_db(#server{options=Options}=Conn, DbName) ->
-    get_db(Conn, DbName, props:get_value('driver_version', Options)).
+get_db(Conn, DbName) ->
+    get_db(Conn, DbName, kazoo_couch:server_version(Conn)).
+
 get_db(Conn, DbName, Driver) ->
     ConnToUse =
         case is_admin_db(DbName, Driver) of
@@ -219,6 +219,7 @@ is_admin_db(<<"_users">>, 'couchdb_1_6') -> 'true';
 is_admin_db(<<"_nodes">>, 'couchdb_1_6') -> 'true';
 is_admin_db(<<"dbs">>, 'bigcouch') -> 'true';
 is_admin_db(<<"users">>, 'bigcouch') -> 'true';
+is_admin_db(<<"nodes">>, 'bigcouch') -> 'true';
 is_admin_db(_Db, _Driver) -> 'false'.
 
 -spec maybe_use_admin_conn(kz_data:connection()) -> kz_data:connection().
@@ -228,23 +229,30 @@ maybe_use_admin_conn(#server{options=Options}=Conn) ->
         AdminConn -> AdminConn
     end.
 
-maybe_use_admin_port(#server{url=Host
-                            ,options=Options
-                            }=Conn) ->
+maybe_use_admin_port(#server{options=Options}=Conn) ->
     ConnectionMap = props:get_value('connection_map', Options, #{}),
     ConnMapOptions = maps:get('options', ConnectionMap),
     case props:get_value('admin_port', ConnMapOptions) of
-        'undefined' -> Conn;
+        'undefined' ->
+            APIPort = maps:get('port', ConnectionMap),
+            AdminPort = APIPort + 2,
+            change_connection_to_admin(Conn, APIPort, AdminPort);
         AdminPort ->
             APIPort = maps:get('port', ConnectionMap),
-
-            ConnMapOptions1 = props:set_value('port', AdminPort, ConnMapOptions),
-            Options1 = props:set_value('connection_map', ConnectionMap#{'options'=>ConnMapOptions1}, Options),
-
-            Conn#server{url=binary:replace(Host, kz_term:to_binary(APIPort), kz_term:to_binary(AdminPort))
-                       ,options=Options1
-                       }
+            change_connection_to_admin(Conn, APIPort, AdminPort)
     end.
+
+change_connection_to_admin(#server{url=Host
+                                  ,options=Options
+                                  }=Conn, APIPort, AdminPort) ->
+    ConnectionMap = props:get_value('connection_map', Options, #{}),
+    ConnMapOptions = maps:get('options', ConnectionMap),
+
+    ConnMapOptions1 = props:set_value('port', AdminPort, ConnMapOptions),
+    Options1 = props:set_value('connection_map', ConnectionMap#{'options'=>ConnMapOptions1}, Options),
+    Conn#server{url=binary:replace(Host, kz_term:to_binary(APIPort), kz_term:to_binary(AdminPort))
+               ,options=Options1
+               }.
 
 -spec format_error(any()) -> any().
 format_error({'failure', 404}) -> 'not_found';

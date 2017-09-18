@@ -1,4 +1,5 @@
 DEPS = amqp_client \
+	apns \
 	certifi \
 	couchbeam \
 	cowboy \
@@ -7,10 +8,10 @@ DEPS = amqp_client \
 	eflame \
 	eiconv \
 	erlang_localtime \
+	erlcloud \
 	erlsom \
 	erlydtl \
 	escalus \
-	eunit \
 	exml \
 	folsom \
 	fs_event \
@@ -46,6 +47,7 @@ ifeq ($(USER),travis)
 endif
 
 dep_amqp_client_commit = rabbitmq_v3_6_0
+dep_apns = git https://github.com/inaka/apns4erl.git 2.2.0
 dep_certifi = hex 0.3.0
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
@@ -56,19 +58,22 @@ dep_jiffy = git https://github.com/fenollp/jiffy patch-1  ## See https://github.
 dep_nklib = git https://github.com/NetComposer/nklib
 dep_plists = hex 1.0.0
 
-dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
+dep_erlcloud = git https://github.com/lazedo/erlcloud 54fe6b96eb0bc591b80161fc552afb821072222c
+## waiting on pull request https://github.com/erlcloud/erlcloud/pull/437
+
+dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1b
 ###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.4.1
 ### waiting for pull requests
 ### https://github.com/benoitc/couchbeam/pull/158
 ### https://github.com/benoitc/couchbeam/pull/164
 ### https://github.com/benoitc/couchbeam/pull/165
+### https://github.com/benoitc/couchbeam/pull/166
+### https://github.com/benoitc/couchbeam/pull/174
 
-##dep_jesse = git https://github.com/for-GET/jesse 1.4.0
-## pull request pending
-## https://github.com/for-GET/jesse/pull/42
-dep_jesse = git https://github.com/2600hz/jesse 1.5-rc5
+dep_jesse = git https://github.com/2600hz/jesse 1.5-rc6
+##dep_jesse = git https://github.com/for-GET/jesse 1.5.0-rc2
 
-dep_lager = git https://github.com/erlang-lager/lager 3.2.1
+dep_lager = git https://github.com/erlang-lager/lager 3.5.1
 dep_trie = git https://github.com/okeuday/trie v1.5.4
 dep_fs_event = git https://github.com/jamhed/fs_event 783400da08c2b55c295dbec81df0d926960c0346
 dep_fs_sync = git https://github.com/jamhed/fs_sync 2cf85cf5861221128f020c453604d509fd37cd53

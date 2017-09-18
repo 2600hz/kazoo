@@ -27,7 +27,7 @@
         ]).
 
 -include("tasks.hrl").
--include_lib("kazoo_services/include/kz_service.hrl").
+-include_lib("kazoo_services/include/kazoo_services.hrl").
 
 -define(CATEGORY, "services").
 -define(ACTIONS, [<<"descendant_quantities">>

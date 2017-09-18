@@ -25,7 +25,7 @@
 -export([to_json/1]).
 -export([to_public_json/1]).
 
--include_lib("kazoo_services/include/kz_service.hrl").
+-include_lib("kazoo_services/include/kazoo_services.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -type kz_transactions() :: kz_transaction:transactions().
@@ -170,7 +170,7 @@ filter_for_per_minute(Transactions) ->
 is_per_minute(Transaction) ->
     case kz_transaction:code(Transaction) of
         ?CODE_PER_MINUTE_CALL -> 'true';
-        ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL -> 'true';
+        ?CODE_PER_MINUTE_CALL_SUB_ACCOUNT -> 'true';
         _Code -> 'false'
     end.
 

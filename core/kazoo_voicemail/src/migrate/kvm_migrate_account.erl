@@ -433,6 +433,14 @@ create_message(AccountId, FakeBoxJObj, DefaultExt) ->
               ,{<<"Box-Num">>, BoxNum}
               ,{<<"Timezone">>, TimeZone}
               ,{<<"Message-Timestamp">>, Timestamp}
+               %% @lazedo comment:
+               %%   I'm debating if we should move all existing vm messages to current modb
+               %%   that would be great for bulk create of modb docs
+               %%   since they would all go into same db
+               %%   if that is the option, then change Timestamp below
+               %%   with kz_time:current_tstamp()
+               %%
+               %% CAUTION: setting this to current_tstamp breaks crossbar qs_filter (created_from, created_to)
               ,{<<"Document-Timestamp">>, Timestamp}
               ,{<<"Attachment-Name">>, AttName}
               ]),

@@ -8,7 +8,7 @@
 -module(teletype_missed_call).
 
 -export([init/0
-        ,handle_missed_call/1
+        ,handle_req/1
         ]).
 
 -include("teletype.hrl").
@@ -50,12 +50,18 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"missed_call">>, ?MODULE, 'handle_missed_call').
+    teletype_bindings:bind(<<"missed_call">>, ?MODULE, 'handle_req').
 
--spec handle_missed_call(kz_json:object()) -> 'ok'.
-handle_missed_call(JObj) ->
-    'true' = kapi_notifications:missed_call_v(JObj),
-    kz_util:put_callid(JObj),
+-spec handle_req(kz_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    handle_req(JObj, kapi_notifications:missed_call_v(JObj)).
+
+-spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+handle_req(JObj, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+handle_req(JObj, 'true') ->
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),

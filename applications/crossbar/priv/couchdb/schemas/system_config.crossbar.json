@@ -16,6 +16,11 @@
         "autoload_modules": {
             "description": "crossbar autoload modules"
         },
+        "check_reverse_proxies": {
+            "default": true,
+            "description": "If request is proxied, should Crossbar check allowed reverse proxies",
+            "type": "boolean"
+        },
         "compress_response_body": {
             "default": true,
             "description": "crossbar compress response body",
@@ -60,6 +65,7 @@
         "maximum_range": {
             "default": 2682000,
             "description": "crossbar maximum range",
+            "minimum": 1,
             "type": "integer"
         },
         "pagination_page_size": {
@@ -88,7 +94,9 @@
             "type": "integer"
         },
         "reverse_proxies": {
-            "default": [],
+            "default": [
+                "127.0.0.1"
+            ],
             "description": "crossbar reverse proxies",
             "items": {
                 "type": "string"
@@ -125,11 +133,6 @@
         "ssl_workers": {
             "default": 100,
             "description": "crossbar ssl workers",
-            "type": "integer"
-        },
-        "token_auth_expiry": {
-            "default": 3600,
-            "description": "crossbar token auth expiry",
             "type": "integer"
         },
         "token_costs": {

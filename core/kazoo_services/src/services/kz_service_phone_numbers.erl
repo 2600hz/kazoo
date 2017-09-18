@@ -6,12 +6,13 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_phone_numbers).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 -export([feature_activation_charge/2]).
 -export([phone_number_activation_charge/2]).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(NUMBER_SERVICES, <<"number_services">>).

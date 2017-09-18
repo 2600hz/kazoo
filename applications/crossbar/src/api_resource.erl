@@ -176,6 +176,13 @@ find_version(Path) ->
 
 -spec maybe_allow_proxy_req(ne_binary(), ne_binary()) -> ne_binary().
 maybe_allow_proxy_req(Peer, ForwardIP) ->
+    ShouldCheck = kapps_config:get_is_true(?APP_NAME, <<"check_reverse_proxies">>, 'true'),
+    maybe_allow_proxy_req(Peer, ForwardIP, ShouldCheck).
+
+-spec maybe_allow_proxy_req(ne_binary(), ne_binary(), boolean()) -> ne_binary().
+maybe_allow_proxy_req(_Peer, ForwardIP, 'false') ->
+    ForwardIP;
+maybe_allow_proxy_req(Peer, ForwardIP, 'true') ->
     case is_proxied(Peer) of
         'true' ->
             lager:info("request is from expected reverse proxy: ~s", [ForwardIP]),
@@ -190,7 +197,7 @@ maybe_allow_proxy_req(Peer, ForwardIP) ->
 -spec is_proxied(ne_binary()) -> boolean().
 -spec is_proxied(ne_binary(), ne_binaries()) -> boolean().
 is_proxied(Peer) ->
-    Proxies = kapps_config:get_ne_binaries(?APP_NAME, <<"reverse_proxies">>, []),
+    Proxies = kapps_config:get_ne_binaries(?APP_NAME, <<"reverse_proxies">>, [<<"127.0.0.1">>]),
     is_proxied(Peer, Proxies).
 
 is_proxied(_Peer, []) -> 'false';
@@ -878,10 +885,12 @@ to_csv(Req, Context) ->
     case cb_context:fetch(Context1, 'is_chunked') of
         'true' -> {'halt', Req1, Context1};
         _ ->
-            RespHeaders = [{<<"Content-Type">>, <<"application/octet-stream">>}
-                          ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
-                           | cb_context:resp_headers(Context1)
-                          ],
+            RespHeaders =
+                props:insert_values([{<<"content-type">>, <<"application/octet-stream">>}
+                                    ,{<<"content-disposition">>, <<"attachment; filename=\"data.csv\"">>}
+                                    ]
+                                   ,cb_context:resp_headers(Context1)
+                                   ),
             {csv_body(cb_context:resp_data(Context))
             ,api_util:set_resp_headers(Req1, cb_context:set_resp_headers(Context1, RespHeaders))
             ,Context1

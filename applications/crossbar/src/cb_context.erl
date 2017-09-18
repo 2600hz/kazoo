@@ -76,6 +76,7 @@
         ,path_tokens/1
         ,magic_pathed/1, set_magic_pathed/2
         ,should_paginate/1, set_should_paginate/2
+        ,should_soft_delete/1
 
         ,req_json/1, set_req_json/2
         ,resp_error_code/1, set_resp_error_code/2
@@ -111,13 +112,12 @@
 -define(KEY_ACCEPT_CHARGES, <<"accept_charges">>).
 
 -define(SHOULD_ENSURE_SCHEMA_IS_VALID
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, true)).
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, true)
+       ).
 
 -define(SHOULD_FAIL_ON_INVALID_DATA
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, false)).
-
--type validation_error() :: jesse_error:error_reason().
--type validation_errors() :: [validation_error()].
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, false)
+       ).
 
 -type context() :: #cb_context{}.
 -type setter_fun_1() :: fun((context()) -> context()).
@@ -240,9 +240,14 @@ account_modb(Context, Year, Month) ->
 account_realm(Context) ->
     kz_account:realm(account_doc(Context)).
 
-account_doc(#cb_context{account_id='undefined'}) -> 'undefined';
-account_doc(Context) ->
-    crossbar_util:get_account_doc(account_id(Context)).
+account_doc(#cb_context{account_id = undefined}) -> undefined;
+account_doc(#cb_context{account_id = AccountId}) ->
+    case kz_account:fetch(AccountId) of
+        {ok, AccountJObj} -> AccountJObj;
+        {error, _R} ->
+            lager:warning("error fetching account doc for ~p: ~p", [AccountId,_R]),
+            undefined
+    end.
 
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
@@ -270,17 +275,30 @@ is_superduper_admin(Context) ->
 
 -spec is_account_admin(context()) -> boolean().
 is_account_admin(Context) ->
-    kzd_user:is_account_admin(auth_account_id(Context), auth_user_id(Context)).
+    AuthAccountId = auth_account_id(Context),
+    AuthUserId = auth_user_id(Context),
+    lager:debug("checking if user ~s is account admin of ~s", [AuthAccountId, AuthUserId]),
+    case kzd_user:is_account_admin(AuthAccountId, AuthUserId) of
+        'true' ->
+            lager:debug("the requestor is an account admin"),
+            'true';
+        'false' ->
+            lager:debug("the requestor is an superduper admin"),
+            'false'
+    end.
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
-auth_account_doc(Context) ->
-    case auth_account_id(Context) of
-        'undefined' -> 'undefined';
-        AccountId ->
-            crossbar_util:get_account_doc(AccountId)
+
+auth_account_doc(#cb_context{auth_account_id = undefined}) -> undefined;
+auth_account_doc(#cb_context{auth_account_id = AccountId}) ->
+    case kz_account:fetch(AccountId) of
+        {ok, AuthAccountJObj} -> AuthAccountJObj;
+        {error, _R} ->
+            lager:warning("error fetching auth account doc for ~p: ~p", [AccountId,_R]),
+            undefined
     end.
 
 auth_user_id(#cb_context{auth_doc='undefined'}) -> 'undefined';
@@ -345,6 +363,10 @@ should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
             kz_term:is_true(ShouldPaginate)
     end;
 should_paginate(#cb_context{should_paginate=Should}) -> Should.
+
+-spec should_soft_delete(context()) -> boolean().
+should_soft_delete(#cb_context{}=Context) ->
+    kz_term:is_true(req_value(Context, <<"should_soft_delete">>, ?SOFT_DELETE)).
 
 req_json(#cb_context{req_json=RJ}) -> RJ.
 content_types_accepted(#cb_context{content_types_accepted=CTAs}) -> CTAs.

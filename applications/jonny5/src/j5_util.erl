@@ -55,66 +55,56 @@ send_system_alert(Request) ->
                             ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)
                             ).
 
--spec add_limit_details(api_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec add_limit_details(api_ne_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
 add_limit_details('undefined', _, Props) -> Props;
 add_limit_details(Account, Prefix, Props) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account),
     Limits = j5_limits:get(AccountId),
     [{<<Prefix/binary, "-Enforce-Limits">>, kz_term:to_binary(j5_limits:enabled(Limits))}
-    ,{<<Prefix/binary, "-Calls">>
-     ,kz_term:to_binary(
-        io_lib:format("~w/~w"
-                     ,[j5_channels:total_calls(AccountId)
-                      ,j5_limits:calls(Limits)
-                      ])
-       )}
-    ,{<<Prefix/binary, "-Resource-Calls">>
-     ,kz_term:to_binary(
-        io_lib:format("~w/~w"
-                     ,[j5_channels:resource_consuming(AccountId)
-                      ,j5_limits:resource_consuming_calls(Limits)
-                      ])
-       )}
-    ,{<<Prefix/binary, "-Inbound-Trunks">>
-     ,kz_term:to_binary(
-        io_lib:format("~w/~w"
-                     ,[j5_channels:inbound_flat_rate(AccountId)
-                      ,j5_limits:inbound_trunks(Limits)
-                      ])
-       )}
-    ,{<<Prefix/binary, "-Outbound-Trunks">>
-     ,kz_term:to_binary(
-        io_lib:format("~w/~w"
-                     ,[j5_channels:outbound_flat_rate(AccountId)
-                      ,j5_limits:outbound_trunks(Limits)
-                      ])
-       )}
+    ,{<<Prefix/binary, "-Calls">>, kz_term:to_binary(calls(AccountId, Limits))}
+    ,{<<Prefix/binary, "-Resource-Calls">>, kz_term:to_binary(resource(AccountId, Limits))}
+    ,{<<Prefix/binary, "-Inbound-Trunks">>, kz_term:to_binary(inbound_trunks(AccountId, Limits))}
+    ,{<<Prefix/binary, "-Outbound-Trunks">>, kz_term:to_binary(outbound_trunks(AccountId, Limits))}
     ,{<<Prefix/binary, "-Twoway-Trunks">>, kz_term:to_binary(j5_limits:twoway_trunks(Limits))}
     ,{<<Prefix/binary, "-Burst-Trunks">>, kz_term:to_binary(j5_limits:burst_trunks(Limits))}
     ,{<<Prefix/binary, "-Allow-Prepay">>, kz_term:to_binary(j5_limits:allow_prepay(Limits))}
-    ,{<<Prefix/binary, "-Balance">>, current_balance(AccountId)}
+    ,{<<Prefix/binary, "-Balance">>, kz_term:to_binary(current_balance(AccountId))}
     ,{<<Prefix/binary, "-Allow-Postpay">>, kz_term:to_binary(j5_limits:allow_postpay(Limits))}
-    ,{<<Prefix/binary, "-Max-Postpay">>
-     ,kz_term:to_binary(
-        wht_util:units_to_dollars(
-          j5_limits:max_postpay(Limits)
-         )
-       )}
+    ,{<<Prefix/binary, "-Max-Postpay">>, kz_term:to_binary(max_postpay(Limits))}
      | Props
     ].
+
+resource(AccountId, Limits) ->
+    Consuming = j5_channels:resource_consuming(AccountId),
+    ConsumingCalls = j5_limits:resource_consuming_calls(Limits),
+    io_lib:format("~w/~w", [Consuming, ConsumingCalls]).
+
+calls(AccountId, Limits) ->
+    TotalCalls = j5_channels:total_calls(AccountId),
+    io_lib:format("~w/~w", [TotalCalls, j5_limits:calls(Limits)]).
+
+inbound_trunks(AccountId, Limits) ->
+    FlatRate = j5_channels:inbound_flat_rate(AccountId),
+    io_lib:format("~w/~w", [FlatRate, j5_limits:inbound_trunks(Limits)]).
+
+outbound_trunks(AccountId, Limits) ->
+    FlatRate = j5_channels:outbound_flat_rate(AccountId),
+    io_lib:format("~w/~w", [FlatRate, j5_limits:outbound_trunks(Limits)]).
+
+max_postpay(Limits) ->
+    wht_util:units_to_dollars(j5_limits:max_postpay(Limits)).
 
 -spec get_account_name(api_binary()) -> ne_binary().
 get_account_name('undefined') -> <<"unknown">>;
 get_account_name(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
-        {'error', _} -> AccountId;
-        {'ok', JObj} -> kz_json:get_ne_value(<<"name">>, JObj, AccountId)
+    case kz_account:fetch_name(Account) of
+        undefined -> kz_util:format_account_id(Account);
+        Name -> Name
     end.
 
 -spec current_balance(ne_binary()) -> ne_binary().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
-        {'ok', Balance} -> kz_term:to_binary(wht_util:units_to_dollars(Balance));
+        {'ok', Balance} -> wht_util:units_to_dollars(Balance);
         {'error', _} -> <<"not known at the moment">>
     end.

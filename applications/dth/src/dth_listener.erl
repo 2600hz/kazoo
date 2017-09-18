@@ -38,7 +38,7 @@
 
 -define(BLACKLIST_REFRESH, 60 * ?MILLISECONDS_IN_SECOND).
 
--record(state, {wsdl_model = 'undefined' :: 'undefined' | #wsdl{}
+-record(state, {wsdl_model :: 'undefined' | #wsdl{}
                ,dth_cdr_url = <<>> :: binary()
                }).
 -type state() :: #state{}.

@@ -21,7 +21,7 @@
 register_auth_app(AccountId, OAuthId, Secret, Provider) ->
     Doc = kz_json:from_list([{<<"_id">>, OAuthId}
                             ,{<<"pvt_account_id">>, AccountId}
-                            ,{<<"pvt_secret">>,Secret}
+                            ,{<<"pvt_secret">>, Secret}
                             ,{<<"pvt_user_prefix">>, kz_binary:rand_hex(16)}
                             ,{<<"pvt_auth_provider">>, Provider}
                             ,{<<"pvt_type">>, <<"app">>}
@@ -42,7 +42,6 @@ register_auth_app_key(AppId, PemFile) ->
 -spec refresh() -> 'ok'.
 refresh() ->
     kz_datamgr:revise_views_from_folder(?KZ_AUTH_DB, 'kazoo_auth').
-
 
 -spec register_common_providers() -> 'ok'.
 register_common_providers() ->

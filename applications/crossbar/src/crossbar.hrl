@@ -8,11 +8,11 @@
 
 -include("crossbar_types.hrl").
 
--define(APP_NAME, <<"crossbar">>).
+-define(APP, crossbar).
+-define(APP_NAME, (atom_to_binary(?APP, utf8))).
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
 -define(AUTH_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".auth">>).
--define(ACCOUNT_AUTH_CONFIG_ID, <<"kazoo_auth_configs">>).
 
 -define(CACHE_NAME, 'crossbar_cache').
 
@@ -91,6 +91,7 @@
                          ,'cb_media'
                          ,'cb_menus'
                          ,'cb_metaflows'
+                         ,'cb_multi_factor'
                          ,'cb_notifications'
                          ,'cb_pivot'
                          ,'cb_phone_numbers'
@@ -102,10 +103,13 @@
                          ,'cb_resources'
                          ,'cb_schemas'
                          ,'cb_search'
+                         ,'cb_security'
                          ,'cb_service_plans'
+                         ,'cb_service_planner'
                          ,'cb_services'
                          ,'cb_simple_authz'
                          ,'cb_sms'
+                         ,'cb_tasks'
                          ,'cb_templates'
                          ,'cb_temporal_rules'
                          ,'cb_temporal_rules_sets'
@@ -179,10 +183,10 @@
                     ,host_url = <<>> :: binary()
                     }).
 
--define(MAX_RANGE, kapps_config:get_integer(?CONFIG_CAT
-                                           ,<<"maximum_range">>
-                                           ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
-                                           )
+-define(MAX_RANGE, kapps_config:get_pos_integer(?CONFIG_CAT
+                                               ,<<"maximum_range">>
+                                               ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
+                                               )
        ).
 
 -define(OPTION_EXPECTED_TYPE, 'expected_type').

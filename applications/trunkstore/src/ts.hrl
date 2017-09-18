@@ -48,6 +48,7 @@
                            ,callctl_q :: api_ne_binary()
                            ,call_cost = 0.0 :: float()
                            ,failover :: api_object()
+                           ,kapps_call :: kapps_call:call()
                            }).
 
 -record(route_flags, {callid = <<>> :: binary()                      % unique call ID

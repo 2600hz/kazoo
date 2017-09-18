@@ -9,7 +9,8 @@
 %%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_agent_fsm).
--behaviour(gen_fsm).
+
+-behaviour(gen_statem).
 
 %% API
 -export([start_link/2, start_link/3, start_link/4, start_link/5
@@ -38,26 +39,15 @@
 
 -export([wait_for_listener/4]).
 
-%% gen_fsm callbacks
+%% gen_statem callbacks
 -export([init/1
-        ,handle_event/3
-        ,handle_sync_event/4
-        ,handle_info/3
+        ,callback_mode/0
         ,terminate/3
         ,code_change/4
         ]).
 
 %% Agent states
--export([wait/2
-        ,sync/2
-        ,ready/2
-        ,ringing/2
-        ,answered/2
-        ,wrapup/2
-        ,paused/2
-        ,outbound/2
-
-        ,wait/3
+-export([wait/3
         ,sync/3
         ,ready/3
         ,ringing/3
@@ -120,7 +110,7 @@
 
                ,agent_call_id :: api_binary()
                ,next_status :: api_binary()
-               ,fsm_call_id :: api_binary() % used when no call-ids are available
+               ,statem_call_id :: api_binary() % used when no call-ids are available
                ,endpoints = [] :: kz_json:objects()
                ,outbound_call_ids = [] :: ne_binaries()
                ,max_connect_failures :: kz_timeout()
@@ -140,8 +130,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec member_connect_req(pid(), kz_json:object()) -> 'ok'.
-member_connect_req(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'member_connect_req', JObj}).
+member_connect_req(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'member_connect_req', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -151,50 +141,50 @@ member_connect_req(FSM, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec member_connect_win(pid(), kz_json:object()) -> 'ok'.
-member_connect_win(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'member_connect_win', JObj}).
+member_connect_win(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'member_connect_win', JObj}).
 
 -spec agent_timeout(pid(), kz_json:object()) -> 'ok'.
-agent_timeout(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'agent_timeout', JObj}).
+agent_timeout(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'agent_timeout', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %%   When an agent is involved in a call, it will receive call events.
-%%   Pass the call event to the FSM to see if action is needed (usually
+%%   Pass the call event to the statem to see if action is needed (usually
 %%   for bridge and hangup events).
 %% @end
 %%--------------------------------------------------------------------
 -spec call_event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
-call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_bridged', call_id(JObj)});
-call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
-call_event(FSM, <<"call_event">>, <<"usurp_control">>, JObj) ->
-    gen_fsm:send_event(FSM, {'usurp_control', call_id(JObj)});
-call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_hungup', call_id(JObj), hangup_cause(JObj)});
-call_event(FSM, <<"call_event">>, <<"LEG_CREATED">>, JObj) ->
-    gen_fsm:send_event(FSM, {'leg_created', call_id(JObj)});
-call_event(FSM, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
-    gen_fsm:send_event(FSM, {'leg_destroyed', call_id(JObj)});
-call_event(FSM, <<"call_event">>, <<"CHANNEL_ANSWER">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_answered', call_id(JObj)});
-call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
-    gen_fsm:send_event(FSM, {'dtmf_pressed', kz_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
-call_event(FSM, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
-    maybe_send_execute_complete(FSM, kz_json:get_value(<<"Application-Name">>, JObj), JObj);
-call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
+    gen_statem:cast(ServerRef, {'channel_bridged', call_id(JObj)});
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
+    gen_statem:cast(ServerRef, {'channel_unbridged', call_id(JObj)});
+call_event(ServerRef, <<"call_event">>, <<"usurp_control">>, JObj) ->
+    gen_statem:cast(ServerRef, {'usurp_control', call_id(JObj)});
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
+    gen_statem:cast(ServerRef, {'channel_hungup', call_id(JObj), hangup_cause(JObj)});
+call_event(ServerRef, <<"call_event">>, <<"LEG_CREATED">>, JObj) ->
+    gen_statem:cast(ServerRef, {'leg_created', call_id(JObj)});
+call_event(ServerRef, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
+    gen_statem:cast(ServerRef, {'leg_destroyed', call_id(JObj)});
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_ANSWER">>, JObj) ->
+    gen_statem:cast(ServerRef, {'channel_answered', call_id(JObj)});
+call_event(ServerRef, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
+    gen_statem:cast(ServerRef, {'dtmf_pressed', kz_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
+    maybe_send_execute_complete(ServerRef, kz_json:get_value(<<"Application-Name">>, JObj), JObj);
+call_event(ServerRef, <<"error">>, <<"dialplan">>, JObj) ->
     _ = kz_util:put_callid(JObj),
     lager:debug("error event: ~s", [kz_json:get_value(<<"Error-Message">>, JObj)]),
 
     Req = kz_json:get_value(<<"Request">>, JObj),
 
-    gen_fsm:send_event(FSM, {'dialplan_error', kz_json:get_value(<<"Application-Name">>, Req)});
-call_event(FSM, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_replaced', JObj});
-call_event(FSM, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
+    gen_statem:cast(ServerRef, {'dialplan_error', kz_json:get_value(<<"Application-Name">>, Req)});
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
+    gen_statem:cast(ServerRef, {'channel_replaced', JObj});
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
+    gen_statem:cast(ServerRef, {'channel_unbridged', call_id(JObj)});
 call_event(_, _C, _E, _) ->
     lager:info("Unhandled combo: ~s/~s", [_C, _E]).
 
@@ -203,15 +193,15 @@ call_event(_, _C, _E, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_send_execute_complete(pid(), ne_binary(), kz_json:object()) -> 'ok'.
-maybe_send_execute_complete(FSM, <<"bridge">>, JObj) ->
+maybe_send_execute_complete(ServerRef, <<"bridge">>, JObj) ->
     lager:info("Send EXECUTE_COMPLETE,bridge to ~p with ci: ~s, olci: ~s",
-               [FSM
+               [ServerRef
                ,call_id(JObj)
                ,kz_call_event:other_leg_call_id(JObj)
                ]),
-    gen_fsm:send_event(FSM, {'channel_unbridged', call_id(JObj)});
-maybe_send_execute_complete(FSM, <<"call_pickup">>, JObj) ->
-    gen_fsm:send_event(FSM, {'channel_bridged', call_id(JObj)});
+    gen_statem:cast(ServerRef, {'channel_unbridged', call_id(JObj)});
+maybe_send_execute_complete(ServerRef, <<"call_pickup">>, JObj) ->
+    gen_statem:cast(ServerRef, {'channel_bridged', call_id(JObj)});
 maybe_send_execute_complete(_, _, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -219,63 +209,63 @@ maybe_send_execute_complete(_, _, _) -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 -spec originate_ready(server_ref(), kz_json:object()) -> 'ok'.
-originate_ready(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_ready', JObj}).
+originate_ready(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'originate_ready', JObj}).
 
 -spec originate_resp(server_ref(), kz_json:object()) -> 'ok'.
-originate_resp(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_resp', kz_json:get_value(<<"Call-ID">>, JObj)}).
+originate_resp(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'originate_resp', kz_json:get_value(<<"Call-ID">>, JObj)}).
 
 -spec originate_started(server_ref(), kz_json:object()) -> 'ok'.
-originate_started(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_started', kz_json:get_value(<<"Call-ID">>, JObj)}).
+originate_started(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'originate_started', kz_json:get_value(<<"Call-ID">>, JObj)}).
 
 -spec originate_uuid(server_ref(), kz_json:object()) -> 'ok'.
-originate_uuid(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_uuid'
-                            ,kz_json:get_value(<<"Outbound-Call-ID">>, JObj)
-                            ,kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj)
-                            }).
+originate_uuid(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'originate_uuid'
+                               ,kz_json:get_value(<<"Outbound-Call-ID">>, JObj)
+                               ,kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj)
+                               }).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec originate_failed(server_ref(), kz_json:object()) -> 'ok'.
-originate_failed(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'originate_failed', JObj}).
+originate_failed(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'originate_failed', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec sync_req(server_ref(), kz_json:object()) -> 'ok'.
-sync_req(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'sync_req', JObj}).
+sync_req(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'sync_req', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec sync_resp(server_ref(), kz_json:object()) -> 'ok'.
-sync_resp(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {'sync_resp', JObj}).
+sync_resp(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'sync_resp', JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec pause(server_ref(), kz_timeout()) -> 'ok'.
-pause(FSM, Timeout) ->
-    gen_fsm:send_all_state_event(FSM, {'pause', Timeout}).
+pause(ServerRef, Timeout) ->
+    gen_statem:cast(ServerRef, {'pause', Timeout}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec resume(server_ref()) -> 'ok'.
-resume(FSM) ->
-    gen_fsm:send_all_state_event(FSM, {'resume'}).
+resume(ServerRef) ->
+    gen_statem:cast(ServerRef, {'resume'}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -284,8 +274,8 @@ resume(FSM) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_acdc_queue(server_ref(), ne_binary()) -> 'ok'.
-add_acdc_queue(FSM, QueueId) ->
-    gen_fsm:send_all_state_event(FSM, {'add_acdc_queue', QueueId}).
+add_acdc_queue(ServerRef, QueueId) ->
+    gen_statem:cast(ServerRef, {'add_acdc_queue', QueueId}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -294,41 +284,41 @@ add_acdc_queue(FSM, QueueId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec rm_acdc_queue(server_ref(), ne_binary()) -> 'ok'.
-rm_acdc_queue(FSM, QueueId) ->
-    gen_fsm:send_all_state_event(FSM, {'rm_acdc_queue', QueueId}).
+rm_acdc_queue(ServerRef, QueueId) ->
+    gen_statem:cast(ServerRef, {'rm_acdc_queue', QueueId}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec update_presence(server_ref(), ne_binary(), ne_binary()) -> 'ok'.
-update_presence(FSM, PresenceId, PresenceState) ->
-    gen_fsm:send_all_state_event(FSM, {'update_presence', PresenceId, PresenceState}).
+update_presence(ServerRef, PresenceId, PresenceState) ->
+    gen_statem:cast(ServerRef, {'update_presence', PresenceId, PresenceState}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec agent_logout(server_ref()) -> 'ok'.
-agent_logout(FSM) ->
-    gen_fsm:send_all_state_event(FSM, {'agent_logout'}).
+agent_logout(ServerRef) ->
+    gen_statem:cast(ServerRef, {'agent_logout'}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh(pid(), kz_json:object()) -> 'ok'.
-refresh(FSM, AgentJObj) -> gen_fsm:send_all_state_event(FSM, {'refresh', AgentJObj}).
+refresh(ServerRef, AgentJObj) -> gen_statem:cast(ServerRef, {'refresh', AgentJObj}).
 
 -spec current_call(pid()) -> api_object().
-current_call(FSM) -> gen_fsm:sync_send_event(FSM, 'current_call').
+current_call(ServerRef) -> gen_statem:call(ServerRef, 'current_call').
 
 -spec status(pid()) -> kz_proplist().
-status(FSM) -> gen_fsm:sync_send_event(FSM, 'status').
+status(ServerRef) -> gen_statem:call(ServerRef, 'status').
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Creates a gen_fsm process which calls Module:init/1 to
+%% Creates a gen_statem process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
 %% @end
@@ -367,28 +357,27 @@ pvt_start_link(_AccountId, 'undefined', Supervisor, _, _) ->
     _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     'ignore';
 pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
-    gen_fsm:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
+    gen_statem:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
 
 -spec new_endpoint(pid(), kz_json:object()) -> 'ok'.
 -spec edited_endpoint(pid(), kz_json:object()) -> 'ok'.
 -spec deleted_endpoint(pid(), kz_json:object()) -> 'ok'.
-new_endpoint(FSM, EP) ->
-    lager:debug("sending EP to ~p: ~p", [FSM, EP]).
-edited_endpoint(FSM, EP) ->
-    lager:debug("sending EP to ~p: ~p", [FSM, EP]),
-    gen_fsm:send_all_state_event(FSM, {'edited_endpoint', kz_doc:id(EP), EP}).
-deleted_endpoint(FSM, EP) ->
-    lager:debug("sending EP to ~p: ~p", [FSM, EP]).
+new_endpoint(ServerRef, EP) ->
+    lager:debug("sending EP to ~p: ~p", [ServerRef, EP]).
+edited_endpoint(ServerRef, EP) ->
+    lager:debug("sending EP to ~p: ~p", [ServerRef, EP]),
+    gen_statem:cast(ServerRef, {'edited_endpoint', kz_doc:id(EP), EP}).
+deleted_endpoint(ServerRef, EP) ->
+    lager:debug("sending EP to ~p: ~p", [ServerRef, EP]).
 
 %%%===================================================================
-%%% gen_fsm callbacks
+%%% gen_statem callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
-%% Whenever a gen_fsm is started using gen_fsm:start/[3,4] or
-%% gen_fsm:start_link/[3,4], this function is called by the new
+%% Whenever a gen_statem is started using
+%% gen_statem:start_link/[3,4], this function is called by the new
 %% process to initialize.
 %%
 %% @spec init(Args) -> {'ok', StateName, State} |
@@ -399,9 +388,9 @@ deleted_endpoint(FSM, EP) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', atom(), state()}.
 init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
-    FSMCallId = <<"fsm_", AccountId/binary, "_", AgentId/binary>>,
-    kz_util:put_callid(FSMCallId),
-    lager:debug("started acdc agent fsm"),
+    StateMCallId = <<"statem_", AccountId/binary, "_", AgentId/binary>>,
+    kz_util:put_callid(StateMCallId),
+    lager:debug("started acdc agent statem"),
 
     _P = kz_util:spawn(fun wait_for_listener/4, [Supervisor, self(), Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
@@ -411,7 +400,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     ,#state{account_id = AccountId
            ,account_db = kz_util:format_account_id(AccountId, 'encoded')
            ,agent_id = AgentId
-           ,fsm_call_id = FSMCallId
+           ,statem_call_id = StateMCallId
            ,max_connect_failures = max_failures(AccountId)
            }
     }.
@@ -426,12 +415,12 @@ max_failures(JObj) ->
     kz_json:get_integer_value(?MAX_CONNECT_FAILURES, JObj, ?MAX_FAILURES).
 
 -spec wait_for_listener(pid(), pid(), kz_proplist(), boolean()) -> 'ok'.
-wait_for_listener(Supervisor, FSM, Props, IsThief) ->
+wait_for_listener(Supervisor, ServerRef, Props, IsThief) ->
     case acdc_agent_sup:listener(Supervisor) of
         'undefined' ->
             lager:debug("listener not ready yet, waiting"),
             timer:sleep(100),
-            wait_for_listener(Supervisor, FSM, Props, IsThief);
+            wait_for_listener(Supervisor, ServerRef, Props, IsThief);
         P when is_pid(P) ->
             lager:debug("listener retrieved: ~p", [P]),
 
@@ -441,24 +430,30 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
                 of
                     'true' -> {'ready', 'undefined'};
                     _ ->
-                        gen_fsm:send_event(FSM, 'send_sync_event'),
-                        gen_fsm:send_all_state_event(FSM, 'load_endpoints'),
-                        {'sync', start_sync_timer(FSM)}
+                        gen_statem:cast(ServerRef, 'send_sync_event'),
+                        gen_statem:cast(ServerRef, 'load_endpoints'),
+                        {'sync', start_sync_timer(ServerRef)}
                 end,
 
-            gen_fsm:send_event(FSM, {'listener', P, NextState, SyncRef})
+            gen_statem:cast(ServerRef, {'listener', P, NextState, SyncRef})
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec wait(any(), state()) -> handle_fsm_ret(state()).
--spec wait(any(), atom(), state()) -> handle_sync_event_ret(state()).
-wait({'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountId
-                                                            ,agent_id=AgentId
-                                                            }=State) ->
+-spec callback_mode() -> 'state_functions'.
+callback_mode() ->
+    'state_functions'.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec wait(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+wait('cast', {'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountId
+                                                                    ,agent_id=AgentId
+                                                                    }=State) ->
     lager:debug("setting agent proc to ~p", [AgentListener]),
     acdc_agent_listener:fsm_started(AgentListener, self()),
     acdc_agent_stats:agent_ready(AccountId, AgentId),
@@ -466,46 +461,32 @@ wait({'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountI
                                          ,sync_ref=SyncRef
                                          ,agent_listener_id=acdc_util:proc_id()
                                          }};
-wait('send_sync_event', State) ->
-    gen_fsm:send_event(self(), 'send_sync_event'),
+wait('cast', 'send_sync_event', State) ->
+    gen_statem:cast(self(), 'send_sync_event'),
     {'next_state', 'wait', State};
-wait(_Msg, State) ->
-    lager:debug("unhandled event in wait: ~p", [_Msg]),
-    {'next_state', 'wait', State}.
-
-wait('status', _, State) ->
-    {'reply', [{'state', <<"wait">>}], 'wait', State};
-wait('current_call', _, State) ->
-    {'reply', 'undefined', 'wait', State}.
+wait('cast', Evt, State) ->
+    handle_event(Evt, wait, State);
+wait({'call', From}, 'status', State) ->
+    {'next_state', 'wait', State, {'reply', From, [{'state', <<"wait">>}]}};
+wait({'call', From}, 'current_call', State) ->
+    {'next_state', 'wait', State, {'reply', From, 'undefined'}};
+wait('info', Evt, State) ->
+    handle_event(Evt, wait, State).
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec sync(any(), state()) -> handle_fsm_ret(state()).
--spec sync(any(), atom(), state()) -> handle_sync_event_ret(state()).
-sync({'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
-                                                     ,agent_listener=AgentListener
-                                                     }=State) when is_reference(Ref) ->
-    lager:debug("done waiting for sync responses"),
-    acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
-
-    apply_state_updates(State#state{sync_ref=Ref});
-sync({'timeout', Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
-    lager:debug("resync timer expired, lets check with the others again"),
-    SyncRef = start_sync_timer(),
-    gen_fsm:send_event(self(), 'send_sync_event'),
-    {'next_state', 'sync', State#state{sync_ref=SyncRef}};
-sync('send_sync_event', #state{agent_listener=AgentListener
-                              ,agent_listener_id=_AProcId
-                              }=State) ->
+-spec sync(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+sync('cast', 'send_sync_event', #state{agent_listener=AgentListener
+                                      ,agent_listener_id=_AProcId
+                                      }=State) ->
     lager:debug("sending sync_req event to other agent processes: ~s", [_AProcId]),
     acdc_agent_listener:send_sync_req(AgentListener),
     {'next_state', 'sync', State};
-sync({'sync_req', JObj}, #state{agent_listener=AgentListener
-                               ,agent_listener_id=AProcId
-                               }=State) ->
+sync('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
+                                       ,agent_listener_id=AProcId
+                                       }=State) ->
     case kz_json:get_value(<<"Process-ID">>, JObj) of
         AProcId ->
             lager:debug("recv sync req from ourself"),
@@ -515,9 +496,9 @@ sync({'sync_req', JObj}, #state{agent_listener=AgentListener
             acdc_agent_listener:send_sync_resp(AgentListener, 'sync', JObj),
             {'next_state', 'sync', State}
     end;
-sync({'sync_resp', JObj}, #state{sync_ref=Ref
-                                ,agent_listener=AgentListener
-                                }=State) ->
+sync('cast', {'sync_resp', JObj}, #state{sync_ref=Ref
+                                        ,agent_listener=AgentListener
+                                        }=State) ->
     case catch kz_term:to_atom(kz_json:get_value(<<"Status">>, JObj)) of
         'sync' ->
             lager:debug("other agent is in sync too"),
@@ -537,42 +518,54 @@ sync({'sync_resp', JObj}, #state{sync_ref=Ref
             _ = erlang:cancel_timer(Ref),
             {'next_state', 'sync', State#state{sync_ref=start_resync_timer()}}
     end;
-sync({'member_connect_req', _}, State) ->
+sync('cast', {'member_connect_req', _}, State) ->
     lager:debug("member_connect_req recv, not ready"),
     {'next_state', 'sync', State};
-sync(?NEW_CHANNEL_FROM(CallId), State) ->
+sync('cast', ?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("sync call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-sync(?NEW_CHANNEL_TO(CallId, _), State) ->
+sync('cast', ?NEW_CHANNEL_TO(CallId, _), State) ->
     lager:debug("sync call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-sync(_Evt, State) ->
-    lager:debug("unhandled event while syncing: ~p", [_Evt]),
-    {'next_state', 'sync', State}.
+sync('cast', Evt, State) ->
+    handle_event(Evt, sync, State);
+sync({'call', From}, 'status', State) ->
+    {'next_state', 'sync', State, {'reply', From, [{'state', <<"sync">>}]}};
+sync({'call', From}, 'current_call', State) ->
+    {'next_state', 'sync', State, {'reply', From, 'undefined'}};
+sync('info', {'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
+                                                             ,agent_listener=AgentListener
+                                                             }=State) when is_reference(Ref) ->
+    lager:debug("done waiting for sync responses"),
+    acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
 
-sync('status', _, State) ->
-    {'reply', [{'state', <<"sync">>}], 'sync', State};
-sync('current_call', _, State) ->
-    {'reply', 'undefined', 'sync', State}.
+    apply_state_updates(State#state{sync_ref=Ref});
+sync('info', {'timeout', Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
+    lager:debug("resync timer expired, lets check with the others again"),
+    SyncRef = start_sync_timer(),
+    gen_statem:cast(self(), 'send_sync_event'),
+    {'next_state', 'sync', State#state{sync_ref=SyncRef}};
+sync('info', Evt, State) ->
+    handle_event(Evt, sync, State).
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec ready(any(), state()) -> handle_fsm_ret(state()).
--spec ready(any(), atom(), state()) -> handle_sync_event_ret(state()).
-ready({'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
+-spec ready(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+ready('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Server-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'ready', JObj),
     {'next_state', 'ready', State};
-ready({'member_connect_win', JObj}, #state{agent_listener=AgentListener
-                                          ,endpoints=OrigEPs
-                                          ,agent_listener_id=MyId
-                                          ,account_id=AccountId
-                                          ,agent_id=AgentId
-                                          ,connect_failures=CF
-                                          }=State) ->
+ready('cast', {'sync_resp', _}, State) ->
+    {'next_state', 'ready', State};
+ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
+                                                  ,endpoints=OrigEPs
+                                                  ,agent_listener_id=MyId
+                                                  ,account_id=AccountId
+                                                  ,agent_id=AgentId
+                                                  ,connect_failures=CF
+                                                  }=State) ->
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
     CallId = kapps_call:call_id(Call),
 
@@ -633,24 +626,24 @@ ready({'member_connect_win', JObj}, #state{agent_listener=AgentListener
                                                  ,agent_call_id='undefined'
                                        }}
     end;
-ready({'member_connect_req', _}, #state{max_connect_failures=Max
-                                       ,connect_failures=Fails
-                                       ,account_id=AccountId
-                                       ,agent_id=AgentId
-                                       }=State) when is_integer(Max), Fails >= Max ->
+ready('cast', {'member_connect_req', _}, #state{max_connect_failures=Max
+                                               ,connect_failures=Fails
+                                               ,account_id=AccountId
+                                               ,agent_id=AgentId
+                                               }=State) when is_integer(Max), Fails >= Max ->
     lager:info("agent has failed to connect ~b times, logging out", [Fails]),
     acdc_agent_stats:agent_logged_out(AccountId, AgentId),
     agent_logout(self()),
     {'next_state', 'paused', State};
-ready({'member_connect_req', JObj}, #state{agent_listener=AgentListener}=State) ->
+ready('cast', {'member_connect_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     acdc_agent_listener:member_connect_resp(AgentListener, JObj),
     {'next_state', 'ready', State};
-ready({'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
+ready('cast', {'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("ignoring an outbound call that is the result of a failed originate"),
     acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
     acdc_agent_listener:channel_hungup(AgentListener, ACallId),
     {'next_state', 'ready', State};
-ready({'channel_answered', CallId}, #state{outbound_call_ids=OutboundCallIds}=State) ->
+ready('cast', {'channel_answered', CallId}, #state{outbound_call_ids=OutboundCallIds}=State) ->
     case lists:member(CallId, OutboundCallIds) of
         'true' ->
             lager:debug("agent picked up outbound call ~s", [CallId]),
@@ -659,9 +652,9 @@ ready({'channel_answered', CallId}, #state{outbound_call_ids=OutboundCallIds}=St
             lager:debug("unexpected answer of ~s while in ready", [CallId]),
             {'next_state', 'ready', State}
     end;
-ready({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
-                                                ,outbound_call_ids=OutboundCallIds
-                                                }=State) ->
+ready('cast', {'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+                                                        ,outbound_call_ids=OutboundCallIds
+                                                        }=State) ->
     case lists:member(CallId, OutboundCallIds) of
         'true' ->
             lager:debug("agent outbound channel ~s down", [CallId]),
@@ -672,65 +665,63 @@ ready({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
             acdc_agent_listener:channel_hungup(AgentListener, CallId),
             {'next_state', 'ready', State}
     end;
-ready({'channel_unbridged', CallId}, #state{agent_listener=_AgentListener}=State) ->
+ready('cast', {'channel_unbridged', CallId}, #state{agent_listener=_AgentListener}=State) ->
     lager:debug("channel unbridged: ~s", [CallId]),
     {'next_state', 'ready', State};
-ready({'leg_destroyed', CallId}, #state{agent_listener=_AgentListener}=State) ->
+ready('cast', {'leg_destroyed', CallId}, #state{agent_listener=_AgentListener}=State) ->
     lager:debug("channel unbridged: ~s", [CallId]),
     {'next_state', 'ready', State};
-ready({'dtmf_pressed', _}, State) ->
+ready('cast', {'dtmf_pressed', _}, State) ->
     {'next_state', 'ready', State};
-ready({'originate_failed', _E}, State) ->
+ready('cast', {'originate_failed', _E}, State) ->
     {'next_state', 'ready', State};
-ready(?NEW_CHANNEL_FROM(CallId), State) ->
+ready('cast', ?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("ready call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-ready(?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
+ready('cast', ?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
     lager:debug("ready call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-ready(?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
+ready('cast', ?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
     {'next_state', 'ready', State};
-ready(_Evt, State) ->
-    lager:debug("unhandled event while ready: ~p", [_Evt]),
-    {'next_state', 'ready', State}.
-
-ready('status', _, State) ->
-    {'reply', [{'state', <<"ready">>}], 'ready', State};
-ready('current_call', _, State) ->
-    {'reply', 'undefined', 'ready', State}.
+ready('cast', Evt, State) ->
+    handle_event(Evt, ready, State);
+ready({'call', From}, 'status', State) ->
+    {'next_state', 'ready', State, {'reply', From, [{'state', <<"ready">>}]}};
+ready({'call', From}, 'current_call', State) ->
+    {'next_state', 'ready', State, {'reply', From, 'undefined'}};
+ready('info', Evt, State) ->
+    handle_event(Evt, ready, State).
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec ringing(any(), state()) -> handle_fsm_ret(state()).
--spec ringing(any(), atom(), state()) -> handle_sync_event_ret(state()).
-ringing({'member_connect_req', _}, State) ->
+-spec ringing(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+ringing('cast', {'member_connect_req', _}, State) ->
     {'next_state', 'ringing', State};
-ringing({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
+ringing('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("agent won, but can't process this right now (already ringing)"),
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
 
     {'next_state', 'ringing', State};
-ringing({'originate_ready', JObj}, #state{agent_listener=AgentListener}=State) ->
+ringing('cast', {'originate_ready', JObj}, #state{agent_listener=AgentListener}=State) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
 
     lager:debug("ringing agent's phone with call-id ~s", [CallId]),
     acdc_agent_listener:originate_execute(AgentListener, JObj),
     {'next_state', 'ringing', State};
-ringing({'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
+ringing('cast', {'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("recv originate_uuid for agent call ~s(~s)", [ACallId, ACtrlQ]),
     acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
     {'next_state', 'ringing', State};
-ringing({'originate_started', ACallId}, #state{agent_listener=AgentListener
-                                              ,member_call_id=MemberCallId
-                                              ,member_call=MemberCall
-                                              ,account_id=AccountId
-                                              ,agent_id=AgentId
-                                              ,queue_notifications=Ns
-                                              ,member_call_queue_id=QueueId
-                                              }=State) ->
+ringing('cast', {'originate_started', ACallId}, #state{agent_listener=AgentListener
+                                                      ,member_call_id=MemberCallId
+                                                      ,member_call=MemberCall
+                                                      ,account_id=AccountId
+                                                      ,agent_id=AgentId
+                                                      ,queue_notifications=Ns
+                                                      ,member_call_queue_id=QueueId
+                                                      }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent_listener:member_connect_accepted(AgentListener, ACallId),
 
@@ -744,14 +735,14 @@ ringing({'originate_started', ACallId}, #state{agent_listener=AgentListener
     {'next_state', 'answered', State#state{agent_call_id=ACallId
                                           ,connect_failures=0
                                           }};
-ringing({'originate_failed', E}, #state{agent_listener=AgentListener
-                                       ,account_id=AccountId
-                                       ,agent_id=AgentId
-                                       ,member_call_queue_id=QueueId
-                                       ,member_call_id=CallId
-                                       ,connect_failures=Fails
-                                       ,max_connect_failures=MaxFails
-                                       }=State) ->
+ringing('cast', {'originate_failed', E}, #state{agent_listener=AgentListener
+                                               ,account_id=AccountId
+                                               ,agent_id=AgentId
+                                               ,member_call_queue_id=QueueId
+                                               ,member_call_id=CallId
+                                               ,connect_failures=Fails
+                                               ,max_connect_failures=MaxFails
+                                               }=State) ->
     acdc_agent_listener:member_connect_retry(AgentListener, CallId),
 
     ErrReason = missed_reason(kz_json:get_value(<<"Error-Message">>, E)),
@@ -762,39 +753,39 @@ ringing({'originate_failed', E}, #state{agent_listener=AgentListener
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
 
-    NewFSMState = clear_call(State, 'failed'),
-    NextState = return_to_state(Fails+1, MaxFails),
-    case NextState of
-        'paused' -> {'next_state', 'paused', NewFSMState};
-        'ready' -> apply_state_updates(NewFSMState)
+    State1 = clear_call(State, 'failed'),
+    StateName1 = return_to_state(Fails+1, MaxFails),
+    case StateName1 of
+        'paused' -> {'next_state', 'paused', State1};
+        'ready' -> apply_state_updates(State1)
     end;
-ringing({'agent_timeout', _JObj}, #state{agent_listener=AgentListener
-                                        ,account_id=AccountId
-                                        ,agent_id=AgentId
-                                        ,member_call_queue_id=QueueId
-                                        ,member_call_id=CallId
-                                        ,connect_failures=Fails
-                                        ,max_connect_failures=MaxFails
-                                        }=State) ->
+ringing('cast', {'agent_timeout', _JObj}, #state{agent_listener=AgentListener
+                                                ,account_id=AccountId
+                                                ,agent_id=AgentId
+                                                ,member_call_queue_id=QueueId
+                                                ,member_call_id=CallId
+                                                ,connect_failures=Fails
+                                                ,max_connect_failures=MaxFails
+                                                }=State) ->
     acdc_agent_listener:agent_timeout(AgentListener),
     lager:debug("recv timeout from queue process"),
     acdc_stats:call_missed(AccountId, QueueId, AgentId, CallId, <<"timeout">>),
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
-    NewFSMState = clear_call(State, 'failed'),
-    NextState = return_to_state(Fails+1, MaxFails),
-    case NextState of
-        'paused' -> {'next_state', 'paused', NewFSMState};
-        'ready' -> apply_state_updates(NewFSMState)
+    State1 = clear_call(State, 'failed'),
+    StateName1 = return_to_state(Fails+1, MaxFails),
+    case StateName1 of
+        'paused' -> {'next_state', 'paused', State1};
+        'ready' -> apply_state_updates(State1)
     end;
-ringing({'channel_bridged', MemberCallId}, #state{member_call_id=MemberCallId
-                                                 ,member_call=MemberCall
-                                                 ,agent_listener=AgentListener
-                                                 ,account_id=AccountId
-                                                 ,agent_id=AgentId
-                                                 ,queue_notifications=Ns
-                                                 ,member_call_queue_id=QueueId
-                                                 }=State) ->
+ringing('cast', {'channel_bridged', MemberCallId}, #state{member_call_id=MemberCallId
+                                                         ,member_call=MemberCall
+                                                         ,agent_listener=AgentListener
+                                                         ,account_id=AccountId
+                                                         ,agent_id=AgentId
+                                                         ,queue_notifications=Ns
+                                                         ,member_call_queue_id=QueueId
+                                                         }=State) ->
     lager:debug("agent phone has been connected to caller"),
     acdc_agent_listener:member_connect_accepted(AgentListener),
 
@@ -806,17 +797,17 @@ ringing({'channel_bridged', MemberCallId}, #state{member_call_id=MemberCallId
     acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum, QueueId),
 
     {'next_state', 'answered', State#state{connect_failures=0}};
-ringing({'channel_bridged', _CallId}, State) ->
+ringing('cast', {'channel_bridged', _CallId}, State) ->
     {'next_state', 'ringing', State};
-ringing({'channel_hungup', AgentCallId, Cause}, #state{agent_listener=AgentListener
-                                                      ,agent_call_id=AgentCallId
-                                                      ,account_id=AccountId
-                                                      ,agent_id=AgentId
-                                                      ,member_call_queue_id=QueueId
-                                                      ,member_call_id=MemberCallId
-                                                      ,connect_failures=Fails
-                                                      ,max_connect_failures=MaxFails
-                                                      }=State) ->
+ringing('cast', {'channel_hungup', AgentCallId, Cause}, #state{agent_listener=AgentListener
+                                                              ,agent_call_id=AgentCallId
+                                                              ,account_id=AccountId
+                                                              ,agent_id=AgentId
+                                                              ,member_call_queue_id=QueueId
+                                                              ,member_call_id=MemberCallId
+                                                              ,connect_failures=Fails
+                                                              ,max_connect_failures=MaxFails
+                                                              }=State) ->
     lager:debug("ringing agent failed: timeout on ~s ~s", [AgentCallId, Cause]),
 
     acdc_agent_listener:member_connect_retry(AgentListener, MemberCallId),
@@ -826,23 +817,23 @@ ringing({'channel_hungup', AgentCallId, Cause}, #state{agent_listener=AgentListe
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
 
-    NewFSMState = clear_call(State, 'failed'),
-    NextState = return_to_state(Fails+1, MaxFails),
-    case NextState of
-        'paused' -> {'next_state', 'paused', NewFSMState};
-        'ready' -> apply_state_updates(NewFSMState)
+    State1 = clear_call(State, 'failed'),
+    StateName1 = return_to_state(Fails+1, MaxFails),
+    case StateName1 of
+        'paused' -> {'next_state', 'paused', State1};
+        'ready' -> apply_state_updates(State1)
     end;
-ringing({'channel_hungup', MemberCallId, _Cause}, #state{agent_listener=AgentListener
-                                                        ,member_call_id=MemberCallId
-                                                        }=State) ->
+ringing('cast', {'channel_hungup', MemberCallId, _Cause}, #state{agent_listener=AgentListener
+                                                                ,member_call_id=MemberCallId
+                                                                }=State) ->
     lager:debug("caller's channel (~s) has gone down, stop agent's call: ~s", [MemberCallId, _Cause]),
     acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
     apply_state_updates(clear_call(State, 'ready'));
-ringing({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
-                                                  ,outbound_call_ids=OutboundCallIds
-                                                  }=State) ->
+ringing('cast', {'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+                                                          ,outbound_call_ids=OutboundCallIds
+                                                          }=State) ->
     case lists:member(CallId, OutboundCallIds) of
         'true' ->
             lager:debug("agent outbound channel ~s down", [CallId]),
@@ -852,30 +843,30 @@ ringing({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
             lager:debug("unexpected channel ~s down", [CallId]),
             {'next_state', 'ringing', State}
     end;
-ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
-                                      ,agent_listener=AgentListener
-                                      ,agent_call_id=AgentCallId
-                                      }=State) when is_binary(DTMF) ->
+ringing('cast', {'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
+                                              ,agent_listener=AgentListener
+                                              ,agent_call_id=AgentCallId
+                                              }=State) when is_binary(DTMF) ->
     lager:debug("caller exit key pressed: ~s", [DTMF]),
     acdc_agent_listener:channel_hungup(AgentListener, AgentCallId),
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
 
     apply_state_updates(clear_call(State, 'ready'));
-ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
+ringing('cast', {'dtmf_pressed', DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
     lager:debug("caller pressed ~s, exit key is ~s", [DTMF, _ExitKey]),
     {'next_state', 'ringing', State};
-ringing({'channel_answered', MemberCallId}, #state{member_call_id=MemberCallId}=State) ->
+ringing('cast', {'channel_answered', MemberCallId}, #state{member_call_id=MemberCallId}=State) ->
     lager:debug("caller's channel answered"),
     {'next_state', 'ringing', State};
-ringing({'channel_answered', OtherCallId}, #state{account_id=AccountId
-                                                 ,agent_id=AgentId
-                                                 ,member_call=MemberCall
-                                                 ,member_call_id=MemberCallId
-                                                 ,agent_listener=AgentListener
-                                                 ,outbound_call_ids=OutboundCallIds
-                                                 ,member_call_queue_id=QueueId
-                                                 }=State) ->
+ringing('cast', {'channel_answered', OtherCallId}, #state{account_id=AccountId
+                                                         ,agent_id=AgentId
+                                                         ,member_call=MemberCall
+                                                         ,member_call_id=MemberCallId
+                                                         ,agent_listener=AgentListener
+                                                         ,outbound_call_ids=OutboundCallIds
+                                                         ,member_call_queue_id=QueueId
+                                                         }=State) ->
     case lists:member(OtherCallId, OutboundCallIds) of
         'true' ->
             lager:debug("agent picked up outbound call ~s instead of the queue call ~s", [OtherCallId, MemberCallId]),
@@ -895,18 +886,20 @@ ringing({'channel_answered', OtherCallId}, #state{account_id=AccountId
                                                   ,connect_failures=0
                                                   }}
     end;
-ringing({'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
+ringing('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'ringing', JObj),
     {'next_state', 'ringing', State};
-ringing({'originate_resp', ACallId}, #state{agent_listener=AgentListener
-                                           ,member_call_id=MemberCallId
-                                           ,member_call=MemberCall
-                                           ,account_id=AccountId
-                                           ,agent_id=AgentId
-                                           ,queue_notifications=Ns
-                                           ,member_call_queue_id=QueueId
-                                           }=State) ->
+ringing('cast', {'sync_resp', _}, State) ->
+    {'next_state', 'ringing', State};
+ringing('cast', {'originate_resp', ACallId}, #state{agent_listener=AgentListener
+                                                   ,member_call_id=MemberCallId
+                                                   ,member_call=MemberCall
+                                                   ,account_id=AccountId
+                                                   ,agent_id=AgentId
+                                                   ,queue_notifications=Ns
+                                                   ,member_call_queue_id=QueueId
+                                                   }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
     acdc_agent_listener:member_connect_accepted(AgentListener, ACallId),
 
@@ -920,67 +913,67 @@ ringing({'originate_resp', ACallId}, #state{agent_listener=AgentListener
     {'next_state', 'answered', State#state{agent_call_id=ACallId
                                           ,connect_failures=0
                                           }};
-ringing(?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener}=State) ->
+ringing('cast', ?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener}=State) ->
     lager:debug("ringing call_from outbound: ~s", [CallId]),
     acdc_agent_listener:hangup_call(AgentListener),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, clear_call(State, 'ready')), 'hibernate'};
-ringing(?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
-                                                    ,outbound_call_ids=OutboundCallIds
-                                                    }=State) ->
+ringing('cast', ?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
+                                                            ,outbound_call_ids=OutboundCallIds
+                                                            }=State) ->
     lager:debug("ringing call_to outbound: ~s", [CallId]),
     acdc_util:bind_to_call_events(CallId, AgentListener),
     {'next_state', 'ringing', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
-ringing(?NEW_CHANNEL_TO(CallId, MemberCallId), #state{member_call_id=MemberCallId}=State) ->
+ringing('cast', ?NEW_CHANNEL_TO(CallId, MemberCallId), #state{member_call_id=MemberCallId}=State) ->
     lager:debug("new channel ~s for agent", [CallId]),
     {'next_state', 'ringing', State};
-ringing(?NEW_CHANNEL_TO(CallId, _MemberCallId), #state{agent_listener=AgentListener}=State) ->
+ringing('cast', ?NEW_CHANNEL_TO(CallId, _MemberCallId), #state{agent_listener=AgentListener}=State) ->
     lager:debug("found a uuid ~s that was from a previous queue call", [CallId]),
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
     {'next_state', 'ringing', State};
-ringing({'leg_created', _CallId}, State) ->
+ringing('cast', {'leg_created', _CallId}, State) ->
     {'next_state', 'ringing', State};
-ringing({'leg_destroyed', _CallId}, State) ->
+ringing('cast', {'leg_destroyed', _CallId}, State) ->
     {'next_state', 'ringing', State};
-ringing({'usurp_control', _CallId}, State) ->
+ringing('cast', {'usurp_control', _CallId}, State) ->
     {'next_state', 'ringing', State};
-ringing(_Evt, State) ->
-    lager:debug("unhandled event while ringing: ~p", [_Evt]),
-    {'next_state', 'ringing', State}.
-
-ringing('status', _, #state{member_call_id=MemberCallId
-                           ,agent_call_id=ACallId
-                           }=State) ->
-    {'reply', [{'state', <<"ringing">>}
-              ,{'member_call_id', MemberCallId}
-              ,{'agent_call_id', ACallId}
-              ]
-    ,'ringing', State};
-ringing('current_call', _, #state{member_call=Call
-                                 ,member_call_queue_id=QueueId
-                                 }=State) ->
-    {'reply', current_call(Call, 'ringing', QueueId, 'undefined'), 'ringing', State}.
+ringing('cast', Evt, State) ->
+    handle_event(Evt, ringing, State);
+ringing({'call', From}, 'status', #state{member_call_id=MemberCallId
+                                        ,agent_call_id=ACallId
+                                        }=State) ->
+    {'next_state', 'ringing', State
+    ,{'reply', From, [{'state', <<"ringing">>}
+                     ,{'member_call_id', MemberCallId}
+                     ,{'agent_call_id', ACallId}
+                     ]}};
+ringing({'call', From}, 'current_call', #state{member_call=Call
+                                              ,member_call_queue_id=QueueId
+                                              }=State) ->
+    {'next_state', 'ringing', State
+    ,{'reply', From, current_call(Call, 'ringing', QueueId, 'undefined')}
+    };
+ringing('info', Evt, State) ->
+    handle_event(Evt, ringing, State).
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec answered(any(), state()) -> handle_fsm_ret(state()).
--spec answered(any(), atom(), state()) -> handle_sync_event_ret(state()).
-answered({'member_connect_req', _}, State) ->
+-spec answered(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+answered('cast', {'member_connect_req', _}, State) ->
     {'next_state', 'answered', State};
-answered({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
+answered('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("agent won, but can't process this right now (on the phone with someone)"),
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
 
     {'next_state', 'answered', State};
-answered({'dialplan_error', _App}, #state{agent_listener=AgentListener
-                                         ,account_id=AccountId
-                                         ,agent_id=AgentId
-                                         ,member_call_queue_id=QueueId
-                                         ,member_call_id=CallId
-                                         ,agent_call_id=ACallId
-                                         }=State) ->
+answered('cast', {'dialplan_error', _App}, #state{agent_listener=AgentListener
+                                                 ,account_id=AccountId
+                                                 ,agent_id=AgentId
+                                                 ,member_call_queue_id=QueueId
+                                                 ,member_call_id=CallId
+                                                 ,agent_call_id=ACallId
+                                                 }=State) ->
     lager:debug("connecting agent to caller failed(~p), clearing call", [_App]),
     acdc_agent_listener:channel_hungup(AgentListener, ACallId),
     acdc_agent_listener:member_connect_retry(AgentListener, CallId),
@@ -989,69 +982,69 @@ answered({'dialplan_error', _App}, #state{agent_listener=AgentListener
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
     apply_state_updates(clear_call(State, 'ready'));
-answered({'channel_bridged', CallId}, #state{member_call_id=CallId
-                                            ,agent_listener=AgentListener
-                                            ,queue_notifications=Ns
-                                            }=State) ->
+answered('cast', {'channel_bridged', CallId}, #state{member_call_id=CallId
+                                                    ,agent_listener=AgentListener
+                                                    ,queue_notifications=Ns
+                                                    }=State) ->
     lager:debug("agent has connected to member"),
     acdc_agent_listener:member_connect_accepted(AgentListener),
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
     {'next_state', 'answered', State};
-answered({'channel_bridged', CallId}, #state{agent_call_id=CallId
-                                            ,agent_listener=AgentListener
-                                            ,queue_notifications=Ns
-                                            }=State) ->
+answered('cast', {'channel_bridged', CallId}, #state{agent_call_id=CallId
+                                                    ,agent_listener=AgentListener
+                                                    ,queue_notifications=Ns
+                                                    }=State) ->
     lager:debug("agent has connected (~s) to caller", [CallId]),
     acdc_agent_listener:member_connect_accepted(AgentListener, CallId),
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
     {'next_state', 'answered', State};
-answered({'channel_replaced', JObj}, #state{agent_listener=AgentListener}=State) ->
+answered('cast', {'channel_replaced', JObj}, #state{agent_listener=AgentListener}=State) ->
     CallId = kz_call_event:call_id(JObj),
     ReplacedBy = kz_call_event:replaced_by(JObj),
     acdc_agent_listener:rebind_events(AgentListener, CallId, ReplacedBy),
     kz_util:put_callid(ReplacedBy),
     lager:info("channel ~s replaced by ~s", [CallId, ReplacedBy]),
     {'next_state', 'answered', State#state{member_call_id = ReplacedBy}};
-answered({'channel_hungup', CallId, Cause}, #state{member_call_id=CallId
-                                                  ,outbound_call_ids=[]
-                                                  }=State) ->
+answered('cast', {'channel_hungup', CallId, Cause}, #state{member_call_id=CallId
+                                                          ,outbound_call_ids=[]
+                                                          }=State) ->
     lager:debug("caller's channel hung up: ~s", [Cause]),
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'member')}};
-answered({'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
-                                                   ,agent_id=AgentId
-                                                   ,agent_listener=AgentListener
-                                                   ,member_call_id=CallId
-                                                   ,member_call_queue_id=QueueId
-                                                   ,queue_notifications=Ns
-                                                   ,outbound_call_ids=[OutboundCallId|_]
-                                                   }=State) ->
+answered('cast', {'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
+                                                           ,agent_id=AgentId
+                                                           ,agent_listener=AgentListener
+                                                           ,member_call_id=CallId
+                                                           ,member_call_queue_id=QueueId
+                                                           ,queue_notifications=Ns
+                                                           ,outbound_call_ids=[OutboundCallId|_]
+                                                           }=State) ->
     lager:debug("caller's channel hung up, but there are still some outbounds"),
     acdc_stats:call_processed(AccountId, QueueId, AgentId, CallId, 'member'),
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
     {'next_state', 'outbound', start_outbound_call_handling(OutboundCallId, clear_call(State, 'ready')), 'hibernate'};
-answered({'channel_hungup', CallId, Cause}, #state{agent_call_id=CallId
-                                                  ,outbound_call_ids=[]
-                                                  }=State) ->
+answered('cast', {'channel_hungup', CallId, Cause}, #state{agent_call_id=CallId
+                                                          ,outbound_call_ids=[]
+                                                          }=State) ->
     lager:debug("agent's channel has hung up: ~s", [Cause]),
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'agent')}};
-answered({'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
-                                                   ,agent_id=AgentId
-                                                   ,agent_listener=AgentListener
-                                                   ,member_call_id=MemberCallId
-                                                   ,member_call_queue_id=QueueId
-                                                   ,queue_notifications=Ns
-                                                   ,agent_call_id=CallId
-                                                   ,outbound_call_ids=[OutboundCallId|_]
-                                                   }=State) ->
+answered('cast', {'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
+                                                           ,agent_id=AgentId
+                                                           ,agent_listener=AgentListener
+                                                           ,member_call_id=MemberCallId
+                                                           ,member_call_queue_id=QueueId
+                                                           ,queue_notifications=Ns
+                                                           ,agent_call_id=CallId
+                                                           ,outbound_call_ids=[OutboundCallId|_]
+                                                           }=State) ->
     lager:debug("agent's channel hung up, but there are still some outbounds"),
     acdc_stats:call_processed(AccountId, QueueId, AgentId, CallId, 'agent'),
     acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
     {'next_state', 'outbound', start_outbound_call_handling(OutboundCallId, clear_call(State, 'ready')), 'hibernate'};
-answered({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
-                                                   ,outbound_call_ids=OutboundCallIds
-                                                   }=State) ->
+answered('cast', {'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+                                                           ,outbound_call_ids=OutboundCallIds
+                                                           }=State) ->
     case lists:member(CallId, OutboundCallIds) of
         'true' ->
             lager:debug("agent outbound channel ~s down", [CallId]),
@@ -1061,25 +1054,27 @@ answered({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
             lager:debug("unexpected channel ~s down", [CallId]),
             {'next_state', 'answered', State}
     end;
-answered({'sync_req', JObj}, #state{agent_listener=AgentListener
-                                   ,member_call_id=CallId
-                                   }=State) ->
+answered('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
+                                           ,member_call_id=CallId
+                                           }=State) ->
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'answered', JObj, [{<<"Call-ID">>, CallId}]),
     {'next_state', 'answered', State};
-answered({'channel_unbridged', CallId}, #state{member_call_id=CallId}=State) ->
+answered('cast', {'sync_resp', _}, State) ->
+    {'next_state', 'answered', State};
+answered('cast', {'channel_unbridged', CallId}, #state{member_call_id=CallId}=State) ->
     lager:info("caller channel ~s unbridged", [CallId]),
     {'next_state', 'answered', State};
-answered({'channel_unbridged', CallId}, #state{agent_call_id=CallId}=State) ->
+answered('cast', {'channel_unbridged', CallId}, #state{agent_call_id=CallId}=State) ->
     lager:info("agent channel unbridged"),
     {'next_state', 'answered', State};
-answered({'channel_answered', MemberCallId}, #state{member_call_id=MemberCallId}=State) ->
+answered('cast', {'channel_answered', MemberCallId}, #state{member_call_id=MemberCallId}=State) ->
     lager:debug("member's channel has answered"),
     {'next_state', 'answered', State};
-answered({'channel_answered', AgentCallId}, #state{agent_call_id=AgentCallId}=State) ->
+answered('cast', {'channel_answered', AgentCallId}, #state{agent_call_id=AgentCallId}=State) ->
     lager:debug("agent's channel ~s has answered", [AgentCallId]),
     {'next_state', 'answered', State};
-answered({'channel_answered', OtherCallId}=Evt, #state{outbound_call_ids=OutboundCallIds}=State) ->
+answered('cast', {'channel_answered', OtherCallId}=Evt, #state{outbound_call_ids=OutboundCallIds}=State) ->
     case lists:member(OtherCallId, OutboundCallIds) of
         'true' ->
             lager:debug("agent answered outbound call ~s", [OtherCallId]),
@@ -1088,121 +1083,160 @@ answered({'channel_answered', OtherCallId}=Evt, #state{outbound_call_ids=Outboun
             lager:debug("unexpected event while answered: ~p", [Evt]),
             {'next_state', 'answered', State}
     end;
-answered({'originate_started', _CallId}, State) ->
+answered('cast', {'originate_started', _CallId}, State) ->
     {'next_state', 'answered', State};
-answered(?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener
-                                          ,outbound_call_ids=OutboundCallIds
-                                          }=State) ->
+answered('cast', ?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener
+                                                  ,outbound_call_ids=OutboundCallIds
+                                                  }=State) ->
     lager:debug("answered call_from outbound: ~s", [CallId]),
     acdc_util:bind_to_call_events(CallId, AgentListener),
     {'next_state', 'answered', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
-answered(?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
-                                                     ,outbound_call_ids=OutboundCallIds
-                                                     }=State) ->
+answered('cast', ?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
+                                                             ,outbound_call_ids=OutboundCallIds
+                                                             }=State) ->
     lager:debug("answered call_to outbound: ~s", [CallId]),
     acdc_util:bind_to_call_events(CallId, AgentListener),
     {'next_state', 'answered', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
-answered(?NEW_CHANNEL_TO(CallId, MemberCallId), #state{member_call_id=MemberCallId}=State) ->
+answered('cast', ?NEW_CHANNEL_TO(CallId, MemberCallId), #state{member_call_id=MemberCallId}=State) ->
     lager:debug("new channel ~s for agent", [CallId]),
     {'next_state', 'answered', State};
-answered({'leg_created', _CallId}, State) ->
+answered('cast', {'leg_created', _CallId}, State) ->
     {'next_state', 'answered', State};
-answered({'usurp_control', _CallId}, State) ->
+answered('cast', {'usurp_control', _CallId}, State) ->
     {'next_state', 'answered', State};
-answered(_Evt, State) ->
-    lager:debug("unhandled event while answered: ~p", [_Evt]),
-    {'next_state', 'answered', State}.
-
-answered('status', _, #state{member_call_id=MemberCallId
-                            ,agent_call_id=ACallId
-                            }=State) ->
-    {'reply', [{'state', <<"answered">>}
-              ,{'member_call_id', MemberCallId}
-              ,{'agent_call_id', ACallId}
-              ]
-    ,'answered', State};
-answered('current_call', _, #state{member_call=Call
-                                  ,member_call_start=Start
-                                  ,member_call_queue_id=QueueId
-                                  }=State) ->
-    {'reply', current_call(Call, 'answered', QueueId, Start), 'answered', State}.
+answered('cast', Evt, State) ->
+    handle_event(Evt, answered, State);
+answered({'call', From}, 'status', #state{member_call_id=MemberCallId
+                                         ,agent_call_id=ACallId
+                                         }=State) ->
+    {'next_state', 'answered', State
+    ,{'reply', From, [{'state', <<"answered">>}
+                     ,{'member_call_id', MemberCallId}
+                     ,{'agent_call_id', ACallId}
+                     ]}};
+answered({'call', From}, 'current_call', #state{member_call=Call
+                                               ,member_call_start=Start
+                                               ,member_call_queue_id=QueueId
+                                               }=State) ->
+    {'next_state', 'answered', State
+    ,{'reply', From, current_call(Call, 'answered', QueueId, Start)}
+    };
+answered('info', Evt, State) ->
+    handle_event(Evt, answered, State).
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec wrapup(any(), state()) -> handle_fsm_ret(state()).
--spec wrapup(any(), atom(), state()) -> handle_sync_event_ret(state()).
-wrapup({'pause', Timeout}, #state{account_id=AccountId
-                                 ,agent_id=AgentId
-                                 ,agent_listener=AgentListener
-                                 }=State) ->
+-spec wrapup(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+wrapup('cast', {'pause', Timeout}, #state{account_id=AccountId
+                                         ,agent_id=AgentId
+                                         ,agent_listener=AgentListener
+                                         }=State) ->
     lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_agent_stats:agent_paused(AccountId, AgentId, Timeout),
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_FLASH),
 
     {'next_state', 'paused', State#state{pause_ref=Ref}};
-wrapup({'member_connect_req', _}, State) ->
+wrapup('cast', {'member_connect_req', _}, State) ->
     {'next_state', 'wrapup', State#state{wrapup_timeout=0}};
-wrapup({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
+wrapup('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("agent won, but can't process this right now (in wrapup)"),
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
 
     {'next_state', 'wrapup', State#state{wrapup_timeout=0}};
-wrapup({'timeout', Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
-                                                 ,agent_listener=AgentListener
-                                                 }=State) ->
+wrapup('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
+                                         ,wrapup_ref=Ref
+                                         }=State) ->
+    lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
+    acdc_agent_listener:send_sync_resp(AgentListener, 'wrapup', JObj, [{<<"Time-Left">>, time_left(Ref)}]),
+    {'next_state', 'wrapup', State};
+wrapup('cast', {'sync_resp', _}, State) ->
+    {'next_state', 'wrapup', State};
+wrapup('cast', {'channel_hungup', _, _}, State) ->
+    {'next_state', 'wrapup', State};
+wrapup('cast', {'leg_destroyed', CallId}, #state{agent_listener=AgentListener}=State) ->
+    lager:debug("leg ~s destroyed", [CallId]),
+    acdc_agent_listener:channel_hungup(AgentListener, CallId),
+    {'next_state', 'wrapup', State};
+wrapup('cast', ?NEW_CHANNEL_FROM(CallId), State) ->
+    lager:debug("wrapup call_from outbound: ~s", [CallId]),
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+wrapup('cast', ?NEW_CHANNEL_TO(CallId, _), State) ->
+    lager:debug("wrapup call_to outbound: ~s", [CallId]),
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+wrapup('cast', {'originate_resp', _}, State) ->
+    {'next_state', 'wrapup', State};
+wrapup('cast', Evt, State) ->
+    handle_event(Evt, wrapup, State);
+wrapup({'call', From}, 'status', #state{wrapup_ref=Ref}=State) ->
+    {'next_state', 'wrapup', State
+    ,{'reply', From, [{'state', <<"wrapup">>}
+                     ,{'wrapup_left', time_left(Ref)}
+                     ]}};
+wrapup({'call', From}, 'current_call', #state{member_call=Call
+                                             ,member_call_start=Start
+                                             ,member_call_queue_id=QueueId
+                                             }=State) ->
+    {'next_state', 'wrapup', State
+    ,{'reply', From, current_call(Call, 'wrapup', QueueId, Start)}
+    };
+wrapup('info', {'timeout', Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
+                                                         ,agent_listener=AgentListener
+                                                         }=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
 
     apply_state_updates(clear_call(State, 'ready'));
-wrapup({'sync_req', JObj}, #state{agent_listener=AgentListener
-                                 ,wrapup_ref=Ref
-                                 }=State) ->
-    lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
-    acdc_agent_listener:send_sync_resp(AgentListener, 'wrapup', JObj, [{<<"Time-Left">>, time_left(Ref)}]),
-    {'next_state', 'wrapup', State};
-wrapup({'channel_hungup', _, _}, State) ->
-    {'next_state', 'wrapup', State};
-wrapup({'leg_destroyed', CallId}, #state{agent_listener=AgentListener}=State) ->
-    lager:debug("leg ~s destroyed", [CallId]),
-    acdc_agent_listener:channel_hungup(AgentListener, CallId),
-    {'next_state', 'wrapup', State};
-wrapup(?NEW_CHANNEL_FROM(CallId), State) ->
-    lager:debug("wrapup call_from outbound: ~s", [CallId]),
-    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-wrapup(?NEW_CHANNEL_TO(CallId, _), State) ->
-    lager:debug("wrapup call_to outbound: ~s", [CallId]),
-    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-wrapup({'originate_resp', _}, State) ->
-    {'next_state', 'wrapup', State};
-wrapup(_Evt, State) ->
-    lager:debug("unhandled event while in wrapup: ~p", [_Evt]),
-    {'next_state', 'wrapup', State#state{wrapup_timeout=0}}.
-
-wrapup('status', _, #state{wrapup_ref=Ref}=State) ->
-    {'reply', [{'state', <<"wrapup">>}
-              ,{'wrapup_left', time_left(Ref)}
-              ]
-    ,'wrapup', State};
-wrapup('current_call', _, #state{member_call=Call
-                                ,member_call_start=Start
-                                ,member_call_queue_id=QueueId
-                                }=State) ->
-    {'reply', current_call(Call, 'wrapup', QueueId, Start), 'wrapup', State}.
+wrapup('info', Evt, State) ->
+    handle_event(Evt, wrapup, State).
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec paused(any(), state()) -> handle_fsm_ret(state()).
--spec paused(any(), atom(), state()) -> handle_sync_event_ret(state()).
-paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
-                                               ,agent_listener=AgentListener
-                                               }=State) when is_reference(Ref) ->
+-spec paused(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+paused('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
+                                         ,pause_ref=Ref
+                                         }=State) ->
+    lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
+    acdc_agent_listener:send_sync_resp(AgentListener, 'paused', JObj, [{<<"Time-Left">>, time_left(Ref)}]),
+    {'next_state', 'paused', State};
+paused('cast', {'sync_resp', _}, State) ->
+    {'next_state', 'paused', State};
+paused('cast', {'member_connect_req', _}, State) ->
+    {'next_state', 'paused', State};
+paused('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
+    lager:debug("agent won, but can't process this right now"),
+    acdc_agent_listener:member_connect_retry(AgentListener, JObj),
+
+    {'next_state', 'paused', State};
+paused('cast', {'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
+    lager:debug("ignoring an outbound call that is the result of a failed originate"),
+    acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
+    acdc_agent_listener:channel_hungup(AgentListener, ACallId),
+    {'next_state', 'paused', State};
+paused('cast', ?NEW_CHANNEL_FROM(CallId), State) ->
+    lager:debug("paused call_from outbound: ~s", [CallId]),
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+paused('cast', ?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
+    lager:debug("paused call_to outbound: ~s", [CallId]),
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+paused('cast', ?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
+    {'next_state', 'paused', State};
+paused('cast', Evt, State) ->
+    handle_event(Evt, paused, State);
+paused({'call', From}, 'status', #state{pause_ref=Ref}=State) ->
+    {'next_state', 'paused', State
+    ,{'reply', From, [{'state', <<"paused">>}
+                     ,{'pause_left', time_left(Ref)}
+                     ]}};
+paused({'call', From}, 'current_call', State) ->
+    {'next_state', 'paused', State, {'reply', From, 'undefined'}};
+paused('info', {'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
+                                                       ,agent_listener=AgentListener
+                                                       }=State) when is_reference(Ref) ->
     lager:debug("pause timer expired, putting agent back into action"),
 
     acdc_agent_listener:update_agent_status(AgentListener, <<"resume">>),
@@ -1212,49 +1246,17 @@ paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
 
     apply_state_updates(clear_call(State#state{sync_ref='undefined'}, 'ready'));
-paused({'sync_req', JObj}, #state{agent_listener=AgentListener
-                                 ,pause_ref=Ref
-                                 }=State) ->
-    lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
-    acdc_agent_listener:send_sync_resp(AgentListener, 'paused', JObj, [{<<"Time-Left">>, time_left(Ref)}]),
-    {'next_state', 'paused', State};
-paused({'member_connect_req', _}, State) ->
-    {'next_state', 'paused', State};
-paused({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
-    lager:debug("agent won, but can't process this right now"),
-    acdc_agent_listener:member_connect_retry(AgentListener, JObj),
+paused('info', Evt, State) ->
+    handle_event(Evt, paused, State).
 
-    {'next_state', 'paused', State};
-paused({'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
-    lager:debug("ignoring an outbound call that is the result of a failed originate"),
-    acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
-    acdc_agent_listener:channel_hungup(AgentListener, ACallId),
-    {'next_state', 'paused', State};
-paused(?NEW_CHANNEL_FROM(CallId), State) ->
-    lager:debug("paused call_from outbound: ~s", [CallId]),
-    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-paused(?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
-    lager:debug("paused call_to outbound: ~s", [CallId]),
-    {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-paused(?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
-    {'next_state', 'paused', State};
-paused(_Evt, State) ->
-    lager:debug("unhandled event while paused: ~p", [_Evt]),
-    {'next_state', 'paused', State}.
-
-paused('status', _, #state{pause_ref=Ref}=State) ->
-    {'reply', [{'state', <<"paused">>}
-              ,{'pause_left', time_left(Ref)}
-              ]
-    ,'paused', State};
-paused('current_call', _, State) ->
-    {'reply', 'undefined', 'paused', State}.
-
--spec outbound(any(), state()) -> handle_fsm_ret(state()).
--spec outbound(any(), atom(), state()) -> handle_sync_event_ret(state()).
-outbound({'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
-                                                  ,outbound_call_ids=OutboundCallIds
-                                                  }=State) ->
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec outbound(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+outbound('cast', {'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
+                                                          ,outbound_call_ids=OutboundCallIds
+                                                          }=State) ->
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
     case lists:member(CallId, OutboundCallIds) of
         'true' ->
@@ -1264,79 +1266,77 @@ outbound({'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
             lager:debug("unexpected channel ~s down", [CallId]),
             {'next_state', 'outbound', State}
     end;
-outbound({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
+outbound('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("agent won, but can't process this right now (on outbound call)"),
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
     {'next_state', 'outbound', State};
-outbound({'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
+outbound('cast', {'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("ignoring an outbound call that is the result of a failed originate"),
     acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
     acdc_agent_listener:channel_hungup(AgentListener, ACallId),
     {'next_state', 'outbound', State};
-outbound({'originate_failed', _E}, State) ->
+outbound('cast', {'originate_failed', _E}, State) ->
     {'next_state', 'outbound', State};
-outbound({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref}=State) ->
-    lager:debug("pause timer expired while outbound"),
-    {'next_state', 'outbound', State#state{pause_ref='undefined'}};
-outbound({'timeout', WRef, ?WRAPUP_FINISHED}, #state{wrapup_ref=WRef}=State) ->
-    lager:debug("wrapup timer ended while on outbound call"),
-    {'next_state', 'outbound', State#state{wrapup_ref='undefined'}, 'hibernate'};
-outbound({'member_connect_req', _}, State) ->
+outbound('cast', {'member_connect_req', _}, State) ->
     {'next_state', 'outbound', State};
-outbound({'leg_created', _}, State) ->
+outbound('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
+    lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
+    acdc_agent_listener:send_sync_resp(AgentListener, 'outbound', JObj),
     {'next_state', 'outbound', State};
-outbound({'channel_answered', _}, State) ->
+outbound('cast', {'sync_resp', _}, State) ->
     {'next_state', 'outbound', State};
-outbound({'channel_bridged', _}, State) ->
+outbound('cast', {'leg_created', _}, State) ->
     {'next_state', 'outbound', State};
-outbound({'channel_unbridged', _}, State) ->
+outbound('cast', {'channel_answered', _}, State) ->
     {'next_state', 'outbound', State};
-outbound(?NEW_CHANNEL_TO(CallId, _), #state{outbound_call_ids=[CallId]}=State) ->
+outbound('cast', {'channel_bridged', _}, State) ->
     {'next_state', 'outbound', State};
-outbound(?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener
-                                          ,outbound_call_ids=OutboundCallIds
-                                          }=State) ->
+outbound('cast', {'channel_unbridged', _}, State) ->
+    {'next_state', 'outbound', State};
+outbound('cast', ?NEW_CHANNEL_TO(CallId, _), #state{outbound_call_ids=[CallId]}=State) ->
+    {'next_state', 'outbound', State};
+outbound('cast', ?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener
+                                                  ,outbound_call_ids=OutboundCallIds
+                                                  }=State) ->
     lager:debug("outbound call_from outbound: ~s", [CallId]),
     acdc_util:bind_to_call_events(CallId, AgentListener),
     {'next_state', 'outbound', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
-outbound(?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
-                                                     ,outbound_call_ids=OutboundCallIds
-                                                     }=State) ->
+outbound('cast', ?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
+                                                             ,outbound_call_ids=OutboundCallIds
+                                                             }=State) ->
     lager:debug("outbound call_to outbound: ~s", [CallId]),
     acdc_util:bind_to_call_events(CallId, AgentListener),
     {'next_state', 'outbound', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
-outbound(?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
+outbound('cast', ?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
     {'next_state', 'outbound', State};
-outbound({'leg_destroyed', _CallId}, State) ->
+outbound('cast', {'leg_destroyed', _CallId}, State) ->
     {'next_state', 'outbound', State};
-outbound({'usurp_control', _CallId}, State) ->
+outbound('cast', {'usurp_control', _CallId}, State) ->
     {'next_state', 'outbound', State};
-outbound(_Msg, State) ->
-    lager:debug("ignoring msg in outbound: ~p", [_Msg]),
-    {'next_state', 'outbound', State}.
-
-outbound('status', _, #state{wrapup_ref=Ref
-                            ,outbound_call_ids=OutboundCallIds
-                            }=State) ->
-    {'reply', [{'state', <<"outbound">>}
-              ,{'wrapup_left', time_left(Ref)}
-              ,{'outbound_call_id', hd(OutboundCallIds)}
-              ]
-    ,'outbound', State};
-outbound('current_call', _, State) ->
-    {'reply', 'undefined', 'outbound', State}.
+outbound('cast', Evt, State) ->
+    handle_event(Evt, outbound, State);
+outbound({'call', From}, 'status', #state{wrapup_ref=Ref
+                                         ,outbound_call_ids=OutboundCallIds
+                                         }=State) ->
+    {'next_state', 'outbound', State
+    ,{'reply', From, [{'state', <<"outbound">>}
+                     ,{'wrapup_left', time_left(Ref)}
+                     ,{'outbound_call_id', hd(OutboundCallIds)}
+                     ]}};
+outbound({'call', From}, 'current_call', State) ->
+    {'next_state', 'outbound', State, {'reply', From, 'undefined'}};
+outbound('info', {'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref}=State) ->
+    lager:debug("pause timer expired while outbound"),
+    {'next_state', 'outbound', State#state{pause_ref='undefined'}};
+outbound('info', {'timeout', WRef, ?WRAPUP_FINISHED}, #state{wrapup_ref=WRef}=State) ->
+    lager:debug("wrapup timer ended while on outbound call"),
+    {'next_state', 'outbound', State#state{wrapup_ref='undefined'}, 'hibernate'};
+outbound('info', Evt, State) ->
+    handle_event(Evt, outbound, State).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Whenever a gen_fsm receives an event sent using
-%% gen_fsm:send_all_state_event/2, this function is called to handle
-%% the event.
-%%
-%% @spec handle_event(Event, StateName, State) ->
-%%                   {'next_state', NextStateName, NextState} |
-%%                   {'next_state', NextStateName, NextState, Timeout} |
-%%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
@@ -1383,7 +1383,7 @@ handle_event({'refresh', AgentJObj}, StateName, #state{agent_listener=AgentListe
     {'next_state', StateName, State};
 handle_event('load_endpoints', StateName, #state{agent_listener='undefined'}=State) ->
     lager:debug("agent proc not ready, not loading endpoints yet"),
-    gen_fsm:send_all_state_event(self(), 'load_endpoints'),
+    gen_statem:cast(self(), 'load_endpoints'),
     {'next_state', StateName, State};
 handle_event('load_endpoints', StateName, #state{agent_id=AgentId
                                                 ,agent_listener=AgentListener
@@ -1406,47 +1406,17 @@ handle_event('load_endpoints', StateName, #state{agent_id=AgentId
         {'ok', EPs} -> {'next_state', StateName, State#state{endpoints=EPs}};
         {'error', E} -> {'stop', E, State}
     end;
-handle_event(_Event, StateName, State) ->
-    lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
-    {'next_state', StateName, State}.
+handle_event(Event, StateName, State) ->
+    handle_info(Event, StateName, State).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Whenever a gen_fsm receives an event sent using
-%% gen_fsm:sync_send_all_state_event/[2,3], this function is called
-%% to handle the event.
-%%
-%% @spec handle_sync_event(Event, From, StateName, State) ->
-%%                   {'next_state', NextStateName, NextState} |
-%%                   {'next_state', NextStateName, NextState, Timeout} |
-%%                   {'reply', Reply, NextStateName, NextState} |
-%%                   {'reply', Reply, NextStateName, NextState, Timeout} |
-%%                   {stop, Reason, NewState} |
-%%                   {stop, Reason, Reply, NewState}
-%% @end
-%%--------------------------------------------------------------------
--spec handle_sync_event(any(), {pid(),any()}, atom(), state()) -> handle_sync_event_ret(state()).
-handle_sync_event(_Event, _From, StateName, State) ->
-    lager:debug("unhandled sync event in state ~s: ~p", [StateName, _Event]),
-    {'reply', 'ok', StateName, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_fsm when it receives any
-%% message other than a synchronous or asynchronous event
-%% (or a system message).
-%%
-%% @spec handle_info(Info,StateName,State)->
-%%                   {'next_state', NextStateName, NextState} |
-%%                   {'next_state', NextStateName, NextState, Timeout} |
-%%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_info({'timeout', _Ref, ?SYNC_RESPONSE_MESSAGE}=Msg, StateName, State) ->
-    gen_fsm:send_event(self(), Msg),
+    gen_statem:cast(self(), Msg),
     {'next_state', StateName, State};
 handle_info({'endpoint_edited', EP}, StateName, #state{endpoints=EPs
                                                       ,account_id=AccountId
@@ -1490,21 +1460,20 @@ handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
             end
     end;
 handle_info(?NEW_CHANNEL_FROM(_CallId)=Evt, StateName, State) ->
-    gen_fsm:send_event(self(), Evt),
+    gen_statem:cast(self(), Evt),
     {'next_state', StateName, State};
 handle_info(?NEW_CHANNEL_TO(_CallId, _)=Evt, StateName, State) ->
-    gen_fsm:send_event(self(), Evt),
+    gen_statem:cast(self(), Evt),
     {'next_state', StateName, State};
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
-%% This function is called by a gen_fsm when it is about to
+%% This function is called by a gen_statem when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_fsm terminates with
+%% necessary cleaning up. When it returns, the gen_statem terminates with
 %% Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, StateName, State) -> void()
@@ -1512,12 +1481,11 @@ handle_info(_Info, StateName, State) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
-    lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]),
+    lager:debug("acdc agent statem terminating while in ~s: ~p", [_StateName, _Reason]),
     acdc_agent_listener:stop(AgentListener),
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID).
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
 %% Convert process state when code is changed
 %%
@@ -1535,24 +1503,24 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 -spec start_wrapup_timer(integer()) -> reference().
 start_wrapup_timer(Timeout) when Timeout =< 0 -> start_wrapup_timer(1); % send immediately
-start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, ?WRAPUP_FINISHED).
+start_wrapup_timer(Timeout) -> erlang:start_timer(Timeout*1000, self(), ?WRAPUP_FINISHED).
 
 -spec start_sync_timer() -> reference().
 -spec start_sync_timer(pid()) -> reference().
 start_sync_timer() ->
-    gen_fsm:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
+    erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, self(), ?SYNC_RESPONSE_MESSAGE).
 start_sync_timer(P) ->
     erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, P, ?SYNC_RESPONSE_MESSAGE).
 
 -spec start_resync_timer() -> reference().
 start_resync_timer() ->
-    gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
+    erlang:start_timer(?RESYNC_RESPONSE_TIMEOUT, self(), ?RESYNC_RESPONSE_MESSAGE).
 
 -spec start_pause_timer(pos_integer()) -> api_reference().
 start_pause_timer('undefined') -> start_pause_timer(1);
 start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
-    gen_fsm:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
+    erlang:start_timer(Timeout * 1000, self(), ?PAUSE_MESSAGE).
 
 -spec call_id(kz_json:object()) -> api_binary().
 call_id(JObj) ->
@@ -1591,11 +1559,11 @@ clear_call(#state{connect_failures=Fails
                  }=State, 'failed') ->
     lager:debug("agent has failed to connect ~b times(~b)", [Fails+1, _MaxFails]),
     clear_call(State#state{connect_failures=Fails+1}, 'ready');
-clear_call(#state{fsm_call_id=FSMemberCallId
+clear_call(#state{statem_call_id=StateMCallId
                  ,wrapup_ref=WRef
                  ,pause_ref=PRef
                  }=State, NextState)->
-    kz_util:put_callid(FSMemberCallId),
+    kz_util:put_callid(StateMCallId),
 
     ReadyForAction = NextState =/= 'wrapup'
         andalso NextState =/= 'paused',
@@ -1665,7 +1633,7 @@ hangup_call(#state{agent_listener=AgentListener
 -spec maybe_stop_timer(api_reference(), boolean()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) when is_reference(ConnRef) ->
-    _ = gen_fsm:cancel_timer(ConnRef),
+    _ = erlang:cancel_timer(ConnRef),
     'ok'.
 
 maybe_stop_timer(TimerRef, 'true') -> maybe_stop_timer(TimerRef);
@@ -1960,7 +1928,7 @@ apply_state_updates_fold({_, _, State}, [{'resume'}|Updates]) ->
     apply_state_updates_fold(handle_resume(State), Updates);
 apply_state_updates_fold({_, _, State}, [{'agent_logout'}|_]) ->
     lager:debug("agent logging out"),
-    %% Do not continue fold, stop FSM
+    %% Do not continue fold, stop statem
     handle_agent_logout(State);
 apply_state_updates_fold({_, _, State}=Acc, [{'update_presence', PresenceId, PresenceState}|Updates]) ->
     handle_presence_update(PresenceId, PresenceState, State),

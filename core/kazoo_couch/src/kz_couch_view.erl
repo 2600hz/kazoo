@@ -27,7 +27,7 @@
 design_compact(#server{}=Conn, DbName, Design) ->
     case couchbeam:compact(kz_couch_util:get_db(Conn, DbName), Design) of
         {'error', _E} ->
-            lager:debug("failed to compact design doc: ~p", [kz_couch_util:format_error(_E)]),
+            lager:debug("failed to compact design doc ~s/~s: ~p", [DbName, Design, kz_couch_util:format_error(_E)]),
             'false';
         'ok' -> 'true'
     end.

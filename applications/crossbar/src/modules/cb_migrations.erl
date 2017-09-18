@@ -21,8 +21,7 @@
 -define(MIGRATIONS_DOC, <<"migrations">>).
 
 %% Id, Description, Callback Module
--define(MIGRATIONS_LIST, [
-                          {<<"notify_to_teletype">>, <<"Migrate account and all sub accounts to Teletype">>, 'cb_migration_disable_notify'}
+-define(MIGRATIONS_LIST, [{<<"notify_to_teletype">>, <<"Migrate account and all sub accounts to Teletype">>, 'cb_migration_disable_notify'}
                          ]).
 
 -spec init() -> ok.
@@ -226,59 +225,48 @@ maybe_mark_as_complete(MigId, Account, Context) ->
 mark_migration_complete(MigId, AccountId, Context) ->
     lager:info("migration ~p completed successfully on account ~p", [MigId, AccountId]),
 
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_db(AccountId),
     maybe_create_migration_doc(AccountDb),
 
     {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, ?MIGRATIONS_DOC),
     Migrations  = kz_json:get_value(<<"migrations_performed">>, Doc),
 
     User = cb_context:auth_user_id(Context),
-    Acct = cb_context:auth_account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
 
-    Args = kz_json:from_list([{<<"auth_user_id">>, User}
-                             ,{<<"auth_account_id">>, Acct}
-                             ,{<<"auth_account_name">>, get_account_name(Acct)}
-                             ,{<<"auth_user_name">>, get_user_name(Acct, User)}
-                             ,{<<"performed_time">>, kz_time:current_tstamp()}
-                             ]),
+    Args = kz_json:from_list(
+             [{<<"auth_user_id">>, User}
+             ,{<<"auth_account_id">>, AuthAccountId}
+             ,{<<"auth_account_name">>, kz_account:fetch_name(AuthAccountId)}
+             ,{<<"auth_user_name">>, get_user_name(AuthAccountId, User)}
+             ,{<<"performed_time">>, kz_time:current_tstamp()}
+             ]),
 
     NewMigs = kz_json:set_value(MigId, Args, Migrations),
     kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"migrations_performed">>, NewMigs, Doc)).
 
--spec get_account_name(binary()) -> api_ne_binary().
-get_account_name(AcctId) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_id(AcctId, 'encoded'), AcctId) of
-        {'ok', Doc} ->
-            kz_json:get_value(<<"name">>, Doc);
-        _Error ->
-            'undefined'
-    end.
-
--spec get_user_name(binary(), binary()) -> api_ne_binary().
-get_user_name(AcctId, UserId) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_id(AcctId, 'encoded'), UserId) of
-        {'ok', Doc} ->
-            kz_json:get_value(<<"username">>, Doc);
-        _Error ->
-            'undefined'
+-spec get_user_name(ne_binary(), ne_binary()) -> api_ne_binary().
+get_user_name(AccountId, UserId) ->
+    case kzd_user:fetch(AccountId, UserId) of
+        {'ok', UserDoc} -> kzd_user:name(UserDoc);
+        _ -> undefined
     end.
 
 -spec maybe_create_migration_doc(binary()) -> 'ok'.
 maybe_create_migration_doc(Account) ->
     case kz_datamgr:open_cache_doc(Account, ?MIGRATIONS_DOC) of
+        {ok, _} -> ok;
         {'error', 'not_found'} ->
             lager:info("creating migrations document for account ~p", [Account]),
-            create_migration_doc(Account);
-
-        {'ok', _Res} ->
-            'ok'
+            create_migration_doc(Account)
     end.
 
 -spec create_migration_doc(binary()) -> kz_json:object().
 create_migration_doc(Account) ->
-    Doc = kz_json:from_list([{<<"_id">>, ?MIGRATIONS_DOC}
-                            ,{<<"pvt_created">>, kz_time:current_tstamp()}
-                            ,{<<"migrations_performed">>, []}
-                            ]),
+    Doc = kz_json:from_list(
+            [{<<"_id">>, ?MIGRATIONS_DOC}
+            ,{<<"pvt_created">>, kz_time:current_tstamp()}
+            ,{<<"migrations_performed">>, []}
+            ]),
     kz_datamgr:ensure_saved(Account, Doc).
 

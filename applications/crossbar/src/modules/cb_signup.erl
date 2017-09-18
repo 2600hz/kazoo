@@ -37,7 +37,7 @@
 -define(VIEW_ACTIVATION_REALM, <<"signups/listing_by_realm">>).
 -define(VIEW_ACTIVATION_CREATED, <<"signups/listing_by_created">>).
 
--define(SIGNUP_CONF, [code:priv_dir('crossbar'), "/signup/signup.conf"]).
+-define(SIGNUP_CONF, [code:priv_dir(?APP), "/signup/signup.conf"]).
 
 -record(state, {cleanup_interval = 5 * ?SECONDS_IN_HOUR :: integer() %% once every 5 hours (in seconds)
                ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
@@ -63,7 +63,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.signup">>, ?MODULE, 'put'),
 
     _ = kz_datamgr:db_create(?SIGNUP_DB),
-    _ = kz_datamgr:revise_doc_from_file(?SIGNUP_DB, 'crossbar', <<"views/signup.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?SIGNUP_DB, ?APP, <<"views/signup.json">>),
     _ = supervisor:start_child('crossbar_sup', crossbar_sup:child_spec(?MODULE)),
     ok.
 
@@ -226,15 +226,17 @@ validate_account('undefined', _) ->
     lager:debug("signup did not contain an account definition"),
     {[<<"account">>], 'undefined'};
 validate_account(Account, Context) ->
-    case is_unique_realm(kz_json:get_value(<<"realm">>, Account))
-        andalso crossbar_maintenance:create_account(cb_context:set_req_data(Context, Account)) of
+    try is_unique_realm(kz_json:get_value(<<"realm">>, Account))
+             andalso crossbar_maintenance:create_account(cb_context:set_req_data(Context, Account))
+    of
         'false' ->
             {[<<"duplicate realm">>], 'undefined'};
         {'ok', Context1} ->
             'success' = cb_context:resp_status(Context1),
             lager:debug("signup account is valid"),
-            {[], cb_context:doc(Context1)};  %% doc = AccountJObj
-        {'error', Errors} ->
+            {[], cb_context:doc(Context1)}  %% doc = AccountJObj
+    catch
+        'throw':Errors ->
             {Errors, 'undefined'}
     end.
 
@@ -596,7 +598,7 @@ compile_template(Template, Name) when not is_binary(Template) ->
         case string:substr(Template, 1, 1) of
             "/" -> Template;
             _ ->
-                lists:concat([code:priv_dir('crossbar'), "/signup/", Template])
+                lists:concat([code:priv_dir(?APP), "/signup/", Template])
         end,
     lager:debug("sourcing template from file at ~s", [Path]),
     do_compile_template(Path, Name);

@@ -77,8 +77,7 @@
 
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
 
--record(state, {
-          node :: atom()
+-record(state, {node :: atom()
                ,call_id :: ne_binary()
                ,command_q = queue:new() :: queue:queue()
                ,current_app :: api_binary()
@@ -96,7 +95,7 @@
                ,control_q :: api_binary()
                ,initial_ccvs :: kz_json:object()
                ,node_down_tref :: api_reference()
-         }).
+               }).
 -type state() :: #state{}.
 
 -define(RESPONDERS, []).
@@ -193,7 +192,7 @@ fs_nodedown(Srv, Node) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | ne_binary() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | ne_binary() | kz_json:object()]) -> {'ok', state()}.
 init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     kz_util:put_callid(CallId),
     lager:debug("starting call control listener"),
@@ -300,7 +299,7 @@ handle_cast({'fs_nodeup', Node}, #state{node=Node
                                        }=State) ->
     lager:debug("regained connection to media node ~s", [Node]),
     _ = (catch erlang:cancel_timer(TRef)),
-    _ = timer:sleep(crypto:rand_uniform(100, 1500)),
+    _ = timer:sleep(100 + rand:uniform(1400)),
     case freeswitch:api(Node, 'uuid_exists', CallId) of
         {'ok', <<"true">>} ->
             {'noreply', force_queue_advance(State#state{is_node_up='true'})};

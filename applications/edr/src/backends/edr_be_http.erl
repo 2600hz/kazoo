@@ -57,7 +57,8 @@ init(_Other)->
 -spec push(state(), edr_event()) -> work_result().
 push(#state{async='false', httpc_options=Opts, url=Url, method=Method, headers=Headers}=State, #edr_event{}=Event)->
     case kz_http:req(Method, Url, Headers, payload(State, Event), Opts) of
-        {'ok', Code, _, _} when Code >= 200 andalso Code < 300 ->
+        {'ok', Code, _, _} when Code >= 200
+                                andalso Code < 300 ->
             'ok';
         {'ok', Code, _, _} ->
             lager:info("non 2xx response code: ~p", [Code]),

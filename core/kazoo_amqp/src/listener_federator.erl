@@ -17,7 +17,7 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/2, handle_event/3
+        ,handle_event/4
         ,terminate/2
         ,code_change/3
         ]).
@@ -131,24 +131,12 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
-%% @end
-%%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
-    {'reply', []}.
-
--spec handle_event(kz_json:object(), gen_listener:basic_deliver(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, BasicDeliver, #state{parent=Parent
-                                       ,broker=Broker
-                                       ,self_binary=Self
-                                       ,zone=Zone
-                                       }) ->
+-spec handle_event(kz_json:object(), gen_listener:basic_deliver(), amqp_basic(), state()) -> gen_listener:handle_event_return().
+handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
+                                                  ,broker=Broker
+                                                  ,self_binary=Self
+                                                  ,zone=Zone
+                                                  }) ->
     lager:debug("relaying federated ~s event ~s from ~s to ~p with consumer pid ~p",
                 [kz_api:event_category(JObj), kz_api:event_name(JObj), Zone, Parent, Self]
                ),
@@ -162,6 +150,7 @@ handle_event(JObj, BasicDeliver, #state{parent=Parent
                                                     ,{<<"AMQP-Broker-Zone">>, Zone}
                                                     ], JObj)
                                 ,BasicDeliver
+                                ,BasicData
                                 ),
     'ignore'.
 

@@ -7,6 +7,7 @@
 %%% Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(kz_service_whitelabel).
+-behaviour(kz_gen_service).
 
 -export([reconcile/1, reconcile/2]).
 
@@ -15,7 +16,7 @@
 -define(ITEM, <<"whitelabel">>).
 -define(DESIGN_DOC, <<"whitelabel/crossbar_listing">>).
 
--include("kazoo_services.hrl").
+-include("services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

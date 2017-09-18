@@ -1,0 +1,32 @@
+{
+    "App-Name": "ecallmgr",
+    "App-Version": "4.0.0",
+    "Call-ID": "82159NjBmNTI0YjQ5MTE2NmFkNmQ3NmRmYzFiYWRhMGQ0NGI",
+    "Control-Queue": "ecallmgr@apps001.2600hz.local-<0.29590.28>-521b30b6",
+    "Custom-Channel-Vars": {
+        "Account-ID": "account0000000000000000000000001",
+        "Account-Name": "Master Account",
+        "Account-Realm": "4a6863.sip.2600hz.local",
+        "Application-Name": "callflow",
+        "Application-Node": "kazoo_apps@apps001.2600hz.local",
+        "Authorizing-ID": "device00000000000000000000000001",
+        "Authorizing-Type": "device",
+        "Call-Interaction-ID": "63670304795-386ddd58",
+        "CallFlow-ID": "callflow000000000000000000000001",
+        "Caller-Privacy-Hide-Name": false,
+        "Caller-Privacy-Hide-Number": false,
+        "Caller-Screen-Bit": true,
+        "Channel-Authorized": "true",
+        "Fetch-ID": "f1a51368-844d-11e7-9441-03f51cdc7211",
+        "Global-Resource": false,
+        "Owner-ID": "user0000000000000000000000000001",
+        "Presence-ID": "7900@4a6863.sip.2600hz.local",
+        "Realm": "4a6863.sip.2600hz.local",
+        "Username": "callflow_sip_username"
+    },
+    "Event-Category": "dialplan",
+    "Event-Name": "route_win",
+    "Msg-ID": "82159NjBmNTI0YjQ5MTE2NmFkNmQ3NmRmYzFiYWRhMGQ0NGI",
+    "Node": "ecallmgr@apps001.2600hz.local",
+    "Server-ID": "ecallmgr@apps001.2600hz.local-<0.29590.28>-521b30b6"
+}

@@ -198,7 +198,7 @@ delete(Context, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -422,7 +422,11 @@ handle_originate_resp({'timeout', _T}) ->
     lager:debug("timed out while originating: ~p", [_T]),
     {'error', <<"timed out">>}.
 
--record(contact, {route, number, name}).
+-record(contact, {route :: ne_binary()
+                 ,number :: ne_binary()
+                 ,name :: ne_binary()
+                 }).
+
 -spec build_originate_req(ne_binary(), cb_context:context()) -> api_terms().
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),

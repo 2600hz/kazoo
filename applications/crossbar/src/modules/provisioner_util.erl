@@ -330,7 +330,7 @@ do_simple_provision(MACAddress, Context) ->
     case kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
         Url ->
-            AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
+            AccountRealm = kz_account:fetch_realm(cb_context:account_id(Context)),
             Body =
                 kz_json:from_list(
                   [{<<"device[mac]">>, MACAddress}
@@ -759,15 +759,15 @@ maybe_sync_sip_data(Context, 'device', 'true') ->
         'false' ->
             lager:debug("nothing has changed on device; no check-sync needed");
         'true' ->
-            Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+            Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
             send_check_sync(OldUsername, Realm, cb_context:req_id(Context))
     end;
 maybe_sync_sip_data(Context, 'device', 'force') ->
     Username = kz_device:sip_username(cb_context:doc(Context)),
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
     send_check_sync(Username, Realm, cb_context:req_id(Context));
 maybe_sync_sip_data(Context, 'user', 'true') ->
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
     Req = [{<<"Realm">>, Realm}
           ,{<<"Fields">>, [<<"Username">>]}
           ],
@@ -793,7 +793,7 @@ maybe_sync_sip_data(Context, 'user', 'force') ->
         {'ok', []} ->
             lager:debug("no user devices to sync");
         {'ok', DeviceDocs} ->
-            Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+            Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
             _ = [send_check_sync(kz_device:presence_id(DeviceDoc), Realm, cb_context:req_id(Context))
                  || DeviceDoc <- DeviceDocs
                 ],

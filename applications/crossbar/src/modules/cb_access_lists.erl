@@ -214,7 +214,7 @@ after_delete(Context, _RespStatus) ->
 
 -spec flush_acl(kz_json:object()) -> 'ok' | {'error', any()}.
 flush_acl(Doc) ->
-    Cmd = props:filter_undefined([{<<"Realm">>, kz_util:get_account_realm(kz_json:get_value(<<"pvt_account_id">>, Doc))}
+    Cmd = props:filter_undefined([{<<"Realm">>, kz_account:fetch_realm(kz_doc:account_id(Doc))}
                                  ,{<<"Device">>, kz_json:get_value([<<"sip">>,<<"username">>], Doc)}
                                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),

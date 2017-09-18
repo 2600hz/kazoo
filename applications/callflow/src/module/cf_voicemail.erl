@@ -14,7 +14,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_voicemail).
-
 -behaviour(gen_cf_action).
 
 -include("callflow.hrl").
@@ -95,39 +94,39 @@
 
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
 
--record(keys, {operator = <<"0">>
-                   %% Compose Voicemail
-              ,login = <<"*">>
+-record(keys, {operator = <<"0">> :: ne_binary()
+                                     %% Compose Voicemail
+              ,login = <<"*">> :: ne_binary()
 
-                   %% Record Review
-              ,save = <<"1">>
-              ,listen = <<"2">>
-              ,record = <<"3">>
+                                  %% Record Review
+              ,save = <<"1">> :: ne_binary()
+              ,listen = <<"2">> :: ne_binary()
+              ,record = <<"3">> :: ne_binary()
 
-                   %% Main Menu
-              ,hear_new = <<"1">>
-              ,hear_saved = <<"2">>
-              ,configure = <<"5">>
-              ,exit = <<"#">>
+                                   %% Main Menu
+              ,hear_new = <<"1">> :: ne_binary()
+              ,hear_saved = <<"2">> :: ne_binary()
+              ,configure = <<"5">> :: ne_binary()
+              ,exit = <<"#">> :: ne_binary()
 
-                   %% Config Menu
-              ,rec_unavailable  = <<"1">>
-              ,rec_name = <<"2">>
-              ,set_pin = <<"3">>
-              ,rec_temporary_unavailable  = <<"4">>
-              ,del_temporary_unavailable  = <<"5">>
-              ,return_main = <<"0">>
+                                 %% Config Menu
+              ,rec_unavailable  = <<"1">> :: ne_binary()
+              ,rec_name = <<"2">> :: ne_binary()
+              ,set_pin = <<"3">> :: ne_binary()
+              ,rec_temporary_unavailable = <<"4">> :: ne_binary()
+              ,del_temporary_unavailable = <<"5">> :: ne_binary()
+              ,return_main = <<"0">> :: ne_binary()
 
-                   %% Post playbak
-              ,keep = <<"1">>
-              ,replay = <<"2">>
-              ,forward = <<"3">>
-              ,prev = <<"4">>
-              ,next = <<"6">>
-              ,delete = <<"7">>
+                                        %% Post playbak
+              ,keep = <<"1">> :: ne_binary()
+              ,replay = <<"2">> :: ne_binary()
+              ,forward = <<"3">> :: ne_binary()
+              ,prev = <<"4">> :: ne_binary()
+              ,next = <<"6">> :: ne_binary()
+              ,delete = <<"7">> :: ne_binary()
 
-                   %% Greeting or instructions
-              ,continue = 'undefined'
+                                   %% Greeting or instructions
+              ,continue = 'undefined' :: api_ne_binary()
               }).
 -type vm_keys() :: #keys{}.
 
@@ -1509,7 +1508,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Fetches the mailbox parameters from the datastore and loads the
+%% Fetches the mailbox parameters from the data store and loads the
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
@@ -1524,8 +1523,8 @@ get_mailbox_profile(Data, Call) ->
             lager:info("loaded voicemail box ~s", [MailboxId]),
             Default = #mailbox{},
 
-            %% dont check if the voicemail box belongs to the owner (by default) if the call was not
-            %% specificly to him, IE: calling a ring group and going to voicemail should not check
+            %% Don't check if the voicemail box belongs to the owner (by default) if the call was not
+            %% specifically to him, IE: calling a ring group and going to voicemail should not check
             LastAct = kapps_call:kvs_fetch('cf_last_action', Call),
             CheckIfOwner = (('undefined' =:= LastAct)
                             orelse ('cf_device' =:= LastAct)

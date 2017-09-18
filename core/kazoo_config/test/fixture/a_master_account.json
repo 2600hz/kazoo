@@ -1,0 +1,14 @@
+{
+    "_id": "6b71cb72c876b5b1396a335f8f8a2594",
+    "_rev": "20-69d6be7a59cfc0a23af2cf6c9724305e",
+    "is_reseller": true,
+    "name": "qwdqwdqwdqwd",
+    "pvt_account_db": "account%2F6b%2F71%2Fcb72c876b5b1396a335f8f8a2594",
+    "pvt_account_id": "6b71cb72c876b5b1396a335f8f8a2594",
+    "pvt_created": 63626042555,
+    "pvt_modified": 63640495549,
+    "pvt_superduper_admin": true,
+    "pvt_tree": [],
+    "pvt_type": "account",
+    "reseller_id": "6b71cb72c876b5b1396a335f8f8a2594"
+}

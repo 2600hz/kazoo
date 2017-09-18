@@ -38,14 +38,14 @@ Key | Description | Type | Default | Required
 `formatters` |   | `object()` |   | `false`
 `hotdesk.enabled` | Determines if the user has hotdesking enabled | `boolean()` | `false` | `false`
 `hotdesk.id` | The users hotdesk id | `string(0..15)` |   | `false`
-`hotdesk.keep_logged_in_elsewhere` | Determines if user should be able to login to mutliple phones simultaneously | `boolean()` | `false` | `false`
+`hotdesk.keep_logged_in_elsewhere` | Determines if user should be able to login to multiple phones simultaneously | `boolean()` | `false` | `false`
 `hotdesk.pin` | The users hotdesk pin number | `string(4..15)` |   | `false`
 `hotdesk.require_pin` | Determines if user requires a pin to change the hotdesk state | `boolean()` | `false` | `false`
 `hotdesk` | The user hotdesk parameters | `object()` | `{}` | `false`
 `language` | The language for this user | `string()` |   | `false`
 `last_name` | The last name of the user | `string(1..128)` |   | `true`
 `media.audio.codecs.[]` |   | `string()` |   | `false`
-`media.audio.codecs` | A list of audio codecs the device supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` | `["PCMU"]` | `false`
+`media.audio.codecs` | A list of audio codecs the device supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false`
 `media.audio` | The audio media parameters | `object()` | `{}` | `false`
 `media.bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false`
 `media.encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false`

@@ -8,6 +8,7 @@
 
 -export([call_collect/2
         ,cast/2
+        ,is_completed/1
         ]).
 
 -include_lib("kazoo_apps.hrl").
@@ -69,10 +70,9 @@ cast(Req, PublishFun) ->
 %% @private
 %% @doc handle amqp worker responses
 -spec handle_resp(api_ne_binary(), api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
-handle_resp(_NotifyType, _Req, 'ok') -> 'ok';
 handle_resp(NotifyType, Req, {'ok', _}=Resp) -> check_for_failure(NotifyType, Req, Resp);
 handle_resp(NotifyType, Req, {'error', Error}) -> maybe_handle_error(NotifyType, Req, error_to_failure_reason(Error));
-handle_resp(NotifyType, Req, {'returned', _, Resp}) -> check_for_failure(NotifyType, Req, {'returned', Resp});
+handle_resp(NotifyType, Req, {'returned', _, Resp}) -> check_for_failure(NotifyType, Req, {'returned', [Resp]});
 handle_resp(NotifyType, Req, {'timeout', _}=Resp) -> check_for_failure(NotifyType, Req, Resp).
 
 %% @private
@@ -105,12 +105,13 @@ handle_error(NotifyType, Req, Error) ->
               ,{<<"payload">>, Req}
               ,{<<"attempts">>, 1}
               ]),
-    JObj = kz_doc:update_pvt_parameters(
-             kz_json:from_list_recursive(Props), 'undefined', [{'type', <<"failed_notify">>}
-                                                              ,{'account_id', find_account_id(Req)}
-                                                              ,{'account_db', ?KZ_PENDING_NOTIFY_DB}
-                                                              ]
-            ),
+    JObj = kz_doc:update_pvt_parameters(kz_json:from_list_recursive(Props)
+                                       ,'undefined'
+                                       ,[{'type', <<"failed_notify">>}
+                                        ,{'account_id', find_account_id(Req)}
+                                        ,{'account_db', ?KZ_PENDING_NOTIFY_DB}
+                                        ]
+                                       ),
     save_pending_notification(NotifyType, JObj, 2).
 
 -spec save_pending_notification(ne_binary(), kz_json:object(), integer()) -> 'ok'.
@@ -152,7 +153,12 @@ is_completed([JObj|_]) ->
         andalso kz_json:get_ne_binary_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
-        <<"failed">> -> maybe_ignore_failure(kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj));
+        <<"failed">> ->
+            FailureMsg = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj),
+            ShouldIgnore = maybe_ignore_failure(FailureMsg),
+            ShouldIgnore
+                andalso lager:debug("teletype failed with reason ~s, ignoring", [FailureMsg]),
+            ShouldIgnore;
         %% FIXME: Is pending enough to consider publish was successful? at least teletype recieved the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
@@ -163,24 +169,39 @@ maybe_ignore_failure(<<"missing_from">>) -> 'true';
 maybe_ignore_failure(<<"invalid_to_addresses">>) -> 'true';
 maybe_ignore_failure(<<"no_to_addresses">>) -> 'true';
 maybe_ignore_failure(<<"email_encoding_failed">>) -> 'true';
+maybe_ignore_failure(<<"validation_failed">>) -> 'true';
+maybe_ignore_failure(<<"missing_data:", _/binary>>) -> 'true';
+maybe_ignore_failure(<<"failed_template:", _/binary>>) -> 'true'; %% rendering problems
+maybe_ignore_failure(<<"template_error:", _/binary>>) -> 'true'; %% rendering problems
+maybe_ignore_failure(<<"no teletype template modules responded">>) -> 'true'; %% rendering problems
+
+%% explicitly not ignoring these below:
+maybe_ignore_failure(<<"unknown_template_error">>) -> 'false'; %% maybe something went wrong with template, trying later?
+maybe_ignore_failure(<<"no_attachment">>) -> 'false'; %% probably fax or voicemail is not stored in storage yet, retry later
+maybe_ignore_failure(<<"badmatch">>) -> 'false'; %% not ignoring it yet (voicemail_new)
 maybe_ignore_failure(_) -> 'false'.
 
 %% @private
 %% @doc try to find account id in different part of payload(copied from teletype_util)
--spec find_account_id(api_terms()) -> api_binary().
+-spec find_account_id(api_terms()) -> api_ne_binary().
+find_account_id(Req) when is_list(Req) ->
+    find_account_id(Req, fun props:get_first_defined/2);
 find_account_id(Req) ->
-    props:get_first_defined([<<"account_id">>
-                            ,[<<"account">>, <<"_id">>]
-                            ,<<"pvt_account_id">>
-                            ,<<"_id">>, <<"id">>
-                            ,<<"Account-ID">>
-                            ,[<<"details">>, <<"account_id">>]
-                            ,[<<"Details">>, <<"Account-ID">>]
-                            ,[<<"details">>, <<"custom_channel_vars">>, <<"account_id">>]
-                            ,[<<"Details">>, <<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                            ]
-                           ,Req
-                           ).
+    find_account_id(Req, fun kz_json:get_first_defined/2).
+
+find_account_id(Req, Get) ->
+    Get([<<"account_id">>
+        ,[<<"account">>, <<"_id">>]
+        ,<<"pvt_account_id">>
+        ,<<"_id">>, <<"id">>
+        ,<<"Account-ID">>
+        ,[<<"details">>, <<"account_id">>]
+        ,[<<"Details">>, <<"Account-ID">>]
+        ,[<<"details">>, <<"custom_channel_vars">>, <<"account_id">>]
+        ,[<<"Details">>, <<"Custom-Channel-Vars">>, <<"Account-ID">>]
+        ]
+       ,Req
+       ).
 
 %% @private
 %% @doc convert error to human understandable string

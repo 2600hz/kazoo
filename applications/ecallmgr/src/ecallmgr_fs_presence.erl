@@ -206,6 +206,21 @@ check_publish_state(_Node, _UUID, Props) ->
     props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
         orelse props:is_true(<<"Publish-Channel-State">>, Props, 'true').
 
+-spec realm(kz_proplist()) -> ne_binary().
+realm(Props) ->
+    props:get_first_defined([?GET_CCV(<<"Realm">>)
+                            ,<<"variable_sip_invite_domain">>
+                            ,<<"variable_sip_auth_realm">>
+                            ,<<"variable_sip_to_host">>
+                            ], Props, ?DEFAULT_REALM).
+
+-spec get_user_realm(kz_proplist()) -> {ne_binary(), ne_binary()}.
+get_user_realm(Props) ->
+    case binary:split(from(Props), <<"@">>, ['global']) of
+        [Username, Realm | _] -> {Username, Realm};
+        [From] -> {From, realm(Props)}
+    end.
+
 -spec from(kz_proplist()) -> ne_binary().
 from(Props) ->
     props:get_first_defined([<<"from">>
@@ -236,21 +251,20 @@ build_presence_event(_Node, UUID, Props) ->
     ToTag = kzd_freeswitch:to_tag(Props),
     FromTag = kzd_freeswitch:from_tag(Props),
 
-    From = from(Props),
-    [FromUser, Realm | _] = binary:split(From, <<"@">>, ['global']),
+    {FromUser, Realm} = get_user_realm(Props),
+    PresenceId = <<FromUser/binary, "@", Realm/binary>>,
+    PresenceURI =  <<"sip:", PresenceId/binary>>,
 
     ToUser =  to_user(Props),
-
     To =  <<ToUser/binary, "@", Realm/binary>>,
     ToURI =  <<"sip:", To/binary>>,
 
-    PresenceURI =  <<"sip:", From/binary>>,
     State = presence_status(Props),
     Expires = expires(State),
     SwitchURI = props:get_value(<<"Switch-URI">>, Props),
 
     Payload = props:filter_undefined(
-                [{<<"Presence-ID">>, From}
+                [{<<"Presence-ID">>, PresenceId}
 
                 ,{<<"From">>, PresenceURI}
                 ,{<<"From-User">>, FromUser}

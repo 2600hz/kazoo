@@ -12,7 +12,7 @@
 
 -include("callflow.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> kapps_call:call().
 handle_req(JObj, _Props) ->
     'true' = kapi_callflow:resume_v(JObj),
     Call0 = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),

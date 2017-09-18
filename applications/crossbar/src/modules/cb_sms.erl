@@ -163,7 +163,7 @@ on_successful_validation(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_modb(Context),
     ResellerId = cb_context:reseller_id(Context),
-    Realm = kz_util:get_account_realm(AccountId),
+    Realm = kz_account:fetch_realm(AccountId),
 
     {AuthorizationType, Authorization, OwnerId} =
         case {cb_context:user_id(Context), cb_context:auth_user_id(Context)} of
@@ -257,7 +257,7 @@ create_sms_doc_id() ->
     {Year, Month, _} = erlang:date(),
     kz_term:to_binary(
       io_lib:format("~B~s-~s",[Year
-                              ,kz_time:pad_month(Month)
+                              ,kz_date:pad_month(Month)
                               ,kz_binary:rand_hex(16)
                               ])
      ).
@@ -281,7 +281,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

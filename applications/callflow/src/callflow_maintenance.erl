@@ -298,7 +298,7 @@ all_accounts_set_classifier_deny(Classifier) ->
 -spec set_account_classifier_action(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 set_account_classifier_action(Action, Classifier, AccountDb) ->
     'true' = is_classifier(Classifier),
-    io:format("found account: ~p", [get_account_name_by_db(AccountDb)]),
+    io:format("found account: ~p", [kz_account:fetch_name(AccountDb)]),
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
 
     kz_datamgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
@@ -316,15 +316,6 @@ all_accounts_set_classifier(Action, Classifier) ->
                           %%  Keeping it as it was taken as an example from kapps_util:update_all_accounts/1
                           set_account_classifier_action(Action, Classifier, AccountDb)
                   end, kapps_util:get_all_accounts()).
-
--spec get_account_name_by_db(ne_binary()) -> ne_binary() | 'undefined'.
-get_account_name_by_db(AccountDb) ->
-    case kz_account:fetch(AccountDb) of
-        {'error', _Error} ->
-            lager:error("error opening account doc ~p", [AccountDb]),
-            'undefined';
-        {'ok', JObj} -> kz_account:name(JObj)
-    end.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -57,7 +57,7 @@
 
 -spec init() -> ok.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.content_types_accpeted.vmboxes">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.vmboxes">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.vmboxes">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.vmboxes">>, ?MODULE, 'resource_exists'),
@@ -261,7 +261,7 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
     load_message(MessageId, BoxId, Context, 'true');
 validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
-    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(),
+    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(cb_context:account_id(Context)),
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', Msg} ->
             case kzd_box_message:utc_seconds(Msg) < RetenTimestamp of
@@ -782,7 +782,7 @@ empty_source_id(Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
-    MaxRetenSecond = kvm_util:retention_seconds(),
+    MaxRetenSecond = kvm_util:retention_seconds(cb_context:account_id(Context)),
     RetenTimestamp = kz_time:current_tstamp() - MaxRetenSecond,
     case message_summary_view_options(Context, BoxId, MaxRetenSecond) of
         {'ok', ViewOptions} ->
@@ -958,7 +958,7 @@ create_new_message_document(Context, BoxJObj) ->
     JObj = kzd_box_message:new(AccountId, Props),
     MsgId = kz_doc:id(JObj),
 
-    AccountRealm = case kz_util:get_account_realm(AccountId) of 'undefined' -> <<"nodomain">>; R -> R end,
+    AccountRealm = case kz_account:fetch_realm(AccountId) of 'undefined' -> <<"nodomain">>; R -> R end,
     DefaultCID = kz_privacy:anonymous_caller_id_number(AccountId),
     CallerNumber = kz_json:get_ne_binary_value(<<"caller_id_number">>, Doc, DefaultCID),
     CallerName = kz_json:get_ne_binary_value(<<"caller_id_name">>, Doc, DefaultCID),
@@ -992,7 +992,12 @@ create_new_message_document(Context, BoxJObj) ->
 load_message_binary(BoxId, MediaId, Context) ->
     case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
         {'ok', JObj} ->
-            case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
+            case kz_term:is_not_empty(kz_doc:attachment_names(JObj))
+                andalso kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId)
+            of
+                'false' ->
+                    Msg = <<"voicemail message does not have any audio file">>,
+                    cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Msg}]), Context);
                 {'error', Error} ->
                     crossbar_doc:handle_datamgr_errors(Error, BoxId, Context);
                 {'ok', BoxJObj} ->

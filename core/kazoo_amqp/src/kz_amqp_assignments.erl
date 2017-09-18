@@ -34,7 +34,7 @@
 
 -define(TAB, ?MODULE).
 -define(SERVER_RETRY_PERIOD, 30 * ?MILLISECONDS_IN_SECOND).
--record(state, {brokers = ordsets:new()}).
+-record(state, {}).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -587,7 +587,7 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
     ets:insert(?TAB, Assigment#kz_amqp_assignment{reconnect='false'
                                                  ,watchers=sets:new()
                                                  }),
-    lager:debug("assigned consumer ~p new channel ~p on ~s after ~pus"
+    lager:debug("assigned consumer ~p new channel ~p on ~s after ~pμs"
                ,[Consumer, Channel, Broker, kz_time:elapsed_us(Timestamp)]),
     register_channel_handlers(Channel, Consumer),
     _ = maybe_reconnect(Assigment),
@@ -647,9 +647,11 @@ notify_connection(#kz_amqp_assignment{connection=Connection}) ->
 
 -spec notify_consumer(kz_amqp_assignment()) -> 'ok'.
 notify_consumer(#kz_amqp_assignment{consumer=Consumer
-                                   ,reconnect=Reconnect}) ->
+                                   ,reconnect=Reconnect
+                                   ,channel=Channel
+                                   }) ->
     %% Trigger gen_server to continue with AMQP initialization
-    gen_server:cast(Consumer, {'kz_amqp_assignment', {'new_channel', Reconnect}}).
+    gen_server:cast(Consumer, {'kz_amqp_assignment', {'new_channel', Reconnect, Channel}}).
 
 -spec notify_watchers(kz_amqp_assignment()) -> kz_amqp_assignment().
 notify_watchers(#kz_amqp_assignment{watchers=Watchers}=Assignment) ->

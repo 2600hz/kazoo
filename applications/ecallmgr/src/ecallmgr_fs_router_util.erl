@@ -21,12 +21,14 @@
 %%%===================================================================
 -type search_ret() :: 'ok' | {'ok', kz_json:object()}.
 
--spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> search_ret().
+-spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), kzd_freeswitch:data()) ->
+                              search_ret().
 search_for_route(Section, Node, FetchId, CallId, Props) ->
     Authz = ecallmgr_config:is_true(<<"authz_enabled">>, 'false'),
     search_for_route(Section, Node, FetchId, CallId, Props, Authz).
 
--spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist(), boolean()) -> search_ret().
+-spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), kzd_freeswitch:data(), boolean()) ->
+                              search_ret().
 search_for_route(Section, Node, FetchId, CallId, Props, 'false') ->
     do_search_for_route(Section, Node, FetchId, CallId, Props, 'undefined');
 search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
@@ -34,7 +36,8 @@ search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
     lager:debug("authz worker in ~p", [AuthzWorker]),
     do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker).
 
--spec do_search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist(), 'undefined' | pid_ref()) -> search_ret().
+-spec do_search_for_route(atom(), atom(), ne_binary(), ne_binary(), kzd_freeswitch:data(), api_pid_ref()) ->
+                                 search_ret().
 do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
     Request = route_req(CallId, FetchId, Props, Node),
     ReqResp = kz_amqp_worker:call(Request
@@ -50,13 +53,14 @@ do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
             maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker)
     end.
 
--spec spawn_authorize_call_fun(atom(), ne_binary(), kz_proplist()) -> pid_ref().
+-spec spawn_authorize_call_fun(atom(), ne_binary(), kzd_freeswitch:data()) -> pid_ref().
 spawn_authorize_call_fun(Node, CallId, Props) ->
     Ref = make_ref(),
     Pid = kz_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, Props]),
     {Pid, Ref}.
 
--spec authorize_call_fun(pid(), reference(), atom(), ne_binary(), kz_proplist()) -> any().
+-spec authorize_call_fun(pid(), reference(), atom(), ne_binary(), kzd_freeswitch:data()) ->
+                                {'authorize_reply', reference(), ecallmgr_fs_authz:authz_reply()}.
 authorize_call_fun(Parent, Ref, Node, CallId, Props) ->
     kz_util:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
@@ -151,7 +155,7 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"Body">>, get_body(Props) }
       ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
       ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
-      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+      ,{<<"Switch-Hostname">>, kzd_freeswitch:hostname(Props)}
       ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
       ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}

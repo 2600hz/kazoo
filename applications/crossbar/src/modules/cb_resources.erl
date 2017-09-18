@@ -39,8 +39,8 @@
 -spec init() -> ok.
 init() ->
     _ = kz_datamgr:db_create(?KZ_OFFNET_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, 'crossbar', "views/resources.json"),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, 'crossbar', "views/resources.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, ?APP, "views/resources.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, ?APP, "views/resources.json"),
 
     _Pid = maybe_start_jobs_listener(),
     lager:debug("started jobs listener: ~p", [_Pid]),
@@ -478,7 +478,7 @@ databases(Context, CreatedFrom, CreatedTo) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
+%% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -544,7 +544,7 @@ on_successful_local_validation(Id, Context) ->
 on_successful_job_validation('undefined', Context) ->
     {Year, Month, _} = erlang:date(),
     Id = list_to_binary([kz_term:to_binary(Year)
-                        ,kz_time:pad_month(Month)
+                        ,kz_date:pad_month(Month)
                         ,"-"
                         ,kz_binary:rand_hex(8)
                         ]),

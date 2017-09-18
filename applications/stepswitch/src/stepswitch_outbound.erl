@@ -14,6 +14,7 @@
 
 -include("stepswitch.hrl").
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
+-include_lib("kazoo/include/kz_api_literals.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,6 +84,7 @@ maybe_add_call_id(_, JObj) -> JObj.
 maybe_force_originate_outbound(Props, JObj) ->
     case knm_number_options:should_force_outbound(Props)
         orelse kz_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+        orelse kapi_offnet_resource:hunt_account_id(JObj) /= 'undefined'
     of
         'false' -> local_originate(Props, JObj);
         'true' -> maybe_originate(knm_number_options:number(Props), JObj)
@@ -114,6 +116,7 @@ handle_sms_req(OffnetReq) ->
 maybe_force_outbound(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
         orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
+        orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
     of
         'false' -> local_extension(Props, OffnetReq);
         'true' -> maybe_bridge(knm_number_options:number(Props), OffnetReq)
@@ -129,6 +132,7 @@ maybe_force_outbound(Props, OffnetReq) ->
 maybe_force_outbound_sms(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
         orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
+        orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
     of
         'false' -> local_sms(Props, OffnetReq);
         'true' -> maybe_sms(knm_number_options:number(Props), OffnetReq)
@@ -232,9 +236,9 @@ local_originate_caller_id(JObj) ->
 
 -spec get_account_realm(ne_binary()) -> ne_binary().
 get_account_realm(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:realm(JObj, AccountId);
-        _ -> AccountId
+    case kz_account:fetch_realm(AccountId) of
+        undefined -> AccountId;
+        Realm -> Realm
     end.
 
 -spec create_loopback_endpoint(knm_number_options:extra_options(), kz_json:object()) -> kz_json:object().
@@ -248,8 +252,10 @@ create_loopback_endpoint(Props, JObj) ->
              [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, "true"}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
              ,{<<"Resource-ID">>, AccountId}
              ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
+             ,{<<"Resource-Type">>, <<"onnet-termination">>}
              ]),
     kz_json:from_list(
       [{<<"Invite-Format">>, <<"loopback">>}

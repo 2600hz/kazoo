@@ -90,6 +90,7 @@
 -export_type([view_option/0, view_options/0
              ,view_listing/0, views_listing/0
              ,data_error/0, data_errors/0
+             ,db_classification/0
              ]).
 
 -include("kz_data.hrl").
@@ -373,7 +374,9 @@ db_view_cleanup(DbName) when ?VALID_DBNAME(DbName) ->
 db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_view_cleanup(Db);
-        {'error', _}=E -> E
+        {'error', _Reason} ->
+            lager:debug("failed to convert db name ~s: ~p", [DbName, _Reason]),
+            'false'
     end.
 
 -spec db_view_update(ne_binary(), views_listing()) -> boolean().
@@ -905,10 +908,11 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 %% fetch, update and save a doc (creating if not present)
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(ne_binary(), docid(), kz_proplist()) ->
+-type update_props() :: [{kz_json:path(), kz_json:json_term()}].
+-spec update_doc(ne_binary(), docid(), update_props()) ->
                         {'ok', kz_json:object()} |
                         data_error().
--spec update_doc(ne_binary(), docid(), kz_proplist(), kz_proplist()) ->
+-spec update_doc(ne_binary(), docid(), update_props(), kz_proplist()) ->
                         {'ok', kz_json:object()} |
                         data_error().
 
@@ -922,10 +926,11 @@ update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
             JObj = kz_json:from_list(lists:append([[{<<"_id">>, Id} | CreateProps], UpdateProps])),
             save_doc(DbName, JObj);
         {'error', _}=E -> E;
-        {'ok', JObj}=Ok ->
-            case kz_json:set_values(UpdateProps, JObj) of
-                JObj -> Ok;
-                UpdatedJObj -> save_doc(DbName, UpdatedJObj)
+        {'ok', JObj}=OK ->
+            UpdatedJObj = kz_json:set_values(UpdateProps, JObj),
+            case kz_json:are_equal(JObj, UpdatedJObj) of
+                'true' -> OK;
+                'false' -> save_doc(DbName, UpdatedJObj)
             end
     end.
 
@@ -1167,6 +1172,13 @@ add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
 %%% View Functions
 %%%===================================================================
 
+-ifdef(TEST).
+-define(GET_RESULTS(DbName, DesignId, Options)
+       ,io:format(user, "\n~s:get_results(~p, ~p, ~p)\n", [?MODULE, DbName, DesignId, Options])).
+-else.
+-define(GET_RESULTS(DbName, DesignId, Options), ok).
+-endif.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -1187,17 +1199,14 @@ get_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
 get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME(DbName) ->
+    ?GET_RESULTS(DbName, DesignDoc, Options),
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     Plan = kzs_plan:plan(DbName, Opts),
-
     case kzs_view:get_results(Plan, DbName, DesignDoc, Options) of
         {'error', 'not_found'} ->
             maybe_create_view(DbName, Plan, DesignDoc, Options);
-
-        Other ->
-            Other
+        Other -> Other
     end;
-
 get_results(DbName, DesignDoc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> get_results(Db, DesignDoc, Options);
@@ -1205,15 +1214,14 @@ get_results(DbName, DesignDoc, Options) ->
     end.
 
 get_results_count(DbName, DesignDoc, Options) ->
+    ?GET_RESULTS(DbName, DesignDoc, Options),
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     kzs_view:get_results_count(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options).
 
 -spec maybe_create_view(ne_binary(), map(), ne_binary(), view_options()) -> get_results_return().
 maybe_create_view(DbName, Plan, DesignDoc, Options) ->
     case props:get_value('view_json', Options) of
-        'undefined' ->
-            {'error', 'not_found'};
-
+        'undefined' -> {'error', 'not_found'};
         ViewJson ->
             db_view_update(DbName, ViewJson),
             kzs_view:get_results(Plan, DbName, DesignDoc, Options)
@@ -1226,6 +1234,7 @@ maybe_create_view(DbName, Plan, DesignDoc, Options) ->
 get_result_keys(DbName, DesignDoc) ->
     get_result_keys(DbName, DesignDoc, []).
 get_result_keys(DbName, DesignDoc, Options) ->
+    ?GET_RESULTS(DbName, DesignDoc, Options),
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     case kzs_view:get_results(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options) of
         {'ok', JObjs} -> {'ok', get_result_keys(JObjs)};
@@ -1245,6 +1254,7 @@ get_result_keys(JObjs) ->
 get_result_ids(DbName, DesignDoc) ->
     get_result_ids(DbName, DesignDoc, []).
 get_result_ids(DbName, DesignDoc, Options) ->
+    ?GET_RESULTS(DbName, DesignDoc, Options),
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     case kzs_view:get_results(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options) of
         {'ok', JObjs} -> {'ok', get_result_ids(JObjs)};
@@ -1433,7 +1443,7 @@ max_bulk_read(ViewOptions) ->
     UpperBound = min(AskedFor, max_bulk_read()),
     max(UpperBound, 1).
 
--spec db_classification(text()) -> db_classifications().
+-spec db_classification(text()) -> db_classification().
 db_classification(DBName) -> kzs_util:db_classification(DBName).
 
 -spec format_error(any()) -> any().

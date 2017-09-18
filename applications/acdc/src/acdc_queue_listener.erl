@@ -680,20 +680,18 @@ clear_call_state(#state{account_id=AccountId
 -spec publish(api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 -spec publish(ne_binary(), api_terms(), fun((ne_binary(), api_terms()) -> 'ok')) -> 'ok'.
 publish(Req, F) ->
-    case catch F(Req) of
-        'ok' -> 'ok';
-        {'EXIT', _R} ->
+    try F(Req)
+    catch _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("failed to publish message: ~p", [_R]),
+            lager:debug("failed to publish message: ~p:~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             'ok'
     end.
 publish(Q, Req, F) ->
-    case catch F(Q, Req) of
-        'ok' -> 'ok';
-        {'EXIT', _R} ->
+    try F(Q, Req)
+    catch _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("failed to publish message to ~s: ~p", [Q, _R]),
+            lager:debug("failed to publish message to ~s: ~p:~p", [Q, _E, _R]),
             kz_util:log_stacktrace(ST),
             'ok'
     end.

@@ -24,14 +24,16 @@
 -define(CALLFWD_NUMBER_TIMEOUT, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"callfwd_number_timeout">>, 8000)).
 
 -record(keys, {menu_toggle_cf =
-                   kapps_config:get_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_toggle_option">>], <<"1">>)
+                   kapps_config:get_ne_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_toggle_option">>], <<"1">>)
+               :: ne_binary()
               ,menu_change_number =
-                   kapps_config:get_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_change_number">>], <<"2">>)
+                   kapps_config:get_ne_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_change_number">>], <<"2">>)
+               :: ne_binary()
               }).
 -type keys() :: #keys{}.
 
 -record(callfwd, {keys = #keys{} :: keys()
-                 ,doc_id = 'undefined' :: api_binary()
+                 ,doc_id :: api_ne_binary()
                  ,enabled = 'false' :: boolean()
                  ,number = <<>> :: binary()
                  ,require_keypress = 'true' :: boolean()

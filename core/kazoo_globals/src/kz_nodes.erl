@@ -11,8 +11,9 @@
 
 -export([start_link/0]).
 -export([is_up/1]).
--export([whapp_count/1
-        ,whapp_count/2
+-export([whapp_count/1, whapp_count/2
+        ,whapp_role_count/2, whapp_role_count/3
+        ,node_role_count/1, node_role_count/2
         ,whapp_oldest_node/1
         ,whapp_oldest_node/2
         ]).
@@ -65,7 +66,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
 
--define(HEARTBEAT, crypto:rand_uniform(5 * ?MILLISECONDS_IN_SECOND, 15 * ?MILLISECONDS_IN_SECOND)).
+-define(HEARTBEAT, 5 * ?MILLISECONDS_IN_SECOND + rand:uniform(10 * ?MILLISECONDS_IN_SECOND)).
 -define(EXPIRE_PERIOD, 1 * ?MILLISECONDS_IN_SECOND).
 -define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"kz_nodes">>).
@@ -91,6 +92,7 @@
                ,zone = 'local' :: atom()
                ,version :: ne_binary()
                ,zones = [] :: kz_proplist()
+               ,me = 'undefined' :: kz_node() | 'undefined'
                }).
 -type nodes_state() :: #state{}.
 
@@ -623,24 +625,36 @@ handle_info('expire_nodes', #state{node=ThisNode, tab=Tab}=State) ->
     _ = kz_util:spawn(fun notify_expire/2, [Nodes, State]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
+
 handle_info({'heartbeat', Ref}
            ,#state{heartbeat_ref=Ref
                   ,tab=Tab
+                  ,me=Me
                   }=State
            ) ->
     Heartbeat = ?HEARTBEAT,
     Reference = erlang:make_ref(),
+    _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     try create_node(Heartbeat, State) of
         Node ->
             _ = ets:insert(Tab, Node),
-            kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1)
+            kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1),
+            {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
+        'exit' : {'timeout' , _} when Me =/= 'undefined' ->
+            NewMe = Me#kz_node{expires=Heartbeat},
+            _ = ets:insert(Tab, NewMe),
+            lager:notice("timeout creating node sending old data"),
+            {'noreply', State#state{heartbeat_ref=Reference, me=NewMe}};
+        'exit' : {'timeout' , _} ->
+            lager:warning("timeout creating node, no data to send"),
+            {'noreply', State#state{heartbeat_ref=Reference}};
         _E:_N ->
             lager:error("error creating node ~p : ~p", [_E, _N]),
-            kz_util:log_stacktrace()
-    end,
-    _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
-    {'noreply', State#state{heartbeat_ref=Reference}};
+            kz_util:log_stacktrace(),
+            {'noreply', State#state{heartbeat_ref=Reference}, 'hibernate'}
+    end;
+
 handle_info({'DOWN', Ref, 'process', Pid, _}
            ,#state{notify_new=NewSet
                   ,notify_expire=ExpireSet
@@ -858,8 +872,8 @@ from_json(JObj, State) ->
 
 -spec kapps_from_json(api_terms()) -> kapps_info().
 -spec whapp_from_json(binary(), kz_json:object()) -> {binary(), whapp_info()}.
--spec whapp_info_from_json(kz_json:object()) -> whapp_info().
--spec whapp_info_from_json(kz_json:object(), {kz_json:json_terms(), kz_json:keys()}) -> whapp_info().
+-spec whapp_info_from_json(ne_binary(), kz_json:object()) -> whapp_info().
+-spec whapp_info_from_json(ne_binary(), whapp_info(), {kz_json:json_terms(), kz_json:keys()}) -> whapp_info().
 
 kapps_from_json(Whapps) when is_list(Whapps) ->
     [{Whapp, #whapp_info{}} || Whapp <- Whapps];
@@ -868,16 +882,20 @@ kapps_from_json(JObj) ->
     [whapp_from_json(Key, JObj) || Key <- Keys].
 
 whapp_from_json(Key, JObj) ->
-    {Key, whapp_info_from_json(kz_json:get_value(Key, JObj))}.
+    {Key, whapp_info_from_json(Key, kz_json:get_value(Key, JObj))}.
 
-whapp_info_from_json(JObj) ->
-    whapp_info_from_json(#whapp_info{}, kz_json:get_values(JObj)).
+whapp_info_from_json(Key, JObj) ->
+    whapp_info_from_json(Key, #whapp_info{}, kz_json:get_values(JObj)).
 
-whapp_info_from_json(Info, {[], []}) -> Info;
-whapp_info_from_json(Info, {[V | V1], [<<"Roles">> | K1]}) ->
-    whapp_info_from_json(Info#whapp_info{roles=V}, {V1, K1});
-whapp_info_from_json(Info, {[V | V1], [<<"Startup">> | K1]}) ->
-    whapp_info_from_json(Info#whapp_info{startup=V}, {V1, K1}).
+whapp_info_from_json(_Key, Info, {[], []}) -> Info;
+whapp_info_from_json(Key, Info, {[V | V1], [<<"Roles">> | K1]}) ->
+    whapp_info_from_json(Key, Info#whapp_info{roles=V}, {V1, K1});
+whapp_info_from_json(<<"kamailio">> = Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
+    whapp_info_from_json(Key, Info#whapp_info{startup=kz_time:unix_seconds_to_gregorian_seconds(V)}, {V1, K1});
+whapp_info_from_json(Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
+    whapp_info_from_json(Key, Info#whapp_info{startup=V}, {V1, K1});
+whapp_info_from_json(Key, Info, {[_V | V1], [_K | K1]}) ->
+    whapp_info_from_json(Key, Info, {V1, K1}).
 
 -spec kapps_to_json(kapps_info()) -> kz_json:object().
 -spec whapp_to_json({ne_binary(), whapp_info()}) -> {ne_binary(), kz_json:object()}.
@@ -1057,4 +1075,120 @@ node_encoded() ->
             application:set_env(?APP_NAME_ATOM, 'node_encoded', Encoded),
             Encoded;
         {'ok', Encoded} -> Encoded
+    end.
+
+-spec whapp_role_count(text(), text()) -> integer().
+whapp_role_count(Whapp, Role) ->
+    whapp_role_count(Whapp, Role, 'false').
+
+-spec whapp_role_count(text(), text(), text() | boolean() | 'remote') -> integer().
+whapp_role_count(Whapp, Role, Arg) when not is_atom(Arg) ->
+    whapp_role_count(Whapp, Role, kz_term:to_atom(Arg, 'true'));
+whapp_role_count(Whapp, Role, 'false') ->
+    MatchSpec = [{#kz_node{kapps='$1'
+                          ,zone = local_zone()
+                          ,_ = '_'
+                          }
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
+                 }],
+    determine_whapp_role_count(kz_term:to_binary(Whapp), kz_term:to_binary(Role), MatchSpec);
+whapp_role_count(Whapp, Role, 'true') ->
+    MatchSpec = [{#kz_node{kapps='$1'
+                          ,_ = '_'
+                          }
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
+                 }],
+    determine_whapp_role_count(kz_term:to_binary(Whapp), kz_term:to_binary(Role), MatchSpec);
+whapp_role_count(Whapp, Role, 'remote') ->
+    Zone = local_zone(),
+    MatchSpec = [{#kz_node{kapps='$1'
+                          ,zone='$2'
+                          ,_ = '_'
+                          }
+                 ,[{'andalso'
+                   ,{'=/=', '$1', []}
+                   ,{'=/=', '$2', {'const', Zone}}
+                   }]
+                 ,['$1']
+                 }],
+    determine_whapp_role_count(kz_term:to_binary(Whapp), kz_term:to_binary(Role), MatchSpec);
+whapp_role_count(Whapp, Role, Unhandled) ->
+    lager:debug("invalid parameters ~p , ~p , ~p", [Whapp, Role, Unhandled]),
+    0.
+
+-spec determine_whapp_role_count(ne_binary(), ne_binary(), ets:match_spec()) -> non_neg_integer().
+determine_whapp_role_count(Whapp, Role, MatchSpec) ->
+    lists:foldl(fun(Whapps, Acc) when is_list(Whapps) ->
+                        determine_whapp_role_count_fold(Whapps, Role, Acc, Whapp)
+                end
+               ,0
+               ,ets:select(?MODULE, MatchSpec)
+               ).
+
+-spec determine_whapp_role_count_fold(kapps_info(), ne_binary(), non_neg_integer(), ne_binary()) -> non_neg_integer().
+determine_whapp_role_count_fold(Whapps, Role, Acc, Whapp) ->
+    case props:is_defined(Whapp, Whapps)
+        andalso lists:member(Role, (props:get_value(Whapp, Whapps))#whapp_info.roles)
+    of
+        'true' -> Acc + 1;
+        'false' -> Acc
+    end.
+
+-spec node_role_count(text()) -> integer().
+node_role_count(Role) ->
+    node_role_count(Role, 'false').
+
+-spec node_role_count(text(), text() | boolean() | 'remote') -> integer().
+node_role_count(Role, Arg) when not is_atom(Arg) ->
+    node_role_count(Role, kz_term:to_atom(Arg, 'true'));
+node_role_count(Role, 'false') ->
+    MatchSpec = [{#kz_node{roles='$1'
+                          ,zone = local_zone()
+                          ,_ = '_'
+                          }
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
+                 }],
+    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
+node_role_count(Role, 'true') ->
+    MatchSpec = [{#kz_node{roles='$1'
+                          ,_ = '_'
+                          }
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
+                 }],
+    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
+node_role_count(Role, 'remote') ->
+    Zone = local_zone(),
+    MatchSpec = [{#kz_node{roles='$1'
+                          ,zone='$2'
+                          ,_ = '_'
+                          }
+                 ,[{'andalso'
+                   ,{'=/=', '$1', []}
+                   ,{'=/=', '$2', {'const', Zone}}
+                   }]
+                 ,['$1']
+                 }],
+    determine_node_role_count(kz_term:to_binary(Role), MatchSpec);
+node_role_count(Role, Unhandled) ->
+    lager:debug("invalid parameters ~p , ~p , ~p", [Role, Unhandled]),
+    0.
+
+-spec determine_node_role_count(ne_binary(), ets:match_spec()) -> non_neg_integer().
+determine_node_role_count(Role, MatchSpec) ->
+    lists:foldl(fun(Roles, Acc) when is_list(Roles) ->
+                        determine_node_role_count_fold(Roles, Acc, Role)
+                end
+               ,0
+               ,ets:select(?MODULE, MatchSpec)
+               ).
+
+-spec determine_node_role_count_fold(kz_proplist(), non_neg_integer(), ne_binary()) -> non_neg_integer().
+determine_node_role_count_fold(Roles, Acc, Role) ->
+    case props:is_defined(Role, Roles) of
+        'true' -> Acc + 1;
+        'false' -> Acc
     end.

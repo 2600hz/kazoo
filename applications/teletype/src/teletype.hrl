@@ -38,7 +38,7 @@
 -type rendered_templates() :: [rendered_template()].
 
 %% {"to"/"cc"/etc, [Address,...]}
--type email_map() :: [{ne_binary(), ne_binaries()}].
+-type email_map() :: [{ne_binary(), api_ne_binaries()}].
 
 -type init_param() :: {'macros', kz_json:object()} |
                       {'subject', ne_binary()} |
@@ -58,8 +58,8 @@
 -define(EMAIL_ORIGINAL, <<"original">>).
 -define(EMAIL_ADMINS, <<"admins">>).
 
--define(CONFIGURED_EMAILS(Type, Addresses)
-       ,kz_json:from_list(
+-define(CONFIGURED_EMAILS(Type, Addresses),
+        kz_json:from_list(
           [{<<"type">>, Type}
           ,{<<"email_addresses">>, Addresses}
           ])

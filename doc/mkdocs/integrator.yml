@@ -10,18 +10,18 @@ pages:
     - 'applications/crossbar/doc/schemas.md'
     - 'applications/crossbar/doc/402.md'
   - 'Authentication':
-    - 'applications/crossbar/doc/auth.md'
-    - 'applications/crossbar/doc/user_authentication.md'
     - 'applications/crossbar/doc/api_authentication.md'
-    - 'applications/crossbar/doc/ip_auth.md'
+    - 'applications/crossbar/doc/auth.md'
     - 'applications/crossbar/doc/basic_auth.md'
-    - 'applications/crossbar/doc/token_auth.md'
+    - 'applications/crossbar/doc/ip_auth.md'
     - 'Adding Multi-factor':
         - 'API': 'applications/crossbar/doc/multi_factor.md'
         - 'Backend': 'core/kazoo_auth/doc/multi_factor.md'
     - 'applications/crossbar/doc/security.md'
     - 'applications/crossbar/doc/shared_auth.md'
+    - 'applications/crossbar/doc/token_auth.md'
     - 'applications/crossbar/doc/ubiquiti_auth.md'
+    - 'applications/crossbar/doc/user_authentication.md'
   - 'Account Management':
     - 'applications/crossbar/doc/accounts.md'
     - 'applications/crossbar/doc/allotments.md'
@@ -38,16 +38,16 @@ pages:
   - 'Branding':
     - 'applications/crossbar/doc/notifications.md'
   - 'Connectivity':
+    - 'applications/crossbar/doc/access_lists.md'
     - 'applications/crossbar/doc/connectivity.md'
     - 'applications/crossbar/doc/ips.md'
     - 'Ratedecks':
         - 'API': 'applications/crossbar/doc/rates.md'
         - 'Backend': 'applications/tasks/doc/rates.md'
-    - 'applications/crossbar/doc/resources.md'
-    - 'applications/crossbar/doc/resource_templates.md'
-    - 'applications/crossbar/doc/resource_selectors.md'
     - 'applications/crossbar/doc/rate_limits.md'
-    - 'applications/crossbar/doc/access_lists.md'
+    - 'applications/crossbar/doc/resource_selectors.md'
+    - 'applications/crossbar/doc/resource_templates.md'
+    - 'applications/crossbar/doc/resources.md'
   - 'Media Management':
     - 'applications/crossbar/doc/media.md'
   - 'Misc':
@@ -79,6 +79,7 @@ pages:
   - 'Call Queues':
     - 'applications/crossbar/doc/agents.md'
     - 'applications/crossbar/doc/queues.md'
+    - 'Call Stats': 'applications/crossbar/doc/acdc_call_stats.md'
   - 'Calling Cards':
     - 'applications/crossbar/doc/cccps.md'
   - 'Status':
@@ -91,27 +92,30 @@ pages:
   - 'Storage':
     - 'applications/crossbar/doc/storage.md'
   - 'System Management':
-    - 'applications/crossbar/doc/apps_store.md'
+    - 'applications/crossbar/doc/alerts.md'
     - 'applications/crossbar/doc/apps_link.md'
+    - 'applications/crossbar/doc/apps_store.md'
     - 'applications/crossbar/doc/braintree.md'
     - 'applications/crossbar/doc/call_inspector.md'
+    - 'applications/crossbar/doc/configs.md'
     - 'applications/crossbar/doc/configuration.md'
     - 'applications/crossbar/doc/maintenance.md'
+    - 'applications/crossbar/doc/migrations.md'
     - 'applications/crossbar/doc/rate_limiting.md'
     - 'applications/crossbar/doc/reverse_proxy.md'
     - 'applications/crossbar/doc/securing_crossbar.md'
     - 'applications/crossbar/doc/sup.md'
-    - 'applications/crossbar/doc/tasks.md'
-    - 'applications/crossbar/doc/configs.md'
     - 'applications/crossbar/doc/system_configs.md'
+    - 'applications/crossbar/doc/tasks.md'
     - 'applications/crossbar/doc/token_restrictions.md'
   - 'Deprecated':
     - 'applications/crossbar/doc/bulk.md'
     - 'applications/crossbar/doc/global_provisioner_templates.md'
     - 'applications/crossbar/doc/local_provisioner_templates.md'
-    - 'applications/crossbar/doc/signup.md'
     - 'applications/crossbar/doc/onboard.md'
     - 'applications/crossbar/doc/onboarding.md'
+    - 'applications/crossbar/doc/signup.md'
+    - 'applications/crossbar/doc/templates.md'
 - 'Integrations':
   - 'Pivot':
     - 'Intro': 'applications/pivot/doc/README.md'
@@ -180,8 +184,10 @@ pages:
       - 'Feature Code': 'applications/callflow/doc/group_pickup_feature.md'
     - 'Faxbox': 'applications/callflow/doc/faxbox.md'
     - 'Callflow Branching': 'applications/callflow/doc/callflow.md'
-    - 'Collect DTMF': 'applications/callflow/doc/collect_dtmf.md'
-    - 'Send DTMF': 'applications/callflow/doc/send_dtmf.md'
+    - 'DTMF':
+        - 'Collect DTMF': 'applications/callflow/doc/collect_dtmf.md'
+        - 'Send DTMF': 'applications/callflow/doc/send_dtmf.md'
+        - 'Flush DTMF': 'applications/callflow/doc/flush_dtmf.md'
     - 'Intercom': 'applications/callflow/doc/intercom.md'
     - 'Set Call Variable': 'applications/callflow/doc/set_variable.md'
     - 'Intercept':
@@ -207,6 +213,8 @@ pages:
     - 'After Bridge': 'applications/callflow/doc/after_bridge.md'
     - 'Set': 'applications/callflow/doc/set.md'
     - 'Branch BNumber': 'applications/callflow/doc/branch_bnumber.md'
+    - 'Deprecated':
+        - 'Offnet': 'applications/callflow/doc/offnet.md'
   - 'Websockets':
     - 'applications/blackhole/doc/README.md'
     - 'Bindings': 'applications/blackhole/doc/bindings.md'

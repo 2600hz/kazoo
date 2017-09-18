@@ -11,6 +11,7 @@
 -define(KZ_TASKS_INPUT_ERROR_MMF, <<"missing_mandatory_fields">>).
 -define(KZ_TASKS_INPUT_ERROR_MIME, <<"expected_content">>).
 
+-define(STATUS_STOPPED, <<"stopped">>).
 -define(STATUS_EXECUTING, <<"executing">>).
 -define(STATUS_FAILURE, <<"failure">>).
 -define(STATUS_PARTIAL, <<"partial">>).

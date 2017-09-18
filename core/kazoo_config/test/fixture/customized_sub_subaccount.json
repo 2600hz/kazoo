@@ -1,0 +1,17 @@
+{
+    "_id": "94b2fdbd4b92c8c1d3c3331aff97e16a",
+    "_rev": "20-69d6be7a59cfc0a23af2cf6c9724305e",
+    "name": "Customized Account-Parent-Reseller",
+    "pvt_account_db": "account%2F94%2Fb2%2Ffdbd4b92c8c1d3c3331aff97e16a",
+    "pvt_account_id": "94b2fdbd4b92c8c1d3c3331aff97e16a",
+    "pvt_created": 63626042555,
+    "pvt_enabled": true,
+    "pvt_modified": 63640495549,
+    "pvt_reseller_id": "123ca0424ec8acf3acc1f87ac81f2123",
+    "pvt_tree": [
+        "6b71cb72c876b5b1396a335f8f8a2594",
+        "123ca0424ec8acf3acc1f87ac81f2123",
+        "5bb4a2b6323bd02a77f1049669073643"
+    ],
+    "pvt_type": "account"
+}

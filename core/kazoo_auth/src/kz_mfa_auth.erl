@@ -10,14 +10,10 @@
 -export([authenticate/1
         ,get_configs/1
         ,get_system_configs/0
-        ,provider/1
+        ,provider/1, default_provider/0
         ]).
 
 -include("kazoo_auth.hrl").
-
--define(DEFAULT_PROVIDER,
-        kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>)
-       ).
 
 -type result() :: mfa_result().
 
@@ -62,17 +58,19 @@ provider(Configs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Get MFA configs from Account, if there was no config account
+%% @doc Get MFA config from Account, if there was no config account
 %% get system default configuration
 %% @end
 %%--------------------------------------------------------------------
--spec get_configs('undefined' | kz_proplist()) -> api_object().
+-spec get_configs('undefined' | kz_proplist() | kz_json:object()) -> api_object().
 get_configs('undefined') ->
     get_system_configs();
 get_configs(Options) when is_list(Options) ->
     AccountId = props:get_value(<<"account_id">>, Options),
-    ConfigId = props:get_value(<<"config_id">>, Options),
-    get_account_configs(AccountId, ConfigId).
+    ConfigId = props:get_value(<<"configuration_id">>, Options),
+    get_account_configs(AccountId, ConfigId);
+get_configs(JObj) ->
+    get_configs(kz_json:recursive_to_proplist(JObj)).
 
 -spec get_account_configs(api_binary(), api_binary()) -> api_object().
 get_account_configs('undefined', _ConfigId) -> get_system_configs();
@@ -95,16 +93,17 @@ get_account_configs(AccountId, ConfigId) ->
 -spec get_system_configs() -> api_object().
 get_system_configs() ->
     lager:debug("get authentication factor configuration from system config"),
-    case ?DEFAULT_PROVIDER of
-        'undefined' -> 'undefined';
-        DefaultProvider ->
-            case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DefaultProvider) of
-                {'ok', JObj} -> kz_json:set_value(<<"from">>, <<"system">>, JObj);
-                {'error', _R} ->
-                    lager:debug("failed to open default ~s multi factor provider config", [DefaultProvider]),
-                    'undefined'
-            end
+    DefaultProvider = default_provider(),
+    case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DefaultProvider) of
+        {'ok', JObj} -> kz_json:set_value(<<"from">>, <<"system">>, JObj);
+        {'error', _R} ->
+            lager:debug("failed to open default ~s multi factor provider config", [DefaultProvider]),
+            'undefined'
     end.
 
 -spec module_name(ne_binary()) -> atom().
 module_name(Provider) -> kz_term:to_atom(<<"kz_mfa_", Provider/binary>>, 'true').
+
+-spec default_provider() -> ne_binary().
+default_provider() ->
+    kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>, <<"duo">>).

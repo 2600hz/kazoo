@@ -8,8 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_loopback).
 
-
-
 -export([filter/3, filter/4]).
 
 -include("ecallmgr.hrl").
@@ -20,16 +18,15 @@
        ).
 -define(LOOPBACK_FILTERED, "Filtered-By-Loopback").
 
-
--spec filter(atom(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec filter(atom(), ne_binary(), kzd_freeswitch:data()) -> kz_proplist().
 filter(Node, UUID, Props) ->
     filter(?IS_LOOPBACK(Props), Node, UUID, Props, 'false').
 
--spec filter(atom(), ne_binary(), kz_proplist(), boolean()) -> kz_proplist().
+-spec filter(atom(), ne_binary(), kzd_freeswitch:data(), boolean()) -> kz_proplist().
 filter(Node, UUID, Props, Update) ->
     filter(?IS_LOOPBACK(Props), Node, UUID, Props, Update).
 
--spec filter(boolean(), atom(), ne_binary(), kz_proplist(), boolean()) -> kz_proplist().
+-spec filter(boolean(), atom(), ne_binary(), kzd_freeswitch:data(), boolean()) -> kz_proplist().
 filter('false', _Node, _UUID, Props, _) -> Props;
 filter('true', Node, UUID, Props, Update) ->
     case lists:foldl(fun filter_loopback/2, [], Props) of
@@ -63,11 +60,11 @@ filter_loopback({<<"variable_", ?CHANNEL_VAR_PREFIX, ?CHANNEL_LOOPBACK_HEADER_PR
 filter_loopback(_, Acc) -> Acc.
 
 -spec filter_props({ne_binary(), any()}, {kz_proplist(), kz_proplist()}) -> {kz_proplist(), kz_proplist()}.
-filter_props({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, _V}, {Clear, Filtered}) ->
-    {[<<?CHANNEL_VAR_PREFIX, Key/binary>> | Clear], Filtered};
-filter_props({<<?CHANNEL_VAR_PREFIX, Key/binary>>, _V}, {Clear, Filtered}) ->
-    {[<<?CHANNEL_VAR_PREFIX, Key/binary>> | Clear], Filtered};
-filter_props({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, _V}, {Clear, Filtered}) ->
+filter_props({?GET_CCV(Key), _V}, {Clear, Filtered}) ->
+    {[?CCV(Key) | Clear], Filtered};
+filter_props({?CCV(_)=Key, _V}, {Clear, Filtered}) ->
+    {[Key | Clear], Filtered};
+filter_props({?GET_CCV_HEADER(Key), _V}, {Clear, Filtered}) ->
     {[<<"sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>> | Clear], Filtered};
 filter_props(KV, {Clear, Filtered}) ->
     {Clear, [KV | Filtered]}.

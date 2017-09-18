@@ -16,7 +16,7 @@
             "type": "boolean"
         },
         "cumulative_discount": {
-            "description": "Whether to give a discount based on quatities of the account and all sub-accounts",
+            "description": "Whether to give a discount based on quantities of the account and all sub-accounts",
             "type": "boolean"
         },
         "cumulative_discount_rate": {
@@ -41,6 +41,15 @@
             },
             "type": "object"
         },
+        "markup_type": {
+            "description": "How rate for this usage is calculated",
+            "enum": [
+                "fixed_price",
+                "percentage",
+                "rate"
+            ],
+            "type": "string"
+        },
         "minimum": {
             "description": "The minimum quantity to charge for, if 'quantity' is less than 'minimum'",
             "type": "integer"
@@ -54,7 +63,7 @@
             "type": "integer"
         },
         "rate": {
-            "description": "How much is the item billed, per-item",
+            "description": "The rate to charge",
             "type": "number"
         },
         "rates": {

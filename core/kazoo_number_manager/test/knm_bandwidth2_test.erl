@@ -41,7 +41,8 @@ find_numbers(Options) ->
     Results = knm_search:find([{'quantity',Limit}
                               ,{'prefix', Prefix}
                               ,{'query_id', <<"QID-", Prefix/binary>>}
-                               |Options]),
+                               |Options
+                              ]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
      }
