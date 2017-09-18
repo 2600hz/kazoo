@@ -12,6 +12,7 @@
 
 -export([bind/3, bind/4
         ,binding_keys/1
+        ,event_binding_key/1
         ,distribute/1
         ,bindings_from_json/1
         ,bindings_to_json/1
@@ -81,13 +82,17 @@ binding_key(Severity, Verbosity, AccountId, AppName) ->
     ,(kz_term:to_binary(AccountId))/binary, "."
     ,(kz_term:to_binary(AppName))/binary>>.
 
+-spec event_binding_key(edr_event()) -> ne_binary().
+event_binding_key(#edr_event{account_id=AccountId
+                            ,severity=Severity
+                            ,verbosity=Verbosity
+                            ,app_name=AppName
+                            }) ->
+    binding_key(Severity, Verbosity, AccountId, AppName).
+
 -spec distribute(edr_event()) -> 'ok'.
-distribute(#edr_event{account_id=AccountId
-                     ,severity=Severity
-                     ,verbosity=Verbosity
-                     ,app_name=AppName
-                     }=Event) ->
-    kazoo_bindings:map(binding_key(Severity, Verbosity, AccountId, AppName), Event),
+distribute(#edr_event{}=Event) ->
+    kazoo_bindings:map(event_binding_key(Event), Event),
     'ok'.
 
 -spec push(edr_binding(), edr_event()) -> any().
@@ -130,4 +135,4 @@ bindings_to_json(Binding) ->
                       ,{<<"exact_severity">>, Binding#edr_binding.exact_severity}
                       ,{<<"verbosity">>, Binding#edr_binding.verbosity}
                       ,{<<"exact_verbosity">>, Binding#edr_binding.exact_verbosity}
-		      ]).
+                      ]).

@@ -1,12 +1,13 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2017 Conversant Ltd
 %%% @doc
-%%% Relays EDR messages to bh_edr via kapi_edr_blackhole
+%%% Relays EDR messages to amqp via kapi_edr_amqp
+%%%
 %%% @end
 %%% @contributors
 %%%    Max Lay
 %%%-------------------------------------------------------------------
--module(edr_be_blackhole).
+-module(edr_be_amqp).
 
 -behaviour(gen_edr_backend).
 
@@ -29,25 +30,19 @@ start_link(Args) ->
 
 -spec init(backend())-> init_ret(state()).
 init(#backend{})->
-    lager:info("starting bh_edr"),
+    lager:info("starting edr_be_amqp"),
     {'ok', #state{}};
 init(_Other)->
     'ignore'.
 
 -spec push(state(), edr_event()) -> 'ok'.
-push(_State, #edr_event{account_id='undefined'})->
-    'ok';
-push(_State, Event=#edr_event{app_name=AppName, app_version=AppVersion})->
-    FormatterOptions = kz_json:from_list([{<<"include_metadata">>, 'true'}
-                                         ,{<<"normalize">>, 'false'}
-                                         ,{<<"encode">>, 'false'}
-                                         ]),
-    Formatted = edr_fmt_json:format_event(FormatterOptions, Event),
-    kapi_edr_blackhole:publish_event(kz_json:set_values(kz_api:default_headers(<<"edr">>, <<"event">>, AppName, AppVersion), Formatted)).
+push(_State, Event=#edr_event{})->
+    kapi_edr_amqp:publish_event(Event).
 
 -spec stop(state(), any()) -> 'ok'.
 stop(_State, _Reason)->
     'ok'.
+
 -spec async_response_handler(any()) -> work_result().
 async_response_handler(_Response)->
     'ok'.

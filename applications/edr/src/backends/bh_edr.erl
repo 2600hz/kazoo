@@ -1,7 +1,10 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2017, Conversant Ltd
 %%% @doc
-%%%
+%%% Note: edr_be_amqp must be running, otherwise no events will come
+%%% through. You can request events with a verbosity or severity
+%%% greater than what edr_be_amqp has bound to, however you won't
+%%% receive any of them.
 %%% @end
 %%% @contributors
 %%% Max Lay
@@ -22,34 +25,34 @@ init() ->
     blackhole_bindings:bind(<<"blackhole.events.bindings.edr">>, ?MODULE, 'bindings').
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
-validate(Context, #{keys := [<<"*">>]}) ->
-    Context;
-validate(Context, #{keys := [Verbosity]}) ->
-    EdrLevels = [kz_term:to_binary(L) || L <- ?EDR_VERBOSITY_LEVELS],
-    case lists:member(Verbosity, EdrLevels) of
-        'true' ->
-            Context;
-        'false' ->
-            bh_context:add_error(Context, <<"edr verbosity must be one of: ", (kz_binary:join(EdrLevels))/binary>>)
+validate(Context, #{keys := [Severity, Verbosity, _AppName]}) ->
+    SeverityBinaries = [kz_term:to_binary(L) || L <- ?EDR_SEVERITY_LEVELS],
+    VerbosityBinaries = [kz_term:to_binary(L) || L <- ?EDR_VERBOSITY_LEVELS],
+    case {lists:member(Severity, SeverityBinaries), lists:member(Verbosity, VerbosityBinaries)} of
+        {'false', _} ->
+            bh_context:add_error(Context, <<"severity must be one of: ", (kz_binary:join(SeverityBinaries))/binary>>);
+        {_, 'false'} ->
+            bh_context:add_error(Context, <<"verbosity must be one of: ", (kz_binary:join(VerbosityBinaries))/binary>>);
+        {'true', 'true'} ->
+            Context
     end;
-validate(Context, #{keys := Keys}) ->
-    bh_context:add_error(Context, <<"invalid format for edr subscription : ", (kz_binary:join(Keys))/binary>>).
+validate(Context, #{keys := _Keys}) ->
+    bh_context:add_error(Context, <<"subscription should be in format: edr.severity.verbosity.app_name">>).
 
 -spec bindings(bh_context:context(), map()) -> map().
 bindings(_Context, #{account_id := AccountId
-                    ,keys := [Verbosity]
+                    ,keys := [Severity, Verbosity, AppName]
                     }=Map) ->
-    Requested = <<"edr.", Verbosity/binary>>,
-    Subscribed = [<<"edr_blackhole.", "*.", Verbosity/binary, ".", AccountId/binary>>],
-    Listeners = [{'amqp', 'edr_blackhole', edr_bind_options(AccountId, Verbosity)}],
+    Requested = <<"edr.", Severity/binary, ".", Verbosity/binary, ".", AppName/binary>>,
+    Binding = #edr_binding{account_id=AccountId
+                          ,severity=kz_term:to_atom(Severity)
+                          ,verbosity=kz_term:to_atom(Verbosity)
+                          ,app_name=AppName
+                          },
+    Subscribed = edr_bindings:binding_keys(Binding),
+    BindingOptions = kz_json:to_proplist(edr_bindings:bindings_to_json(Binding)),
+    Listeners = [{'amqp', 'edr_amqp', BindingOptions}],
     Map#{requested => Requested
         ,subscribed => Subscribed
         ,listeners => Listeners
         }.
-
--spec edr_bind_options(ne_binary(), ne_binary()) -> gen_listener:bindings().
-edr_bind_options(AccountId, Verbosity) ->
-    [{'verbosity', Verbosity}
-    ,{'account_id', AccountId}
-    ,'federate'
-    ].
