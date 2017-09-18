@@ -41,11 +41,24 @@
                                 "severity": {
                                     "default": "ok",
                                     "description": "What severity are we interested in events for?",
+                                    "enum": [
+                                        "ok",
+                                        "warning",
+                                        "critical"
+                                    ],
                                     "type": "string"
                                 },
                                 "verbosity": {
                                     "default": "info",
                                     "description": "What verbosity are we interested in events for?",
+                                    "enum": [
+                                        "trace",
+                                        "debug",
+                                        "info",
+                                        "warn",
+                                        "error",
+                                        "fatal"
+                                    ],
                                     "type": "string"
                                 }
                             },

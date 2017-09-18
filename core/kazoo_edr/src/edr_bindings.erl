@@ -10,12 +10,16 @@
 
 -include("edr.hrl").
 
+%% Commonly used functions
 -export([bind/3, bind/4
-        ,binding_keys/1
-        ,event_binding_key/1
-        ,distribute/1
         ,bindings_from_json/1
         ,bindings_to_json/1
+        ]).
+
+%% You probably don't want to be using these unless you know what you're doing
+-export([binding_keys/1
+        ,event_binding_key/1
+        ,distribute/1
         ]).
 
 %% kazoo_bindings callbacks
