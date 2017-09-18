@@ -11,30 +11,44 @@
 
 -include("edr.hrl").
 
-%% TODO: Register, delete, enable, disable should start and stop backends
 -export([registered_backends/0
-        ,register_backend/4
+        ,register_backend/1, register_backend/2, register_backend/3, register_backend/4, register_backend/5
         ,delete_backend/1
         ,enable_backend/1
         ,disable_backend/1
         ]).
 
--spec register_backend(ne_binary(), ne_binary(), kz_json:object() | ne_binary(), boolean() | ne_binary())-> 'ok' | {'error', 'already_registered'}.
-register_backend(Name, Type, Opts, IsEnable) when is_binary(Opts) ->
-   register_backend(Name, Type, kz_json:decode(Opts), IsEnable);
-register_backend(Name, Type, Opts, IsEnable) ->
-    %% TODO: Add provision for bindings
+-spec register_backend(ne_binary())-> 'ok' | {'error', 'already_registered'}.
+-spec register_backend(ne_binary(), ne_binary())-> 'ok' | {'error', 'already_registered'}.
+-spec register_backend(ne_binary(), ne_binary(), ne_binary() | kz_json:object())-> 'ok' | {'error', 'already_registered'}.
+-spec register_backend(ne_binary(), ne_binary(), ne_binary() | kz_json:object(), ne_binary() | kz_json:objects())-> 'ok' | {'error', 'already_registered'}.
+-spec register_backend(ne_binary(), ne_binary(), ne_binary() | kz_json:object(), ne_binary() | kz_json:objects(), ne_binary() | boolean())-> 'ok' | {'error', 'already_registered'}.
+register_backend(Name) ->
+   register_backend(Name, Name).
+register_backend(Name, Type) ->
+   register_backend(Name, Type, kz_json:new()).
+register_backend(Name, Type, Opts) ->
+   register_backend(Name, Type, Opts, edr_bindings:bindings_to_json([#edr_binding{}])).
+register_backend(Name, Type, Opts, Bindings) ->
+   register_backend(Name, Type, Opts, Bindings, 'true').
+register_backend(Name, Type, Opts, Bindings, Enabled) when is_binary(Opts) ->
+   register_backend(Name, Type, kz_json:decode(Opts), Bindings, Enabled);
+register_backend(Name, Type, Opts, Bindings, Enabled) when is_binary(Bindings) ->
+   register_backend(Name, Type, Opts, kz_json:decode(Bindings), Enabled);
+register_backend(Name, Type, Opts, Bindings, Enabled) when is_binary(Enabled) ->
+   register_backend(Name, Type, Opts, Bindings, kz_term:is_true(Enabled));
+register_backend(Name, Type, Opts, Bindings, Enabled) ->
     Backends = registered_backends(),
     case [J || J <- Backends, match_backend(Name, J)] of
         [] ->
             Backend = kz_json:from_list([{<<"name">>, Name}
-                                        ,{<<"options">>, Opts}
                                         ,{<<"type">>, Type}
-                                        ,{<<"enabled">>, kz_term:is_true(IsEnable)}
-                                        ,{<<"bindings">>, edr_bindings:bindings_to_json([#edr_binding{}])}
+                                        ,{<<"options">>, Opts}
+                                        ,{<<"bindings">>, Bindings}
+                                        ,{<<"enabled">>, Enabled}
                                         ]),
             set_registered_backends([Backend | Backends]),
-            case kz_term:is_true(IsEnable) of
+            case kz_term:is_true(Enabled) of
                 'true' ->
                     edr_backend_sup:start_backend(Name),
                     'ok';
