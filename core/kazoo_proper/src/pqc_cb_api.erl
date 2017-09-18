@@ -129,7 +129,9 @@ default_request_headers() ->
 
 default_request_headers(RequestId) ->
     NowMS = kz_time:now_ms(),
-    [{<<"x-request-id">>, kz_term:to_list(RequestId) ++ "-" ++ integer_to_list(NowMS)}
+    APIRequestID = kz_term:to_list(RequestId) ++ "-" ++ integer_to_list(NowMS),
+    ?DEBUG("request id ~s", [APIRequestID]),
+    [{<<"x-request-id">>, APIRequestID}
      | default_request_headers()
     ].
 
@@ -154,9 +156,9 @@ make_request(ExpectedCodes, HTTP, URL, RequestHeaders, RequestBody) ->
     ?DEBUG("body: ~s", [RequestBody]),
     handle_response(ExpectedCodes, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
 
--spec create_envelope(kz_json:object()) ->
+-spec create_envelope(kz_json:json_term()) ->
                              kz_json:object().
--spec create_envelope(kz_json:object(), kz_json:object()) ->
+-spec create_envelope(kz_json:json_term(), kz_json:object()) ->
                              kz_json:object().
 create_envelope(Data) ->
     create_envelope(Data, kz_json:new()).
@@ -184,7 +186,11 @@ handle_response(_ExtectedCode, {'error','socket_closed_remotely'}=E) ->
     throw(E);
 handle_response(_ExpectedCode, {'ok', _ActualCode, _RespHeaders, RespBody}) ->
     ?ERROR("failed to get ~w: ~p: ~s", [_ExpectedCode, _ActualCode, RespBody]),
-    {'error', RespBody}.
+    {'error', RespBody};
+handle_response(_ExpectedCode, {'error', _}=E) ->
+    ?ERROR("broked req: ~p", [E]),
+    E.
+
 
 -spec start_trace(ne_binary()) -> {'ok', kz_data_tracing:trace_ref()}.
 start_trace(RequestId) ->

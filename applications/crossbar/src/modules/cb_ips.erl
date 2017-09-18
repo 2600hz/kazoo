@@ -10,10 +10,12 @@
 -module(cb_ips).
 
 -export([init/0
+        ,authorize/1
         ,allowed_methods/0, allowed_methods/1
         ,resource_exists/0, resource_exists/1
         ,validate/1, validate/2
         ,post/1 ,post/2
+        ,put/1
         ,delete/2
         ]).
 
@@ -35,11 +37,22 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.ips">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.ips">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.ips">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.ips">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.ips">>, ?MODULE, 'put'),
     crossbar_bindings:bind(<<"*.execute.delete.ips">>, ?MODULE, 'delete').
+
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    cb_context:put_reqid(Context),
+    authorize(Context, cb_context:req_nouns(Context)).
+
+authorize(Context, [{<<"ips">>, []}]) ->
+    cb_context:is_superduper_admin(Context);
+authorize(_Context, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -51,7 +64,7 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 allowed_methods(?ASSIGNED) ->
     [?HTTP_GET];
@@ -89,15 +102,19 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
+    cb_context:put_reqid(Context),
     validate_ips(Context, cb_context:req_verb(Context)).
 
 validate(Context, PathToken) ->
+    cb_context:put_reqid(Context),
     validate_ips(Context, PathToken, cb_context:req_verb(Context)).
 
 -spec validate_ips(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec validate_ips(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 validate_ips(Context, ?HTTP_GET) ->
     load_available(Context);
+validate_ips(Context, ?HTTP_PUT) ->
+    maybe_create_ip(Context);
 validate_ips(Context, ?HTTP_POST) ->
     maybe_assign_ips(Context).
 
@@ -112,8 +129,10 @@ validate_ips(Context, IP, ?HTTP_GET) ->
 validate_ips(Context, IP, ?HTTP_POST) ->
     validate_ip_not_in_use(Context, IP);
 validate_ips(Context, IP, ?HTTP_DELETE) ->
-    release_ip(Context, IP).
-
+    case kz_ip:fetch(IP) of
+        {'ok', _} -> cb_context:set_resp_status(Context, 'success');
+        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, IP, Context)
+    end.
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
@@ -125,25 +144,47 @@ post(Context) ->
                 end
         end,
     ReqData = cb_context:req_data(Context),
-    Ips = kz_json:get_value(<<"ips">>, ReqData, []),
+    IPs = kz_json:get_value(<<"ips">>, ReqData, []),
     Props = [{<<"type">>, <<"ips">>}
-            ,{<<"dedicated">>, erlang:length(Ips)}
+            ,{<<"dedicated">>, erlang:length(IPs)}
             ],
     crossbar_services:maybe_dry_run(Context, Callback, Props).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, Ip) ->
+post(Context, IP) ->
     Callback =
         fun() ->
                 case cb_context:resp_status(Context) of
-                    'success' -> assign_ip(Context, Ip);
+                    'success' -> assign_ip(Context, IP);
                     _ -> Context
                 end
         end,
     crossbar_services:maybe_dry_run(Context, Callback, <<"ips">>).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _DocId) -> Context.
+delete(Context, IP) ->
+    release_or_delete_ip(Context, IP, cb_context:req_nouns(Context)).
+
+-spec put(cb_context:context()) -> cb_context:context().
+put(Context) ->
+    ReqData = cb_context:req_data(Context),
+    IP = kz_json:get_ne_binary_value(<<"ip">>, ReqData),
+    Zone = kz_json:get_ne_binary_value(<<"zone">>, ReqData),
+    Host = kz_json:get_ne_binary_value(<<"host">>, ReqData),
+
+    case kz_ip:create(IP, Zone, Host) of
+        {'ok', IPJObj} ->
+            JObj = kz_doc:leak_private_fields(IPJObj),
+            cb_context:setters(Context
+                              ,[{fun cb_context:set_doc/2, JObj}
+                               ,{fun cb_context:set_resp_status/2, 'success'}
+                               ,{fun cb_context:set_resp_data/2, JObj}
+                               ,{fun cb_context:set_resp_etag/2, crossbar_doc:rev_to_etag(JObj)}
+                               ]);
+        {'error', Error} ->
+            lager:debug("failed to create ip ~s: ~p", [IP, Error]),
+            crossbar_doc:handle_datamgr_errors(Error, IP, Context)
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -157,7 +198,7 @@ delete(Context, _DocId) -> Context.
 -spec load_available(cb_context:context()) -> cb_context:context().
 load_available(Context) ->
     QS = cb_context:query_string(Context),
-    Zone = kz_json:get_value(<<"zone">>, QS),
+    Zone = kz_json:get_ne_binary_value(<<"zone">>, QS),
     case kz_ips:available(Zone) of
         {'ok', JObjs} ->
             cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
@@ -248,6 +289,21 @@ load_ip(Context, Id) ->
                                        )
     end.
 
+-define(IP_SCHEMA, kz_json:from_list([{<<"type">>, <<"string">>}])).
+-define(HOST_SCHEMA, kz_json:from_list([{<<"type">>, <<"string">>}])).
+-define(ZONE_SCHEMA, kz_json:from_list([{<<"type">>, <<"string">>}])).
+
+-define(CREATE_IP_SCHEMA
+       ,kz_json:from_list([{<<"ip">>, ?IP_SCHEMA}
+                          ,{<<"host">>, ?HOST_SCHEMA}
+                          ,{<<"zone">>, ?ZONE_SCHEMA}
+                          ])
+       ).
+
+-spec maybe_create_ip(cb_context:context()) -> cb_context:context().
+maybe_create_ip(Context) ->
+    cb_context:validate_request_data(?CREATE_IP_SCHEMA, Context).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -309,26 +365,54 @@ error_ip_assigned(Context, IP) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_ips(cb_context:context()) -> cb_context:context().
--spec assign_ips(cb_context:context(), ne_binaries(), kz_json:objects()) -> cb_context:context().
 assign_ips(Context) ->
     ReqData = cb_context:req_data(Context),
-    assign_ips(Context, kz_json:get_value(<<"ips">>, ReqData, []), []).
+    {Context1, RespData, AccountIds} =
+        lists:foldl(fun maybe_assign_ip/2
+                   ,{Context, [], []}
+                   ,kz_json:get_list_value(<<"ips">>, ReqData, [cb_context:account_id(Context)])
+                   ),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            reconcile_services(lists:usort(AccountIds)),
+            crossbar_doc:handle_json_success(RespData, Context1);
+        _ -> Context1
+    end.
 
-assign_ips(Context, [], RespData) ->
-    cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
-                            ,RespData
-                            );
-assign_ips(Context, [Ip|Ips], RespData) ->
+-spec reconcile_services([api_ne_binary()]) -> 'ok'.
+reconcile_services(AccountIds) ->
+    _ = [kz_services:reconcile(AccountId, <<"ips">>)
+         || AccountId <- AccountIds,
+            'undefined' =/= AccountId
+        ],
+    'ok'.
+
+-type assign_acc() :: {cb_context:context(), kz_json:objects(), [ne_binary() | 'undefined']}.
+-spec maybe_assign_ip(ne_binary(), assign_acc()) -> assign_acc().
+maybe_assign_ip(IP, {Context, RespData, AccountIds}) ->
     AccountId = cb_context:account_id(Context),
-    case kz_ip:assign(AccountId, Ip) of
-        {'ok', IP} ->
-            IPJSON = kz_ip:to_json(IP),
-            assign_ips(Context, Ips, [clean_ip(IPJSON)|RespData]);
+    case kz_ip:fetch(IP) of
+        {'ok', JObj} -> maybe_assign_ip(Context, AccountId, JObj, RespData, AccountIds);
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault'
-                                       ,kz_json:from_list([{<<"cause">>, Reason}])
-                                       ,Context
-                                       )
+            {crossbar_doc:handle_datamgr_errors(Reason, IP, Context), RespData}
+    end.
+
+-spec maybe_assign_ip(cb_context:context(), ne_binary(), kz_json:object(), kz_json:objects(), [ne_binary() | 'undefined']) -> assign_acc().
+maybe_assign_ip(Context, AccountId, IPJObj, RespData, AccountIds) ->
+    case kz_ip:assign(AccountId, IPJObj) of
+        {'ok', AssignedIP} ->
+            {Context
+            ,[clean_ip(kz_ip:to_json(AssignedIP)) | RespData]
+            ,[kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, IPJObj) | AccountIds]
+            };
+        {'error', Reason} ->
+            {cb_context:add_system_error('datastore_fault'
+                                        ,kz_json:from_list([{<<"cause">>, Reason}])
+                                        ,Context
+                                        )
+            ,RespData
+            ,AccountIds
+            }
     end.
 
 %%--------------------------------------------------------------------
@@ -337,11 +421,11 @@ assign_ips(Context, [Ip|Ips], RespData) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_ip(cb_context:context(), ne_binary()) -> cb_context:context().
-assign_ip(Context, Ip) ->
+assign_ip(Context, IP) ->
     AccountId = cb_context:account_id(Context),
-    case kz_ip:assign(AccountId, Ip) of
-        {'ok', IP} ->
-            IPJSON = kz_ip:to_json(IP),
+    case kz_ip:assign(AccountId, IP) of
+        {'ok', AssignedIP} ->
+            IPJSON = kz_ip:to_json(AssignedIP),
             cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,clean_ip(IPJSON)
                                     );
@@ -357,6 +441,12 @@ assign_ip(Context, Ip) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec release_or_delete_ip(cb_context:context(), ne_binary(), req_nouns()) -> cb_context:context().
+release_or_delete_ip(Context, IP, [{<<"ips">>, [IP]}]) ->
+    delete_ip(Context, IP);
+release_or_delete_ip(Context, IP, [{<<"ips">>, [IP]}, {<<"accounts">>, [_]}]) ->
+    release_ip(Context, IP).
+
 -spec release_ip(cb_context:context(), ne_binary()) -> cb_context:context().
 release_ip(Context, Id) ->
     case kz_ip:release(Id) of
@@ -366,10 +456,14 @@ release_ip(Context, Id) ->
                                     ,clean_ip(IPJSON)
                                     );
         {'error', Reason} ->
-            cb_context:add_system_error('datastore_fault'
-                                       ,kz_json:from_list([{<<"cause">>, Reason}])
-                                       ,Context
-                                       )
+            crossbar_doc:handle_datamgr_errors(Reason, Id, Context)
+    end.
+
+-spec delete_ip(cb_context:context(), ne_binary()) -> cb_context:context().
+delete_ip(Context, IP) ->
+    case kz_ip:delete(IP) of
+        {'ok', Deleted} -> crossbar_doc:handle_json_success(Deleted, Context);
+        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, IP, Context)
     end.
 
 %%--------------------------------------------------------------------

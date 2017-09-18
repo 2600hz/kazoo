@@ -72,21 +72,21 @@ assign() ->
 
 -spec assign(ne_binary(), ne_binary()) -> 'no_return'.
 assign(IP, Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    _ = case kz_datamgr:open_doc(AccountDb, AccountId) of
-            {'ok', _} ->
-                case kz_ip:assign(Account, IP) of
-                    {'ok', _} ->
-                        io:format("assigned IP ~s to ~s~n"
-                                 ,[IP, Account]);
-                    {'error', _R} ->
-                        io:format("unable to assign IP: ~p~n", [_R])
-                end;
-            {'error', _R} ->
-                io:format("unable to find account: ~p~n", [_R])
-        end,
+    case kz_account:fetch(Account) of
+        {'ok', _} -> do_assignment(Account, IP);
+        {'error', _R} ->
+            io:format("unable to find account: ~p~n", [_R])
+    end,
     'no_return'.
+
+-spec do_assignment(ne_binary(), ne_binary()) -> 'ok'.
+do_assignment(Account, IP) ->
+    case kz_ip:assign(Account, IP) of
+        {'ok', _} ->
+            io:format("assigned IP ~s to ~s~n", [IP, Account]);
+        {'error', _R} ->
+            io:format("unable to assign IP: ~p~n", [_R])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

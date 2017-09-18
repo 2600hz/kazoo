@@ -14,6 +14,13 @@ CLEAN_MOAR = clean-generated
 
 all: compile
 
+eunit: kz-test
+
+test: kz-test
+
+kz-test:
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_stdlib
+
 include $(ROOT)/make/kz.mk
 
 clean-generated:

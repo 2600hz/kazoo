@@ -877,24 +877,27 @@ fold_processor(Routing, Payload, Options) when not is_list(Payload) ->
     fold_processor(Routing, [Payload], Options);
 fold_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
+    Candidates = kazoo_bindings_rt:candidates(Options, Routing),
+
     [Reply|_] =
-        lists:foldl(
-          fun(#kz_binding{binding=Binding
-                         ,binding_parts=BParts
-                         ,binding_responders=Responders
-                         }
-             ,Acc
-             ) ->
-                  case Binding =:= Routing
-                      orelse kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
-                  of
-                      'true' -> fold_bind_results(queue:to_list(Responders), Acc, Routing);
-                      'false' -> Acc
-                  end
-          end
+        lists:foldl(fun(#kz_binding{binding=Binding
+                                   ,binding_parts=BParts
+                                   ,binding_responders=Responders
+                                   }
+                       ,Acc
+                       ) ->
+                            case Binding =:= Routing
+                                orelse kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
+                            of
+                                'true' ->
+                                    lager:debug("folding ~p to ~p", [Routing, Binding]),
+                                    fold_bind_results(queue:to_list(Responders), Acc, Routing);
+                                'false' -> Acc
+                            end
+                    end
                    ,Payload
-                   ,kazoo_bindings_rt:candidates(Options, Routing)
-         ),
+                   ,Candidates
+                   ),
     Reply.
 
 -spec candidates(ne_binary()) -> kz_bindings().

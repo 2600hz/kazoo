@@ -735,11 +735,14 @@ response(#cb_context{resp_error_code=Code
                                    context().
 validate_request_data(SchemaId, Context) ->
     validate_request_data(SchemaId, Context, 'undefined').
+
 validate_request_data(SchemaId, Context, OnSuccess) ->
     validate_request_data(SchemaId, Context, OnSuccess, 'undefined').
+
 validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
     SchemaRequired = fetch(Context, 'ensure_valid_schema', ?SHOULD_ENSURE_SCHEMA_IS_VALID),
     validate_request_data(SchemaId, Context, OnSuccess, OnFailure, SchemaRequired).
+
 validate_request_data('undefined', Context, OnSuccess, _OnFailure, 'false') ->
     lager:error("schema id or schema JSON not defined, continuing anyway"),
     validate_passed(Context, OnSuccess);
@@ -761,10 +764,14 @@ validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, Schema
 validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired) ->
     Strict = fetch(Context, 'schema_strict_validation', ?SHOULD_FAIL_ON_INVALID_DATA),
     try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(req_data(Context))) of
-        {'ok', JObj} -> validate_passed(set_req_data(Context, JObj), OnSuccess);
+        {'ok', JObj} ->
+            lager:debug("validation passed"),
+            validate_passed(set_req_data(Context, JObj), OnSuccess);
         {'error', Errors} when Strict ->
+            lager:debug("validation errors when strictly validating"),
             validate_failed(SchemaJObj, Context, Errors, OnFailure);
         {'error', Errors} ->
+            lager:debug("validation errors but not stricly validating, trying to fix request"),
             maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
         'error':'function_clause' ->
