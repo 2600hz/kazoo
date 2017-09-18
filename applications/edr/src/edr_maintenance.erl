@@ -16,6 +16,7 @@
         ,delete_backend/1
         ,enable_backend/1
         ,disable_backend/1
+        ,restart_backend/1
         ]).
 
 -spec register_backend(ne_binary())-> 'ok' | {'error', 'already_registered'}.
@@ -100,6 +101,11 @@ maybe_modify_backend(Name, Fun, JObj) ->
 -spec registered_backends() -> kz_json:object().
 registered_backends() -> 
     kapps_config:get_jsons(<<"edr">>, <<"backends">>, []).
+
+-spec restart_backend(ne_binary()) -> any().
+restart_backend(Name) ->
+   edr_backend_sup:stop_backend(Name),
+   edr_backend_sup:start_backend(Name).
 
 -spec match_backend(ne_binary(), kz_json:object()) -> boolean().
 match_backend(Name, JObj) ->

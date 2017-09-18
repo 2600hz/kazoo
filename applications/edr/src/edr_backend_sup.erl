@@ -33,10 +33,10 @@ get_running_backends() ->
 registered_backends() ->
     [edr_util:backend_from_json(Backend) || Backend <- edr_maintenance:registered_backends()].
 
--spec start_backend(ne_binary()) -> {'error', 'not_registred'} | sup_startchild_ret().
+-spec start_backend(ne_binary()) -> {'error', 'not_registered'} | sup_startchild_ret().
 start_backend(Name) when is_binary(Name) ->
     case [B || B <- registered_backends(), B#backend.name =:= Name] of
-        [] -> {'error', 'not_registred'};
+        [] -> {'error', 'not_registered'};
         [Backend] -> start_backend(Backend)
     end;
 start_backend(#backend{name=Name}=Backend) ->
