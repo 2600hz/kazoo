@@ -23,7 +23,7 @@
 
 -record(state, {pid :: pid()
                ,formatter :: module()
-               ,formatter_options :: module()
+               ,formatter_options :: kz_json:object()
                }).
 -type state() :: #state{}.
 
