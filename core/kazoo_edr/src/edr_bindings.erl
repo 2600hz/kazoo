@@ -26,6 +26,7 @@
                          ,binding    :: edr_binding()
                          ,payload    :: any()
                          }).
+-type binding_payload() :: #binding_payload{}.
 
 -type bind_resp() :: ['ok' | {'error', 'exists'}].
 
@@ -78,9 +79,9 @@ levels(Level, AllLevels) ->
 -spec binding_key(edr_severity(), edr_verbosity(), api_binary(), ne_binary()) -> ne_binary().
 binding_key(Severity, Verbosity, AccountId, AppName) ->
     <<"edr.", (kz_term:to_binary(Severity))/binary, "."
-    ,(kz_term:to_binary(Verbosity))/binary, "."
-    ,(kz_term:to_binary(AccountId))/binary, "."
-    ,(kz_term:to_binary(AppName))/binary>>.
+      ,(kz_term:to_binary(Verbosity))/binary, "."
+      ,(kz_term:to_binary(AccountId))/binary, "."
+      ,(kz_term:to_binary(AppName))/binary>>.
 
 -spec event_binding_key(edr_event()) -> ne_binary().
 event_binding_key(#edr_event{account_id=AccountId
@@ -95,7 +96,7 @@ distribute(#edr_event{}=Event) ->
     kazoo_bindings:map(event_binding_key(Event), Event),
     'ok'.
 
--spec push(edr_binding(), edr_event()) -> any().
+-spec push(binding_payload(), edr_event()) -> any().
 push(#binding_payload{module=Module, function=Fun, binding=Binding, payload=Payload}, #edr_event{}=Event) ->
     case should_push(Binding, Event) of
         'true' when Payload =:= 'undefined' -> erlang:apply(Module, Fun, [Event]);
@@ -108,7 +109,7 @@ push(#binding_payload{module=Module, function=Fun, binding=Binding, payload=Payl
 should_push(#edr_binding{account_id=AccountId, include_descendants=true}
            ,#edr_event{account_tree=AccountTree}) ->
     AccountTree =/= 'undefined'
-    andalso lists:member(AccountId, AccountTree);
+        andalso lists:member(AccountId, AccountTree);
 should_push(_Binding, _Event) ->
     'true'.
 

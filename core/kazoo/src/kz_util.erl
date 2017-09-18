@@ -594,12 +594,12 @@ account_update(Account, UpdateFun) ->
 
 -spec account_tree(api_binary()) -> api_binaries() | 'undefined'.
 account_tree('undefined') ->
-  'undefined';
+    'undefined';
 account_tree(AccountId) ->
-  case kz_account:fetch(AccountId) of
-    {'ok', Doc} -> kz_account:tree(Doc);
-    _ -> 'undefined'
-  end.
+    case kz_account:fetch(AccountId) of
+        {'ok', Doc} -> kz_account:tree(Doc);
+        _ -> 'undefined'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

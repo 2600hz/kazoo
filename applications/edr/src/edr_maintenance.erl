@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz
+%%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%% Sup commands for EDR backends
 %%% @end
@@ -25,19 +25,19 @@
 -spec register_backend(ne_binary(), ne_binary(), ne_binary() | kz_json:object(), ne_binary() | kz_json:objects())-> 'ok' | {'error', 'already_registered'}.
 -spec register_backend(ne_binary(), ne_binary(), ne_binary() | kz_json:object(), ne_binary() | kz_json:objects(), ne_binary() | boolean())-> 'ok' | {'error', 'already_registered'}.
 register_backend(Name) ->
-   register_backend(Name, Name).
+    register_backend(Name, Name).
 register_backend(Name, Type) ->
-   register_backend(Name, Type, kz_json:new()).
+    register_backend(Name, Type, kz_json:new()).
 register_backend(Name, Type, Opts) ->
-   register_backend(Name, Type, Opts, edr_bindings:bindings_to_json([#edr_binding{}])).
+    register_backend(Name, Type, Opts, edr_bindings:bindings_to_json([#edr_binding{}])).
 register_backend(Name, Type, Opts, Bindings) ->
-   register_backend(Name, Type, Opts, Bindings, 'true').
+    register_backend(Name, Type, Opts, Bindings, 'true').
 register_backend(Name, Type, Opts, Bindings, Enabled) when is_binary(Opts) ->
-   register_backend(Name, Type, kz_json:decode(Opts), Bindings, Enabled);
+    register_backend(Name, Type, kz_json:decode(Opts), Bindings, Enabled);
 register_backend(Name, Type, Opts, Bindings, Enabled) when is_binary(Bindings) ->
-   register_backend(Name, Type, Opts, kz_json:decode(Bindings), Enabled);
+    register_backend(Name, Type, Opts, kz_json:decode(Bindings), Enabled);
 register_backend(Name, Type, Opts, Bindings, Enabled) when is_binary(Enabled) ->
-   register_backend(Name, Type, Opts, Bindings, kz_term:is_true(Enabled));
+    register_backend(Name, Type, Opts, Bindings, kz_term:is_true(Enabled));
 register_backend(Name, Type, Opts, Bindings, Enabled) ->
     Backends = registered_backends(),
     case [J || J <- Backends, match_backend(Name, J)] of
@@ -104,8 +104,8 @@ registered_backends() ->
 
 -spec restart_backend(ne_binary()) -> any().
 restart_backend(Name) ->
-   edr_backend_sup:stop_backend(Name),
-   edr_backend_sup:start_backend(Name).
+    edr_backend_sup:stop_backend(Name),
+    edr_backend_sup:start_backend(Name).
 
 -spec match_backend(ne_binary(), kz_json:object()) -> boolean().
 match_backend(Name, JObj) ->

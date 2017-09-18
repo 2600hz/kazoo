@@ -1,52 +1,56 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.acdc_stats.status_outbound",
-    "description": "AMQP API for acdc_stats.status_outbound",
+    "_id": "kapi.edr_amqp.event",
+    "description": "AMQP API for edr_amqp.event",
     "properties": {
         "Account-ID": {
             "type": "string"
         },
-        "Agent-ID": {
+        "Account-Tree": {
             "type": "string"
         },
-        "Call-ID": {
-            "type": "string"
-        },
-        "Caller-ID-Name": {
-            "type": "string"
-        },
-        "Caller-ID-Number": {
-            "type": "string"
+        "Body": {
+            "type": "object"
         },
         "Event-Category": {
             "enum": [
-                "acdc_status_stat"
+                "edr"
             ],
             "type": "string"
         },
         "Event-Name": {
             "enum": [
-                "outbound"
+                "event"
             ],
             "type": "string"
         },
-        "Pause-Time": {
+        "Gregorian-Time": {
             "type": "integer"
         },
-        "Queue-ID": {
+        "ID": {
+            "type": "string"
+        },
+        "Node": {
+            "type": "string"
+        },
+        "Severity": {
             "type": "string"
         },
         "Timestamp": {
             "type": "string"
         },
-        "Wait-Time": {
-            "type": "integer"
+        "Verbosity": {
+            "type": "string"
         }
     },
     "required": [
-        "Account-ID",
-        "Agent-ID",
-        "Timestamp"
+        "Body",
+        "Gregorian-Time",
+        "ID",
+        "Node",
+        "Severity",
+        "Timestamp",
+        "Verbosity"
     ],
     "type": "object"
 }

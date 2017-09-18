@@ -4,9 +4,107 @@
     "description": "Schema for edr system_config",
     "properties": {
         "backends": {
-            "default": {},
-            "description": "Enabled edr backends",
-            "type": "object"
+            "default": [],
+            "description": "Registered edr backends",
+            "items": {
+                "properties": {
+                    "bindings": {
+                        "description": "The types of events the backend should be notified about",
+                        "items": {
+                            "description": "An edr binding",
+                            "properties": {
+                                "account_id": {
+                                    "default": "*",
+                                    "description": "The account id to recieve events from. If not specified or * then events for all accounts will be recieved",
+                                    "type": "string"
+                                },
+                                "app_name": {
+                                    "default": "*",
+                                    "description": "Which apps should we recieve events from? If not specified or * then events for all apps will be recieved",
+                                    "type": "string"
+                                },
+                                "exact_severity": {
+                                    "default": false,
+                                    "description": "If true, then only events with severity exactly matching the severity field will be recieved. If false then more sever events will also be recieved",
+                                    "type": "boolean"
+                                },
+                                "exact_verbosity": {
+                                    "default": false,
+                                    "description": "If true, then only events with verbosity exactly matching the severity field will be recieved. If false then less verbose events will also be recieved",
+                                    "type": "boolean"
+                                },
+                                "include_descendants": {
+                                    "default": false,
+                                    "description": "Should we recieve events relating to descendant accounts if an account is specified?",
+                                    "type": "boolean"
+                                },
+                                "severity": {
+                                    "default": "ok",
+                                    "description": "What severity are we interested in events for?",
+                                    "type": "string"
+                                },
+                                "verbosity": {
+                                    "default": "info",
+                                    "description": "What verbosity are we interested in events for?",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "type": "array"
+                    },
+                    "enabled": {
+                        "default": true,
+                        "description": "Should the backend be started on edr app start?",
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "description": "A unique identifier for the backend",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "options": {
+                        "description": "Options passed on to the backend module. These vary by module",
+                        "properties": {
+                            "formatter": {
+                                "description": "Output format configuration which is used by some (but not all) backends",
+                                "properties": {
+                                    "options": {
+                                        "description": "Options passed on to the formatter module. These vary by module",
+                                        "type": "object"
+                                    },
+                                    "type": {
+                                        "description": "The formatter module to be used (eg. json refers to edr_fmt_json.erl)",
+                                        "enum": [
+                                            "json"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": {
+                        "description": "The backend module to be used (eg. amqp refers to edr_be_amqp.erl)",
+                        "enum": [
+                            "amqp",
+                            "file",
+                            "http"
+                        ],
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "type",
+                    "bindings",
+                    "enabled"
+                ],
+                "type": "object"
+            },
+            "type": "array"
         }
     },
     "type": "object"

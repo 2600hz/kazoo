@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz
+%%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -33,7 +33,7 @@ get_running_backends() ->
 registered_backends() ->
     [edr_util:backend_from_json(Backend) || Backend <- edr_maintenance:registered_backends()].
 
--spec start_backend(ne_binary()) -> {'error', 'not_registered'} | sup_startchild_ret().
+-spec start_backend(ne_binary() | backend()) -> {'error', 'not_registered'} | sup_startchild_ret().
 start_backend(Name) when is_binary(Name) ->
     case [B || B <- registered_backends(), B#backend.name =:= Name] of
         [] -> {'error', 'not_registered'};
