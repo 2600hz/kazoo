@@ -283,17 +283,21 @@ store(#media_store_path{db=Db
     case kz_datamgr:put_attachment(Db, Id, Attachment, Contents, Options) of
         {'ok', JObj} ->
             lager:debug("successfully stored(~p) ~p ~p", [Db, Id, Attachment]),
-            {'ok', success(JObj, Req0), State};
+            {'ok', success(JObj, [], Req0), State};
+        {'ok', JObj, Props} ->
+            lager:debug("successfully stored(~p) ~p ~p", [Db, Id, Attachment]),
+            {'ok', success(JObj, Props, Req0), State};
         {'error', Reason} ->
             lager:debug("unable to store file: ~p", [Reason]),
             {'ok', failure(Reason, Req0), State}
     end.
 
--spec success(kz_json:object(), cowboy_req:req()) -> cowboy_req:req().
-success(JObj, Req0) ->
+-spec success(kz_json:object(), kz_proplist(), cowboy_req:req()) -> cowboy_req:req().
+success(JObj, Props, Req0) ->
     Body = io_lib:format("~s~n", [kz_json:encode(kz_json:set_value(<<"ok">>, 'true', JObj))]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),
-    {'ok', Req2} = cowboy_req:reply(200, Req1),
+    Headers = [{kz_term:to_binary(H), kz_term:to_binary(V)} || {H, V} <- props:get_value('headers', Props, [])],
+    {'ok', Req2} = cowboy_req:reply(200, Headers, Req1),
     Req2.
 
 -spec failure(any(), cowboy_req:req()) -> cowboy_req:req().

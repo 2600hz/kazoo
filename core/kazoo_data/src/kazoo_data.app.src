@@ -12,6 +12,7 @@
                  , lager
                  , kazoo_config
                  , kazoo_amqp
+                 , kazoo_attachments
                  ]}
  ,{mod, {kazoo_data_app, []}}
  ]}.

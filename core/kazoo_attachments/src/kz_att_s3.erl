@@ -23,13 +23,6 @@
 -spec bucket(map()) -> string().
 bucket(#{bucket := Bucket}) -> kz_term:to_list(Bucket).
 
--spec path(map()) -> api_ne_binary().
-path(#{path := Path}) -> Path;
-path(Map) ->
-    BasePath = maps:get('folder_base_path', Map, 'undefined'),
-    OtherPath = maps:get('folder_path', Map, 'undefined'),
-    combined_path(BasePath, OtherPath).
-
 -spec fix_scheme(ne_binary()) -> ne_binary().
 fix_scheme(<<"https://">> = Scheme) -> Scheme;
 fix_scheme(<<"http://">> = Scheme) -> Scheme;
@@ -66,6 +59,20 @@ aws_config(#{'key' := Key
                ,aws_region=Region
                }.
 
+
+-spec aws_default_fields() -> kz_proplist().
+aws_default_fields() ->
+    [{arg, <<"db">>}
+    ,{group, [{arg, <<"id">>}
+             ,<<"_">>
+             ,{arg, <<"attachment">>}
+             ]}
+    ].
+
+-spec aws_format_url(map(), attachment_info()) -> ne_binary().
+aws_format_url(Map, AttInfo) ->
+    kz_att_util:format_url(Map, AttInfo, aws_default_fields()).
+
 -spec merge_params(map() | ne_binary(), map() | undefined) -> map().
 merge_params(#{bucket := Bucket, host := Host} = M1, #{bucket := Bucket, host := Host} = M2) ->
     kz_maps:merge(M1, M2);
@@ -80,18 +87,18 @@ merge_params(S3, M2)
     M1 = decode_retrieval(S3),
     merge_params(M1, M2).
 
--spec aws_bpc(map()) -> {string(), api_ne_binary(), aws_config()}.
-aws_bpc(Map) ->
-    {bucket(Map), path(Map), aws_config(Map)}.
+-spec aws_bpc(map(), attachment_info()) -> {string(), api_ne_binary(), aws_config()}.
+aws_bpc(Map, AttInfo) ->
+    {bucket(Map), aws_format_url(Map, AttInfo), aws_config(Map)}.
 
--spec aws_bpc(ne_binary(), map() | undefined) -> {string(), api_ne_binary(), aws_config()}.
-aws_bpc(S3, Handler) ->
-    aws_bpc(merge_params(S3, Handler)).
+-spec aws_bpc(ne_binary(), map() | undefined, attachment_info()) -> {string(), api_ne_binary(), aws_config()}.
+aws_bpc(S3, Handler, Attinfo) ->
+    aws_bpc(merge_params(S3, Handler), Attinfo).
 
 
--spec encode_retrieval(map()) -> ne_binary().
-encode_retrieval(Map) ->
-    base64:encode(term_to_binary(Map)).
+-spec encode_retrieval(map(), ne_binary()) -> ne_binary().
+encode_retrieval(Map, FilePath) ->
+    base64:encode(term_to_binary({Map, FilePath})).
 
 -spec decode_retrieval(ne_binary()) -> map().
 decode_retrieval(S3) ->
@@ -119,26 +126,24 @@ decode_retrieval(S3) ->
              ,bucket => Bucket
              ,path => Path
              };
+        {#{} = Map, FilePath} ->
+            Map#{file => FilePath};
         #{} = Map -> Map
     end.
 
 -spec put_attachment(map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
-    {Bucket, Path, Config} = aws_bpc(Params),
-    FilePath = get_file_path(Path, DbName, DocId, AName),
+    {Bucket, FilePath, Config} = aws_bpc(Params, {DbName, DocId, AName}),
     case put_object(Bucket, FilePath, Contents, Config) of
         {'ok', Props} ->
-            props:to_log(Props, <<"AWS HEADERS">>),
             Metadata = [ convert_kv(KV) || KV <- Props, filter_kv(KV)],
-            S3Key = encode_retrieval(Params),
+            S3Key = encode_retrieval(Params, FilePath),
             {'ok', [{'attachment', [{<<"S3">>, S3Key}
                                    ,{<<"metadata">>, kz_json:from_list(Metadata)}
                                    ]}
                    ,{'headers', Props}
                    ]};
-        _E ->
-            lager:debug("error saving attachment to ", [_E]),
-            _E
+        _E -> _E
     end.
 
 -spec fetch_attachment(map(), ne_binary(), ne_binary(), ne_binary()) -> any().
@@ -147,8 +152,7 @@ fetch_attachment(Conn, DbName, DocId, AName) ->
     case kz_json:get_value(<<"S3">>, Conn) of
         'undefined' -> {'error', 'invalid_data'};
         S3 ->
-            {Bucket, Path, Config} = aws_bpc(S3, HandlerProps),
-            FilePath = get_file_path(Path, DbName, DocId, AName),
+            {Bucket, FilePath, Config} = aws_bpc(S3, HandlerProps, {DbName, DocId, AName}),
             case get_object(Bucket, FilePath, Config) of
                 {'ok', Props} -> {'ok', props:get_value('content', Props)};
                 _E -> _E
@@ -169,30 +173,28 @@ convert_kv({<<"etag">> = K, V}) ->
     {K, binary:replace(V, <<$">>, <<>>, ['global'])};
 convert_kv(KV) -> KV.
 
--spec combined_path(api_binary(), api_binary()) -> api_binary().
-combined_path('undefined', 'undefined') -> 'undefined';
-combined_path('undefined', Path) -> Path;
-combined_path(Path, 'undefined') -> Path;
-combined_path(BasePath, OtherPath) ->
-    filename:join(BasePath, OtherPath).
-
--spec get_file_path(api_binary(), ne_binary(), ne_binary(), ne_binary()) -> string().
-get_file_path('undefined', DbName, DocId, AName) ->
-    kz_term:to_list(list_to_binary([DbName, "/", DocId, "_", AName]));
-get_file_path(Path, DbName, DocId, AName) ->
-    kz_term:to_list(list_to_binary([Path, "/", DbName, "/", DocId, "_", AName])).
-
--spec put_object(string(), string(), binary(), aws_config()) -> {ok, kz_proplist()} | {error, any()}.
+-spec put_object(string(), string() | ne_binary(), binary(), aws_config()) -> {ok, kz_proplist()} | {error, any()}.
+put_object(Bucket, FilePath, Contents,Config)
+  when is_binary(FilePath) ->
+    put_object(Bucket, kz_term:to_list(FilePath), Contents,Config);
 put_object(Bucket, FilePath, Contents, #aws_config{s3_host=Host} = Config) ->
     lager:debug("storing ~s to ~s", [FilePath, Host]),
     Options = ['return_all_headers'],
     try erlcloud_s3:put_object(Bucket, FilePath, Contents, Options, [], Config) of
         Headers -> {ok, Headers}
     catch
-        error : {aws_error, Reason} -> {error, Reason}
+        error : {aws_error, Reason} ->
+            lager:debug("error saving attachment to ~s/~s : ~p", [Host, FilePath, Reason]),
+            {error, Reason};
+        _E : Reason ->
+            lager:debug("error saving attachment to ~s/~s : ~p", [Host, FilePath, Reason]),
+            {error, Reason}
     end.
 
--spec get_object(string(), string(), aws_config()) -> {ok, kz_proplist()} | {error, any()}.
+-spec get_object(string(), string() | ne_binary(), aws_config()) -> {ok, kz_proplist()} | {error, any()}.
+get_object(Bucket, FilePath, Config)
+  when is_binary(FilePath) ->
+    get_object(Bucket, kz_term:to_list(FilePath), Config);
 get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
     lager:debug("retrieving ~s from ~s", [FilePath, Host]),
     Options = [],

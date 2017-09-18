@@ -22,6 +22,8 @@ Preparer = fun (List) -> [{E,load} || E <- List, not lists:member(E, ToFilterOut
 Base = [runtime_tools
        ,wx
        ,observer
+       ,debugger
+       ,sasl
        ],
 
 Config = "/etc/kazoo/app.config", %% SHOULD rename app.config to sys.config as OTP prefers it.

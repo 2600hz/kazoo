@@ -1,22 +1,18 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "storage.attachment.google_drive",
-    "description": "schema for google drive attachment entry",
+    "_id": "storage.attachment.onedrive",
+    "description": "schema for OneDrive attachment entry",
     "properties": {
         "handler": {
             "description": "What handler module to use",
             "enum": [
-                "google_drive"
+                "onedrive"
             ],
             "type": "string"
         },
         "settings": {
-            "description": "Settings for the Google Drive account",
+            "description": "Settings for the OneDrive account",
             "properties": {
-                "folder_id": {
-                    "description": "Folder ID in which to store the file, if any",
-                    "type": "string"
-                },
                 "oauth_doc_id": {
                     "description": "Doc ID in the system 'auth' database",
                     "type": "string"

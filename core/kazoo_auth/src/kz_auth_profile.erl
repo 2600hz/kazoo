@@ -12,6 +12,7 @@
 -include("kazoo_auth.hrl").
 
 -define(UPDATE_CHK_FIELDS, [<<"pvt_refresh_token">>
+                           ,<<"pvt_static_token">>
                            ,<<"scope">>
                            ,<<"scopes">>
                            ,<<"email">>
@@ -71,16 +72,29 @@ token_fold(Token, [Fun | Routines]) ->
             token_fold(Token, Routines)
     end.
 
+-spec profile_access_verb(map()) -> 'get' | 'post'.
+profile_access_verb(Provider) ->
+    case kz_term:to_atom(kz_maps:get(profile_access_verb, Provider, 'get'), 'true') of
+        'get' -> 'get';
+        'post' -> 'post';
+        _ -> 'get'
+    end.
+
 -spec maybe_load_profile(map()) -> map().
 maybe_load_profile(#{profile := _Profile} = Token) -> Token;
 maybe_load_profile(#{user_map := #{<<"profile">> := Profile}} = Token) -> Token#{profile => kz_json:from_map(Profile)};
-maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
+maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL} = Provider
                     ,access_token := AccessToken
                     } = Token) ->
-    Headers = profile_authorization_headers(Token, AccessToken),
-    URL = profile_url(Token),
-    lager:debug("getting profile from ~s", [URL]),
-    case kz_http:get(kz_term:to_list(URL), Headers, [{ssl, [{versions, ['tlsv1.2']}]}]) of
+    Options = [{headers_as_is, true}, {ssl, [{versions, ['tlsv1.2']}]}],
+    URL = kz_term:to_list(profile_url(Token)),
+    Verb = profile_access_verb(Provider),
+    {ok,{_,_, Host, _, _, _}} = http_uri:parse(URL),
+    Headers = [{<<"host">>, Host}
+               | profile_authorization_headers(Token, AccessToken)
+              ],
+    lager:debug("getting profile (~s) from ~s", [Verb, URL]),
+    case kz_http:req(Verb, URL, Headers, <<>>, Options) of
         {'ok', 200, _RespHeaders, RespXML} ->
             Token#{profile => kz_json:decode(RespXML)};
         {'ok', 401, _RespHeaders, _RespXML} ->
@@ -90,7 +104,8 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
             lager:info("received faked code ~b while getting auth profile from ~s", [404, URL]),
             Token#{profile_error_code => {403, 'profile_not_found'}, profile => kz_json:new()};
         {'ok', Code, _RespHeaders, _RespXML} ->
-            lager:debug("received code ~b while getting auth profile from ~s", [Code, URL]),
+            lager:debug("received code ~b while getting auth profile from ~s : ~p", [Code, URL, _RespXML]),
+            props:to_log(_RespHeaders, <<"PROFILE ERROR">>),
             Token#{profile_error_code => {Code, 'invalid_profile'}, profile => kz_json:new()};
         {'error', _Error} ->
             lager:debug("failed to get auth profile: ~p", [_Error]),
@@ -389,5 +404,6 @@ format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
             ,{<<"pvt_type">>, <<"user">>}
             ,{<<"pvt_user_identity">>, Identity}
             ,{<<"pvt_refresh_token">>, maps:get(refresh_token, Token, 'undefined')}
+            ,{<<"pvt_static_token">>, maps:get(static_token, Token, 'undefined')}
             ] ++ MapFields,
     props:filter_empty(Props).

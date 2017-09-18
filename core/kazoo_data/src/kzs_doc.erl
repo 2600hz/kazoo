@@ -262,6 +262,8 @@ copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}, Rev) ->
             case kzs_attachments:put_attachment(Dst, DestDbName, DestDocId, Key, Contents, Opts) of
                 {'ok', AttachmentDoc} ->
                     copy_attachments(Src, Dst, CopySpec, {JObjs, Keys}, kz_doc:revision(AttachmentDoc));
+                {'ok', AttachmentDoc, _Headers} ->
+                    copy_attachments(Src, Dst, CopySpec, {JObjs, Keys}, kz_doc:revision(AttachmentDoc));
                 Error -> Error
             end;
         Error -> Error

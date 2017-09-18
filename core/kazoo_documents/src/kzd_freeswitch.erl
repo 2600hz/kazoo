@@ -52,6 +52,17 @@
 
         ,presence_id/1, presence_direction/1
         ,from_tag/1, to_tag/1
+
+        ,conference_name/1
+        ,conference_profile_name/1
+        ,conference_uuid/1
+        ,join_time/1, join_time/2
+
+        ,core_uuid/1
+        ,fetch_uuid/1
+        ,fetch_winning_pid/1
+        ,switch_url/1, switch_uri/1
+        ,hostname/1, hostname/2
         ]).
 
 -include("kz_documents.hrl").
@@ -413,3 +424,71 @@ to_tag(Props) ->
 -spec origination_call_id(data()) -> api_binary().
 origination_call_id(Props) ->
     props:get_value(<<"variable_sip_origination_call_id">>, Props).
+
+-spec conference_name(data()) -> api_ne_binary().
+conference_name(Props) ->
+    props:get_ne_binary_value(<<"Conference-Name">>, Props).
+
+-spec conference_profile_name(data()) -> api_ne_binary().
+conference_profile_name(Props) ->
+    props:get_ne_binary_value(<<"Conference-Profile-Name">>, Props).
+
+-spec conference_uuid(data()) -> api_ne_binary().
+conference_uuid(Props) ->
+    props:get_ne_binary_value(<<"Conference-Unique-ID">>, Props).
+
+-spec join_time(data()) -> gregorian_seconds().
+-spec join_time(data(), Default) -> gregorian_seconds() | Default.
+join_time(Props) ->
+    join_time(Props, kz_time:current_tstamp()).
+join_time(Props, Default) ->
+    props:get_integer_value(<<"Join-Time">>, Props, Default).
+
+-spec core_uuid(data()) -> api_binary().
+core_uuid(Props) ->
+    props:get_value(<<"Core-UUID">>, Props).
+
+-spec fetch_uuid(data()) -> api_binary().
+fetch_uuid(Props) ->
+    props:get_first_defined([<<"Fetch-UUID">>
+                            ,<<"variable_Fetch-UUID">>
+                            ]
+                           ,Props
+                           ).
+
+-spec fetch_winning_pid(data()) -> api_binary().
+fetch_winning_pid(Props) ->
+    props:get_first_defined([<<"Fetch-Winning-PID">>
+                            ,<<"variable_Fetch-Winning-PID">>
+                            ]
+                           ,Props
+                           ).
+
+-spec switch_url(data()) -> api_binary().
+switch_url(Props) ->
+    case props:get_first_defined([<<"Switch-URL">>, <<"variable_Switch-URL">>], Props) of
+        undefined -> props:get_first_defined([<<"variable_sofia_profile_url">>
+                                             ,<<"sofia_profile_url">>
+                                             ],Props);
+        SwitchURL -> SwitchURL
+    end.
+
+-spec switch_uri(data()) -> api_binary().
+switch_uri(Props) ->
+    case props:get_first_defined([<<"Switch-URI">>, <<"variable_Switch-URI">>], Props) of
+        undefined -> case switch_url(Props) of
+                         undefined -> undefined;
+                         SwitchURL -> case binary:split(SwitchURL, <<"@">>) of
+                                          [_, SwitchURIHost] -> <<"sip:", SwitchURIHost/binary>>;
+                                          _Else -> undefined
+                                      end
+                     end;
+        SwitchURI -> SwitchURI
+    end.
+
+-spec hostname(data()) -> api_ne_binary().
+-spec hostname(data(), Default) -> ne_binary() | Default.
+hostname(Props) ->
+    hostname(Props, 'undefined').
+hostname(Props, Default) ->
+    props:get_ne_binary_value(<<"FreeSWITCH-Hostname">>, Props, Default).

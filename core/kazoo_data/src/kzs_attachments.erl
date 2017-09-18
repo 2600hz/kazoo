@@ -138,7 +138,7 @@ attachment_handler_jobj(Handler, Props) ->
 
 -spec handle_put_attachment(map(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
                            , kz_proplist(), kz_proplist()) ->
-                                   {'ok', kz_json:object()} |
+                                   {'ok', kz_json:object()} | {'ok', kz_json:object(), kz_proplist()} |
                                    data_error().
 
 handle_put_attachment(#{att_post_handler := 'stub'
@@ -147,15 +147,18 @@ handle_put_attachment(#{att_post_handler := 'stub'
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:put_attachment(Conn, DbName, DocId, AName, Contents, Options);
 
-handle_put_attachment(#{att_post_handler := 'external'}=Map, Att, DbName, DocId, _AName, _Contents, _Options, _Props) ->
+handle_put_attachment(#{att_post_handler := 'external'}=Map, Att, DbName, DocId, _AName, _Contents, _Options, Props) ->
     case kzs_doc:open_doc(Map, DbName, DocId, []) of
-        {'ok', JObj} -> external_attachment(Map, DbName, JObj, Att);
+        {'ok', JObj} -> external_attachment(Map, DbName, JObj, Att, Props);
         {'error', _}=E -> E
     end.
 
-external_attachment(Map, DbName, JObj, Att) ->
+external_attachment(Map, DbName, JObj, Att, Props) ->
     Atts = kz_json:merge_jobjs(Att, kz_json:get_value(?KEY_STUB_ATTACHMENTS, JObj, kz_json:new())),
-    kzs_doc:save_doc(Map, DbName, kz_json:set_values([{?KEY_STUB_ATTACHMENTS, Atts}], JObj), []).
+    case kzs_doc:save_doc(Map, DbName, kz_json:set_values([{?KEY_STUB_ATTACHMENTS, Atts}], JObj), []) of
+        {'ok', Doc} -> {'ok', Doc, Props};
+        Error -> Error
+    end.
 
 -spec delete_attachment(map(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
                                {'ok', kz_json:object()} |

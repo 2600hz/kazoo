@@ -111,6 +111,8 @@ Key | Description | Type | Default | Required
 `enabled` | is recording enabled | `boolean()` |   | `false`
 `format` | What format to store the recording on disk | `string('mp3' | 'wav')` |   | `false`
 `record_min_sec` | The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted | `integer()` |   | `false`
+`record_on_answer` | Recording should start on answer | `boolean()` |   | `false`
+`record_on_bridge` | Recording should start on bridge | `boolean()` |   | `false`
 `record_sample_rate` | What sampling rate to use on the recording | `integer()` |   | `false`
 `time_limit` | Time limit, in seconds, for the recording | `integer()` |   | `false`
 `url` | The URL to use when sending the recording for storage | `string()` |   | `false`

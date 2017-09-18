@@ -256,7 +256,7 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS, JObj},
                   ,stop_received='false'
                   ,call=Call
                   }=State) ->
-    lager:debug("received record_stop, storing recording"),
+    lager:debug("received record_stop, storing recording ~s", [MediaName]),
     Call1 = kapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
     gen_server:cast(self(), 'store_recording'),
     {'noreply', State#state{media=Media
@@ -264,13 +264,13 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS, JObj},
                            ,stop_received='true'
                            ,event=JObj
                            }};
-handle_cast({'record_stop', {_, MediaName}, _FS}, #state{media={_, MediaName}
-                                                        ,is_recording='false'
-                                                        ,stop_received='false'
-                                                        }=State) ->
+handle_cast({'record_stop', {_, MediaName}, _FS, _JObj}, #state{media={_, MediaName}
+                                                               ,is_recording='false'
+                                                               ,stop_received='false'
+                                                               }=State) ->
     lager:debug("received record_stop but we're not recording, exiting"),
     {'stop', 'normal', State};
-handle_cast({'record_stop', _Media, _FS}, State) ->
+handle_cast({'record_stop', _Media, _FS, _JObj}, State) ->
     {'noreply', State};
 handle_cast('maybe_start_recording_on_bridge', #state{is_recording='true'}=State) ->
     {'noreply', State};
