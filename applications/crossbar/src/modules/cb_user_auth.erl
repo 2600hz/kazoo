@@ -231,7 +231,7 @@ maybe_authenticate_user(Context) ->
     end.
 
 maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_db(Account),
     Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
                                      ,[{'key', Credentials}]
                                      ,cb_context:set_account_db(Context, AccountDb)
@@ -246,7 +246,7 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, ?NE_BINARY=Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_db(Account),
     Context1 = crossbar_doc:load_view(?ACCT_SHA1_LIST
                                      ,[{'key', Credentials}]
                                      ,cb_context:set_account_db(Context, AccountDb)
@@ -367,7 +367,7 @@ maybe_load_user_doc_via_creds(Context) ->
 -spec maybe_load_user_doc_by_username(ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_by_username(Account, Context) ->
     JObj = cb_context:doc(Context),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_db(Account),
     lager:debug("attempting to lookup user name in db: ~s", [AccountDb]),
     AuthType = <<"user_auth_recovery">>,
     Username = kz_json:get_value(<<"username">>, JObj),
@@ -413,24 +413,31 @@ save_reset_id_then_send_email(Context) ->
     MoDb = kazoo_modb:get_modb(cb_context:account_db(Context)),
     ResetId = reset_id(MoDb),
     UserDoc = cb_context:doc(Context),
+    UserId = kz_doc:id(UserDoc),
     %% Not much chance for doc to already exist
-    {'ok',_} = kazoo_modb:save_doc(MoDb, create_resetid_doc(ResetId, kz_doc:id(UserDoc))),
-    Email = kz_json:get_ne_binary_value(<<"email">>, UserDoc),
-    lager:debug("created recovery id, sending email to '~s'", [Email]),
-    UIURL = kz_json:get_ne_binary_value(<<"ui_url">>, cb_context:req_data(Context)),
-    Link = reset_link(UIURL, ResetId),
-    lager:debug("created password reset link: ~s", [Link]),
-    Notify = [{<<"Email">>, Email}
-             ,{<<"First-Name">>, kz_json:get_value(<<"first_name">>, UserDoc)}
-             ,{<<"Last-Name">>,  kz_json:get_value(<<"last_name">>, UserDoc)}
-             ,{<<"Password-Reset-Link">>, Link}
-             ,{<<"Account-ID">>, kz_doc:account_id(UserDoc)}
-             ,{<<"Account-DB">>, kz_doc:account_db(UserDoc)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ],
-    kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_password_recovery/1),
-    Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
-    crossbar_util:response(Msg, Context).
+    case kazoo_modb:save_doc(MoDb, create_resetid_doc(ResetId, UserId)) of
+        {'ok', _} ->
+            Email = kzd_user:email(UserDoc),
+            lager:debug("created recovery id, sending email to '~s'", [Email]),
+            UIURL = kz_json:get_ne_binary_value(<<"ui_url">>, cb_context:req_data(Context)),
+            Link = reset_link(UIURL, ResetId),
+            lager:debug("created password reset link: ~s", [Link]),
+            Notify = [{<<"Email">>, Email}
+                     ,{<<"First-Name">>, kzd_user:first_name(UserDoc)}
+                     ,{<<"Last-Name">>,  kzd_user:last_name(UserDoc)}
+                     ,{<<"Timezone">>, kzd_user:timezone(UserDoc)}
+                     ,{<<"User-ID">>, UserId}
+                     ,{<<"Password-Reset-Link">>, Link}
+                     ,{<<"Account-ID">>, kz_doc:account_id(UserDoc)}
+                     ,{<<"Account-DB">>, kz_doc:account_db(UserDoc)}
+                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                     ],
+            kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_password_recovery/1),
+            Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
+            crossbar_util:response(Msg, Context);
+        {'error', Reason} ->
+            crossbar_doc:handle_datamgr_errors(Reason, 'undefined', Context)
+    end.
 
 
 %% @private

@@ -71,17 +71,11 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(DataJObj)
     end.
 
--spec get_user(kzd_user:doc()) -> kz_proplist().
-get_user(DataJObj) ->
-    [{<<"password">>, kz_json:get_value(<<"password">>, DataJObj)}
-     | teletype_util:user_params(DataJObj)
-    ].
-
 -spec build_macro_data(kz_json:object()) -> kz_proplist().
 build_macro_data(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
-    ,{<<"user">>, get_user(DataJObj)}
+    ,{<<"user">>, teletype_util:user_params(DataJObj)}
     ,{<<"link">>, [kz_json:get_value(<<"password_reset_link">>, DataJObj)]}
     ].
 
@@ -102,9 +96,31 @@ process_req(DataJObj) ->
                                           ),
 
     Emails0 = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
-    Emails = props:set_value(<<"to">>, [kz_json:get_value(<<"email">>, DataJObj)], Emails0),
+    Emails = props:set_value(<<"to">>, get_email_address(DataJObj, Emails0), Emails0),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+    end.
+
+-spec get_email_address(kz_json:object(), kz_proplist()) -> api_ne_binaries().
+get_email_address(DataJObj, Emails0) ->
+    ToEmails = props:get_value(<<"to">>, Emails0),
+    case kz_json:get_value(<<"email">>, DataJObj) of
+        <<"Email">> ->
+            case teletype_util:is_preview(DataJObj) of
+                'true' -> ToEmails;
+                'false' -> []
+            end;
+        ?NE_BINARY=UserEmail ->
+            [UserEmail];
+        [] ->
+            ToEmails;
+        Emails when is_list(Emails) ->
+            case [E || E <- Emails, kz_term:is_ne_binary(E)] of
+                [] -> ToEmails;
+                Es -> Es
+            end;
+        _Other ->
+            ToEmails
     end.
