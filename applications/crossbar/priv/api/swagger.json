@@ -12594,6 +12594,60 @@
             ],
             "type": "object"
         },
+        "kapi.edr_amqp.event": {
+            "description": "AMQP API for edr_amqp.event",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Account-Tree": {
+                    "type": "string"
+                },
+                "Body": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "edr"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "event"
+                    ],
+                    "type": "string"
+                },
+                "Gregorian-Time": {
+                    "type": "integer"
+                },
+                "ID": {
+                    "type": "string"
+                },
+                "Node": {
+                    "type": "string"
+                },
+                "Severity": {
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "type": "string"
+                },
+                "Verbosity": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Body",
+                "Gregorian-Time",
+                "ID",
+                "Node",
+                "Severity",
+                "Timestamp",
+                "Verbosity"
+            ],
+            "type": "object"
+        },
         "kapi.fax.query_status": {
             "description": "AMQP API for fax.query_status",
             "properties": {
@@ -15284,7 +15338,13 @@
                 "Text": {
                     "type": "string"
                 },
+                "Timezone": {
+                    "type": "string"
+                },
                 "To": {
+                    "type": "string"
+                },
+                "User-ID": {
                     "type": "string"
                 }
             },
@@ -26288,6 +26348,20 @@
                     "default": 3600000,
                     "description": "ecallmgr user cache time in in milliseconds",
                     "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.edr": {
+            "description": "Schema for edr system_config",
+            "properties": {
+                "backends": {
+                    "default": [],
+                    "description": "edr backends",
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
                 }
             },
             "type": "object"
