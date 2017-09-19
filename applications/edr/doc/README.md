@@ -1,106 +1,227 @@
-# EDR (SIPLABS LLC)
+/*
+Section: Kazoo Edr
+Title: Kazoo Edr
+Language: en-US
+*/
+
+# EDR
+
+TLDR: See recipies at the bottom for ways to use EDR.
 
 ## Description
 
-EDRs (Event Data Records) provides a summary view of all events in the
-system.  The EDR is a list of attributes related to the processing and
-execution of some works in the system.
+This app is responsible for getting EDR events (see kazoo_edr) out of Kazoo. It must be started per
+kazoo node you wish to receive events from.
 
-Basic idea is simple - when event an occurs somewhere in the system
-and if it is important enough, kz_edr:log_event function is called
-with parameters that describes this event. After that, EDR going into
-one of the EDR application instances. Then, this app forwards EDR-data
-to all running backends that are configured to receive events of this
-kind.
+## Backends
 
-## Sending EDR
+The EDR app is essentially a collection of backends. Each backend will recieve EDR events matching
+a binding, and send them somewhere else (usually out of Kazoo).
 
-If you develop your own kazoo application or something like that, you
-probably want to indicate some events that might be useful for those
-who will use or administrate this application, giving them the
-opportunity to receive an event notifications by any convenient way.
-Curently supported backend types:
+Backends are registered in system_config/edr.
 
-- file - backend for developer testing.  Options:
-  - Path - path to file
-- elasticsearch - send EDRs to your elasticseatch server.  Options:
-  - Url - address of elasticsearch server
-  - Connect-Timeout - time in ms for send EDR
-  - Response-Timeout - time in ms for response. If no response, marks
-    as error
-  - Is-SSL - use secure sockets layer protocol
-  - Max-Sessions - maximum amount of concurrent sendings.
+### General registerd backend configuration options
 
-The main function that you need is kz_edr:log_event(EventCategory,
-EventName, Tags, AppName, AppVersion), where
+#### name
 
-- EventCategory: categories() - classifies an event to the some category,
-- EventName : binary() - gives name to event,
-- Tags : kz_json:object() - for additional data,
-- AppName : in which application the event occurred,
-- AppVersion : binary() - code verion
+This is a unique identifier for a configured backend. This name is used to refer to the backend in
+edr_maintenance sup commands.
 
-where categories() is one of the following binaries (in developing):
-- `<<"application">>` - category to group events, specific for this
-  application. For example
-  ```
-  > Data = kz_json:set_value(<<"any_key">>, <<"any_data">> , kz_json:new()),
-  > kz_edr:event_log(<<"application">>, <<"callflow">>, Data, ?APP_NAME, ?APP_VERSION).
-  ```
-  tell us, that callflow was used. If you need event that contains
-  more specific information, you can use Tags argument.
+#### type
 
-## Receiving EDR
+This determines what backend module is used this registered backend.
+A type of `file` maps to the backend module `edr_be_file`.
 
-To receive EDR: you must register or just start your backend in
-application. Backend - is a process for handle\store EDRs. Use next
-functions:
+#### options
 
-- edr_backend_sup:start_backend(Name:: ne_binary(), Type ::
-  ne_binary(), Tags :: kz_json:object(), Options :: kz_json:object())
-  - to start new backend instance, for example:
+This is a JSON object which contains configuration options specific to the backend module.
 
-  ```
-  > Tags = kz_json:set_value(<<"App-Name">>, <<"callflow">>, kz_json:new()),
-  > Options = kz_json:set_value(<<"Url">>, "localhost:9200/logs", kz_json:new()),
-  > edr_backend_manager:start_backend(<<"my_elastic">>, <<"elasticsearch">>, Tags, Options).
-  > {ok,<0.2252.0>}
-  ```
-- edr_backend_sup:stop_backend(Id) - to stop backend, where Id is name
-  or pid of existing backend process, that may be obtained with
-  get_running_backends/0.
-- edr_utils:register_backend(Name, Type, Tags, Opts, IsEnable) - to
-  add backend record to autoload list. Arguments same as
-  start_backend, but have additional argument IsEnable.
-- edr_utils:delete_backend(Name) - to remove backend record from
-  autoload list.
-- edr_utils:enable_backend(Name) - to turn backend on, if it have
-  state 'enabled' == 'false'.
-- edr_utils:disable_backend(Name) - to turn backend off, if it have
-  state 'enabled' == 'true'.
-- edr_utils:registred_backends/0 - returns list of backends, presented
-  in autoload list.  Example of return:
-  ```
-  > edr_utils:registred_backends().
-  > {[{<<"my_elastic">>,
-             {[{<<"Name">>,<<"my_elastic">>},
-             {<<"Options">>,
-             {[{<<"Url">>,
-                     "http://elastictest1.siplabs.local:9200/logs/external/5"}]}},
-             {<<"Tags">>,{[{<<"App-Name">>,<<"callflow">>}]}},
-             {<<"Type">>,<<"elasticsearch">>},
-             {<<"Enabled">>,true}]}},
-     {<<"My_file_backend">>,
-             {[{<<"Name">>,<<"My_file_backend">>},
-             {<<"Options">>, {[{<<"Path">>,<<"test.txt">>}]}},
-             {<<"Tags">>, {[{<<"App-Name">>,<<"callflow">>}]}},
-             {<<"Type">>,<<"file">>},
-             {<<"Enabled">>,true}]}}]}
-  ```
-⁃ edr_backend_sup:get_running_backends/0 - returns list of curently
-  running backends, as shown below:
-  ```
-  > edr_utils:get_running_backends().
-  > [{<<"My_file_backend">>,<0.2984.0>,[edr_file]},
-     {<<"my_elastic">>,<0.2252.0>,[edr_elasticsearch]}]
-  ```
+#### bindings
+
+These describe the types of events that should be recieved by the backend.
+A binding has the following fields:
+- account_id: The account id to recieve events from. If not specified or * then events for all accounts will be recieved
+- app_name: Which apps should we recieve events from? If not specified or * then events for all apps will be recieved
+- exact_severity: If true, then only events with severity exactly matching the severity field will be recieved. If false then more severe events will also be recieved
+- exact_verbosity: If true, then only events with verbosity exactly matching the severity field will be recieved. If false then less verbose events will also be recieved
+- include_descendants: Should we recieve events relating to descendant accounts if an account is specified?
+- severity: What severity are we interested in events for? Possible values are `ok`, `warning`, `critical`
+- verbosity: What verbosity are we interested in events for? Possible values are `trace`, `debug`, `info`, `warn`, `error`, `fatal`
+
+### Backend types
+
+#### amqp (edr_be_amqp)
+
+This module forwards each event to RabbitMQ for use across nodes. kapi_edr_amqp can be used to bind to these events.
+The routing key used is the same as that which is used by edr_bindings for consistency `edr.{SEVERITY}.{VERBOSITY}.{ACCOUNT_ID}.{APP_NAME}`.
+
+There are configuration options yet, however a configurable routing key would be useful in future.
+
+#### file (edr_be_file)
+
+This module outputs each recieved event to a line in a log file. Each line is formatted by the specified formatter.
+The configuration options are as follows:
+- path (required): The path to the file. Ensure file (or directory, if the file does not exist) has the correct permissions
+- formatter: Configuration as to how to format each event. This defaults to json with the default options.
+
+#### http (edr_be_http)
+
+This module sends out a HTTP request for each EDR event it recieves.
+The configuration options are as follows:
+- url (required): The URL the request will be sent to
+- method: The HTTP method the request should use. Valid options are `put`, `post`, and `patch`. This defaults to `post`.
+- headers: A JSON object containing headers and their values
+- async: Should the request be asynchronous? Currently only `false` is implemented.
+- connect_timeout: Connection timeout in milliseconds
+- timeout: Request timeout in milliseconds
+- formatter: Configuration as to how to format each event. Defaults to json with the default options.
+
+### Formatters
+
+A formatter is responsible for taking an event and formatting it for a backend. This is not configurable for every backend.
+
+#### json (edr_fmt_json)
+
+The configuration options are as follows:
+- include_metadata: If set to `true` the output will be the whole EDR event. If set to `false` the output will just be the body. Defaults to `true`.
+- normalize: Should the metadata fields be normalized to snake case? Defaults to `true`
+- pretty: Should the output be nicely formatted? Defaults to `false`
+
+## Sup commands
+
+- `sup edr_maintenance register_backend {NAME} [{TYPE}] [{JSON_OPTS}] [{JSON_BINDINGS}] [{ENABLED}]`:
+    Register a backend in the system_config, and start it if it is enabled. It is probably easier to use the system_config API and run `sup edr_maintenance enable_backend {NAME}` if you wish to specify options or bindings.
+
+- `sup edr_maintenance delete_backend {NAME}`:
+    The opposite of `register_backend`. Stop the backend if it is running, and remove it from the the system_config.
+
+- `sup edr_maintenance enable_backend {NAME}`
+    Start the backend, and enable it if it isn't already enabled.
+
+- `sup edr_maintenance disable_backend {NAME}`
+    Stop the backend, and disable it if it isn't already disabled.
+
+- `sup edr_maintenance registered_backends`
+    Show the configured backends.
+
+## Recipies
+
+Practical uses of EDR. It would be great if people could submit PRs with their configurations for other people to use.
+
+### Multiple logs with different verbosities
+
+#### system_config/edr:
+```json
+{
+   "backends": [
+       {
+           "name": "debug_log",
+           "type": "file",
+           "options": {
+               "path": "/var/log/kazoo/edr_debug.log"
+           },
+           "bindings": [
+               {
+                   "account_id": "*",
+                   "include_descendants": false,
+                   "app_name": "*",
+                   "severity": "ok",
+                   "exact_severity": false,
+                   "verbosity": "debug",
+                   "exact_verbosity": false
+               }
+           ],
+           "enabled": true
+       },
+       {
+           "name": "info_log",
+           "type": "file",
+           "options": {
+               "path": "/var/log/kazoo/edr_info.log"
+           },
+           "bindings": [
+               {
+                   "account_id": "*",
+                   "include_descendants": false,
+                   "app_name": "*",
+                   "severity": "ok",
+                   "exact_severity": false,
+                   "verbosity": "info",
+                   "exact_verbosity": false
+               }
+           ],
+           "enabled": true
+       }
+   ]
+}
+```
+
+### EDR over Blackhole
+
+This involves forwarding EDR events specific to an account over AMQP, which are then pushed over websockets with Blackhole.
+The binding key is `edr.{SEVERITY}.{VERBOSITY}.{APP_NAME}`. Only events where the account_id matches that associated with the auth token will be recieved.
+
+Note: You can request events with a verbosity or severity greater than what edr_be_amqp is bound to, however you won't recieve any of them.
+
+#### system_config/edr:
+```json
+{
+   "backends": [
+       {
+           "name": "amqp",
+           "type": "amqp",
+           "options": {
+           },
+           "bindings": [
+               {
+                   "account_id": "*",
+                   "include_descendants": false,
+                   "app_name": "*",
+                   "severity": "ok",
+                   "exact_severity": false,
+                   "verbosity": "info",
+                   "exact_verbosity": false
+               }
+           ],
+           "enabled": true
+       }
+    ]
+}
+```
+
+#### Start the Blackhole module
+
+`sup blackhole_maintenance start_module bh_edr`
+
+### EDR events to HTTPBin
+
+An example of sending EDR events over HTTP.
+
+```json
+{
+   "backends": [
+       {
+           "name": "mock_bin",
+           "type": "http",
+           "options": {
+               "url": "http://mockbin.org/bin/021cb9cb-b688-4f1e-9894-c80b4a19e654",
+               "headers": {
+                   "Content-Type": "application/json"
+               }
+           },
+           "bindings": [
+               {
+                   "account_id": "*",
+                   "include_descendants": false,
+                   "app_name": "*",
+                   "severity": "ok",
+                   "exact_severity": false,
+                   "verbosity": "info",
+                   "exact_verbosity": false
+               }
+           ],
+           "enabled": true
+       }
+    ]
+}
+```

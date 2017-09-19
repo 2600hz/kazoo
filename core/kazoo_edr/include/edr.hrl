@@ -3,8 +3,6 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--define(EDR_ROUTING_KEY, <<"edr_event">>).
-
 %% EDR
 -define(EDR_VERBOSITY_LEVELS, ['trace', 'debug', 'info', 'warn', 'error', 'fatal']).
 -type edr_verbosity() :: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal'.

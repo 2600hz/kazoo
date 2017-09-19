@@ -25,12 +25,12 @@
                                 },
                                 "exact_severity": {
                                     "default": false,
-                                    "description": "If true, then only events with severity exactly matching the severity field will be recieved. If false then more sever events will also be recieved",
+                                    "description": "If true, then only events with severity exactly matching the severity field will be recieved. If false then more severe events will also be recieved",
                                     "type": "boolean"
                                 },
                                 "exact_verbosity": {
                                     "default": false,
-                                    "description": "If true, then only events with verbosity exactly matching the severity field will be recieved. If false then less verbose events will also be recieved",
+                                    "description": "If true, then only events with verbosity exactly matching the verbosity field will be recieved. If false then less verbose events will also be recieved",
                                     "type": "boolean"
                                 },
                                 "include_descendants": {
