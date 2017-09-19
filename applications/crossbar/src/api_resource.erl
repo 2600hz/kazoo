@@ -149,8 +149,33 @@ rest_init(Req0, Opts) ->
             {Req10, Context3} = api_util:get_pretty_print(Req9, Context2),
             Event = api_util:create_event_name(Context3, <<"init">>),
             {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
+            Context5 = maybe_decode_start_key(Context4),
             lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
-            {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req10), Context4}
+            {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req10), Context5}
+    end.
+
+-spec maybe_decode_start_key(cb_context:context()) -> cb_context:context().
+maybe_decode_start_key(Context) ->
+    case cb_context:req_value(Context, <<"start_key">>) of
+        'undefined' -> Context;
+        Value ->
+            Decoded = try erlang:binary_to_term(kz_binary:from_hex(Value)) catch _:_ -> Value end,
+
+            QS = cb_context:query_string(Context),
+            ReqData = cb_context:req_data(Context),
+            ReqJson = cb_context:req_json(Context),
+
+            NewReqData = case kz_json:is_json_object(ReqData) of
+                             'true' -> kz_json:delete_key(<<"start_key">>, ReqData);
+                             'false' -> ReqData
+                         end,
+            NewQS = kz_json:set_value(<<"start_key">>, Decoded, QS),
+
+            Setters = [{fun cb_context:set_req_data/2, NewReqData}
+                      ,{fun cb_context:set_query_string/2, NewQS}
+                      ,{fun cb_context:set_req_json/2, kz_json:delete_key(<<"start_key">>, ReqJson)}
+                      ],
+            cb_context:setters(Context, Setters)
     end.
 
 -spec metrics() -> {non_neg_integer(), non_neg_integer()}.

@@ -1349,10 +1349,21 @@ do_create_resp_envelope(Context) ->
                    ]
            end,
 
-    kz_json:set_values(
-      props:filter_undefined(Resp)
-                      ,cb_context:resp_envelope(Context)
-     ).
+    encode_start_keys(kz_json:set_values(props:filter_undefined(Resp), cb_context:resp_envelope(Context))).
+
+-spec encode_start_keys(kz_json:object()) -> kz_json:object().
+encode_start_keys(Resp) ->
+    lists:foldl(fun(Key, JObj) ->
+                       case kz_json:get_value(Key, JObj) of
+                           'undefined' -> JObj;
+                           Value ->
+                               Encoded = kz_binary:hexencode(erlang:term_to_binary(Value)),
+                               kz_json:set_value(Key, Encoded, JObj)
+                       end
+                end
+               ,Resp
+               ,[<<"start_key">>, <<"next_start_key">>]
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
