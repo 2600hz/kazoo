@@ -145,10 +145,6 @@
 -define(EXCHANGE_TASKS, <<"tasks">>).
 -define(TYPE_TASKS, <<"topic">>).
 
-%% EDR Exchange
-%% - Used to publish EDR events
--define(EXCHANGE_EDR, <<"edr">>).
--define(TYPE_EDR, <<"direct">>).
 
 -type kz_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
                            #'queue.bind'{} | #'queue.unbind'{} |

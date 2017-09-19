@@ -12629,31 +12629,6 @@
             ],
             "type": "object"
         },
-        "kapi.edr.build_msg": {
-            "description": "AMQP API for edr.build_msg",
-            "properties": {
-                "Tags": {
-                    "type": "string"
-                },
-                "Timestamp": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Tags",
-                "Timestamp"
-            ],
-            "type": "object"
-        },
-        "kapi.edr.validate": {
-            "description": "AMQP API for edr.validate",
-            "properties": {
-                "Tags": {
-                    "type": "object"
-                }
-            },
-            "type": "object"
-        },
         "kapi.edr_amqp.event": {
             "description": "AMQP API for edr_amqp.event",
             "properties": {
@@ -26431,12 +26406,12 @@
                                         },
                                         "exact_severity": {
                                             "default": false,
-                                            "description": "If true, then only events with severity exactly matching the severity field will be recieved. If false then more sever events will also be recieved",
+                                            "description": "If true, then only events with severity exactly matching the severity field will be recieved. If false then more severe events will also be recieved",
                                             "type": "boolean"
                                         },
                                         "exact_verbosity": {
                                             "default": false,
-                                            "description": "If true, then only events with verbosity exactly matching the severity field will be recieved. If false then less verbose events will also be recieved",
+                                            "description": "If true, then only events with verbosity exactly matching the verbosity field will be recieved. If false then less verbose events will also be recieved",
                                             "type": "boolean"
                                         },
                                         "include_descendants": {
@@ -26447,11 +26422,24 @@
                                         "severity": {
                                             "default": "ok",
                                             "description": "What severity are we interested in events for?",
+                                            "enum": [
+                                                "ok",
+                                                "warning",
+                                                "critical"
+                                            ],
                                             "type": "string"
                                         },
                                         "verbosity": {
                                             "default": "info",
                                             "description": "What verbosity are we interested in events for?",
+                                            "enum": [
+                                                "trace",
+                                                "debug",
+                                                "info",
+                                                "warn",
+                                                "error",
+                                                "fatal"
+                                            ],
                                             "type": "string"
                                         }
                                     },
