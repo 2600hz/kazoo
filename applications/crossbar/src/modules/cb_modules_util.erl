@@ -148,9 +148,12 @@ range_to(Context, TStamp, Key) ->
         'undefined' ->
             lager:debug("building ~s_to from req value", [Key]),
             kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
-        StartKey ->
-            lager:debug("found startkey ~p as ~s_to", [StartKey, Key]),
-            kz_term:to_integer(StartKey)
+        StartKey when is_integer(StartKey) ->
+            lager:debug("found start_key ~p as ~s_to", [StartKey, Key]),
+            kz_term:to_integer(StartKey);
+        _CompoundStartKey ->
+            lager:debug("start_key is compound key, building ~s_to from req value", [Key]),
+            kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp))
     end.
 
 -spec range_from(cb_context:context(), pos_integer(), pos_integer(), ne_binary()) -> pos_integer().

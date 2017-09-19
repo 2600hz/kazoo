@@ -37,6 +37,8 @@
         ,content_type_matches/2
         ,ensure_content_type/1
         ,create_event_name/2
+
+        ,encode_start_key/1, decode_start_key/1
         ]).
 
 -include("crossbar.hrl").
@@ -1357,13 +1359,22 @@ encode_start_keys(Resp) ->
                        case kz_json:get_value(Key, JObj) of
                            'undefined' -> JObj;
                            Value ->
-                               Encoded = kz_binary:hexencode(erlang:term_to_binary(Value)),
-                               kz_json:set_value(Key, Encoded, JObj)
+                               kz_json:set_value(Key, encode_start_key(Value), JObj)
                        end
                 end
                ,Resp
                ,[<<"start_key">>, <<"next_start_key">>]
                ).
+
+-spec encode_start_key(kz_json:path()) -> ne_binary().
+encode_start_key(StartKey) ->
+    kz_binary:hexencode(erlang:term_to_binary(StartKey)).
+
+-spec decode_start_key(ne_binary()) -> kz_json:path().
+decode_start_key(Encoded) ->
+    try erlang:binary_to_term(kz_binary:from_hex(Encoded))
+    catch _:_ -> Encoded
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

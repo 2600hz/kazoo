@@ -159,8 +159,6 @@ maybe_decode_start_key(Context) ->
     case cb_context:req_value(Context, <<"start_key">>) of
         'undefined' -> Context;
         Value ->
-            Decoded = try erlang:binary_to_term(kz_binary:from_hex(Value)) catch _:_ -> Value end,
-
             QS = cb_context:query_string(Context),
             ReqData = cb_context:req_data(Context),
             ReqJson = cb_context:req_json(Context),
@@ -169,7 +167,7 @@ maybe_decode_start_key(Context) ->
                              'true' -> kz_json:delete_key(<<"start_key">>, ReqData);
                              'false' -> ReqData
                          end,
-            NewQS = kz_json:set_value(<<"start_key">>, Decoded, QS),
+            NewQS = kz_json:set_value(<<"start_key">>, api_util:decode_start_key(Value), QS),
 
             Setters = [{fun cb_context:set_req_data/2, NewReqData}
                       ,{fun cb_context:set_query_string/2, NewQS}

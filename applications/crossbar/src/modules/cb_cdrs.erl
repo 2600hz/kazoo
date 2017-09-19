@@ -137,27 +137,22 @@ pagination({Req, Context}=Payload) ->
     IsInteraction = cb_context:fetch(Context, 'interaction', 'false'),
     case pagination_key(IsInteraction, 'next_start_key', Context) of
         'ok' -> 'ok';
-        Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (kz_term:to_binary(Next))/binary, "\"">>, Req)
+        Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (api_util:encode_start_key(Next))/binary, "\"">>, Req)
     end,
     StartKey = pagination_key(IsInteraction, 'start_key', Context),
-    'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (kz_term:to_binary(StartKey))/binary, "\"">>, Req),
+    'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (api_util:encode_start_key(StartKey))/binary, "\"">>, Req),
     Payload.
 
 -spec pagination_key(boolean(), atom(), cb_context:context()) ->
-                            'ok' | ne_binary() | integer().
+                            'ok' | kz_json:path().
 pagination_key('false', PaginationKey, Context) ->
     case cb_context:fetch(Context, PaginationKey) of
         'undefined' -> 'ok';
-        [_, Key] -> Key;
-        [Key] -> Key;
         Key -> Key
     end;
 pagination_key('true', PaginationKey, Context) ->
     case cb_context:fetch(Context, PaginationKey) of
         'undefined' -> 'ok';
-        [_, Key, _] -> Key;
-        [Key, _] -> Key;
-        [Key] -> Key;
         Key -> Key
     end.
 
@@ -399,18 +394,20 @@ create_view_options(OwnerId, Fun, Context) ->
 -spec create_view_options(api_binary(), cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
                                  {'ok', crossbar_doc:view_options()}.
 create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
+    StartKey = maybe_get_start_key_from_req(Context, CreatedTo),
     {'ok'
     ,props:filter_undefined(
-       [{'startkey', CreatedTo}
+       [{'startkey', StartKey}
        ,{'endkey', CreatedFrom}
        ,{'limit', pagination_page_size(Context)}
        ,'descending'
        ])
     };
 create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
+    StartKey = maybe_get_start_key_from_req(Context, [OwnerId, CreatedTo]),
     {'ok'
     ,props:filter_undefined(
-       [{'startkey', [OwnerId, CreatedTo]}
+       [{'startkey', StartKey}
        ,{'endkey', [OwnerId, CreatedFrom]}
        ,{'limit', pagination_page_size(Context)}
        ,'descending'
@@ -420,9 +417,10 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
 -spec create_interaction_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                              {'ok', crossbar_doc:view_options()}.
 create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
+    StartKey = maybe_get_start_key_from_req(Context, [CreatedTo]),
     {'ok'
     ,props:filter_undefined(
-       [{'startkey', [CreatedTo]}
+       [{'startkey', StartKey}
        ,{'endkey', [CreatedFrom, kz_json:new()]}
        ,{'limit', pagination_page_size(Context)}
        ,{'group', 'true'}
@@ -433,9 +431,10 @@ create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
        ])
     };
 create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
+    StartKey = maybe_get_start_key_from_req(Context, [OwnerId, CreatedTo]),
     {'ok'
     ,props:filter_undefined(
-       [{'startkey', [OwnerId, CreatedTo]}
+       [{'startkey', StartKey}
        ,{'endkey', [OwnerId, CreatedFrom, kz_json:new()]}
        ,{'limit', pagination_page_size(Context)}
        ,{'group', 'true'}
@@ -452,12 +451,20 @@ maybe_add_stale_to_options(_) ->[].
 
 -spec create_summary_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                          {'ok', crossbar_doc:view_options()}.
-create_summary_view_options(_, _, CreatedFrom, CreatedTo) ->
-    {'ok', [{'startkey', CreatedTo}
+create_summary_view_options(Context, _, CreatedFrom, CreatedTo) ->
+    StartKey = maybe_get_start_key_from_req(Context, CreatedTo),
+    {'ok', [{'startkey', StartKey}
            ,{'endkey', CreatedFrom}
            ,{'list', ?CB_SUMMARY_LIST}
            ,'descending'
            ]}.
+
+-spec maybe_get_start_key_from_req(cb_context:context(), kz_json:path()) -> kz_json:path().
+maybe_get_start_key_from_req(Context, Default) ->
+    case crossbar_doc:start_key(Context) of
+        'undefined' -> Default;
+        StartKey -> StartKey
+    end.
 
 -spec pagination_page_size(cb_context:context()) -> api_pos_integer().
 pagination_page_size(Context) ->
@@ -505,24 +512,18 @@ chunked_dbs(AccountId, ViewOptions, Fun) ->
                          gregorian_seconds().
 view_option(Key, ViewOptions) ->
     case props:get_value(Key, ViewOptions) of
-        [_, Option] -> Option;
-        Option -> Option
+        [_, Created] -> Created;
+        Created -> Created
     end.
 
--spec interaction_view_option('endkey' | 'startkey', crossbar_doc:view_options()) ->
-                                     gregorian_seconds().
-interaction_view_option('startkey' = Key, ViewOptions) ->
+-spec interaction_view_option('endkey' | 'startkey', crossbar_doc:view_options()) -> gregorian_seconds().
+interaction_view_option(Key, ViewOptions) ->
     case props:get_value(Key, ViewOptions) of
-        [_OwnerId, CreatedTo] -> CreatedTo;
-        [CreatedTo] -> CreatedTo;
-        Option -> Option
-    end;
-interaction_view_option('endkey' = Key, ViewOptions) ->
-    case props:get_value(Key, ViewOptions) of
-        [_OwnerId, CreatedFrom, _] -> CreatedFrom;
-        [CreatedFrom, _] when is_integer(CreatedFrom) -> CreatedFrom;
-        [_OwnerId, CreatedFrom] -> CreatedFrom;
-        Option -> Option
+        [_OwnerId, InteractionTime, _] -> InteractionTime;
+        [InteractionTime, _] when is_integer(InteractionTime) -> InteractionTime;
+        [_OwnerId, InteractionTime] -> InteractionTime;
+        [InteractionTime] -> InteractionTime;
+        InteractionTime -> InteractionTime
     end.
 
 %%--------------------------------------------------------------------
