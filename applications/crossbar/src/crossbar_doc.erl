@@ -412,7 +412,7 @@ load_view(#load_view_params{view = View
         props:filter_undefined(
           [{'startkey', StartKey}
           ,{'limit', Limit}
-           | props:delete_keys(['startkey', 'limit', 'databases'], Options)
+           | props:delete_keys(['startkey', 'startkey_fun', 'limit', 'databases'], Options)
           ]),
 
     IncludeOptions =
