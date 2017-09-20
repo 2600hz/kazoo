@@ -15373,7 +15373,13 @@
                 "Text": {
                     "type": "string"
                 },
+                "Timezone": {
+                    "type": "string"
+                },
                 "To": {
+                    "type": "string"
+                },
+                "User-ID": {
                     "type": "string"
                 }
             },
@@ -35020,6 +35026,29 @@
                 }
             },
             "post": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "ips",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ips"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "put": {
                 "parameters": [
                     {
                         "in": "body",

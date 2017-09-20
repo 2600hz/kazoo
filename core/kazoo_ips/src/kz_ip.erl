@@ -74,11 +74,13 @@ create(IP, Zone, Host) ->
             kz_ip_utils:refresh_database(fun() -> create(IP, Zone, Host) end);
         {'ok', SavedJObj} ->
             lager:debug("created dedicated ip ~s in zone ~s on host ~s"
-                       ,[IP, Zone, Host]),
+                       ,[IP, Zone, Host]
+                       ),
             {'ok', from_json(SavedJObj)};
         {'error', _R}=E ->
             lager:debug("unable to create dedicated ip ~s: ~p"
-                       ,[IP, _R]),
+                       ,[IP, _R]
+                       ),
             E
     end.
 
@@ -127,9 +129,7 @@ assign(Account, IPDoc) ->
                     ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                     ,{<<"pvt_status">>, ?ASSIGNED}
                     ],
-            save(kz_json:set_values(Props, IPJObj)
-                ,kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, IPJObj)
-                )
+            save(kz_json:set_values(Props, IPJObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -153,9 +153,7 @@ release(IP) ->
             ,{<<"pvt_modified">>, kz_time:current_tstamp()}
             ],
     JObj = to_json(IP),
-    save(kz_json:delete_keys(RemoveKeys, kz_json:set_values(Props, JObj))
-        ,kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj)
-        ).
+    save(kz_json:delete_keys(RemoveKeys, kz_json:set_values(Props, JObj))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -260,27 +258,13 @@ is_available(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(kz_json:object(), api_binary()) ->
+-spec save(kz_json:object()) ->
                   {'ok', ip()} |
                   {'error', any()}.
-save(JObj, PrevAccountId) ->
+save(JObj) ->
     case kz_datamgr:save_doc(?KZ_DEDICATED_IP_DB, JObj) of
-        {'ok', J} ->
-            AccountId = kz_json:get_value(<<"pvt_assigned_to">>, J),
-            _ = reconcile_services(PrevAccountId, AccountId),
-            {'ok', from_json(J)};
+        {'ok', J} -> {'ok', from_json(J)};
         {'error', _R}=E ->
             lager:debug("failed to save dedicated ip ~s: ~p", [kz_doc:id(JObj), _R]),
             E
     end.
-
--spec reconcile_services(api_binary(), api_binary()) -> 'false' | kz_services:services().
-reconcile_services('undefined', AccountId) ->
-    kz_services:reconcile(AccountId, <<"ips">>);
-reconcile_services(AccountId, 'undefined') ->
-    kz_services:reconcile(AccountId, <<"ips">>);
-reconcile_services(AccountId, AccountId) ->
-    kz_services:reconcile(AccountId, <<"ips">>);
-reconcile_services(PrevAccountId, AccountId) ->
-    _ = kz_services:reconcile(PrevAccountId, <<"ips">>),
-    kz_services:reconcile(AccountId, <<"ips">>).

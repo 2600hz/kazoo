@@ -21,12 +21,13 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>
-                        ,<<"templates">>
-                        ,<<"rates">>
-                        ,<<"acls">>
+-define(SYS_ADMIN_MODS, [<<"acls">>
                         ,<<"global_provisioner_templates">>
+                        ,<<"global_resources">>
+                        ,<<"ips">>
+                        ,<<"rates">>
                         ,<<"sup">>
+                        ,<<"templates">>
                         ]).
 
 %% Endpoints performing their own auth
@@ -43,6 +44,7 @@ init() ->
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
+    cb_context:put_reqid(Context),
     authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 authorize(Context, Verb, [{?KZ_ACCOUNTS_DB, []}]) ->

@@ -95,14 +95,15 @@ run_call(Var, {'call', M, F, Args}, {Step, PQC, State, Vars}) ->
     Args1 = resolve_args(Args, pqc_kazoo_model:api(State), Vars),
     ?INFO("(~p) ~p:~p(~p) -> ", [Step, M, F, Args1]),
     Resp = erlang:apply(M, F, Args1),
-    ?INFO("~p: ~p~n~n", [Var, Resp]),
+    ?INFO("applied ~p:~p, assoc var ~p with resp ~p~n~n", [M, F, Var, Resp]),
     case PQC:postcondition(State, {'call', M, F, Args1}, Resp) of
         'true' ->
+            ?INFO("~n", []),
             {Step+1, PQC, PQC:next_state(State, Resp, {'call', M, F, Args1}), Vars#{Var => Resp}};
         'false' ->
-            ?INFO("postcondition failed:~n", []),
-            _ = [?INFO("~p~n", [Model]) || Model <- pqc_kazoo_model:pp(State)],
-            ?INFO("call ~p:~p(~p)~n", [M, F, Args1]),
+            ?INFO("postcondition failed:~n  model:~n", []),
+            _ = [?INFO("    ~p~n", [Model]) || Model <- pqc_kazoo_model:pp(State)],
+            ?INFO("  call ~p:~p(~p)~n", [M, F, Args1]),
             throw({'failed_postcondition', State, {M, F, Args1}, Resp})
     end.
 
