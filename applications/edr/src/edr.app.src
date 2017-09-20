@@ -7,13 +7,12 @@
   {applications, [ kernel
                  , stdlib
 
+                 , kazoo_amqp
                  , kazoo_apps
-                 , kazoo_auth
+                 , kazoo_data
                  , kazoo_edr
 
                  , lager
-                 , ranch
-                 , cowboy
                  ]},
   {mod, {edr_app, []}}
  ]}.
