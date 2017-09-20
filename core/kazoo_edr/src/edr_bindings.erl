@@ -34,8 +34,8 @@
 
 -type bind_resp() :: ['ok' | {'error', 'exists'}].
 
--spec bind(edr_binding(), atom(), atom()) -> bind_resp().
--spec bind(edr_binding(), atom(), atom(), any()) -> bind_resp().
+-spec bind(edr_binding() | edr_bindings(), module(), atom()) -> bind_resp().
+-spec bind(edr_binding() | edr_bindings(), module(), atom(), any()) -> bind_resp().
 bind(Bindings, Module, Fun) ->
     bind(Bindings, Module, Fun, 'undefined').
 bind(Bindings, Module, Fun, Payload) when is_list(Bindings) ->
@@ -80,7 +80,7 @@ binding_keys(#edr_binding{severity=Severities
 levels(Level, AllLevels) ->
     lists:dropwhile(fun(L) -> L =/= Level end, AllLevels).
 
--spec binding_key(edr_severity(), edr_verbosity(), api_binary(), ne_binary()) -> ne_binary().
+-spec binding_key(edr_severity(), edr_verbosity(), api_ne_binary(), ne_binary()) -> ne_binary().
 binding_key(Severity, Verbosity, AccountId, AppName) ->
     <<"edr.", (kz_term:to_binary(Severity))/binary, "."
       ,(kz_term:to_binary(Verbosity))/binary, "."
@@ -117,7 +117,7 @@ should_push(#edr_binding{account_id=AccountId, include_descendants=true}
 should_push(_Binding, _Event) ->
     'true'.
 
--spec bindings_from_json(kz_json:object() | kz_json:objects()) -> edr_binding() | [edr_binding()].
+-spec bindings_from_json(kz_json:object() | kz_json:objects()) -> edr_binding() | edr_bindings().
 bindings_from_json(JObjs) when is_list(JObjs) ->
     [bindings_from_json(JObj) || JObj <- JObjs];
 bindings_from_json(JObj) ->
@@ -130,7 +130,7 @@ bindings_from_json(JObj) ->
                 ,exact_verbosity=kz_json:is_true(<<"exact_verbosity">>, JObj)
                 }.
 
--spec bindings_to_json(edr_binding() | [edr_binding()]) -> kz_json:object() | kz_json:objects().
+-spec bindings_to_json(edr_binding() | edr_bindings()) -> kz_json:object() | kz_json:objects().
 bindings_to_json(Bindings) when is_list(Bindings) ->
     [bindings_to_json(Binding) || Binding <- Bindings];
 bindings_to_json(Binding) ->

@@ -10,7 +10,7 @@
 -define(EDR_SEVERITY_LEVELS, ['ok', 'warning', 'critical']).
 -type edr_severity() :: 'ok' | 'warning' | 'critical'.
 
--record(edr_event, {account_id     :: api_binary()
+-record(edr_event, {account_id     :: api_ne_binary()
                    ,account_tree   :: api_ne_binaries()
                    ,app_name       :: ne_binary()
                    ,app_version    :: ne_binary()
@@ -24,7 +24,7 @@
                    }).
 -type edr_event() :: #edr_event{}.
 
--record(edr_binding, {account_id          = <<"*">> :: api_binary() | api_binaries()
+-record(edr_binding, {account_id          = <<"*">> :: api_ne_binary() | api_ne_binaries()
                      ,include_descendants = 'false' :: boolean()
                      ,app_name            = <<"*">> :: ne_binary() | ne_binaries()
                      ,severity            = 'ok'    :: edr_severity() | [edr_severity()]

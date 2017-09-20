@@ -13,7 +13,7 @@
                  ,type         :: ne_binary()
                  ,enabled      :: boolean()
                  ,options      :: kz_json:object()
-                 ,bindings     :: [edr_binding()]
+                 ,bindings     :: edr_bindings()
                  }).
 
 -type backend() :: #backend{}.

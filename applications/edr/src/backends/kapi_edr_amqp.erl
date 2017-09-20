@@ -93,6 +93,5 @@ publish_event(#edr_event{}=Event) ->
 event_to_payload(#edr_event{}=Event) ->
     FormatterOptions = kz_json:from_list([{<<"include_metadata">>, 'true'}
                                          ,{<<"normalize">>, 'false'}
-                                         ,{<<"encode">>, 'false'}
                                          ]),
-    edr_fmt_json:format_event(FormatterOptions, Event).
+    edr_fmt_json:to_jobj(FormatterOptions, Event).

@@ -21,7 +21,7 @@
                         {'returned', kz_json:object(), kz_json:object()}.
 
 -spec event(binary(), binary(), edr_severity(), edr_verbosity(), kz_json:object()) -> event_return().
--spec event(binary(), binary(), edr_severity(), edr_verbosity(), kz_json:object(), api_binary()) -> event_return().
+-spec event(binary(), binary(), edr_severity(), edr_verbosity(), kz_json:object(), api_ne_binary()) -> event_return().
 event(AppName, AppVersion, Severity, Verbosity, Body) ->
     event(AppName, AppVersion, Severity, Verbosity, Body, 'undefined').
 event(AppName, AppVersion, Severity, Verbosity, Body, AccountId) ->

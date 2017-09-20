@@ -10,23 +10,26 @@
 
 -export([format_event/2]).
 
+-export([to_jobj/2]).
+
 -behaviour(edr_formatter).
 
 -include("../edr.hrl").
 
--type result() :: ne_binary() | kz_json:object().
-
--spec format_event(kz_json:object(), edr_event()) -> result().
--spec format_event(kz_json:object(), edr_event(), boolean()) -> result().
--spec format_event(kz_json:object(), edr_event(), boolean(), boolean()) -> result().
+-spec format_event(kz_json:object(), edr_event()) -> ne_binary().
 format_event(Opts, Event) ->
-    JObj = format_event(Opts, Event, kz_json:is_true(<<"include_metadata">>, Opts, 'true')),
-    encode(Opts, JObj).
-format_event(Opts, #edr_event{body=JObj}, 'false') ->
-    encode(Opts, JObj);
-format_event(Opts, Event, 'true') ->
-    format_event(Opts, Event, 'true', kz_json:get_value(<<"normalize">>, Opts, 'true')).
-format_event(_Opts, Event, _IncludeMeta, 'false') ->
+    encode(Opts, to_jobj(Opts, Event)).
+
+-spec to_jobj(kz_json:object(), edr_event()) -> kz_json:object().
+-spec to_jobj(kz_json:object(), edr_event(), boolean()) -> kz_json:object().
+-spec to_jobj(kz_json:object(), edr_event(), boolean(), boolean()) -> kz_json:object().
+to_jobj(Opts, Event) ->
+    to_jobj(Opts, Event, kz_json:is_true(<<"include_metadata">>, Opts, 'true')).
+to_jobj(_Opts, #edr_event{body=JObj}, 'false') ->
+    JObj;
+to_jobj(Opts, Event, 'true') ->
+    to_jobj(Opts, Event, 'true', kz_json:get_value(<<"normalize">>, Opts, 'true')).
+to_jobj(_Opts, Event, _IncludeMeta, 'false') ->
     Props = [{<<"Account-ID">>, Event#edr_event.account_id}
             ,{<<"Account-Tree">>, Event#edr_event.account_tree}
             ,{<<"App-Name">>, Event#edr_event.app_name}
@@ -40,17 +43,12 @@ format_event(_Opts, Event, _IncludeMeta, 'false') ->
             ,{<<"Verbosity">>, kz_term:to_binary(Event#edr_event.verbosity)}
             ],
     kz_json:from_list(Props);
-format_event(Opts, Event, IncludeMeta, 'true') ->
-    kz_json:normalize(format_event(Opts, Event, IncludeMeta, 'false')).
+to_jobj(Opts, Event, IncludeMeta, 'true') ->
+    kz_json:normalize(to_jobj(Opts, Event, IncludeMeta, 'false')).
 
--spec encode(kz_json:object(), kz_json:object()) -> result().
--spec encode(kz_json:object(), kz_json:object(), boolean()) -> result().
+-spec encode(kz_json:object(), kz_json:object()) -> ne_binary().
 encode(Opts, JObj) ->
-    encode(Opts, JObj, kz_json:is_true(<<"encode">>, Opts, 'true')).
-encode(Opts, JObj, 'true') ->
     case kz_json:is_true(<<"pretty">>, Opts, 'false') of
         'true' -> kz_json:encode(JObj, ['pretty']);
         'false' -> kz_json:encode(JObj)
-    end;
-encode(_Opts, JObj, 'false') ->
-    JObj.
+    end.
