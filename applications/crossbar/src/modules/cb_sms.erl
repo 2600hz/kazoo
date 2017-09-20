@@ -273,7 +273,8 @@ create_sms_doc_id() ->
 summary(Context) ->
     {View, PreFilter, PostFilter} = get_view_and_filter(Context),
     case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
-        {'ok', ViewOptions} ->
+        {'ok', ViewOptions0} ->
+            ViewOptions = cb_modules_util:make_modb_view_descending(ViewOptions0),
             crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2);
         Ctx -> Ctx
     end.

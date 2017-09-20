@@ -23,6 +23,7 @@
         ,range_view_options/1, range_view_options/2, range_view_options/3, range_view_options/5
 
         ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3, range_modb_view_options/5
+        ,make_modb_view_descending/1
 
         ,take_sync_field/1
 
@@ -141,6 +142,17 @@ range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo
      ,{'databases', kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo)}
      ]
     }.
+
+-spec make_modb_view_descending(crossbar_doc:view_options()) -> crossbar_doc:view_options().
+make_modb_view_descending(Options) ->
+    MODbs = lists:reverse(props:get_value('databases', Options, [])),
+    StartKey = props:get_value('startkey', Options),
+    EndKey = props:get_value('endkey', Options),
+    Funs = [fun(Props) -> props:set_value('databases', MODbs, Props) end
+           ,fun(Props) -> props:set_value('startkey', EndKey, Props) end
+           ,fun(Props) -> props:set_value('endkey', StartKey, Props) end
+           ],
+    sets:to_list(sets:from_list(lists:foldl(fun(Fun, Acc) -> Fun(Acc) end, ['descending'|Options], Funs))).
 
 -spec range_to(cb_context:context(), pos_integer(), ne_binary()) -> pos_integer().
 range_to(Context, TStamp, Key) ->

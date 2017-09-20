@@ -90,6 +90,8 @@ to_json(Req0, Context) ->
                            ),
     {Req2, cb_context:store(Context1, 'is_chunked', 'true')}.
 
+%%FIXME: fix page_size, start_key and next_start_key properly
+%%       probably page size is wrong here!
 -spec pagination(payload()) -> payload().
 pagination({Req, Context}=Payload) ->
     PageSize = cb_context:fetch(Context, 'page_size', 0),
@@ -233,6 +235,7 @@ create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
            ,'descending'
            ]}.
 
+%%FIXME: check if pagination is on or off
 -spec pagination_page_size(cb_context:context()) -> pos_integer().
 pagination_page_size(Context) ->
     case cb_context:pagination_page_size(Context) of
@@ -282,6 +285,8 @@ send_chunked_stats({Req, Context}) ->
     Dbs = cb_context:fetch(Context, 'chunked_dbs'),
     send_chunked_stats(Dbs, {Req, Context}).
 
+%%FIXME: loop over databases until either page size is exhausted or database
+%%       This code is fetching from all databases the same amount as page_size!
 -spec send_chunked_stats(ne_binaries(), payload()) -> payload().
 send_chunked_stats([], Payload) -> Payload;
 send_chunked_stats([Db | Dbs], {Req, Context}) ->

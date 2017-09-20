@@ -130,7 +130,8 @@ validate(Context, RecordingId) ->
 recording_summary(Context) ->
     {View, PreFilter, PostFilter} = get_view_and_filter(Context),
     case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
-        {'ok', ViewOptions} ->
+        {'ok', ViewOptions0} ->
+            ViewOptions = cb_modules_util:make_modb_view_descending(ViewOptions0),
             recording_summary(Context, View, ViewOptions);
         Ctx -> Ctx
     end.

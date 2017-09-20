@@ -174,13 +174,13 @@ create_viewoptions(Context, Classification, JObj, {'cycle', DateTime}) ->
     From = cycle_start(Cycle, DateTime),
     To = cycle_end(Cycle, DateTime),
     case cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To) of
-        {'ok', ViewOptions} -> {Cycle, ViewOptions};
+        {'ok', ViewOptions} -> {Cycle, ViewOptions}; %%TODO: reverse databases order and start, end keys
         ContextErr -> ContextErr
     end;
 
 create_viewoptions(Context, Classification, _JObj, {'manual', From, To}) ->
     case cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To) of
-        {'ok', ViewOptions} -> {<<"manual">>, ViewOptions};
+        {'ok', ViewOptions} -> {<<"manual">>, ViewOptions}; %%TODO: reverse databases order and start, end keys
         ContextErr -> ContextErr
     end.
 
