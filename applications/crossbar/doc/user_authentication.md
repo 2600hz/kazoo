@@ -42,7 +42,7 @@ curl -v -X PUT \
         "owner_id": "{OWNER_ID}",
         "reseller_id": "{RESELLER_ID}"
     },
-    "request_id": "{REQUEST_ID},
+    "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"
 }
@@ -170,5 +170,39 @@ curl -v -X POST \
     "message": "invalid request",
     "request_id": "{REQUEST_ID}",
     "status": "error"
+}
+```
+
+#### Impersonate a User
+
+You can impersonate as another user in your sub account if you're already is logged in as an admin in your master account. This features a useful way to login as your customer to debug/test issues with the user system's point of view.
+
+> PUT /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/user_auth
+
+```shell
+curl -v -X PUT \
+    -H "Content-Type: application/json" \
+    -d '{ "action": "impersonate_user", "data": {} }' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/user_auth
+```
+
+##### Response
+
+A standard Crossbar authentication token.
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "account_id": "{ACCOUNT_ID}",
+        "apps": [],
+        "is_reseller": true,
+        "language": "en-US",
+        "owner_id": "{OWNER_ID}",
+        "reseller_id": "{RESELLER_ID}"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
 }
 ```

@@ -21,7 +21,7 @@
         ,ensure_saved/1, ensure_saved/2
         ,rev_to_etag/1
         ,current_doc_vsn/0
-        ,update_pvt_parameters/2
+        ,update_pvt_parameters/2, add_pvt_auth/2
         ,start_key/1, start_key/2
         ,has_qs_filter/1
         ,filtered_doc_by_qs/2, filtered_doc_by_qs/3
@@ -1220,10 +1220,13 @@ add_pvt_auth(JObj, Context) ->
     case cb_context:is_authenticated(Context) of
         'false' -> kz_json:set_value(<<"pvt_is_authenticated">>, 'false', JObj);
         'true' ->
+            AuthDoc = cb_context:auth_doc(Context),
             Values = props:filter_undefined(
                        [{<<"pvt_is_authenticated">>, 'true'}
                        ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
                        ,{<<"pvt_auth_user_id">>, cb_context:auth_user_id(Context)}
+                       ,{<<"pvt_original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
+                       ,{<<"pvt_original_auth_owner_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}
                        ]),
             kz_json:set_values(Values, JObj)
     end.

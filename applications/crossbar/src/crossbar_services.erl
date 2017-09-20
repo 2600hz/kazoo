@@ -308,6 +308,8 @@ base_auth_user_info(Context) ->
         ,{<<"language">>, kz_account:language(AccountJObj)}
         ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
         ,{<<"auth_user_id">>, kz_json:get_value(<<"owner_id">>, AuthDoc)}
+        ,{<<"original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
+        ,{<<"original_auth_user_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}
         ]
       )
      ).
@@ -322,7 +324,7 @@ save_an_audit_log(Context, Services) ->
     case cb_context:account_id(Context) =:= kz_services:account_id(Services) of
         'true' -> 'ok';
         'false' ->
-            (catch save_subaccount_audit_log(Context, BaseAuditLog))
+            save_subaccount_audit_log(Context, BaseAuditLog)
     end,
     maybe_notify_reseller(Context, Services, BaseAuditLog),
     kzd_audit_log:save(Services, BaseAuditLog).
@@ -330,8 +332,12 @@ save_an_audit_log(Context, Services) ->
 -spec save_subaccount_audit_log(cb_context:context(), kzd_audit_log:doc()) -> 'ok'.
 save_subaccount_audit_log(Context, BaseAuditLog) ->
     MODb = cb_context:account_modb(Context),
-    {'ok', _Saved} = kazoo_modb:save_doc(MODb, BaseAuditLog),
-    lager:debug("saved sub account ~s's audit log", [cb_context:account_id(Context)]).
+    case kazoo_modb:save_doc(MODb, BaseAuditLog) of
+        {ok, _} ->
+            lager:debug("saved audit log for account ~s", [cb_context:account_id(Context)]);
+        {error, _Reason} ->
+            lager:debug("failed to save audit log (account ~s) : ~p", [cb_context:account_id(Context), _Reason])
+    end.
 
 -spec maybe_notify_reseller(cb_context:context(), kz_services:services(), kz_json:object()) -> 'ok'.
 maybe_notify_reseller(Context, Services, AuditLog) ->

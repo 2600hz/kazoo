@@ -108,18 +108,18 @@ authenticate(_, _) -> 'false'.
 %% The Requestor (PUT):
 %%     IE: Create (PUT) a local auth token
 %% This request bypasses authentication, test the 'shared_token' against our
-%% authorative server.  Basicly preform a noraml 'get' to this module with the
+%% authoritative server.  Basically preform a normal 'get' to this module with the
 %% shared token as the auth token.  If it succeeds we will send 'ourself' the
 %% account id, otherwise the token was not known to the auth server.
 %%
 %% The Authority (GET):
 %%     IE: Fetch (GET) the account and user of a shared token
-%% If we are validating a 'get' request then we are the authoriative box.  This means
+%% If we are validating a 'get' request then we are the authoritative box.  This means
 %% another box is using their 'shared_tokens' as our auth token and it validated.
 %% So lets figure out what account they belong to and return the complete account
 %% definition so they can import it.
 %%
-%% If the authoriate box is running with noauth[n|z] then just send back a 401 to the
+%% If the authoritative box is running with noauth[n|z] then just send back a 401 to the
 %% requestor because we wont know what account to fetch
 %%
 %% Failure here returns 400 or 401
@@ -135,7 +135,7 @@ validate_request(Context, ?HTTP_PUT, _) ->
     SharedToken = kz_json:get_value(<<"shared_token">>, cb_context:req_data(Context)),
     case authenticate_shared_token(SharedToken, ?AUTHORITATIVE_CROSSBAR) of
         {'ok', Payload} ->
-            lager:debug("authoritive shared auth request succeeded"),
+            lager:debug("authoritative shared auth request succeeded"),
             RemoteData = kz_json:get_value(<<"data">>, kz_json:decode(Payload)),
             case import_missing_data(RemoteData) of
                 'true' ->
@@ -147,10 +147,10 @@ validate_request(Context, ?HTTP_PUT, _) ->
                     cb_context:add_system_error('datastore_fault', Context)
             end;
         {'forbidden', _} ->
-            lager:debug("authoritive shared auth request forbidden"),
+            lager:debug("authoritative shared auth request forbidden"),
             cb_context:add_system_error('invalid_credentials', Context);
         {'error', _}=E ->
-            lager:debug("authoritive shared auth request error: ~p", [E]),
+            lager:debug("authoritative shared auth request error: ~p", [E]),
             cb_context:add_system_error('datastore_unreachable', Context)
     end;
 
@@ -228,7 +228,7 @@ create_local_token(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Make a crossbar request to the authoriative server to authorize
+%% Make a crossbar request to the authoritative server to authorize
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
@@ -287,7 +287,7 @@ import_missing_account(AccountId, Account) ->
         %% if the account database exists make sure it has the account
         %% definition, because when couch is acting up it can skip this
         'true' ->
-            lager:debug("remote account db ~s alread exists locally", [AccountId]),
+            lager:debug("remote account db ~s already exists locally", [AccountId]),
             %% make sure the account definition is in the account, if not
             %% use the one we got from shared auth
             case kz_account:fetch(AccountId) of
@@ -303,7 +303,7 @@ import_missing_account(AccountId, Account) ->
                                                       ]),
                     case cb_context:resp_status(Context1) of
                         'success' ->
-                            lager:debug("udpated account definition"),
+                            lager:debug("updated account definition"),
                             'true';
                         _ ->
                             lager:debug("could not update account definition"),

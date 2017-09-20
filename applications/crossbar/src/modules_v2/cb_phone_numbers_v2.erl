@@ -860,7 +860,7 @@ update_phone_numbers_locality(Context, Localities) ->
     DocId = kz_doc:id(cb_context:doc(Context)),
     case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
-            J = kz_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
+            J = kz_json:foldl(fun(K, V, J) -> update_phone_numbers_locality_fold(K, V, J, Context) end, JObj, Localities),
             kz_datamgr:save_doc(AccountDb, J);
         {'error', _E}=E ->
             lager:error("failed to update locality for ~s in ~s: ~p", [DocId, AccountDb, _E]),
@@ -868,16 +868,17 @@ update_phone_numbers_locality(Context, Localities) ->
     end.
 
 %% @private
--spec update_phone_numbers_locality_fold(ne_binary(), kz_json:object(), kz_json:object()) ->
+-spec update_phone_numbers_locality_fold(ne_binary(), kz_json:object(), kz_json:object(), cb_context:context()) ->
                                                 kz_json:object().
-update_phone_numbers_locality_fold(Key, Value, JObj) ->
+update_phone_numbers_locality_fold(Key, Value, JObj, Context) ->
     case kz_json:get_value(<<"status">>, Value) of
         <<"success">> ->
             case kz_json:get_value(Key, JObj) of
                 'undefined' -> JObj;
                 _Else ->
                     Locality = kz_json:delete_key(<<"status">>, Value),
-                    kz_json:set_value([Key, <<"locality">>], Locality, JObj)
+                    JObj1 = kz_json:set_value([Key, <<"locality">>], Locality, JObj),
+                    crossbar_doc:update_pvt_parameters(JObj1, Context)
             end;
         _Else -> JObj
     end.

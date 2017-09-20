@@ -256,8 +256,8 @@ establish_c2c(C2CId, Context) ->
 
 -spec maybe_migrate_history(ne_binary()) -> 'ok'.
 maybe_migrate_history(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountId = kz_util:format_account_id(Account),
+    AccountDb = kz_util:format_account_db(Account),
 
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
@@ -334,33 +334,30 @@ originate_call(C2CId, Context, Contact) ->
 originate_call(_C2CId, Context, Contact, 'false') ->
     crossbar_util:response_400(<<"Contact doesnt match whitelist">>, Contact, Context);
 originate_call(C2CId, Context, Contact, 'true') ->
-    ReqId = cb_context:req_id(Context),
-    AccountId = cb_context:account_id(Context),
-    AccountModb = cb_context:account_modb(Context),
     Request = build_originate_req(Contact, Context),
-    _Pid = kz_util:spawn(
-             fun() ->
-                     kz_util:put_callid(ReqId),
-                     Status = exec_originate(Request),
-                     lager:debug("got status ~p", [Status]),
-
-                     JObj = kz_json:from_list(
-                              [{<<"pvt_clicktocall_id">>, C2CId}
-                               | create_c2c_history_item(Status, Contact)
-                              ]
-                             ),
-                     HistoryItem =
-                         kz_doc:update_pvt_parameters(JObj
-                                                     ,AccountModb
-                                                     ,[{'account_id', AccountId}
-                                                      ,{'type', <<"c2c_history">>}
-                                                      ]
-                                                     ),
-                     kazoo_modb:save_doc(AccountId, HistoryItem)
-             end),
+    _Pid = kz_util:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
+
+-spec do_originate_call(ne_binary(), cb_context:context(), api_binary(), kz_proplist()) -> 'ok'.
+do_originate_call(C2CId, Context, Contact, Request) ->
+    ReqId = cb_context:req_id(Context),
+    kz_util:put_callid(ReqId),
+
+    AccountId = cb_context:account_id(Context),
+    Modb = cb_context:account_modb(Context),
+
+    Status = exec_originate(Request),
+    lager:debug("got status ~p", [Status]),
+
+    JObj = kz_json:from_list(create_c2c_history_item(Status, C2CId, Contact)),
+    Options = [{'account_id', AccountId}
+              ,{'type', <<"c2c_history">>}
+              ],
+    HistoryItem = kz_doc:update_pvt_parameters(crossbar_doc:update_pvt_parameters(JObj, Context), Modb, Options),
+    _ = kazoo_modb:save_doc(AccountId, HistoryItem),
+    'ok'.
 
 -spec match_regexps(binaries(), ne_binary()) -> boolean().
 match_regexps([Pattern | Rest], Number) ->
@@ -427,7 +424,7 @@ handle_originate_resp({'timeout', _T}) ->
                  ,name :: ne_binary()
                  }).
 
--spec build_originate_req(ne_binary(), cb_context:context()) -> api_terms().
+-spec build_originate_req(ne_binary(), cb_context:context()) -> kz_proplist().
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:doc(Context),
@@ -522,16 +519,18 @@ get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
     knm_converters:normalize(kz_http_util:urlencode(Contact)).
 
--spec create_c2c_history_item({'success', ne_binary()} | {'error', ne_binary()}, ne_binary()) -> kz_proplist().
-create_c2c_history_item({'success', CallId}, Contact) ->
+-spec create_c2c_history_item({'success' | 'error', ne_binary()}, ne_binary(), ne_binary()) -> kz_proplist().
+create_c2c_history_item({'success', CallId}, C2CId, Contact) ->
     [{<<"timestamp">>, kz_time:current_tstamp()}
     ,{<<"contact">>, Contact}
     ,{<<"call_id">>, CallId}
     ,{<<"result">>, <<"success">>}
+    ,{<<"pvt_clicktocall_id">>, C2CId}
     ];
-create_c2c_history_item({'error', Error}, Contact) ->
+create_c2c_history_item({'error', Error}, C2CId, Contact) ->
     [{<<"timestamp">>, kz_time:current_tstamp()}
     ,{<<"contact">>, Contact}
     ,{<<"result">>, <<"error">>}
     ,{<<"cause">>, Error}
+    ,{<<"pvt_clicktocall_id">>, C2CId}
     ].

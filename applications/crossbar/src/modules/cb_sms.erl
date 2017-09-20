@@ -104,13 +104,14 @@ validate_sms(Context, Id, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Doc = cb_context:doc(Context),
-    case kazoo_modb:save_doc(cb_context:account_db(Context), Doc) of
+    Db = cb_context:account_modb(Context),
+    Doc = crossbar_doc:update_pvt_parameters(kz_doc:set_account_db(cb_context:doc(Context), Db), Context),
+    case kazoo_modb:save_doc(Db, Doc) of
         {'ok', Saved} -> crossbar_util:response(Saved, Context);
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, kz_doc:id(Doc), Context)
@@ -119,7 +120,7 @@ put(Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().

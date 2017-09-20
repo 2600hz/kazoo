@@ -141,7 +141,7 @@ response('fatal', Msg, Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function load the error message into a specifc code response,
+%% This function load the error message into a specific code response,
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
@@ -155,7 +155,7 @@ response('fatal', Msg, Code, Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function load the error message into a specifc code response,
+%% This function load the error message into a specific code response,
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
@@ -169,7 +169,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 %% @public
 %% @doc
 %% This function loads the response vars in Context, soon it will
-%% make smarter chooices about formating resp_data and filtering
+%% make smarter choices about formating resp_data and filtering
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
@@ -187,8 +187,8 @@ create_response(Status, Msg, Code, JTerm, Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Create a standard response if the request is faulty (doesnt have a
-%% match in validation, or someother issue with it keeps it from being
+%% Create a standard response if the request is faulty (doesn't have a
+%% match in validation, or some other issue with it keeps it from being
 %% processed, like nonsensical chains)
 %% @end
 %%--------------------------------------------------------------------
@@ -200,7 +200,7 @@ response_faulty_request(Context) ->
 %% @public
 %% @doc
 %% When a module is no longer valid, alert the client of the deprecated status
-%% by either sending a 410 Gone or a 301 Redirct (when using the arity
+%% by either sending a 410 Gone or a 301 Redirect (when using the arity
 %% 3 version.
 %%
 %% The RedirectUrl should be relative to the accessed URL. So, if the
@@ -281,7 +281,7 @@ response_missing_view(Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Create a standard response if the datastore time'd out
+%% Create a standard response if the datastore timed out
 %% @end
 %%--------------------------------------------------------------------
 -spec response_datastore_timeout(cb_context:context()) ->
@@ -292,7 +292,7 @@ response_datastore_timeout(Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Create a standard response if the datastore time'd out
+%% Create a standard response if the datastore timed out
 %% @end
 %%--------------------------------------------------------------------
 -spec response_datastore_conn_refused(cb_context:context()) ->
@@ -433,6 +433,7 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
                                ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
                                ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
                                ], JObj),
+    %%FIXME: do something about setting pvt_auth_*_id
     case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
         {'ok', _} ->
@@ -490,6 +491,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
                      ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
                      ],
             AccountDb = kz_util:format_account_db(Descendant),
+            %%FIXME: do something about setting pvt_auth_*_id
             case kz_datamgr:save_doc(AccountDb, kz_json:set_values(Values, AccountJObj)) of
                 {'error', _E}=Error -> Error;
                 {'ok', NewAccountJObj} ->
@@ -519,6 +521,7 @@ move_service(AccountId, NewTree, NewResellerId, Dirty) ->
                       ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
                       ,{?SERVICES_PVT_RESELLER_ID, NewResellerId}
                       ]),
+            %%FIXME: do something about setting pvt_auth_*_id
             kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj))
     end.
 
@@ -838,6 +841,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                                             ,Token
                                             ),
 
+    %%FIXME: do something about setting pvt_auth_*_id
     case kz_datamgr:save_doc(?KZ_TOKEN_DB, JObjToken) of
         {'ok', Doc} ->
             AuthToken = kz_doc:id(Doc),
@@ -1204,6 +1208,7 @@ maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
 update_descendants_count(AccountId, JObj, NewCount) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Doc = kz_json:set_value(<<"descendants_count">>, NewCount, JObj),
+    %%FIXME: do something about setting pvt_auth_*_id
     case kz_datamgr:save_doc(AccountDb, Doc) of
         {'error', _E} -> 'error';
         {'ok', NewDoc} ->

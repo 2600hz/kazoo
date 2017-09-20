@@ -124,56 +124,37 @@ set_audit_account(JObj, AccountId, AuditJObj) ->
 -spec save(kz_services:services(), doc(), ne_binary()) -> 'ok'.
 -spec save(kz_services:services(), doc(), ne_binary(), ne_binary()) -> 'ok'.
 save(Services, AuditLog) ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    lager:debug("maybe save the base audit log ~s", [kz_json:encode(AuditLog)]),
-    save(Services, AuditLog, MasterAccountId).
+    case kz_services:have_quantities_changed(Services) of
+        'true' ->
+            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+            lager:debug("maybe save the base audit log ~s", [kz_json:encode(AuditLog)]),
+            save(Services, AuditLog, MasterAccountId);
+        'false' ->
+            lager:debug("nothing has changed for service account ~s, ignoring audit log", [kz_services:account_id(Services)])
+    end.
 
 save(Services, AuditLog, MasterAccountId) ->
     save(Services, AuditLog, MasterAccountId, kz_services:account_id(Services)).
 
-save(_Services, _AuditLog, MasterAccountId, MasterAccountId) ->
-    lager:debug("reached master account when processing audit log for ~s"
-               ,[kz_services:account_id(_Services)]
-               );
+save(Services, AuditLog, MasterAccountId, MasterAccountId) ->
+    lager:debug("maybe saving master audit log for ~s", [kz_services:account_id(Services)]),
+    maybe_save_master_audit_log(Services, AuditLog, MasterAccountId);
 save(Services, AuditLog, MasterAccountId, AccountId) ->
     JObj = kz_services:services_json(Services),
-    UpdatedLog = maybe_save_audit_log(Services, AuditLog, AccountId),
+    UpdatedLog = save_audit_log(Services, AuditLog, AccountId),
     maybe_save_audit_log_to_reseller(Services, UpdatedLog, MasterAccountId, AccountId, JObj).
 
--spec maybe_save_audit_log_to_reseller(kz_services:services()
-                                      ,doc()
-                                      ,ne_binary()
-                                      ,ne_binary()
-                                      ,kzd_services:doc()
-                                      ) ->
-                                              'ok'.
-maybe_save_audit_log_to_reseller(Services
-                                ,AuditLog
-                                ,MasterAccountId
-                                ,AccountId
-                                ,JObj
-                                ) ->
+-spec maybe_save_audit_log_to_reseller(kz_services:services(), doc(), ne_binary(), ne_binary(), kzd_services:doc()) -> 'ok'.
+maybe_save_audit_log_to_reseller(Services, AuditLog, MasterAccountId, AccountId, JObj) ->
     case kzd_services:reseller_id(JObj) of
         MasterAccountId ->
-            lager:debug("account ~s' reseller is the master account", [AccountId]),
+            lager:debug("reseller account of ~s is the master account", [AccountId]),
             maybe_save_master_audit_log(Services, AuditLog, MasterAccountId);
         ResellerId ->
             lager:debug("saving audit log for account ~s's reseller ~s", [AccountId, ResellerId]),
             ResellerServices = kz_services:fetch(ResellerId),
-            AuditLog1 = maybe_save_audit_log(Services, AuditLog, ResellerId),
+            AuditLog1 = save_audit_log(Services, AuditLog, ResellerId),
             save(ResellerServices, AuditLog1, MasterAccountId)
-    end.
-
--spec maybe_save_audit_log(kz_services:services(), kz_json:object(), ne_binary()) -> doc().
-maybe_save_audit_log(Services, AuditLog, ResellerId) ->
-    case kz_services:have_quantities_changed(Services) of
-        'true' ->
-            save_audit_log(Services, AuditLog, ResellerId);
-        'false' ->
-            lager:debug("nothing has changed for account ~s(reseller ~s), ignoring audit log"
-                       ,[kz_services:account_id(Services), ResellerId]
-                       ),
-            AuditLog
     end.
 
 -spec maybe_save_master_audit_log(kz_services:services(), doc(), ne_binary()) -> 'ok'.

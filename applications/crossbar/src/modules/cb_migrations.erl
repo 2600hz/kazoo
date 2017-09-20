@@ -234,12 +234,15 @@ mark_migration_complete(MigId, AccountId, Context) ->
     User = cb_context:auth_user_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
 
+    AuthDoc = cb_context:auth_doc(Context),
     Args = kz_json:from_list(
              [{<<"auth_user_id">>, User}
              ,{<<"auth_account_id">>, AuthAccountId}
              ,{<<"auth_account_name">>, kz_account:fetch_name(AuthAccountId)}
              ,{<<"auth_user_name">>, get_user_name(AuthAccountId, User)}
              ,{<<"performed_time">>, kz_time:current_tstamp()}
+             ,{<<"original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
+             ,{<<"original_auth_owner_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}
              ]),
 
     NewMigs = kz_json:set_value(MigId, Args, Migrations),

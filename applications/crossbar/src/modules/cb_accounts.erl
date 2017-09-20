@@ -1376,21 +1376,10 @@ ensure_accounts_db_exists() ->
 
 -spec create_account_definition(cb_context:context()) -> cb_context:context().
 create_account_definition(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AccountDb = cb_context:account_db(Context),
+    Doc = crossbar_doc:update_pvt_parameters(cb_context:doc(Context), Context),
+    JObj = maybe_set_trial_expires(kz_doc:set_id(Doc, cb_context:account_id(Context))),
 
-    TStamp = kz_time:current_tstamp(),
-    Props = [{<<"_id">>, AccountId}
-            ,{<<"pvt_account_id">>, AccountId}
-            ,{<<"pvt_account_db">>, AccountDb}
-            ,{<<"pvt_modified">>, TStamp}
-            ,{<<"pvt_created">>, TStamp}
-            ,{<<"pvt_vsn">>, <<"1">>}
-            ],
-
-    JObj = maybe_set_trial_expires(kz_json:set_values(Props, cb_context:doc(Context))),
-
-    case kz_datamgr:save_doc(AccountDb, JObj) of
+    case kz_datamgr:save_doc(cb_context:account_db(Context), JObj) of
         {'ok', AccountDef}->
             _ = replicate_account_definition(AccountDef),
             cb_context:setters(Context
