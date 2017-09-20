@@ -22,7 +22,7 @@
         ,timezone/1, timezone/2, set_timezone/2, default_timezone/0
         ,parent_account_id/1
         ,get_parent_account/1, get_parent_account_id/1
-        ,tree/1, tree/2 ,set_tree/2
+        ,fetch_tree/1 ,tree/1, tree/2 ,set_tree/2
         ,notification_preference/1, set_notification_preference/2
         ,is_enabled/1, enable/1, disable/1
         ,api_key/1, set_api_key/2
@@ -507,6 +507,20 @@ get_parent_account_id(AccountId) ->
         {'error', _R} ->
             lager:debug("failed to open account's ~s parent: ~p", [AccountId, _R]),
             'undefined'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_tree(api_binary()) -> api_binaries() | 'undefined'.
+fetch_tree('undefined') ->
+    'undefined';
+fetch_tree(AccountId) ->
+    case fetch(AccountId) of
+        {'ok', Doc} -> tree(Doc);
+        _ -> 'undefined'
     end.
 
 %%--------------------------------------------------------------------
