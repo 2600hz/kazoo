@@ -396,6 +396,11 @@ do_get_ccvs_by_ip(IP) ->
     case kapps_config:get_is_true(<<"registrar">>, <<"use_aggregate">>, 'true')
         andalso kz_datamgr:get_results(?KZ_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}])
     of
+        'false' -> 
+            NotF = {'error', 'not_found'},
+            lager:debug("aggregate SIP auth db disabled, skipping CCV lookup by IP ~s", [IP]),
+            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), NotF),
+            NotF;
         {'ok', []} ->
             NotF = {'error', 'not_found'},
             lager:debug("no entry in ~s for IP: ~s", [?KZ_SIP_DB, IP]),
