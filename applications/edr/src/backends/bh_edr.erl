@@ -26,13 +26,11 @@ init() ->
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
 validate(Context, #{keys := [Severity, Verbosity, _AppName]}) ->
-    SeverityBinaries = [kz_term:to_binary(L) || L <- ?EDR_SEVERITY_LEVELS],
-    VerbosityBinaries = [kz_term:to_binary(L) || L <- ?EDR_VERBOSITY_LEVELS],
-    case {lists:member(Severity, SeverityBinaries), lists:member(Verbosity, VerbosityBinaries)} of
+    case {lists:member(Severity, ?EDR_SEVERITY_BINARIES), lists:member(Verbosity, ?EDR_VERBOSITY_BINARIES)} of
         {'false', _} ->
-            bh_context:add_error(Context, <<"severity must be one of: ", (kz_binary:join(SeverityBinaries))/binary>>);
+            bh_context:add_error(Context, <<"severity must be one of: ", (kz_binary:join(?EDR_SEVERITY_BINARIES))/binary>>);
         {_, 'false'} ->
-            bh_context:add_error(Context, <<"verbosity must be one of: ", (kz_binary:join(VerbosityBinaries))/binary>>);
+            bh_context:add_error(Context, <<"verbosity must be one of: ", (kz_binary:join(?EDR_VERBOSITY_BINARIES))/binary>>);
         {'true', 'true'} ->
             Context
     end;

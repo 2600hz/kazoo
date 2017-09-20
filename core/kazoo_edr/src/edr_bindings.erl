@@ -75,8 +75,8 @@ binding_keys(#edr_binding{severity=Severities
     [binding_key(S, V, Acc, App) || S <- Severities, V <- Verbosities, Acc <- AccountIds, App <- AppNames].
 
 %% Levels equal to or more significant than the specified level
--spec levels(edr_severity(), [edr_severity()]) -> [edr_severity()];
-            (edr_verbosity(), [edr_verbosity()]) -> [edr_verbosity()].
+-spec levels(edr_severity(), edr_severities()) -> edr_severities();
+            (edr_verbosity(), edr_verbosities()) -> edr_verbosities().
 levels(Level, AllLevels) ->
     lists:dropwhile(fun(L) -> L =/= Level end, AllLevels).
 
@@ -117,28 +117,55 @@ should_push(#edr_binding{account_id=AccountId, include_descendants=true}
 should_push(_Binding, _Event) ->
     'true'.
 
--spec bindings_from_json(kz_json:object() | kz_json:objects()) -> edr_binding() | edr_bindings().
+-spec bindings_from_json(kz_json:object()) -> edr_binding();
+                        (kz_json:objects()) -> edr_bindings().
 bindings_from_json(JObjs) when is_list(JObjs) ->
     [bindings_from_json(JObj) || JObj <- JObjs];
 bindings_from_json(JObj) ->
     #edr_binding{account_id=kz_doc:account_id(JObj, <<"*">>)
-                ,include_descendants=kz_json:is_true(<<"include_descendants">>, JObj)
-                ,app_name=kz_json:get_binary_value(<<"app_name">>, JObj)
-                ,severity=kz_json:get_atom_value(<<"severity">>, JObj, 'ok')
-                ,exact_severity=kz_json:is_true(<<"exact_severity">>, JObj)
-                ,verbosity=kz_json:get_atom_value(<<"verbosity">>, JObj, 'info')
-                ,exact_verbosity=kz_json:is_true(<<"exact_verbosity">>, JObj)
+                ,include_descendants=kz_json:is_true(<<"include_descendants">>, JObj, 'false')
+                ,app_name=kz_json:get_binary_value(<<"app_name">>, JObj, <<"*">>)
+                ,severity=severity_from_json(kz_json:get_value(<<"severity">>, JObj))
+                ,exact_severity=kz_json:is_true(<<"exact_severity">>, JObj, 'false')
+                ,verbosity=verbosity_from_json(kz_json:get_value(<<"verbosity">>, JObj))
+                ,exact_verbosity=kz_json:is_true(<<"exact_verbosity">>, JObj, 'false')
                 }.
 
--spec bindings_to_json(edr_binding() | edr_bindings()) -> kz_json:object() | kz_json:objects().
+-spec severity_from_json(api_ne_binary() | api_ne_binaries()) -> edr_severity().
+severity_from_json(Severities) when is_list(Severities) ->
+    [severity_from_json(Severity) || Severity <- Severities];
+severity_from_json(Severity) when is_binary(Severity) ->
+    'true' = lists:member(Severity, ?EDR_SEVERITY_BINARIES),
+    kz_term:to_atom(Severity);
+severity_from_json('undefined') ->
+    'info'.
+
+-spec verbosity_from_json(api_ne_binary() | api_ne_binaries()) -> edr_verbosity().
+verbosity_from_json(Verbosities) when is_list(Verbosities) ->
+    [verbosity_from_json(Verbosity) || Verbosity <- Verbosities];
+verbosity_from_json(Verbosity) when is_binary(Verbosity) ->
+    'true' = lists:member(Verbosity, ?EDR_VERBOSITY_BINARIES),
+    kz_term:to_atom(Verbosity);
+verbosity_from_json('undefined') ->
+    'ok'.
+
+-spec bindings_to_json(edr_binding()) -> kz_json:object();
+                      (edr_bindings()) -> kz_json:objects().
 bindings_to_json(Bindings) when is_list(Bindings) ->
     [bindings_to_json(Binding) || Binding <- Bindings];
-bindings_to_json(Binding) ->
+bindings_to_json(Binding=#edr_binding{}) ->
     kz_json:from_list([{<<"account_id">>, Binding#edr_binding.account_id}
                       ,{<<"include_descendants">>, Binding#edr_binding.include_descendants}
                       ,{<<"app_name">>, Binding#edr_binding.app_name}
-                      ,{<<"severity">>, Binding#edr_binding.severity}
+                      ,{<<"severity">>, severity_or_verbosity_to_json(Binding#edr_binding.severity)}
                       ,{<<"exact_severity">>, Binding#edr_binding.exact_severity}
-                      ,{<<"verbosity">>, Binding#edr_binding.verbosity}
+                      ,{<<"verbosity">>, severity_or_verbosity_to_json(Binding#edr_binding.verbosity)}
                       ,{<<"exact_verbosity">>, Binding#edr_binding.exact_verbosity}
                       ]).
+
+-spec severity_or_verbosity_to_json(edr_severity() | edr_verbosity()) -> ne_binary();
+                                   (edr_severities() | edr_verbosities()) -> ne_binaries().
+severity_or_verbosity_to_json(Values) when is_list(Values) ->
+    [severity_or_verbosity_to_json(Value) || Value <- Values];
+severity_or_verbosity_to_json(Value) ->
+    kz_term:to_binary(Value).

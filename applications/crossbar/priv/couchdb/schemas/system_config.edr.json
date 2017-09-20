@@ -1,6 +1,33 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.edr",
+    "definitions": {
+        "account_id": {
+            "description": "The account id(s) to recieve events from. If not specified or * then events for all accounts will be recieved",
+            "type": "string"
+        },
+        "severity": {
+            "description": "What severity are we interested in events for?",
+            "enum": [
+                "ok",
+                "warning",
+                "critical"
+            ],
+            "type": "string"
+        },
+        "verbosity": {
+            "description": "What verbosity are we interested in events for?",
+            "enum": [
+                "trace",
+                "debug",
+                "info",
+                "warn",
+                "error",
+                "fatal"
+            ],
+            "type": "string"
+        }
+    },
     "description": "Schema for edr system_config",
     "properties": {
         "backends": {
@@ -14,9 +41,18 @@
                             "description": "An edr binding",
                             "properties": {
                                 "account_id": {
-                                    "default": "*",
-                                    "description": "The account id to recieve events from. If not specified or * then events for all accounts will be recieved",
-                                    "type": "string"
+                                    "anyOf": [
+                                        {
+                                            "$ref": "#/definitions/account_id"
+                                        },
+                                        {
+                                            "items": {
+                                                "$ref": "#/definitions/account_id"
+                                            },
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "default": "*"
                                 },
                                 "app_name": {
                                     "default": "*",
@@ -39,27 +75,32 @@
                                     "type": "boolean"
                                 },
                                 "severity": {
-                                    "default": "ok",
-                                    "description": "What severity are we interested in events for?",
-                                    "enum": [
-                                        "ok",
-                                        "warning",
-                                        "critical"
+                                    "anyOf": [
+                                        {
+                                            "$ref": "#/definitions/severity"
+                                        },
+                                        {
+                                            "items": {
+                                                "$ref": "#/definitions/severity"
+                                            },
+                                            "type": "array"
+                                        }
                                     ],
-                                    "type": "string"
+                                    "default": "ok"
                                 },
                                 "verbosity": {
-                                    "default": "info",
-                                    "description": "What verbosity are we interested in events for?",
-                                    "enum": [
-                                        "trace",
-                                        "debug",
-                                        "info",
-                                        "warn",
-                                        "error",
-                                        "fatal"
+                                    "anyOf": [
+                                        {
+                                            "$ref": "#/definitions/verbosity"
+                                        },
+                                        {
+                                            "items": {
+                                                "$ref": "#/definitions/verbosity"
+                                            },
+                                            "type": "array"
+                                        }
                                     ],
-                                    "type": "string"
+                                    "default": "info"
                                 }
                             },
                             "type": "object"

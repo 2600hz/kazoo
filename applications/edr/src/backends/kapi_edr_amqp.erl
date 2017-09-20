@@ -84,12 +84,13 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_event(api_terms()) -> 'ok'.
+-spec publish_event(edr_event()) -> 'ok'.
 publish_event(#edr_event{}=Event) ->
     {'ok', Payload} = kz_api:prepare_api_payload(event_to_payload(Event), ?EVENT_VALUES, fun event/1),
     RoutingKey = edr_bindings:event_binding_key(Event),
     amqp_util:kapps_publish(RoutingKey, Payload).
 
+-spec event_to_payload(edr_event()) -> kz_json:object().
 event_to_payload(#edr_event{}=Event) ->
     FormatterOptions = kz_json:from_list([{<<"include_metadata">>, 'true'}
                                          ,{<<"normalize">>, 'false'}

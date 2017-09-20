@@ -98,7 +98,7 @@ maybe_modify_backend(Name, Fun, JObj) ->
         'false' -> JObj
     end.
 
--spec registered_backends() -> kz_json:object().
+-spec registered_backends() -> kz_json:objects().
 registered_backends() ->
     kapps_config:get_jsons(<<"edr">>, <<"backends">>, []).
 
