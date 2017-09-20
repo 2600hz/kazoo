@@ -20,33 +20,28 @@ a binding, and send them somewhere else (usually out of Kazoo).
 
 Backends are registered in system_config/edr.
 
-### General registerd backend configuration options
+### General registered backend configuration options
 
-#### name
+Schema for edr system_config
 
-This is a unique identifier for a configured backend. This name is used to refer to the backend in
-edr_maintenance sup commands.
-
-#### type
-
-This determines what backend module is used this registered backend.
-A type of `file` maps to the backend module `edr_be_file`.
-
-#### options
-
-This is a JSON object which contains configuration options specific to the backend module.
-
-#### bindings
-
-These describe the types of events that should be recieved by the backend.
-A binding has the following fields:
-- account_id: The account id to recieve events from. If not specified or * then events for all accounts will be recieved
-- app_name: Which apps should we recieve events from? If not specified or * then events for all apps will be recieved
-- exact_severity: If true, then only events with severity exactly matching the severity field will be recieved. If false then more severe events will also be recieved
-- exact_verbosity: If true, then only events with verbosity exactly matching the severity field will be recieved. If false then less verbose events will also be recieved
-- include_descendants: Should we recieve events relating to descendant accounts if an account is specified?
-- severity: What severity are we interested in events for? Possible values are `ok`, `warning`, `critical`
-- verbosity: What verbosity are we interested in events for? Possible values are `trace`, `debug`, `info`, `warn`, `error`, `fatal`
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`backends.[].bindings.[].account_id` | The account id to recieve events from. If not specified or * then events for all accounts will be recieved | `string()` | `*` | `false`
+`backends.[].bindings.[].app_name` | Which apps should we recieve events from? If not specified or * then events for all apps will be recieved | `string()` | `*` | `false`
+`backends.[].bindings.[].exact_severity` | If true, then only events with severity exactly matching the severity field will be recieved. If false then more severe events will also be recieved | `boolean()` | `false` | `false`
+`backends.[].bindings.[].exact_verbosity` | If true, then only events with verbosity exactly matching the verbosity field will be recieved. If false then less verbose events will also be recieved | `boolean()` | `false` | `false`
+`backends.[].bindings.[].include_descendants` | Should we recieve events relating to descendant accounts if an account is specified? | `boolean()` | `false` | `false`
+`backends.[].bindings.[].severity` | What severity are we interested in events for? | `string('ok' | 'warning' | 'critical')` | `ok` | `false`
+`backends.[].bindings.[].verbosity` | What verbosity are we interested in events for? | `string('trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal')` | `info` | `false`
+`backends.[].bindings` | The types of events the backend should be notified about | `array(object())` |   | `true`
+`backends.[].enabled` | Should the backend be started on edr app start? | `boolean()` | `true` | `true`
+`backends.[].name` | A unique identifier for the backend | `string(1..)` |   | `true`
+`backends.[].options.formatter.options` | Options passed on to the formatter module. These vary by module | `object()` |   | `false`
+`backends.[].options.formatter.type` | The formatter module to be used (eg. json refers to edr_fmt_json.erl) | `string('json')` |   | `false`
+`backends.[].options.formatter` | Output format configuration which is used by some (but not all) backends | `object()` |   | `false`
+`backends.[].options` | Options passed on to the backend module. These vary by module | `object()` |   | `false`
+`backends.[].type` | The backend module to be used (eg. amqp refers to edr_be_amqp.erl) | `string('amqp' | 'file' | 'http')` |   | `true`
+`backends` | Registered edr backends | `array(object())` | `[]` | `false`
 
 ### Backend types
 
