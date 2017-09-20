@@ -1356,11 +1356,11 @@ do_create_resp_envelope(Context) ->
 -spec encode_start_keys(kz_json:object()) -> kz_json:object().
 encode_start_keys(Resp) ->
     lists:foldl(fun(Key, JObj) ->
-                       case kz_json:get_value(Key, JObj) of
-                           'undefined' -> JObj;
-                           Value ->
-                               kz_json:set_value(Key, encode_start_key(Value), JObj)
-                       end
+                        case kz_json:get_value(Key, JObj) of
+                            'undefined' -> JObj;
+                            Value ->
+                                kz_json:set_value(Key, encode_start_key(Value), JObj)
+                        end
                 end
                ,Resp
                ,[<<"start_key">>, <<"next_start_key">>]
