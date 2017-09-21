@@ -1368,11 +1368,11 @@ encode_start_keys(Resp) ->
 
 -spec encode_start_key(kz_json:path()) -> ne_binary().
 encode_start_key(StartKey) ->
-    kz_binary:hexencode(erlang:term_to_binary(StartKey)).
+    kz_base64url:encode(erlang:term_to_binary(StartKey)).
 
 -spec decode_start_key(ne_binary()) -> kz_json:path().
 decode_start_key(Encoded) ->
-    try erlang:binary_to_term(kz_binary:from_hex(Encoded))
+    try erlang:binary_to_term(kz_base64url:decode(Encoded))
     catch _:_ -> Encoded
     end.
 
