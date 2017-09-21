@@ -131,8 +131,10 @@ to_number(X) when is_list(X) ->
         'error':'badarg' -> list_to_float(X)
     end.
 
--spec to_pid(list() | binary() | undefined) -> pid().
-to_pid(undefined) -> undefined;
+-spec to_pid(pid() | list() | binary() | atom()) -> api_pid().
+to_pid('undefined') -> 'undefined';
+to_pid(A) when is_atom(A) -> to_pid(whereis(A));
+to_pid(P) when is_pid(P) -> P;
 to_pid(X) when is_binary(X) -> to_pid(binary_to_list(X));
 to_pid(X) when is_list(X) -> list_to_pid(X).
 
@@ -348,5 +350,6 @@ error_to_binary({'error', Reason}) ->
 error_to_binary(Reason) ->
     try to_binary(Reason)
     catch
-        'error':'function_clause' -> <<"Unknown Error">>
+        'error':'function_clause' -> <<"Unknown Error">>;
+        'error':'badarg' -> <<"Unknown Error">>
     end.
