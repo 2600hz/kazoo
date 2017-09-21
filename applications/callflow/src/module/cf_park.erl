@@ -354,6 +354,7 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     of
         'true' ->
             lager:info("slot has parked call '~s' by parker '~s', it is available", [ParkedCallId, ParkerCallId]),
+            _ = kz_datamgr:del_doc(kapps_call:account_db(Call), ?SLOT_DOC_ID(SlotNumber)),
             do_save_slot(SlotNumber, Slot, Call);
         'false' ->
             case kapps_call_command:b_channel_status(ParkedCallId) of
