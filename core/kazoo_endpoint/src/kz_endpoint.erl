@@ -1402,13 +1402,17 @@ maybe_add_diversion(JObj, Endpoint, _Inception, Call) ->
 
 -spec maybe_add_sip_headers(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
 maybe_add_sip_headers(JObj, Endpoint, Call) ->
+    lists:foldl(fun merge_custom_sip_headers/2, JObj, get_sip_headers(Endpoint, Call)).
+
+-spec get_sip_headers(kz_json:object(), kapps_call:call()) -> kz_json:objects().
+get_sip_headers(Endpoint, Call) ->
     case ?MODULE:get(Call) of
-        {'error', _} -> JObj;
+        {'error', _} ->
+            [kz_device:custom_sip_headers_inbound(Endpoint)];
         {'ok', AuthorizingEndpoint} ->
-            MergeHeaders = [kz_device:custom_sip_headers_inbound(Endpoint)
-                           ,kz_device:custom_sip_headers_outbound(AuthorizingEndpoint)
-                           ],
-            lists:foldl(fun merge_custom_sip_headers/2, JObj, MergeHeaders)
+            [kz_device:custom_sip_headers_inbound(Endpoint)
+            ,kz_device:custom_sip_headers_outbound(AuthorizingEndpoint)
+            ]
     end.
 
 -spec merge_custom_sip_headers(kz_json:object(), kz_json:object()) -> kz_json:object().
