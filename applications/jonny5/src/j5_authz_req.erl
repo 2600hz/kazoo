@@ -336,5 +336,7 @@ trunk_usage(Id) ->
       (kz_term:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
       (kz_term:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
       (kz_term:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
-      (kz_term:to_binary(j5_limits:burst_trunks(Limits)))/binary
+      (kz_term:to_binary(j5_limits:burst_trunks(Limits)))/binary, "/",
+      (kz_term:to_binary(j5_channels:inbound_flat_rate(Id)))/binary, "/",
+      (kz_term:to_binary(j5_channels:outbound_flat_rate(Id)))/binary
     >>.

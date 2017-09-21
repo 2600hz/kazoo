@@ -164,6 +164,11 @@ metadata(Request) ->
       ,{<<"from">>, j5_request:from(Request)}
       ,{<<"direction">>, j5_request:call_direction(Request)}
       ,{<<"caller_id_number">>, j5_request:caller_id_number(Request)}
+      ,{<<"caller_id_name">>, j5_request:caller_id_name(Request)}
       ,{<<"callee_id_number">>, j5_request:callee_id_number(Request)}
+      ,{<<"callee_id_name">>, j5_request:callee_id_name(Request)}
+      ,{<<"resource_type">>, j5_request:resource_type(Request)}
+      ,{<<"account_trunk_usage">>, j5_request:account_trunk_usage(Request)}
+      ,{<<"reseller_trunk_usage">>, j5_request:reseller_trunk_usage(Request)}
       ,{<<"rate">>, RateObj}
       ]).

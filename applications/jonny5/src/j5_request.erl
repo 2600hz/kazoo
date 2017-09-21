@@ -54,8 +54,22 @@
 -export([call_cost/1, calculate_call/1]).
 -export([ccvs/1]).
 -export([caller_network_address/1]).
--export([rate/1, rate_name/1, rate_description/1, rate_increment/1, rate_minimum/1, rate_nocharge_time/1]).
--export([caller_id_number/1, callee_id_number/1]).
+-export([rate/1
+        ,rate_name/1
+        ,rate_description/1
+        ,rate_increment/1
+        ,rate_minimum/1
+        ,rate_nocharge_time/1
+        ]).
+-export([caller_id_number/1
+        ,caller_id_name/1
+        ]).
+-export([callee_id_number/1
+        ,callee_id_name/1
+        ]).
+-export([resource_type/1]).
+-export([account_trunk_usage/1]).
+-export([reseller_trunk_usage/1]).
 
 -include("jonny5.hrl").
 
@@ -107,7 +121,7 @@ from_jobj(JObj) ->
             ,call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj)
             ,call_direction = kz_json:get_value(<<"Call-Direction">>, JObj)
             ,other_leg_call_id = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
-            ,sip_to = kz_json:get_ne_value(<<"To">>, JObj)
+            ,sip_to = kz_json:get_first_defined([<<"To-URI">>, <<"To">>],  JObj)
             ,sip_from = kz_json:get_ne_value(<<"From">>, JObj)
             ,sip_request = Request
             ,message_id = kz_api:msg_id(JObj)
@@ -540,6 +554,26 @@ rate_nocharge_time(#request{request_ccvs=CCVs}) ->
 caller_id_number(#request{request_jobj=JObj}) ->
     kz_json:get_value(<<"Caller-ID-Number">>, JObj).
 
+-spec caller_id_name(request()) -> api_binary().
+caller_id_name(#request{request_jobj=JObj}) ->
+    kz_json:get_value(<<"Caller-ID-Name">>, JObj).
+
 -spec callee_id_number(request()) -> api_binary().
 callee_id_number(#request{request_jobj=JObj}) ->
     kz_json:get_value(<<"Callee-ID-Number">>, JObj).
+
+-spec callee_id_name(request()) -> api_binary().
+callee_id_name(#request{request_jobj=JObj}) ->
+    kz_json:get_value(<<"Callee-ID-Name">>, JObj).
+
+-spec resource_type(request()) -> api_binary().
+resource_type(#request{request_ccvs=CCVs}) ->
+    kz_json:get_value(<<"Resource-Type">>, CCVs).
+
+-spec account_trunk_usage(request()) -> api_binary().
+account_trunk_usage(#request{request_ccvs=CCVs}) ->
+    kz_json:get_value(<<"Account-Trunk-Usage">>, CCVs).
+
+-spec reseller_trunk_usage(request()) -> api_binary().
+reseller_trunk_usage(#request{request_ccvs=CCVs}) ->
+    kz_json:get_value(<<"Reseller-Trunk-Usage">>, CCVs).
