@@ -150,6 +150,75 @@
                         ],
                         "type": "string"
                     },
+                    "invite_parameters": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "dynamic": {
+                                "description": "A list of properties that, if found on the inbound call, should be added as an INVITE parameter",
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "pattern": "custom_channel_vars\\..*",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "pattern": "custom_sip_headers\\..*",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "enum": [
+                                                "zone"
+                                            ],
+                                            "type": "string"
+                                        },
+                                        {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "key": {
+                                                    "oneOf": [
+                                                        {
+                                                            "pattern": "custom_channel_vars\\..*",
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "pattern": "custom_sip_headers\\..*",
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "enum": [
+                                                                "zone"
+                                                            ],
+                                                            "type": "string"
+                                                        }
+                                                    ]
+                                                },
+                                                "seperator": {
+                                                    "type": "string"
+                                                },
+                                                "tag": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "key",
+                                                "tag"
+                                            ],
+                                            "type": "object"
+                                        }
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            "static": {
+                                "description": "A list of static values that should be added as INVITE parameters",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        },
+                        "type": "object"
+                    },
                     "media": {
                         "description": "The media parameters for the resource gateway",
                         "properties": {

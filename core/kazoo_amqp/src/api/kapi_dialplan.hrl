@@ -72,6 +72,7 @@
         ,<<"Outbound-Caller-ID-Number">>
         ,<<"Ringback">>
         ,<<"SIP-Transport">>
+        ,<<"SIP-Invite-Parameters">>
         ,<<"Secure-RTP">>
         ,<<"Timeout">>
         ,<<"Simplify-Loopback">>
@@ -92,6 +93,7 @@
                           ,{<<"Continue-On-Fail">>, fun kz_term:is_boolean/1}
                           ,{<<"Secure-RTP">>, fun kz_term:is_boolean/1}
                           ,{<<"B-Leg-Events">>, fun b_leg_events_v/1}
+                          ,{<<"SIP-Invite-Parameters">>, fun is_list/1}
                           ]).
 
 %% Bridge Endpoints
@@ -134,6 +136,7 @@
         ,<<"Route">>
         ,<<"SIP-Interface">>
         ,<<"SIP-Transport">>
+        ,<<"SIP-Invite-Parameters">>
         ,<<"To-DID">>
         ,<<"To-IP">>
         ,<<"To-Realm">>
@@ -154,6 +157,7 @@
                                    ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
                                    ,{<<"Ignore-Early-Media">>, fun kz_term:is_boolean/1}
                                    ,{<<"Bypass-Media">>, fun kz_term:is_boolean/1}
+                                   ,{<<"SIP-Invite-Parameters">>, fun is_list/1}
                                    ]).
 
 %% Page Request

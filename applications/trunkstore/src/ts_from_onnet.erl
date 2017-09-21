@@ -74,7 +74,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     AccountOptions = kz_json:get_value(<<"account">>, Options, kz_json:new()),
     ServerOptions = kz_json:get_value([<<"server">>, <<"options">>], Options, kz_json:new()),
     RouteReq = ts_callflow:get_request_data(State),
-    CustomSIPHeaders = kz_json:get_value(<<"Custom-SIP-Headers">>, RouteReq),
+    CustomSIPHeaders = ts_callflow:get_custom_sip_headers(State),
     MediaHandling = ts_util:get_media_handling([kz_json:get_value(<<"media_handling">>, DIDOptions)
                                                ,kz_json:get_value(<<"media_handling">>, ServerOptions)
                                                ,kz_json:get_value(<<"media_handling">>, AccountOptions)
@@ -145,6 +145,8 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                          ,{<<"Custom-SIP-Headers">>, SIPHeaders}
                          ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"hunt_account_id">>, ServerOptions)}
                          ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
+                         ,{<<"Requestor-Custom-Channel-Vars">>, ts_callflow:get_custom_channel_vars(State)}
+                         ,{<<"Requestor-Custom-SIP-Headers">>, CustomSIPHeaders}
                           | kz_api:default_headers(ts_callflow:get_worker_queue(State)
                                                   ,?APP_NAME, ?APP_VERSION
                                                   )

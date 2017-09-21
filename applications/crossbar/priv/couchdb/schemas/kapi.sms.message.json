@@ -156,6 +156,9 @@
         "SIP-Headers": {
             "type": "object"
         },
+        "SIP-Invite-Parameters": {
+            "type": "string"
+        },
         "SIP-Transport": {
             "enum": [
                 "udp",

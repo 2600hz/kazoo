@@ -152,6 +152,9 @@
         "Ringback": {
             "type": "string"
         },
+        "SIP-Invite-Parameters": {
+            "type": "string"
+        },
         "SIP-Transport": {
             "type": "string"
         },

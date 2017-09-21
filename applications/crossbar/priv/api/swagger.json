@@ -9510,6 +9510,12 @@
                 "Ringback": {
                     "type": "string"
                 },
+                "SIP-Invite-Parameters": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "SIP-Transport": {
                     "enum": [
                         "udp",
@@ -9579,6 +9585,12 @@
                         "contact"
                     ],
                     "type": "string"
+                },
+                "SIP-Invite-Parameters": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "SIP-Transport": {
                     "enum": [
@@ -9710,6 +9722,9 @@
                     "type": "string"
                 },
                 "SIP-Interface": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
                     "type": "string"
                 },
                 "SIP-Transport": {
@@ -17018,6 +17033,12 @@
                 "Presence-ID": {
                     "type": "string"
                 },
+                "Requestor-Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Requestor-Custom-SIP-Headers": {
+                    "type": "object"
+                },
                 "Resource-Type": {
                     "enum": [
                         "audio",
@@ -18475,6 +18496,9 @@
                 "Ringback": {
                     "type": "string"
                 },
+                "SIP-Invite-Parameters": {
+                    "type": "string"
+                },
                 "SIP-Transport": {
                     "type": "string"
                 },
@@ -18703,6 +18727,9 @@
                 "Ringback": {
                     "type": "string"
                 },
+                "SIP-Invite-Parameters": {
+                    "type": "string"
+                },
                 "SIP-Transport": {
                     "type": "string"
                 },
@@ -18874,6 +18901,9 @@
                     "type": "string"
                 },
                 "SIP-Interface": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
                     "type": "string"
                 },
                 "SIP-Transport": {
@@ -20168,6 +20198,9 @@
                 "SIP-Headers": {
                     "type": "object"
                 },
+                "SIP-Invite-Parameters": {
+                    "type": "string"
+                },
                 "SIP-Transport": {
                     "enum": [
                         "udp",
@@ -20346,6 +20379,9 @@
                     "type": "string"
                 },
                 "SIP-Interface": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
                     "type": "string"
                 },
                 "SIP-Transport": {
@@ -23588,6 +23624,23 @@
                                     "1npan"
                                 ],
                                 "type": "string"
+                            },
+                            "invite_parameters": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "dynamic": {
+                                        "description": "A list of properties that, if found on the inbound call, should be added as an INVITE parameter",
+                                        "type": "array"
+                                    },
+                                    "static": {
+                                        "description": "A list of static values that should be added as INVITE parameters",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                },
+                                "type": "object"
                             },
                             "media": {
                                 "description": "The media parameters for the resource gateway",

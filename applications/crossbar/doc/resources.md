@@ -49,6 +49,10 @@ Key | Description | Type | Default | Required
 `gateways.[].format_from_uri` | When set to true requests to this resource gateway will have a re-formated SIP From Header | `boolean()` |   | `false`
 `gateways.[].from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string()` |   | `false`
 `gateways.[].invite_format` | The format of the DID needed by the underlying hardware/gateway | `string('route' | 'username' | 'e164' | 'npan' | '1npan')` | `route` | `false`
+`gateways.[].invite_parameters.dynamic` | A list of properties that, if found on the inbound call, should be added as an INVITE parameter | `array()` |   | `false`
+`gateways.[].invite_parameters.static.[]` |   | `string()` |   | `false`
+`gateways.[].invite_parameters.static` | A list of static values that should be added as INVITE parameters | `array(string())` |   | `false`
+`gateways.[].invite_parameters` |   | `object()` |   | `false`
 `gateways.[].media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
 `gateways.[].media.rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` |   | `false`
 `gateways.[].media` | The media parameters for the resource gateway | `object()` |   | `false`
@@ -114,6 +118,38 @@ Key | Description | Type | Default | Required
 `suffix` | Appends value against the result of a successful regex match | `string()` |   | `false`
 `value` | Replaces the current value with the static value defined | `string()` |   | `false`
 
+
+
+#### INVITE Parameters
+
+The INVITE parameters object defines both static and dynamic parameters that should be added to the request URI.
+
+Static parameters are added 'as-is' and can be any format.  However, they should follow the SIP standard for the header field format and should not include a semi-colon.
+
+Dynamic parameters obtain the value from properties of the initiating call (requestor) if present, and are ignored if not. Dynamic parameters can be defined either as a string or an object.  When defined as a string the property is extracted from the requestor and if found the resulting value used without modification as an INVITE parameter.  When defined as an object both a tag as well as a key propery must be defined.  The key property is used to extract the value from the requestor and the tag is appended as the INVITE parameter name.  By default the INVITE parameter name and value are seperated by an equals sign but this can be overridden by providing a seperator property.
+
+For example, if a resource gateway contains the following object:
+
+```
+           "invite_parameters": {
+               "dynamic": [
+                   "custom_channel_vars.pass-through",
+                   {
+                       "tag": "id",
+                       "key": "custom_channel_vars.account_id"
+                   }
+               ],
+               "static": [
+                   "npid"
+               ]
+           }
+```
+
+and assuming the requesting call has pass-through (with value "pass-through=0288") as well as account_id (with value "XXXX") custom channel variables it will result in an INVITE request URI such as:
+
+```
+INVITE sip:+14158867900@10.26.0.88;npid;id=XXXX;pass-through=0288 SIP/2.0
+```
 
 
 #### Fetch

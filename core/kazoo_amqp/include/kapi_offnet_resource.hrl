@@ -9,8 +9,10 @@
 -define(KEY_B_LEG_EVENTS, <<"B-Leg-Events">>).
 -define(KEY_CALL_ID, <<"Call-ID">>).
 -define(KEY_CCVS, <<"Custom-Channel-Vars">>).
+-define(KEY_REQUESTOR_CCVS, <<"Requestor-Custom-Channel-Vars">>).
 -define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
 -define(KEY_CSHS, <<"Custom-SIP-Headers">>).
+-define(KEY_REQUESTOR_CSHS, <<"Requestor-Custom-SIP-Headers">>).
 -define(KEY_ENABLE_T38 ,<<"Enable-T38-Fax">>).
 -define(KEY_ENABLE_T38_GATEWAY, <<"Enable-T38-Gateway">>).
 -define(KEY_ENABLE_T38_PASSTHROUGH, <<"Enable-T38-Passthrough">>).

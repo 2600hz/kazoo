@@ -546,6 +546,9 @@ get_channel_vars({<<"Confirm-File">>, V}, Vars) ->
                     ,"'"
                     ]) | Vars];
 
+get_channel_vars({<<"SIP-Invite-Parameters">>, V}, Vars) ->
+    [list_to_binary(["sip_invite_params='", kz_util:iolist_join(<<";">>, V), "'"]) | Vars];
+
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;

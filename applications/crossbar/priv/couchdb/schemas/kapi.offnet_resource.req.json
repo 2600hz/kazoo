@@ -180,6 +180,12 @@
         "Presence-ID": {
             "type": "string"
         },
+        "Requestor-Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Requestor-Custom-SIP-Headers": {
+            "type": "object"
+        },
         "Resource-Type": {
             "enum": [
                 "audio",

@@ -110,6 +110,7 @@
                  ,is_emergency = 'false' :: boolean()
                  ,force_port = 'false' :: boolean()
                  ,privacy_mode = 'undefined' :: api_binary()
+                 ,invite_parameters = 'undefined' :: api_object()
                  }).
 
 -record(resrc, {id :: api_binary()
@@ -455,7 +456,7 @@ resources_to_endpoints(Resources, Number, OffnetJObj) ->
             %% No endpoints found based on resources with classifiers, look up by
             %% resources that doesn't have classifier
             lager:debug("no resources satisfy classifier look up, matching against resource rules..."),
-            RuleResources = maps:get('no_classification', ResourceMap),
+            RuleResources = maps:get('no_classification', ResourceMap, []),
             build_endpoints_from_resources(RuleResources, Number, OffnetJObj);
         ClassifiedResources ->
             lager:debug("found resources to satisy classifier ~s (number ~s), building against classification rules..."
@@ -666,7 +667,6 @@ gateway_to_endpoint(DestinationNumber
                             }=Gateway
                    ,OffnetJObj
                    ) ->
-
     IsEmergency = gateway_emergency_resource(Gateway),
     {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency, PrivacyMode),
 
@@ -696,8 +696,64 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
         ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
         ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+        ,{<<"SIP-Invite-Parameters">>, sip_invite_parameters(Gateway, OffnetJObj)}
          | maybe_get_t38(Gateway, OffnetJObj)
         ])).
+
+
+-spec sip_invite_parameters(gateway(), kz_json:object()) -> ne_binaries().
+sip_invite_parameters(Gateway, OffnetJObj) ->
+    static_sip_invite_parameters(Gateway)
+        ++ dynamic_sip_invite_parameters(Gateway, OffnetJObj).
+
+-spec static_sip_invite_parameters(gateway()) -> ne_binaries().
+static_sip_invite_parameters(#gateway{invite_parameters='undefined'}) -> [];
+static_sip_invite_parameters(#gateway{invite_parameters=Parameters}) ->
+    kz_json:get_list_value(<<"static">>, Parameters, []).
+
+-spec dynamic_sip_invite_parameters(gateway(), kz_json:object()) -> ne_binaries().
+dynamic_sip_invite_parameters(#gateway{invite_parameters='undefined'}, _) -> [];
+dynamic_sip_invite_parameters(#gateway{invite_parameters=Parameters}, OffnetJObj) ->
+    CCVs = kz_json:normalize(kapi_offnet_resource:requestor_custom_channel_vars(OffnetJObj, kz_json:new())),
+    CSHs = kz_json:normalize(kapi_offnet_resource:requestor_custom_sip_headers(OffnetJObj, kz_json:new())),
+    Keys = kz_json:get_list_value(<<"dynamic">>, Parameters, []),
+    dynamic_sip_invite_parameters(Keys, CCVs, CSHs).
+
+-spec dynamic_sip_invite_parameters(api_binaries(), kz_json:object(), kz_json:object()) -> ne_binaries().
+dynamic_sip_invite_parameters(Keys, CCVs, CSHs) ->
+    dynamic_sip_invite_parameters(Keys, CCVs, CSHs, []).
+
+-spec dynamic_sip_invite_parameters(api_binaries(), kz_json:object(), kz_json:object(), ne_binaries()) -> ne_binaries().
+dynamic_sip_invite_parameters([], _, _, Parameters) -> Parameters;
+dynamic_sip_invite_parameters([Key|Keys], CCVs, CSHs, Parameters) when is_binary(Key) ->
+    case dynamic_sip_invite_value(Key, CCVs, CSHs) of
+        'undefined' -> dynamic_sip_invite_parameters(Keys, CCVs, CSHs, Parameters);
+        Parameter ->
+            lager:debug("adding dynamic invite parameter ~s", [Parameter]),
+            dynamic_sip_invite_parameters(Keys, CCVs, CSHs, [Parameter|Parameters])
+    end;
+dynamic_sip_invite_parameters([JObj|Keys], CCVs, CSHs, Parameters) ->
+    'true' = kz_json:is_json_object(JObj),
+    Key = kz_json:get_ne_value(<<"key">>, JObj),
+    Tag = kz_json:get_ne_value(<<"tag">>, JObj),
+    Seperator = kz_json:get_value(<<"seperator">>, JObj, <<"=">>),
+    case dynamic_sip_invite_value(Key, CCVs, CSHs) of
+        'undefined' -> dynamic_sip_invite_parameters(Keys, CCVs, CSHs, Parameters);
+        Value ->
+            Parameter = erlang:iolist_to_binary([Tag, Seperator, Value]),
+            lager:debug("adding dynamic invite parameter ~s", [Parameter]),
+            dynamic_sip_invite_parameters(Keys, CCVs, CSHs, [Parameter|Parameters])
+    end.
+
+-spec dynamic_sip_invite_value(ne_binary(), kz_json:object(), kz_json:object()) -> api_binary().
+dynamic_sip_invite_value(<<"zone">>, _, _) ->
+    kz_term:to_binary(kz_nodes:local_zone());
+dynamic_sip_invite_value(<<"custom_sip_headers.", Key/binary>>, _, CSHs) ->
+    kz_json:get_ne_binary_value(Key, CSHs);
+dynamic_sip_invite_value(<<"custom_channel_vars.", Key/binary>>, CCVs, _) ->
+    kz_json:get_ne_binary_value(Key, CCVs);
+dynamic_sip_invite_value(_, _, _) -> 'undefined'.
+
 
 -spec gateway_cid(kapi_offnet_resource:req(), api_binary(), api_binary()) -> {ne_binary(), ne_binary()}.
 gateway_cid(OffnetJObj, IsEmergency, PrivacyMode) ->
@@ -1142,6 +1198,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,progress_timeout = kz_json:get_integer_value(<<"progress_timeout">>, JObj, ?DEFAULT_PROGRESS_TIMEOUT)
             ,endpoint_options = endpoint_options(JObj, EndpointType)
             ,privacy_mode=kz_json:get_value(<<"privacy_mode">>, JObj, PrivacyMode)
+            ,invite_parameters=kz_json:get_ne_value(<<"invite_parameters">>, JObj)
             }.
 
 -spec gateway_is_emergency(kz_json:object(), boolean()) -> boolean().
