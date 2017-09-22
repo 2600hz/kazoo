@@ -70,6 +70,13 @@ Creates a release, starts it, and issues some commands to test that the release 
 A quick script to check that all scripts in `$(ROOT)/scripts` are documented in this file!
 
 
+## check-spelling.bash
+
+Takes the misspellings.txt and checks for common mistakes.
+
+Each line on the text file has the format `{correct}|{mispelt} [{misspelt} ...]`
+
+
 ## check-xref.escript
 
 An Erlang escript for cross referencing (xref) calls to remote modules. Set \`TO\_XREF\` to ebin paths (or use the default):
