@@ -58,6 +58,10 @@ Do note: this will only check the file itself for issues. To really leverage Dia
 Creates a release, starts it, and issues some commands to test that the release starts up and appears to be running
 ** check-scripts-readme.bash
 A quick script to check that all scripts in =$(ROOT)/scripts= are documented in this file!
+** check-spelling.bash
+Takes the misspellings.txt and checks for common mistakes.
+
+Each line on the text file has the format ={correct}|{mispelt} [{misspelt} ...]=
 ** check-xref.escript
 An Erlang escript for cross referencing (xref) calls to remote modules. Set `TO_XREF` to ebin paths (or use the default):
 #+BEGIN_SRC shell
