@@ -49,7 +49,7 @@ check_initial_call(Account) when is_binary(Account) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Returns wether the initial_registration notification has been sent
+%% Returns whether the initial_registration notification has been sent
 %% @end
 %%--------------------------------------------------------------------
 -spec check_initial_registration(ne_binary()) -> 'ok'.

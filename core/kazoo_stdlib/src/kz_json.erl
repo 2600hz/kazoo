@@ -236,7 +236,7 @@ is_json_term(MaybeJObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Finds out wether 2 JSON objects are recursively identical.
+%% Finds out whether 2 JSON objects are recursively identical.
 %% @end
 %%--------------------------------------------------------------------
 -spec are_equal(api_object(), api_object()) -> boolean().
