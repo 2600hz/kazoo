@@ -111,6 +111,8 @@ miniature|miniture
 minuscule|miniscule
 mischievous|mischievious mischevous mischevious
 misspell|mispell misspel
+misspelled|mispelled
+misspelt|mispelt
 necessary|neccessary necessery
 niece|neice
 neighbor|nieghbor
@@ -164,6 +166,7 @@ sergeant|sargent
 similar|similer
 skillful|skilfull
 speech|speach speeche
+spelled|spelt
 successful|succesful successfull sucessful
 supersede|supercede
 sure|shure
