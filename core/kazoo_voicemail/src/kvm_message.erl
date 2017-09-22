@@ -27,7 +27,7 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc recieve and store a new voicemail message
+%% @doc receive and store a new voicemail message
 %% expected options:
 %% [{<<"Attachment-Name">>, AttachmentName}
 %% ,{<<"Box-Id">>, BoxId}

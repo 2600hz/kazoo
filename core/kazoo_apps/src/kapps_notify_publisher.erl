@@ -159,7 +159,7 @@ is_completed([JObj|_]) ->
             ShouldIgnore
                 andalso lager:debug("teletype failed with reason ~s, ignoring", [FailureMsg]),
             ShouldIgnore;
-        %% FIXME: Is pending enough to consider publish was successful? at least teletype recieved the notification!
+        %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
     end.
@@ -229,7 +229,7 @@ json_to_failure_reason({ErrorType, JObjs}) when is_list(JObjs) ->
                         >>;
         <<"pending">> -> <<"timeout during publishing, last message from teletype is 'pending'">>;
         <<"completed">> -> <<"it shouldn't be here">>;
-        _ -> <<"recieved ", (cast_to_binary(ErrorType))/binary, " without any response from teletype">>
+        _ -> <<"received ", (cast_to_binary(ErrorType))/binary, " without any response from teletype">>
     end;
 json_to_failure_reason({'error', JObj}) ->
     json_to_failure_reason({'error', [JObj]});

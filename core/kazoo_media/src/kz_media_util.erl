@@ -313,7 +313,7 @@ maybe_normalize_copy_files([{File, SampleRate, Format}|Files], SampleRate, Acc) 
         {'ok', _} ->
             maybe_normalize_copy_files(Files, SampleRate, [{NewFile, SampleRate, Format}|Acc]);
         {'error', _} ->
-            lager:warning("failed to copy file to a temproray place to join media files"),
+            lager:warning("failed to copy file to a temporary place to join media files"),
             %% cleanup already copied files
             _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
             {'error', 'normalization_failed'}
