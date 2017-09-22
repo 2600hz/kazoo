@@ -19,19 +19,19 @@
 -define(TIMEOUT, kapps_config:get_pos_integer(?NOTIFY_CAT, <<"notify_publisher_timeout_ms">>, ?DEFAULT_TIMEOUT)).
 
 -define(DEFAULT_PUBLISHER_ENABLED,
-        kapps_config:get_is_true(?NOTIFY_CAT, <<"notify_presist_enabled">>, true)
+        kapps_config:get_is_true(?NOTIFY_CAT, <<"notify_persist_enabled">>, true)
        ).
 -define(ACCOUNT_SHOULD_PRESIST(AccountId),
-        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"should_presist_for_retry">>, true)
+        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"should_persist_for_retry">>, true)
        ).
 
 -define(DEFAULT_TYPE_EXCEPTION, [<<"system_alert">>
                                 ]).
 -define(GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION,
-        kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_presist_temprorary_force_exceptions">>, [])
+        kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_persist_temporary_force_exceptions">>, [])
        ).
 -define(NOTIFY_TYPE_EXCEPTION(AccountId),
-        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_presist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
+        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_persist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
        ).
 
 %%--------------------------------------------------------------------
@@ -89,7 +89,7 @@ maybe_handle_error('undefined', _Req, _Error) ->
     lager:warning("not saving undefined notification");
 maybe_handle_error(NotifyType, Req, Error) ->
     AccountId = find_account_id(Req),
-    should_presist_notify(AccountId)
+    should_persist_notify(AccountId)
         andalso should_handle_notify_type(NotifyType, AccountId)
         andalso handle_error(NotifyType, Req, Error).
 
@@ -263,8 +263,8 @@ notify_type(PublishFun) ->
             'undefined'
     end.
 
--spec should_presist_notify(api_binary()) -> boolean().
-should_presist_notify(AccountId) ->
+-spec should_persist_notify(api_binary()) -> boolean().
+should_persist_notify(AccountId) ->
     ?DEFAULT_PUBLISHER_ENABLED
         andalso ?ACCOUNT_SHOULD_PRESIST(AccountId).
 
