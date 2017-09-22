@@ -13,6 +13,7 @@
 -define(LIST_ROUTE_ACCOUNTS, <<"routes/listing_by_account">>).
 -define(LIST_RESOURCES_BY_ID, <<"resources/listing_by_id">>).
 
+-define(APP, 'stepswitch').
 -define(APP_NAME, <<"stepswitch">>).
 -define(APP_VERSION, <<"4.0.0">>).
 

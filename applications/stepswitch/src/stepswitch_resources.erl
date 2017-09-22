@@ -70,6 +70,15 @@
         ,set_resrc_selector_marks/2
         ]).
 
+
+-ifdef(TEST).
+-export([sip_invite_parameters/2
+        ,dynamic_sip_invite_parameters/2
+        ,gateway_from_jobj/2
+        ,resource_from_jobj/1
+        ]).
+-endif.
+
 -include("stepswitch.hrl").
 
 -define(CONFIG_CAT, <<"number_manager">>).
@@ -877,6 +886,11 @@ get_local_resource(ResourceId, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_global_resources() -> resources().
+-ifdef(TEST).
+fetch_global_resources() ->
+    {'ok', JObjs} = kz_json:fixture(?APP, <<"fixtures/resources/global.json">>),
+    resources_from_jobjs(JObjs).
+-else.
 fetch_global_resources() ->
     lager:debug("global resource cache miss, fetching from db"),
     ViewOptions = ['include_docs'],
@@ -891,6 +905,7 @@ fetch_global_resources() ->
             kz_cache:store_local(?CACHE_NAME, 'global_resources', Resources, CacheProps),
             Resources
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -899,6 +914,11 @@ fetch_global_resources() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_local_resources(ne_binary()) -> resources().
+-ifdef(TEST).
+fetch_local_resources(AccountId) ->
+    {'ok', JObjs} = kz_json:fixture(?APP, <<"fixtures/resources/global.json">>),
+    fetch_local_resources(AccountId, JObjs).
+-else.
 fetch_local_resources(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = ['include_docs'],
@@ -913,6 +933,7 @@ fetch_local_resources(AccountId) ->
             kz_cache:store_local(?CACHE_NAME, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
+-endif.
 
 -spec fetch_local_resources(ne_binary(), kz_json:objects()) -> resources().
 fetch_local_resources(AccountId, JObjs) ->
