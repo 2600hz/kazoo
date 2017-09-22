@@ -126,6 +126,7 @@ parliament|parliment
 pastime|passtime pasttime
 perceive|percieve
 perseverance|perseverence
+persist|presist
 personnel|personell personel
 plagiarize|plagerize
 playwright|playright playwrite
@@ -167,6 +168,7 @@ successful|succesful successfull sucessful
 supersede|supercede
 sure|shure
 surprise|suprise surprize
+temporary|temprorary
 tomatoes|tomatos
 tomorrow|tommorow tommorrow
 twelfth|twelth
