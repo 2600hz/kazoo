@@ -17,7 +17,7 @@ function check_spelling {
     while IFS= read f; do
         echo "fixing $f with $correct"
         sed -i "s/$bad_sed/$correct/g" $f
-    done < <(egrep -rl "$bad_grep" $ROOT/{applications,core,doc})
+    done < <(egrep -rlw "$bad_grep" $ROOT/{applications,core,doc})
 }
 
 while read LINE; do
