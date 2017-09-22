@@ -131,8 +131,10 @@ to_number(X) when is_list(X) ->
         'error':'badarg' -> list_to_float(X)
     end.
 
--spec to_pid(list() | binary() | undefined) -> pid().
-to_pid(undefined) -> undefined;
+-spec to_pid(pid() | list() | binary() | atom()) -> api_pid().
+to_pid('undefined') -> 'undefined';
+to_pid(A) when is_atom(A) -> to_pid(whereis(A));
+to_pid(P) when is_pid(P) -> P;
 to_pid(X) when is_binary(X) -> to_pid(binary_to_list(X));
 to_pid(X) when is_list(X) -> list_to_pid(X).
 
@@ -147,13 +149,18 @@ to_list(X) when is_pid(X) -> pid_to_list(X).
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
--spec to_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
+-spec to_binary(kz_json:object() | atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
 to_binary(X) when is_binary(X) -> X;
 to_binary(X) when is_float(X) -> to_binary(kz_mochinum:digits(X));
 to_binary(X) when is_integer(X) -> integer_to_binary(X);
 to_binary(X) when is_atom(X) -> atom_to_binary(X, utf8);
 to_binary(X) when is_list(X) -> iolist_to_binary(X);
-to_binary(X) when is_pid(X) -> to_binary(pid_to_list(X)).
+to_binary(X) when is_pid(X) -> to_binary(pid_to_list(X));
+to_binary(X) ->
+    case kz_json:is_json_object(X) of
+        'true' -> kz_json:encode(X);
+        'false' -> error('badarg')
+    end.
 
 -spec to_api_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> api_binary().
 to_api_binary('undefined') -> 'undefined';
@@ -343,5 +350,6 @@ error_to_binary({'error', Reason}) ->
 error_to_binary(Reason) ->
     try to_binary(Reason)
     catch
-        'error':'function_clause' -> <<"Unknown Error">>
+        'error':'function_clause' -> <<"Unknown Error">>;
+        'error':'badarg' -> <<"Unknown Error">>
     end.
