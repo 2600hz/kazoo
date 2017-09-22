@@ -823,7 +823,7 @@ to_binary(Req, Context, Accept) ->
 -spec get_range(ne_binary(), ne_binary()) -> range_response().
 get_range(Data, RangeHeader) ->
     FileLength = size(Data),
-    lager:debug("recieved range header ~p for file size ~p", [RangeHeader, FileLength]),
+    lager:debug("received range header ~p for file size ~p", [RangeHeader, FileLength]),
     {Start, End} = case cowboy_http:range(RangeHeader) of
                        {<<"bytes">>, [{S, 'infinity'}]} -> {S, FileLength};
                        {<<"bytes">>, [{S, E}]} when E < FileLength -> {S, E + 1};

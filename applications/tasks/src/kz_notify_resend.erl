@@ -447,7 +447,7 @@ is_completed([JObj|_]) ->
         andalso kz_json:get_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
-        %% FIXME: Is pending enough to consider publish was successful? at least teletype recieved the notification!
+        %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
     end.

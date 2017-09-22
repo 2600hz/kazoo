@@ -199,7 +199,7 @@ curl -v -X PUT \
         "email_addresses": ["user@account.com"]
       },
       "from": "reseller@resellerdomain.com",
-      "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
+      "subject": "Hello {{user.first_name}}, you received a new voicemail!",
       "enabled": true,
       "template_charset": "utf-8"
     }}' \
@@ -216,7 +216,7 @@ curl -v -X PUT \
     "id": "voicemail_to_email",
     "from": "reseller@resellerdomain.com",
     "macros": { "..." },
-    "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
+    "subject": "Hello {{user.first_name}}, you received a new voicemail!",
     "template_charset": "utf-8",
     "to": {
       "email_addresses": [
@@ -253,7 +253,7 @@ curl -v -X PUT \
         "email_addresses": ["user@account.com"]
       },
       "from": "reseller@resellerdomain.com",
-      "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
+      "subject": "Hello {{user.first_name}}, you received a new voicemail!",
       "enabled": true,
       "template_charset": "utf-8"
     }}' \
@@ -341,7 +341,7 @@ curl -v -X POST \
             "email_addresses": ["user@account.com"]
         },
         "from": "reseller@resellerdomain.com",
-        "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
+        "subject": "Hello {{user.first_name}}, you received a new voicemail!",
         "enabled": true,
         "template_charset": "utf-8",
         "macros": {
@@ -443,7 +443,7 @@ curl -v -X POST \
         "from": "kazoo@2600hz.com",
         "subject": "Testing NOTIFICATION",
         "html": "SSUyNTIwJTI1dTI2NjElMjUyMFVuaWNvZGUlMjUyMQ==",
-        "plain": "You just recieved an email! It was sent to {{user.email}}",
+        "plain": "You just received an email! It was sent to {{user.email}}",
         "enabled": true
         }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview

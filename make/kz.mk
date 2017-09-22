@@ -81,6 +81,7 @@ test/$(PROJECT).app: $(TEST_SOURCES)
 
 
 clean: clean-test
+	$(if $(wildcard cover/*), rm -r cover)
 	$(if $(wildcard ebin/*), rm ebin/*)
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 

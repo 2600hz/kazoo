@@ -27,7 +27,7 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc recieve and store a new voicemail message
+%% @doc receive and store a new voicemail message
 %% expected options:
 %% [{<<"Attachment-Name">>, AttachmentName}
 %% ,{<<"Box-Id">>, BoxId}
@@ -277,7 +277,7 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
         {'error', 'timeout'} ->
             move_copy_final_check(AccountId, FromId, ToId);
         {'error', 'conflict'} ->
-            Msg = io_lib:format("conflict occured during moving voicemail ~s / ~s to ~s / ~s"
+            Msg = io_lib:format("conflict occurred during moving voicemail ~s / ~s to ~s / ~s"
                                ,[FromDb, FromId, ToDb, ToId]
                                ),
             Subject = <<"Conflict during forward voicemail message">>,
@@ -363,7 +363,7 @@ do_copy(AccountId, ?NE_BINARY = FromId, ToId, Funs) ->
         {'error', 'timeout'} ->
             move_copy_final_check(AccountId, FromId, ToId);
         {'error', 'conflict'} ->
-            Msg = io_lib:format("conflict occured during forwarding voicemail ~s / ~s to ~s / ~s"
+            Msg = io_lib:format("conflict occurred during forwarding voicemail ~s / ~s to ~s / ~s"
                                ,[FromDb, FromId, ToDb, ToId]
                                ),
             Subject = <<"Conflict during forward voicemail message">>,
@@ -581,7 +581,7 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
     catch
         _T:_E ->
             ST = erlang:get_stacktrace(),
-            lager:error("exception occured during prepend and forward message: ~p:~p", [_T, _E]),
+            lager:error("exception occurred during prepend and forward message: ~p:~p", [_T, _E]),
             kz_util:log_stacktrace(ST),
 
             %% prepend failed, so at least try to forward without a prepend message

@@ -594,7 +594,7 @@ account_update(Account, UpdateFun) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given a module name try to verify its existance, loading it into the
+%% Given a module name try to verify its existence, loading it into the
 %% the vm if possible.
 %% @end
 %%--------------------------------------------------------------------

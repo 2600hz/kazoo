@@ -507,7 +507,7 @@ next_rule_date(#rule{cycle = <<"monthly">>
     case Distance =:= Offset
         andalso kz_date:find_next_weekday({Y1, M1, D1}, Weekday)
     of
-        %% If the next occurence of the weekday is during an 'active' month
+        %% If the next occurrence of the weekday is during an 'active' month
         %%   and does not span the current month/year then it is correct
         {Y1, M1, _}=Date ->
             Date;
@@ -597,11 +597,11 @@ next_rule_date(#rule{cycle = <<"yearly">>
         %% day (of days) next interval year(s)
         'false' ->
             {Y0 + Offset + I0, Month, hd(Days)};
-        %% If this an 'active' year but the month has not occured yet
+        %% If this an 'active' year but the month has not occurred yet
         %% it will be on the first day (of days) that month
         'true' when M1 < Month ->
             {Y1, Month, hd(Days)};
-        %% If this an 'active' year but the month has not occured yet
+        %% If this an 'active' year but the month has not occurred yet
         %% it will be on the first day (of days) next interval year(s)
         'true' when M1 > Month ->
             {Y0 + Offset + I0, Month, hd(Days)};
