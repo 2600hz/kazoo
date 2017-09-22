@@ -167,6 +167,7 @@ skillful|skilfull
 speech|speach speeche
 successful|succesful successfull sucessful
 supersede|supercede
+sure|shure
 surprise|suprise surprize
 tomatoes|tomatos
 tomorrow|tommorow tommorrow
