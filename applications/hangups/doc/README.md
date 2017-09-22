@@ -18,7 +18,7 @@ Hangup State | Possible Causes |
 `NO_ROUTE_DESTINATION` | This could mean there is no callflow defined for the number, or the number is unassigned to a PBX in PBX Connector. You'll have to figure out which side of the dialog is hanging up first though.
 `CALL_REJECTED` | The side sending this hangup isn't going to route the call.
 `MANDATORY_IE_MISSING` | This might be because the leg was challenged for authentication and was unable to comply. Another cause could be no codec was negotiated between the two sides. Check the SDP codec listings for both sides.
-`PROGRESS_TIMEOUT` | The endpoint (carrier or device) failed to progress to early media, ringing, or answering the call within the allotted time. May be indicative of errors on the endpoint's side. If a carrier, consider removing them from the offnet/account routing until you can discover the issue. These hangups impact PDD (post-dial delay) and are quite noticable to the caller.
+`PROGRESS_TIMEOUT` | The endpoint (carrier or device) failed to progress to early media, ringing, or answering the call within the allotted time. May be indicative of errors on the endpoint's side. If a carrier, consider removing them from the offnet/account routing until you can discover the issue. These hangups impact PDD (post-dial delay) and are quite noticeable to the caller.
 ``RECOVERY_ON_TIMER_EXPIRE` | Often seen when NAT is interfering with receiving responses from the endpoint. Check the firewall at the customer's site for SIP ALG (and turn it off), try port 7000 or TCP as necessary.
 
 ## Configuring Hangup Causes

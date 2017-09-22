@@ -180,7 +180,7 @@ usable|usible
 vacuum|vaccuum vaccum vacume
 vehicle|vehical
 vicious|visious
-weather|wether
+whether|wether
 weird|wierd
 welfare|wellfare welfair
 whether|wether

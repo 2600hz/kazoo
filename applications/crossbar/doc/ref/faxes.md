@@ -28,7 +28,7 @@ Key | Description | Type | Default | Required
 `retries` | The number of times to retry | `integer()` | `1` | `false`
 `to_name` | The recipient name for the fax | `string()` |   | `false`
 `to_number` | The recipient number for the fax | `string()` |   | `true`
-`tx_result.error_message` | A description of any error that occured | `string()` | "" | `false`
+`tx_result.error_message` | A description of any error that occurred | `string()` | "" | `false`
 `tx_result.fax_bad_rows` | The number of bad rows | `integer()` | `0` | `false`
 `tx_result.fax_error_correction` | True if fax error correction was used | `boolean()` | `false` | `false`
 `tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string()` | "" | `false`
