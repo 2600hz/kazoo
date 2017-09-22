@@ -54,24 +54,24 @@
             "description": "notify notification app",
             "type": "string"
         },
-        "notify_presist_enabled": {
+        "notify_persist_enabled": {
             "default": true,
-            "description": "Enabled presist of failed to publish notifications globally",
+            "description": "notify notify_persist_enabled",
             "type": "boolean"
         },
-        "notify_presist_exceptions": {
+        "notify_persist_exceptions": {
             "default": [
                 "system_alert"
             ],
-            "description": "List of notification types have to be ignored to presist if they failed to publish",
+            "description": "notify notify_persist_exceptions",
             "items": {
                 "type": "string"
             },
             "type": "array"
         },
-        "notify_presist_temprorary_force_exceptions": {
+        "notify_persist_temporary_force_exceptions": {
             "default": [],
-            "description": "List of notification types have to be ignored temprorary globally to presist if they failed to publish",
+            "description": "notify notify_persist_temporary_force_exceptions",
             "items": {
                 "type": "string"
             },
@@ -88,9 +88,9 @@
             "description": "notify search rep email",
             "type": "boolean"
         },
-        "should_presist_for_retry": {
+        "should_persist_for_retry": {
             "default": true,
-            "description": "Enabled presist of failed to publish notifications for account/system",
+            "description": "notify should_persist_for_retry",
             "type": "boolean"
         },
         "use_federated_listener": {
