@@ -117,7 +117,7 @@ find_next_weekday({Y, M, D}, Weekday) ->
         %% Today is the DOW we wanted, calculate for next week
         RefDOW ->
             normalize({Y, M, D + 7});
-        %% If the DOW has not occured this week yet
+        %% If the DOW has not occurred this week yet
         DOW when RefDOW > DOW ->
             normalize({Y, M, D + (RefDOW - DOW)});
         %% If the DOW occurance has already happend, calculate

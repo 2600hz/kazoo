@@ -267,7 +267,7 @@ maybe_plural(_) -> "s".
 split_results([_|_] = JObjs) ->
     {Head, [Last]} = lists:split(length(JObjs)-1, JObjs),
     %% !!!
-    %% workaround untill https://github.com/benoitc/couchbeam/pull/160
+    %% workaround until https://github.com/benoitc/couchbeam/pull/160
     %% !!!
     case kz_json:get_value(<<"key">>, lists:last(Head)) =:= kz_json:get_value(<<"key">>, Last) of
         'true' -> split_results(Head);

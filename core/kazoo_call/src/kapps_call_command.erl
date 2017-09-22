@@ -2151,7 +2151,7 @@ b_privacy(Mode, Call) ->
 %%
 %% NOTICE: This function should NOT be called if ecallmgr control
 %% queue does not have a NoOp queued.  Otherwise this will block
-%% execution untill the call is terminated.
+%% execution until the call is terminated.
 %% @end
 %%--------------------------------------------------------------------
 -type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | kz_json:object()} |

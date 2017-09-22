@@ -35,7 +35,6 @@ buoyant|bouyant
 business|buisness
 calendar|calender
 camouflage|camoflage camoflague
-capitol|capital
 Caribbean|Carribean
 category|catagory
 caught|cauhgt caugt
@@ -104,7 +103,6 @@ liaison|liason
 library|libary liberry
 license|lisence
 lightning|lightening
-lose|loose
 maintenance|maintainance maintnance
 medieval|medeval medevil mideval
 memento|momento

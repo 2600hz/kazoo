@@ -60,7 +60,7 @@ In the 3.x series, a =raw_numbers= attribute was allowed, ostensibly to match an
 **** Voicemail Messages
 Starting with Kazoo 4.0 all new voicemail messages goes into modb. All Kazoo Administrators need to migrate their voicemail messages from Kazoo versio 3.22 to MODB. There is maintenance command for this transition. For more information about this change please see documentation for the new kazoo\_voicemail core application and crossbar voicemail documentation.
 **** Removing socket.io support from Websockets
-The Blackhole application providing websocket support currently utilizes the socket.io client libraries. Due to the poor support for this server side in Erlang as well as the judgement that this provides little benifit it has been removed. The websockets now provide messaging without the socket.io overhead. More documentation will be available shortly. Please note that we still consider websockets beta functionality.
+The Blackhole application providing websocket support currently utilizes the socket.io client libraries. Due to the poor support for this server side in Erlang as well as the judgment that this provides little benifit it has been removed. The websockets now provide messaging without the socket.io overhead. More documentation will be available shortly. Please note that we still consider websockets beta functionality.
 **** System media has been moved
 The media prompts that we used to keep in the code repository for historical reasons has been moved the [[https://github.com/2600hz/kazoo-sounds][kazoo-sounds]] repository.
 **** Moved =cf_endpoint= to core
