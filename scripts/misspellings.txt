@@ -1,0 +1,189 @@
+absence|absense absance
+acceptable|acceptible
+accidentally|accidentaly
+accommodate|accomodate acommodate
+achieve|acheive
+acknowledge|acknowlege aknowledge
+acquaintance|acquaintence aquaintance
+acquire|aquire adquire
+acquit|aquit
+acreage|acrage acerage
+address|adress
+adultery|adultary
+advisable|adviseable advizable
+affect|afect
+effect|efect
+aggression|agression
+aggressive|agressive
+allegiance|allegaince allegience alegiance
+almost|allmost
+a lot|alot
+amateur|amatuer amature
+annually|anually annualy
+apparent|apparant aparent
+arctic|artic
+argument|arguement
+atheist|athiest
+awful|awfull aweful
+because|becuase
+becoming|becomeing
+beginning|begining
+believe|beleive
+bellwether|bellweather
+buoy|bouy
+buoyant|bouyant
+business|buisness
+calendar|calender
+camouflage|camoflage camoflague
+capitol|capital
+Caribbean|Carribean
+category|catagory
+caught|cauhgt caugt
+cemetery|cemetary,
+changeable|changable
+chief|cheif
+colleague|collaegue collegue
+collectible|collectable
+column|colum
+coming|comming
+committed|commited comitted
+concede|conceed
+congratulate|congradulate
+conscientious|consciencious
+conscious|concious consious
+consensus|concensus
+controversy|contraversy
+coolly|cooly
+daiquiri|dacquiri daquiri
+deceive|decieve
+definite|definate,
+definitely|definitly,
+desperate|desparate
+difference|diffrence
+dilemma|dilema
+disappoint|disapoint
+disastrous|disasterous
+drunkenness|drunkeness
+dumbbell|dumbell
+embarrass|embarass
+equipment|equiptment
+exceed|excede
+exhilarate|exilerate
+existence|existance
+experience|experiance
+extreme|extreem
+fascinating|facinating
+fiery|firey
+fluorescent|flourescent
+foreign|foriegn
+friend|freind
+fulfill|fullfil
+gauge|guage
+grateful|gratefull greatful
+guarantee|garantee garentee garanty
+guidance|guidence
+harass|harrass
+height|heighth heigth
+hierarchy|heirarchy
+hors d'oeuvres|hors derves ordeurves
+humorous|humerous
+hygiene|hygene hygine hiygeine higeine hygeine
+hypocrite|hipocrit
+ignorance|ignorence
+imitate|immitate
+immediately|imediately
+independent|independant
+indispensable|indispensible
+inoculate|innoculate
+intelligence|inteligence intelligance
+jewelry|jewelery
+judgment|judgement
+kernel|kernal
+leisure|liesure
+liaison|liason
+library|libary liberry
+license|lisence
+lightning|lightening
+lose|loose
+maintenance|maintainance maintnance
+medieval|medeval medevil mideval
+memento|momento
+millennium|millenium milennium
+miniature|miniture
+minuscule|miniscule
+mischievous|mischievious mischevous mischevious
+misspell|mispell misspel
+necessary|neccessary necessery
+niece|neice
+neighbor|nieghbor
+noticeable|noticable
+occasion|occassion
+occasionally|occasionaly occassionally
+occurrence|occurrance occurence
+occurred|occured
+omission|ommision omision
+original|orignal
+outrageous|outragous
+parliament|parliment
+pastime|passtime pasttime
+perceive|percieve
+perseverance|perseverence
+personnel|personell personel
+plagiarize|plagerize
+playwright|playright playwrite
+possession|posession possesion
+potatoes|potatos
+precede|preceed
+presence|presance
+principle|principal
+privilege|privelege priviledge
+professor|professer
+promise|promiss
+pronunciation|pronounciation
+proof|prufe
+publicly|publically
+quarantine|quarentine
+queue|que
+questionnaire|questionaire questionnair
+readable|readible
+really|realy
+receive|recieve
+receipt|reciept
+recommend|recomend reccommend
+referred|refered
+reference|referance refrence
+relevant|relevent revelant
+religious|religous religius
+repetition|repitition
+restaurant|restarant restaraunt
+rhyme|rime
+rhythm|rythm rythem
+secretary|secratary secretery
+seize|sieze
+separate|seperate
+sergeant|sargent
+similar|similer
+skillful|skilfull
+speech|speach speeche
+successful|succesful successfull sucessful
+supersede|supercede
+surprise|suprise surprize
+their|there they're
+tomatoes|tomatos
+tomorrow|tommorow tommorrow
+twelfth|twelth
+tyranny|tyrany
+underrate|underate
+until|untill
+upholstery|upholstry
+usable|usible
+vacuum|vaccuum vaccum vacume
+vehicle|vehical
+vicious|visious
+weather|wether
+weird|wierd
+welfare|wellfare welfair
+whether|wether
+willful|wilfull
+withhold|withold
+writing|writting writeing
