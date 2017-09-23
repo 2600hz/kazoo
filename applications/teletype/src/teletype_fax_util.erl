@@ -72,39 +72,41 @@ add_document_data(FaxDoc, Macros, [{ContentType, Filename, Bin}]) ->
 
 -spec to_email_addresses(kz_json:object(), ne_binary()) -> api_binaries().
 to_email_addresses(DataJObj, ModConfigCat) ->
-    Paths = [[<<"to">>, <<"email_addresses">>]
-            ,[<<"fax">>, <<"email">>, <<"send_to">>]
-            ,[<<"fax">>, <<"notifications">>, <<"email">>, <<"send_to">>]
-            ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
-            ,[<<"notifications">>, <<"email">>, <<"send_to">>]
-            ,[<<"owner">>, <<"email">>]
-            ,[<<"owner">>, <<"username">>]
+    BoxEmailPath = case ModConfigCat of
+                       [_, <<"fax_inbound", _/binary>>] ->
+                           [<<"notifications">>, <<"inbound">>, <<"email">>, <<"send_to">>]; %% inbound from faxbox doc
+                       _ ->
+                           [<<"notifications">>, <<"outbound">>, <<"email">>, <<"send_to">>] %% outbound from faxbox doc
+                   end,
+    Paths = [[<<"to">>, <<"email_addresses">>] %% explicitly set in the payload
+            ,[<<"to">>] %% explicitly set in the payload in another form
+            ,[<<"fax">>, <<"email">>, <<"send_to">>] %% fax document legacy
+            ,[<<"fax">>, <<"notifications">>, <<"email">>, <<"send_to">>] %% fax document
+            ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>] %% set by fax_worker from faxbox doc
+            ,[<<"notifications">>, <<"email">>, <<"send_to">>] %% faxbox or fax doc?
+            ,BoxEmailPath
+            ,[<<"owner">>, <<"email">>] %% user document
+            ,[<<"owner">>, <<"username">>] %% user document
             ],
     Emails = kz_json:get_first_defined(Paths, DataJObj),
-    to_email_addresses(DataJObj, ModConfigCat, Emails).
+    Found = to_email_addresses(DataJObj, ModConfigCat, Emails),
+    lager:debug("found emails: ~p", [Found]),
+    Found.
 
 -spec to_email_addresses(kz_json:object(), ne_binary(), ne_binary() | api_binaries()) -> api_binaries().
 to_email_addresses(_, _, ?NE_BINARY=Email) ->
     [Email];
 to_email_addresses(_, _, Emails)
   when is_list(Emails)
-       andalso length(Emails) >= 1 ->
+       andalso length(Emails) > 0 ->
     Emails;
-to_email_addresses(DataJObj, ModConfigCat, _) ->
-    Emails = teletype_util:find_account_rep_email(DataJObj),
-    maybe_using_default_to_addresses(Emails, ModConfigCat).
-
--spec maybe_using_default_to_addresses(api_binaries(), ne_binary()) -> api_binaries().
-maybe_using_default_to_addresses('undefined', ModConfigCat) ->
-    lager:debug("failed to find account rep email, using defaults"),
+to_email_addresses(_DataJObj, ModConfigCat, _) ->
+    lager:debug("can not find email address for the fax notification, maybe using defaults"),
     case kapps_config:get_ne_binary_or_ne_binaries(ModConfigCat, <<"default_to">>) of
         'undefined' -> 'undefined';
         ?NE_BINARY=Email -> [Email];
         Emails when is_list(Emails) -> Emails
-    end;
-maybe_using_default_to_addresses(Emails, _) ->
-    lager:debug("using ~p for To", [Emails]),
-    Emails.
+    end.
 
 %%%===================================================================
 %%% Build data functions

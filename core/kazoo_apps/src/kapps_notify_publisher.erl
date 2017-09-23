@@ -36,8 +36,8 @@
 
 %%--------------------------------------------------------------------
 %% @doc Publish notification and collect notify update messages from
-%%      teletype, useful if you want to make sure teletype proccessed
-%%      the notifaction compeletly (e.g. new voicemail)
+%%      teletype, useful if you want to make sure teletype processed
+%%      the notification completely (e.g. new voicemail)
 %%--------------------------------------------------------------------
 -spec call_collect(api_terms(), kz_amqp_worker:publish_fun()) -> kz_amqp_worker:request_return().
 call_collect(Req, PublishFun) ->
@@ -76,7 +76,7 @@ handle_resp(NotifyType, Req, {'returned', _, Resp}) -> check_for_failure(NotifyT
 handle_resp(NotifyType, Req, {'timeout', _}=Resp) -> check_for_failure(NotifyType, Req, Resp).
 
 %% @private
-%% @doc check for notify update messages from teeltype/notify apps
+%% @doc check for notify update messages from teletype/notify apps
 -spec check_for_failure(api_ne_binary(), api_terms(), {'ok' | 'returned' | 'timeout', kz_json:objects()}) -> 'ok'.
 check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
     case is_completed(Responses) of
@@ -97,7 +97,7 @@ maybe_handle_error(NotifyType, Req, Error) ->
 %% @doc save pay load to db to retry later
 -spec handle_error(ne_binary(), api_terms(), any()) -> 'ok'.
 handle_error(NotifyType, Req, Error) ->
-    lager:warning("attempt for publishing notifcation ~s was unsuccessful: ~p", [NotifyType, Error]),
+    lager:warning("attempt for publishing notification ~s was unsuccessful: ~p", [NotifyType, Error]),
     Props = props:filter_undefined(
               [{<<"description">>, <<"failed to publish notification">>}
               ,{<<"failure_reason">>, error_to_failure_reason(Error)}
@@ -120,7 +120,7 @@ save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
 save_pending_notification(NotifyType, JObj, Loop) ->
     case kz_datamgr:save_doc(?KZ_PENDING_NOTIFY_DB, JObj) of
         {'ok', _} ->
-            lager:warning("payload for failed notification ~s publish attempt was saved", [NotifyType]);
+            lager:warning("payload for failed notification ~s publish attempt was saved to ~s", [NotifyType, kz_doc:id(JObj)]);
         {'error', 'not_found'} ->
             kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             save_pending_notification(NotifyType, JObj, Loop - 1);
