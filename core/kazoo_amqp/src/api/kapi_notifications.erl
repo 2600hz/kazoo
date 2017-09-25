@@ -335,8 +335,8 @@
 -define(ACCOUNT_ZONE_CHANGE_TYPES, []).
 
 %% Notify New User
--define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>, <<"Password">>]).
--define(OPTIONAL_NEW_USER_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>]).
+-define(OPTIONAL_NEW_USER_HEADERS, [<<"Password">> | ?DEFAULT_OPTIONAL_HEADERS]).
 -define(NEW_USER_VALUES, [{<<"Event-Category">>, <<"notification">>}
                          ,{<<"Event-Name">>, <<"new_user">>}
                          ]).
