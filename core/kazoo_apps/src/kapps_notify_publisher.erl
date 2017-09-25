@@ -157,31 +157,31 @@ is_completed([JObj|_]) ->
         <<"completed">> -> 'true';
         <<"failed">> ->
             FailureMsg = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj),
-            ShouldIgnore = maybe_ignore_failure(FailureMsg),
-            ShouldIgnore
-                andalso lager:debug("teletype failed with reason ~s, ignoring", [FailureMsg]),
+            ShouldIgnore = should_ignore_failure(FailureMsg),
+            lager:debug("teletype failed with reason ~s, ignoring: ", [FailureMsg, ShouldIgnore]),
             ShouldIgnore;
         %% FIXME: Is pending enough to consider publish was successful? at least teletype recieved the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
     end.
 
--spec maybe_ignore_failure(api_ne_binary()) -> boolean().
-maybe_ignore_failure(<<"missing_from">>) -> 'true';
-maybe_ignore_failure(<<"invalid_to_addresses">>) -> 'true';
-maybe_ignore_failure(<<"no_to_addresses">>) -> 'true';
-maybe_ignore_failure(<<"email_encoding_failed">>) -> 'true';
-maybe_ignore_failure(<<"validation_failed">>) -> 'true';
-maybe_ignore_failure(<<"missing_data:", _/binary>>) -> 'true';
-maybe_ignore_failure(<<"failed_template:", _/binary>>) -> 'true'; %% rendering problems
-maybe_ignore_failure(<<"template_error:", _/binary>>) -> 'true'; %% rendering problems
-maybe_ignore_failure(<<"no teletype template modules responded">>) -> 'true'; %% rendering problems
+-spec should_ignore_failure(api_ne_binary()) -> boolean().
+should_ignore_failure(<<"missing_from">>) -> 'true';
+should_ignore_failure(<<"invalid_to_addresses">>) -> 'true';
+should_ignore_failure(<<"no_to_addresses">>) -> 'true';
+should_ignore_failure(<<"email_encoding_failed">>) -> 'true';
+should_ignore_failure(<<"validation_failed">>) -> 'true';
+should_ignore_failure(<<"missing_data:", _/binary>>) -> 'true';
+should_ignore_failure(<<"failed_template:", _/binary>>) -> 'true'; %% rendering problems
+should_ignore_failure(<<"template_error:", _/binary>>) -> 'true'; %% rendering problems
+should_ignore_failure(<<"no teletype template modules responded">>) -> 'true'; %% rendering problems
+should_ignore_failure(<<"unknown error throw-ed">>) -> 'true';
 
 %% explicitly not ignoring these below:
-maybe_ignore_failure(<<"unknown_template_error">>) -> 'false'; %% maybe something went wrong with template, trying later?
-maybe_ignore_failure(<<"no_attachment">>) -> 'false'; %% probably fax or voicemail is not stored in storage yet, retry later
-maybe_ignore_failure(<<"badmatch">>) -> 'false'; %% not ignoring it yet (voicemail_new)
-maybe_ignore_failure(_) -> 'false'.
+should_ignore_failure(<<"unknown_template_error">>) -> 'false'; %% maybe something went wrong with template, trying later?
+should_ignore_failure(<<"no_attachment">>) -> 'false'; %% probably fax or voicemail is not stored in storage yet, retry later
+should_ignore_failure(<<"badmatch">>) -> 'false'; %% not ignoring it yet (voicemail_new)
+should_ignore_failure(_) -> 'false'.
 
 %% @private
 %% @doc try to find account id in different part of payload(copied from teletype_util)
