@@ -21,7 +21,8 @@
 
 -include("teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".system_alert">>).
+-define(TEMPLATE_ID, <<"system_alert">>).
+-define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(SHOULD_USE_EMAIL
        ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true')).
@@ -143,7 +144,7 @@ process_req(DataJObj) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     Emails = teletype_util:find_addresses(kz_json:set_value(<<"account_id">>, MasterAccountId, DataJObj)
                                          ,TemplateMetaJObj
-                                         ,teletype_util:mod_config_cat(id())
+                                         ,?TEMPLATE_CONFIG_CAT(id())
                                          ),
 
     Attachments = teletype_util:maybe_get_attachments(DataJObj),

@@ -16,14 +16,14 @@
 
 -define(SUCCESS_TEMPLATE_ID, <<"transaction">>).
 -define(FAILED_TEMPLATE_ID, <<"transaction_failed">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?SUCCESS_TEMPLATE_ID)/binary>>).
+-define(MOD_CONFIG_CAT(TemplateId), ?TEMPLATE_CONFIG_CAT(TemplateId)).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"plan.id">>, <<"plan_id">>, <<"Plan ID">>, <<"Plan ID">>)
           ,?MACRO_VALUE(<<"plan.category">>, <<"plan_category">>, <<"Plan Category">>, <<"Plan Category">>)
           ,?MACRO_VALUE(<<"plan.item">>, <<"plan_item">>, <<"Plan Item">>, <<"Plan Item">>)
-          ,?MACRO_VALUE(<<"plan.activation_charge">>, <<"plan_activation_charge">>, <<"Activation Charge">>, <<"Activiation Charge">>)
+          ,?MACRO_VALUE(<<"plan.activation_charge">>, <<"plan_activation_charge">>, <<"Activation Charge">>, <<"Activation Charge">>)
            | ?TRANSACTION_MACROS
            ++ ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
@@ -38,10 +38,10 @@
 -define(FAILED_TEMPLATE_NAME, <<"Transaction Problem">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_FROM(Id), teletype_util:default_from_address(?MOD_CONFIG_CAT(Id))).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_REPLY_TO(Id), teletype_util:default_reply_to(?MOD_CONFIG_CAT(Id))).
 
 -spec init() -> 'ok'.
 init() ->
@@ -49,17 +49,19 @@ init() ->
     Fields =  [{'macros', ?TEMPLATE_MACROS}
               ,{'category', ?TEMPLATE_CATEGORY}
               ,{'to', ?TEMPLATE_TO}
-              ,{'from', ?TEMPLATE_FROM}
               ,{'cc', ?TEMPLATE_CC}
               ,{'bcc', ?TEMPLATE_BCC}
-              ,{'reply_to', ?TEMPLATE_REPLY_TO}
               ],
     SucessParams = [{'friendly_name', ?SUCCESS_TEMPLATE_NAME}
                    ,{'subject', ?SUCCESS_TEMPLATE_SUBJECT}
+                   ,{'from', ?TEMPLATE_FROM(?SUCCESS_TEMPLATE_ID)}
+                   ,{'reply_to', ?TEMPLATE_REPLY_TO(?SUCCESS_TEMPLATE_ID)}
                     | Fields
                    ],
     FailedParams = [{'friendly_name', ?FAILED_TEMPLATE_NAME}
                    ,{'subject', ?FAILED_TEMPLATE_SUBJECT}
+                   ,{'from', ?TEMPLATE_FROM(?FAILED_TEMPLATE_ID)}
+                   ,{'reply_to', ?TEMPLATE_REPLY_TO(?FAILED_TEMPLATE_ID)}
                     | Fields
                    ],
     teletype_templates:init(?SUCCESS_TEMPLATE_ID, SucessParams),
@@ -121,7 +123,7 @@ process_req(DataJObj) ->
                                           ,Macros
                ),
 
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT(TemplateId)),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);

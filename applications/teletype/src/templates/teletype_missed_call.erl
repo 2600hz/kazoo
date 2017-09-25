@@ -13,7 +13,7 @@
 
 -include("teletype.hrl").
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".missed_call">>).
+-define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_ID, <<"missed_call">>).
 

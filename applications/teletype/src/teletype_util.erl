@@ -43,7 +43,7 @@
         ,maybe_get_attachments/1
         ,fetch_attachment_from_url/1
 
-        ,mod_config_cat/1
+        ,template_config_cat/1
         ]).
 
 -include("teletype.hrl").
@@ -617,8 +617,6 @@ should_handle_notification(JObj, 'false') ->
     lager:debug("notification configuration is: ~p", [Config]),
     Config =:= ?APP_NAME.
 
--define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
-
 -spec is_notice_enabled(api_binary(), kz_json:object(), ne_binary()) -> boolean().
 is_notice_enabled('undefined', _ApiJObj, TemplateKey) ->
     is_notice_enabled_default(TemplateKey);
@@ -955,6 +953,6 @@ attachment_from_url_result(Headers, Body) ->
                end,
     {CT, Filename, Body}.
 
--spec mod_config_cat(ne_binary()) -> ne_binary().
-mod_config_cat(TemplateId=?NE_BINARY) ->
-    <<(?NOTIFY_CONFIG_CAT)/binary, ".", TemplateId/binary>>.
+-spec template_config_cat(ne_binary()) -> ne_binary().
+template_config_cat(TemplateId=?NE_BINARY) ->
+    ?TEMPLATE_CONFIG_CAT(TemplateId).
