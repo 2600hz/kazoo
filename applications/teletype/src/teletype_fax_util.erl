@@ -189,7 +189,7 @@ find_timezone(DataJObj, FaxBoxJObj) ->
 
 -spec fax_db(kz_json:object(), api_ne_binary()) -> ne_binary().
 fax_db(DataJObj, FaxId) ->
-    case kapi_notifications:account_db(DataJObj) of
+    case kapi_notifications:account_db(DataJObj, 'true') of
         'undefined' ->
             maybe_get_fax_db_from_id(kz_json:get_ne_binary_value(<<"account_id">>, DataJObj), FaxId);
         Db -> maybe_get_fax_db_from_id(Db, FaxId)

@@ -465,12 +465,13 @@ sort_templates({K1, _}, {K2, _}) ->
         props:get_value(K2, ?TEMPLATE_RENDERING_ORDER, 1).
 
 -spec find_account_db(ne_binary(), kz_json:object()) -> api_binary().
-find_account_db(<<"account">>, JObj) -> kapi_notifications:account_db(JObj);
-find_account_db(<<"user">>, JObj) -> kapi_notifications:account_db(JObj);
-find_account_db(<<"fax">>, JObj) -> kapi_notifications:account_db(JObj);
+find_account_db(<<"account">>, JObj) -> kapi_notifications:account_db(JObj, 'false');
+find_account_db(<<"user">>, JObj) -> kapi_notifications:account_db(JObj, 'false');
+find_account_db(<<"faxbox">>, JObj) -> kapi_notifications:account_db(JObj, 'false');
+find_account_db(<<"fax">>, JObj) -> kapi_notifications:account_db(JObj, 'true');
 find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
 find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
-find_account_db(_, JObj) -> kapi_notifications:account_db(JObj).
+find_account_db(_, JObj) -> kapi_notifications:account_db(JObj, 'false').
 
 -spec send_update(kz_json:object(), ne_binary()) -> 'ok'.
 -spec send_update(kz_json:object(), ne_binary(), api_binary()) -> 'ok'.

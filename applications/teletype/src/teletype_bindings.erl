@@ -47,7 +47,7 @@ notification(JObj) ->
             lager:debug("notification ~s did not result in successes: ~s", [RoutingKey, FailureMsg]),
             teletype_util:send_update(JObj, <<"failed">>, FailureMsg);
         Successes ->
-            lager:debug("notification ~s result in ~s success(es)", [RoutingKey, length(Successes)])
+            lager:debug("notification ~s result in ~b success(es)", [RoutingKey, length(Successes)])
     end.
 
 -spec start_modules() -> 'ok'.
