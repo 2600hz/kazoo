@@ -99,7 +99,7 @@ maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 -spec get_vm_box(ne_binary(), kz_json:object()) -> kz_json:object().
 get_vm_box(AccountId, JObj) ->
     VMBoxId = kz_json:get_value(<<"voicemail_box">>, JObj),
-    case teletype_util:open_doc(<<"voicemail">>, VMBoxId, JObj) of
+    case teletype_util:open_doc(<<"vmbox">>, VMBoxId, JObj) of
         {'ok', VMBox} -> VMBox;
         {'error', _E} ->
             lager:debug("failed to load vm box ~s from ~s", [VMBoxId, AccountId]),

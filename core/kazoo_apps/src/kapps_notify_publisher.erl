@@ -174,7 +174,7 @@ should_ignore_failure(<<"validation_failed">>) -> 'true';
 should_ignore_failure(<<"missing_data:", _/binary>>) -> 'true';
 should_ignore_failure(<<"failed_template:", _/binary>>) -> 'true'; %% rendering problems
 should_ignore_failure(<<"template_error:", _/binary>>) -> 'true'; %% rendering problems
-should_ignore_failure(<<"no teletype template modules responded">>) -> 'true'; %% rendering problems
+should_ignore_failure(<<"no teletype template modules responded">>) -> 'true'; %% no module is binded?
 should_ignore_failure(<<"unknown error throw-ed">>) -> 'true';
 
 %% explicitly not ignoring these below:
