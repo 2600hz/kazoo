@@ -96,7 +96,7 @@ handle_req(JObj, 'true') ->
 -spec is_notice_enabled(ne_binary(), kz_json:object(), ne_binary()) -> ne_binary() | 'disabled'.
 is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) ->
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'true' -> ?TEMPLATE_ID;
+        'true' -> 'disabled';
         'false' -> 'disabled'
     end;
 is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED) ->
