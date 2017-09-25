@@ -501,7 +501,7 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
                                Default | _.
 get_default_value(Category, Keys, Default, JObj) ->
     case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
-        'undefined' ->
+        'undefined' when Default /= 'undefined' ->
             lager:debug("setting default for ~s ~p: ~p", [Category, Keys, Default]),
             _ = set_default(Category, Keys, Default),
             Default;

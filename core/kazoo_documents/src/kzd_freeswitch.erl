@@ -145,7 +145,6 @@ original_call_direction(Props) ->
 call_direction(Props) ->
     props:get_first_defined([<<"Application-Logical-Direction">>
                             ,?CCV(<<"Application-Logical-Direction">>)
-                            ,<<"Caller-Logical-Direction">>
                             ,<<"Call-Direction">>
                             ]
                            ,Props
