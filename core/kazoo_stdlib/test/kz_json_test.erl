@@ -243,8 +243,11 @@ get_first_defined_test_() ->
             ,{'undefined', []}
             ,{<<"d1v1">>, [<<"nope">>, <<"d1k1">>]}
             ],
-    [?_assertEqual(V, kz_json:get_first_defined(Path, ?D1))
-     || {V, Path} <- Paths
+    [?_assertEqual('undefined', kz_json:get_first_defined([<<"foo">>, <<"bar">>], kz_json:new()))
+     |
+     [?_assertEqual(V, kz_json:get_first_defined(Path, ?D1))
+      || {V, Path} <- Paths
+     ]
     ].
 
 merge_recursive_overrides_test_() ->
