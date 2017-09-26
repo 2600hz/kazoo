@@ -855,6 +855,7 @@ get_first_defined([H|T], JObj, Default) ->
 -spec get_value(path(), object() | objects(), Default) -> json_term() | Default.
 get_value(Key, JObj) ->
     get_value(Key, JObj, 'undefined').
+
 get_value([Key|Ks], L, Default) when is_list(L) ->
     try
         get_value1(Ks, lists:nth(kz_term:to_integer(Key), L), Default)
@@ -879,7 +880,7 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
         _:_ -> Default
     end;
 get_value1([K|Ks], ?JSON_WRAPPER(Props), Default) ->
-    get_value1(Ks, props:get_value(K, Props, Default), Default);
+    get_value1(Ks, props:get_value(K, Props), Default);
 get_value1(_, undefined, Default) ->
     Default;
 get_value1(_, ?JSON_WRAPPER(_), Default) ->
