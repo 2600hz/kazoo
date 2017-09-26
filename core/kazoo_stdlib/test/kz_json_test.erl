@@ -255,6 +255,7 @@ find_test_() ->
           ,{1, <<"d2k1">>}
           ,{<<"d3v1">>, <<"d3k1">>}
           ,{'undefined', <<"foo">>}
+          ,{'undefined', [<<"d3k1">>, <<"foo">>]}
           ],
     [?_assertEqual(V, kz_json:find(K, ?D4)) || {V, K} <- KVs].
 

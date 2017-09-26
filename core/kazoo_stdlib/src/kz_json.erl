@@ -800,24 +800,28 @@ get_ne_value(Key, JObj, Default) ->
 %%--------------------------------------------------------------------
 -spec find(path(), objects()) -> api_json_term().
 -spec find(path(), objects(), Default) -> json_term() | Default.
-find(Key, Docs) ->
-    find(Key, Docs, 'undefined').
+find(Key, JObjs) ->
+    find(Key, JObjs, 'undefined').
 find(_, [], Default) -> Default;
 find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
-    case get_value(Key, JObj) of
+    try get_value(Key, JObj) of
         'undefined' -> find(Key, JObjs, Default);
         V -> V
+    catch
+        'error':'badarg' -> find(Key, JObjs, Default)
     end.
 
 -spec find_first_defined(paths(), objects()) -> api_json_term().
 -spec find_first_defined(paths(), objects(), Default) -> json_term() | Default.
-find_first_defined(Keys, Docs) ->
-    find_first_defined(Keys, Docs, 'undefined').
-find_first_defined([], _Docs, Default) -> Default;
-find_first_defined([Key|Keys], Docs, Default) ->
-    case find(Key, Docs) of
-        'undefined' -> find_first_defined(Keys, Docs, Default);
+find_first_defined(Keys, JObjs) ->
+    find_first_defined(Keys, JObjs, 'undefined').
+find_first_defined([], _JObjs, Default) -> Default;
+find_first_defined([Key|Keys], JObjs, Default) ->
+    try find(Key, JObjs) of
+        'undefined' -> find_first_defined(Keys, JObjs, Default);
         V -> V
+    catch
+        'error':'badarg' -> find(Key, JObjs, Default)
     end.
 
 %%--------------------------------------------------------------------
