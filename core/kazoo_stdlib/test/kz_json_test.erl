@@ -236,6 +236,17 @@ log_failure(Key, Value, Missing) ->
 -define(SP, kz_json:decode(<<"{\"plan\":{\"phone_numbers\":{\"did_us\":{\"discounts\":{\"cumulative\":{\"rate\":1}}}}}}">>)).
 -define(O, kz_json:decode(<<"{\"phone_numbers\":{\"did_us\":{\"discounts\":{\"cumulative\":{\"rate\":20}}}}}">>)).
 
+get_first_defined_test_() ->
+    Paths = [{<<"d1v1">>, [<<"d1k1">>, <<"d1k2">>]}
+            ,{<<"d1v2">>, [<<"d1k2">>, <<"d1k1">>]}
+            ,{'undefined', [<<"nope">>, <<"definitely_nope">>]}
+            ,{'undefined', []}
+            ,{<<"d1v1">>, [<<"nope">>, <<"d1k1">>]}
+            ],
+    [?_assertEqual(V, kz_json:get_first_defined(Path, ?D1))
+     || {V, Path} <- Paths
+    ].
+
 merge_recursive_overrides_test_() ->
     AP = kz_json:merge_recursive(?SP, kz_json:from_list([{<<"plan">>, ?O}])),
 
