@@ -322,7 +322,7 @@ read_ledger(Context, Ledger) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
             AccountId = cb_context:account_id(Context),
-            Databases = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
+            Databases = lists:reverse(kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)),
             ViewOptions = [{'startkey', [Ledger, CreatedTo]}
                           ,{'endkey', [Ledger, CreatedFrom]}
                           ,{'limit', pagination_page_size(Context)}
@@ -373,7 +373,7 @@ normalize_view_result(Context, JObj) ->
 normalize_view_result(_Context, <<"ledger">>, JObj) ->
     Value = wht_util:units_to_dollars(kazoo_ledger:amount(JObj)),
     Ledger = kazoo_ledger:set_amount(JObj, Value),
-    kz_doc:public_fields(maybe_set_doc_modb_prefix(Ledger));
+    kz_doc:public_fields(maybe_set_doc_modb_prefix(kz_doc:id(Ledger), kz_doc:created(Ledger)));
 %% Legacy, this would be debit or credit from per-minute transactions
 normalize_view_result(Context, _DocType, JObj) ->
     Transaction = kz_transaction:from_json(JObj),
@@ -401,22 +401,14 @@ normalize_view_result(Context, _DocType, JObj) ->
       ,{<<"description">>, kz_transaction:description(Transaction)}
       ,{<<"period">>, kz_json:from_list([{<<"start">>, kz_transaction:created(Transaction)}])}
       ,{<<"metadata">>, kz_transaction:metadata(Transaction)}
-      ,{<<"id">>, kz_doc:id(maybe_set_doc_modb_prefix(JObj))}
+      ,{<<"id">>, maybe_set_doc_modb_prefix(kz_doc:id(JObj), kz_doc:created(JObj))}
       ]).
 
--spec maybe_set_doc_modb_prefix(kz_json:object()) -> kz_json:object().
-maybe_set_doc_modb_prefix(JObj) ->
-    case kz_doc:id(JObj) of
-        ?MATCH_MODB_PREFIX(_,_,_) -> JObj;
-        _ ->
-            {Year, Month, _} = kz_term:to_date(kz_doc:created(JObj)),
-            Id = <<(kz_term:to_binary(Year))/binary
-                   ,(kz_date:pad_month(Month))/binary
-                   ,"-"
-                   ,(kz_doc:id(JObj))/binary
-                 >>,
-            kz_doc:set_id(JObj, Id)
-    end.
+-spec maybe_set_doc_modb_prefix(ne_binary(), api_integer()) -> ne_binary().
+maybe_set_doc_modb_prefix(?MATCH_MODB_PREFIX(_,_,_)=Id, _) -> Id;
+maybe_set_doc_modb_prefix(Id, Created) ->
+    {Year, Month, _} = calendar:gregorian_seconds_to_datetime(Created),
+    kazoo_modb_util:modb_id(Year, Month, Id).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -461,7 +453,6 @@ validate_returned_ledger_doc(Ledger, Context) ->
     of
         'true' -> cb_context:set_resp_data(Context, normalize_view_result(Context, JObj));
         'false' ->
-            Msg = kz_json:from_list([{<<"message">>, <<"document does not belong to ledger">>}
-                                    ]),
-            cb_context:add_validation_error(<<"Id">>, <<"invalid">>, Msg, Context)
+            lager:debug("document type ~s does not match the expected types", [kz_doc:type(JObj)]),
+            cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, kz_doc:id(JObj)}]),  Context)
     end.
