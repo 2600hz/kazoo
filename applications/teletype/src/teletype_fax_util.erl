@@ -72,7 +72,7 @@ add_document_data(FaxDoc, Macros, [{ContentType, Filename, Bin}]) ->
 
 -spec to_email_addresses(kz_json:object(), ne_binary()) -> api_binaries().
 to_email_addresses(DataJObj, ModConfigCat) ->
-    BoxEmailPath = case ModConfigCat of
+    BoxEmailPath = case binary:split(ModConfigCat, <<".">>) of
                        [_, <<"fax_inbound", _/binary>>] ->
                            [<<"notifications">>, <<"inbound">>, <<"email">>, <<"send_to">>]; %% inbound from faxbox doc
                        _ ->
