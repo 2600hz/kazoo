@@ -844,9 +844,11 @@ get_first_defined(Keys, JObj) ->
     get_first_defined(Keys, JObj, 'undefined').
 get_first_defined([], _JObj, Default) -> Default;
 get_first_defined([H|T], JObj, Default) ->
-    case get_value(H, JObj) of
+    try get_value(H, JObj) of
         'undefined' -> get_first_defined(T, JObj, Default);
         V -> V
+    catch
+        'error':'badarg' -> get_first_defined(T, JObj, Default)
     end.
 
 -spec get_value(path(), object() | objects()) -> json_term() | 'undefined'.
