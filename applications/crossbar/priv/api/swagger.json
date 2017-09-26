@@ -263,19 +263,19 @@
         "account_config.notify": {
             "description": "Schema for notify account_config",
             "properties": {
-                "notify_presist_exceptions": {
+                "notify_persist_exceptions": {
                     "default": [
                         "system_alert"
                     ],
-                    "description": "List of notification types have to be ignored to presist if they failed to publish",
+                    "description": "notify notify_persist_exceptions",
                     "items": {
                         "type": "string"
                     },
                     "type": "array"
                 },
-                "should_presist_for_retry": {
+                "should_persist_for_retry": {
                     "default": true,
-                    "description": "Enabled presist of failed to publish notifications for account/system",
+                    "description": "notify should_persist_for_retry",
                     "type": "boolean"
                 }
             },
@@ -884,6 +884,14 @@
                 "record_min_sec": {
                     "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
                     "type": "integer"
+                },
+                "record_on_answer": {
+                    "description": "Recording should start on answer",
+                    "type": "boolean"
+                },
+                "record_on_bridge": {
+                    "description": "Recording should start on bridge",
+                    "type": "boolean"
                 },
                 "record_sample_rate": {
                     "description": "What sampling rate to use on the recording",
@@ -4572,7 +4580,7 @@
                     "properties": {
                         "error_message": {
                             "default": "",
-                            "description": "A description of any error that occured",
+                            "description": "A description of any error that occurred",
                             "type": "string"
                         },
                         "fax_bad_rows": {
@@ -24096,10 +24104,6 @@
                     ],
                     "type": "string"
                 },
-                "name": {
-                    "description": "Friendly name for this configuration",
-                    "type": "string"
-                },
                 "settings": {
                     "description": "AWS API settings",
                     "properties": {
@@ -24107,17 +24111,18 @@
                             "description": "Bucket name to store data to",
                             "type": "string"
                         },
+                        "bucket_access_method": {
+                            "description": "how to access the host.",
+                            "enum": [
+                                "auto",
+                                "host",
+                                "path"
+                            ],
+                            "type": "string"
+                        },
                         "bucket_after_host": {
                             "description": "use bucket after host as part of url",
                             "type": "boolean"
-                        },
-                        "folder_base_path": {
-                            "description": "Base path to use as a prefix when saving files",
-                            "type": "string"
-                        },
-                        "folder_path": {
-                            "description": "Custom path to use as a prefix when saving files",
-                            "type": "string"
                         },
                         "host": {
                             "description": "the s3 host",
@@ -24130,6 +24135,10 @@
                         "port": {
                             "description": "port to use",
                             "type": "integer"
+                        },
+                        "region": {
+                            "description": "the region where the bucket is located",
+                            "type": "string"
                         },
                         "scheme": {
                             "description": "scheme to use to access host",
@@ -24158,6 +24167,76 @@
             ],
             "type": "object"
         },
+        "storage.attachment.azure": {
+            "description": "schema for azure attachment entry",
+            "properties": {
+                "handler": {
+                    "description": "What handler module to use",
+                    "enum": [
+                        "azure"
+                    ],
+                    "type": "string"
+                },
+                "settings": {
+                    "description": "Settings for the Azure account",
+                    "properties": {
+                        "account": {
+                            "description": "the azure account name",
+                            "type": "string"
+                        },
+                        "container": {
+                            "description": "the azure container where the files should be saved",
+                            "type": "string"
+                        },
+                        "key": {
+                            "description": "the azure api key",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "account",
+                        "container",
+                        "key"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "handler",
+                "settings"
+            ],
+            "type": "object"
+        },
+        "storage.attachment.dropbox": {
+            "description": "schema for dropbox attachment entry",
+            "properties": {
+                "handler": {
+                    "description": "What handler module to use",
+                    "enum": [
+                        "dropbox"
+                    ],
+                    "type": "string"
+                },
+                "settings": {
+                    "description": "Settings for the DropBox account",
+                    "properties": {
+                        "oauth_doc_id": {
+                            "description": "Doc ID in the system 'auth' database",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "oauth_doc_id"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "handler",
+                "settings"
+            ],
+            "type": "object"
+        },
         "storage.attachment.google_drive": {
             "description": "schema for google drive attachment entry",
             "properties": {
@@ -24168,27 +24247,66 @@
                     ],
                     "type": "string"
                 },
-                "name": {
-                    "description": "Friendly name for this configuration",
-                    "type": "string"
-                },
                 "settings": {
                     "description": "Settings for the Google Drive account",
                     "properties": {
-                        "folder_base_path": {
-                            "description": "base folder path",
-                            "type": "string"
-                        },
                         "folder_id": {
                             "description": "Folder ID in which to store the file, if any",
                             "type": "string"
                         },
-                        "folder_path": {
-                            "description": "folder path",
-                            "type": "string"
-                        },
                         "oauth_doc_id": {
-                            "description": "Doc ID in the system 'oauth' database",
+                            "description": "Doc ID in the system 'auth' database",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "oauth_doc_id"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "handler",
+                "settings"
+            ],
+            "type": "object"
+        },
+        "storage.attachment.google_storage": {
+            "description": "schema for google storage attachment entry",
+            "properties": {
+                "handler": {
+                    "description": "What handler module to use",
+                    "enum": [
+                        "google_storage"
+                    ],
+                    "type": "string"
+                },
+                "settings": {
+                    "description": "Settings for the Google Storage account",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "handler",
+                "settings"
+            ],
+            "type": "object"
+        },
+        "storage.attachment.onedrive": {
+            "description": "schema for OneDrive attachment entry",
+            "properties": {
+                "handler": {
+                    "description": "What handler module to use",
+                    "enum": [
+                        "onedrive"
+                    ],
+                    "type": "string"
+                },
+                "settings": {
+                    "description": "Settings for the OneDrive account",
+                    "properties": {
+                        "oauth_doc_id": {
+                            "description": "Doc ID in the system 'auth' database",
                             "type": "string"
                         }
                     },
@@ -24324,7 +24442,6 @@
                     "type": "object"
                 },
                 "types": {
-                    "additionalProperties": false,
                     "properties": {
                         "call_recording": {
                             "$ref": "#/definitions/storage.plan.database.document"
@@ -24351,6 +24468,12 @@
                     "type": "string"
                 },
                 "params": {
+                    "properties": {
+                        "folder_path": {
+                            "description": "folder path",
+                            "type": "string"
+                        }
+                    },
                     "type": "object"
                 },
                 "stub": {
@@ -27590,24 +27713,24 @@
                     "description": "notify notification app",
                     "type": "string"
                 },
-                "notify_presist_enabled": {
+                "notify_persist_enabled": {
                     "default": true,
-                    "description": "Enabled presist of failed to publish notifications globally",
+                    "description": "notify notify_persist_enabled",
                     "type": "boolean"
                 },
-                "notify_presist_exceptions": {
+                "notify_persist_exceptions": {
                     "default": [
                         "system_alert"
                     ],
-                    "description": "List of notification types have to be ignored to presist if they failed to publish",
+                    "description": "notify notify_persist_exceptions",
                     "items": {
                         "type": "string"
                     },
                     "type": "array"
                 },
-                "notify_presist_temprorary_force_exceptions": {
+                "notify_persist_temporary_force_exceptions": {
                     "default": [],
-                    "description": "List of notification types have to be ignored temprorary globally to presist if they failed to publish",
+                    "description": "notify notify_persist_temporary_force_exceptions",
                     "items": {
                         "type": "string"
                     },
@@ -27624,9 +27747,9 @@
                     "description": "notify search rep email",
                     "type": "boolean"
                 },
-                "should_presist_for_retry": {
+                "should_persist_for_retry": {
                     "default": true,
-                    "description": "Enabled presist of failed to publish notifications for account/system",
+                    "description": "notify should_persist_for_retry",
                     "type": "boolean"
                 },
                 "use_federated_listener": {

@@ -1,0 +1,47 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.attachment.google_storage",
+    "description": "schema for google storage attachment entry",
+    "properties": {
+        "handler": {
+            "description": "What handler module to use",
+            "enum": [
+                "google_storage"
+            ],
+            "type": "string"
+        },
+        "settings": {
+            "description": "Settings for the Google Storage account",
+            "oneOf": [
+                {
+                    "properties": {
+                        "oauth_app_id": {
+                            "description": "App ID in the system 'auth' database. the app doc should refer to a key obtained from google",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "oauth_app_id"
+                    ]
+                },
+                {
+                    "properties": {
+                        "oauth_doc_id": {
+                            "description": "Doc ID in the system 'auth' database",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "oauth_doc_id"
+                    ]
+                }
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "handler",
+        "settings"
+    ],
+    "type": "object"
+}

@@ -332,6 +332,24 @@ is_proplist_test_() ->
 id_test() ->
     ?assertEqual(bla, kz_term:identity(bla)).
 
+to_pid_test_() ->
+    {'setup'
+    ,fun() ->
+             Pid = spawn(fun() -> receive X -> X end end),
+             'true' = register('foobarbaz', Pid),
+             Pid
+     end
+    ,fun(Pid) -> Pid ! 'stop' end
+    ,fun(Pid) ->
+             [?_assertEqual('undefined', kz_term:to_pid('undefined'))
+             ,?_assertEqual(Pid, kz_term:to_pid(Pid))
+             ,?_assertEqual(Pid, kz_term:to_pid('foobarbaz'))
+             ,?_assertEqual('undefined', kz_term:to_pid('someothername'))
+             ,?_assertEqual(Pid, kz_term:to_pid(pid_to_list(Pid)))
+             ,?_assertEqual(Pid, kz_term:to_pid(list_to_binary(pid_to_list(Pid))))
+             ]
+     end
+    }.
 
 -ifdef(PERF).
 -define(REPEAT, 100000).

@@ -236,7 +236,7 @@ is_json_term(MaybeJObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Finds out wether 2 JSON objects are recursively identical.
+%% Finds out whether 2 JSON objects are recursively identical.
 %% @end
 %%--------------------------------------------------------------------
 -spec are_equal(api_object(), api_object()) -> boolean().
@@ -876,9 +876,14 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
     catch
         _:_ -> Default
     end;
-get_value1([K|Ks], ?JSON_WRAPPER(Props)=_JObj, Default) ->
+get_value1([K|Ks], ?JSON_WRAPPER(Props), Default) ->
     get_value1(Ks, props:get_value(K, Props, Default), Default);
-get_value1(_, _, Default) -> Default.
+get_value1(_, undefined, Default) ->
+    Default;
+get_value1(_, ?JSON_WRAPPER(_), Default) ->
+    Default;
+get_value1(_K, _V, _D) ->
+    erlang:error(badarg).
 
 -spec values(object()) -> json_terms().
 -spec values(path(), object()) -> json_terms().

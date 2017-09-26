@@ -66,6 +66,7 @@ authenticate(Token)
     Routines = [fun kz_auth_token_util:add_application/1
                ,fun kz_auth_token_util:add_provider/1
                ,fun kz_auth_token_util:access_code/1
+               ,fun kz_auth_token_util:access_token/1
                ,fun kz_auth_token_util:verify/1
                ,fun kz_auth_token_util:id_token/1
                ,fun kz_auth_profile:token/1

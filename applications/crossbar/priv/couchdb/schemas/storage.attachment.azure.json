@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.attachment.azure",
+    "description": "schema for azure attachment entry",
+    "properties": {
+        "handler": {
+            "description": "What handler module to use",
+            "enum": [
+                "azure"
+            ],
+            "type": "string"
+        },
+        "settings": {
+            "description": "Settings for the Azure account",
+            "properties": {
+                "account": {
+                    "description": "the azure account name",
+                    "type": "string"
+                },
+                "container": {
+                    "description": "the azure container where the files should be saved",
+                    "type": "string"
+                },
+                "key": {
+                    "description": "the azure api key",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "account",
+                "container",
+                "key"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "handler",
+        "settings"
+    ],
+    "type": "object"
+}

@@ -205,6 +205,7 @@ check_secret(#{auth_provider := #{name := Name}}) ->
 from_profile(Token) ->
     case kz_auth_profile:token(Token) of
         #{user_doc := _Doc}=Token1 -> check_secret(Token1);
+        #{profile_error_code := {'error', _Err} = Error} -> Error;
         #{profile_error_code := Error} -> {'error', Error};
         Error -> Error
     end.

@@ -19,6 +19,14 @@
             "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
             "type": "integer"
         },
+        "record_on_answer": {
+            "description": "Recording should start on answer",
+            "type": "boolean"
+        },
+        "record_on_bridge": {
+            "description": "Recording should start on bridge",
+            "type": "boolean"
+        },
         "record_sample_rate": {
             "description": "What sampling rate to use on the recording",
             "type": "integer"

@@ -10,7 +10,7 @@ Generating RSA private key, 2048 bit long modulus
 ......................................................+++
 e is 65537 (0x10001)
 
-Sign the root key (fill out a questionaire):
+Sign the root key (fill out a questionnaire):
 
 $ openssl req -x509 -new -nodes -key 2600hzCA.key -days 1024 -out 2600hzCA.pem
 You are about to be asked to enter information that will be incorporated

@@ -20,7 +20,6 @@
             "type": "object"
         },
         "types": {
-            "additionalProperties": false,
             "properties": {
                 "call_recording": {
                     "$ref": "storage.plan.database.document"

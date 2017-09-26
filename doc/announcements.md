@@ -86,7 +86,7 @@ We hope that you agree and are not inconvenienced by this change. As always we a
 
 10. Removing socket.io support from Websockets
 
-    The Blackhole application providing websocket support currently utilizes the socket.io client libraries. Due to the poor support for this server side in Erlang as well as the judgement that this provides little benifit it has been removed. The websockets now provide messaging without the socket.io overhead. More documentation will be available shortly. Please note that we still consider websockets beta functionality.
+    The Blackhole application providing websocket support currently utilizes the socket.io client libraries. Due to the poor support for this server side in Erlang as well as the judgment that this provides little benifit it has been removed. The websockets now provide messaging without the socket.io overhead. More documentation will be available shortly. Please note that we still consider websockets beta functionality.
 
 11. System media has been moved
 

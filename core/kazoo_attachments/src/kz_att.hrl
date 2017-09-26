@@ -7,6 +7,7 @@
 
 -define(CONFIG_CAT, <<"attachments">>).
 
+-type attachment_info() :: {ne_binary(), ne_binary(), ne_binary()}.
 
 -define(KZ_ATT_HRL, 'true').
 -endif.

@@ -834,16 +834,23 @@ flatten(?EMPTY_JSON_OBJECT=Empty) -> Empty;
 flatten(?JSON_WRAPPER(L) = Schema) when is_list(L) ->
     kz_json:from_list(
       lists:flatten(
-        flatten_props(kz_json:get_value(<<"properties">>, Schema)
+        flatten_props(kz_json:get_json_value(<<"properties">>, Schema)
                      ,[]
                      ,Schema
                      )
        )
      ).
 
-flatten_props(undefined, Path, Obj) -> flatten_prop(Path, Obj);
-flatten_props(?JSON_WRAPPER(L), Path, _) when is_list(L) ->
-    [ flatten_props(kz_json:get_value(<<"properties">>, V), Path ++ [K], V) || {K, V} <- L ].
+flatten_props('undefined', Path, Obj) -> flatten_prop(Path, Obj);
+flatten_props(?JSON_WRAPPER(L), Path, Obj) when is_list(L) ->
+    [maybe_flatten_props(K, V, Path, Obj)
+     || {K, V} <- L
+    ].
+
+maybe_flatten_props(K, ?JSON_WRAPPER(_)=V, Path, _Obj) ->
+    flatten_props(kz_json:get_json_value(<<"properties">>, V), Path ++ [K], V);
+maybe_flatten_props(K, _V, Path, Obj) ->
+    flatten_prop(Path ++ [K], Obj).
 
 flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
     case lists:last(Path) of

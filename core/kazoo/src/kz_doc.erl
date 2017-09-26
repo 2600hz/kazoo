@@ -442,7 +442,11 @@ set_id(JObj, Id) ->
 type(JObj) ->
     type(JObj, 'undefined').
 type(JObj, Default) ->
-    kz_json:get_ne_binary_value(?KEY_PVT_TYPE, JObj, Default).
+    try kz_json:get_ne_binary_value(?KEY_PVT_TYPE, JObj, Default)
+    catch 'error':'badarg' ->
+            kz_util:log_stacktrace("~s:type(~s)", [?MODULE, kz_json:encode(JObj)]),
+            Default
+    end.
 
 -spec set_type(kz_json:object(), ne_binary()) -> kz_json:object().
 set_type(JObj, Type) ->

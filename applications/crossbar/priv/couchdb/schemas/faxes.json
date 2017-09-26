@@ -118,7 +118,7 @@
             "properties": {
                 "error_message": {
                     "default": "",
-                    "description": "A description of any error that occured",
+                    "description": "A description of any error that occurred",
                     "type": "string"
                 },
                 "fax_bad_rows": {

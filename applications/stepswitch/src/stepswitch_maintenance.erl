@@ -95,7 +95,7 @@ pretty_print_resources([Resource|Resources]) ->
     io:format("~n"),
     pretty_print_resources(Resources).
 
--spec pretty_print_resource(list()) -> 'ok'.
+-spec pretty_print_resource(kz_proplist()) -> 'ok'.
 pretty_print_resource([]) -> 'ok';
 pretty_print_resource([{_, []}|Props]) ->
     pretty_print_resource(Props);
@@ -104,7 +104,10 @@ pretty_print_resource([{Key, Values}|Props]) when is_list(Values) ->
     io:format("~s~n", [Key]),
     print_condensed_list(Values);
 pretty_print_resource([{Key, Value}|Props]) ->
-    io:format("~-19s: ~s~n", [Key, kz_term:to_binary(Value)]),
+    case kz_json:is_json_object(Value) of
+        'false' -> io:format("~-19s: ~s~n", [Key, kz_term:to_binary(Value)]);
+        'true' -> io:format("~-19s: ~s~n", [Key, kz_json:encode(Value)])
+    end,
     pretty_print_resource(Props).
 
 %%--------------------------------------------------------------------

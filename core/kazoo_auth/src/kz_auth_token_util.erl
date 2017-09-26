@@ -15,6 +15,7 @@
         ,add_provider/1
         ,verify/1
         ,access_code/1
+        ,access_token/1
         ,create_claims/1
         ,id_token/1
         ]).
@@ -47,12 +48,34 @@ access_code(#{code := Code
     case kz_auth_util:fetch_access_code(AppId, Code, RedirectURI) of
         {'ok', CodeJObj} ->
             Map = kz_maps:keys_to_atoms(kz_json:to_map(CodeJObj)),
-            (maps:merge(Token, Map))#{original => kz_json:merge_jobjs(JObj, CodeJObj)};
+            Map1 = maps:merge(Token, Map),
+            Map2 = Map1#{original => kz_json:merge_jobjs(JObj, CodeJObj)},
+            maybe_fix_token_type(Map2);
         _Else ->
             lager:error("not expected ~p", [_Else]),
             Token
     end;
 access_code(#{} = Token) -> Token.
+
+-spec maybe_fix_token_type(map()) -> map().
+maybe_fix_token_type(#{auth_provider := #{static_token_type := TokenType}} = Token) ->
+    Token#{token_type => TokenType};
+maybe_fix_token_type(#{token_type := <<"bearer">>
+                      ,auth_provider := #{fix_token_type_caps := true}
+                      } = Token) ->
+    Token#{token_type => <<"Bearer">>};
+maybe_fix_token_type(Token) -> Token.
+
+-spec access_token(map()) -> map().
+access_token(#{access_token := AccessToken
+              ,token_type := TokenType
+              ,auth_provider := #{static_tokens := true}
+              } = Token) ->
+    Token#{static_token => kz_json:from_list([{<<"token_type">>, TokenType}
+                                             ,{<<"access_token">>, AccessToken}
+                                             ])
+          };
+access_token(#{} = Token) -> Token.
 
 -spec verify(map()) -> map().
 verify(#{verified_token := _}=Token) -> Token;

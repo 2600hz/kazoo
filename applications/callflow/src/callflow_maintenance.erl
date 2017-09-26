@@ -18,7 +18,9 @@
 -export([migrate_recorded_names/0
         ,migrate_recorded_name/1
         ]).
--export([show_calls/0]).
+-export([show_calls/0
+        ,call_count/0
+        ]).
 -export([flush/0]).
 -export([account_set_classifier_inherit/2
         ,account_set_classifier_deny/2
@@ -75,6 +77,10 @@ flush() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec call_count() -> 'ok'.
+call_count() ->
+    io:format("Total: ~p~n", [length(cf_exe_sup:workers())]).
+
 -spec show_calls() -> 'ok'.
 show_calls() ->
     do_show_calls(cf_exe_sup:workers(), 0).
@@ -312,7 +318,7 @@ all_accounts_set_classifier(Action, Classifier) ->
     'true' = is_classifier(Classifier),
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
-                          %% Not shure if this interruption is realy needed.
+                          %% Not sure if this interruption is really needed.
                           %%  Keeping it as it was taken as an example from kapps_util:update_all_accounts/1
                           set_account_classifier_action(Action, Classifier, AccountDb)
                   end, kapps_util:get_all_accounts()).

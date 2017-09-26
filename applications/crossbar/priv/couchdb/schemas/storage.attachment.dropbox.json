@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.attachment.dropbox",
+    "description": "schema for dropbox attachment entry",
+    "properties": {
+        "handler": {
+            "description": "What handler module to use",
+            "enum": [
+                "dropbox"
+            ],
+            "type": "string"
+        },
+        "settings": {
+            "description": "Settings for the DropBox account",
+            "properties": {
+                "oauth_doc_id": {
+                    "description": "Doc ID in the system 'auth' database",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "oauth_doc_id"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "handler",
+        "settings"
+    ],
+    "type": "object"
+}
