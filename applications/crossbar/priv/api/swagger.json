@@ -26513,7 +26513,7 @@
         "system_config.edr": {
             "definitions": {
                 "account_id": {
-                    "description": "The account id(s) to recieve events from. If not specified or * then events for all accounts will be recieved",
+                    "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
                     "type": "string"
                 },
                 "severity": {
@@ -26566,22 +26566,22 @@
                                         },
                                         "app_name": {
                                             "default": "*",
-                                            "description": "Which apps should we recieve events from? If not specified or * then events for all apps will be recieved",
+                                            "description": "Which apps should we receive events from? If not specified or * then events for all apps will be received",
                                             "type": "string"
                                         },
                                         "exact_severity": {
                                             "default": false,
-                                            "description": "If true, then only events with severity exactly matching the severity field will be recieved. If false then more severe events will also be recieved",
+                                            "description": "If true, then only events with severity exactly matching the severity field will be received. If false then more severe events will also be received",
                                             "type": "boolean"
                                         },
                                         "exact_verbosity": {
                                             "default": false,
-                                            "description": "If true, then only events with verbosity exactly matching the verbosity field will be recieved. If false then less verbose events will also be recieved",
+                                            "description": "If true, then only events with verbosity exactly matching the verbosity field will be received. If false then less verbose events will also be received",
                                             "type": "boolean"
                                         },
                                         "include_descendants": {
                                             "default": false,
-                                            "description": "Should we recieve events relating to descendant accounts if an account is specified?",
+                                            "description": "Should we receive events relating to descendant accounts if an account is specified?",
                                             "type": "boolean"
                                         },
                                         "severity": {

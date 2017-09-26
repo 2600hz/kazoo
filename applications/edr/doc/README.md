@@ -15,7 +15,7 @@ kazoo node you wish to receive events from.
 
 ## Backends
 
-The EDR app is essentially a collection of backends. Each backend will recieve EDR events matching
+The EDR app is essentially a collection of backends. Each backend will receive EDR events matching
 a binding, and send them somewhere else (usually out of Kazoo).
 
 Backends are registered in system_config/edr.
@@ -26,11 +26,11 @@ Schema for edr system_config
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`backends.[].bindings.[].account_id` | The account id to recieve events from. If not specified or * then events for all accounts will be recieved | `string()` | `*` | `false`
-`backends.[].bindings.[].app_name` | Which apps should we recieve events from? If not specified or * then events for all apps will be recieved | `string()` | `*` | `false`
-`backends.[].bindings.[].exact_severity` | If true, then only events with severity exactly matching the severity field will be recieved. If false then more severe events will also be recieved | `boolean()` | `false` | `false`
-`backends.[].bindings.[].exact_verbosity` | If true, then only events with verbosity exactly matching the verbosity field will be recieved. If false then less verbose events will also be recieved | `boolean()` | `false` | `false`
-`backends.[].bindings.[].include_descendants` | Should we recieve events relating to descendant accounts if an account is specified? | `boolean()` | `false` | `false`
+`backends.[].bindings.[].account_id` | The account id to receive events from. If not specified or * then events for all accounts will be received | `string()` | `*` | `false`
+`backends.[].bindings.[].app_name` | Which apps should we receive events from? If not specified or * then events for all apps will be received | `string()` | `*` | `false`
+`backends.[].bindings.[].exact_severity` | If true, then only events with severity exactly matching the severity field will be received. If false then more severe events will also be received | `boolean()` | `false` | `false`
+`backends.[].bindings.[].exact_verbosity` | If true, then only events with verbosity exactly matching the verbosity field will be received. If false then less verbose events will also be received | `boolean()` | `false` | `false`
+`backends.[].bindings.[].include_descendants` | Should we receive events relating to descendant accounts if an account is specified? | `boolean()` | `false` | `false`
 `backends.[].bindings.[].severity` | What severity are we interested in events for? | `string('ok' | 'warning' | 'critical')` | `ok` | `false`
 `backends.[].bindings.[].verbosity` | What verbosity are we interested in events for? | `string('trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal')` | `info` | `false`
 `backends.[].bindings` | The types of events the backend should be notified about | `array(object())` |   | `true`
@@ -54,14 +54,14 @@ There are configuration options yet, however a configurable routing key would be
 
 #### file (edr_be_file)
 
-This module outputs each recieved event to a line in a log file. Each line is formatted by the specified formatter.
+This module outputs each received event to a line in a log file. Each line is formatted by the specified formatter.
 The configuration options are as follows:
 - path (required): The path to the file. Ensure file (or directory, if the file does not exist) has the correct permissions
 - formatter: Configuration as to how to format each event. This defaults to json with the default options.
 
 #### http (edr_be_http)
 
-This module sends out a HTTP request for each EDR event it recieves.
+This module sends out a HTTP request for each EDR event it receives.
 The configuration options are as follows:
 - url (required): The URL the request will be sent to
 - method: The HTTP method the request should use. Valid options are `put`, `post`, and `patch`. This defaults to `post`.
@@ -154,9 +154,9 @@ Practical uses of EDR. It would be great if people could submit PRs with their c
 ### EDR over Blackhole
 
 This involves forwarding EDR events specific to an account over AMQP, which are then pushed over websockets with Blackhole.
-The binding key is `edr.{SEVERITY}.{VERBOSITY}.{APP_NAME}`. Only events where the account_id matches that associated with the auth token will be recieved.
+The binding key is `edr.{SEVERITY}.{VERBOSITY}.{APP_NAME}`. Only events where the account_id matches that associated with the auth token will be received.
 
-Note: You can request events with a verbosity or severity greater than what edr_be_amqp is bound to, however you won't recieve any of them.
+Note: You can request events with a verbosity or severity greater than what edr_be_amqp is bound to, however you won't receive any of them.
 
 #### system_config/edr:
 ```json
