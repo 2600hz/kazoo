@@ -250,6 +250,14 @@ get_first_defined_test_() ->
      ]
     ].
 
+find_test_() ->
+    KVs = [{<<"d1v1">>, <<"d1k1">>}
+          ,{1, <<"d2k1">>}
+          ,{<<"d3v1">>, <<"d3k1">>}
+          ,{'undefined', <<"foo">>}
+          ],
+    [?_assertEqual(V, kz_json:find(K, ?D4)) || {V, K} <- KVs].
+
 merge_recursive_overrides_test_() ->
     AP = kz_json:merge_recursive(?SP, kz_json:from_list([{<<"plan">>, ?O}])),
 
