@@ -72,12 +72,18 @@ prop_get_value() ->
 
 prop_set_value() ->
     ?FORALL({JObj, Key, Value}
-           ,{test_object(), keys(), json_term()}
-           ,?WHENFAIL(?debugFmt("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
-                      begin
-                          JObj1 = kz_json:set_value(Key, Value, JObj),
-                          Value =:= kz_json:get_value(Key, JObj1, Value)
-                      end)
+           ,{test_object(), keys(), non_null_json_term()}
+           ,?TRAPEXIT(
+               ?WHENFAIL(?debugFmt("Failed prop_set_value with ~w:~w -> ~p~n"
+                                  ,[Key, Value, JObj]
+                                  ),
+                         begin
+                             JObj1 = kz_json:set_value(Key, Value, JObj),
+
+                             'true' =:= kz_json:is_defined(Key, JObj1)
+                                 andalso (Value =:= kz_json:get_value(Key, JObj1))
+                         end)
+              )
            ).
 
 prop_to_proplist() ->
