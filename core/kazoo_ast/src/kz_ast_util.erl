@@ -295,7 +295,7 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
         end,
 
     maybe_sub_properties_to_row(SchemaJObj
-                               ,kz_json:get_ne_value(<<"type">>, Settings)
+                               ,kz_json:get_ne_binary_value(<<"type">>, Settings)
                                ,Names
                                ,Settings
                                ,{[?TABLE_ROW(cell_wrap(kz_binary:join(Names, <<".">>))
@@ -473,7 +473,7 @@ maybe_sub_properties_to_row(_SchemaJObj, _Type, _Keys, _Settings, Acc) ->
     Acc.
 
 maybe_object_properties_to_row(SchemaJObj, Key, Acc0, Names, Settings) ->
-    SubSchema = kz_json:get_value(Key, Settings, kz_json:new()),
+    SubSchema = kz_json:get_json_value(Key, Settings, kz_json:new()),
     kz_json:foldl(fun(Name, SubSettings, Acc1) ->
                           property_to_row(SchemaJObj, Names ++ [maybe_regex_name(Key, Name)], SubSettings, Acc1)
                   end

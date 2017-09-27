@@ -13,12 +13,13 @@
 
 -define(EMPTY_JSON_OBJECT, ?JSON_WRAPPER([])).
 
--type json_term() :: boolean()
-                   | 'null'
-                   | json_string() | <<>>
-                   | json_number()
-                   | object()
-                   | json_array().
+-type non_null_json_term() :: boolean()
+                            | json_string() | <<>>
+                            | json_number()
+                            | object()
+                            | json_array().
+-type json_term() :: non_null_json_term() | 'null'.
+
 -type flat_json_term() :: boolean()
                         | json_string() | <<>>
                         | json_number()
