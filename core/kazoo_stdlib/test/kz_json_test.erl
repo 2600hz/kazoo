@@ -596,21 +596,21 @@ set_value_normalizer_test_() ->
                    ,[<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]
                    ]).
 
-get_values_test() ->
+get_values_test_() ->
     {Values, Keys} = kz_json:get_values(?D1),
-    ?assertEqual('true', are_all_there(Values
-                                      ,Keys
-                                      ,?D1_values
-                                      ,[<<"d1k1">>, <<"d1k2">>, <<"d1k3">>]
-                                      )).
+    are_all_there(Values
+                 ,Keys
+                 ,?D1_values
+                 ,kz_json:get_keys(?D1)
+                 ).
 
-values_test() ->
+values_test_() ->
     Values = kz_json:values(?D1),
-    ?assertEqual('true', are_all_there(Values, [], ?D1_values, [])).
+    are_all_there(Values, [], ?D1_values, []).
 
 are_all_there(Values, Keys, Vs, Ks) ->
-    lists:all(fun(K) -> lists:member(K, Keys) end, Ks)
-        andalso lists:all(fun(V) -> lists:member(V, Values) end, Vs).
+    [?_assert(lists:member(K, Keys)) || K <- Ks]
+        ++ [?_assert(lists:member(V, Values)) || V <- Vs].
 
 -define(K3_JOBJ, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])).
 -define(CODEC_JOBJ, ?JSON_WRAPPER([{<<"k1">>, <<"v1">>}
