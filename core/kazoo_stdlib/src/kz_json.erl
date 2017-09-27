@@ -837,9 +837,11 @@ find_value(Key, Value, JObjs) ->
     find_value(Key, Value, JObjs, 'undefined').
 find_value(_Key, _Value, [], Default) -> Default;
 find_value(Key, Value, [JObj|JObjs], Default) ->
-    case get_value(Key, JObj) of
+    try get_value(Key, JObj) of
         Value -> JObj;
         _Value -> find_value(Key, Value, JObjs, Default)
+    catch
+        'error':'badarg' -> find_value(Key, Value, JObjs, Default)
     end.
 
 -spec get_first_defined(paths(), object()) -> json_term() | 'undefined'.

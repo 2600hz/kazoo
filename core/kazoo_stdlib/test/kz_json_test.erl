@@ -610,6 +610,7 @@ find_value_test_() ->
     [?_assertEqual(<<"{\"k1\":\"v1\"}">>, kz_json:encode(kz_json:find_value(<<"k1">>, <<"v1">>, JObjs)))
     ,?_assertEqual(<<"{\"k1\":\"v2\"}">>, kz_json:encode(kz_json:find_value(<<"k1">>, <<"v2">>, JObjs)))
     ,?_assertEqual('undefined', kz_json:find_value(<<"k1">>, <<"v3">>, JObjs))
+    ,?_assertEqual('undefined', kz_json:find_value([<<"k1">>, <<"k9">>], <<"v1">>, JObjs))
     ].
 
 insert_value_test_() ->
