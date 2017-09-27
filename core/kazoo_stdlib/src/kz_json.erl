@@ -1062,7 +1062,10 @@ delete_keys(Keys, JObj) when is_list(Keys) ->
 %%--------------------------------------------------------------------
 -spec prune_keys(paths(), object()) -> object().
 prune_keys(Keys, JObj) when is_list(Keys) ->
-    lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0, prune) end, JObj, Keys).
+    lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0, 'prune') end
+               ,JObj
+               ,Keys
+               ).
 
 -spec prune(keys(), object() | objects()) -> object() | objects().
 prune([], JObj) -> JObj;
@@ -1074,12 +1077,9 @@ prune([K], JObj) when not is_list(JObj) ->
 prune([K|T], JObj) when not is_list(JObj) ->
     case get_value(K, JObj) of
         'undefined' -> JObj;
-        V ->
-            case prune(T, V) of
-                ?EMPTY_JSON_OBJECT -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
-                [] -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
-                V1 -> from_list([{K, V1} | lists:keydelete(K, 1, to_proplist(JObj))])
-            end
+        ?JSON_WRAPPER(_)=V -> prune_tail(K, T, JObj, V);
+        V when is_list(V) -> prune_tail(K, T, JObj, V);
+        _ -> erlang:error('badarg')
     end;
 prune(_, []) -> [];
 prune([K|T], [_|_]=JObjs) ->
@@ -1090,10 +1090,19 @@ prune([K|T], [_|_]=JObjs) ->
         V1 -> replace_in_list(K, V1, JObjs, [])
     end.
 
+-spec prune_tail(key(), keys(), object() | objects(), object() | objects()) ->
+                        object() | objects().
+prune_tail(K, T, JObj, V) ->
+    case prune(T, V) of
+        ?EMPTY_JSON_OBJECT -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
+        [] -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
+        V1 -> from_list([{K, V1} | lists:keydelete(K, 1, to_proplist(JObj))])
+    end.
+
 -spec no_prune(keys(), object() | objects()) -> object() | objects().
-no_prune([], JObj) -> JObj;
-no_prune([K], JObj) when not is_list(JObj) ->
-    case lists:keydelete(K, 1, to_proplist(JObj)) of
+no_prune([], ?JSON_WRAPPER(_)=JObj) -> JObj;
+no_prune([K], ?JSON_WRAPPER(Props)) ->
+    case lists:keydelete(K, 1, Props) of
         [] -> new();
         L -> from_list(L)
     end;
@@ -1106,11 +1115,14 @@ no_prune([K|T], Array) when is_list(Array), is_integer(K) ->
             Less ++ 'no_prune'(Keys, Arr) ++ More;
         {_,_,_} -> Less ++ More
     end;
-no_prune([K|T], JObj) ->
+no_prune([K|T], ?JSON_WRAPPER(_)=JObj) ->
     case get_value(K, JObj) of
         'undefined' -> JObj;
-        V ->
-            from_list([{K, no_prune(T, V)} | lists:keydelete(K, 1, to_proplist(JObj))])
+        ?JSON_WRAPPER(_)=V ->
+            from_list([{K, no_prune(T, V)} | lists:keydelete(K, 1, to_proplist(JObj))]);
+        V when is_list(V) ->
+            from_list([{K, no_prune(T, V)} | lists:keydelete(K, 1, to_proplist(JObj))]);
+        _ -> erlang:error('badarg')
     end;
 no_prune(_, []) -> [];
 no_prune([K|T], [_|_]=JObjs) when is_integer(K) ->
@@ -1124,7 +1136,7 @@ no_prune([K|T], [_|_]=JObjs) when is_integer(K) ->
     end.
 
 replace_in_list(N, _, _, _) when N < 1 ->
-    exit('badarg');
+    erlang:error('badarg');
 replace_in_list(1, 'undefined', [_OldV | Vs], Acc) ->
     lists:reverse(Acc) ++ Vs;
 replace_in_list(1, V1, [_OldV | Vs], Acc) ->

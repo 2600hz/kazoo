@@ -86,6 +86,23 @@ prop_set_value() ->
               )
            ).
 
+prop_delete_key() ->
+    ?FORALL({JObj, Key, Value}
+           ,{test_object(), keys(), non_null_json_term()}
+           ,?TRAPEXIT(
+               ?WHENFAIL(?debugFmt("Failed prop_set_value with ~w:~w -> ~p~n"
+                                  ,[Key, Value, JObj]
+                                  ),
+                         begin
+                             JObj1 = kz_json:set_value(Key, Value, JObj),
+                             JObj2 = kz_json:delete_key(Key, JObj1),
+
+                             'true' =:= kz_json:is_defined(Key, JObj1)
+                                 andalso 'false' =:= kz_json:is_defined(Key, JObj2)
+                         end)
+              )
+           ).
+
 prop_to_proplist() ->
     ?FORALL(Prop, json_proplist(),
             ?WHENFAIL(?debugFmt("Failed prop_to_proplist ~p~n", [Prop]),
@@ -469,6 +486,9 @@ delete_key_test_() ->
     ,?_assertEqual(?D6_AFTER_SUB_PRUNE, kz_json:delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6, 'prune'))
     ,?_assertEqual(?P_ARR, kz_json:delete_key([<<"k1">>, 1], ?D_ARR))
     ,?_assertEqual(?EMPTY_JSON_OBJECT, kz_json:delete_key([<<"k1">>, 1], ?D_ARR, 'prune'))
+
+    ,?_assertError('badarg', kz_json:delete_key([<<"foo">>, <<"bar">>], kz_json:from_list([{<<"foo">>, 5}])))
+    ,?_assertError('badarg', kz_json:delete_key([<<"foo">>, <<"bar">>], kz_json:from_list([{<<"foo">>, 5}]), 'prune'))
     ].
 
 get_value_test_() ->
