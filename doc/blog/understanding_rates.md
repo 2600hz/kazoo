@@ -400,6 +400,7 @@ Since the "retail" ratedeck is the default, no service plan is necessary. Let's 
     "plan":{
         "ratedeck":{
             "bulk":{
+                "name": "bulkratedeck"
             }
         }
     }
