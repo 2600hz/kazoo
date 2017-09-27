@@ -117,6 +117,7 @@
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1
         ,send_dtmf/2, send_dtmf/3
+        ,recv_dtmf/2
         ]).
 -export([privacy/1
         ,privacy/2
@@ -723,6 +724,18 @@ send_dtmf_command(DTMFs, Duration) ->
       [{<<"DTMFs">>, DTMFs}
       ,{<<"Duration">>, Duration}
       ,{<<"Application-Name">>, <<"send_dtmf">>}
+      ]).
+
+-spec recv_dtmf(ne_binary(), kapps_call:call()) -> 'ok'.
+recv_dtmf(DTMFs, Call) ->
+    Cmd = recv_dtmf_command(DTMFs),
+    send_command(Cmd, Call).
+
+-spec recv_dtmf_command(ne_binary()) -> kz_proplist().
+recv_dtmf_command(DTMFs) ->
+    props:filter_undefined(
+      [{<<"DTMFs">>, DTMFs}
+      ,{<<"Application-Name">>, <<"recv_dtmf">>}
       ]).
 
 %%--------------------------------------------------------------------

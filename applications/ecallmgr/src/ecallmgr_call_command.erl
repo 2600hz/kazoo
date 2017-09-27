@@ -265,6 +265,14 @@ get_fs_app(_Node, _UUID, JObj, <<"send_dtmf">>) ->
             {<<"send_dtmf">>, iolist_to_binary([DTMFs, Duration])}
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"recv_dtmf">>) ->
+    case kapi_dialplan:recv_dtmf_v(JObj) of
+        'false' -> {'error', <<"recv_dtmf failed to execute as JObj did not validate">>};
+        'true' ->
+            DTMFs = kz_json:get_value(<<"DTMFs">>, JObj),
+            {<<"uuid_recv_dtmf">>, iolist_to_binary([UUID, " ", DTMFs])}
+    end;
+
 get_fs_app(Node, UUID, JObj, <<"tones">>) ->
     case kapi_dialplan:tones_v(JObj) of
         'false' -> {'error', <<"tones failed to execute as JObj did not validate">>};
