@@ -26511,33 +26511,6 @@
             "type": "object"
         },
         "system_config.edr": {
-            "definitions": {
-                "account_id": {
-                    "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
-                    "type": "string"
-                },
-                "severity": {
-                    "description": "What severity are we interested in events for?",
-                    "enum": [
-                        "ok",
-                        "warning",
-                        "critical"
-                    ],
-                    "type": "string"
-                },
-                "verbosity": {
-                    "description": "What verbosity are we interested in events for?",
-                    "enum": [
-                        "trace",
-                        "debug",
-                        "info",
-                        "warn",
-                        "error",
-                        "fatal"
-                    ],
-                    "type": "string"
-                }
-            },
             "description": "Schema for edr system_config",
             "properties": {
                 "backends": {
@@ -26553,11 +26526,13 @@
                                         "account_id": {
                                             "anyOf": [
                                                 {
-                                                    "$ref": "#/definitions/account_id"
+                                                    "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
+                                                    "type": "string"
                                                 },
                                                 {
                                                     "items": {
-                                                        "$ref": "#/definitions/account_id"
+                                                        "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
+                                                        "type": "string"
                                                     },
                                                     "type": "array"
                                                 }
@@ -26587,11 +26562,23 @@
                                         "severity": {
                                             "anyOf": [
                                                 {
-                                                    "$ref": "#/definitions/severity"
+                                                    "description": "What severity are we interested in events for?",
+                                                    "enum": [
+                                                        "ok",
+                                                        "warning",
+                                                        "critical"
+                                                    ],
+                                                    "type": "string"
                                                 },
                                                 {
                                                     "items": {
-                                                        "$ref": "#/definitions/severity"
+                                                        "description": "What severity are we interested in events for?",
+                                                        "enum": [
+                                                            "ok",
+                                                            "warning",
+                                                            "critical"
+                                                        ],
+                                                        "type": "string"
                                                     },
                                                     "type": "array"
                                                 }
@@ -26601,11 +26588,29 @@
                                         "verbosity": {
                                             "anyOf": [
                                                 {
-                                                    "$ref": "#/definitions/verbosity"
+                                                    "description": "What verbosity are we interested in events for?",
+                                                    "enum": [
+                                                        "trace",
+                                                        "debug",
+                                                        "info",
+                                                        "warn",
+                                                        "error",
+                                                        "fatal"
+                                                    ],
+                                                    "type": "string"
                                                 },
                                                 {
                                                     "items": {
-                                                        "$ref": "#/definitions/verbosity"
+                                                        "description": "What verbosity are we interested in events for?",
+                                                        "enum": [
+                                                            "trace",
+                                                            "debug",
+                                                            "info",
+                                                            "warn",
+                                                            "error",
+                                                            "fatal"
+                                                        ],
+                                                        "type": "string"
                                                     },
                                                     "type": "array"
                                                 }
