@@ -33,7 +33,7 @@
         ]).
 
 %%--------------------------------------------------------------------
-%% @doc Convert a gregorian seconds integer to kz_date taking into consideration timezone
+%% @doc Convert a Gregorian seconds integer to kz_date taking into consideration timezone
 %% @end
 %%--------------------------------------------------------------------
 -spec from_gregorian_seconds(gregorian_seconds(), ne_binary()) -> kz_date().
@@ -45,7 +45,7 @@ from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Caclulates the date of a given ISO 8601 week
+%% Calculates the date of a given ISO 8601 week
 %% @end
 %%--------------------------------------------------------------------
 -spec from_iso_week(kz_iso_week()) -> kz_date().
@@ -63,8 +63,8 @@ from_iso_week({Year, Week}) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Normalizes dates, for example corrects for months that are given
-%% with more days then they have (ie: {2011, 1, 36} -> {2011, 2, 5}).
-%% I have been refering to this as 'spanning a month/year border'
+%% with more days then they have (i.e.: {2011, 1, 36} -> {2011, 2, 5}).
+%% I have been referring to this as 'spanning a month/year border'
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize(kz_date()) -> kz_date().
@@ -103,7 +103,7 @@ relative_difference(Date1, Date2) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Calculates the date of the next occurance of a weekday from the given
+%% Calculates the date of the next occurrence of a weekday from the given
 %% start date.
 %%
 %% NOTICE!
@@ -120,7 +120,7 @@ find_next_weekday({Y, M, D}, Weekday) ->
         %% If the DOW has not occurred this week yet
         DOW when RefDOW > DOW ->
             normalize({Y, M, D + (RefDOW - DOW)});
-        %% If the DOW occurance has already happend, calculate
+        %% If the DOW occurrence has already happened, calculate
         %%   for the next week using the current DOW as a reference
         DOW ->
             normalize({Y, M, D + ( 7 - DOW ) + RefDOW})

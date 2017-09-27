@@ -407,7 +407,7 @@ normalize_view_result(Context, _DocType, JObj) ->
 -spec maybe_set_doc_modb_prefix(ne_binary(), api_integer()) -> ne_binary().
 maybe_set_doc_modb_prefix(?MATCH_MODB_PREFIX(_,_,_)=Id, _) -> Id;
 maybe_set_doc_modb_prefix(Id, Created) ->
-    {Year, Month, _} = calendar:gregorian_seconds_to_datetime(Created),
+    {Year, Month, _} = kz_term:to_date(Created),
     kazoo_modb_util:modb_id(Year, Month, Id).
 
 %%--------------------------------------------------------------------
