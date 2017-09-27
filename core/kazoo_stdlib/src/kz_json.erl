@@ -873,8 +873,9 @@ get_value([Key|Ks], L, Default) when is_list(L) ->
 get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
--spec get_value1(path(), object() | objects(), Default) ->
+-spec get_value1(path(), api_object() | objects(), Default) ->
                         json_term() | Default.
+get_value1([], 'undefined', Default) -> Default;
 get_value1([], JObj, _Default) -> JObj;
 get_value1(Key, JObj, Default) when not is_list(Key)->
     get_value1([Key], JObj, Default);
