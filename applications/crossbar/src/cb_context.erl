@@ -75,8 +75,9 @@
         ,method/1, set_method/2
         ,path_tokens/1
         ,magic_pathed/1, set_magic_pathed/2
-        ,should_paginate/1, set_should_paginate/2
         ,should_soft_delete/1
+        ,should_paginate/1, set_should_paginate/2
+        ,pagination_page_size/0, pagination_page_size/1
 
         ,req_json/1, set_req_json/2
         ,resp_error_code/1, set_resp_error_code/2
@@ -117,6 +118,10 @@
 
 -define(SHOULD_FAIL_ON_INVALID_DATA
        ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, false)
+       ).
+
+-define(PAGINATION_PAGE_SIZE
+       ,kapps_config:get_pos_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)
        ).
 
 -type context() :: #cb_context{}.
@@ -363,6 +368,22 @@ should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
             kz_term:is_true(ShouldPaginate)
     end;
 should_paginate(#cb_context{should_paginate=Should}) -> Should.
+
+-spec pagination_page_size() -> pos_integer().
+pagination_page_size() ->
+    ?PAGINATION_PAGE_SIZE.
+
+-spec pagination_page_size(context()) -> api_pos_integer().
+pagination_page_size(Context) ->
+    pagination_page_size(Context, api_version(Context)).
+
+-spec pagination_page_size(context(), ne_binary()) -> api_pos_integer().
+pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
+pagination_page_size(Context, _Version) ->
+    case req_value(Context, <<"page_size">>) of
+        'undefined' -> pagination_page_size();
+        V -> try kz_term:to_integer(V) catch _:_ -> pagination_page_size() end
+    end.
 
 -spec should_soft_delete(context()) -> boolean().
 should_soft_delete(#cb_context{}=Context) ->

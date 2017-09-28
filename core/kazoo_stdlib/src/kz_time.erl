@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2017, 2600Hz INC
 %%% @doc
-%%% Various utilities - a veritable cornicopia
+%%% Various utilities - a veritable cornucopia
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------

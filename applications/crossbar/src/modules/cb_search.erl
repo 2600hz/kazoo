@@ -292,7 +292,7 @@ search(Context, Type, Query, Val) ->
     ViewOptions =
         [{'startkey', get_start_key(Context, Type, Value)}
         ,{'endkey', get_end_key(Context, Type, Value)}
-        ,{'limit', crossbar_doc:pagination_page_size(Context)}
+        ,{'limit', cb_context:pagination_page_size(Context)}
         ],
     fix_envelope(
       crossbar_doc:load_view(ViewName

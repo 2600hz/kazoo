@@ -117,8 +117,10 @@ debug_summary(Context) ->
 -spec fix_req_pagination(cb_context:context()) -> cb_context:context().
 fix_req_pagination(Context) ->
     QS = cb_context:query_string(Context),
-    Size = crossbar_doc:pagination_page_size(Context),
-    cb_context:set_query_string(Context, kz_json:set_value(<<"page_size">>, Size * 2 + 1, QS)).
+    case cb_context:pagination_page_size(Context) of
+        'undefined' -> cb_context:set_query_string(Context, kz_json:delete_key(<<"page_size">>, QS));
+        Size -> cb_context:set_query_string(Context, kz_json:set_value(<<"page_size">>, Size * 2 + 1, QS))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,7 +212,6 @@ maybe_normalize_debug_results(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_debug_results(cb_context:context()) -> cb_context:context().
--spec normalize_debug_results(cb_context:context(), kz_proplist()) -> kz_json:objects().
 normalize_debug_results(Context) ->
     Dict =
         lists:foldl(fun normalize_debug_results_fold/2
@@ -224,8 +225,15 @@ normalize_debug_results(Context) ->
                        ]
                       ).
 
+-spec normalize_debug_results(cb_context:context(), kz_proplist()) -> kz_json:objects().
 normalize_debug_results(Context, List) ->
-    Size = kz_term:to_integer((crossbar_doc:pagination_page_size(Context)-1)/2),
+    normalize_debug_results(Context, List, cb_context:pagination_page_size(Context)).
+
+-spec normalize_debug_results(cb_context:context(), kz_proplist(), api_pos_integer()) -> kz_json:objects().
+normalize_debug_results(_Context, List, 'undefined') ->
+    [Flow || {_CallId, Flow} <- List];
+normalize_debug_results(_Context, List, PageSize) ->
+    Size = kz_term:to_integer((PageSize-1)/2),
     FinalList =
         case erlang:length(List) > Size of
             'false' -> List;

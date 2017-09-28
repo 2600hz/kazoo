@@ -23,6 +23,7 @@
         ,range_view_options/1, range_view_options/2, range_view_options/3, range_view_options/5
 
         ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3, range_modb_view_options/5
+        ,make_modb_view_descending/1
 
         ,take_sync_field/1
 
@@ -142,15 +143,29 @@ range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo
      ]
     }.
 
+-spec make_modb_view_descending(crossbar_doc:view_options()) -> crossbar_doc:view_options().
+make_modb_view_descending(Options) ->
+    MODbs = lists:reverse(props:get_value('databases', Options, [])),
+    StartKey = props:get_value('startkey', Options),
+    EndKey = props:get_value('endkey', Options),
+    Funs = [fun(Props) -> props:set_value('databases', MODbs, Props) end
+           ,fun(Props) -> props:set_value('startkey', EndKey, Props) end
+           ,fun(Props) -> props:set_value('endkey', StartKey, Props) end
+           ],
+    sets:to_list(sets:from_list(lists:foldl(fun(Fun, Acc) -> Fun(Acc) end, ['descending'|Options], Funs))).
+
 -spec range_to(cb_context:context(), pos_integer(), ne_binary()) -> pos_integer().
 range_to(Context, TStamp, Key) ->
     case crossbar_doc:start_key(Context) of
         'undefined' ->
             lager:debug("building ~s_to from req value", [Key]),
             kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
-        StartKey ->
-            lager:debug("found startkey ~p as ~s_to", [StartKey, Key]),
-            kz_term:to_integer(StartKey)
+        StartKey when is_integer(StartKey) ->
+            lager:debug("found start_key ~p as ~s_to", [StartKey, Key]),
+            kz_term:to_integer(StartKey);
+        _CompoundStartKey ->
+            lager:debug("start_key is compound key, building ~s_to from req value", [Key]),
+            kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp))
     end.
 
 -spec range_from(cb_context:context(), pos_integer(), pos_integer(), ne_binary()) -> pos_integer().

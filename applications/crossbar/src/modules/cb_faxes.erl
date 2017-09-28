@@ -580,7 +580,8 @@ fax_modb_summary(Context, Folder) ->
     JObj = get_filter_doc(Context),
     {View, PreFilter, PostFilter} = get_incoming_view_and_filter(JObj, Folder),
     case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
-        {'ok', ViewOptions} ->
+        {'ok', ViewOptions0} ->
+            ViewOptions = cb_modules_util:make_modb_view_descending(ViewOptions0),
             crossbar_doc:load_view(View
                                   ,['include_docs' | ViewOptions]
                                   ,cb_context:set_resp_status(Context, 'success')
@@ -608,7 +609,8 @@ get_incoming_view_and_filter(JObj, Folder) ->
 -spec load_smtp_log(cb_context:context()) -> cb_context:context().
 load_smtp_log(Context) ->
     case cb_modules_util:range_modb_view_options(Context) of
-        {'ok', ViewOptions} ->
+        {'ok', ViewOptions0} ->
+            ViewOptions = cb_modules_util:make_modb_view_descending(ViewOptions0),
             crossbar_doc:load_view(?CB_LIST_SMTP_LOG
                                   ,['include_docs' | ViewOptions]
                                   ,Context

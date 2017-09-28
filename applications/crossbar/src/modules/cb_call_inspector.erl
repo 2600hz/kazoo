@@ -50,6 +50,7 @@ to_json({Req1, Context}, []) ->
     'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
     {Req3, Context1} = send_chunked_cdrs({Req2, Context}),
     'ok' = cowboy_req:chunk("]", Req3),
+    %%FIXME: fix page_size, start_key and next_start_key properly
     _ = cb_cdrs:pagination({Req3, Context1}),
     'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
                             ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
@@ -177,6 +178,8 @@ send_chunked_cdrs({Req, Context}) ->
     IsReseller = kz_services:is_reseller(AuthAccountId),
     send_chunked_cdrs(Dbs, {Req, cb_context:store(Context, 'is_reseller', IsReseller)}).
 
+%%FIXME: loop over databases until either page size is exhausted or database
+%%       This code is fetching from all databases the same amount as page_size!
 -spec send_chunked_cdrs(ne_binaries(), cb_cdrs:payload()) -> cb_cdrs:payload().
 send_chunked_cdrs([], Payload) -> Payload;
 send_chunked_cdrs([Db | Dbs], {Req, Context}) ->
