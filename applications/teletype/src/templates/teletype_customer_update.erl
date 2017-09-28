@@ -16,7 +16,7 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"customer_update">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+-define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(ACC_CHILDREN_LIST, <<"accounts/listing_by_children">>).
 -define(ACC_USERS_LIST, <<"users/crossbar_listing">>).
@@ -204,7 +204,7 @@ maybe_expand_template_id(DataJObj) ->
 maybe_expand_mod_config_cat(DataJObj) ->
     case kz_json:get_value(<<"template_id">>, DataJObj) of
         <<"customer_update_", _/binary>> = TemplateId ->
-            <<(?NOTIFY_CONFIG_CAT)/binary, ".", TemplateId/binary>>;
+            ?TEMPLATE_CONFIG_CAT(TemplateId);
         _ ->
             ?MOD_CONFIG_CAT
     end.

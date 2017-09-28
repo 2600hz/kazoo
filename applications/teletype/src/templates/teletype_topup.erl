@@ -19,7 +19,7 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"topup">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
+-define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(

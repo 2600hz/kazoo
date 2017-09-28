@@ -162,7 +162,7 @@ do_process_req(DataJObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, teletype_util:mod_config_cat(id())),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_CONFIG_CAT(id())),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, props:get_value(<<"attachments">>, Macros0)) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);

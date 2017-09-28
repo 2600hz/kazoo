@@ -48,7 +48,7 @@ params(TemplateId=?NE_BINARY) ->
 params(Module)
   when is_atom(Module) ->
     TemplateId = Module:id(),
-    ModConfigCat = teletype_util:mod_config_cat(TemplateId),
+    ModConfigCat = teletype_util:template_config_cat(TemplateId),
     [{macros, Module:macros()}
     ,{subject, Module:subject()}
     ,{category, Module:category()}

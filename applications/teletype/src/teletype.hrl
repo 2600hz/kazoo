@@ -14,6 +14,7 @@
 -define(PVT_TYPE, kz_notification:pvt_type()).
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
+-define(TEMPLATE_CONFIG_CAT(Id), <<"notification.", (Id)/binary>>).
 
 -define(CACHE_NAME, 'teletype_cache').
 
