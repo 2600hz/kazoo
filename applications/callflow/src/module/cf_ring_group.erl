@@ -86,18 +86,11 @@ attempt_endpoints(Endpoints, Data, Call) ->
     Ringback = kz_json:get_ne_binary_value(<<"ringback">>, Data),
     IgnoreForward = kz_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
 
-    Command = [{<<"Application-Name">>, <<"bridge">>}
-              ,{<<"Endpoints">>, Endpoints}
-              ,{<<"Timeout">>, Timeout}
-              ,{<<"Ignore-Early-Media">>, <<"true">>}
-              ,{<<"Ringback">>, kz_media_util:media_path(Ringback, kapps_call:account_id(Call))}
-              ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
-              ,{<<"Dial-Endpoint-Method">>, Strategy}
-              ,{<<"Ignore-Forward">>, IgnoreForward}
-              ],
-
     lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case bridge(Command, Timeout, Call)
+    case kapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>
+                                    ,kz_media_util:media_path(Ringback, kapps_call:account_id(Call))
+                                    ,'undefined', IgnoreForward, FailOnSingleReject, Call
+                                    )
     of
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
@@ -370,8 +363,3 @@ freeswitch_strategy(Data) ->
         ?DIAL_METHOD_SIMUL -> ?DIAL_METHOD_SIMUL;
         _ -> ?DIAL_METHOD_SINGLE
     end.
-
--spec bridge(kz_proplist(), integer(), kapps_call:call()) -> kapps_api_bridge_return().
-bridge(Command, Timeout, Call) ->
-    kapps_call_command:send_command(Command, Call),
-    kapps_call_command:b_bridge_wait(Timeout, Call).
