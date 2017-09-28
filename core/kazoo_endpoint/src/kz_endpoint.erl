@@ -633,6 +633,7 @@ build(Endpoint, Properties, Call) ->
                             {'ok', kz_json:objects()} |
                             {'error', build_errors()}.
 build_endpoint(Endpoint, Properties, Call) ->
+    lager:debug("attempting to build endpoint ~s", [kz_doc:id(Endpoint)]),
     case should_create_endpoint(Endpoint, Properties, Call) of
         'ok' -> create_endpoints(Endpoint, Properties, Call);
         {'error', _}=E -> E
