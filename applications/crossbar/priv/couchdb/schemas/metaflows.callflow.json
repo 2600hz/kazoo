@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflows.callflow",
-    "description": "Skeleton JSON schema",
+    "description": "Run a callflow on an active call",
     "properties": {},
     "type": "object"
 }
