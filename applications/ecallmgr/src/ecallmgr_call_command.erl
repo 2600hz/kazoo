@@ -1754,7 +1754,7 @@ sound_touch_options(JObj) ->
 
 -spec sound_touch_options_fold(sound_touch_option(), sound_touch_option_acc()) -> sound_touch_option_acc().
 sound_touch_options_fold({K, F}, {List, JObj}=Acc) ->
-    case kz_json:get_value(K, JObj) of
+    case kz_json:get_ne_binary_value(K, JObj) of
         'undefined' -> Acc;
         V -> {F(V, List), JObj}
     end.
