@@ -324,6 +324,12 @@ process_match_mfa(#usage{data_var_name=DataName
 process_match_mfa(Acc, _VarName, M, F, As) ->
     process_mfa(Acc, M, F, As).
 
+process_mfa(#usage{data_var_name=DataName
+                  ,usages=Usages
+                  }=Acc
+           ,'kz_doc', 'id', [?VAR(DataName)]
+           ) ->
+    Acc#usage{usages=maybe_add_usage(Usages, {'kz_json', 'get_ne_binary_value', <<"id">>, DataName, 'undefined'})};
 process_mfa(#usage{data_var_name=DataName}=Acc
            ,'kz_json', 'merge_recursive', [_Arg, ?VAR(DataName)]
            ) ->
