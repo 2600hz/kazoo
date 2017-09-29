@@ -125,9 +125,9 @@ get_fs_app(_Node, _UUID, JObj, <<"hangup">>) ->
     end;
 
 get_fs_app(_Node, UUID, JObj, <<"audio_level">>) ->
-    Action = kz_json:get_value(<<"Action">>, JObj),
-    Level = kz_json:get_value(<<"Level">>, JObj),
-    Mode = kz_json:get_value(<<"Mode">>, JObj),
+    Action = kz_json:get_ne_binary_value(<<"Action">>, JObj),
+    Level = kz_json:get_ne_binary_value(<<"Level">>, JObj),
+    Mode = kz_json:get_ne_binary_value(<<"Mode">>, JObj),
     Data = <<UUID/binary, " ", Action/binary, " ", Mode/binary, " mute ", Level/binary>>,
     {<<"audio_level">>, Data};
 
