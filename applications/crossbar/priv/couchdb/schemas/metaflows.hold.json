@@ -1,19 +1,19 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflows.hold",
-    "description": "Skeleton JSON schema",
+    "description": "Put the leg on hold",
     "properties": {
         "moh_aleg": {
-            "description": "",
+            "description": "MOH ID for the a-leg",
             "type": "string"
         },
         "moh_bleg": {
-            "description": "",
+            "description": "MOH ID for the b-leg",
             "type": "string"
         },
         "unhold_key": {
             "default": "1",
-            "description": "",
+            "description": "DTMF to press to unhold the call",
             "type": "string"
         }
     },

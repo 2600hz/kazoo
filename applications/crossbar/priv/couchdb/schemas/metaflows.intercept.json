@@ -5,25 +5,30 @@
     "properties": {
         "auto_answer": {
             "default": false,
-            "description": "",
+            "description": "Auto-answer the leg",
             "type": "boolean"
         },
         "can_call_self": {
             "default": true,
-            "description": "",
+            "description": "Can intercept devices of the same targeted user",
             "type": "boolean"
         },
         "target_id": {
-            "description": "",
+            "description": "ID of the target (device or user)",
             "type": "string"
         },
         "target_type": {
-            "description": "",
+            "description": "Type of entity of the target",
+            "enum": [
+                "device",
+                "user",
+                "number"
+            ],
             "type": "string"
         },
         "unbridged_only": {
             "default": true,
-            "description": "",
+            "description": "Only intercept if the a-leg is unbridged",
             "type": "boolean"
         }
     },
