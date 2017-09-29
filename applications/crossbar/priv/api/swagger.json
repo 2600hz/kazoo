@@ -22026,6 +22026,301 @@
             },
             "type": "object"
         },
+        "metaflows.audio_level": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "action": {
+                    "description": "",
+                    "type": "string"
+                },
+                "level": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "mode": {
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.break": {
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.callflow": {
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.hangup": {
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.hold": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "moh_aleg": {
+                    "description": "",
+                    "type": "string"
+                },
+                "moh_bleg": {
+                    "description": "",
+                    "type": "string"
+                },
+                "unhold_key": {
+                    "default": "1",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.hold_control": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "action": {
+                    "default": "toggle",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.intercept": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "auto_answer": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "can_call_self": {
+                    "default": true,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "target_id": {
+                    "description": "",
+                    "type": "string"
+                },
+                "target_type": {
+                    "description": "",
+                    "type": "string"
+                },
+                "unbridged_only": {
+                    "default": true,
+                    "description": "",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.move": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "auto_answer": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "can_call_self": {
+                    "default": true,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "device_id": {
+                    "description": "",
+                    "type": "string"
+                },
+                "dial_strategy": {
+                    "default": "simultaneous",
+                    "description": "",
+                    "type": "string"
+                },
+                "owner_id": {
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.play": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "leg": {
+                    "default": "both",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.record_call": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "action": {
+                    "default": "toggle",
+                    "description": "",
+                    "type": "string"
+                },
+                "format": {
+                    "description": "",
+                    "type": "string"
+                },
+                "label": {
+                    "description": "",
+                    "type": "string"
+                },
+                "media_name": {
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.resume": {
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.say": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "language": {
+                    "description": "",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "",
+                    "type": "string"
+                },
+                "text": {
+                    "description": "",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.sound_touch": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "action": {
+                    "description": "",
+                    "type": "string"
+                },
+                "adjust_in_octaves": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "adjust_in_semitones": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "hook_dtmf": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "pitch": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "rate": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "sending_leg": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "tempo": {
+                    "description": "",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.transfer": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "Transfer-Type": {
+                    "default": "blind",
+                    "description": "",
+                    "type": "string"
+                },
+                "captures": {
+                    "default": [
+                        "no_match"
+                    ],
+                    "description": "",
+                    "type": "array"
+                },
+                "leg": {
+                    "description": "",
+                    "type": "string"
+                },
+                "target": {
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.tts": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "engine": {
+                    "default": "flite",
+                    "description": "",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "",
+                    "type": "string"
+                },
+                "leg": {
+                    "default": "self",
+                    "description": "",
+                    "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "",
+                    "type": "array"
+                },
+                "text": {
+                    "description": "",
+                    "type": "string"
+                },
+                "voice": {
+                    "default": "female",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "multi_factor_provider": {
             "description": "multi factor provider configuration",
             "properties": {
@@ -27205,6 +27500,17 @@
                     "default": false,
                     "description": "konami webseq enabled",
                     "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.konami_pro": {
+            "description": "Schema for konami_pro system_config",
+            "properties": {
+                "route_win_timeout": {
+                    "default": 3000,
+                    "description": "konami_pro route_win_timeout",
+                    "type": "integer"
                 }
             },
             "type": "object"
