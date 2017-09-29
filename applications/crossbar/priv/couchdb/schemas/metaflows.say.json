@@ -1,1 +1,24 @@
-{"$schema":"http://json-schema.org/draft-04/schema#","_id":"metaflows.say","description":"Skeleton JSON schema","properties":{"language":{"description":"","type":"string"},"method":{"description":"","type":"string"},"text":{"description":"","type":"string"},"type":{"description":"","type":"string"}},"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.say",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "language": {
+            "description": "",
+            "type": "string"
+        },
+        "method": {
+            "description": "",
+            "type": "string"
+        },
+        "text": {
+            "description": "",
+            "type": "string"
+        },
+        "type": {
+            "description": "",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

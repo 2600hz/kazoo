@@ -1,1 +1,13 @@
-{"$schema":"http://json-schema.org/draft-04/schema#","_id":"metaflows.hold_control","description":"Skeleton JSON schema","properties":{"action":{"type":"string","default":"toggle","description":""}},"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.hold_control",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "action": {
+            "default": "toggle",
+            "description": "",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

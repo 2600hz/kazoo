@@ -1,1 +1,31 @@
-{"$schema":"http://json-schema.org/draft-04/schema#","_id":"metaflows.intercept","description":"Skeleton JSON schema","properties":{"target_id":{"description":"","type":"string"},"target_type":{"description":"","type":"string"},"auto_answer":{"type":"boolean","default":false,"description":""},"unbridged_only":{"type":"boolean","default":true,"description":""},"can_call_self":{"default":true,"description":"","type":"boolean"}},"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.intercept",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "auto_answer": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
+        },
+        "can_call_self": {
+            "default": true,
+            "description": "",
+            "type": "boolean"
+        },
+        "target_id": {
+            "description": "",
+            "type": "string"
+        },
+        "target_type": {
+            "description": "",
+            "type": "string"
+        },
+        "unbridged_only": {
+            "default": true,
+            "description": "",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

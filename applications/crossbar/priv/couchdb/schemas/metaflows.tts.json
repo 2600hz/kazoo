@@ -1,1 +1,49 @@
-{"$schema":"http://json-schema.org/draft-04/schema#","_id":"metaflows.tts","description":"Skeleton JSON schema","properties":{"engine":{"type":"string","default":"flite","description":""},"language":{"description":"","type":"string"},"leg":{"type":"string","default":"self","description":""},"terminators":{"default":["1","2","3","4","5","6","7","8","9","*","0","#"],"description":"","type":"array"},"text":{"description":"","type":"string"},"voice":{"type":"string","default":"female","description":""}},"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.tts",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "engine": {
+            "default": "flite",
+            "description": "",
+            "type": "string"
+        },
+        "language": {
+            "description": "",
+            "type": "string"
+        },
+        "leg": {
+            "default": "self",
+            "description": "",
+            "type": "string"
+        },
+        "terminators": {
+            "default": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "*",
+                "0",
+                "#"
+            ],
+            "description": "",
+            "type": "array"
+        },
+        "text": {
+            "description": "",
+            "type": "string"
+        },
+        "voice": {
+            "default": "female",
+            "description": "",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

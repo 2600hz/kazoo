@@ -1,1 +1,28 @@
-{"$schema":"http://json-schema.org/draft-04/schema#","_id":"metaflows.transfer","description":"Skeleton JSON schema","properties":{"captures":{"type":"array","default":["no_match"],"description":""},"Transfer-Type":{"type":"string","default":"blind","description":""},"leg":{"type":"string","description":""},"target":{"description":"","type":"string"}},"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.transfer",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "Transfer-Type": {
+            "default": "blind",
+            "description": "",
+            "type": "string"
+        },
+        "captures": {
+            "default": [
+                "no_match"
+            ],
+            "description": "",
+            "type": "array"
+        },
+        "leg": {
+            "description": "",
+            "type": "string"
+        },
+        "target": {
+            "description": "",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

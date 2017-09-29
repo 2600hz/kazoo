@@ -1,1 +1,31 @@
-{"$schema":"http://json-schema.org/draft-04/schema#","_id":"metaflows.move","description":"Skeleton JSON schema","properties":{"dial_strategy":{"type":"string","default":"simultaneous","description":""},"device_id":{"description":"","type":"string"},"owner_id":{"description":"","type":"string"},"auto_answer":{"type":"boolean","default":false,"description":""},"can_call_self":{"default":true,"description":"","type":"boolean"}},"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.move",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "auto_answer": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
+        },
+        "can_call_self": {
+            "default": true,
+            "description": "",
+            "type": "boolean"
+        },
+        "device_id": {
+            "description": "",
+            "type": "string"
+        },
+        "dial_strategy": {
+            "default": "simultaneous",
+            "description": "",
+            "type": "string"
+        },
+        "owner_id": {
+            "description": "",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
