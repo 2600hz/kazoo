@@ -199,15 +199,17 @@ email_attachments(DataJObj, Macros, 'false') ->
                      throw({'error', 'no_attachment'})
              end,
 
-    maybe_fetch_attachments(Db, VMId, get_file_name(VMJObj, Macros), kz_doc:attachments(VMJObj)).
+    maybe_fetch_attachments(DataJObj, Db, VMId, get_file_name(VMJObj, Macros), kz_doc:attachments(VMJObj)).
 
--spec maybe_fetch_attachments(ne_binary(), ne_binary(), ne_binary(), api_object()) -> attachments().
-maybe_fetch_attachments(_, _, _, 'undefined') ->
+-spec maybe_fetch_attachments(kz_json:object(), ne_binary(), ne_binary(), ne_binary(), api_object()) -> attachments().
+maybe_fetch_attachments(_, _, _, _, 'undefined') ->
     throw({'error', 'no_attachment'});
-maybe_fetch_attachments(Db, VMId, FileName, Attachments) ->
+maybe_fetch_attachments(DataJObj, Db, VMId, FileName, Attachments) ->
     case kz_json:is_empty(Attachments) of
         'true' -> throw({'error', 'no_attachment'});
-        'false' -> fetch_attachments(Db, VMId, FileName, Attachments)
+        'false' ->
+            teletype_util:send_update(DataJObj, <<"pending">>),
+            fetch_attachments(Db, VMId, FileName, Attachments)
     end.
 
 -spec fetch_attachments(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> attachments().

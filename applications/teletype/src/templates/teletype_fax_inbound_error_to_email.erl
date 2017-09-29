@@ -87,15 +87,18 @@ handle_req(JObj, 'true') ->
             lager:debug("notification ~s handling not configured for account ~s, only handling ~s"
                        ,[?TEMPLATE_ID, AccountId, ?TEMPLATE_ID_FILTERED]
                        ),
+            teletype_util:send_update(DataJObj, <<"pending">>),
             Res = handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID_FILTERED),
             send_update(DataJObj, Res);
         {'true', 'false'} ->
             lager:debug("notification ~s handling not configured for account ~s, only handling ~s"
                        ,[?TEMPLATE_ID_FILTERED, AccountId, ?TEMPLATE_ID]
                        ),
+            teletype_util:send_update(DataJObj, <<"pending">>),
             Res = handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID),
             send_update(DataJObj, Res);
         {'true', 'true'} ->
+            teletype_util:send_update(DataJObj, <<"pending">>),
             Res0 = handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID),
             Res1 = handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID_FILTERED),
             send_update(DataJObj, Res0, Res1)

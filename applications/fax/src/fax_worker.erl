@@ -799,9 +799,10 @@ notify_fields(JObj, Resp) ->
 
     ToNumber = kz_term:to_binary(kz_json:get_value(<<"to_number">>, JObj)),
     ToName = kz_term:to_binary(kz_json:get_value(<<"to_name">>, JObj, ToNumber)),
-    Notify = [E || E <- kz_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], JObj, [])
-                       ,not kz_term:is_empty(E)
-             ],
+    Emails = kz_json:find_first_defined([[<<"notifications">>, <<"email">>, <<"send_to">>]
+                                        ,[<<"notifications">>, <<"outbound">>, <<"email">>, <<"send_to">>]
+                                        ], JObj, []),
+    Notify = [E || E <- Emails, not kz_term:is_empty(E)],
 
     props:filter_empty(
       [{<<"Caller-ID-Name">>, kz_json:get_value(<<"from_name">>, JObj)}

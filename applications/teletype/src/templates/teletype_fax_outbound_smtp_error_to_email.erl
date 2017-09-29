@@ -59,7 +59,9 @@ handle_req(JObj, 'true') ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
-        'true' -> process_req(DataJObj)
+        'true' ->
+            teletype_util:send_update(DataJObj, <<"pending">>),
+            process_req(DataJObj)
     end.
 
 -spec process_req(kz_json:object()) -> 'ok'.

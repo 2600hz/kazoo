@@ -46,8 +46,8 @@ notification(JObj) ->
             FailureMsg = build_failure_message(Res),
             lager:debug("notification ~s did not result in successes: ~s", [RoutingKey, FailureMsg]),
             teletype_util:send_update(JObj, <<"failed">>, FailureMsg);
-        _Successes ->
-            lager:debug("notification ~s result in some successes", [RoutingKey])
+        Successes ->
+            lager:debug("notification ~s result in ~b success(es)", [RoutingKey, length(Successes)])
     end.
 
 -spec start_modules() -> 'ok'.
@@ -67,9 +67,6 @@ filter_out_failed('ok') -> 'true';
 filter_out_failed(_) -> 'false'.
 
 -spec build_failure_message(any()) -> ne_binary().
-build_failure_message([{'EXIT', {'error', 'no_attachment'}}|_]) ->
-    <<"no_attachment">>;
-
 build_failure_message([{'EXIT', {'error', 'missing_data',  Missing}}|_]) ->
     <<"missing_data: ", (kz_term:to_binary(Missing))/binary>>;
 
@@ -87,10 +84,15 @@ build_failure_message([{'EXIT', {'undef', _ST}}|_]) ->
     <<"template_error: crashed with undef">>;
 
 build_failure_message([{'EXIT', {'error', {'badmatch',  _}}}|_]) ->
-    %% Some templates (like voicemail_new) is matching agianst successful open_doc
+    %% Some templates (like voicemail_new) is matching against successful open_doc
     %% maybe because the document or attachment is not stored yet.
     %% Let the publisher save the payload to load later
     <<"badmatch">>;
+
+build_failure_message([{'EXIT', {'error', Reason}}|_]) ->
+    try kz_term:to_binary(Reason)
+    catch _:_ -> <<"unknown error throw-ed">>
+    end;
 
 build_failure_message([{'EXIT', {_Exp, _ST}}|_]) ->
     <<"template_error: crashed with exception">>;
