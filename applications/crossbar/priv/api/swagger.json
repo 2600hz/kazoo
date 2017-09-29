@@ -22027,63 +22027,83 @@
             "type": "object"
         },
         "metaflows.audio_level": {
-            "description": "Skeleton JSON schema",
+            "description": "Allow changing the volume on a channel (including mute/unmute)",
             "properties": {
                 "action": {
-                    "description": "",
+                    "description": "Start or stop the audio adjustment",
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
                     "type": "string"
                 },
                 "level": {
-                    "description": "",
+                    "description": "Adjustment level for the audio",
+                    "maximum": 4,
+                    "minimum": -4,
                     "type": "integer"
                 },
                 "mode": {
-                    "description": "",
+                    "description": "What mode to use (depends on direction)",
+                    "enum": [
+                        "read",
+                        "write"
+                    ],
                     "type": "string"
                 }
             },
             "type": "object"
         },
         "metaflows.break": {
-            "description": "Skeleton JSON schema",
+            "description": "Break out of media being sent to a channel",
             "properties": {},
             "type": "object"
         },
         "metaflows.callflow": {
-            "description": "Skeleton JSON schema",
-            "properties": {},
-            "type": "object"
-        },
-        "metaflows.hangup": {
-            "description": "Skeleton JSON schema",
-            "properties": {},
-            "type": "object"
-        },
-        "metaflows.hold": {
-            "description": "Skeleton JSON schema",
+            "description": "Run a callflow on an active call",
             "properties": {
-                "moh_aleg": {
-                    "description": "",
-                    "type": "string"
-                },
-                "moh_bleg": {
-                    "description": "",
-                    "type": "string"
-                },
-                "unhold_key": {
-                    "default": "1",
+                "id": {
                     "description": "",
                     "type": "string"
                 }
             },
             "type": "object"
         },
+        "metaflows.hangup": {
+            "description": "Hangup the call leg immediately",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.hold": {
+            "description": "Put the leg on hold",
+            "properties": {
+                "moh_aleg": {
+                    "description": "MOH ID for the a-leg",
+                    "type": "string"
+                },
+                "moh_bleg": {
+                    "description": "MOH ID for the b-leg",
+                    "type": "string"
+                },
+                "unhold_key": {
+                    "default": "1",
+                    "description": "DTMF to press to unhold the call",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "metaflows.hold_control": {
-            "description": "Skeleton JSON schema",
+            "description": "Control the hold on a call",
             "properties": {
                 "action": {
                     "default": "toggle",
-                    "description": "",
+                    "description": "How to manipulate the hold on the call",
+                    "enum": [
+                        "hold",
+                        "unhold",
+                        "toggle"
+                    ],
                     "type": "string"
                 }
             },
@@ -22094,54 +22114,59 @@
             "properties": {
                 "auto_answer": {
                     "default": false,
-                    "description": "",
+                    "description": "Auto-answer the leg",
                     "type": "boolean"
                 },
                 "can_call_self": {
                     "default": true,
-                    "description": "",
+                    "description": "Can intercept devices of the same targeted user",
                     "type": "boolean"
                 },
                 "target_id": {
-                    "description": "",
+                    "description": "ID of the target (device or user)",
                     "type": "string"
                 },
                 "target_type": {
-                    "description": "",
+                    "description": "Type of entity of the target",
+                    "enum": [
+                        "device",
+                        "user",
+                        "number"
+                    ],
                     "type": "string"
                 },
                 "unbridged_only": {
                     "default": true,
-                    "description": "",
+                    "description": "Only intercept if the a-leg is unbridged",
                     "type": "boolean"
                 }
             },
             "type": "object"
         },
         "metaflows.move": {
-            "description": "Skeleton JSON schema",
+            "description": "Move a call from one device to another",
             "properties": {
                 "auto_answer": {
                     "default": false,
-                    "description": "",
+                    "description": "Whether to auto-answer the new leg",
                     "type": "boolean"
                 },
                 "can_call_self": {
                     "default": true,
-                    "description": "",
+                    "description": "Can intercept devices of the same targeted user",
                     "type": "boolean"
                 },
                 "device_id": {
-                    "description": "",
+                    "description": "Move the call to a specific device",
                     "type": "string"
                 },
                 "dial_strategy": {
                     "default": "simultaneous",
-                    "description": "",
+                    "description": "How to ring the endpoints, if multiple",
                     "type": "string"
                 },
                 "owner_id": {
-                    "description": "",
+                    "description": "User ID to use for finding endpoints",
                     "type": "string"
                 }
             },
@@ -22150,112 +22175,215 @@
         "metaflows.play": {
             "description": "Skeleton JSON schema",
             "properties": {
+                "id": {
+                    "description": "Media ID to play",
+                    "type": "string"
+                },
                 "leg": {
                     "default": "both",
-                    "description": "",
+                    "description": "Leg to play the media to",
+                    "enum": [
+                        "self",
+                        "peer",
+                        "both"
+                    ],
                     "type": "string"
                 }
             },
             "type": "object"
         },
         "metaflows.record_call": {
-            "description": "Skeleton JSON schema",
+            "description": "Start a call recording",
             "properties": {
                 "action": {
                     "default": "toggle",
-                    "description": "",
+                    "description": "Whether to start/stop the recording",
+                    "enum": [
+                        "start",
+                        "stop",
+                        "toggle"
+                    ],
                     "type": "string"
                 },
                 "format": {
-                    "description": "",
+                    "description": "What format to store the recording",
+                    "enum": [
+                        "mp3",
+                        "wav"
+                    ],
                     "type": "string"
                 },
                 "label": {
-                    "description": "",
+                    "description": "Add a custom label to the recording",
                     "type": "string"
                 },
                 "media_name": {
-                    "description": "",
+                    "description": "Name of the recording file",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "HTTP method if using an HTTP destination",
+                    "enum": [
+                        "put",
+                        "post"
+                    ],
+                    "type": "string"
+                },
+                "origin": {
+                    "description": "Track how the recording was started",
+                    "type": "string"
+                },
+                "record_min_sec": {
+                    "description": "Miniumum number of seconds recorded to consider it a valid recording",
+                    "type": "integer"
+                },
+                "record_on_answer": {
+                    "default": false,
+                    "description": "Whether to start recording when the leg is answered",
+                    "type": "boolean"
+                },
+                "record_on_bridge": {
+                    "default": false,
+                    "description": "Whether to start recording when the leg is bridged",
+                    "type": "boolean"
+                },
+                "record_sample_rate": {
+                    "default": 8000,
+                    "description": "Sampling rate for the recording",
+                    "type": "integer"
+                },
+                "time_limit": {
+                    "description": "How long to allow the recording, in seconds",
+                    "type": "integer"
+                },
+                "url": {
+                    "description": "HTTP URL to send the finished recording",
                     "type": "string"
                 }
             },
             "type": "object"
         },
         "metaflows.resume": {
-            "description": "Skeleton JSON schema",
+            "description": "Reconnect the two legs of a call, if possible",
             "properties": {},
             "type": "object"
         },
         "metaflows.say": {
-            "description": "Skeleton JSON schema",
+            "description": "Say the provided text",
             "properties": {
+                "gender": {
+                    "description": "The gender of the voice to say the text",
+                    "enum": [
+                        "feminine",
+                        "masculine",
+                        "neuter"
+                    ],
+                    "type": "string"
+                },
                 "language": {
-                    "description": "",
+                    "description": "Language of the text",
                     "type": "string"
                 },
                 "method": {
-                    "description": "",
+                    "description": "Toggle the way the text is read to the caller",
+                    "enum": [
+                        "pronounced",
+                        "iterated",
+                        "counted"
+                    ],
                     "type": "string"
                 },
                 "text": {
-                    "description": "",
+                    "description": "The text to say to the caller",
                     "type": "string"
                 },
                 "type": {
-                    "description": "",
+                    "description": "The type of text to say",
+                    "enum": [
+                        "account_number",
+                        "currency",
+                        "current_date",
+                        "current_date_time",
+                        "current_time",
+                        "email_address",
+                        "ip_address",
+                        "items",
+                        "messages",
+                        "name_phonetic",
+                        "name_spelled",
+                        "number",
+                        "persons",
+                        "postal_address",
+                        "short_date_time",
+                        "telephone_extension",
+                        "telephone_number",
+                        "time_measurement",
+                        "url"
+                    ],
                     "type": "string"
                 }
             },
             "type": "object"
         },
         "metaflows.sound_touch": {
-            "description": "Skeleton JSON schema",
+            "description": "Pitch-shift and other audio effects",
             "properties": {
                 "action": {
-                    "description": "",
+                    "description": "Whether to start or stop touching the sound",
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
                     "type": "string"
                 },
                 "adjust_in_octaves": {
-                    "description": "",
-                    "type": "integer"
+                    "default": 0,
+                    "description": "Adjust the pitch in octaves",
+                    "maximum": 1.0,
+                    "minimum": -1.0,
+                    "type": "number"
                 },
                 "adjust_in_semitones": {
-                    "description": "",
-                    "type": "integer"
+                    "default": 0,
+                    "description": "Asjust the pitch in semitones",
+                    "maximum": 14.0,
+                    "minimum": -14.0,
+                    "type": "number"
                 },
                 "hook_dtmf": {
                     "default": false,
-                    "description": "",
+                    "description": "Enable DTMF control of audio modifications",
                     "type": "boolean"
                 },
                 "pitch": {
-                    "description": "",
-                    "type": "integer"
+                    "default": 1.0,
+                    "description": "Set the pitch directly (lower number = lower tone)",
+                    "minimum": 1.0,
+                    "type": "number"
                 },
                 "rate": {
-                    "description": "",
-                    "type": "integer"
+                    "default": 1.0,
+                    "description": "Set the rate directly",
+                    "minimum": 1.0,
+                    "type": "number"
                 },
                 "sending_leg": {
                     "default": false,
-                    "description": "",
+                    "description": "Apply the filter to the sending leg",
                     "type": "boolean"
                 },
                 "tempo": {
-                    "description": "",
-                    "type": "integer"
+                    "default": 1.0,
+                    "description": "Set the tempo directly",
+                    "minimum": 1.0,
+                    "type": "number"
                 }
             },
             "type": "object"
         },
         "metaflows.transfer": {
-            "description": "Skeleton JSON schema",
+            "description": "Perform a transfer",
             "properties": {
-                "Transfer-Type": {
-                    "default": "blind",
-                    "description": "",
-                    "type": "string"
-                },
                 "captures": {
                     "default": [
                         "no_match"
@@ -22264,31 +22392,40 @@
                     "type": "array"
                 },
                 "leg": {
-                    "description": "",
+                    "description": "Which leg to be the transfer leg",
                     "type": "string"
                 },
                 "target": {
-                    "description": "",
+                    "description": "The target extension/DID",
+                    "type": "string"
+                },
+                "transfer_type": {
+                    "default": "blind",
+                    "description": "The type of transfer to perform",
+                    "enum": [
+                        "attended",
+                        "blind"
+                    ],
                     "type": "string"
                 }
             },
             "type": "object"
         },
         "metaflows.tts": {
-            "description": "Skeleton JSON schema",
+            "description": "Use the Text-to-speech engine to say the provided text",
             "properties": {
                 "engine": {
                     "default": "flite",
-                    "description": "",
+                    "description": "What engine to use (system-dependant)",
                     "type": "string"
                 },
                 "language": {
-                    "description": "",
+                    "description": "What language is the text in",
                     "type": "string"
                 },
                 "leg": {
                     "default": "self",
-                    "description": "",
+                    "description": "What leg to say the text to",
                     "type": "string"
                 },
                 "terminators": {
@@ -22306,16 +22443,16 @@
                         "0",
                         "#"
                     ],
-                    "description": "",
+                    "description": "What DTMF can terminate the TTS playback",
                     "type": "array"
                 },
                 "text": {
-                    "description": "",
+                    "description": "What to say",
                     "type": "string"
                 },
                 "voice": {
                     "default": "female",
-                    "description": "",
+                    "description": "What voice to use when speaking",
                     "type": "string"
                 }
             },
