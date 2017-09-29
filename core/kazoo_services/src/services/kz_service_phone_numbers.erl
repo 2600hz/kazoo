@@ -94,24 +94,36 @@ phone_number_activation_charge(Services, Number) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
+-spec update_categories_fold(ne_binary(), ne_binary(), kz_services:services(), kz_json:object()) -> kz_json:object().
 update_categories_fold(Path, Category, Services, JObj) ->
     kz_json:foldl(fun (SubCat, Count, S) -> update_quantities_fold(SubCat, Count, S, Category) end
                  ,kz_services:reset_category(Category, Services)
                  ,kz_json:get_value(Path, JObj)
                  ).
 
+-spec update_quantities_fold(ne_binary(), non_neg_integer(), kz_services:services(), ne_binary()) -> kz_services:services().
 update_quantities_fold(Feature, Count, Services, ?NUMBER_SERVICES=Category) ->
     Name = knm_providers:service_name(Feature, kz_services:account_id(Services)),
     Quantity = kz_services:updated_quantity(Category, Name, Services),
     kz_services:update(Category, Name, Quantity + Count, Services);
 
-update_quantities_fold(Classification, Carriers, Services, ?PHONE_NUMBERS=Category) ->
-    CountPerClass = kz_json:foldl(fun (_Carrier, Count, Sum) -> Count + Sum end, 0, Carriers),
-    Quantity = kz_services:updated_quantity(Category, Classification, Services),
-    S0 = kz_services:update(Category, Classification, Quantity + CountPerClass, Services),
-    kz_json:foldl(fun manually_update_nested_quantities_fold/3, S0, Carriers).
+update_quantities_fold(Classification, Carriers, Services0, ?PHONE_NUMBERS=Category) ->
+    Services1 = kz_json:foldl(fun manually_update_nested_quantities_fold/3, Services0, Carriers),
+    case sum_carriers_per_class(Carriers) of
+        0 -> Services1;
+        CountPerClass ->
+            Quantity = kz_services:updated_quantity(Category, Classification, Services1),
+            kz_services:update(Category, Classification, Quantity + CountPerClass, Services1)
+    end.
 
+-spec sum_carriers_per_class(kz_json:object()) -> non_neg_integer().
+sum_carriers_per_class(Carriers) ->
+    kz_json:foldl(fun (<<"knm_local">>, _, Sum) -> Sum;
+                      (_Carrier, Count, Sum) ->
+                          Count + Sum
+                  end, 0, Carriers).
+
+-spec manually_update_nested_quantities_fold(ne_binary(), non_neg_integer(), kz_services:services()) -> kz_services:services().
 manually_update_nested_quantities_fold(Carrier, Count, S) ->
     Cat = ?NUMBER_CARRIERS,
     Q = kz_services:updated_quantity(Cat, Carrier, S),

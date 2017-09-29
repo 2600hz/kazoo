@@ -13,6 +13,7 @@
 -export([refresh/0]).
 -export([reconcile/0, reconcile/1]).
 -export([sync/1]).
+-export([sync_descendants/1]).
 -export([make_reseller/1]).
 -export([demote_reseller/1]).
 -export([cascade_reseller_id/2]).
@@ -155,6 +156,22 @@ sync(Account) when not is_binary(Account) ->
 sync(Account) ->
     kz_service_sync:sync(Account),
     'ok'.
+
+-spec sync_descendants(text()) -> 'ok'.
+sync_descendants(Account) when not is_binary(Account) ->
+    sync_descendants(kz_term:to_binary(Account));
+sync_descendants(Account) ->
+    Descendants = kapps_util:account_descendants(Account),
+    io:format("syncing ~p descendants of ~s", [length(Descendants), Account]),
+    do_sync_descendants(Descendants).
+
+-spec do_sync_descendants(ne_binaries()) -> 'ok'.
+do_sync_descendants([]) -> 'ok';
+do_sync_descendants([Descendant|Descendants]) ->
+    io:format("  syncing ~s, ~p accounts remaining", [Descendant, length(Descendants)]),
+    _ = sync(Descendant),
+    do_sync_descendants(Descendants).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
