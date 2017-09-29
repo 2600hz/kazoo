@@ -52,19 +52,19 @@
                      {'true', 'other', ne_binary()}.
 
 -record(state, {url                       :: api_ne_binary()
-               ,format                    :: ne_binary()
+               ,format                    :: api_ne_binary()
                ,sample_rate               :: api_integer()
                ,media                     :: media()
-               ,doc_db                    :: ne_binary()
-               ,doc_id                    :: ne_binary()
-               ,cdr_id                    :: ne_binary()
-               ,interaction_id            :: ne_binary()
-               ,call                      :: kapps_call:call()
-               ,record_on_answer          :: boolean()
-               ,record_on_bridge          :: boolean()
+               ,doc_db                    :: api_ne_binary()
+               ,doc_id                    :: api_ne_binary()
+               ,cdr_id                    :: api_ne_binary()
+               ,interaction_id            :: api_ne_binary()
+               ,call                      :: kapps_call:call() | 'undefined'
+               ,record_on_answer          :: api_boolean()
+               ,record_on_bridge          :: api_boolean()
                ,should_store              :: store_url()
-               ,time_limit                :: pos_integer()
-               ,record_min_sec            :: pos_integer()
+               ,time_limit                :: api_pos_integer()
+               ,record_min_sec            :: api_pos_integer()
                ,store_attempted = 'false' :: boolean()
                ,is_recording = 'false'    :: boolean()
                ,stop_received = 'false'   :: boolean()
@@ -72,7 +72,7 @@
                ,verb = 'put'              :: atom()
                ,account_id                :: api_ne_binary()
                ,event = 'undefined'       :: api_object()
-               ,origin                    :: ne_binary()
+               ,origin                    :: api_ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -154,7 +154,11 @@ handle_call_event(JObj, Props) ->
     end.
 
 -spec init([kapps_call:call() | kz_json:object()]) -> {'ok', state()}.
+-spec init(kapps_call:call(), kz_json:object()) -> {'ok', state()}.
 init([Call, Data]) ->
+    init(Call, Data).
+
+init(Call, Data) ->
     kapps_call:put_callid(Call),
     lager:info("starting event listener for record_call"),
 
@@ -174,7 +178,7 @@ init([Call, Data]) ->
     DocId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), RecordingId),
     InteractionId = kapps_call:custom_channel_var(<<?CALL_INTERACTION_ID>>, Call),
     DefaultMediaName = get_media_name(kz_binary:rand_hex(16), Format),
-    MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
+    MediaName = kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = kz_json:get_ne_binary_value(<<"url">>, Data),
     ShouldStore = should_store_recording(AccountId, Url),
     Verb = kz_json:get_atom_value(<<"method">>, Data, 'put'),
