@@ -105,18 +105,18 @@ curl -v -X POST \
 
 #### Put a feature on a channel
 
-currently only `metaflow` is supported
+currently - 10/2017, only the `metaflow` action is supported
 
 #### Metaflow
 
 Metaflow feature is a `metaflow` object which validates with its json schema.
 
 . reasoning
-The `POST` action required that every metaflow action would have to be coded into the module.
+The `POST` action requires that every metaflow action would have to be coded into the module.
 
 . benefits
-The metaflow feature allows adding new types of metaflows without changing the code.
-It also allows full metaflows and not only single actions, ie, the `children` node is also processed.
+The PUT method allows adding new types of metaflows without changing the code.
+It also allows full metaflows to be PUT on a channel, and not only single actions, ie, the `children` node is also processed.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -124,6 +124,10 @@ It also allows full metaflows and not only single actions, ie, the `children` no
 curl -v -X PUT \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"action": "metaflow", "data": { "module": "hangup" }}}' \
+    -d '{"data":{"module":"transfer","data":{"target":"2600","Transfer-Type":"blind","leg":"bleg"}},"action":"metaflow"}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
+
+The "leg" element defines which leg of the call to take action against.
+The "target" in the "module" transfer is where the leg will be transferred to.
+The "Transfer-Type" can be attended or blind. If not defined, it will default to attended.
