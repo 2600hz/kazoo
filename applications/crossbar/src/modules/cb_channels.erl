@@ -459,7 +459,7 @@ transfer(Context, Transferor, _Transferee, Target) ->
           ,{<<"Action">>, <<"transfer">>}
           ,{<<"Data">>, kz_json:from_list(
                           [{<<"target">>, Target}
-                          ,{<<"Transfer-Type">>, TransferType}
+                          ,{<<"transfer-type">>, TransferType}
                           ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
                           ])
            }
