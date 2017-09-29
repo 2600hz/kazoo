@@ -13,7 +13,7 @@
             "type": "string"
         },
         "apply_to": {
-            "default": "original",
+            "default": "current",
             "description": "Apply the prepend to which caller ID",
             "enum": [
                 "original",
