@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-04/schema#","_id":"metaflows.record_call","description":"Skeleton JSON schema","properties":{"format":{"type":"string","description":""},"label":{"type":"string","description":""},"media_name":{"type":"string","description":""},"action":{"type":"string","default":"toggle","description":""}},"type":"object"}

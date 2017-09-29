@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-04/schema#","_id":"metaflows.audio_level","description":"Skeleton JSON schema","properties":{"action":{"description":"","type":"string"},"level":{"description":"","type":"integer"},"mode":{"description":"","type":"string"}},"type":"object"}
