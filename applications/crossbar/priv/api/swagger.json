@@ -22063,7 +22063,7 @@
             "description": "Run a callflow on an active call",
             "properties": {
                 "id": {
-                    "description": "",
+                    "description": "The callflow ID to run",
                     "type": "string"
                 }
             },
@@ -22388,7 +22388,7 @@
                     "default": [
                         "no_match"
                     ],
-                    "description": "",
+                    "description": "Capture groups?",
                     "type": "array"
                 },
                 "leg": {
