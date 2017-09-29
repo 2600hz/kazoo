@@ -7,7 +7,7 @@
             "default": [
                 "no_match"
             ],
-            "description": "",
+            "description": "Capture groups?",
             "type": "array"
         },
         "leg": {

@@ -4,7 +4,7 @@
     "description": "Run a callflow on an active call",
     "properties": {
         "id": {
-            "description": "",
+            "description": "The callflow ID to run",
             "type": "string"
         }
     },
