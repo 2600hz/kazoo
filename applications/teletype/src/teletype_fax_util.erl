@@ -39,7 +39,7 @@ add_attachments(DataJObj, Macros, ShouldTerminate) ->
     FaxDoc = kz_json:get_value(<<"fax_doc">>, DataJObj),
     case kz_json:is_json_object(FaxDoc)
         andalso not kz_json:is_empty(FaxDoc)
-        andalso maybe_fetch_attachments(FaxDoc, Macros, IsPreview)
+        andalso maybe_fetch_attachments(DataJObj, FaxDoc, Macros, IsPreview)
     of
         'false' -> maybe_terminate(Macros, ShouldTerminate, IsPreview);
         [] -> maybe_terminate(Macros, ShouldTerminate, IsPreview);
@@ -72,39 +72,41 @@ add_document_data(FaxDoc, Macros, [{ContentType, Filename, Bin}]) ->
 
 -spec to_email_addresses(kz_json:object(), ne_binary()) -> api_binaries().
 to_email_addresses(DataJObj, ModConfigCat) ->
-    Paths = [[<<"to">>, <<"email_addresses">>]
-            ,[<<"fax">>, <<"email">>, <<"send_to">>]
-            ,[<<"fax">>, <<"notifications">>, <<"email">>, <<"send_to">>]
-            ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
-            ,[<<"notifications">>, <<"email">>, <<"send_to">>]
-            ,[<<"owner">>, <<"email">>]
-            ,[<<"owner">>, <<"username">>]
+    BoxEmailPath = case binary:split(ModConfigCat, <<".">>) of
+                       [_, <<"fax_inbound", _/binary>>] ->
+                           [<<"notifications">>, <<"inbound">>, <<"email">>, <<"send_to">>]; %% inbound from faxbox doc
+                       _ ->
+                           [<<"notifications">>, <<"outbound">>, <<"email">>, <<"send_to">>] %% outbound from faxbox doc
+                   end,
+    Paths = [[<<"to">>, <<"email_addresses">>] %% explicitly set in the payload
+            ,[<<"to">>] %% explicitly set in the payload in another form
+            ,[<<"fax">>, <<"email">>, <<"send_to">>] %% fax document legacy
+            ,[<<"fax">>, <<"notifications">>, <<"email">>, <<"send_to">>] %% fax document
+            ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>] %% set by fax_worker from faxbox doc
+            ,[<<"notifications">>, <<"email">>, <<"send_to">>] %% faxbox or fax doc?
+            ,BoxEmailPath
+            ,[<<"owner">>, <<"email">>] %% user document
+            ,[<<"owner">>, <<"username">>] %% user document
             ],
     Emails = kz_json:get_first_defined(Paths, DataJObj),
-    to_email_addresses(DataJObj, ModConfigCat, Emails).
+    Found = to_email_addresses(DataJObj, ModConfigCat, Emails),
+    lager:debug("found emails: ~p", [Found]),
+    Found.
 
 -spec to_email_addresses(kz_json:object(), ne_binary(), ne_binary() | api_binaries()) -> api_binaries().
 to_email_addresses(_, _, ?NE_BINARY=Email) ->
     [Email];
 to_email_addresses(_, _, Emails)
   when is_list(Emails)
-       andalso length(Emails) >= 1 ->
+       andalso length(Emails) > 0 ->
     Emails;
-to_email_addresses(DataJObj, ModConfigCat, _) ->
-    Emails = teletype_util:find_account_rep_email(DataJObj),
-    maybe_using_default_to_addresses(Emails, ModConfigCat).
-
--spec maybe_using_default_to_addresses(api_binaries(), ne_binary()) -> api_binaries().
-maybe_using_default_to_addresses('undefined', ModConfigCat) ->
-    lager:debug("failed to find account rep email, using defaults"),
+to_email_addresses(_DataJObj, ModConfigCat, _) ->
+    lager:debug("can not find email address for the fax notification, maybe using defaults"),
     case kapps_config:get_ne_binary_or_ne_binaries(ModConfigCat, <<"default_to">>) of
         'undefined' -> 'undefined';
         ?NE_BINARY=Email -> [Email];
         Emails when is_list(Emails) -> Emails
-    end;
-maybe_using_default_to_addresses(Emails, _) ->
-    lager:debug("using ~p for To", [Emails]),
-    Emails.
+    end.
 
 %%%===================================================================
 %%% Build data functions
@@ -182,12 +184,12 @@ find_timezone(DataJObj, FaxBoxJObj) ->
     find_timezone(kz_json:get_first_defined(Paths, DataJObj), FaxBoxJObj).
 
 %%%===================================================================
-%%% Attachment Utilites
+%%% Attachment Utilities
 %%%===================================================================
 
 -spec fax_db(kz_json:object(), api_ne_binary()) -> ne_binary().
 fax_db(DataJObj, FaxId) ->
-    case kapi_notifications:account_db(DataJObj) of
+    case kapi_notifications:account_db(DataJObj, 'true') of
         'undefined' ->
             maybe_get_fax_db_from_id(kz_json:get_ne_binary_value(<<"account_id">>, DataJObj), FaxId);
         Db -> maybe_get_fax_db_from_id(Db, FaxId)
@@ -199,37 +201,38 @@ maybe_get_fax_db_from_id(?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db, _) -> Db;
 maybe_get_fax_db_from_id(Db, ?MATCH_MODB_PREFIX(Year, Month, _)) -> kazoo_modb:get_modb(kz_util:format_account_id(Db), Year, Month);
 maybe_get_fax_db_from_id(Db, _) -> Db.
 
--spec maybe_fetch_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
-maybe_fetch_attachments(_, _, 'true') ->
+-spec maybe_fetch_attachments(kz_json:object(), kz_json:object(), kz_proplist(), boolean()) -> attachments().
+maybe_fetch_attachments(_, _, _, 'true') ->
     [];
-maybe_fetch_attachments(FaxJObj, Macros, 'false') ->
+maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
     FaxId = kz_doc:id(FaxJObj),
     Db = kz_doc:account_db(FaxJObj),
     [AttachmentName] = kz_doc:attachment_names(FaxJObj),
 
     lager:debug("accessing fax attachment ~s at ~s / ~s", [AttachmentName, Db, FaxId]),
+    teletype_util:send_update(DataJObj, <<"pending">>),
 
     case kz_datamgr:fetch_attachment(Db, {kzd_fax:type(), FaxId}, AttachmentName) of
         {'ok', Bin} ->
             ContentType = kz_doc:attachment_content_type(FaxJObj, AttachmentName),
-            maybe_convert_attachment(Macros, ContentType, Bin);
+            maybe_convert_attachment(DataJObj, Macros, ContentType, Bin);
         {'error', _E} ->
             lager:debug("failed to fetch attachment ~s: ~p", [AttachmentName, _E]),
             []
     end.
 
--spec maybe_convert_attachment(kz_proplist(), api_binary(), binary()) -> attachments().
-maybe_convert_attachment(Macros, ContentType, Bin) ->
+-spec maybe_convert_attachment(kz_json:object(), kz_proplist(), api_binary(), binary()) -> attachments().
+maybe_convert_attachment(DataJObj, Macros, ContentType, Bin) ->
     ToFormat = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
     FromFormat = from_format_from_content_type(ContentType),
 
-    case convert(FromFormat, ToFormat, Bin) of
+    case convert(DataJObj, FromFormat, ToFormat, Bin) of
         {'ok', Converted} ->
             Filename = get_file_name(Macros, ToFormat),
             lager:debug("adding attachment as ~s", [Filename]),
             [{content_type_from_extension(Filename), Filename, Converted}];
         {'error', Reason} ->
-            lager:debug("error converting atachment with reason : ~p", [Reason]),
+            lager:debug("error converting attachment with reason : ~p", [Reason]),
             []
     end.
 
@@ -262,11 +265,12 @@ get_file_name(Macros, Ext) ->
     FName = list_to_binary([CallerID, "_", kz_time:pretty_print_datetime(LocalDateTime), ".", Ext]),
     re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
--spec convert(ne_binary(), ne_binary(), binary()) -> {ok, binary()} | {error, atom() | string()}.
-convert(FromFormat, FromFormat, Bin) ->
+-spec convert(kz_json:object(), ne_binary(), ne_binary(), binary()) -> {ok, binary()} | {error, atom() | string()}.
+convert(_, FromFormat, FromFormat, Bin) ->
     {'ok', Bin};
-convert(FromFormat0, ToFormat0, Bin) ->
+convert(DataJObj, FromFormat0, ToFormat0, Bin) ->
     lager:debug("converting from ~s to ~s", [FromFormat0, ToFormat0]),
+    teletype_util:send_update(DataJObj, <<"pending">>),
 
     FromFormat = valid_format(FromFormat0),
     ToFormat = valid_format(ToFormat0),
