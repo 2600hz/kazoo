@@ -469,17 +469,15 @@ arg_to_key(?BINARY_MATCH(Arg)) ->
     try kz_ast_util:binary_match_to_binary(Arg)
     catch 'error':'function_clause' -> 'undefined'
     end;
-arg_to_key(?ATOM(Arg)) ->
-    Arg;
+arg_to_key(?ATOM(Arg)) -> Arg;
 arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 arg_to_key(?MOD_FUN_ARGS(M, F, As)) ->
     {M, F, length(As)};
 arg_to_key(?VAR(_Arg)) -> 'undefined';
-arg_to_key(?INTEGER(I)) ->
-    I;
-arg_to_key(?EMPTY_LIST) ->
-    [];
+arg_to_key(?INTEGER(I)) -> I;
+arg_to_key(?FLOAT(F)) -> F;
+arg_to_key(?EMPTY_LIST) -> [];
 arg_to_key(?LIST(Head, Tail)) ->
     list_of_keys_to_binary(Head, Tail).
 
