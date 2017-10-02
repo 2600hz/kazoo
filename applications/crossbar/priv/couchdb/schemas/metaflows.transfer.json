@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.transfer",
+    "description": "Perform a transfer",
+    "properties": {
+        "captures": {
+            "default": [
+                "no_match"
+            ],
+            "description": "Capture groups?",
+            "type": "array"
+        },
+        "leg": {
+            "description": "Which leg to be the transfer leg",
+            "type": "string"
+        },
+        "target": {
+            "description": "The target extension/DID",
+            "type": "string"
+        },
+        "transfer_type": {
+            "default": "blind",
+            "description": "The type of transfer to perform",
+            "enum": [
+                "attended",
+                "blind"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

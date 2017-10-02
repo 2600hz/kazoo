@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.hold",
+    "description": "Put the leg on hold",
+    "properties": {
+        "moh_aleg": {
+            "description": "MOH ID for the a-leg",
+            "type": "string"
+        },
+        "moh_bleg": {
+            "description": "MOH ID for the b-leg",
+            "type": "string"
+        },
+        "unhold_key": {
+            "default": "1",
+            "description": "DTMF to press to unhold the call",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

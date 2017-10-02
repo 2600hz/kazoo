@@ -1,6 +1,6 @@
--module(cf_data_usage).
+-module(kp_data_usage).
 
-%% module for parsing callflow actions for Data usage
+%% module for parsing konami_pro actions for Data usage
 
 -export([process/0, process/1
         ,to_schema_docs/0, to_schema_doc/1
@@ -30,8 +30,8 @@ to_schema_doc(M) ->
     to_schema_doc(M, process(M)).
 
 to_schema_doc(M, Usage) ->
-    <<"cf_", Base/binary>> = kz_term:to_binary(M),
-    Schema = kz_ast_util:schema_path(<<"callflows.", Base/binary, ".json">>),
+    <<"konami_pro_", Base/binary>> = kz_term:to_binary(M),
+    Schema = kz_ast_util:schema_path(<<"metaflows.", Base/binary, ".json">>),
     kz_ast_util:ensure_file_exists(Schema),
     update_schema(Base, Schema, Usage),
     update_doc(Base, Schema).
@@ -40,7 +40,8 @@ to_schema_doc(M, Usage) ->
 -define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
 
 update_doc(Base, Schema) ->
-    RefPath = filename:join([code:lib_dir('callflow'), "doc", "ref", <<Base/binary,".md">>]),
+    RefPath = filename:join([code:lib_dir('konami_pro'), "doc", "ref", <<Base/binary,".md">>]),
+    'ok' = filelib:ensure_dir(RefPath),
     Contents = build_ref_doc(Base, Schema),
     'ok' = file:write_file(RefPath, Contents).
 
@@ -61,7 +62,7 @@ update_schema(Base, Path, Usage) ->
     end.
 
 ensure_id(Base, Schema) ->
-    ID = <<"callflows.", Base/binary>>,
+    ID = <<"metaflows.", Base/binary>>,
     case kz_doc:id(Schema) of
         ID -> Schema;
         _Id ->
@@ -105,7 +106,7 @@ check_default({_M, _F, _A}) -> 'undefined';
 check_default([<<_/binary>>|_]=L) ->
     L;
 check_default([_|_]=_L) ->
-    ?DEBUG("default list ~p~n", [L]),
+    ?DEBUG("default list ~p~n", [_L]),
     'undefined';
 check_default([]) -> [];
 check_default(?EMPTY_JSON_OBJECT=J) -> J;
@@ -171,15 +172,19 @@ guess_type('get_ne_value', <<_/binary>>) ->
     <<"string">>;
 guess_type('get_ne_value', 'undefined') ->
     'undefined';
+guess_type(_F, Bool) when is_boolean(Bool) ->
+    <<"boolean">>;
+guess_type(_F, 'undefined') ->
+    'undefined';
 guess_type(_F, _D) ->
-    ?DEBUG("couldn't guess ~p(~p)~n", [_F, _D]),
+    ?DEBUG("  couldn't guess ~p(~p)~n", [_F, _D]),
     'undefined'.
 
 -spec process() -> [{module(), list()}].
 process() ->
-    io:format("processing callflow data usage: "),
+    io:format("processing konami_pro data usage: "),
     Usages = [{Module, Usages} ||
-                 Module <- kz_ast_util:app_modules('callflow'),
+                 Module <- kz_ast_util:app_modules('konami_pro'),
                  (Usages = process(Module)) =/= 'undefined'
              ],
     io:format(" done~n"),
@@ -324,6 +329,7 @@ process_match_mfa(#usage{data_var_name=DataName
     ?DEBUG("adding alias ~p~n", [VarName]),
     Acc#usage{data_var_aliases=[VarName|Aliases]};
 process_match_mfa(Acc, _VarName, M, F, As) ->
+    ?DEBUG("processing match mfa ~p = ~p:~p/~p~n", [_VarName, M, F, length(As)]),
     process_mfa(Acc, M, F, As).
 
 process_mfa(#usage{data_var_name=DataName
@@ -347,8 +353,21 @@ process_mfa(#usage{data_var_name=DataName
            ) ->
     ?DEBUG("adding set_value usage ~p, ~p, ~p~n", [Key, Value, DataName]),
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Value)})};
+process_mfa(#usage{data_var_name=DataName
+                  ,usages=Usages
+                  }=Acc
+           ,'kz_json'=M, 'set_values'=F, [KeyValues, ?VAR(DataName)]
+           ) ->
+    ?DEBUG("adding set_values usage ~p, ~p~n", [KeyValues, DataName]),
+    Usages1 = lists:foldl(fun({Key, Value}, U) ->
+                                  maybe_add_usage(U, {M, F, arg_to_key(Key), DataName, arg_to_key(Value)})
+                          end
+                         ,Usages
+                         ,kz_ast_util:ast_list_to_list(KeyValues)
+                         ),
+    Acc#usage{usages=Usages1};
 process_mfa(#usage{}=Acc
-           ,'kz_json', _F, [{call, _, _, _}=_Key|_]
+           ,'kz_json', _F, [{'call', _, _, _}=_Key|_]
            ) ->
     Acc;
 process_mfa(#usage{data_var_name=DataName
@@ -437,6 +456,19 @@ arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_json'
                                                        )
                                           | T
                                          ]) ->
+    ?DEBUG("  checking set_value for Data: ~p~n", [Args]),
+    case arg_list_has_data_var(DataName, Aliases, Args) of
+        {DataName, _} -> ?DEBUG("  sublist had ~p~n", [DataName]), {DataName, T};
+        'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
+        {Alias, _} -> ?DEBUG("  sublist had alias ~p~n", [Alias]), {Alias, T}
+    end;
+arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_json'
+                                                       ,'set_values'
+                                                       ,Args
+                                                       )
+                                          | T
+                                         ]) ->
+    ?DEBUG("  checking set_values for Data: ~p~n", [Args]),
     case arg_list_has_data_var(DataName, Aliases, Args) of
         {DataName, _} -> ?DEBUG("  sublist had ~p~n", [DataName]), {DataName, T};
         'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
@@ -474,6 +506,9 @@ arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 arg_to_key(?MOD_FUN_ARGS(M, F, As)) ->
     {M, F, length(As)};
+arg_to_key(?FUN_ARGS(_F, _As)) ->
+    ?DEBUG("ignoring arg ~p(~p)~n", [_F, _As]),
+    'undefined';
 arg_to_key(?VAR(_Arg)) -> 'undefined';
 arg_to_key(?INTEGER(I)) -> I;
 arg_to_key(?FLOAT(F)) -> F;
@@ -488,7 +523,6 @@ list_of_keys_to_binary(Arg, ?EMPTY_LIST, Path) ->
     lists:reverse([arg_to_key(Arg) | Path]);
 list_of_keys_to_binary(Arg, ?LIST(Head, Tail), Path) ->
     list_of_keys_to_binary(Head, Tail, [arg_to_key(Arg) | Path]).
-
 
 maybe_add_usage(Usages, {'kz_json',_Function,<<"source">>,_DataVar, _Default}) ->
     Usages;
@@ -674,13 +708,18 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
                   ,?CLAUSE(Args, _Guards, Body)
                   ,DataIndex
                   ) ->
-    ?DEBUG("  processing mfa clause for ~p(~p)~n", [DataName, DataIndex]),
+    ?DEBUG("  processing mfa clause for ~p(~p)~n  ~p~n", [DataName, DataIndex, lists:nth(DataIndex, Args)]),
     case lists:nth(DataIndex, Args) of
         ?VAR('_') -> Acc;
         ?EMPTY_LIST -> Acc;
-        ?VAR(DataName) -> process_clause_body(Acc, Body);
+        ?VAR(DataName) ->
+            ?DEBUG("  processing ~p clause ~p~n", [DataName, Body]),
+            process_clause_body(Acc, Body);
         ?MOD_FUN_ARGS('kz_json', 'set_value', _Args)=_ClauseArgs ->
             ?DEBUG("skipping set_value on ~p(~p)~n", [_Args, element(2, _ClauseArgs)]),
+            process_clause_body(Acc, Body);
+        ?MOD_FUN_ARGS('kz_json', 'set_values', _Args)=_ClauseArgs ->
+            ?DEBUG("skipping set_values on ~p(~p)~n", [_Args, element(2, _ClauseArgs)]),
             process_clause_body(Acc, Body);
         ?VAR(NewName) ->
             ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
@@ -740,6 +779,18 @@ data_index(DataName
         {DataName, _} -> Index;
         'undefined' -> data_index(DataName, As, Index+1)
     end;
+data_index(DataName
+          ,[?MOD_FUN_ARGS('kz_json', 'set_values'
+                         ,Args
+                         )
+            | As
+           ]
+          ,Index
+          ) ->
+    case arg_list_has_data_var(DataName, [], Args) of
+        {DataName, _} -> Index;
+        'undefined' -> data_index(DataName, As, Index+1)
+    end;
 data_index(DataName, [_|As], Index) ->
     data_index(DataName, As, Index+1).
 
@@ -747,4 +798,4 @@ data_index(DataName, [_|As], Index) ->
 is_action_module(Module) ->
     Attributes = Module:module_info('attributes'),
     Behaviours = props:get_value('behaviour', Attributes, []),
-    lists:member('gen_cf_action', Behaviours).
+    lists:member('gen_mf_action', Behaviours).

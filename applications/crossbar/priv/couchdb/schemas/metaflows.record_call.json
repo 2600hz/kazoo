@@ -1,0 +1,73 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.record_call",
+    "description": "Start a call recording",
+    "properties": {
+        "action": {
+            "default": "toggle",
+            "description": "Whether to start/stop the recording",
+            "enum": [
+                "start",
+                "stop",
+                "toggle"
+            ],
+            "type": "string"
+        },
+        "format": {
+            "description": "What format to store the recording",
+            "enum": [
+                "mp3",
+                "wav"
+            ],
+            "type": "string"
+        },
+        "label": {
+            "description": "Add a custom label to the recording",
+            "type": "string"
+        },
+        "media_name": {
+            "description": "Name of the recording file",
+            "type": "string"
+        },
+        "method": {
+            "description": "HTTP method if using an HTTP destination",
+            "enum": [
+                "put",
+                "post"
+            ],
+            "type": "string"
+        },
+        "origin": {
+            "description": "Track how the recording was started",
+            "type": "string"
+        },
+        "record_min_sec": {
+            "description": "Miniumum number of seconds recorded to consider it a valid recording",
+            "type": "integer"
+        },
+        "record_on_answer": {
+            "default": false,
+            "description": "Whether to start recording when the leg is answered",
+            "type": "boolean"
+        },
+        "record_on_bridge": {
+            "default": false,
+            "description": "Whether to start recording when the leg is bridged",
+            "type": "boolean"
+        },
+        "record_sample_rate": {
+            "default": 8000,
+            "description": "Sampling rate for the recording",
+            "type": "integer"
+        },
+        "time_limit": {
+            "description": "How long to allow the recording, in seconds",
+            "type": "integer"
+        },
+        "url": {
+            "description": "HTTP URL to send the finished recording",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

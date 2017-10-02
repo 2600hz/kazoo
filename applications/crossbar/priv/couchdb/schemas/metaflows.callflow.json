@@ -1,0 +1,12 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.callflow",
+    "description": "Run a callflow on an active call",
+    "properties": {
+        "id": {
+            "description": "The callflow ID to run",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

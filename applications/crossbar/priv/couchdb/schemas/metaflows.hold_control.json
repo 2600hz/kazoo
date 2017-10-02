@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.hold_control",
+    "description": "Control the hold on a call",
+    "properties": {
+        "action": {
+            "default": "toggle",
+            "description": "How to manipulate the hold on the call",
+            "enum": [
+                "hold",
+                "unhold",
+                "toggle"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

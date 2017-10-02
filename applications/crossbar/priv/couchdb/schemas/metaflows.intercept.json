@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.intercept",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "auto_answer": {
+            "default": false,
+            "description": "Auto-answer the leg",
+            "type": "boolean"
+        },
+        "can_call_self": {
+            "default": true,
+            "description": "Can intercept devices of the same targeted user",
+            "type": "boolean"
+        },
+        "target_id": {
+            "description": "ID of the target (device or user)",
+            "type": "string"
+        },
+        "target_type": {
+            "description": "Type of entity of the target",
+            "enum": [
+                "device",
+                "user",
+                "number"
+            ],
+            "type": "string"
+        },
+        "unbridged_only": {
+            "default": true,
+            "description": "Only intercept if the a-leg is unbridged",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}
