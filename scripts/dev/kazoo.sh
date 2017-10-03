@@ -3,7 +3,7 @@
 # look for kazoo release root directory
 DEFAULT_ROOT=${KAZOO_ROOT:-_rel/kazoo}
 if [ -d "$DEFAULT_ROOT/_rel/kazoo" ]; then
-    DEFAULT_ROOT="$DEFAULT_ROOT"
+    DEFAULT_ROOT="$DEFAULT_ROOT/_rel/kazoo"
 elif [ -d "$DEFAULT_ROOT/bin" ]; then
     DEFAULT_ROOT="$DEFAULT_ROOT"
 elif [ -d /opt/kazoo/_rel/kazoo ]; then
