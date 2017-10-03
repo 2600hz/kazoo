@@ -137,3 +137,17 @@ to_gregorian_seconds_test_() ->
     [?_assertEqual(63658292400, LASeconds)
     ,?_assertEqual(63658281600, NYSeconds)
     ].
+
+-ifdef(PERF).
+-define(REPEAT, 1000000).
+
+horse_now_s() ->
+    horse:repeat(?REPEAT, erlang:system_time('seconds')).
+
+horse_current_tstamp() ->
+    horse:repeat(?REPEAT, calendar:datetime_to_gregorian_seconds(calendar:universal_time())).
+
+horse_mono_now_s() ->
+    horse:repeat(?REPEAT, erlang:monotonic_time('seconds')).
+
+-endif.
