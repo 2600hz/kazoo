@@ -67,8 +67,25 @@ handle_req(MaintJObj, _Props) ->
     handle_refresh(MaintJObj, kapi_maintenance:req_action(MaintJObj)).
 
 handle_refresh(MaintJObj, <<"refresh_views">>) ->
-    _ = webhooks_maintenance:reset_webhooks_list(),
+    case kapps_util:get_master_account_db() of
+        {'ok', MasterAccountDb} ->
+            Ids = get_webhooks(MasterAccountDb),
+            _ = kz_datamgr:del_docs(MasterAccountDb, Ids),
+            webhooks_init:init_modules();
+        {'error', _} ->
+            lager:warning("no master account id set, unable to reset webhooks list")
+    end,
     send_resp(MaintJObj, 'true').
+
+-spec get_webhooks(ne_binary()) -> ne_binaries().
+get_webhooks(MasterAccountDb) ->
+    case kz_datamgr:get_all_results(MasterAccountDb, ?WEBHOOK_META_LIST) of
+        {'error', _R} ->
+            io:format("failed to load view ~s in ~s", [?WEBHOOK_META_LIST, MasterAccountDb]),
+            [];
+        {'ok', JObjs} ->
+            [kz_json:get_value(<<"id">>, J) || J <- JObjs]
+    end.
 
 -spec send_resp(kapi_mainteannce:req(), 'true') -> 'ok'.
 send_resp(MaintJObj, Results) ->

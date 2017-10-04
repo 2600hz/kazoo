@@ -119,26 +119,7 @@ enable_descendant_hooks(AccountId) ->
 -spec reset_webhooks_list() -> 'ok'.
 reset_webhooks_list() ->
     _ = kapi_maintenance:refresh_database(?KZ_WEBHOOKS_DB),
-    _ = kapi_maintenance:refresh_views(?KZ_WEBHOOKS_DB),
-
-    case kapps_util:get_master_account_db() of
-        {'ok', MasterAccountDb} ->
-            Ids = get_webhooks(MasterAccountDb),
-            _ = kz_datamgr:del_docs(MasterAccountDb, Ids),
-            webhooks_init:init_modules();
-        {'error', _} ->
-            lager:warning("no master account id set, unable to reset webhooks list")
-    end.
-
--spec get_webhooks(ne_binary()) -> ne_binaries().
-get_webhooks(MasterAccountDb) ->
-    case kz_datamgr:get_all_results(MasterAccountDb, ?WEBHOOK_META_LIST) of
-        {'error', _R} ->
-            io:format("failed to load view ~s in ~s", [?WEBHOOK_META_LIST, MasterAccountDb]),
-            [];
-        {'ok', JObjs} ->
-            [kz_json:get_value(<<"id">>, J) || J <- JObjs]
-    end.
+    _ = kapi_maintenance:refresh_views(?KZ_WEBHOOKS_DB).
 
 -spec flush_account_failures(ne_binary()) -> 'ok'.
 flush_account_failures(AccountId) ->
