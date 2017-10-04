@@ -89,7 +89,7 @@ verify_header(#{header := #{<<"alg">> := Alg}}=Token) ->
             Token#{verify_result => 'false', verify_error => 'algorithm_not_supported'}
     end;
 verify_header(#{header := #{<<"typ">> := _Typ}}=Token) ->
-    lager:info("invalid jwt typ header", [_Typ]),
+    lager:info("invalid jwt typ header ~p", [_Typ]),
     Token#{verify_result => 'false', verify_error => 'invalid_jwt'}.
 
 -spec verify_signature(map()) -> map().

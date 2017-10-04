@@ -33,7 +33,7 @@ convert_content(Content, <<"audio/mpeg">>=_ConvertFrom, <<"application/wav">> = 
             'error'
     end;
 convert_content(_, ContentType, ConvertTo) ->
-    lager:info("unsupported conversion from %s to %s", [ContentType, ConvertTo]),
+    lager:info("unsupported conversion from ~s to ~s", [ContentType, ConvertTo]),
     'error'.
 
 -spec default_content_types() -> ne_binaries().
