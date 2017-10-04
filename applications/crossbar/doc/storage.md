@@ -61,7 +61,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `handler` | What AWS service to use | `string('s3')` |   | `true`
 `settings.bucket` | Bucket name to store data to | `string()` |   | `true`
-`settings.bucket_access_method` | how to access the host. | `string('auto' | 'host' | 'path')` |   | `false`
+`settings.bucket_access_method` | how to access the host. | `string('auto' | 'vhost' | 'path')` |   | `false`
 `settings.bucket_after_host` | use bucket after host as part of url | `boolean()` |   | `false`
 `settings.host` | the s3 host | `string()` |   | `false`
 `settings.key` | AWS Key to use | `string()` |   | `true`
