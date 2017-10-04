@@ -39,7 +39,7 @@ current_tstamp() ->
 
 -spec current_unix_tstamp() -> unix_seconds().
 current_unix_tstamp() ->
-    gregorian_seconds_to_unix_seconds(current_tstamp()).
+    gregorian_seconds_to_unix_seconds(now_s()).
 
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
@@ -246,21 +246,21 @@ now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div ?MICROSE
 -spec format_datetime(gregorian_seconds()) -> binary().
 
 format_date() ->
-    format_date(current_tstamp()).
+    format_date(now_s()).
 
 format_date(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([kz_term:to_binary(Y), "-", kz_term:to_binary(M), "-", kz_term:to_binary(D)]).
 
 format_time() ->
-    format_time(current_tstamp()).
+    format_time(now_s()).
 
 format_time(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([kz_term:to_binary(H), ":", kz_term:to_binary(I), ":", kz_term:to_binary(S)]).
 
 format_datetime() ->
-    format_datetime(current_tstamp()).
+    format_datetime(now_s()).
 
 format_datetime(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
