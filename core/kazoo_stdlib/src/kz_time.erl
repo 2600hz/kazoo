@@ -248,19 +248,19 @@ now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div ?MICROSE
 format_date() ->
     format_date(now_s()).
 
-format_date(Timestamp) ->
+format_date(Timestamp) when is_integer(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([kz_term:to_binary(Y), "-", kz_term:to_binary(M), "-", kz_term:to_binary(D)]).
 
 format_time() ->
     format_time(now_s()).
 
-format_time(Timestamp) ->
+format_time(Timestamp) when is_integer(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([kz_term:to_binary(H), ":", kz_term:to_binary(I), ":", kz_term:to_binary(S)]).
 
 format_datetime() ->
     format_datetime(now_s()).
 
-format_datetime(Timestamp) ->
+format_datetime(Timestamp) when is_integer(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
