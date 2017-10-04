@@ -135,7 +135,7 @@ verify_user(#{<<"user_name">> := _UserId}, _AuthUser, _AppUser) ->
 
 -spec parse_value(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> api_ne_binary().
 parse_value(IKey, Key, Value, Prefix) ->
-    MaxExpire = kz_time:now_s(),
+    MaxExpire = kz_time:current_unix_tstamp(),
     case binary:split(Value, ?VAL_PART_SEP, ['global']) of
         ?SIG_PARTS(Prefix, Cookie, Signature) ->
             Maps = #{response_prefix => Prefix
@@ -301,7 +301,7 @@ validate_value(_K, _Identity) ->
 -spec expire(integer()) -> integer().
 -ifdef(TEST).
 expire(?TEST_DUO_SIGN_EXPIRE) -> 1486768575 + ?TEST_DUO_SIGN_EXPIRE;
-expire(Exp)                   -> kz_time:now_s() + Exp.
+expire(Exp)                   -> kz_time:current_unix_tstamp() + Exp.
 -else.
-expire(Exp) -> kz_time:now_s() + Exp.
+expire(Exp) -> kz_time:current_unix_tstamp() + Exp.
 -endif.
