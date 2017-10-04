@@ -105,7 +105,6 @@
                          ,'cb_search'
                          ,'cb_security'
                          ,'cb_service_plans'
-                         ,'cb_service_planner'
                          ,'cb_services'
                          ,'cb_simple_authz'
                          ,'cb_sms'
