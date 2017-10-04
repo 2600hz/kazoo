@@ -150,4 +150,10 @@ horse_current_tstamp() ->
 horse_mono_now_s() ->
     horse:repeat(?REPEAT, erlang:monotonic_time('seconds')).
 
+horse_erlang_timestamp() ->
+    horse:repeat(?REPEAT, erlang:timestamp()).
+
+horse_os_timestamp() ->
+    horse:repeat(?REPEAT, os:timestamp()).
+
 -endif.
