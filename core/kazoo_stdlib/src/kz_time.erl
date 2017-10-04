@@ -34,6 +34,8 @@
 -export([decr_timeout_elapsed/2]).
 -endif.
 
+-compile({'no_auto_import', [now/0]}).
+
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %% returns current seconds
@@ -169,7 +171,7 @@ unitfy_seconds(Seconds) ->
 -spec decr_timeout(kz_timeout(), kz_now(), kz_now()) -> kz_timeout().
 decr_timeout('infinity', _) -> 'infinity';
 decr_timeout(Timeout, {_Mega, _S, _Micro}=Start) when is_integer(Timeout) ->
-    decr_timeout(Timeout, Start, os:timestamp()).
+    decr_timeout(Timeout, Start, now()).
 
 decr_timeout('infinity', _Start, _Future) -> 'infinity';
 decr_timeout(Timeout, Start, {_Mega, _S, _Micro}=Now) ->
@@ -191,13 +193,13 @@ milliseconds_to_seconds(Milliseconds) -> kz_term:to_integer(Milliseconds) div ?M
 -spec elapsed_s(kz_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(kz_now() | pos_integer()) -> pos_integer().
 -spec elapsed_us(kz_now() | pos_integer()) -> pos_integer().
-elapsed_s({_,_,_}=Start) -> elapsed_s(Start, os:timestamp());
+elapsed_s({_,_,_}=Start) -> elapsed_s(Start, now());
 elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, now_s()).
 
-elapsed_ms({_,_,_}=Start) -> elapsed_ms(Start, os:timestamp());
+elapsed_ms({_,_,_}=Start) -> elapsed_ms(Start, now());
 elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, now_ms()).
 
-elapsed_us({_,_,_}=Start) -> elapsed_us(Start, os:timestamp());
+elapsed_us({_,_,_}=Start) -> elapsed_us(Start, now());
 elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, now_us()).
 
 -spec elapsed_s(kz_now() | pos_integer(), kz_now() | pos_integer()) -> pos_integer().
@@ -258,7 +260,7 @@ now_us() -> erlang:system_time('micro_seconds') + (?UNIX_EPOCH_IN_GREGORIAN * ?M
 -spec now_us(kz_now()) -> pos_integer().
 now_us({MegaSecs, Secs, MicroSecs}) ->
     unix_us_to_gregorian_us(
-                      (MegaSecs*?MICROSECONDS_IN_SECOND + Secs)*?MICROSECONDS_IN_SECOND + MicroSecs
+                            (MegaSecs*?MICROSECONDS_IN_SECOND + Secs)*?MICROSECONDS_IN_SECOND + MicroSecs
      ).
 now_ms({_,_,_}=Now) ->
     now_us(Now) div ?MILLISECONDS_IN_SECOND.
