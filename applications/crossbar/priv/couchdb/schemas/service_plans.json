@@ -17,21 +17,24 @@
         },
         "manual_recurring": {
             "description": "Monthly recurring items",
-            "properties": {
-                "name": {
-                    "description": "A friendly name for the item",
-                    "type": "string"
+            "items": {
+                "properties": {
+                    "name": {
+                        "description": "A friendly name for the item",
+                        "type": "string"
+                    },
+                    "quantity": {
+                        "description": "How many of the item are allowed",
+                        "type": "integer"
+                    },
+                    "rates": {
+                        "description": "Item's rate",
+                        "type": "number"
+                    }
                 },
-                "quantity": {
-                    "description": "How many of the item are allowed",
-                    "type": "integer"
-                },
-                "rates": {
-                    "description": "Item's rate",
-                    "type": "number"
-                }
+                "type": "object"
             },
-            "type": "object"
+            "type": "array"
         },
         "name": {
             "description": "A friendly name for the service plan",
