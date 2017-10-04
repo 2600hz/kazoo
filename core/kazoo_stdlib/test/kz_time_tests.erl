@@ -98,6 +98,10 @@ more_elapsed_test_() ->
     StartTimestamp = calendar:datetime_to_gregorian_seconds(StartDateTime),
     NowDateTime = {{2014,6,5},{20,7,9}},
     NowTimestamp = calendar:datetime_to_gregorian_seconds(NowDateTime),
+
+    {Mega, Sec, Micro} = StartTS = os:timestamp(),
+    FutureTS = {Mega, Sec + 10, Micro},
+
     TS = 63652663232,
     [?_assertEqual(2, kz_time:elapsed_s(StartTimestamp, NowTimestamp))
     ,?_assertEqual(2000, kz_time:elapsed_ms(StartTimestamp, NowTimestamp))
@@ -105,13 +109,30 @@ more_elapsed_test_() ->
     ,?_assertEqual(<<"2017-1-26">>, kz_time:format_date(TS))
     ,?_assertEqual(<<"15:20:32">>, kz_time:format_time(TS))
     ,?_assertEqual(<<"2017-1-26 15:20:32">>, kz_time:format_datetime(TS))
+
+    ,?_assertEqual(10, kz_time:elapsed_s(StartTS, FutureTS))
+    ,?_assertEqual(10, kz_time:elapsed_s(kz_time:now_s(StartTS), FutureTS))
+    ,?_assertEqual(10, kz_time:elapsed_s(StartTS, kz_time:now_s(FutureTS)))
+
+    ,?_assertEqual(10 * ?MILLISECONDS_IN_SECOND, kz_time:elapsed_ms(StartTS, FutureTS))
+    ,?_assertEqual(10 * ?MILLISECONDS_IN_SECOND, kz_time:elapsed_ms(kz_time:now_ms(StartTS), FutureTS))
+    ,?_assertEqual(10 * ?MILLISECONDS_IN_SECOND, kz_time:elapsed_ms(StartTS, kz_time:now_ms(FutureTS)))
+
+    ,?_assertEqual(10 * ?MICROSECONDS_IN_SECOND, kz_time:elapsed_us(StartTS, FutureTS))
+    ,?_assertEqual(10 * ?MICROSECONDS_IN_SECOND, kz_time:elapsed_us(kz_time:now_us(StartTS), FutureTS))
+    ,?_assertEqual(10 * ?MICROSECONDS_IN_SECOND, kz_time:elapsed_us(StartTS, kz_time:now_us(FutureTS)))
     ].
 
 unitfy_and_timeout_test_() ->
+    {Mega, Sec, Micro} = Start = os:timestamp(),
+    Future = {Mega, Sec + 10, Micro},
+
     [?_assertEqual("", kz_time:unitfy_seconds(0))
-    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, 0))
-    ,?_assertEqual(0, kz_time:decr_timeout(30, 42))
-    ,?_assertEqual(12, kz_time:decr_timeout(42, 30))
+    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, Start))
+    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, Start, Future))
+    ,?_assertEqual(0, kz_time:decr_timeout(10, Start, Future))
+    ,?_assertEqual(0, kz_time:decr_timeout_elapsed(30, 42))
+    ,?_assertEqual(12, kz_time:decr_timeout_elapsed(42, 30))
     ,?_assertEqual(10, kz_time:milliseconds_to_seconds(10*1000))
     ].
 
