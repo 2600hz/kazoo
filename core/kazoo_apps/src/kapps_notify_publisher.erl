@@ -158,7 +158,7 @@ is_completed([JObj|_]) ->
         <<"failed">> ->
             FailureMsg = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj),
             ShouldIgnore = should_ignore_failure(FailureMsg),
-            lager:debug("teletype failed with reason ~s, ignoring: ", [FailureMsg, ShouldIgnore]),
+            lager:debug("teletype failed with reason ~s, ignoring: ~s", [FailureMsg, ShouldIgnore]),
             ShouldIgnore;
         %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
         %% <<"pending">> -> 'true';

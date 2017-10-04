@@ -13,10 +13,10 @@ Key | Description | Type | Default | Required
 `bookkeepers` |   | `object()` |   | `false`
 `category` | Optional category used for grouping service plans | `string()` |   | `false`
 `description` | Describes the service plan offering | `string()` |   | `false`
-`manual_recurring.name` | A friendly name for the item | `string()` |   | `false`
-`manual_recurring.quantity` | How many of the item are allowed | `integer()` |   | `false`
-`manual_recurring.rates` | Item's rate | `number()` |   | `false`
-`manual_recurring` | Monthly recurring items | `object()` |   | `false`
+`manual_recurring.[].name` | A friendly name for the item | `string()` |   | `false`
+`manual_recurring.[].quantity` | How many of the item are allowed | `integer()` |   | `false`
+`manual_recurring.[].rates` | Item's rate | `number()` |   | `false`
+`manual_recurring` | Monthly recurring items | `array(object())` |   | `false`
 `name` | A friendly name for the service plan | `string(1..128)` |   | `true`
 `plan./.+/` | Category name | `object()` |   | `false`
 `plan` | Outlines the service plan for various services | `object()` |   | `true`
