@@ -31,8 +31,10 @@
         ,sendevent_custom/3
         ]).
 -export([sendmsg/3]).
+-export([cmd/3, cmds/3]).
+-export([cast_cmd/3, cast_cmds/3]).
 
--export([config/1
+-export([config/1, config/2
         ,bgapi4/5
         ]).
 
@@ -328,47 +330,72 @@ sendmsg(Node, UUID, Headers) ->
 config(Node) ->
     gen_server:cast({'mod_kazoo', Node}, {'config', []}).
 
+-spec config(atom(), atom()) -> 'ok'.
+config(Node, Section) ->
+    gen_server:cast({'mod_kazoo', Node}, {'config', [Section]}).
+
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
                     {'ok', binary()} |
                     {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
     Self = self(),
-    _ = kz_util:spawn(
-          fun() ->
-                  try gen_server:call({'mod_kazoo', Node}, {'bgapi4', Cmd, Args}, ?TIMEOUT) of
-                      {'ok', <<"-ERR ", Reason/binary>>} ->
-                          Self ! {'api', internal_fs_error(Reason)};
-                      {'ok', JobId}=JobOk ->
-                          Self ! {'api', JobOk},
-                          receive
-                              {'bgok', JobId, Reply}
-                                when is_function(Fun, 3) -> Fun('ok', Reply, [JobId | CallBackParams]);
-                              {'bgerror', JobId, Reply}
-                                when is_function(Fun, 3) -> Fun('error', Reply, [JobId | CallBackParams]);
-                              {'bgok', JobId, Reply, Data}
-                                when is_function(Fun, 4) -> Fun('ok', Reply, Data, [JobId | CallBackParams]);
-                              {'bgerror', JobId, Reply, Data}
-                                when is_function(Fun, 4) -> Fun('error', Reply, Data, [JobId | CallBackParams]);
-                              _Other -> lager:debug("unexpected message from freeswitch : ~p", [_Other])
-                          end;
-                      {'error', Reason} ->
-                          Self ! {'api', {'error', Reason}};
-                      'timeout' ->
-                          Self ! {'api', {'error', 'timeout'}}
-                  catch
-                      _E:_R ->
-                          lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
-                                    ,[Cmd, Node, _E, _R]),
-                          Self ! {'api', {'error', 'exception'}}
-                  end
-          end),
-    %% get the initial result of the command, NOT the asynchronous response, and
-    %% return it
+    _ = kz_util:spawn(fun bgapi4/6, [Node, Cmd, Args, Fun, CallBackParams, Self]),
     receive
         {'api', Result} -> Result
     end.
 
+bgapi4(Node, Cmd, Args, Fun, CallBackParams, Self) ->
+    try gen_server:call({'mod_kazoo', Node}, {'bgapi4', Cmd, Args}, ?TIMEOUT) of
+        {'ok', <<"-ERR ", Reason/binary>>} ->
+            Self ! {'api', internal_fs_error(Reason)};
+        {'ok', <<"+OK ", JobId/binary>>} ->
+            Self ! {'api', {ok, JobId}},
+            bgapi4_result(JobId, Fun, CallBackParams);
+        {'ok', JobId}=JobOk ->
+            Self ! {'api', JobOk},
+            bgapi4_result(JobId, Fun, CallBackParams);
+        {'error', Reason} ->
+            Self ! {'api', {'error', Reason}};
+        'timeout' ->
+            Self ! {'api', {'error', 'timeout'}}
+    catch
+        _E:_R ->
+            lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
+                       ,[Cmd, Node, _E, _R]),
+            Self ! {'api', {'error', 'exception'}}
+    end.
+
+bgapi4_result(JobId, Fun, CallBackParams) ->
+    receive
+        {'bgok', JobId, Reply}
+          when is_function(Fun, 3) -> Fun('ok', Reply, [JobId | CallBackParams]);
+        {'bgerror', JobId, Reply}
+          when is_function(Fun, 3) -> Fun('error', Reply, [JobId | CallBackParams]);
+        {'bgok', JobId, Reply, Data}
+          when is_function(Fun, 4) -> Fun('ok', Reply, Data, [JobId | CallBackParams]);
+        {'bgerror', JobId, Reply, Data}
+          when is_function(Fun, 4) -> Fun('error', Reply, Data, [JobId | CallBackParams]);
+        _Other -> lager:debug("unexpected message from freeswitch : ~p", [_Other])
+    end.
+
+    
 -spec internal_fs_error(binary()) -> {'error', binary()}.
 internal_fs_error(Reason) ->
     Error = kz_binary:strip(binary:replace(Reason, <<"\n">>, <<>>)),
     {'error', Error}.
+
+-spec cmd(atom(), ne_binary(), list()) -> fs_api_return().
+cmd(Node, UUID, Command) ->
+    gen_server:call({'mod_kazoo', Node}, {'command', UUID, Command}).
+
+-spec cmds(atom(), ne_binary(), list()) -> fs_api_return().
+cmds(Node, UUID, Commands) ->
+    gen_server:call({'mod_kazoo', Node}, {'commands', UUID, Commands}).
+
+-spec cast_cmd(atom(), ne_binary(), list()) -> fs_api_return().
+cast_cmd(Node, UUID, Command) ->
+    gen_server:cast({'mod_kazoo', Node}, {'command', UUID, Command}).
+
+-spec cast_cmds(atom(), ne_binary(), list()) -> fs_api_return().
+cast_cmds(Node, UUID, Commands) ->
+    gen_server:cast({'mod_kazoo', Node}, {'commands', UUID, Commands}).

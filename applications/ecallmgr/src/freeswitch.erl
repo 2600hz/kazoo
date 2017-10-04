@@ -31,14 +31,17 @@
         ,sendevent_custom/3
         ]).
 -export([sendmsg/3]).
+-export([cmd/3, cmds/3]).
+-export([cast_cmd/3, cast_cmds/3]).
 
--export([config/1
+-export([config/1, config/2
         ,bgapi4/5
         ]).
 
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
+
 -define(FS_MODULE, mod_kazoo).
 
 -type fs_api_ok() :: {'ok', binary()}.
@@ -117,8 +120,24 @@ sendevent_custom(Node, SubClassName, Headers) -> ?FS_MODULE:sendevent_custom(Nod
 -spec sendmsg(atom(), ne_binary(), list()) -> fs_api_return().
 sendmsg(Node, UUID, Headers) -> ?FS_MODULE:sendmsg(Node, UUID, Headers).
 
+-spec cmd(atom(), ne_binary(), list()) -> fs_api_return().
+cmd(Node, UUID, Headers) -> ?FS_MODULE:cmd(Node, UUID, Headers).
+
+-spec cmds(atom(), ne_binary(), list()) -> fs_api_return().
+cmds(Node, UUID, Headers) -> ?FS_MODULE:cmds(Node, UUID, Headers).
+
+-spec cast_cmd(atom(), ne_binary(), list()) -> fs_api_return().
+cast_cmd(Node, UUID, Headers) -> ?FS_MODULE:cast_cmd(Node, UUID, Headers).
+
+-spec cast_cmds(atom(), ne_binary(), list()) -> fs_api_return().
+cast_cmds(Node, UUID, Headers) -> ?FS_MODULE:cast_cmds(Node, UUID, Headers).
+
 -spec config(atom()) -> 'ok'.
 config(Node) -> ?FS_MODULE:config(Node).
+
+-spec config(atom(), atom()) -> 'ok'.
+config(Node, Section) ->
+    ?FS_MODULE:config(Node, Section).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
                     {'ok', binary()} |
