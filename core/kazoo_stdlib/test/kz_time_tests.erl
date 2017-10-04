@@ -138,6 +138,11 @@ to_gregorian_seconds_test_() ->
     ,?_assertEqual(63658281600, NYSeconds)
     ].
 
+tstamps_test_() ->
+    Current = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
+    [?_assert(1 >= abs(Now-Current))].
+
 -ifdef(PERF).
 -define(REPEAT, 1000000).
 
