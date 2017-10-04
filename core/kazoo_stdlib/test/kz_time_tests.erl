@@ -21,8 +21,7 @@ prop_pretty_print_elapsed_s() ->
            ,{non_neg_integer(), range(0,23), range(0, 59), range(0,59)}
            ,begin
                 Seconds = (D * ?SECONDS_IN_DAY) + (H * ?SECONDS_IN_HOUR) + (M * ?SECONDS_IN_MINUTE) + S,
-                Expected = lists:foldl(fun({0, "s"}, "") ->
-                                               ["s", <<"0">>];
+                Expected = lists:foldl(fun({0, "s"}, "") -> ["s", <<"0">>];
                                           ({0, _}, Acc) -> Acc;
                                           ({N, Unit}, Acc) -> [Unit, kz_term:to_binary(N) | Acc]
                                        end
@@ -45,7 +44,13 @@ proper_test_() ->
 -endif.
 
 to_x_test_() ->
-    [?_assertEqual(true, kz_time:current_unix_tstamp() < kz_time:now_s())
+    Unix = kz_time:current_unix_tstamp(),
+    UnixMs = Unix * 1000,
+    Greg = kz_time:now_s(),
+
+    [?_assert(Unix < Greg)
+    ,?_assert(1 >= abs(Greg - kz_time:unix_seconds_to_gregorian_seconds(Unix)))
+    ,?_assert(1 >= abs(Greg - kz_time:unix_timestamp_to_gregorian_seconds(UnixMs)))
     ].
 
 pretty_print_datetime_test_() ->
@@ -127,6 +132,16 @@ iso8601_test_() ->
             ,{63595733389, <<"2015-04-08T17:29:49">>}
             ],
     [?_assertEqual(Expected, kz_time:iso8601(Date))
+     || {Date, Expected} <- Tests
+    ].
+
+iso8601_time_test_() ->
+    Tests = [{{{2015,4,7},{0,0,0}}, <<"00:00:00">>}
+            ,{{{2015,4,7},{1,3,2}}, <<"01:03:02">>}
+            ,{{{2015,12,12},{12,13,12}}, <<"12:13:12">>}
+            ,{63595733389, <<"17:29:49">>}
+            ],
+    [?_assertEqual(Expected, kz_time:iso8601_time(Date))
      || {Date, Expected} <- Tests
     ].
 
