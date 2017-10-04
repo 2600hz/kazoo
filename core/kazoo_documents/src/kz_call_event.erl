@@ -11,6 +11,7 @@
         ,application_event/1
         ,application_name/1
         ,application_response/1
+        ,application_uuid/1
         ,authorizing_id/1
         ,authorizing_type/1
         ,billing_seconds/1
@@ -177,6 +178,10 @@ application_event(JObj) ->
 -spec application_data(doc()) -> kz_json:object().
 application_data(JObj) ->
     kz_json:get_json_value(<<"Application-Data">>, JObj, kz_json:new()).
+
+-spec application_uuid(doc()) -> kz_term:api_binary().
+application_uuid(JObj) ->
+    kz_json:get_ne_binary_value(<<"Application-UUID">>, JObj).
 
 -spec application_response(doc()) -> kz_term:api_ne_binary().
 application_response(JObj) ->
