@@ -184,7 +184,7 @@ tstamps_test_() ->
 
 %% Most recent run on my box:
 %% kz_time_tests:now_s in 0.117557s
-%% kz_time_tests:now_s in 0.565916s
+%% kz_time_tests:current_tstamp_s in 0.565916s
 %% kz_time_tests:mono_now_s in 0.107770s
 %% kz_time_tests:erlang_timestamp in 0.104192s
 %% kz_time_tests:os_timestamp in 0.054200s
@@ -192,8 +192,8 @@ tstamps_test_() ->
 horse_now_s() ->
     horse:repeat(?REPEAT, kz_time:now_s()).
 
-horse_now_s() ->
-    horse:repeat(?REPEAT, kz_time:now_s()).
+horse_current_tstamp_s() ->
+    horse:repeat(?REPEAT, kz_time:current_tstamp()).
 
 horse_mono_now_s() ->
     horse:repeat(?REPEAT, mono_now_s()).
