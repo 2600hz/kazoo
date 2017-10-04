@@ -863,11 +863,11 @@ callback_handle_event(JObj, BasicDeliver, Module, ModuleState) ->
     case erlang:function_exported(Module, 'handle_event', 3) of
         'true' ->
             try Module:handle_event(JObj, BasicDeliver, ModuleState)
-            catch E:O -> lager:error("CRASH in handle_event ~p:~p", [E, O])
+            catch E:O -> lager:error("CRASH in handle_event ~p:~p", [E, O]), 'ignore'
             end;
         'false' ->
             try Module:handle_event(JObj, ModuleState)
-            catch E:O -> lager:error("CRASH in handle_event ~p:~p", [E, O])
+            catch E:O -> lager:error("CRASH in handle_event ~p:~p", [E, O]), 'ignore'
             end
     end.
 
