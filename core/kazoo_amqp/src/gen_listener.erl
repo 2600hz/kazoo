@@ -915,7 +915,6 @@ callback_handle_event(JObj
 -spec callback_handle_event(kz_json:object(), deliver(), mfa(), module_state()) ->
                                    handle_event_return() |
                                    {'EXIT', any()}.
-<<<<<<< HEAD
 callback_handle_event(JObj, _, {Module, Fun, 2}, ModuleState) ->
     catch Module:Fun(JObj, ModuleState);
 callback_handle_event(JObj, {BasicDeliver, _}, {Module, Fun, 3}, ModuleState) ->
