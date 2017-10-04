@@ -455,7 +455,7 @@ resources_to_endpoints(Resources, Number, OffnetJObj) ->
             %% No endpoints found based on resources with classifiers, look up by
             %% resources that doesn't have classifier
             lager:debug("no resources satisfy classifier look up, matching against resource rules..."),
-            RuleResources = maps:get('no_classification', ResourceMap),
+            RuleResources = maps:get('no_classification', ResourceMap, []),
             build_endpoints_from_resources(RuleResources, Number, OffnetJObj);
         ClassifiedResources ->
             lager:debug("found resources to satisy classifier ~s (number ~s), building against classification rules..."
