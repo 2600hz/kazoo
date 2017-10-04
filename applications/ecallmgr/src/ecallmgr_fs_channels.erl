@@ -803,7 +803,7 @@ publish_channel_connection_event(#channel{uuid=UUID
                                          ,answered=IsAnswered
                                          }=Channel
                                 ,ChannelSpecific) ->
-    Event = [{<<"Timestamp">>, kz_time:current_tstamp()}
+    Event = [{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Call-Direction">>, Direction}
             ,{<<"Media-Server">>, Node}
@@ -872,7 +872,7 @@ maybe_cleanup_old_channels() ->
 cleanup_old_channels() ->
     cleanup_old_channels(max_channel_uptime()).
 cleanup_old_channels(MaxAge) ->
-    NoOlderThan = kz_time:current_tstamp() - MaxAge,
+    NoOlderThan = kz_time:now_s() - MaxAge,
 
     MatchSpec = [{#channel{uuid='$1'
                           ,node='$2'

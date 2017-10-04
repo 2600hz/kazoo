@@ -68,7 +68,7 @@
 -record(node, {node :: atom()
               ,cookie :: atom()
               ,connected = 'false' :: boolean()
-              ,started = kz_time:current_tstamp() :: gregorian_seconds()
+              ,started = kz_time:now_s() :: gregorian_seconds()
               ,client_version :: api_binary()
               ,options = [] :: kz_proplist()
               }).
@@ -480,7 +480,7 @@ handle_cast(_Cast, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('expire_sip_subscriptions', Cache) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     DeleteSpec = [{#sip_subscription{expires = '$1', timestamp = '$2', _ = '_'},
                    [{'>', {'const', Now}, {'+', '$2', '$1'}}],
                    ['true']}
@@ -593,7 +593,7 @@ maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
                     _ = maybe_start_node_pinger(Node),
                     E;
                 'ok' ->
-                    gen_server:cast(Srv, {'update_node', Node#node{started=kz_time:current_tstamp()
+                    gen_server:cast(Srv, {'update_node', Node#node{started=kz_time:now_s()
                                                                   ,connected='true'
                                                                   }})
             end
@@ -622,7 +622,7 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
-            gen_server:cast(Srv, {'update_node', NewNode#node{started=kz_time:current_tstamp()
+            gen_server:cast(Srv, {'update_node', NewNode#node{started=kz_time:now_s()
                                                              ,connected='true'
                                                              }})
     end.
@@ -638,7 +638,7 @@ handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
-            gen_server:cast(Srv, {'update_node', Node#node{started=kz_time:current_tstamp()
+            gen_server:cast(Srv, {'update_node', Node#node{started=kz_time:now_s()
                                                           ,connected='true'
                                                           }})
     end.

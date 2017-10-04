@@ -187,7 +187,7 @@ send_topup_notification(BillingId, Transaction) ->
             ,{<<"Response">>, <<"Authorized">>}
             ,{<<"Success">>, <<"true">>}
             ,{<<"ID">>, kz_transaction:id(Transaction)}
-            ,{<<"Timestamp">>, kz_time:current_tstamp()}
+            ,{<<"Timestamp">>, kz_time:now_s()}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_topup/1).

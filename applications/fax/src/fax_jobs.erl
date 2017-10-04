@@ -374,7 +374,7 @@ check_running(JobId, #{number := ToNumber, start := Start}, #{running := Running
 
 -spec get_account_jobs(ne_binary()) -> kz_json:objects().
 get_account_jobs(AccountId) ->
-    Upto = kz_time:current_tstamp(),
+    Upto = kz_time:now_s(),
     ViewOptions = [{'limit', 100}
                   ,{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, Upto]}

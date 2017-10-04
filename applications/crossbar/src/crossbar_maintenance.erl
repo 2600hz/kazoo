@@ -703,8 +703,8 @@ base_group_ring_group(JObj) ->
     BaseGroup = kz_json:from_list(
                   [{<<"pvt_vsn">>, <<"1">>}
                   ,{<<"pvt_type">>, <<"callflow">>}
-                  ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                  ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                  ,{<<"pvt_modified">>, kz_time:now_s()}
+                  ,{<<"pvt_created">>, kz_time:now_s()}
                   ,{<<"pvt_account_db">>, kz_doc:account_db(JObj)}
                   ,{<<"pvt_account_id">>, kz_doc:account_id(JObj)}
                   ,{<<"flow">>, kz_json:from_list([{<<"children">>, kz_json:new()}

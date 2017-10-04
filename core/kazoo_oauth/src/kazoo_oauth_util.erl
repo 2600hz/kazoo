@@ -192,7 +192,7 @@ token(#oauth_app{name=AppId
             {'ok', #oauth_token{token=Token
                                ,type=Type
                                ,expires=Expires
-                               ,issued=kz_time:current_tstamp()
+                               ,issued=kz_time:now_s()
                                }
             };
         Else ->

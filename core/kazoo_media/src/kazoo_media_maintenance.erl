@@ -145,7 +145,7 @@ media_meta_doc(Path, Lang, ContentLength) ->
     kz_doc:update_pvt_parameters(MediaDoc
                                 ,?KZ_MEDIA_DB
                                 ,[{'type', kzd_media:type()}
-                                 ,{'now', kz_time:current_tstamp()}
+                                 ,{'now', kz_time:now_s()}
                                  ]
                                 ).
 
@@ -378,7 +378,7 @@ remove_empty_media_docs(AccountId, AccountDb) ->
             io:format("no media docs in account ~s~n", [AccountId]);
         {'ok', MediaDocs} ->
             io:format("found ~b media docs in account ~s~n", [length(MediaDocs), AccountId]),
-            Filename = media_doc_filename(AccountId, kz_time:current_tstamp()),
+            Filename = media_doc_filename(AccountId, kz_time:now_s()),
             io:format("archiving removed media docs to ~s~n", [Filename]),
             {'ok', File} = file:open(Filename, ['write', 'binary', 'append']),
             catch remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs),

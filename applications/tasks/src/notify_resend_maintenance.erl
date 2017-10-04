@@ -107,12 +107,12 @@ pending(ShowCount, _Details) ->
 -spec pending_by_type(ne_binary()) -> 'no_return'.
 pending_by_type(Type) ->
     Total = get_total([{startkey, [Type, 0]}
-                      ,{endkey, [Type, kz_time:current_tstamp()]}
+                      ,{endkey, [Type, kz_time:now_s()]}
                       ,{'group_level', 1}
                       ,'reduce'
                       ]),
     ViewOptions = [{startkey, [Type, 0]}
-                  ,{endkey, [Type, kz_time:current_tstamp()]}
+                  ,{endkey, [Type, kz_time:now_s()]}
                   ,{reduce, false}
                   ,{limit, 100}
                   ],
@@ -179,12 +179,12 @@ failed(ShowCount, _Details) ->
 -spec failed_by_type(ne_binary()) -> 'no_return'.
 failed_by_type(Type) ->
     Total = get_total([{startkey, [Type, 0]}
-                      ,{endkey, [Type, kz_time:current_tstamp()]}
+                      ,{endkey, [Type, kz_time:now_s()]}
                       ,{'group_level', 1}
                       ,'reduce'
                       ], ?FAILED_TYPE_VIEW),
     ViewOptions = [{startkey, [Type, 0]}
-                  ,{endkey, [Type, kz_time:current_tstamp()]}
+                  ,{endkey, [Type, kz_time:now_s()]}
                   ,{reduce, false}
                   ,{limit, 100}
                   ],

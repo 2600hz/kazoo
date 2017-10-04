@@ -36,7 +36,7 @@ crash() ->
 
 -spec debug_dump() -> 'ok'.
 debug_dump() ->
-    FolderName = "/tmp/" ++ kz_term:to_list(node()) ++ "_" ++ kz_term:to_list(kz_time:current_tstamp()),
+    FolderName = "/tmp/" ++ kz_term:to_list(node()) ++ "_" ++ kz_term:to_list(kz_time:now_s()),
     'ok' = file:make_dir(FolderName),
     _ = debug_dump_process_info(FolderName),
     _ = debug_dump_memory(FolderName),

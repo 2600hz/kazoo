@@ -34,7 +34,7 @@ init() ->
 
 -spec clean_expired() -> 'ok'.
 clean_expired() ->
-    clean_expired(kz_time:current_tstamp() - ?LOOP_TIMEOUT).
+    clean_expired(kz_time:now_s() - ?LOOP_TIMEOUT).
 
 -spec clean_expired(gregorian_seconds()) -> 'ok'.
 clean_expired(CreatedBefore) ->

@@ -45,7 +45,7 @@ proper_test_() ->
 -endif.
 
 to_x_test_() ->
-    [?_assertEqual(true, kz_time:current_unix_tstamp() < kz_time:current_tstamp())
+    [?_assertEqual(true, kz_time:current_unix_tstamp() < kz_time:now_s())
     ].
 
 pretty_print_datetime_test_() ->
@@ -67,7 +67,7 @@ month_test_() ->
     ].
 
 greg_secs_to_unix_secs_test() ->
-    GregSecs = kz_time:current_tstamp(),
+    GregSecs = kz_time:now_s(),
     ?assertEqual(GregSecs - ?UNIX_EPOCH_IN_GREGORIAN, kz_time:gregorian_seconds_to_unix_seconds(GregSecs)).
 
 unix_secs_to_greg_secs_test() ->
@@ -143,7 +143,7 @@ to_gregorian_seconds_test_() ->
 
 %% Most recent run on my box:
 %% kz_time_tests:now_s in 0.117557s
-%% kz_time_tests:current_tstamp in 0.565916s
+%% kz_time_tests:now_s in 0.565916s
 %% kz_time_tests:mono_now_s in 0.107770s
 %% kz_time_tests:erlang_timestamp in 0.104192s
 %% kz_time_tests:os_timestamp in 0.054200s
@@ -151,8 +151,8 @@ to_gregorian_seconds_test_() ->
 horse_now_s() ->
     horse:repeat(?REPEAT, kz_time:now_s()).
 
-horse_current_tstamp() ->
-    horse:repeat(?REPEAT, kz_time:current_tstamp()).
+horse_now_s() ->
+    horse:repeat(?REPEAT, kz_time:now_s()).
 
 horse_mono_now_s() ->
     horse:repeat(?REPEAT, mono_now_s()).

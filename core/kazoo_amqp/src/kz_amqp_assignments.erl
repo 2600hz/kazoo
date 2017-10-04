@@ -434,7 +434,7 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
         ConsumerAssignment#kz_amqp_assignment{channel=Channel
                                              ,channel_ref=ChannelRef
                                              ,connection=Connection
-                                             ,assigned=kz_time:current_tstamp()
+                                             ,assigned=kz_time:now_s()
                                              },
     %% Update the consumer assignment with all the channel information
     ets:insert(?TAB, Assignment#kz_amqp_assignment{reconnect='false'
@@ -465,7 +465,7 @@ add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
     Assignment =
         ChannelAssignment#kz_amqp_assignment{consumer=Consumer
                                             ,consumer_ref=Ref
-                                            ,assigned=kz_time:current_tstamp()
+                                            ,assigned=kz_time:now_s()
                                             ,type=Type
                                             },
     %% Add the consumer to the channel assignment
@@ -581,7 +581,7 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
                                                ,channel_ref=Ref
                                                ,broker=Broker
                                                ,connection=Connection
-                                               ,assigned=kz_time:current_tstamp()
+                                               ,assigned=kz_time:now_s()
                                                },
     %% Add the new channel to the consumer assignment (reservation/wrong broker)
     ets:insert(?TAB, Assigment#kz_amqp_assignment{reconnect='false'

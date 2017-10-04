@@ -202,7 +202,7 @@ download_file(URL, Authorization) ->
             CT = kz_term:to_binary(props:get_value("content-type", RespHeaders)),
             Ext = kz_mime:to_extension(CT),
             FileName = <<"/tmp/fax_printer_"
-                         ,(kz_term:to_binary(kz_time:current_tstamp()))/binary
+                         ,(kz_term:to_binary(kz_time:now_s()))/binary
                          ,"."
                          ,Ext/binary
                        >>,
@@ -299,7 +299,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
               ]),
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                              ,{<<"pvt_job_status">>, <<"queued">>}
-                             ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                             ,{<<"pvt_created">>, kz_time:now_s()}
                              ,{<<"attempts">>, 0}
                              ,{<<"pvt_account_id">>, AccountId}
                              ,{<<"pvt_account_db">>, AccountDb}

@@ -70,7 +70,7 @@
 -define(REG_CONSUME_OPTIONS, []).
 -define(EXPIRES_MISSING_VALUE, 0).
 
--record(state, {started = kz_time:current_tstamp()
+-record(state, {started = kz_time:now_s()
                ,queue :: api_binary()
                }).
 -type state() :: #state{}.
@@ -90,8 +90,8 @@
                       ,contact :: api_ne_binary() | '_'
                       ,previous_contact :: api_binary() | '_'
                       ,original_contact :: api_ne_binary() | '_'
-                      ,last_registration = kz_time:current_tstamp() :: gregorian_seconds() | '_' | '$2'
-                      ,initial_registration = kz_time:current_tstamp() :: gregorian_seconds() | '_'
+                      ,last_registration = kz_time:now_s() :: gregorian_seconds() | '_' | '$2'
+                      ,initial_registration = kz_time:now_s() :: gregorian_seconds() | '_'
                       ,registrar_node :: api_ne_binary() | '_'
                       ,registrar_hostname :: api_ne_binary() | '_'
                       ,suppress_unregister = 'true' :: boolean() | '_'
@@ -171,7 +171,7 @@ handle_fs_reg(Node, Props) ->
                                   V -> [{K, V} | Acc]
                               end
                       end
-                     ,[{<<"Event-Timestamp">>, round(kz_time:current_tstamp())}
+                     ,[{<<"Event-Timestamp">>, round(kz_time:now_s())}
                       ,{<<"FreeSWITCH-Nodename">>, kz_term:to_binary(Node)}
                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]
@@ -489,7 +489,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{started=Started}) ->
-    {'reply', [{'registrar_age', kz_time:current_tstamp() - Started}]}.
+    {'reply', [{'registrar_age', kz_time:now_s() - Started}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -659,7 +659,7 @@ fetch_original_contact(Username, Realm) ->
 
 -spec expire_objects() -> 'ok'.
 expire_objects() ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     MatchSpec = [{#registration{expires = '$1'
                                ,last_registration = '$2'
                                , _ = '_'
@@ -957,7 +957,7 @@ bridge_uri_path(#{uri_proxy := UriProxy}, Acc) ->
 existing_or_new_registration(Username, Realm) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
         [#registration{contact=Contact}=Reg] ->
-            Reg#registration{last_registration=kz_time:current_tstamp()
+            Reg#registration{last_registration=kz_time:now_s()
                             ,previous_contact=Contact
                             };
         _Else ->
@@ -1246,7 +1246,7 @@ print_summary({[#registration{username=Username
               }
              ,Count) ->
     User = <<Username/binary, "@", Realm/binary>>,
-    Remaining = (LastRegistration + Expires) - kz_time:current_tstamp(),
+    Remaining = (LastRegistration + Expires) - kz_time:now_s(),
     Props = breakup_contact(Contact),
     Hostport = props:get_first_defined(['received', 'hostport'], Props),
     Path = proxy_path(Proxy, ProxyIP, ProxyPort),
@@ -1274,7 +1274,7 @@ print_details({[#registration{}=Reg], Continuation}, Count) ->
 print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
                                                        ,last_registration=LastRegistration
                                                        }) ->
-    Remaining = (LastRegistration + Expires) - kz_time:current_tstamp(),
+    Remaining = (LastRegistration + Expires) - kz_time:now_s(),
     io:format("~-19s: ~b/~s~n", [Key, Remaining, kz_term:to_binary(Value)]);
 print_property(Key, Value, _) ->
     io:format("~-19s: ~s~n", [Key, kz_term:to_binary(Value)]).

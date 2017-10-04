@@ -337,7 +337,7 @@ save_as_dirty(#kz_services{jobj = JObj
              ) ->
     Updates = [{fun kz_doc:set_id/2, AccountId}
               ,{fun kzd_services:set_is_dirty/2, 'true'}
-              ,{fun kz_doc:set_modified/2, kz_time:current_tstamp()}
+              ,{fun kz_doc:set_modified/2, kz_time:now_s()}
               ],
     UpdatedJObj = lists:foldl(fun({F, V}, J) -> F(J, V) end, JObj, Updates),
     case save_doc(UpdatedJObj) of
@@ -385,7 +385,7 @@ save(#kz_services{jobj = JObj
 
     Props = [{fun kz_doc:set_id/2, AccountId}
             ,{fun kzd_services:set_is_dirty/2, Dirty}
-            ,{fun kz_doc:set_modified/2, kz_time:current_tstamp()}
+            ,{fun kz_doc:set_modified/2, kz_time:now_s()}
             ,{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],
 

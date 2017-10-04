@@ -58,7 +58,7 @@
                           ,from :: api_binary() | '$2' | '_'
                           ,node :: atom() | '$1' | '_'
                           ,expires = 300 :: pos_integer() | '$1' | '_'
-                          ,timestamp = kz_time:current_tstamp() :: pos_integer() | '$2' | '_'
+                          ,timestamp = kz_time:now_s() :: pos_integer() | '$2' | '_'
                           }).
 
 -record(channel, {uuid :: api_binary() | '$1' | '$2' | '_'
@@ -119,7 +119,7 @@
                     ,dynamic = 'true' :: boolean() | '_'
                     ,exit_sound = 'true' :: boolean() | '_'
                     ,enter_sound = 'true' :: boolean() | '_'
-                    ,start_time = kz_time:current_tstamp() :: non_neg_integer() | '_'
+                    ,start_time = kz_time:now_s() :: non_neg_integer() | '_'
                     ,switch_hostname :: api_binary() | '_'
                     ,switch_url :: api_binary() | '_'
                     ,switch_external_ip :: api_binary() | '_'
@@ -136,7 +136,7 @@
                      ,node :: atom() | '$2' | '_'
                      ,conference_uuid :: api_ne_binary() | '$1'| '_'
                      ,conference_name :: api_ne_binary() | '$1'| '_'
-                     ,join_time = kz_time:current_tstamp() :: gregorian_seconds() | '_'
+                     ,join_time = kz_time:now_s() :: gregorian_seconds() | '_'
                      ,caller_id_name :: api_ne_binary() | '_'
                      ,caller_id_number :: api_ne_binary() | '_'
                      ,conference_channel_vars = [] :: kz_proplist() | '_'

@@ -438,9 +438,9 @@ create_message(AccountId, FakeBoxJObj, DefaultExt) ->
                %%   that would be great for bulk create of modb docs
                %%   since they would all go into same db
                %%   if that is the option, then change Timestamp below
-               %%   with kz_time:current_tstamp()
+               %%   with kz_time:now_s()
                %%
-               %% CAUTION: setting this to current_tstamp breaks crossbar qs_filter (created_from, created_to)
+               %% CAUTION: setting this to now_s breaks crossbar qs_filter (created_from, created_to)
               ,{<<"Document-Timestamp">>, Timestamp}
               ,{<<"Attachment-Name">>, AttName}
               ]),

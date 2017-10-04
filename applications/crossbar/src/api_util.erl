@@ -435,7 +435,7 @@ uploaded_filename(Context) ->
 
 -spec default_filename() -> ne_binary().
 default_filename() ->
-    <<"uploaded_file_", (kz_term:to_binary(kz_time:current_tstamp()))/binary>>.
+    <<"uploaded_file_", (kz_term:to_binary(kz_time:now_s()))/binary>>.
 
 -spec decode_base64(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                            {cb_context:context(), cowboy_req:req()} |
@@ -1333,7 +1333,7 @@ do_create_resp_envelope(Context) ->
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}
-                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:current_tstamp())}
+                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
                    ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
                    ,{<<"data">>, RespData}
                    ];
@@ -1343,7 +1343,7 @@ do_create_resp_envelope(Context) ->
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}
-                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:current_tstamp())}
+                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
                    ,{<<"status">>, <<"error">>}
                    ,{<<"message">>, ErrorMsg}
                    ,{<<"error">>, kz_term:to_binary(ErrorCode)}

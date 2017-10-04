@@ -334,7 +334,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
               [{<<"pvt_account_id">>, AccountId}
               ,{<<"pvt_account_db">>, AccountDb}
               ,{<<"pvt_type">>, <<"fax_smtp_log">>}
-              ,{<<"pvt_created">>, kz_time:current_tstamp()}
+              ,{<<"pvt_created">>, kz_time:now_s()}
               ,{<<"_id">>, error_doc()}
                | to_proplist(State)
               ]
@@ -690,8 +690,8 @@ add_fax_document(#state{from=From
 
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                              ,{<<"pvt_job_status">>, <<"attaching files">>}
-                             ,{<<"pvt_created">>, kz_time:current_tstamp()}
-                             ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+                             ,{<<"pvt_created">>, kz_time:now_s()}
+                             ,{<<"pvt_modified">>, kz_time:now_s()}
                              ,{<<"attempts">>, 0}
                              ,{<<"pvt_account_id">>, AccountId}
                              ,{<<"pvt_account_db">>, AccountDb}
@@ -908,7 +908,7 @@ write_tmp_file('undefined', Extension, ?NE_BINARY = Body) ->
     Filename = <<"/tmp/email_attachment_", Basename/binary>>,
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file('undefined', Extension, Body) ->
-    Basename = kz_term:to_binary(kz_time:current_tstamp()),
+    Basename = kz_term:to_binary(kz_time:now_s()),
     Filename = <<"/tmp/email_attachment_", Basename/binary>>,
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file(Filename, Extension, Body) ->

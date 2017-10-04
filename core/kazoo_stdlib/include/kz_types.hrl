@@ -249,7 +249,7 @@
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 -define(CALL_INTERACTION_DEFAULT
-       ,<<(kz_term:to_binary(kz_time:current_tstamp()))/binary
+       ,<<(kz_term:to_binary(kz_time:now_s()))/binary
           ,"-", (kz_binary:rand_hex(4))/binary
         >>).
 

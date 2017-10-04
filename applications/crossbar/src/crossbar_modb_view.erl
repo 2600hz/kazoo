@@ -70,7 +70,7 @@ one_of(Context, [Value|Values], Default) ->
 
 -spec start_key(cb_context:context()) -> integer().
 start_key(Context) ->
-    Default = kz_time:current_tstamp(),
+    Default = kz_time:now_s(),
     one_of(Context, [<<"start_key">>, <<"created_to">>], Default).
 
 -spec end_key(cb_context:context(), integer()) -> integer().
@@ -80,7 +80,7 @@ end_key(Context, StartKey) ->
 
 -spec ascending_start_key(cb_context:context()) -> integer().
 ascending_start_key(Context) ->
-    Default = kz_time:current_tstamp(),
+    Default = kz_time:now_s(),
     one_of(Context, [<<"start_key">>, <<"created_from">>], Default).
 
 -spec ascending_end_key(cb_context:context(), integer()) -> integer().
