@@ -21,7 +21,7 @@
                     "description": "how to access the host.",
                     "enum": [
                         "auto",
-                        "host",
+                        "vhost",
                         "path"
                     ],
                     "type": "string"
