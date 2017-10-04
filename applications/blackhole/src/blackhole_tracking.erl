@@ -288,7 +288,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec handle_get_req_data(api_binary(), api_binary(), api_binary()) -> any().
 handle_get_req_data('undefined', 'undefined', Node) ->
-    lager:warning("received undefined blackhole get req", [Node]);
+    lager:warning("received undefined blackhole get req ~s", [Node]);
 handle_get_req_data(AccountId, 'undefined', Node) ->
     lager:debug("received blackhole get for account:~s from ~s", [AccountId, Node]),
     case get_sockets(AccountId) of
