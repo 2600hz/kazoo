@@ -201,7 +201,8 @@ elapsed_s(Start, Now)
        is_integer(Now) ->
     Now - Start.
 
-elapsed_ms({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
+elapsed_ms({_,_,_}=Start, {_,_,_}=Now) ->
+    timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
 elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_s(Start), Now);
 elapsed_ms(Start, {_,_,_}=Now) -> elapsed_ms(Start, now_s(Now));
 elapsed_ms(Start, Now)
@@ -209,7 +210,8 @@ elapsed_ms(Start, Now)
        is_integer(Now) ->
     (Now - Start) * ?MILLISECONDS_IN_SECOND.
 
-elapsed_us({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start);
+elapsed_us({_,_,_}=Start, {_,_,_}=Now) ->
+    timer:now_diff(Now, Start);
 elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);
 elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
 elapsed_us(Start, Now)
@@ -218,7 +220,7 @@ elapsed_us(Start, Now)
     (Now - Start) * ?MICROSECONDS_IN_SECOND.
 
 -spec now() -> kz_now().
-now() -> erlang:timestamp().
+now() -> os:timestamp().
 
 -spec now_s() -> gregorian_seconds().
 -spec now_ms() -> pos_integer().
