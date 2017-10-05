@@ -382,7 +382,17 @@ pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
 pagination_page_size(Context, _Version) ->
     case req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
-        V -> try kz_term:to_integer(V) catch _:_ -> pagination_page_size() end
+        V ->
+            try kz_term:to_integer(V) of
+                PageSize when PageSize > 0 -> PageSize;
+                _ ->
+                    lager:debug("~p is not bigger than zero, using default page size", [V]),
+                    pagination_page_size()
+            catch
+                _:_ ->
+                    lager:debug("can not convert ~p to integer, using default page size", [V]),
+                    pagination_page_size()
+            end
     end.
 
 -spec should_soft_delete(context()) -> boolean().
