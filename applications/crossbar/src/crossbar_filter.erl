@@ -1,41 +1,106 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   Roman Galeev
 %%%-------------------------------------------------------------------
-
 -module(crossbar_filter).
+
 -include("crossbar.hrl").
--export([build/1, is_defined/1]).
+
+-export([build/1
+        ,build_with_mapper/2, build_with_mapper/3
+        ,is_defined/1
+        ]).
+
+-type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
 -spec true(any()) -> 'true'.
 true(_) -> 'true'.
 
--spec build(cb_context:context()) -> fun().
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Equivalent of build/2, will call is_defined/1 on Context.
+%% @end
+%%--------------------------------------------------------------------
+-spec build(cb_context:context()) -> function().
 build(Context) ->
-    QS = cb_context:query_string(Context),
-    build(QS, is_defined_in(QS)).
+    build(Context, is_defined(Context)).
 
--spec build(kz_json:object(), boolean()) -> fun().
-build(_QS, 'false') -> fun true/1;
-build(QS, 'true') -> build_with(QS).
-
--spec build_with(kz_json:object()) -> fun().
-build_with(QueryString) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Build filter function with arity 1 if filter is requested by the
+%% client.
+%% @end
+%%--------------------------------------------------------------------
+-spec build(cb_context:context(), boolean()) -> function().
+build(_, 'false') -> fun true/1;
+build(Context, 'true') ->
     fun(Doc) ->
-            filter_doc_by_querystring(Doc, QueryString)
+            filter_doc_by_querystring(Doc, cb_context:query_string(Context))
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Equivalent of build_with_mapper/3, will call is_defined/1 on Context.
+%% @end
+%%--------------------------------------------------------------------
+-spec build_with_mapper(cb_context:context(), function()) -> filter_fun().
+build_with_mapper(Context, UserMapper) ->
+    build_with_mapper(Context, UserMapper, is_defined(Context)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Build a function with arity 2 if filter is requested by the client.
+%% This function will filter documents and then applies caller map function
+%% on the view result.
+%% @end
+%%--------------------------------------------------------------------
+-spec build_with_mapper(cb_context:context(), function(), boolean()) -> filter_fun().
+build_with_mapper(_, UserMapper, 'false') ->
+    UserMapper;
+build_with_mapper(Context, UserMapper, 'true') ->
+    FilterFun = build(Context, 'true'),
+    build_filter_map_fun(Context, FilterFun, UserMapper).
+
+-spec build_filter_map_fun(cb_context:context(), function(), function()) -> filter_fun().
+build_filter_map_fun(_, FilterFun, UserMapper) when is_function(UserMapper, 1) ->
+    fun(Object, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, Object)) of
+                'true' -> [UserMapper(Object)|Acc];
+                'false' -> Acc
+            end
+    end;
+build_filter_map_fun(_, FilterFun, UserMapper) when is_function(UserMapper, 2) ->
+    fun(Object, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, Object)) of
+                'true' -> UserMapper(Object, Acc);
+                'false' -> Acc
+            end
+    end;
+build_filter_map_fun(Context, FilterFun, UserMapper) when is_function(UserMapper, 3) ->
+    fun(Object, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, Object)) of
+                'true' -> UserMapper(Context, Object, Acc);
+                'false' -> Acc
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Check if there is any filter request in query string.
+%% @end
+%%--------------------------------------------------------------------
 -spec is_defined(cb_context:context()) -> boolean().
 is_defined(Context) ->
-    is_defined_in(cb_context:query_string(Context)).
-
--spec is_defined_in(kz_json:object()) -> boolean().
-is_defined_in(QueryString) ->
-    kz_json:any(fun is_filter_key/1, QueryString).
+    kz_json:any(fun is_filter_key/1, cb_context:query_string(Context)).
 
 -spec is_filter_key({binary(), any()}) -> boolean().
 is_filter_key({<<"filter_", _/binary>>, _}) -> 'true';
