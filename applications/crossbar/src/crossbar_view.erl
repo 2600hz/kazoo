@@ -97,24 +97,24 @@ get_ordered(#{databases := Dbs}=Options) ->
 %% last key and total counts.
 %% @end
 %%--------------------------------------------------------------------
-fold_query({_, #{limit := Limit}}, {_, LastKey, QueriedJObjs}=Acc)
-  when is_integer(Limit),
-       Limit > 0,
-       length(QueriedJObjs) == Limit,
+fold_query({_, #{page_size := PageSize}}, {_, LastKey, QueriedJObjs}=Acc)
+  when is_integer(PageSize),
+       PageSize > 0,
+       length(QueriedJObjs) == PageSize,
        LastKey =/= 'undefined' ->
-    lager:debug("page size exhausted: ~s", [Limit]),
+    lager:debug("page size exhausted: ~s", [PageSize]),
     Acc;
 fold_query({Db, #{view := View
                  ,view_options := ViewOptions
                  ,direction := Direction
                  ,start_key := StartKey
-                 ,limit := Limit
-                 }=Options}, {TotalQueried, LastKey, QueriedJObjs}) when is_integer(Limit), Limit > 0 ->
+                 ,page_size := PageSize
+                 }=Options}, {TotalQueried, LastKey, QueriedJObjs}) when is_integer(PageSize), PageSize > 0 ->
     Queried = erlang:length(QueriedJObjs),
-    LimitWithLast = 1 + Limit - Queried,
+    LimitWithLast = 1 + PageSize - Queried,
 
     lager:debug("querying view '~s' from '~s', starting at '~p' with page size ~b and limit ~b in direction ~s"
-               ,[View, Db, StartKey, Limit, LimitWithLast, Direction]
+               ,[View, Db, StartKey, PageSize, LimitWithLast, Direction]
                ),
 
     DbResults = limited_query(LimitWithLast, Db, View, ViewOptions),

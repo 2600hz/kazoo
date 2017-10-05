@@ -57,7 +57,7 @@
 -type options_map() :: #{context => cb_context:context()
                         ,databases => ne_binaries()
                         ,direction => direction()
-                        ,limit => integer()
+                        ,page_size => integer()
                         ,mapper => mapper_fun()
                         ,should_paginate => boolean()
                         ,start_key => range_key()
@@ -93,7 +93,7 @@ build_modb_options(Context, View, Options) ->
                 [{'context', cb_context:set_doc(Context, [])}
                 ,{'databases', get_range_modbs(Context, Options, Direction, StartTime, EndTime)}
                 ,{'direction', Direction}
-                ,{'limit', limit_by_page_size(Context)}
+                ,{'page_size', get_limit(Context, Options)}
                 ,{'mapper', Mapper}
                 ,{'should_paginate', cb_context:should_paginate(Context)}
                 ,{'start_key', StartKey}
@@ -301,11 +301,16 @@ get_range_modbs(Context, Options, Direction, StartTime, EndTime) ->
 %% If pagination available, returns page size.
 %% @end
 %%--------------------------------------------------------------------
--spec limit_by_page_size(cb_context:context()) -> api_pos_integer().
-limit_by_page_size(Context) ->
+-spec get_limit(cb_context:context(), options()) -> api_pos_integer().
+get_limit(Context, Options) ->
     case cb_context:should_paginate(Context) of
         'true' ->
-            cb_context:pagination_page_size(Context);
+            case props:get_integer_value('limit', Options) of
+                'undefined' -> cb_context:pagination_page_size(Context);
+                Limit ->
+                    lager:debug("got limit from options: ~b", [Limit]),
+                    Limit
+            end;
         'false' ->
             lager:debug("pagination disabled in context"),
             'undefined'
