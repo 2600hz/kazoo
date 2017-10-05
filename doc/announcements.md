@@ -23,10 +23,15 @@ We hope that you agree and are not inconvenienced by this change. As always we a
 
     Starting with Kazoo 4.2 Erlang support will target 19+ and will not be backward compatible with prior Erlang versions.
 
+2. Time
+
+    In accordance with the new [time correction](http://erlang.org/doc/apps/erts/time_correction.html) work in Erlang 19+, cleanup of [kz_time](core/kazoo_stdlib/src/kz_time.erl) has been done to ensure Kazoo uses the proper time functions.
+
+    The big change (that should be mostly transparent) is that `kz_time:now_s/0` returns Gregorian seconds instead of Unix Epoch seconds. The majority of code either doesn't care or expected Gregorian seconds, so this change should have minimal impact on existing code. If you need a Unix timestamp, `kz_time:current_unix_tstamp/0` is what you want.
 
 ### 4.1
 
-1.  kz\_util refactoring
+1.  `kz_util` refactoring
 
     We are starting to break kz\_util up into more appropriately-named modules. There is a script that will take care of migrating existing code, \`scripts/kz\_util\_diaspora.bash\`. This is run as part of CircleCI (under the \`make code\_checks\` target) as well.
 
