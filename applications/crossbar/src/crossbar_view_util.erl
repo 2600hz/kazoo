@@ -36,7 +36,7 @@
 -type range_keys() :: {range_key(), range_key()}.
 
 -type keymap_fun() :: fun((range_key()) -> api_range_key()).
--type keymap() :: ne_binary() | ne_binaries() | integer() | keymap_fun().
+-type keymap() :: api_ne_binary() | ne_binaries() | integer() | keymap_fun().
 
 %%FIXME: remove /3
 -type mapper_fun() :: fun((kz_json:object()) -> kz_json:object()) |
@@ -189,6 +189,7 @@ start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec suffix_key_fun(keymap()) -> keymap_fun().
+suffix_key_fun('undefined') -> fun(_) -> 'undefined' end;
 suffix_key_fun(K) when is_binary(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_integer(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_list(K) -> fun(Ts) -> [Ts | K] end;
@@ -379,6 +380,7 @@ get_key_map('undefined') -> fun kz_term:identity/1;
 get_key_map(KeyMap) -> map_keymap(KeyMap).
 
 -spec map_keymap(keymap()) -> keymap_fun().
+map_keymap('undefined') -> fun(_) -> 'undefined' end;
 map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
 map_keymap(K) when is_integer(K) -> fun(Ts) -> [K, Ts] end;
 map_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
