@@ -63,6 +63,8 @@ build_with_mapper(Context, UserMapper) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_with_mapper(cb_context:context(), function(), boolean()) -> filter_fun().
+build_with_mapper(Context, UserMapper, 'false') when is_function(UserMapper, 3) ->
+    fun(Object, Acc) -> UserMapper(Context, Object, Acc) end;
 build_with_mapper(_, UserMapper, 'false') ->
     UserMapper;
 build_with_mapper(Context, UserMapper, 'true') ->
