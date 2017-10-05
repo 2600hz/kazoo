@@ -642,7 +642,7 @@ load_chunked_cdrs(Db, Ids, {_, Context}=Payload) ->
             'true' -> {Ids, []};
             'false' -> lists:split(?MAX_BULK, Ids)
         end,
-    case kz_datamgr:open_cache_docs(Db, BulkIds, [{'doc_type', <<"cdr">>}]) of
+    case kz_datamgr:open_docs(Db, BulkIds, [{'doc_type', <<"cdr">>}]) of
         {'ok', Results} ->
             HasQSFilter = crossbar_doc:has_qs_filter(Context),
             JObjs = [kz_json:get_value(<<"doc">>, Result)
@@ -857,7 +857,7 @@ load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     Context1 = cb_context:set_account_db(Context, AccountDb),
-    case kz_datamgr:open_cache_doc(AccountDb, {<<"cdr">>, DocId}) of
+    case kz_datamgr:open_doc(AccountDb, {<<"cdr">>, DocId}) of
         {'ok', JObj} ->
             load_legs(kz_json:get_value(<<"interaction_id">>, JObj), Context1);
         _ ->
