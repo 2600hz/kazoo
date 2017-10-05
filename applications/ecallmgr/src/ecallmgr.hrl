@@ -472,16 +472,6 @@
                              ,{'end_conference', <<"End-Conference">>}
                              ]).
 
--define(CHANNEL_MOVE_REQUEST_EVENT, 'channel_move::move_request').
--define(CHANNEL_MOVE_RELEASED_EVENT, 'channel_move::move_released').
--define(CHANNEL_MOVE_COMPLETE_EVENT, 'channel_move::move_complete').
-
--define(CHANNEL_MOVE_RELEASED_EVENT_BIN, <<"channel_move::move_released">>).
--define(CHANNEL_MOVE_COMPLETE_EVENT_BIN, <<"channel_move::move_complete">>).
-
--define(CHANNEL_MOVE_REG(Node, UUID), {'channel_move', Node, UUID}).
--define(CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Evt), {'channel_move_released', Node, UUID, Evt}).
--define(CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Evt), {'channel_move_complete', Node, UUID, Evt}).
 
 -define(REGISTER_SUCCESS_REG, 'register_success').
 -define(REGISTER_SUCCESS_MSG(Node, Props), {Node, Props}).
