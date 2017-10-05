@@ -74,14 +74,17 @@ load_modb(Context, View, Options) ->
 load_view(#{should_paginate := 'true'}=Options) ->
     {LastKey, JObjs} = get_ordered(Options),
     format_response(LastKey, JObjs, Options);
+load_view(#{}=Options) ->
+    {LastKey, JObjs} = get_ordered(Options),
+    format_response(LastKey, JObjs, Options);
 load_view(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Get ordered result from databases. It will figure out last
-%% view's JObj key to set as the `next_start_key`.
+%% Get ordered result from databases. It will figure out last view's JObj
+%% key to set as the `next_start_key` if pagination is requested.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_ordered(crossbar_view_util:options_map()) -> {last_key(), kz_json:objects()}.
@@ -93,8 +96,9 @@ get_ordered(#{databases := Dbs}=Options) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Fold over databases and fetch result from each, keeps track of result
-%% last key and total counts.
+%% Fold over databases and fetch result from each and count total result.
+%% If pagination is requested keeps track of last key.
+%% If `page_size` is not in the options, make unlimited get_results.
 %% @end
 %%--------------------------------------------------------------------
 fold_query({_, #{page_size := PageSize}}, {_, LastKey, QueriedJObjs}=Acc)
@@ -117,22 +121,46 @@ fold_query({Db, #{view := View
                ,[View, Db, StartKey, PageSize, LimitWithLast, Direction]
                ),
 
-    DbResults = limited_query(LimitWithLast, Db, View, ViewOptions),
+    {Pref1, DbResults} = timer:tc(fun() -> perform_query(LimitWithLast, Db, View, [{'limit', LimitWithLast} | ViewOptions]) end),
     DbResultsLength = erlang:length(DbResults),
 
-    {NewLastKey, JObjs} = last_key(LastKey, lists:reverse(DbResults), LimitWithLast, DbResultsLength),
-    FilteredJObj = apply_filter(maps:get(mapper, Options, 'undefined'), JObjs),
+    {Pref2, {NewLastKey, JObjs}} = timer:tc(fun() -> last_key(LastKey, lists:reverse(DbResults), LimitWithLast, DbResultsLength) end),
+    {Pref3, FilteredJObj} = timer:tc(fun() -> apply_filter(maps:get(mapper, Options, 'undefined'), JObjs) end),
 
     Filtered = length(FilteredJObj),
     NewTotalQueried = TotalQueried + Filtered,
 
+    io:format("~nquery took: ~pms last_key took: ~pms apply_filter took: ~pms~n"
+             ,[Pref1/?MILLISECONDS_IN_SECOND, Pref2/?MILLISECONDS_IN_SECOND, Pref3/?MILLISECONDS_IN_SECOND]),
+
     lager:debug("db_returned: ~b passed_filter: ~p total_queried: ~b next_start_key: ~p"
                ,[DbResultsLength, Filtered, NewTotalQueried, NewLastKey]
                ),
-    io:format("~ndb_returned: ~b passed_filter: ~p total_queried: ~b next_start_key: ~p~n"
-             ,[DbResultsLength, Filtered, NewTotalQueried, NewLastKey]
-             ),
-    {NewTotalQueried, NewLastKey, QueriedJObjs ++ FilteredJObj}.
+
+    {NewTotalQueried, NewLastKey, QueriedJObjs ++ FilteredJObj};
+fold_query({Db, #{view := View
+                 ,view_options := ViewOptions
+                 ,direction := Direction
+                 ,start_key := StartKey
+                 }=Options}, {TotalQueried, LastKey, QueriedJObjs}) ->
+    lager:debug("querying view '~s' from '~s', starting at '~p' in direction ~s", [View, Db, StartKey, Direction]),
+
+    {Pref1, DbResults} = timer:tc(fun() -> perform_query('undefined', Db, View, ViewOptions) end),
+    DbResultsLength = erlang:length(DbResults),
+
+    {Pref2, FilteredJObj} = timer:tc(fun() -> apply_filter(maps:get(mapper, Options, 'undefined'), DbResults) end),
+
+    Filtered = length(FilteredJObj),
+    NewTotalQueried = TotalQueried + Filtered,
+
+    io:format("~nquery took: ~pms apply_filter took: ~pms~n"
+             ,[Pref1/?MILLISECONDS_IN_SECOND, Pref2/?MILLISECONDS_IN_SECOND]),
+
+    lager:debug("db_returned: ~b passed_filter: ~p total_queried: ~b"
+               ,[DbResultsLength, Filtered, NewTotalQueried]
+               ),
+
+    {NewTotalQueried, LastKey, QueriedJObjs ++ FilteredJObj}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -140,11 +168,9 @@ fold_query({Db, #{view := View
 %% Make database request
 %% @end
 %%--------------------------------------------------------------------
--spec limited_query(pos_integer(), ne_binary(), ne_binary(), kz_datamgr:view_options()) -> kz_json:objects().
-limited_query(Limit, _, _, _) when Limit =< 0 -> [];
-limited_query(Limit, Db, View, ViewOptions) ->
-    Options = [{'limit', Limit} | ViewOptions],
-
+-spec perform_query(api_pos_integer(), ne_binary(), ne_binary(), kz_datamgr:view_options()) -> kz_json:objects().
+perform_query(Limit, _, _, _) when is_integer(Limit), Limit =< 0 -> [];
+perform_query(_, Db, View, Options) ->
     lager:debug("kz_datamgr:get_results(~s, ~s, ~p)", [Db, View, Options]),
     io:format("~nkz_datamgr:get_results ~s ~s~n~p~n", [Db, View, Options]),
 
