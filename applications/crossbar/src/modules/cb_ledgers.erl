@@ -373,7 +373,8 @@ normalize_view_result(Context, JObj) ->
 normalize_view_result(_Context, <<"ledger">>, JObj) ->
     Value = wht_util:units_to_dollars(kazoo_ledger:amount(JObj)),
     Ledger = kazoo_ledger:set_amount(JObj, Value),
-    kz_doc:public_fields(maybe_set_doc_modb_prefix(kz_doc:id(Ledger), kz_doc:created(Ledger)));
+    Id = maybe_set_doc_modb_prefix(kz_doc:id(Ledger), kz_doc:created(Ledger)),
+    kz_doc:public_fields(kz_doc:set_id(Ledger, Id));
 %% Legacy, this would be debit or credit from per-minute transactions
 normalize_view_result(Context, _DocType, JObj) ->
     Transaction = kz_transaction:from_json(JObj),
