@@ -141,9 +141,7 @@ validate(Context, ?ATTEMPTS) ->
     Options = [{mapper, fun normalize_view_results/2}
               ,{key_map, <<"multi_factor">>}
               ],
-    C1= crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, Options),
-    io:format("~n yello~n"),
-    C1;
+    crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, Options);
 validate(Context, ConfigId) ->
     case cb_context:req_nouns(Context) of
         [{<<"multi_factor">>, _}] ->
