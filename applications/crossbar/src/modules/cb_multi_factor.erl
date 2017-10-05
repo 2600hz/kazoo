@@ -138,10 +138,12 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
-    Options = [{mapper, fun normalize_attempt_view_result/1}
+    Options = [{mapper, fun normalize_view_results/2}
               ,{key_map, <<"multi_factor">>}
               ],
-    crossbar_modb_view:load(Context, ?CB_LIST_ATTEMPT_LOG, Options);
+    C1= crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, Options),
+    io:format("~n yello~n"),
+    C1;
 validate(Context, ConfigId) ->
     case cb_context:req_nouns(Context) of
         [{<<"multi_factor">>, _}] ->
@@ -344,6 +346,6 @@ on_successful_validation(Id, Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec normalize_attempt_view_result(kz_json:object()) -> kz_json:object().
-normalize_attempt_view_result(JObj) ->
-    kz_json:get_value(<<"value">>, JObj).
+% -spec normalize_attempt_view_result(kz_json:object()) -> kz_json:object().
+% normalize_attempt_view_result(JObj) ->
+%     kz_json:get_value(<<"value">>, JObj).
