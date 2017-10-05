@@ -18,7 +18,7 @@
 
         ,retention_days/1
         ,retention_seconds/0, retention_seconds/1
-        ,maybe_set_deleted_by_retention/1, maybe_set_deleted_by_retention/2
+        ,enforce_retention/1, enforce_retention/2
 
         ,publish_saved_notify/5, publish_voicemail_saved/5
         ,get_notify_completed_message/1
@@ -132,11 +132,11 @@ check_msg_belonging(_BoxId, _JObj, _SourceId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec retention_seconds() -> integer().
+-spec retention_seconds() -> gregorian_seconds().
 retention_seconds() ->
     retention_seconds(?RETENTION_DAYS).
 
--spec retention_seconds(integer() | api_binary()) -> integer().
+-spec retention_seconds(integer() | api_binary()) -> gregorian_seconds().
 retention_seconds(Days) when is_integer(Days)
                              andalso Days > 0 ->
     ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR;
@@ -158,12 +158,12 @@ retention_days(AccountId) ->
 %% if message is older than retention duration, set folder to deleted
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_deleted_by_retention(kz_json:object()) -> kz_json:object().
--spec maybe_set_deleted_by_retention(kz_json:object(), integer()) -> kz_json:object().
-maybe_set_deleted_by_retention(JObj) ->
-    maybe_set_deleted_by_retention(JObj, retention_seconds()).
+-spec enforce_retention(kz_json:object()) -> kz_json:object().
+-spec enforce_retention(kz_json:object(), integer()) -> kz_json:object().
+enforce_retention(JObj) ->
+    enforce_retention(JObj, retention_seconds()).
 
-maybe_set_deleted_by_retention(JObj, Timestamp) ->
+enforce_retention(JObj, Timestamp) ->
     TsTampPath = [<<"utc_seconds">>, <<"timestamp">>],
     MsgTstamp = kz_term:to_integer(kz_json:get_first_defined(TsTampPath, JObj, 0)),
     case MsgTstamp =/= 0
