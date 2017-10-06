@@ -485,7 +485,7 @@ name_pronounced_headers({_, AccountId, MediaId}) ->
 send_conference_command(Conference, Call) ->
     Profile = list_to_binary([kapps_conference:account_id(Conference)
                              ,"_"
-                             ,kapps_conference:id(Conference)
+                             ,kapps_conference:profile(Conference)
                              ]),
     kapps_call_command:conference(kapps_conference:id(Conference)
                                  ,is_muted(Conference)

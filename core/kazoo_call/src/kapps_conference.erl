@@ -110,7 +110,7 @@
 -record(kapps_conference, {id :: api_ne_binary()
                           ,name :: api_ne_binary()
                           ,focus :: api_ne_binary()
-                          ,profile = <<"default">> :: ne_binary()
+                          ,profile = 'undefined' :: api_binary()
                           ,controller_q :: api_ne_binary()
                           ,bridge_username = ?BRIDGE_USER :: ne_binary()
                           ,bridge_password = ?BRIDGE_PWD :: ne_binary()
@@ -335,6 +335,8 @@ caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
 -spec profile(conference()) -> api_binary().
+profile(#kapps_conference{profile='undefined'}=Conference) ->
+    id(Conference);
 profile(#kapps_conference{profile=P}) -> P.
 
 -spec set_profile(api_binary(), conference()) -> conference().

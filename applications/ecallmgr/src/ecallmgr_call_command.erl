@@ -965,7 +965,7 @@ build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
 %%--------------------------------------------------------------------
 get_conf_id_and_profile(JObj) ->
     ConfName = kz_json:get_value(<<"Conference-ID">>, JObj),
-    ProfileName = kz_json:get_ne_value(<<"Profile">>, JObj, <<"undefined">>),
+    ProfileName = kz_json:get_ne_value(<<"Profile">>, JObj, <<"default">>),
     {ConfName, ProfileName}.
 
 -spec get_conference_app(atom(), ne_binary(), kz_json:object(), boolean()) ->
