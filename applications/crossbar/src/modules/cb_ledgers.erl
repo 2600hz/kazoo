@@ -288,8 +288,8 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
 %%--------------------------------------------------------------------
 -spec read_ledgers(cb_context:context()) -> cb_context:context().
 read_ledgers(Context) ->
-    {From, To} = case cb_modules_util:range_view_options(Context) of
-                     {_CreatedFrom, _CreatedTo}=FromTo -> FromTo;
+    {From, To} = case crossbar_view:time_range(Context) of
+                     {_, _}=FromTo -> FromTo;
                      _ContextWithError -> {undefined, undefined}
                  end,
     case kz_ledgers:get(cb_context:account_id(Context), From, To) of

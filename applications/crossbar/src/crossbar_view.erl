@@ -13,7 +13,7 @@
         ,build_load_modb_params/3
         ,build_query/5
 
-        ,direction/2
+        ,direction/1, direction/2
         ,time_range/1, time_range/2, time_range/5
         ,start_end_keys/2, start_end_keys/5
         ,suffix_key_fun/1
@@ -38,7 +38,7 @@
 -type range_keys() :: {api_range_key(), api_range_key()}.
 
 -type keymap_fun() :: fun((range_key()) -> api_range_key()).
--type keymap() :: api_ne_binary() | ne_binaries() | integer() | keymap_fun().
+-type keymap() :: 'nil' | api_ne_binary() | ne_binaries() | integer() | keymap_fun().
 
 -type user_mapper_fun() :: 'undefined' |
                            fun((kz_json:object()) -> kz_json:object()) |
@@ -143,7 +143,6 @@ build_load_modb_params(Context, View, Options) ->
     HasQSFilter = crossbar_filter:is_defined(Context)
                       andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
     UserMapper = props:get_value('mapper', Options),
-    Mapper = crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter),
     case time_range(Context, Options, TimeFilterKey) of
         {StartTime, EndTime} ->
             {StartKey, EndKey} = start_end_keys(Context, Options, Direction, StartTime, EndTime),
@@ -153,7 +152,7 @@ build_load_modb_params(Context, View, Options) ->
                 ,{'databases', get_range_modbs(Context, Options, Direction, StartTime, EndTime)}
                 ,{'direction', Direction}
                 ,{'page_size', get_limit(Context, Options)}
-                ,{'mapper', Mapper}
+                ,{'mapper', crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)}
                 ,{'should_paginate', cb_context:should_paginate(Context)}
                 ,{'start_key', StartKey}
                 ,{'view', View}
@@ -253,6 +252,16 @@ suffix_key_fun(K) when is_binary(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_integer(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_list(K) -> fun(Ts) -> [Ts | K] end;
 suffix_key_fun(K) when is_function(K, 1) -> K.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Equivalent to direction/2, setting Options to an empty list.
+%% @end
+%%--------------------------------------------------------------------
+-spec direction(cb_context:context()) -> direction().
+direction(Context) ->
+    direction(Context, []).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -389,14 +398,13 @@ fold_query({_, #{page_size := PageSize}}, {_, LastKey, QueriedJObjs}=Acc)
 fold_query({Db, #{view := View
                  ,view_options := ViewOptions
                  ,direction := Direction
-                 ,start_key := StartKey
                  ,page_size := PageSize
                  }=LoadMap}, {TotalQueried, LastKey, QueriedJObjs}) when is_integer(PageSize), PageSize > 0 ->
     Queried = erlang:length(QueriedJObjs),
     LimitWithLast = 1 + PageSize - Queried,
 
     lager:debug("querying view '~s' from '~s', starting at '~p' with page size ~b and limit ~b in direction ~s"
-               ,[View, Db, StartKey, PageSize, LimitWithLast, Direction]
+               ,[View, Db, maps:get(start_key, LoadMap, "no_start_key"), PageSize, LimitWithLast, Direction]
                ),
 
     {Pref1, DbResults} = timer:tc(fun() -> perform_query(LimitWithLast, Db, View, [{'limit', LimitWithLast} | ViewOptions]) end),
@@ -419,9 +427,8 @@ fold_query({Db, #{view := View
 fold_query({Db, #{view := View
                  ,view_options := ViewOptions
                  ,direction := Direction
-                 ,start_key := StartKey
                  }=LoadMap}, {TotalQueried, LastKey, QueriedJObjs}) ->
-    lager:debug("querying view '~s' from '~s', starting at '~p' in direction ~s", [View, Db, StartKey, Direction]),
+    lager:debug("querying view '~s' from '~s', starting at '~p' in direction ~s", [View, Db, maps:get(start_key, LoadMap, "no_start_key"), Direction]),
 
     {Pref1, DbResults} = timer:tc(fun() -> perform_query('undefined', Db, View, ViewOptions) end),
     DbResultsLength = erlang:length(DbResults),
@@ -549,7 +556,10 @@ get_range_modbs(Context, Options, Direction, StartTime, EndTime) ->
             kazoo_modb:get_range(cb_context:account_id(Context), StartTime, EndTime);
         'undefined' when Direction =:= 'descending' ->
             lists:reverse(kazoo_modb:get_range(cb_context:account_id(Context), StartTime, EndTime));
-        Dbs -> Dbs
+        Dbs when Direction =:= 'ascending' ->
+            lists:usort(Dbs);
+        Dbs when Direction =:= 'descending' ->
+            lists:reverse(lists:usort(Dbs))
     end.
 
 %%--------------------------------------------------------------------
@@ -638,6 +648,7 @@ get_key_map('undefined') -> fun kz_term:identity/1;
 get_key_map(KeyMap) -> map_keymap(KeyMap).
 
 -spec map_keymap(keymap()) -> keymap_fun().
+map_keymap('nil') -> fun(_) -> 'undefined' end;
 map_keymap('undefined') -> fun(_) -> 'undefined' end;
 map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
 map_keymap(K) when is_integer(K) -> fun(Ts) -> [K, Ts] end;
