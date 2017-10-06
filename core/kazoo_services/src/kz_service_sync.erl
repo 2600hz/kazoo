@@ -210,7 +210,7 @@ sync(AccountId, ServicesJObj) ->
 maybe_sync_service() ->
     ViewOptions = [{'limit', 1}
                   ,'include_docs'
-                  ,{'endkey', kz_time:current_tstamp() - ?SYNC_BUFFER_PERIOD}
+                  ,{'endkey', kz_time:now_s() - ?SYNC_BUFFER_PERIOD}
                   ],
     case kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
         {'error', _}=E -> E;
@@ -224,7 +224,7 @@ bump_modified(JObj) ->
     Services = kz_services:reconcile_only(AccountId),
     'true' = (Services =/= 'false'),
 
-    Values = [{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+    Values = [{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
              ,{?SERVICES_PVT_REV, kz_doc:revision(JObj)}
              ],
     UpdatedServicesJObj = kz_json:set_values(Values, kz_services:to_json(Services)),
@@ -427,7 +427,7 @@ mark_dirty(?MATCH_ACCOUNT_RAW(AccountId)) ->
     end;
 mark_dirty(ServicesJObj) ->
     Values = [{?SERVICES_PVT_IS_DIRTY, 'true'}
-             ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+             ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
              ],
     kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)).
 

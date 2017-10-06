@@ -187,7 +187,7 @@ fetch(AccountId, MsgIds) ->
 
 fetch(AccountId, MsgIds, BoxId) ->
     DbsRange = kvm_util:create_range_dbs(AccountId, MsgIds),
-    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(AccountId),
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     Fun = fun(Db, Ids, ResDict) ->
                   fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp)
           end,

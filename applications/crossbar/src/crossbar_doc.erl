@@ -1202,13 +1202,13 @@ add_pvt_account_id(JObj, Context) ->
 -spec add_pvt_created(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_created(JObj, _) ->
     case kz_doc:revision(JObj) of
-        'undefined' -> kz_doc:set_created(JObj, kz_time:current_tstamp());
+        'undefined' -> kz_doc:set_created(JObj, kz_time:now_s());
         _ -> JObj
     end.
 
 -spec add_pvt_modified(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_modified(JObj, _) ->
-    kz_doc:set_modified(JObj, kz_time:current_tstamp()).
+    kz_doc:set_modified(JObj, kz_time:now_s()).
 
 -spec add_pvt_request_id(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_request_id(JObj, Context) ->

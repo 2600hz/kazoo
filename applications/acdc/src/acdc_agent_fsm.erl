@@ -1833,7 +1833,7 @@ notify(Url, Method, Key, #state{account_id=AccountId
              ,{<<"caller_id_name">>, kapps_call:caller_id_name(MemberCall)}
              ,{<<"caller_id_number">>, kapps_call:caller_id_number(MemberCall)}
              ,{<<"call_state">>, Key}
-             ,{<<"now">>, kz_time:current_tstamp()}
+             ,{<<"now">>, kz_time:now_s()}
              ]),
     notify(Url, Method, Data).
 

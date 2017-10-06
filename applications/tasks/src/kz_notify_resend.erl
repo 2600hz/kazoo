@@ -202,7 +202,7 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', State) ->
     ViewOptions = [{'startkey', 0}
-                  ,{'endkey', kz_time:current_tstamp()}
+                  ,{'endkey', kz_time:now_s()}
                   ,{'limit', ?READ_LIMIT}
                   ,'include_docs'
                   ],
@@ -409,7 +409,7 @@ apply_reschedule_rules(NotifyType, {[Rule | Rules], [Key | Keys]}, JObj) ->
 
 -spec set_default_update_fields(kz_json:object(), integer()) -> kz_json:object().
 set_default_update_fields(JObj, Attempts) ->
-    kz_json:set_values([{<<"pvt_modified">>, kz_time:current_tstamp()}
+    kz_json:set_values([{<<"pvt_modified">>, kz_time:now_s()}
                        ,{<<"retry_after">>, fudge_retry_after(Attempts)}
                        ]
                       ,JObj

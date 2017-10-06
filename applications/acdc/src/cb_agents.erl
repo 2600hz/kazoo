@@ -301,7 +301,7 @@ fetch_all_current_agent_stats(Context) ->
 
 -spec fetch_all_current_stats(cb_context:context(), api_binary()) -> cb_context:context().
 fetch_all_current_stats(Context, AgentId) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     Yday = Now - ?SECONDS_IN_DAY,
 
     Req = props:filter_undefined(
@@ -344,7 +344,7 @@ fetch_current_status(Context, AgentId, 'true') ->
 -spec fetch_all_current_statuses(cb_context:context(), api_binary(), api_binary()) ->
                                         cb_context:context().
 fetch_all_current_statuses(Context, AgentId, Status) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     Yday = Now - ?SECONDS_IN_DAY,
 
     Recent = cb_context:req_value(Context, <<"recent">>, 'false'),
@@ -364,7 +364,7 @@ fetch_all_current_statuses(Context, AgentId, Status) ->
 fetch_ranged_agent_stats(Context, StartRange) ->
     MaxRange = ?ACDC_ARCHIVE_WINDOW,
 
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     Past = Now - MaxRange,
 
     To = kz_term:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
@@ -390,7 +390,7 @@ fetch_ranged_agent_stats(Context, StartRange) ->
 -spec fetch_ranged_agent_stats(cb_context:context(), pos_integer(), pos_integer(), boolean()) ->
                                       cb_context:context().
 fetch_ranged_agent_stats(Context, From, To, 'true') ->
-    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, kz_time:current_tstamp()]),
+    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, kz_time:now_s()]),
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}

@@ -344,7 +344,7 @@ start_expire_ref() ->
 
 -spec expire_old_subscriptions() -> non_neg_integer().
 expire_old_subscriptions() ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
                                                        ,expires='$2'
                                                        ,_='_'

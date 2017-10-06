@@ -573,7 +573,7 @@ create_response(Context) ->
         'undefined' ->
             crossbar_util:response_invalid_data(JObj, Context);
         AccountId ->
-            TS = kz_time:current_tstamp(),
+            TS = kz_time:now_s(),
             Token = [{<<"account_id">>, AccountId}
                     ,{<<"owner_id">>, kz_json:get_value(<<"owner_id">>, JObj)}
                     ,{<<"created">>, TS}

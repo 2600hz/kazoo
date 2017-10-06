@@ -415,7 +415,7 @@ low_balance_tstamp(JObj) ->
 
 -spec set_low_balance_tstamp(doc()) -> doc().
 set_low_balance_tstamp(JObj) ->
-    TStamp = kz_time:current_tstamp(),
+    TStamp = kz_time:now_s(),
     set_low_balance_tstamp(JObj, TStamp).
 
 -spec set_low_balance_tstamp(doc(), number()) -> doc().
@@ -672,7 +672,7 @@ set_trial_expiration(JObj, Expiration) ->
 -spec trial_time_left(doc()) -> integer().
 -spec trial_time_left(doc(), gregorian_seconds()) -> integer().
 trial_time_left(JObj) ->
-    trial_time_left(JObj, kz_time:current_tstamp()).
+    trial_time_left(JObj, kz_time:now_s()).
 trial_time_left(JObj, Now) ->
     case trial_expiration(JObj) of
         'undefined' -> 0;
@@ -687,7 +687,7 @@ trial_time_left(JObj, Now) ->
 -spec trial_has_expired(doc()) -> boolean().
 -spec trial_has_expired(doc(), gregorian_seconds()) -> boolean().
 trial_has_expired(JObj) ->
-    trial_has_expired(JObj, kz_time:current_tstamp()).
+    trial_has_expired(JObj, kz_time:now_s()).
 trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined'
         andalso trial_time_left(JObj, Now) =< 0.

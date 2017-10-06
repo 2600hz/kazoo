@@ -394,7 +394,7 @@ extract_participants(JObj) ->
 
 -spec calc_duration(kz_json:object()) -> integer().
 calc_duration(Participant) ->
-    Stamp = kz_time:current_tstamp(),
+    Stamp = kz_time:now_s(),
     JoinTime = kz_json:get_value(<<"Join-Time">>, Participant),
     Stamp - JoinTime.
 

@@ -56,7 +56,7 @@ current_subscriptions(Realm, User) ->
 print_subscriptions([]) ->
     io:format("No subscriptions have been found~n");
 print_subscriptions(Ss) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     io:format(?SUBSCRIPTION_FORMAT_STR
              ,[<<"Username@Realm">>, <<"From">>, <<"Expires">>, <<"Event">>]
              ),

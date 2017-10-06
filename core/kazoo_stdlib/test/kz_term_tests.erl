@@ -87,7 +87,7 @@ prop_iolist_t() ->
 
 
 to_x_test_() ->
-    TS = kz_time:current_tstamp(),
+    TS = kz_time:now_s(),
     [?_assertError(badarg, kz_term:to_integer(1.0, strict))
     ,?_assertEqual(1, kz_term:to_integer(1.0, notstrict))
     ,?_assertEqual(42, kz_term:to_integer(<<"42">>, strict))

@@ -115,7 +115,7 @@
         begin
             ?LOG_DEBUG("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
             (PN)#knm_phone_number{is_dirty = true
-                                 ,modified = kz_time:current_tstamp()
+                                 ,modified = kz_time:now_s()
                                  }
         end).
 -else.
@@ -123,7 +123,7 @@
         begin
             ?LOG_DEBUG("dirty ~s", [number(PN)]),
             (PN)#knm_phone_number{is_dirty = true
-                                 ,modified = kz_time:current_tstamp()
+                                 ,modified = kz_time:now_s()
                                  }
         end).
 -endif.
@@ -1481,12 +1481,12 @@ doc_from_public_fields(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec modified(knm_phone_number()) -> gregorian_seconds().
-modified(#knm_phone_number{modified = undefined}) -> kz_time:current_tstamp();
+modified(#knm_phone_number{modified = undefined}) -> kz_time:now_s();
 modified(#knm_phone_number{modified = Modified}) -> Modified.
 
 -spec set_modified(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
 set_modified(PN=#knm_phone_number{modified = undefined}, undefined) ->
-    ?DIRTY(PN#knm_phone_number{modified = kz_time:current_tstamp()});
+    ?DIRTY(PN#knm_phone_number{modified = kz_time:now_s()});
 set_modified(PN=#knm_phone_number{modified = V}, V) -> PN;
 set_modified(PN, Modified)
   when is_integer(Modified), Modified > 0 ->
@@ -1498,7 +1498,7 @@ set_modified(PN, Modified)
 %% @end
 %%--------------------------------------------------------------------
 -spec created(knm_phone_number()) -> gregorian_seconds().
-created(#knm_phone_number{created = undefined}) -> kz_time:current_tstamp();
+created(#knm_phone_number{created = undefined}) -> kz_time:now_s();
 created(#knm_phone_number{created = Created}) -> Created.
 
 -spec set_created(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
@@ -1506,7 +1506,7 @@ set_created(PN=#knm_phone_number{created = undefined}, Created)
   when is_integer(Created), Created > 0 ->
     PN#knm_phone_number{created = Created};
 set_created(PN=#knm_phone_number{created = undefined}, undefined) ->
-    ?DIRTY(PN#knm_phone_number{created = kz_time:current_tstamp()});
+    ?DIRTY(PN#knm_phone_number{created = kz_time:now_s()});
 set_created(PN=#knm_phone_number{created = V}, V) -> PN;
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->

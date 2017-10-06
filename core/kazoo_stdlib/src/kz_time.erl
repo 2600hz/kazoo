@@ -15,7 +15,7 @@
         ,rfc1036/1, rfc1036/2
         ,iso8601/1, iso8601_time/1
         ,pretty_print_elapsed_s/1
-        ,decr_timeout/2
+        ,decr_timeout/2, decr_timeout/3
         ,microseconds_to_seconds/1
         ,milliseconds_to_seconds/1
         ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
@@ -30,6 +30,12 @@
         ,unitfy_seconds/1
         ]).
 
+-ifdef(TEST).
+-export([decr_timeout_elapsed/2]).
+-endif.
+
+-compile({'no_auto_import', [now/0]}).
+
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %% returns current seconds
@@ -39,7 +45,7 @@ current_tstamp() ->
 
 -spec current_unix_tstamp() -> unix_seconds().
 current_unix_tstamp() ->
-    gregorian_seconds_to_unix_seconds(current_tstamp()).
+    erlang:system_time('seconds').
 
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
@@ -51,7 +57,7 @@ unix_seconds_to_gregorian_seconds(UnixSeconds) ->
 
 -spec unix_timestamp_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_timestamp_to_gregorian_seconds(UnixTimestamp) ->
-    ?UNIX_EPOCH_IN_GREGORIAN + (kz_term:to_integer(UnixTimestamp) div 1000).
+    ?UNIX_EPOCH_IN_GREGORIAN + (kz_term:to_integer(UnixTimestamp) div ?MILLISECONDS_IN_SECOND).
 
 -spec to_gregorian_seconds(kz_datetime(), api_ne_binary()) -> gregorian_seconds().
 -ifdef(TEST).
@@ -105,7 +111,7 @@ iso8601_time({Hours, Mins, Secs}) ->
     <<H/binary, ":", M/binary, ":", S/binary>>;
 iso8601_time({{_,_,_}, {_H, _M, _S}=Time}) ->
     iso8601_time(Time);
-iso8601_time(Timestamp) ->
+iso8601_time(Timestamp) when is_integer(Timestamp) ->
     iso8601_time(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
 -spec iso8601(calendar:datetime() | gregorian_seconds()) -> ne_binary().
@@ -161,73 +167,106 @@ unitfy_seconds(Seconds) ->
     D = Seconds div ?SECONDS_IN_DAY,
     [kz_term:to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
--spec decr_timeout(kz_timeout(), non_neg_integer() | kz_now()) -> kz_timeout().
+-spec decr_timeout(kz_timeout(), kz_now()) -> kz_timeout().
+-spec decr_timeout(kz_timeout(), kz_now(), kz_now()) -> kz_timeout().
 decr_timeout('infinity', _) -> 'infinity';
-decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
+decr_timeout(Timeout, {_Mega, _S, _Micro}=Start) when is_integer(Timeout) ->
+    decr_timeout(Timeout, Start, now()).
+
+decr_timeout('infinity', _Start, _Future) -> 'infinity';
+decr_timeout(Timeout, Start, {_Mega, _S, _Micro}=Now) ->
+    decr_timeout_elapsed(Timeout, elapsed_s(Start, Now)).
+
+-spec decr_timeout_elapsed(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
+decr_timeout_elapsed(Timeout, Elapsed) ->
     Diff = Timeout - Elapsed,
     case Diff < 0 of
         'true' -> 0;
         'false' -> Diff
-    end;
-decr_timeout(Timeout, Start) ->
-    decr_timeout(Timeout, elapsed_ms(Start)).
+    end.
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 -spec milliseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
-microseconds_to_seconds(Microseconds) -> kz_term:to_integer(Microseconds) div 1000000.
+microseconds_to_seconds(Microseconds) -> kz_term:to_integer(Microseconds) div ?MICROSECONDS_IN_SECOND.
 milliseconds_to_seconds(Milliseconds) -> kz_term:to_integer(Milliseconds) div ?MILLISECONDS_IN_SECOND.
 
 -spec elapsed_s(kz_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(kz_now() | pos_integer()) -> pos_integer().
 -spec elapsed_us(kz_now() | pos_integer()) -> pos_integer().
-elapsed_s({_,_,_}=Start) -> elapsed_s(Start, os:timestamp());
-elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, current_tstamp()).
+elapsed_s({_,_,_}=Start) -> elapsed_s(Start, now());
+elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, now_s()).
 
-elapsed_ms({_,_,_}=Start) -> elapsed_ms(Start, os:timestamp());
-elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, current_tstamp()).
+elapsed_ms({_,_,_}=Start) -> elapsed_ms(Start, now());
+elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, now_ms()).
 
-elapsed_us({_,_,_}=Start) -> elapsed_us(Start, os:timestamp());
-elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, current_tstamp()).
+elapsed_us({_,_,_}=Start) -> elapsed_us(Start, now());
+elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, now_us()).
 
 -spec elapsed_s(kz_now() | pos_integer(), kz_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(kz_now() | pos_integer(), kz_now() | pos_integer()) -> pos_integer().
 -spec elapsed_us(kz_now() | pos_integer(), kz_now() | pos_integer()) -> pos_integer().
-elapsed_s({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div 1000000;
+elapsed_s({_,_,_}=Start, {_,_,_}=Now) ->
+    timer:now_diff(Now, Start) div ?MICROSECONDS_IN_SECOND;
 elapsed_s({_,_,_}=Start, Now) -> elapsed_s(now_s(Start), Now);
 elapsed_s(Start, {_,_,_}=Now) -> elapsed_s(Start, now_s(Now));
-elapsed_s(Start, Now) when is_integer(Start), is_integer(Now) -> Now - Start.
+elapsed_s(Start, Now)
+  when is_integer(Start),
+       is_integer(Now) ->
+    Now - Start.
 
-elapsed_ms({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
-elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_s(Start), Now);
-elapsed_ms(Start, {_,_,_}=Now) -> elapsed_ms(Start, now_s(Now));
+elapsed_ms({_,_,_}=Start, {_,_,_}=Now) ->
+    timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
+elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_ms(Start), Now);
+elapsed_ms(Start, {_,_,_}=Now) -> elapsed_ms(Start, now_ms(Now));
+elapsed_ms(Start, Now)
+  when is_integer(Start),
+       is_integer(Now),
+       Start > (?UNIX_EPOCH_IN_GREGORIAN * ?MILLISECONDS_IN_SECOND),
+       Now > (?UNIX_EPOCH_IN_GREGORIAN * ?MILLISECONDS_IN_SECOND) ->
+    Now - Start;
 elapsed_ms(Start, Now)
   when is_integer(Start),
        is_integer(Now) ->
     (Now - Start) * ?MILLISECONDS_IN_SECOND.
 
-elapsed_us({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start);
-elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);
-elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
-elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000000.
+elapsed_us({_,_,_}=Start, {_,_,_}=Now) ->
+    timer:now_diff(Now, Start);
+elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_us(Start), Now);
+elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_us(Now));
+elapsed_us(Start, Now)
+  when is_integer(Start),
+       is_integer(Now),
+       Start > (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND),
+       Now > (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND) ->
+    Now - Start;
+elapsed_us(Start, Now)
+  when is_integer(Start),
+       is_integer(Now) ->
+    (Now - Start) * ?MICROSECONDS_IN_SECOND.
 
 -spec now() -> kz_now().
-now() -> erlang:timestamp().
+now() -> os:timestamp().
 
 -spec now_s() -> gregorian_seconds().
 -spec now_ms() -> pos_integer().
 -spec now_us() -> pos_integer().
 
-now_s() ->  erlang:system_time('seconds').
-now_ms() -> erlang:system_time('milli_seconds').
-now_us() -> erlang:system_time('micro_seconds').
+now_s() ->  erlang:system_time('seconds') + ?UNIX_EPOCH_IN_GREGORIAN.
+now_ms() -> erlang:system_time('milli_seconds') + (?UNIX_EPOCH_IN_GREGORIAN * ?MILLISECONDS_IN_SECOND).
+now_us() -> erlang:system_time('micro_seconds') + (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND).
 
 -spec now_s(kz_now()) -> gregorian_seconds().
 -spec now_ms(kz_now()) -> pos_integer().
 -spec now_us(kz_now()) -> pos_integer().
-now_us({MegaSecs,Secs,MicroSecs}) ->
-    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
-now_ms({_,_,_}=Now) -> now_us(Now) div ?MILLISECONDS_IN_SECOND.
-now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div 1000000).
+now_us({MegaSecs, Secs, MicroSecs}) ->
+    unix_us_to_gregorian_us((MegaSecs*?MICROSECONDS_IN_SECOND + Secs)*?MICROSECONDS_IN_SECOND + MicroSecs).
+now_ms({_,_,_}=Now) ->
+    now_us(Now) div ?MILLISECONDS_IN_SECOND.
+now_s({_,_,_}=Now) ->
+    now_us(Now) div ?MICROSECONDS_IN_SECOND.
+
+unix_us_to_gregorian_us(UnixUS) ->
+    UnixUS + (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND).
 
 -spec format_date() -> binary().
 -spec format_date(gregorian_seconds()) -> binary().
@@ -237,22 +276,21 @@ now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div 1000000)
 -spec format_datetime(gregorian_seconds()) -> binary().
 
 format_date() ->
-    format_date(current_tstamp()).
+    format_date(now_s()).
 
-format_date(Timestamp) ->
+format_date(Timestamp) when is_integer(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([kz_term:to_binary(Y), "-", kz_term:to_binary(M), "-", kz_term:to_binary(D)]).
 
 format_time() ->
-    format_time(current_tstamp()).
+    format_time(now_s()).
 
-format_time(Timestamp) ->
+format_time(Timestamp) when is_integer(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([kz_term:to_binary(H), ":", kz_term:to_binary(I), ":", kz_term:to_binary(S)]).
 
 format_datetime() ->
-    format_datetime(current_tstamp()).
+    format_datetime(now_s()).
 
-format_datetime(Timestamp) ->
+format_datetime(Timestamp) when is_integer(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
-

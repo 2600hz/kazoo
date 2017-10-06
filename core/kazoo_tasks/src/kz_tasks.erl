@@ -124,7 +124,7 @@ all() -> view([]).
 %%--------------------------------------------------------------------
 -spec all(ne_binary()) -> kz_json:objects().
 all(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    view([{startkey, [AccountId, kz_time:current_tstamp(), kz_json:new()]}
+    view([{startkey, [AccountId, kz_time:now_s(), kz_json:new()]}
          ,{endkey, [AccountId]}
          ,descending
          ]).
@@ -183,7 +183,7 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                             ,category => Category
                             ,action => Action
                             ,file_name => InputName
-                            ,created => kz_time:current_tstamp()
+                            ,created => kz_time:now_s()
                             ,started => 'undefined'
                             ,finished => 'undefined'
                             ,total_rows => TotalRows
@@ -366,7 +366,7 @@ to_json(#{id := TaskId
       ,{?PVT_ACTION, Action}
       ,{?PVT_FILENAME, InputName}
       ,{?PVT_CREATED, Created}
-      ,{?PVT_MODIFIED, kz_time:current_tstamp()}
+      ,{?PVT_MODIFIED, kz_time:now_s()}
       ,{?PVT_STARTED_AT, Started}
       ,{?PVT_FINISHED_AT, Finished}
       ,{?PVT_TOTAL_ROWS, TotalRows}

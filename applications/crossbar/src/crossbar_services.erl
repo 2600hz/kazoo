@@ -347,7 +347,7 @@ maybe_notify_reseller(Context, Services, AuditLog) ->
         'false' ->
             Props = [{<<"Account-ID">>, cb_context:account_id(Context)}
                     ,{<<"Audit-Log">>, AuditLog}
-                    ,{<<"Time-Stamp">>, kz_time:current_tstamp()}
+                    ,{<<"Time-Stamp">>, kz_time:now_s()}
                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_service_added/1)

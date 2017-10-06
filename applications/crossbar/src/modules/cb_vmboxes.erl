@@ -261,7 +261,7 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
     load_message(MessageId, BoxId, Context, 'true');
 validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
-    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(cb_context:account_id(Context)),
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(cb_context:account_id(Context)),
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', Msg} ->
             case kzd_box_message:utc_seconds(Msg) < RetenTimestamp of
@@ -784,7 +784,7 @@ empty_source_id(Context) ->
 -spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
     MaxRetenSecond = kvm_util:retention_seconds(cb_context:account_id(Context)),
-    RetenTimestamp = kz_time:current_tstamp() - MaxRetenSecond,
+    RetenTimestamp = kz_time:now_s() - MaxRetenSecond,
     case message_summary_view_options(Context, BoxId, MaxRetenSecond) of
         {'ok', ViewOptions} ->
             NormlizeFun = fun(J, Acc) ->

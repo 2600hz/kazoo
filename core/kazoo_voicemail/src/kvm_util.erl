@@ -61,7 +61,7 @@ get_range_db(AccountId) ->
     get_range_db(AccountId, retention_days(AccountId)).
 
 get_range_db(AccountId, Days) ->
-    To = kz_time:current_tstamp(),
+    To = kz_time:now_s(),
     From = To - retention_seconds(Days),
     lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)]).
 
@@ -186,7 +186,7 @@ get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
 -spec get_change_vmbox_funs(ne_binary(), ne_binary(), kz_json:object(), ne_binary(), api_binary()) ->
                                    {ne_binary(), update_funs()}.
 get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, ToId) ->
-    Timestamp = kz_time:current_tstamp(),
+    Timestamp = kz_time:now_s(),
     {{Y, M, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     Year = kz_term:to_binary(Y),
     Month = kz_date:pad_month(M),
@@ -267,7 +267,7 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
                  ,{<<"Voicemail-ID">>, MediaId}
                  ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
                  ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
-                 ,{<<"Voicemail-Timestamp">>, kz_time:current_tstamp()}
+                 ,{<<"Voicemail-Timestamp">>, kz_time:now_s()}
                  ,{<<"Voicemail-Length">>, Length}
                  ,{<<"Voicemail-Transcription">>, Transcription}
                  ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}

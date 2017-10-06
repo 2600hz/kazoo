@@ -212,7 +212,7 @@ handle_search_conference(JObj, _Props) ->
             Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                    ,{<<"Conference-ID">>, Name}
                    ,{<<"UUID">>, UUID}
-                   ,{<<"Run-Time">>, kz_time:current_tstamp() - StartTime}
+                   ,{<<"Run-Time">>, kz_time:now_s() - StartTime}
                    ,{<<"Start-Time">>, StartTime}
                    ,{<<"Locked">>, Locked}
                    ,{<<"Switch-Hostname">>, Hostname}
@@ -269,7 +269,7 @@ conference_resp(#conference{uuid=UUID
     Participants = participants(Name),
     {Moderators, Members} = lists:partition(fun is_moderator/1, Participants),
     Resp = [{<<"UUID">>, UUID}
-           ,{<<"Run-Time">>, kz_time:current_tstamp() - StartTime}
+           ,{<<"Run-Time">>, kz_time:now_s() - StartTime}
            ,{<<"Start-Time">>, StartTime}
            ,{<<"Is-Locked">>, Locked}
            ,{<<"Switch-Hostname">>, Hostname}
@@ -473,7 +473,7 @@ conference_from_props(Props, Node, Conference) ->
                          ,uuid = kzd_freeswitch:conference_uuid(Props)
                          ,name = kzd_freeswitch:conference_name(Props)
                          ,profile_name = kzd_freeswitch:conference_profile_name(Props)
-                         ,start_time = kz_time:current_tstamp()
+                         ,start_time = kz_time:now_s()
                          ,switch_hostname = kzd_freeswitch:hostname(Props, kz_term:to_binary(Node))
                          ,switch_url = ecallmgr_fs_nodes:sip_url(Node)
                          ,switch_external_ip = ecallmgr_fs_nodes:sip_external_ip(Node)
@@ -654,7 +654,7 @@ xml_attr_to_conference(Conference, 'exit_sound', Value) ->
 xml_attr_to_conference(Conference, 'enter_sound', Value) ->
     Conference#conference{enter_sound=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'run_time', Value) ->
-    Conference#conference{start_time=kz_time:decr_timeout(kz_time:current_tstamp()
+    Conference#conference{start_time=kz_time:decr_timeout(kz_time:now_s()
                                                          ,kz_term:to_integer(Value)
                                                          )};
 xml_attr_to_conference(Conference, _Name, _Value) ->
@@ -796,7 +796,7 @@ print_summary({[#conference{name=Name
              ,Count) ->
     Participants = participants(Name),
     io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~-5s|~n"
-             ,[Name, Node, length(Participants), kz_time:current_tstamp() - StartTime, AccountId, IsLocal]
+             ,[Name, Node, length(Participants), kz_time:now_s() - StartTime, AccountId, IsLocal]
              ),
     print_summary(ets:select(Continuation), Count + 1).
 

@@ -48,15 +48,15 @@ render(Renderer, TemplateId, _Template, _TemplateData, 0) ->
     {'error', 'render_failed'};
 
 render(Renderer, TemplateId, Template, TemplateData, Tries) ->
-    Start = kz_time:current_tstamp(),
+    Start = kz_time:now_s(),
     PoolStatus = poolboy:status(teletype_sup:render_farm_name()),
     lager:info("starting render of ~p", [TemplateId]),
     case do_render(Renderer, TemplateId, Template, TemplateData) of
         {'error', 'render_failed'} ->
-            lager:info("render failed in ~p, pool: ~p", [kz_time:current_tstamp() - Start, PoolStatus]),
+            lager:info("render failed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
             render(Renderer, TemplateId, Template, TemplateData, Tries-1);
         GoodReturn ->
-            lager:info("render completed in ~p, pool: ~p", [kz_time:current_tstamp() - Start, PoolStatus]),
+            lager:info("render completed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
             poolboy:checkin(teletype_sup:render_farm_name(), Renderer),
             GoodReturn
     end.

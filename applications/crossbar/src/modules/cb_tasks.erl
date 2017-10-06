@@ -556,7 +556,7 @@ read_attachment_file(TaskId, Context, AttachmentName) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     AccountId = cb_context:account_id(Context),
-    ViewOptions = [{startkey, [AccountId, kz_time:current_tstamp(), kz_json:new()]}
+    ViewOptions = [{startkey, [AccountId, kz_time:now_s(), kz_json:new()]}
                   ,{endkey, [AccountId]}
                   ,descending
                   ],
