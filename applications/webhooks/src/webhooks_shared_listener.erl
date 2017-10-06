@@ -172,23 +172,26 @@ print_summary({[#webhook{uri=URI
     print_summary(ets:select(Continuation), Count+1).
 
 -define(ACCOUNT_BINDING
-       ,{'conf', [{'restrict_to', ['doc_updates']}
-                 ,{'type', <<"database">>}
-                 ]
-        }
+       ,'conf', [{'restrict_to', ['doc_updates']}
+                ,{'type', <<"database">>}
+                ]
        ).
 
 -spec add_account_bindings() -> 'ok'.
 add_account_bindings() ->
-    gen_listener:add_responder(?SERVER
-                              ,{'webhooks_init', 'maybe_init_account'}
-                              ,[{<<"configuration">>, ?DB_CREATED}]
-                              ),
+    add_responder(),
     gen_listener:add_binding(?SERVER, ?ACCOUNT_BINDING).
 
 -spec remove_account_bindings() -> 'ok'.
 remove_account_bindings() ->
     gen_listener:rm_binding(?SERVER, ?ACCOUNT_BINDING).
+
+add_responder() ->
+    gen_listener:add_responder(?SERVER
+                              ,{'webhooks_init', 'maybe_init_account'}
+                              ,[{<<"configuration">>, ?DB_CREATED}]
+                              ).
+
 
 %%%===================================================================
 %%% gen_server callbacks
