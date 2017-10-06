@@ -12,7 +12,7 @@
 
 -export([build/1
         ,build_with_mapper/2, build_with_mapper/3
-        ,is_defined/1
+        ,is_defined/1, is_only_time_filter/2
         ]).
 
 -type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
@@ -114,6 +114,25 @@ is_filter_key({<<"created_to">>, _}) -> 'true';
 is_filter_key({<<"modified_from">>, _}) -> 'true';
 is_filter_key({<<"modified_to">>, _}) -> 'true';
 is_filter_key(_) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Check if only time filters are defined in query string, useful to
+%% crossbar_view to not add `include_docs` if only they are defined.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_only_time_filter(cb_context:context(), ne_binary()) -> boolean().
+is_only_time_filter(Context, FilterKey) ->
+    Fun = fun({<<"created_from">>, _}) -> 'true';
+             ({<<"created_to">>, _}) -> 'true';
+             ({<<"modified_from">>, _}) -> 'true';
+             ({<<"modified_to">>, _}) -> 'true';
+             ({Key, _}) ->
+                 Key =/= <<FilterKey/binary, "_from">>
+                    andalso Key =/= <<FilterKey/binary, "_to">>
+          end,
+    kz_json:all(Fun, cb_context:query_string(Context)).
 
 -spec filter_doc_by_querystring(kz_json:object(), kz_json:object()) -> boolean().
 filter_doc_by_querystring(Doc, QueryString) ->

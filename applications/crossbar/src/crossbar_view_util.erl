@@ -82,10 +82,12 @@
 -spec build_modb_options(cb_context:context(), ne_binary(), options()) -> options_map() | cb_context:context().
 build_modb_options(Context, View, Options) ->
     Direction = direction(Context, Options),
+    TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
     HasQSFilter = crossbar_filter:is_defined(Context),
+                      andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
     UserMapper = props:get_value('mapper', Options),
     Mapper = crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter),
-    case time_range(Context, Options) of
+    case time_range(Context, Options, TimeFilterKey) of
         {StartTime, EndTime} ->
             {StartKey, EndKey} = start_end_keys(Context, Options, Direction, StartTime, EndTime),
             maps:from_list(
@@ -238,7 +240,10 @@ time_range(Context) -> time_range(Context, []).
 %%--------------------------------------------------------------------
 -spec time_range(cb_context:context(), options()) -> time_range() | cb_context:context().
 time_range(Context, Options) ->
-    Key = props:get_ne_binary_value('range_key', Options, <<"created">>),
+    time_range(Context, Options, props:get_ne_binary_value('range_key', Options, <<"created">>)).
+
+-spec time_range(cb_context:context(), options(), ne_binary()) -> time_range() | cb_context:context().
+time_range(Context, Options, Key) ->
     MaxRange = get_max_range(Options),
     TSTime = kz_time:current_tstamp(),
     RangeTo = get_time_key(Context, <<Key/binary, "_to">>, Options, TSTime),
@@ -300,6 +305,8 @@ get_range_modbs(Context, Options, Direction, StartTime, EndTime) ->
 %% @private
 %% @doc
 %% If pagination available, returns page size.
+%%
+%% Note: DO NOT ADD ONE (1) TO PAGE_SIZE/LIMIT! Load function will add it.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_limit(cb_context:context(), options()) -> api_pos_integer().
@@ -327,7 +334,7 @@ get_limit(Context, Options) ->
 get_time_key(Context, Key, Options, Default) ->
     case props:get_integer_value(Key, Options) of
         'undefined' ->
-            try kz_term:to_integer(cb_context:req_value(Context, Key)) of
+            try kz_term:to_integer(cb_context:req_value(Context, Key, 0)) of
                 T when T > 0 -> T;
                 _ -> Default
             catch
