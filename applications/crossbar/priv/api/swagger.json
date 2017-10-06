@@ -2159,6 +2159,7 @@
                     "default": "park",
                     "description": "Action to take for the caller",
                     "enum": [
+                        "direct_park",
                         "park",
                         "retrieve",
                         "auto"
