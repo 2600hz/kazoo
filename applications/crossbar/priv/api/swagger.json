@@ -18015,6 +18015,78 @@
             ],
             "type": "object"
         },
+        "kapi.qubicle_session.create_session": {
+            "description": "AMQP API for qubicle_session.create_session",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Session-Type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID",
+                "Session-Type"
+            ],
+            "type": "object"
+        },
+        "kapi.qubicle_session.delete_session": {
+            "description": "AMQP API for qubicle_session.delete_session",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.qubicle_session.join_queue": {
+            "description": "AMQP API for qubicle_session.join_queue",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Join-Queue-ID": {
+                    "type": "string"
+                },
+                "Session-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID",
+                "Join-Queue-ID",
+                "Session-ID"
+            ],
+            "type": "object"
+        },
         "kapi.rate.req": {
             "description": "AMQP API for rate.req",
             "properties": {
@@ -29145,6 +29217,17 @@
                         "type": "string"
                     },
                     "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.qubicle": {
+            "description": "Schema for qubicle system_config",
+            "properties": {
+                "enable_event_call_props": {
+                    "default": false,
+                    "description": "qubicle enable_event_call_props",
+                    "type": "boolean"
                 }
             },
             "type": "object"
