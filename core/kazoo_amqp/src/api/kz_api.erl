@@ -38,6 +38,7 @@
         ,defer_response/1
         ,from_pid/1
         ,reply_to/1
+        ,deliver_to/1
         ]).
 
 -export([is_federated_event/1
@@ -152,6 +153,12 @@ reply_to(Props) when is_list(Props) ->
     props:get_value(?KEY_REPLY_TO_PID, Props);
 reply_to(JObj) ->
     kz_json:get_value(?KEY_REPLY_TO_PID, JObj).
+
+-spec deliver_to(api_terms()) -> api_binary().
+deliver_to(Props) when is_list(Props) ->
+    props:get_value(?KEY_DELIVER_TO_PID, Props);
+deliver_to(JObj) ->
+    kz_json:get_value(?KEY_DELIVER_TO_PID, JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc Default Headers in all messages - see wiki
