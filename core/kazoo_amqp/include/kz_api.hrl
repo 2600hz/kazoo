@@ -67,6 +67,7 @@
         ,?KEY_SERVER_ID
         ,?KEY_REQUEST_FROM_PID
         ,?KEY_REPLY_TO_PID
+        ,?KEY_DELIVER_TO_PID
         ]).
 -define(DEFAULT_VALUES, [{?KEY_NODE, kz_term:to_binary(node())}
                         ,{?KEY_MSG_ID, kz_binary:rand_hex(16)}

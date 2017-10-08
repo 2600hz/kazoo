@@ -27,6 +27,7 @@
 
 -define(KEY_REQUEST_FROM_PID, <<"Request-From-PID">>).
 -define(KEY_REPLY_TO_PID, <<"Reply-To-PID">>).
+-define(KEY_DELIVER_TO_PID, <<"Deliver-To-PID">>).
 
 -define(KZ_API_LITERALS_HRL, 'true').
 -endif.
