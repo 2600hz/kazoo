@@ -347,9 +347,7 @@ init([]) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs handler"),
-    _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
     _ = ets:new(?CAPABILITY_TBL, ['bag', 'protected', 'named_table', {'keypos', #capability.node}]),
-    _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
     InitPidRef = kz_util:spawn_monitor(fun start_preconfigured_servers/0, []),
     {'ok', #state{init_pidref=InitPidRef}}.
 
@@ -455,15 +453,6 @@ handle_cast(_Cast, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info('expire_sip_subscriptions', Cache) ->
-    Now = kz_time:now_s(),
-    DeleteSpec = [{#sip_subscription{expires = '$1', timestamp = '$2', _ = '_'},
-                   [{'>', {'const', Now}, {'+', '$2', '$1'}}],
-                   ['true']}
-                 ],
-    ets:select_delete('sip_subscriptions', DeleteSpec),
-    _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
-    {'noreply', Cache};
 handle_info({'nodedown', NodeName}, State) ->
     _ = kz_util:spawn(fun maybe_handle_nodedown/2, [NodeName, State]),
     call_control_fs_nodedown(NodeName),
