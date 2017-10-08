@@ -148,6 +148,8 @@
 -type doc() :: kz_json:object().
 -type setter_fun() :: {fun((doc(), Value) -> doc()), Value}.
 -type setter_funs() :: [setter_fun()].
+-type private_field() :: ne_binary().
+-type private_fields() :: [private_field()].
 -export_type([doc/0
              ,setter_fun/0
              ,setter_funs/0
@@ -706,7 +708,21 @@ public_fields(JObjs, IncludeId) when is_list(JObjs) ->
 public_fields(JObj, 'true') ->
     kz_json:set_value(<<"id">>, id(JObj, 'null'), filter_public_fields(JObj));
 public_fields(JObj, 'false') ->
-    filter_public_fields(JObj).
+    filter_public_fields(JObj);
+public_fields(JObj, Leaks) ->
+    Fun = fun(Leak, Acc) -> maybe_leak_field(Leak, Acc, JObj) end,
+    lists:foldl(Fun, filter_public_fields(JObj), Leaks).
+
+-spec maybe_leak_field(private_field(), kz_json:object(), kz_json:object()) -> kz_json:object().
+maybe_leak_field(Leak, Acc, JObj) ->
+    case kz_json:get_value(Leak, JObj) of
+        'undefined' -> Acc;
+        V -> leak_field(Leak, V, Acc)
+    end.
+
+-spec leak_field(private_field(), kz_json:json_term(), kz_json:object()) -> kz_json:object().
+leak_field(<<"_", K/binary>>, V, JObj) -> kz_json:set_value(K, V, JObj);
+leak_field(<<"pvt_", K/binary>>, V, JObj) -> kz_json:set_value(K, V, JObj).
 
 -spec filter_public_fields(doc()) -> doc().
 filter_public_fields(JObj) ->
