@@ -89,6 +89,12 @@
 -define(KEYS_ATTACHMENTS, [?KEY_ATTACHMENTS, ?KEY_EXTERNAL_ATTACHMENTS]).
 -define(KEYS_ATTACHMENTS(A), [ [Key, A] || Key <- ?KEYS_ATTACHMENTS]).
 
+%% i wish we could define a binary derived type
+%% that start with something (_, pvt_) in this case
+%% keep dreaming
+-type private_field() :: ne_binary().
+-type private_fields() :: [private_field()].
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -205,14 +211,28 @@ add_pvt_document_hash(JObj, _, _) ->
 public_fields(Thing) ->
     public_fields(Thing, 'true').
 
--spec public_fields(kz_json:object() | kz_json:objects(), boolean()) ->
+-spec public_fields(kz_json:object() | kz_json:objects(), boolean() | private_fields()) ->
                            kz_json:object() | kz_json:objects().
 public_fields(JObjs, IncludeId) when is_list(JObjs) ->
     [public_fields(J, IncludeId) || J <- JObjs];
 public_fields(JObj, 'true') ->
     kz_json:set_value(<<"id">>, id(JObj, 'null'), filter_public_fields(JObj));
 public_fields(JObj, 'false') ->
-    filter_public_fields(JObj).
+    filter_public_fields(JObj);
+public_fields(JObj, Leaks) ->
+    Fun = fun(Leak, Acc) -> maybe_leak_field(Leak, Acc, JObj) end,
+    lists:foldl(Fun, filter_public_fields(JObj), Leaks).
+
+-spec maybe_leak_field(private_field(), kz_json:object(), kz_json:object()) -> kz_json:object().
+maybe_leak_field(Leak, Acc, JObj) ->
+    case kz_json:get_value(Leak, JObj) of
+        'undefined' -> Acc;
+        V -> leak_field(Leak, V, Acc)
+    end.
+
+-spec leak_field(private_field(), kz_json:json_term(), kz_json:object()) -> kz_json:object().
+leak_field(<<"_", K/binary>>, V, JObj) -> kz_json:set_value(K, V, JObj);
+leak_field(<<"pvt_", K/binary>>, V, JObj) -> kz_json:set_value(K, V, JObj).
 
 -spec filter_public_fields(kz_json:object()) -> kz_json:object().
 filter_public_fields(JObj) ->
