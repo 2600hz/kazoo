@@ -509,6 +509,7 @@
                                            ,<<"Channel-Presence-ID">>
                                            ,<<"Custom-Channel-Vars">>
                                            ,<<"Conference-Channel-Vars">>
+                                           ,<<"Switch-Hostname">>, <<"Switch-URL">>
                                            ]).
 -define(CONFERENCE_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                  ,{<<"Event-Name">>, <<"event">>}
@@ -1175,7 +1176,7 @@ bind_to_q(Q, ['command'|T], Props) ->
     'ok' = kz_amqp_util:bind_q_to_conference(Q, 'command'),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['event'|T], Props) ->
-    'ok' = kz_amqp_util:bind_q_to_conference(Q, 'event'),
+    'ok' = kz_amqp_util:bind_q_to_conference(Q, 'event', <<"#">>),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
@@ -1215,7 +1216,7 @@ unbind_from_q(Q, ['command'|T], Props) ->
     'ok' = kz_amqp_util:unbind_q_from_conference(Q, 'command'),
     unbind_from_q(Q, T, Props);
 unbind_from_q(Q, ['event'|T], Props) ->
-    'ok' = kz_amqp_util:unbind_q_from_conference(Q, 'event'),
+    'ok' = kz_amqp_util:unbind_q_from_conference(Q, 'event', <<"#">>),
     unbind_from_q(Q, T, Props);
 unbind_from_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
