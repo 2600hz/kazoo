@@ -181,6 +181,10 @@ start_link(Node, Options) when is_atom(Node) ->
 sync_channels(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_channels').
 
+-spec sync_conferences(fs_node()) -> 'ok'.
+sync_conferences(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_conferences').
+
 -spec sync_interfaces(fs_node()) -> 'ok'.
 sync_interfaces(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_interfaces').
@@ -287,6 +291,7 @@ init([Node, Options]) ->
     lager:info("starting new fs node listener for ~s", [Node]),
     gproc:reg({'p', 'l', 'fs_node'}),
     sync_channels(self()),
+    sync_conferences(self()),
     PidRef = run_start_cmds(Node, Options),
     lager:debug("running start commands in ~p", [PidRef]),
     {'ok', #state{node=Node
@@ -343,6 +348,9 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
                 || J <- channels_as_json(Node)
                ],
     _ = ecallmgr_fs_channels:sync(Node, Channels),
+    {'noreply', State};
+handle_cast('sync_conferences', #state{node=Node}=State) ->
+    _ = ecallmgr_fs_conferences:sync_node(Node),
     {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
@@ -528,8 +536,8 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
             after 120 * ?MILLISECONDS_IN_SECOND ->
                     [{'timeout', {ApiCmd, ApiArg}} | Acc]
             end;
-        {'error', _}=Error ->
-            [Error | Acc]
+        {'error', Error} ->
+            [{'error', {ApiCmd, ApiArg}, Error} | Acc]
     end.
 
 -spec format_args('list'|'binary', kz_term:api_terms()) -> kz_term:api_terms().
