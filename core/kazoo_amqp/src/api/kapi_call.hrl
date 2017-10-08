@@ -86,12 +86,14 @@
         ,<<"Transfer-To">>
         ,<<"Transfer-History">>
         ,<<"User-Agent">>
+        ,<<"Call-Debug">>
         ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                           ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                           ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                           ,{<<"Fax-Info">>, fun kz_json:is_json_object/1}
+                          ,{<<"Call-Debug">>, fun kz_json:is_json_object/1}
                           ]).
 
 %% Channel Status Request
