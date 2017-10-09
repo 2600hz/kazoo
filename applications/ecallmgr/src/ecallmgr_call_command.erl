@@ -28,24 +28,18 @@
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     exec_cmd(Node, UUID, JObj, ControlPID, kz_api:call_id(JObj)).
 
-exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
+exec_cmd(Node, UUID, JObj, _ControlPid, UUID) ->
     App = kapi_dialplan:application_name(JObj),
     case get_fs_app(Node, UUID, JObj, App) of
         {'error', Msg} -> throw({'msg', Msg});
         {'return', Result} -> Result;
-        {AppName, 'noop'} ->
-            ecallmgr_call_control:event_execute_complete(ControlPid, UUID, AppName);
-        {AppName, AppData} ->
-            ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
-        {AppName, AppData, NewNode} ->
-            ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
-        [_|_]=Apps ->
-            [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
+        {_AppName, 'noop'} -> 'ok';
+        {AppName, AppData} -> ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
+        {AppName, AppData, NewNode} -> ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
+        [_|_]=Apps -> ecallmgr_util:send_cmds(Node, UUID, Apps)
     end;
 exec_cmd(_Node, _UUID, JObj, _ControlPid, _DestId) ->
-    lager:debug("command ~s not meant for us but for ~s"
-               ,[kapi_dialplan:application_name(JObj), _DestId]
-               ),
+    lager:notice("command ~s not meant for us but for ~s", [kapi_dialplan:application_name(JObj), _DestId]),
     throw(<<"call command provided with a command for a different call id">>).
 
 -spec fetch_dialplan(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:api_pid()) -> fs_apps().
@@ -68,23 +62,24 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
                         fs_app() | fs_apps() |
                         {'return', 'error' | kz_term:ne_binary()} |
                         {'error', kz_term:ne_binary()}.
-get_fs_app(Node, UUID, JObj, <<"noop">>) ->
+get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case kapi_dialplan:noop_v(JObj) of
         'false' ->
             {'error', <<"noop failed to execute as JObj did not validate">>};
         'true' ->
-            _ = ecallmgr_fs_bridge:maybe_b_leg_events(Node, UUID, JObj),
             Args = case kz_api:msg_id(JObj) of
                        'undefined' ->
                            <<"Event-Subclass=kazoo::noop,Event-Name=CUSTOM"
-                             ",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
-                             ",kazoo_application_name=noop"
+                            ,",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
+                            ,",kazoo_application_name=noop"
+                            ,",Application-UUID=${app_uuid}"
                            >>;
                        NoopId ->
                            <<"Event-Subclass=kazoo::noop,Event-Name=CUSTOM"
-                             ",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
-                             ",kazoo_application_name=noop"
-                             ",kazoo_application_response=", (kz_term:to_binary(NoopId))/binary
+                            ,",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
+                            ,",kazoo_application_name=noop"
+                            ,",kazoo_application_response=", (kz_term:to_binary(NoopId))/binary
+                            ,",Application-UUID=${app_uuid}"
                            >>
                    end,
             {<<"event">>, Args}
@@ -185,72 +180,6 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
         'true' -> record_call(Node, UUID, JObj)
     end;
 
-%% get_fs_app(Node, UUID, JObj, <<"store">>) ->
-%%     case kapi_dialplan:store_v(JObj) of
-%%         'false' -> {'error', <<"store failed to execute as JObj did not validate">>};
-%%         'true' ->
-%%             MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
-%%             RecordingName = ecallmgr_util:recording_filename(MediaName),
-%%             lager:debug("streaming media ~s", [RecordingName]),
-%%             case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
-%%                 <<"put">> ->
-%%                     %% stream file over HTTP PUT
-%%                     lager:debug("stream ~s via HTTP PUT", [RecordingName]),
-%%                     _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store', JObj),
-%%                     {<<"store">>, 'noop'};
-%%                 <<"post">> ->
-%%                     %% stream file over HTTP POST
-%%                     lager:debug("stream ~s via HTTP POST", [RecordingName]),
-%%                     _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store', JObj),
-%%                     {<<"store">>, 'noop'};
-%%                 _Method ->
-%%                     %% unhandled method
-%%                     lager:debug("unhandled stream method ~s", [_Method]),
-%%                     {'return', 'error'}
-%%             end
-%%     end;
-
-%% get_fs_app(Node, UUID, JObj, <<"store_vm">>) ->
-%%     case kapi_dialplan:store_vm_v(JObj) of
-%%         'false' -> {'error', <<"store failed to execute as JObj did not validate">>};
-%%         'true' ->
-%%             MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
-%%             RecordingName = ecallmgr_util:recording_filename(MediaName),
-%%             lager:debug("streaming media ~s", [RecordingName]),
-%%             case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
-%%                 <<"put">> ->
-%%                     %% stream file over HTTP PUT
-%%                     lager:debug("stream ~s via HTTP PUT", [RecordingName]),
-%%                     _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store_vm', JObj),
-%%                     {<<"store_vm">>, 'noop'};
-%%                 <<"post">> ->
-%%                     %% stream file over HTTP POST
-%%                     lager:debug("stream ~s via HTTP POST", [RecordingName]),
-%%                     _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store_vm', JObj),
-%%                     {<<"store_vm">>, 'noop'};
-%%                 _Method ->
-%%                     %% unhandled method
-%%                     lager:debug("unhandled stream method ~s", [_Method]),
-%%                     {'return', 'error'}
-%%             end
-%%     end;
-
-%% get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
-%%     case kapi_dialplan:store_fax_v(JObj) of
-%%         'false' -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
-%%         'true' ->
-%%             File = kz_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID)),
-%%             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
-%%             case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
-%%                 <<"put">> ->
-%%                     _ = stream_over_http(Node, UUID, File, 'put', 'fax', JObj),
-%%                     {App, 'noop'};
-%%                 _Method ->
-%%                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
-%%                     {'error', <<"invalid media transfer method">>}
-%%             end
-%%     end;
-
 get_fs_app(_Node, _UUID, JObj, <<"send_dtmf">>) ->
     case kapi_dialplan:send_dtmf_v(JObj) of
         'false' -> {'error', <<"send_dtmf failed to execute as JObj did not validate">>};
@@ -337,6 +266,7 @@ get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
     {<<"soft_hold">>, list_to_binary([UnholdKey, " ", AMedia, " ", BMedia])};
 
 get_fs_app(Node, UUID, JObj, <<"page">>) ->
+    lager:debug_unsafe("PAGE : ~s", [kz_json:encode(JObj, ['pretty'])]),
     Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case kapi_dialplan:page_v(JObj) of
         'false' -> {'error', <<"page failed to execute as JObj did not validate">>};
@@ -503,11 +433,6 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
             {<<"redirect">>, kz_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
-%% TODO: can we depreciate this command? It was prior to ecallmgr_fs_query....don't think anything is using it.
-%% get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
-%%     _ = kz_util:spawn(fun send_fetch_call_event/3, [Node, UUID, JObj]),
-%%     {<<"fetch">>, 'noop'};
-
 get_fs_app(Node, UUID, JObj, <<"conference">>) ->
     case kapi_dialplan:conference_v(JObj) of
         'false' -> {'error', <<"conference failed to execute as JObj did not validate">>};
@@ -647,7 +572,6 @@ call_pickup(Node, UUID, JObj) ->
                          {'return', kz_term:ne_binary()} |
                          {'error', kz_term:ne_binary()}.
 connect_leg(Node, UUID, JObj) ->
-    _ = ecallmgr_fs_bridge:maybe_b_leg_events(Node, UUID, JObj),
     case prepare_app(Node, UUID, JObj) of
         {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
             get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget, <<"call_pickup">>);
@@ -909,6 +833,7 @@ get_conf_id_and_profile(JObj) ->
                                 {kz_term:ne_binary(), kz_term:ne_binary(), atom()} |
                                 {kz_term:ne_binary(), 'noop' | kz_term:ne_binary()}.
 get_conference_app(ChanNode, UUID, JObj, 'true') ->
+    lager:debug("getting conference app"),
     {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
     case ecallmgr_fs_conferences:node(ConfName) of
@@ -1000,212 +925,6 @@ wait_for_conference(ConfName) ->
             timer:sleep(100),
             wait_for_conference(ConfName)
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc Store command helpers
-%% @end
-%%--------------------------------------------------------------------
-%% -spec stream_over_http(atom(), ne_binary(), file:filename_all(), 'put' | 'post', 'store'| 'store_vm' | 'fax', kz_json:object()) -> any().
-%% stream_over_http(Node, UUID, File, 'put'=Method, 'store'=Type, JObj) ->
-%%     Url = kz_term:to_list(kz_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
-%%     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-%%     Args = list_to_binary([Url, <<" ">>, File]),
-%%     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
-%%     send_fs_bg_store(Node, UUID, File, Args, Method, Type);
-%% 
-%% stream_over_http(Node, UUID, File, 'put'=Method, 'store_vm'=Type, JObj) ->
-%%     Url = kz_term:to_list(kz_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
-%%     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-%%     Args = list_to_binary([Url, <<" ">>, File]),
-%%     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
-%%     send_fs_bg_store(Node, UUID, File, Args, Method, Type);
-%% 
-%% stream_over_http(Node, UUID, File, Method, Type, JObj) ->
-%%     Url = kz_json:get_ne_binary_value(<<"Media-Transfer-Destination">>, JObj),
-%%     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-%%     ecallmgr_fs_command:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
-%%     Args = <<Url/binary, " ", File/binary>>,
-%%     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
-%%     SendAlert = kz_json:is_true(<<"Suppress-Error-Report">>, JObj, 'false'),
-%%     Result = case send_fs_store(Node, Args, Method) of
-%%                  {'ok', <<"+OK", _/binary>>} ->
-%%                      lager:debug("successfully stored media for ~s", [Type]),
-%%                      <<"success">>;
-%%                  {'ok', Err} ->
-%%                      lager:debug("store media failed for ~s: ~s", [Type, Err]),
-%%                      maybe_send_detailed_alert(SendAlert, Node, UUID, File, Type, Err),
-%%                      <<"failure">>;
-%%                  {'error', E} ->
-%%                      lager:debug("error executing http_put for ~s: ~p", [Type, E]),
-%%                      maybe_send_detailed_alert(SendAlert, Node, UUID, File, Type, E),
-%%                      <<"failure">>
-%%              end,
-%%     case Type of
-%%         'store' -> send_store_call_event(Node, UUID, Result);
-%%         'fax' -> send_store_fax_call_event(UUID, Result)
-%%     end.
-%% 
-%% -spec maybe_send_detailed_alert(boolean(), atom(), ne_binary(), ne_binary(), 'store' | 'fax', any()) -> any().
-%% maybe_send_detailed_alert('true', _, _, _, _, _) -> 'ok';
-%% maybe_send_detailed_alert(_, Node, UUID, File, Type, Reason) ->
-%%     send_detailed_alert(Node, UUID, File, Type, Reason).
-%% 
-%% -spec send_detailed_alert(atom(), ne_binary(), ne_binary(), 'store' | 'fax', any()) -> any().
-%% send_detailed_alert(Node, UUID, File, Type, Reason) ->
-%%     kz_notify:detailed_alert("Failed to store ~s: media file ~s for call ~s on ~s "
-%%                             ,[Type, File, UUID, Node]
-%%                             ,[{<<"Details">>, Reason}]
-%%                             ).
-%% 
-%% -spec send_fs_store(atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
-%% send_fs_store(Node, Args, 'put') ->
-%%     freeswitch:api(Node, 'http_put', kz_term:to_list(Args), 120 * ?MILLISECONDS_IN_SECOND);
-%% send_fs_store(Node, Args, 'post') ->
-%%     freeswitch:api(Node, 'http_post', kz_term:to_list(Args), 120 * ?MILLISECONDS_IN_SECOND).
-%% 
-%% -spec send_fs_bg_store(atom(), ne_binary(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'store_vm' | 'fax') -> fs_api_ret().
-%% send_fs_bg_store(Node, UUID, File, Args, 'put', 'store') ->
-%%     case freeswitch:bgapi(Node, UUID, [File], 'http_put', kz_term:to_list(Args), fun chk_store_result/6) of
-%%         {'error', _} -> send_store_call_event(Node, UUID, <<"failure">>);
-%%         {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
-%%     end;
-%% send_fs_bg_store(Node, UUID, File, Args, 'put', 'store_vm') ->
-%%     case freeswitch:bgapi(Node, UUID, [File], 'http_put', kz_term:to_list(Args), fun chk_store_vm_result/6) of
-%%         {'error', _} -> send_store_vm_call_event(Node, UUID, <<"failure">>);
-%%         {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
-%%     end.
-%% 
-%% -spec chk_store_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
-%% chk_store_result(Res, Node, UUID, [File], JobId, <<"+OK", _/binary>>=Reply) ->
-%%     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
-%%     send_store_call_event(Node, UUID, {<<"success">>, File});
-%% chk_store_result(Res, Node, UUID, [File], JobId, Reply) ->
-%%     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
-%%     send_store_call_event(Node, UUID, {<<"failure">>, File}).
-%% 
-%% -spec chk_store_vm_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
-%% chk_store_vm_result(Res, Node, UUID, _, JobId, <<"+OK", _/binary>>=Reply) ->
-%%     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
-%%     send_store_vm_call_event(Node, UUID, <<"success">>);
-%% chk_store_vm_result(Res, Node, UUID, _, JobId, Reply) ->
-%%     lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
-%%     send_store_vm_call_event(Node, UUID, <<"failure">>).
-%% 
-%% -spec send_store_call_event(atom(), ne_binary(), kz_json:object() | ne_binary() | {ne_binary(), api_binary()}) -> 'ok'.
-%% send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
-%%     ChannelProps =
-%%         case ecallmgr_fs_channel:channel_data(Node, UUID) of
-%%             {'ok', Ps} -> Ps;
-%%             {'error', _Err} -> []
-%%         end,
-%% 
-%%     BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, <<"store">>),
-%%     ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
-%%     kz_amqp_worker:cast(ApiProps, fun kapi_call:publish_event/1);
-%% send_store_call_event(Node, UUID, MediaTransResults) ->
-%%     send_store_call_event(Node, UUID, {MediaTransResults, 'undefined'}).
-%% 
-%% -spec maybe_add_ccvs(kz_proplist(), kz_proplist()) -> kz_proplist().
-%% maybe_add_ccvs(BaseProps, ChannelProps) ->
-%%     case ecallmgr_util:custom_channel_vars(ChannelProps) of
-%%         [] -> BaseProps;
-%%         CustomProp ->
-%%             props:set_value(<<"Custom-Channel-Vars">>
-%%                            ,kz_json:from_list(CustomProp)
-%%                            ,BaseProps
-%%                            )
-%%     end.
-%% 
-%% -spec build_base_store_event_props(ne_binary(), kz_proplist(), ne_binary(), api_binary(), ne_binary()) -> kz_proplist().
-%% build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, App) ->
-%%     Timestamp = kz_term:to_binary(kz_time:current_tstamp()),
-%%     props:filter_undefined(
-%%       [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps, Timestamp)}
-%%       ,{<<"Call-ID">>, UUID}
-%%       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(ChannelProps)}
-%%       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps, <<"HANGUP">>)}
-%%       ,{<<"Application-Name">>, App}
-%%       ,{<<"Application-Response">>, MediaTransResults}
-%%       ,{<<"Application-Data">>, File}
-%%        | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-%%       ]).
-%% 
-%% -spec send_store_vm_call_event(atom(), ne_binary(), kz_json:object() | ne_binary()) -> 'ok'.
-%% send_store_vm_call_event(Node, UUID, MediaTransResults) ->
-%%     ChannelProps =
-%%         case ecallmgr_fs_channel:channel_data(Node, UUID) of
-%%             {'ok', Ps} -> Ps;
-%%             {'error', _Err} -> []
-%%         end,
-%% 
-%%     BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, 'undefined', <<"store_vm">>),
-%%     ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
-%% 
-%%     kz_amqp_worker:cast(ApiProps, fun kapi_call:publish_event/1).
-%% 
-%% -spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
-%% send_store_fax_call_event(UUID, Results) ->
-%%     Timestamp = kz_term:to_binary(kz_time:current_tstamp()),
-%%     Prop = [{<<"Msg-ID">>, Timestamp}
-%%            ,{<<"Call-ID">>, UUID}
-%%            ,{<<"Application-Name">>, <<"store_fax">>}
-%%            ,{<<"Application-Response">>, Results}
-%%             | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-%%            ],
-%%     kz_amqp_worker:cast(Prop, fun kapi_call:publish_event/1).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-%% -spec find_fetch_channel_data(atom(), ne_binary(), kz_json:object()) ->
-%%                                      {'ok', kz_proplist()}.
-%% find_fetch_channel_data(Node, UUID, JObj) ->
-%%     case kz_json:is_true(<<"From-Other-Leg">>, JObj) of
-%%         'true' ->
-%%             {'ok', OtherUUID} = freeswitch:api(Node, 'uuid_getvar', kz_term:to_list(<<UUID/binary, " bridge_uuid">>)),
-%%             ecallmgr_fs_channel:channel_data(Node, OtherUUID);
-%%         'false' ->
-%%             ecallmgr_fs_channel:channel_data(Node, UUID)
-%%     end.
-%% 
-%% -spec send_fetch_call_event(atom(), ne_binary(), kz_json:object()) -> 'ok'.
-%% send_fetch_call_event(Node, UUID, JObj) ->
-%%     try
-%%         {'ok', ChannelProps} = find_fetch_channel_data(Node, UUID, JObj),
-%%         BaseProps = base_fetch_call_event_props(UUID, ChannelProps),
-%%         ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
-%%         kz_amqp_worker:cast(ApiProps, fun kapi_call:publish_event/1)
-%%     catch
-%%         Type:_ ->
-%%             Error = base_fetch_error_event_props(UUID, JObj, Type),
-%%             kz_amqp_worker:cast(Error, fun(E) -> kapi_dialplan:publish_error(UUID, E) end)
-%%     end.
-%% 
-%% -spec base_fetch_error_event_props(ne_binary(), kz_json:object(), atom()) ->
-%%                                           kz_proplist().
-%% base_fetch_error_event_props(UUID, JObj, Type) ->
-%%     props:filter_undefined(
-%%       [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-%%       ,{<<"Error-Message">>, <<"failed to construct or publish fetch call event">>}
-%%       ,{<<"Call-ID">>, UUID}
-%%       ,{<<"Application-Name">>, <<"fetch">>}
-%%       ,{<<"Application-Response">>, <<>>}
-%%        | kz_api:default_headers(<<"error">>, kz_term:to_binary(Type), ?APP_NAME, ?APP_VERSION)
-%%       ]).
-%% 
-%% -spec base_fetch_call_event_props(ne_binary(), kz_proplist()) ->
-%%                                          kz_proplist().
-%% base_fetch_call_event_props(UUID, ChannelProps) ->
-%%     props:filter_undefined(
-%%       [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps)}
-%%       ,{<<"Call-ID">>, UUID}
-%%       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(ChannelProps)}
-%%       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps)}
-%%       ,{<<"Application-Name">>, <<"fetch">>}
-%%       ,{<<"Application-Response">>, <<>>}
-%%        | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-%%       ]).
 
 %%------------------------------------------------------------------------------
 %% @doc Execute extension helpers
