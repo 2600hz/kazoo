@@ -14,11 +14,14 @@
         ]).
 -export([init/1]).
 
--define(EVENTS, application:get_env(?APP, 'event_stream', ?FS_EVENTS)).
--define(CUSTOM_EVENTS, application:get_env(?APP, 'event_stream_custom', ?FS_CUSTOM_EVENTS)).
+-define(EVENTS, ?FS_EVENTS).
+-define(CUSTOM_EVENTS, ?FS_CUSTOM_EVENTS).
+%% -define(EVENTS, application:get_env(?APP, 'event_stream', ?FS_EVENTS)).
+%%-define(CUSTOM_EVENTS, application:get_env(?APP, 'event_stream_custom', ?FS_CUSTOM_EVENTS)).
 
 -define(CHILDREN, [event_child(Node, Event) || Event <- ?EVENTS]
-        ++ [custom_child(Node, Subclass) || Subclass <- ?CUSTOM_EVENTS]).
+        ++ [event_child(Node, Subclass) || Subclass <- ?CUSTOM_EVENTS]).
+%%        ++ [custom_child(Node, Subclass) || Subclass <- ?CUSTOM_EVENTS]).
 
 %%==============================================================================
 %% API functions
@@ -41,7 +44,7 @@ sup_name(Node) ->
 
 -spec add_child(atom(), {'CUSTOM', atom()} | atom()) -> kz_types:sup_startchild_ret().
 add_child(Node, {'CUSTOM', Subclass}) ->
-    supervisor:start_child(sup_name(Node), custom_child(Node, Subclass));
+    supervisor:start_child(sup_name(Node), event_child(Node, Subclass));
 add_child(Node, Event) ->
     supervisor:start_child(sup_name(Node), event_child(Node, Event)).
 
@@ -69,8 +72,10 @@ init([Node, _Props]) ->
 
 -spec event_child(atom(), atom()) -> kz_types:sup_child_spec().
 event_child(Node, Event) ->
-    ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, 'undefined'], 'transient').
+    ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event], 'transient').
+%%    ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, 'undefined'], 'transient').
 
--spec custom_child(atom(), atom()) -> kz_types:sup_child_spec().
-custom_child(Node, Subclass) ->
-    ?WORKER_NAME_ARGS_TYPE(Subclass, 'ecallmgr_fs_event_stream', [Node, 'CUSTOM', Subclass], 'transient').
+%% -spec custom_child(atom(), atom()) -> sup_child_spec().
+%% custom_child(Node, Subclass) ->
+%%     ?WORKER_NAME_ARGS_TYPE(Subclass, 'ecallmgr_fs_event_stream', [Node, 'CUSTOM', Subclass], 'transient').
+
