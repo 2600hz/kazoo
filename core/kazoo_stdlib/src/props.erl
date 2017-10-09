@@ -106,7 +106,7 @@ filter_empty(Props) ->
 
 -spec is_not_empty(kz_term:proplist_property()) -> boolean().
 is_not_empty({_, V}) -> not kz_term:is_empty(V);
-is_not_empty(_V) -> 'true'.
+is_not_empty(V) -> not kz_term:is_empty(V).
 
 -spec filter_undefined(kz_term:proplist()) -> kz_term:proplist().
 filter_undefined(Props) ->
@@ -114,6 +114,7 @@ filter_undefined(Props) ->
 
 -spec is_not_undefined(kz_term:proplist_property()) -> boolean().
 is_not_undefined({_, 'undefined'}) -> 'false';
+is_not_undefined('undefined') -> 'false';
 is_not_undefined(_V) -> 'true'.
 
 -spec get_value(kz_term:proplist_key() | [kz_term:proplist_key()], kz_term:proplist()) -> any().
