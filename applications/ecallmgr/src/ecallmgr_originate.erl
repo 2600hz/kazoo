@@ -134,7 +134,6 @@ init([Node, JObj]) ->
     _ = kz_util:put_callid(JObj),
     ServerId = kz_api:server_id(JObj),
     ControllerQ = kz_api:queue_id(JObj),
-    _ = bind_to_events(freeswitch:version(Node), Node),
     case kapi_resource:originate_req_v(JObj) of
         'false' ->
             Error = <<"originate failed to execute as JObj did not validate">>,
@@ -147,12 +146,6 @@ init([Node, JObj]) ->
                          ,controller_q = ControllerQ
                          }}
     end.
-
--spec bind_to_events({'ok', ne_binary()}, atom()) -> 'ok'.
-bind_to_events({'ok', <<"mod_kazoo", _/binary>>}, Node) ->
-    'ok' = freeswitch:event(Node, ['CUSTOM', 'loopback::bowout']);
-bind_to_events(_, Node) ->
-    gproc:reg({'p', 'l', {'event', Node, <<"loopback::bowout">>}}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -313,7 +306,6 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
         {'ok', CallId} ->
             kz_util:put_callid(CallId),
             lager:debug("originate is executing, waiting for completion"),
-            erlang:monitor_node(Node, 'true'),
             bind_to_call_events(CallId),
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
             _ = publish_originate_started(ServerId, CallId, JObj, CtrlQ),
@@ -362,15 +354,6 @@ handle_info({'abandon_originate'}, #state{originate_req=JObj
                                          ,server_id=ServerId
                                          }=State) ->
     Error = <<"Failed to receive valid originate_execute in time">>,
-    _ = publish_error(Error, UUID, JObj, ServerId),
-    {'stop', 'normal', State};
-handle_info({'nodedown', _}, #state{originate_req=JObj
-                                   ,uuid=UUID
-                                   ,server_id=ServerId
-                                   ,node=Node
-                                   }=State) ->
-    erlang:monitor_node(Node, 'false'),
-    Error = <<"lost connection to freeswitch node">>,
     _ = publish_error(Error, UUID, JObj, ServerId),
     {'stop', 'normal', State};
 handle_info(_Info, State) ->
@@ -582,14 +565,10 @@ originate_execute(Node, Dialstrings, Timeout) ->
                        ,Timeout * ?MILLISECONDS_IN_SECOND + 2000
                        )
     of
-        {'ok', <<"+OK ", ID/binary>>} ->
-            UUID = kz_binary:strip(binary:replace(ID, <<"\n">>, <<>>)),
+        {'ok', UUID} ->
             Media = get('hold_media'),
             _Pid = kz_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
-        {'ok', Other} ->
-            lager:debug("recv other 'ok': ~s", [Other]),
-            {'error', kz_binary:strip(binary:replace(Other, <<"\n">>, <<>>))};
         {'error', Error} when is_binary(Error) ->
             lager:debug("error originating: ~s", [Error]),
             {'error', kz_binary:strip(binary:replace(Error, <<"\n">>, <<>>))};
@@ -808,7 +787,7 @@ start_control_process(#state{originate_req=JObj
                             ,fetch_id=FetchId
                             ,control_pid='undefined'
                             }=State) ->
-    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ControllerQ, kz_json:new()) of
+    case ecallmgr_call_control_sup:start_control_process(Node, Id, FetchId, ControllerQ, 'undefined', kz_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
             kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
