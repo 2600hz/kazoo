@@ -8,7 +8,7 @@
 -module(ecallmgr_fs_event_stream).
 -behaviour(gen_server).
 
--export([start_link/3]).
+-export([start_link/2]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -25,14 +25,11 @@
 
 -record(state, {node :: atom()
                ,bindings :: bindings()
-               ,subclasses :: bindings()
                ,ip :: inet:ip_address() | 'undefined'
                ,port :: inet:port_number() | 'undefined'
                ,socket :: inet:socket() | 'undefined'
                ,idle_alert = 'infinity' :: kz_timeout()
-               ,switch_url :: api_ne_binary()
-               ,switch_uri :: api_ne_binary()
-               ,switch_info = 'false' :: boolean()
+               ,channel_mon :: api_reference()
                }).
 -type state() :: #state{}.
 
@@ -43,9 +40,9 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), bindings(), bindings()) -> startlink_ret().
-start_link(Node, Bindings, Subclasses) ->
-    gen_server:start_link(?SERVER, [Node, Bindings, Subclasses], []).
+-spec start_link(atom(), bindings()) -> startlink_ret().
+start_link(Node, Bindings) ->
+    gen_server:start_link(?SERVER, [Node, Bindings], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -63,12 +60,12 @@ start_link(Node, Bindings, Subclasses) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init([atom() | bindings()]) -> {'ok', state()} | {'stop', any()}.
-init([Node, Bindings, Subclasses]) ->
+init([Node, Bindings]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream">>])),
+    _ = kz_amqp_channel:requisition(),
     request_event_stream(#state{node=Node
                                ,bindings=Bindings
-                               ,subclasses=Subclasses
                                ,idle_alert=idle_alert_timeout()
                                }).
 
@@ -114,6 +111,10 @@ handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
         {'error', Reason} ->
             {'stop', Reason, State}
     end;
+handle_cast({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
+    lager:debug("channel acquired ~p", [Channel]),
+    _ = kz_amqp_channel:consumer_channel(Channel),
+    {'noreply', State#state{channel_mon = erlang:monitor(process, Channel)}};
 handle_cast(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State};
@@ -132,36 +133,17 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'tcp', Socket, Data}, #state{socket=Socket
-                                         ,node=Node
-                                         ,switch_info='false'
-                                         }=State) ->
-    try ecallmgr_fs_node:sip_url(Node) of
-        'undefined' ->
-            lager:debug("no sip url available yet for ~s", [Node]),
-            {'noreply', State, 'hibernate'};
-        SwitchURL ->
-            [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
-            SwitchURI = <<"sip:", SwitchURIHost/binary>>,
-            handle_info({'tcp', Socket, Data}, State#state{switch_uri=SwitchURI
-                                                          ,switch_url=SwitchURL
-                                                          ,switch_info='true'
-                                                          })
-    catch
-        _E:_R ->
-            lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
-            {'noreply', State, 'hibernate'}
-    end;
+handle_info({'DOWN', _MonitorRef, _Type, _Object, _Info}, State)->
+    kz_amqp_channel:requisition(),
+    {'noreply', State};    
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,idle_alert=Timeout
-                                         ,switch_uri=SwitchURI
-                                         ,switch_url=SwitchURL
                                          }=State) ->
     try binary_to_term(Data) of
-        {'event', [UUID | Props]} when is_binary(UUID)
-                                       orelse UUID =:= 'undefined' ->
-            _ = kz_util:spawn(fun handle_fs_props/5, [UUID, Props, Node, SwitchURI, SwitchURL]),
+        {'event', JObj} ->
+            Channel = kz_amqp_channel:consumer_channel(),
+            _ = kz_util:spawn(fun handle_fs_event/3, [Node, JObj, Channel]),
             {'noreply', State, Timeout};
         _Else ->
             io:format("~p~n", [_Else]),
@@ -199,18 +181,6 @@ handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
 
--spec handle_fs_props(api_binary(), kzd_freeswitch:data(), atom(), ne_binary(), ne_binary()) -> pid().
-handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL) ->
-    kz_util:put_callid(UUID),
-    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-    EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
-                                        ,{<<"Switch-URI">>, SwitchURI}
-                                        ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
-                                        ]
-                                       )
-        ++ Props ,
-    ecallmgr_events:event(EventName, UUID, EventProps, Node).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -224,11 +194,13 @@ handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{socket='undefined', node=Node}=State) ->
+    catch(kz_amqp_channel:release()),
     lager:debug("event stream for ~p on node ~p terminating: ~p"
                ,[get_event_bindings(State), Node, _Reason]
                );
 terminate(_Reason, #state{socket=Socket, node=Node}=State) ->
     gen_tcp:close(Socket),
+    catch(kz_amqp_channel:release()),
     lager:debug("event stream for ~p on node ~p terminating: ~p"
                ,[get_event_bindings(State), Node, _Reason]
                ).
@@ -274,26 +246,12 @@ get_event_bindings(State) ->
 
 -spec get_event_bindings(state(), atoms()) -> atoms().
 get_event_bindings(#state{bindings='undefined'
-                         ,subclasses='undefined'
                          ,idle_alert='infinity'
                          }, Acc) ->
     Acc;
 get_event_bindings(#state{bindings='undefined'
-                         ,subclasses='undefined'
                          }, Acc) ->
     ['HEARTBEAT' | Acc];
-get_event_bindings(#state{subclasses=Subclasses}=State, Acc) when is_list(Subclasses) ->
-    get_event_bindings(State#state{subclasses='undefined'}
-                      ,[kz_term:to_atom(Subclass, 'true') || Subclass <- Subclasses] ++ Acc
-                      );
-get_event_bindings(#state{subclasses=Subclass}=State, Acc)
-  when is_atom(Subclass),
-       Subclass =/= 'undefined' ->
-    get_event_bindings(State#state{subclasses='undefined'}, [Subclass | Acc]);
-get_event_bindings(#state{subclasses=Subclass}=State, Acc) when is_binary(Subclass) ->
-    get_event_bindings(State#state{subclasses='undefined'}
-                      ,[kz_term:to_atom(Subclass, 'true') | Acc]
-                      );
 get_event_bindings(#state{bindings=Bindings}=State, Acc) when is_list(Bindings) ->
     get_event_bindings(State#state{bindings='undefined'}
                       ,[kz_term:to_atom(Binding, 'true') || Binding <- Bindings] ++ Acc
@@ -322,6 +280,7 @@ maybe_bind(Node, Bindings, 2) ->
     case catch gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2 * ?MILLISECONDS_IN_SECOND) of
         {'ok', {_IP, _Port}}=OK -> OK;
         {'EXIT', {'timeout',_}} -> {'error', 'timeout'};
+        {'EXIT', {{'nodedown',_}, _}} -> {'error', 'nodedown'};
         {'EXIT', _} = Exit -> Exit;
         {'error', _Reason}=E -> E
     end;
@@ -342,3 +301,46 @@ idle_alert_timeout() ->
         Timeout when Timeout =< 30 -> 'infinity';
         Else -> Else * ?MILLISECONDS_IN_SECOND
     end.
+
+-spec handle_fs_event(atom(), kz_json:object(), pid()) -> any().
+handle_fs_event(Node, JObj, Channel) ->
+    kz_amqp_channel:consumer_channel(Channel),
+    kz_util:put_callid(JObj),
+    case kz_api:event_name(JObj) of
+        'undefined' -> lager:debug_unsafe("received unknown fs event : ~s", [kz_json:encode(JObj, ['pretty'])]);
+        _ -> lager:debug_unsafe("received fs ~s : ~s", [kz_api:event_category(JObj), kz_api:event_name(JObj)])
+    end,
+    UUID = kz_api:call_id(JObj),
+    Category = kz_api:event_category(JObj),
+    Event = kz_api:event_name(JObj),
+    run_bindings(Node, UUID, Category, Event, JObj).
+
+run_bindings(Node, UUID, Category, Event, JObj) ->
+    Stages = [fun run_event/5
+             ,fun run_process/5
+             ,fun run_notify/5
+             ,fun run_publish/5
+             ],
+    Fun = fun(StageFun) -> StageFun(Node, UUID, Category, Event, JObj) end,
+    lists:foreach(Fun, Stages).
+
+run_event(Node, UUID, Category, Event, JObj) ->
+    Routing = create_routing(<<"event">>, Category, Event),
+    kazoo_bindings:map(Routing, {Node, UUID, Category, Event, JObj}).
+
+run_process(Node, UUID, Category, Event, JObj) ->
+    Routing = create_routing(<<"process">>, Category, Event),
+    kazoo_bindings:map(Routing, {Node, UUID, Category, Event, JObj}).
+
+run_notify(Node, UUID, Category, Event, JObj) ->
+    Routing = create_routing(<<"notify">>, Category, Event),
+    kazoo_bindings:map(Routing, {Node, UUID, Category, Event, JObj}).
+
+run_publish(Node, UUID, Category, Event, JObj) ->
+    Routing = create_routing(<<"publish">>, Category, Event),
+    kazoo_bindings:map(Routing, {Node, UUID, Category, Event, JObj}).
+
+create_routing(Name, undefined, Event) ->
+    create_routing(Name, <<"invalid">>, Event);
+create_routing(Name, Category, Event) ->
+    <<"event_stream.", Name/binary, ".", Category/binary, ".", Event/binary>>.
