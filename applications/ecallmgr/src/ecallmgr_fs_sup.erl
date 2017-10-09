@@ -22,6 +22,7 @@
                   ,?WORKER('ecallmgr_fs_channels')
                   ,?WORKER('ecallmgr_fs_conferences_shared')
                   ,?WORKER('ecallmgr_fs_conferences')
+                  ,?WORKER('ecallmgr_usurp_monitor')
                   ]).
 
 %%==============================================================================
