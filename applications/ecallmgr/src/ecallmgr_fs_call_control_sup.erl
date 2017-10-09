@@ -30,10 +30,11 @@ start_link(Node, Options) ->
                                        ,?MODULE
                                        ,[Node, Options]
                                        ),
-    Workers = 5, %ecallmgr_config:get_integer(<<"fs_call_control_workers">>, 10),
-    kz_util:spawn(fun() -> timer:sleep(1000),
-                           [supervisor:start_child(Pid, [])
-                              || _N <- lists:seq(1, Workers)
+    Workers = ecallmgr_config:get_integer(<<"fs_call_control_workers">>, 5),
+    kz_util:spawn(fun() -> [begin
+                                supervisor:start_child(Pid, []),
+                                timer:sleep(250)
+                            end || _N <- lists:seq(1, Workers)
                            ]
                   end),
     {'ok', Pid}.
