@@ -34,8 +34,7 @@ init() ->
 
 -spec dialplan(map()) -> fs_sendmsg_ret().
 dialplan(#{}=Map) ->
-    Routines = [fun control_q/1
-               ,fun call_id/1
+    Routines = [fun call_id/1
                ,fun timeout/1
                ,{fun add_time_marker/2, start_processing}
                ,fun(M) -> M#{callback => fun process/1} end
@@ -57,15 +56,6 @@ request(#{node := Node, fetch_id := FetchId, call_id := UUID, control_q := Contr
 control_p(#{control_p := _Pid}=Map) -> Map;
 control_p(#{request := Request}=Map) ->
     Map#{request => [{<<"Request-From-PID">>, kz_term:to_binary(self())} | Request], control_p => self()}.
-
-control_q(#{control_q := _Queue}= Map) -> Map;
-control_q(#{node := Node}= Map) ->
-    SupPid = whereis(?CALLCTL_SUPERVISOR_NAME(Node)),
-    Listeners = supervisor:which_children(SupPid),
-    Size = length(Listeners),
-    Selected = rand:uniform(Size),
-    {_, ControlP, _, _} = lists:nth(Selected, Listeners),
-    Map#{control_q => gen_listener:queue_name(ControlP)}.
     
 timeout(#{timeout := _Timeout}=Map) -> Map;
 timeout(#{jobj := JObj}=Map) ->
