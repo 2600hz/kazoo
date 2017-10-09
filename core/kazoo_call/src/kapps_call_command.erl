@@ -2750,15 +2750,18 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
     Cause = kz_json:get_first_defined([<<"Application-Response">>
                                       ,<<"Hangup-Cause">>
                                       ], JObj, <<"UNSPECIFIED">>),
+    Code = kz_json:get_value(<<"Hangup-Code">>, JObj),
     Result = case Disposition =:= <<"SUCCESS">>
                  orelse Cause =:= <<"SUCCESS">>
+                 orelse Code =:= <<"sip:200">>
              of
                  'true' -> 'ok';
                  'false' -> 'fail'
              end,
     case get_event_type(JObj) of
         {<<"error">>, _, <<"bridge">>} ->
-            lager:debug("channel execution error while waiting for bridge: ~s", [kz_json:encode(JObj)]),
+            lager:debug("channel execution error while waiting for bridge"),
+%            lager:debug("channel execution error while waiting for bridge: ~s", [kz_json:encode(JObj)]),
             {'error', JObj};
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
             CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
@@ -2771,14 +2774,20 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
             %% TODO: reduce log level if no issue is found with
             %%    basing the Result on Disposition
-            lager:info("bridge channel destroy completed with result ~s(~s)", [Disposition, Result]),
+            lager:info("bridge channel destroy completed with result ~s/~s => ~s", [Disposition, Cause, Result]),
+ %           lager:info("bridge channel destroy completed with result ~p", [JObj]),
+            {Result, JObj};
+        {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
+%            lager:info_unsafe("unbridge channel with result ~s", [kz_json:encode(JObj, ['pretty'])]),
             {Result, JObj};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
             %% TODO: reduce log level if no issue is found with
             %%    basing the Result on Disposition
+%            lager:info_unsafe("bridge channel execute completed with result ~s(~s) : ~s", [Disposition, Result, kz_json:encode(JObj, ['pretty'])]),
             lager:info("bridge channel execute completed with result ~s(~s)", [Disposition, Result]),
             {Result, JObj};
         _E ->
+%           lager:info_unsafe("OTHER  : ~s", [kz_json:encode(JObj, ['pretty'])]),
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
             NewStart = os:timestamp(),
             wait_for_bridge(NewTimeout, Fun, Call, NewStart, receive_event(NewTimeout))
@@ -2853,7 +2862,7 @@ wait_for_hangup(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     {'ok', 'channel_hungup'};
                 _Evt ->
-                    lager:debug("ignoring: ~p", [_Evt]),
+%                    lager:debug("ignoring: ~p", [_Evt]),
                     wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
             end;
         _ -> wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
@@ -2967,6 +2976,7 @@ send_command(Command, Call) when is_list(Command) ->
 
     CustomPublisher = kapps_call:custom_publish_function(Call),
     CtrlQ = kapps_call:control_queue(Call),
+    CtrlP = kapps_call:control_pid(Call),
     case is_function(CustomPublisher, 2) of
         'true' -> CustomPublisher(Command, Call);
         'false' when is_binary(CtrlQ) ->
@@ -2978,8 +2988,11 @@ send_command(Command, Call) when is_list(Command) ->
                 Pid when is_pid(Pid) -> _ = kz_amqp_channel:consumer_pid(Pid), 'ok';
                 _Else -> 'ok'
             end,
+            Insert = props:filter_undefined([{<<"Call-ID">>, CallId}
+                                            ,{?KEY_DELIVER_TO_PID, CtrlP}
+                                            ]),
             Prop =
-                props:insert_value(<<"Call-ID">>, CallId, Command) ++
+                props:insert_values(Insert, Command) ++
                 kz_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion),
             kapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Prop));
         'false' -> 'ok'
@@ -3006,7 +3019,7 @@ get_outbound_t38_settings('true', 'true') ->
     ];
 get_outbound_t38_settings('true', 'false') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Fax-Request">>, 'false'}
     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
     ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
@@ -3018,7 +3031,7 @@ get_outbound_t38_settings('false', 'false') ->
     ];
 get_outbound_t38_settings('false','true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Fax-Request">>, 'false'}
     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ].
@@ -3202,6 +3215,7 @@ wait_for_unparked_call(Call, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"hold">>} ->
                     Ok;
                 _ ->
+                    lager:debug("channel execution error while waiting for unparked call: ~s", [kz_json:encode(JObj)]),
                     wait_for_unparked_call(Call, kz_time:decr_timeout(Timeout, Start))
             end
     end.

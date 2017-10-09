@@ -32,6 +32,10 @@
 
 -export([set_control_queue/2, control_queue/1, control_queue_direct/1]).
 -export([control_queue_helper/2, clear_control_queue_helper/1]).
+-export([set_control_pid/2, control_pid/1, control_pid_direct/1]).
+-export([control_pid_helper/2, clear_control_pid_helper/1]).
+-export([clear_control_helper/1]).
+
 -export([set_controller_queue/2, controller_queue/1]).
 
 -export([clear_helpers/1]).
@@ -166,11 +170,8 @@
                     ,context :: kz_term:api_ne_binary()
                     ,control_q :: kz_term:api_binary()                   %% The control queue provided on route win
                     ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                    ,controller_q :: kz_term:api_binary()                %%
-                    ,caller_id_name :: kz_term:api_ne_binary()      %% The caller name
-                    ,caller_id_number :: kz_term:api_ne_binary() %% The caller number
-                    ,callee_id_name :: kz_term:api_binary()                     %% The callee name
-                    ,callee_id_number :: kz_term:api_binary()                   %% The callee number
+                    ,control_p :: kz_term:api_pid()                   %% The control pid provided on route win
+                    ,control_p_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                     ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
                     ,switch_hostname :: kz_term:api_ne_binary()                    %% The switch hostname (as reported by the switch)
                     ,switch_url :: kz_term:api_binary()                         %% The switch url
@@ -236,6 +237,7 @@ clear_helpers(#kapps_call{}=Call) ->
     Fs = [fun clear_custom_publish_function/1
          ,fun clear_call_id_helper/1
          ,fun clear_control_queue_helper/1
+         ,fun clear_control_pid_helper/1
          ],
     exec(Fs, Call).
 
@@ -293,10 +295,10 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                     ,request_user=to_e164(RequestUser)
                     ,request_realm=RequestRealm
                     ,from=From
-                    ,from_user=FromUser
+                    ,from_user=binary:replace(FromUser, <<"sip:">>, <<>>)
                     ,from_realm=FromRealm
                     ,to=To
-                    ,to_user=ToUser
+                    ,to_user=binary:replace(ToUser, <<"sip:">>, <<>>)
                     ,to_realm=ToRealm
                     ,account_id=AccountId
                     ,account_db=AccountDb
@@ -360,6 +362,7 @@ from_route_win(RouteWin, #kapps_call{call_id=OldCallId
                    ,cavs=CAVs
                    ,sip_headers=SHs
                    ,control_q = kz_json:get_ne_binary_value(<<"Control-Queue">>, RouteWin)
+                   ,control_p = kz_json:get_ne_binary_value(<<"Control-PID">>, RouteWin)
                    ,inception = kz_json:get_ne_binary_value(<<"Inception">>, CCVs, OldInception)
                    ,authorizing_id = kz_json:get_ne_binary_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
                    ,authorizing_type = kz_json:get_ne_binary_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
@@ -442,6 +445,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    ,origination_call_id = kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, JObj, origination_call_id(Call))
                    ,context=kz_json:get_ne_binary_value(<<"Context">>, JObj, context(Call))
                    ,control_q = kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
+                   ,control_p = kz_json:get_ne_binary_value(<<"Control-PID">>, JObj, control_pid_direct(Call))
                    ,controller_q = kz_json:get_ne_binary_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
                    ,caller_id_name = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
                    ,caller_id_number = kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj, caller_id_number(Call))
@@ -523,6 +527,7 @@ to_proplist(#kapps_call{}=Call) ->
     ,{<<"Callee-ID-Number">>, callee_id_number(Call)}
     ,{<<"Caller-ID-Name">>, caller_id_name(Call)}
     ,{<<"Caller-ID-Number">>, caller_id_number(Call)}
+    ,{<<"Control-PID">>, control_pid_direct(Call)}
     ,{<<"Control-Queue">>, control_queue_direct(Call)}
     ,{<<"Controller-Queue">>, controller_queue(Call)}
     ,{<<"Custom-Application-Vars">>, custom_application_vars(Call)}
@@ -661,6 +666,34 @@ control_queue_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
 -spec clear_control_queue_helper(call()) -> call().
 clear_control_queue_helper(#kapps_call{}=Call) ->
     Call#kapps_call{control_q_helper=fun default_helper_function/2}.
+
+-spec set_control_pid(pid(), call()) -> call().
+set_control_pid(ControlP, #kapps_call{}=Call) when is_pid(ControlP) ->
+    Call#kapps_call{control_p=ControlP}.
+
+-spec control_pid(call()) -> api_binary().
+-spec control_pid_direct(call()) -> api_binary().
+control_pid(#kapps_call{control_p=ControlP, control_p_helper=Fun}=Call) when is_function(Fun, 2) ->
+    Fun(ControlP, Call);
+control_pid(#kapps_call{control_p=ControlP}=Call) ->
+    default_helper_function(ControlP, Call).
+
+control_pid_direct(#kapps_call{control_p=ControlP}) ->
+    ControlP.
+
+-spec control_pid_helper(kapps_helper_function(), call()) -> call().
+control_pid_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
+    Call#kapps_call{control_p_helper=Fun}.
+
+-spec clear_control_pid_helper(call()) -> call().
+clear_control_pid_helper(#kapps_call{}=Call) ->
+    Call#kapps_call{control_p_helper=fun default_helper_function/2}.
+
+-spec clear_control_helper(call()) -> call().
+clear_control_helper(#kapps_call{}=Call) ->
+    Call#kapps_call{control_p_helper=fun default_helper_function/2
+                   ,control_q_helper=fun default_helper_function/2
+                   }.
 
 -spec set_controller_queue(kz_term:ne_binary(), call()) -> call().
 set_controller_queue(ControllerQ, #kapps_call{}=Call) when is_binary(ControllerQ) ->
