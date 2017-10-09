@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(ecallmgr_conference_sup).
+-module(ecallmgr_conference_control_sup).
 
 -behaviour(supervisor).
 
