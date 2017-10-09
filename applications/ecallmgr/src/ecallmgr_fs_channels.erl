@@ -22,9 +22,9 @@
 -export([flush_node/1]).
 -export([new/1]).
 -export([destroy/2]).
--export([update/3
-        ,updates/2
-        ,cleanup_old_channels/0, cleanup_old_channels/1
+-export([update/3, updates/2]).
+-export([deferred_update/3, deferred_updates/2]).
+-export([cleanup_old_channels/0, cleanup_old_channels/1
         ,max_channel_uptime/0
         ,set_max_channel_uptime/1, set_max_channel_uptime/2
         ]).
@@ -79,6 +79,10 @@
 -define(CALL_PARK_FEATURE, "*3").
 -record(state, {max_channel_cleanup_ref :: reference()}).
 -type state() :: #state{}.
+
+
+-define(DESTROY_DEFER_MAX_TRIES, 5).
+-define(DESTROY_DEFER_TIME, 5 * ?MILLISECONDS_IN_SECOND).
 
 %%%=============================================================================
 %%% API
@@ -208,6 +212,15 @@ update(UUID, Key, Value) ->
 updates(UUID, Updates) ->
     gen_server:call(?SERVER, {'channel_updates', UUID, Updates}).
 
+-spec deferred_update(ne_binary(), pos_integer(), any()) -> 'ok'.
+deferred_update(UUID, Key, Value) ->
+    deferred_updates(UUID, [{Key, Value}]).
+
+
+-spec deferred_updates(ne_binary(), channel_updates()) -> 'ok'.
+deferred_updates(UUID, Updates) ->
+    gen_server:cast(?SERVER, {'channel_updates', UUID, Updates}).
+
 -spec count() -> non_neg_integer().
 count() -> ets:info(?CHANNELS_TBL, 'size').
 
@@ -331,7 +344,10 @@ handle_channel_status(JObj, _Props) ->
             maybe_send_empty_channel_resp(CallId, JObj);
         {'ok', Channel} ->
             Node = kz_json:get_binary_value(<<"node">>, Channel),
-            [_, Hostname] = binary:split(Node, <<"@">>),
+            Hostname = case binary:split(Node, <<"@">>) of
+                           [_, Host] -> Host;
+                           Other -> Other
+                       end,
             lager:debug("channel is on ~s", [Hostname]),
             Resp =
                 props:filter_undefined(
@@ -386,6 +402,7 @@ init([]) ->
                                ,'protected'
                                ,'named_table'
                                ,{'keypos', #channel.uuid}
+                               ,{read_concurrency, true}
                                ]),
     {'ok', #state{max_channel_cleanup_ref=start_cleanup_ref()}}.
 
@@ -424,9 +441,34 @@ handle_cast({'destroy_channel', UUID, Node}, State) ->
                   ],
                   ['true']
                  }],
-    N = ets:select_delete(?CHANNELS_TBL, MatchSpec),
-    lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
-    {'noreply', State, 'hibernate'};
+    case ets:select_delete(?CHANNELS_TBL, MatchSpec) of
+        0 -> lager:warning("no channel removed with id ~s on ~s, deferring", [UUID, Node]),
+             gen_listener:delayed_cast(self(), {'destroy_channel', UUID, Node, 1}, ?DESTROY_DEFER_TIME),
+             {'noreply', State};
+        N  -> lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
+              {'noreply', State, 'hibernate'}
+    end;
+
+handle_cast({'destroy_channel', UUID, Node, Try}, State)
+  when Try < ?DESTROY_DEFER_MAX_TRIES ->
+    kz_util:put_callid(UUID),
+    MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
+                 ,[{'andalso', {'=:=', '$2', {'const', Node}}
+                   ,{'=:=', '$1', UUID}}
+                  ],
+                  ['true']
+                 }],
+    case ets:select_delete(?CHANNELS_TBL, MatchSpec) of
+        0 -> lager:warning("no channel removed with id ~s on ~s on ~B try, deferring", [UUID, Node, Try]),
+             gen_listener:delayed_cast(self(), {'destroy_channel', UUID, Node, Try + 1}, ?DESTROY_DEFER_TIME),
+             {'noreply', State};
+        N  -> lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
+              {'noreply', State, 'hibernate'}
+    end;
+
+handle_cast({'destroy_channel', UUID, Node, _Try}, State) ->
+    lager:critical("no channel removed with id ~s on ~s after ~B tries, channel cache unstable", [UUID, Node, _Try]),
+    {'noreply', State};
 
 handle_cast({'sync_channels', Node, Channels}, State) ->
     lager:debug("ensuring channel cache is in sync with ~s", [Node]),
@@ -484,6 +526,9 @@ handle_cast({'flush_node', Node}, State) ->
 handle_cast({'gen_listener',{'created_queue', _QueueName}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'channel_updates', UUID, Update}, State) ->
+    ets:update_element(?CHANNELS_TBL, UUID, Update),
     {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),

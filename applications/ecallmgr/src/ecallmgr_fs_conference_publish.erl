@@ -3,9 +3,6 @@
 %%% @doc
 %%% Execute conference commands
 %%% @end
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conference_publish).
 
