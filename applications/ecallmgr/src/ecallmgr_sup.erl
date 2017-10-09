@@ -15,8 +15,8 @@
 -export([init/1]).
 
 -define(CHILDREN, [?SUPER('ecallmgr_auxiliary_sup')
-                  ,?SUPER('ecallmgr_call_sup')
-                  ,?SUPER('ecallmgr_conference_sup')
+                  ,?SUPER('ecallmgr_call_control_sup')
+                  ,?SUPER('ecallmgr_conference_control_sup')
                   ,?SUPER('ecallmgr_fs_sup')
                   ]).
 
