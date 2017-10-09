@@ -17,7 +17,7 @@
 -export([all_nodes_connected/0]).
 -export([add/1, add/2, add/3]).
 -export([remove/1]).
--export([nodeup/1]).
+-export([nodeup/1, nodedown/1]).
 -export([is_node_up/1]).
 -export([sip_url/1]).
 -export([sip_external_ip/1]).
@@ -429,12 +429,10 @@ handle_call(_Request, _From, State) ->
 handle_cast({'fs_nodeup', NodeName}, State) ->
     _ = kz_util:spawn(fun maybe_handle_nodeup/2, [NodeName, State]),
     {'noreply', State};
-handle_cast({'update_node', #node{node=NodeName, connected=Connected}=Node}
+handle_cast({'update_node', #node{node=NodeName}=Node}
            ,#state{nodes=Nodes}=State) ->
-    erlang:monitor_node(NodeName, Connected),
     {'noreply', State#state{nodes=dict:store(NodeName, Node, Nodes)}};
 handle_cast({'remove_node', #node{node=NodeName}}, #state{nodes=Nodes}=State) ->
-    erlang:monitor_node(NodeName, 'false'),
     remove_capabilities(NodeName),
     {'noreply', State#state{nodes=dict:erase(NodeName, Nodes)}};
 handle_cast({'remove_capabilities', NodeName}, State) ->
@@ -858,3 +856,7 @@ print_summary([{_, Node}|Nodes], Count) ->
               ,Node#node.client_version
               ]),
     print_summary(Nodes, Count + 1).
+
+-spec nodedown(atom()) -> 'ok'.
+nodedown(Node) ->
+    ?SERVER ! {'nodedown', Node}.
