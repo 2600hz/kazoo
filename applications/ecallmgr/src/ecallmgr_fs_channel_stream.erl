@@ -17,6 +17,7 @@
         ,channel_bridge/1
         ,channel_unbridge/1
         ,channel_data/1
+        ,channel_hold/1, channel_unhold/1
         ]).
 
 -include("ecallmgr.hrl").
@@ -32,6 +33,8 @@ init() ->
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_BRIDGE">>, ?MODULE, 'channel_bridge'),
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_UNBRIDGE">>, ?MODULE, 'channel_unbridge'),
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_DATA">>, ?MODULE, 'channel_data'),
+    kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_HOLD">>, ?MODULE, 'channel_hold'),
+    kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_UNHOLD">>, ?MODULE, 'channel_unhold'),
     'ok'.
 
 -spec channel_create(tuple()) -> any().
@@ -68,6 +71,13 @@ channel_unbridge({_Node, UUID, _Category, _Event, JObj}) ->
     ecallmgr_fs_channels:update(UUID, #channel.other_leg, 'undefined'),
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, 'undefined').
 
+-spec channel_hold(tuple()) -> any().
+channel_hold({_Node, UUID, _Category, _Event, _JObj}) ->
+    ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'true').
+
+-spec channel_unhold(tuple()) -> any().
+channel_unhold({_Node, UUID, _Category, _Event, _JObj}) ->
+    ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'false').
 
 %%%===================================================================
 %%% Internal functions
