@@ -7,7 +7,7 @@
 -module(cf_listener).
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/1]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -19,8 +19,7 @@
 
 -include("callflow.hrl").
 
--record(state, {}).
--type state() :: #state{}.
+-type state() :: #{}.
 
 -define(SERVER, ?MODULE).
 
@@ -32,10 +31,11 @@
                    }
                   ,{'self', []}
                   ,{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}
+                  ,{'dialplan', []}
                   ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME(I), <<"callflow_route_", I/binary>>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%=============================================================================
 %%% API
@@ -45,13 +45,14 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link() -> kz_types:startlink_ret().
-start_link() ->
+-spec start_link(kz_types:ne_binary()) -> kz_types:startlink_ret().
+start_link(Instance) ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                      ,{'bindings', ?BINDINGS}
-                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_name', ?QUEUE_NAME(Instance)}
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ,{'auto_ack', ?USE_AUTO_ACK}
                                      ], []).
 
 %%%=============================================================================
@@ -64,9 +65,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    process_flag('trap_exit', 'true'),
-    lager:debug("starting new callflow listener"),
-    {'ok', #state{}}.
+     {'ok', #{}}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -108,6 +107,9 @@ handle_event(JObj, _State) ->
             CallId = kz_call_event:call_id(JObj),
             gproc:send({'p', 'l', {'route_req', CallId}}, {'channel_destroy', kz_call_event:fetch_id(JObj)}),
             'ignore';
+        <<"route_win">> ->
+            kz_term:to_pid(kz_api:reply_to(JObj)) ! {'route_win', JObj},
+            'ignore';
         _ -> {'reply', []}
     end.
 
@@ -120,7 +122,7 @@ handle_event(JObj, _State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), any()) -> 'ok'.
-terminate(_Reason, _) ->
+terminate(_Reason, _State) ->
     lager:info("callflow listener ~p termination", [_Reason]).
 
 %%------------------------------------------------------------------------------
@@ -130,7 +132,3 @@ terminate(_Reason, _) ->
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-
-%%%=============================================================================
-%%% Internal functions
-%%%=============================================================================

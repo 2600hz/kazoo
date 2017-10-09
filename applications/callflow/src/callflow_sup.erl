@@ -29,13 +29,11 @@
                          ]).
 
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                     ,'new_node_flush'
-                     ,'channel_reconnect_flush'
                      ]).
 
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                   ,?WORKER('cf_shared_listener')
-                  ,?WORKER('cf_listener')
+                  ,?SUPER('cf_listener_sup')
                   ,?SUPER('cf_event_handler_sup')
                   ,?SUPER('cf_exe_sup')
                   ]).

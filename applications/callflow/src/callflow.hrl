@@ -51,5 +51,7 @@
 -define(CF_FLOW_CACHE_KEY(Number, AccountId), {'cf_flow', Number, AccountId}).
 -define(CF_PATTERN_CACHE_KEY(AccountId), {'cf_patterns', AccountId}).
 
+-define(USE_AUTO_ACK, kapps_config:get_is_true(?CF_CONFIG_CAT, <<"use_auto_ack">>, 'false')).
+
 -define(CALLFLOW_HRL, 'true').
 -endif.
