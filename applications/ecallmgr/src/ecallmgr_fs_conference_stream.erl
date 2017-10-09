@@ -3,16 +3,12 @@
 %%% @doc
 %%% Execute conference commands
 %%% @end
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%   Roman Galeev
 %%%-------------------------------------------------------------------
--module(ecallmgr_fs_conference).
+-module(ecallmgr_fs_conference_stream).
 
 %% API
 -export([init/0
         ,handle_event/1
-        ,publish_event/1
         ]).
 
 -include("ecallmgr.hrl").
@@ -58,12 +54,12 @@ process_event(<<"conference-create">>, JObj, Node) ->
     ecallmgr_fs_conferences:create(JObj, Node),
     ConferenceId = kzd_conference:conference_id(JObj),
     UUID = kzd_conference:instance_id(JObj),
-    ecallmgr_conference_sup:start_conference_control(Node, ConferenceId, UUID);
+    ecallmgr_conference_control_sup:start_conference_control(Node, ConferenceId, UUID);
 process_event(<<"conference-destroy">>, JObj, Node) ->
     ConferenceId = kzd_conference:conference_id(JObj),
     InstanceId = kzd_conference:instance_id(JObj),
     _ = ecallmgr_fs_conferences:destroy(InstanceId),
-    _ = ecallmgr_conference_sup:stop_conference_control(Node, ConferenceId, InstanceId);
+    _ = ecallmgr_conference_control_sup:stop_conference_control(Node, ConferenceId, InstanceId);
 
 process_event(<<"add-member">>, JObj, Node) ->
     ecallmgr_fs_conferences:participant_create(JObj, Node);
