@@ -12,13 +12,14 @@
 %% API
 -export([start_link/0]).
 -export([start_proc/1]).
+-export([start_control_process/6]).
 -export([init/1]).
 
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER_TYPE('ecallmgr_call_control', 'transient')]).
+-define(CHILDREN, [?WORKER_TYPE('ecallmgr_call_control', 'temporary')]).
 
 %%%=============================================================================
 %%% API functions
@@ -32,10 +33,30 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--type start_args() :: [atom() | kz_term:api_ne_binary() | kz_json:object()].
--spec start_proc(start_args()) -> kz_types:sup_startchild_ret().
-start_proc(Args) ->
-    supervisor:start_child(?SERVER, Args).
+-spec start_proc(map()) -> kz_types:sup_startchild_ret().
+start_proc(Map) ->
+    supervisor:start_child(?SERVER, [control_q(Map)]).
+
+-spec start_control_process(atom(), ne_binary(), ne_binary(), api_ne_binary(), api_pid(), kz_json:object()) ->
+                                   sup_startchild_ret().
+start_control_process(Node, CallId, FetchId, ControllerQ, ControllerP, CCVs) ->
+    lager:debug("starting call control for ~s", [CallId]),
+    start_proc(#{node => Node
+                ,call_id => CallId
+                ,fetch_id => FetchId
+                ,controller_q => ControllerQ
+                ,controller_p => ControllerP
+                ,initial_ccvs => CCVs
+                }).
+
+control_q(#{control_q := _Queue}= Map) -> Map;
+control_q(#{node := Node}= Map) ->
+    SupPid = whereis(?CALLCTL_SUPERVISOR_NAME(Node)),
+    Listeners = supervisor:which_children(SupPid),
+    Size = length(Listeners),
+    Selected = rand:uniform(Size),
+    {_, ControlP, _, _} = lists:nth(Selected, Listeners),
+    Map#{control_q => gen_listener:queue_name(ControlP)}.
 
 %%%=============================================================================
 %%% Supervisor callbacks
