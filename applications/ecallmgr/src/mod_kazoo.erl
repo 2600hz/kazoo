@@ -120,11 +120,22 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout) of
         'timeout' -> {'error', 'timeout'};
         {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
+        {'ok', <<"+OK ", Result/binary>>} -> {ok, Result};
         Result -> Result
     catch
         _E:_R ->
             lager:info("failed to send fetch reply to ~s: ~p ~p", [Node, _E, _R]),
             {'error', 'exception'}
+    end.
+
+api_result(Result, 'undefined') -> Result;
+api_result(Result, Bin) ->
+    case kz_binary:strip_left(kz_binary:strip_right(Bin, <<"\n">>), $\s) of
+        <<>> when Result =:= 'error' -> {error, 'failed'};
+        <<"true">> -> {Result, true};
+        <<"false">> -> {Result, false};
+        <<>> -> ok;
+        Msg -> {Result, Msg}
     end.
 
 -spec api(atom(), text()) -> fs_api_return().
@@ -137,8 +148,10 @@ api(Node, Cmd, Args) ->
 api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
     try gen_server:call({'mod_kazoo', Node}, {'api', Cmd, Args}, Timeout) of
         'timeout' -> {'error', 'timeout'};
-        {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
-        Result -> Result
+        {'ok', <<"-ERR", Reason/binary>>} -> api_result('error', Reason);
+        {'ok', <<"+OK", Result/binary>>} -> api_result('ok', Result);
+        {'ok', Result} -> api_result('ok', Result);
+        Result -> api_result('ok', Result)
     catch
         _E:_R ->
             lager:info("failed to execute api command ~s on ~s: ~p ~p", [Cmd, Node, _E, _R]),
