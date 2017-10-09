@@ -9,7 +9,7 @@
 -module(cf_listener).
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/1]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -21,8 +21,7 @@
 
 -include("callflow.hrl").
 
--record(state, {}).
--type state() :: #state{}.
+-type state() :: #{}.
 
 -define(SERVER, ?MODULE).
 
@@ -33,10 +32,11 @@
                              ]
                    }
                   ,{'self', []}
+                  ,{'dialplan', []}
                   ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME(I), <<"callflow_route_", I/binary>>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -45,13 +45,14 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
-start_link() ->
+-spec start_link(ne_binary()) -> startlink_ret().
+start_link(Instance) ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                      ,{'bindings', ?BINDINGS}
-                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_name', ?QUEUE_NAME(Instance)}
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ,{'auto_ack', ?USE_AUTO_ACK}
                                      ], []).
 
 %%%===================================================================
@@ -71,9 +72,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    process_flag('trap_exit', 'true'),
-    lager:debug("starting new callflow listener"),
-    {'ok', #state{}}.
+     {'ok', #{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,10 +103,6 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
-    {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -135,8 +130,13 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(JObj, _State) ->
+    case kz_api:event_name(JObj) of
+        <<"route_win">> ->
+            kz_term:to_pid(kz_api:reply_to(JObj)) ! {'route_win', JObj},
+            'ignore';
+        _ -> {'reply', []}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -150,8 +150,8 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), any()) -> 'ok'.
-terminate(_Reason, _) ->
-    lager:info("callflow listner ~p termination", [_Reason]).
+terminate(_Reason, _State) ->
+    lager:info("callflow listener ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -164,7 +164,3 @@ terminate(_Reason, _) ->
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================

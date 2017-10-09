@@ -95,6 +95,7 @@ start_link(Call) ->
                                      ,{'queue_name', ?QUEUE_NAME}
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ,{'auto_ack', ?USE_AUTO_ACK}
                                      ], [Call]).
 
 -spec get_call(pid() | kapps_call:call()) -> {'ok', kapps_call:call()}.
@@ -446,11 +447,11 @@ handle_cast({'continue', Key}, #state{flow=Flow
             {'noreply', launch_cf_module(State#state{flow=NewFlow})}
     end;
 handle_cast('stop', #state{flows=[]}=State) ->
-    {'stop', 'normal', State};
+    {'stop', 'normal', State#state{destroyed='true'}};
 handle_cast('stop', #state{flows=[Flow|Flows]}=State) ->
     {'noreply', launch_cf_module(State#state{flow=Flow, flows=Flows})};
 handle_cast('hard_stop', State) ->
-    {'stop', 'normal', State};
+    {'stop', 'normal', State#state{destroyed='true'}};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
@@ -556,7 +557,10 @@ handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                            ,call=Call
                                            }=State) ->
     erlang:demonitor(Ref, ['flush']),
-    lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_last_action', Call)]),
+    case kapps_call:kvs_fetch('cf_last_action', Call) of
+        undefined -> ok;
+        LastAction -> lager:debug("cf module ~s down normally", [LastAction])
+    end,
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                           ,call=Call
@@ -570,7 +574,10 @@ handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_old_pid={Pid, Ref}
                                            ,call=Call
                                            }=State) ->
     erlang:demonitor(Ref, ['flush']),
-    lager:debug("cf module ~s down normally", [kapps_call:kvs_fetch('cf_old_action', Call)]),
+    case kapps_call:kvs_fetch('cf_old_action', Call) of
+        undefined -> ok;
+        OldAction -> lager:debug("cf module ~s down normally", [OldAction])
+    end,
     {'noreply', State#state{cf_module_old_pid='undefined'}};
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_old_pid={Pid, Ref}
                                           ,call=Call
@@ -591,7 +598,7 @@ handle_info(_Msg, State) ->
 handle_event(JObj, #state{cf_module_pid=PidRef
                          ,call=Call
                          ,self=Self
-                         ,termination_handlers=DestoryHandlers
+                         ,termination_handlers=DestroyHandlers
                          }) ->
     CallId = kapps_call:call_id_direct(Call),
     Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
@@ -602,9 +609,9 @@ handle_event(JObj, #state{cf_module_pid=PidRef
 
     case {kz_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers);
+            handle_channel_destroyed(Self, Notify, JObj, Call, DestroyHandlers);
         {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->
-            handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers);
+            handle_channel_destroyed(Self, Notify, JObj, Call, DestroyHandlers);
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
             handle_channel_transfer(Call, JObj);
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
@@ -642,15 +649,25 @@ terminate({'shutdown', 'transfer'}, _) ->
     lager:info("callflow execution has been transferred");
 terminate({'shutdown', 'control_usurped'}, _) ->
     lager:info("the call has been usurped by an external process");
+terminate(_Reason, #state{cf_module_pid='undefined'
+                         ,destroyed='true'
+                         }) ->
+    lager:info("callflow execution has been stopped: ~p", [_Reason]);
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid='undefined'
+                         }) ->    
+    hangup_call(kapps_call:clear_control_helper(Call)),
+    lager:info("callflow execution has been stopped: ~p", [_Reason]);
+terminate(_Reason, #state{cf_module_pid={Pid, _}
+                         ,destroyed='true'
                          }) ->
-    hangup_call(Call),
+    exit(Pid, 'kill'),
     lager:info("callflow execution has been stopped: ~p", [_Reason]);
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid={Pid, _}
                          }) ->
     exit(Pid, 'kill'),
+    lager:info("hangup the call"),
     hangup_call(Call),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
@@ -738,13 +755,15 @@ cf_module_not_found(Call) ->
                              {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
-    {kz_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
+    AMQPChannel = kz_amqp_channel:consumer_channel(),
+    {kz_util:spawn_monitor(fun cf_module_task/5, [CFModule, Data, Call, AMQPConsumer, AMQPChannel])
     ,CFModule
     }.
 
 %% @private
--spec cf_module_task(atom(), list(), kapps_call:call(), pid()) -> any().
-cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
+-spec cf_module_task(atom(), list(), kapps_call:call(), pid(), pid()) -> any().
+cf_module_task(CFModule, Data, Call, AMQPConsumer, AMQPChannel) ->
+    _ = kz_amqp_channel:consumer_channel(AMQPChannel),
     _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
     kz_util:put_callid(kapps_call:call_id_direct(Call)),
     try CFModule:handle(Data, Call)
@@ -778,15 +797,6 @@ amqp_call_message(API, PubFun, VerifyFun, Q) ->
     Request = kz_api:exec(Routines, API),
     kz_amqp_worker:call(Request, PubFun, VerifyFun).
 
--spec send_command(kz_proplist(), api_binary(), api_binary()) -> 'ok'.
-send_command(_, 'undefined', _) -> lager:debug("no control queue to send command to");
-send_command(_, _, 'undefined') -> lager:debug("no call id to send command to");
-send_command(Command, ControlQ, CallId) ->
-    Props = Command ++ [{<<"Call-ID">>, CallId}
-                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                       ],
-    kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
-
 -spec add_server_id(ne_binary(), api_terms()) -> api_terms().
 add_server_id(Q, API) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
@@ -814,10 +824,10 @@ log_call_information(Call) ->
     lager:info("authorizing id ~s", [kapps_call:authorizing_id(Call)]).
 
 -spec handle_channel_destroyed(pid(), pids(), kz_json:object(), kapps_call:call(), list()) -> 'ok'.
-handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers) ->
+handle_channel_destroyed(Self, Notify, JObj, Call, DestroyHandlers) ->
     channel_destroyed(Self),
     relay_message(Notify, JObj),
-    maybe_run_destory_handlers(Call, JObj, DestoryHandlers).
+    maybe_run_destory_handlers(Call, JObj, DestroyHandlers).
 
 -spec handle_channel_transfer(kapps_call:call(), kz_json:object()) -> 'ok'.
 handle_channel_transfer(Call, JObj) ->
@@ -881,9 +891,4 @@ get_pid(_) -> 'undefined'.
 
 -spec hangup_call(kapps_call:call()) -> 'ok'.
 hangup_call(Call) ->
-    Cmd = [{<<"Event-Name">>, <<"command">>}
-          ,{<<"Event-Category">>, <<"call">>}
-          ,{<<"Application-Name">>, <<"hangup">>}
-          ,{<<"Insert-At">>, <<"tail">>}
-          ],
-    send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
+    kapps_call_command:hangup(Call).

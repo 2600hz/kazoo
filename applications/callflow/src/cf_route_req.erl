@@ -22,7 +22,7 @@
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    kz_util:put_callid(kapi_route:call_id(JObj)),
     'true' = kapi_route:req_v(JObj),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
@@ -55,7 +55,7 @@ handle_req(JObj, Props) ->
                            ,kapps_call:call(), kzd_callflow:doc()
                            ,boolean()
                            ) -> 'ok'.
-maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
+maybe_prepend_preflow(JObj, Props, Call, Callflow, x = NoMatch) ->
     AccountId = kapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
         {'error', _E} ->
@@ -70,11 +70,13 @@ maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
                     NewCallflow = kzd_callflow:prepend_preflow(Callflow, PreflowId),
                     maybe_reply_to_req(JObj, Props, Call, NewCallflow, NoMatch)
             end
-    end.
+    end;
+maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
+    maybe_reply_to_req(JObj, Props, Call, Callflow, NoMatch).
 
 -spec maybe_reply_to_req(kz_json:object(), kz_proplist()
                         ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
-maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
+maybe_reply_to_req(JObj, Props, Call, Flow, x = NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request for ~s", [kz_doc:id(Flow)
                                                              ,kapps_call:account_id(Call)
                                                              ,kapps_call:request_user(Call)
@@ -85,7 +87,12 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
             ControllerQ = props:get_value('queue', Props),
             NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
             send_route_response(Flow, JObj, NewCall)
-    end.
+    end;
+maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
+    ControllerQ = props:get_value('queue', Props),
+    NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
+    send_route_response(Flow, JObj, NewCall).
+
 
 -spec has_tokens(kapps_call:call(), kz_json:object()) -> boolean().
 has_tokens(Call, Flow) ->
@@ -99,7 +106,7 @@ has_tokens(Call, Flow) ->
                 'true' -> 'true';
                 'false' ->
                     lager:warning("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
-                    'false'
+                    'true'
             end
     end.
 
@@ -183,9 +190,15 @@ callflow_should_respond(Call) ->
 send_route_response(Flow, JObj, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
     AccountId = kapps_call:account_id(Call),
+    CallId = kapps_call:call_id(Call),
+    ControllerQ = kapps_call:controller_queue(Call),
+    FetchId =  kz_api:msg_id(JObj),
     Resp = props:filter_undefined(
-             [{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-             ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
+             [{?KEY_MSG_ID, FetchId}
+             ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
+             ,{?KEY_REQUEST_FROM_PID, kz_term:to_binary(self())}
+             ,{?KEY_API_ACCOUNT_ID, AccountId}
+             ,{?KEY_API_CALL_ID, CallId}
              ,{<<"Routes">>, []}
              ,{<<"Method">>, <<"park">>}
              ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
@@ -193,21 +206,16 @@ send_route_response(Flow, JObj, Call) ->
              ,{<<"Pre-Park">>, pre_park_action(Call)}
              ,{<<"From-Realm">>, kz_account:fetch_realm(AccountId)}
              ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(JObj),
-    Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
-    case kz_amqp_worker:call(Resp
-                            ,Publisher
-                            ,fun kapi_route:win_v/1
-                            ,?ROUTE_WIN_TIMEOUT
-                            )
-    of
-        {'ok', RouteWin} ->
+    kapi_route:publish_resp(ServerId, Resp),
+    receive
+        {'route_win', RouteWin} ->
             lager:info("callflow has received a route win, taking control of the call"),
-            cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call));
-        {'error', _E} ->
-            lager:info("callflow didn't received a route win, exiting : ~p", [_E])
+            cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call))
+    after ?ROUTE_WIN_TIMEOUT ->
+            lager:warning("callflow didn't received a route win, exiting")
     end.
 
 -spec get_transfer_media(kz_json:object(), kz_json:object()) -> api_binary().
