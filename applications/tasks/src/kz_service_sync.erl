@@ -20,7 +20,9 @@
         ]).
 -export([mark_dirty/1]).
 
--include("services.hrl").
+-include("tasks.hrl").
+-include_lib("kazoo_services/include/kazoo_services.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -define(SERVER, ?MODULE).
 -define(SCAN_MSG, {'try_sync_service'}).
