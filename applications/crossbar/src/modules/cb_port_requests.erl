@@ -245,7 +245,7 @@ validate(Context) ->
     validate_port_request(Context, cb_context:req_verb(Context)).
 
 validate(Context, ?PATH_TOKEN_LAST_SUBMITTED) ->
-    last_submitted(summary(Context));
+    last_submitted(Context);
 validate(Context, ?PORT_UNCONFIRMED = Type) ->
     validate_load_summary(Context, Type);
 validate(Context, ?PORT_SUBMITTED = Type) ->

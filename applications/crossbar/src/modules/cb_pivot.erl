@@ -97,7 +97,7 @@ validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
 %%--------------------------------------------------------------------
 -spec debug_summary(cb_context:context()) -> cb_context:context().
 debug_summary(Context) ->
-    ViewOptions = [{'mapper', fun normalize_summary_results/2}
+    ViewOptions = [{'mapper', crossbar_view:map_value_fun()}
                   ,{'key_map', 'nil'}
                   ,{'limit', limit_by_page_size(Context)}
                   ],
@@ -149,16 +149,6 @@ debug_read(Context, CallId) ->
                   ,'include_docs'
                   ],
     crossbar_doc:load_modb(Context, ?CB_DEBUG_LIST, ViewOptions).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_summary_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_summary_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
