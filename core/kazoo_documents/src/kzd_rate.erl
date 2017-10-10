@@ -233,7 +233,12 @@ constrain_weight(X) -> X.
 direction(Rate) ->
     direction(Rate, ?BOTH_DIRECTIONS).
 direction(Rate, Default) ->
-    kz_json:get_list_value(<<"direction">>, Rate, Default).
+    case kz_json:get_value(<<"direction">>, Rate) of
+        <<"inbound">>=V -> [V];
+        <<"outbound">>=V -> [V];
+        'undefined' -> Default;
+        Directions when is_list(Directions) -> Directions
+    end.
 
 -spec set_direction(doc(), ne_binary() | ne_binaries()) -> doc().
 set_direction(Rate, Directions) when is_list(Directions) ->
