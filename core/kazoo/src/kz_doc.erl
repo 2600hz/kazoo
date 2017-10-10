@@ -103,7 +103,7 @@
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, []).
 update_pvt_parameters(JObj0, DBName, Options) ->
-    Opts = props:insert_value('now', kz_time:current_tstamp(), Options),
+    Opts = props:insert_value('now', kz_time:now_s(), Options),
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Opts) end, JObj0, ?PVT_FUNS).
 
 -spec add_pvt_vsn(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
@@ -156,7 +156,7 @@ add_pvt_created(JObj, _, Opts) ->
     case kz_json:get_ne_binary_value(?KEY_REV, JObj) of
         'undefined' ->
             kz_json:set_value(?KEY_CREATED
-                             ,props:get_value('now', Opts, kz_time:current_tstamp())
+                             ,props:get_value('now', Opts, kz_time:now_s())
                              ,JObj
                              );
         _ -> JObj
@@ -164,7 +164,7 @@ add_pvt_created(JObj, _, Opts) ->
 
 -spec update_pvt_modified(kz_json:object()) -> kz_json:object().
 update_pvt_modified(JObj) ->
-    add_pvt_modified(JObj, 'undefined', [{'now', kz_time:current_tstamp()}]).
+    add_pvt_modified(JObj, 'undefined', [{'now', kz_time:now_s()}]).
 
 -spec set_modified(kz_json:object(), gregorian_seconds()) -> kz_json:object().
 set_modified(JObj, Now) ->

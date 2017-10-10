@@ -125,9 +125,9 @@ get_fs_app(_Node, _UUID, JObj, <<"hangup">>) ->
     end;
 
 get_fs_app(_Node, UUID, JObj, <<"audio_level">>) ->
-    Action = kz_json:get_value(<<"Action">>, JObj),
-    Level = kz_json:get_value(<<"Level">>, JObj),
-    Mode = kz_json:get_value(<<"Mode">>, JObj),
+    Action = kz_json:get_ne_binary_value(<<"Action">>, JObj),
+    Level = kz_json:get_ne_binary_value(<<"Level">>, JObj),
+    Mode = kz_json:get_ne_binary_value(<<"Mode">>, JObj),
     Data = <<UUID/binary, " ", Action/binary, " ", Mode/binary, " mute ", Level/binary>>,
     {<<"audio_level">>, Data};
 
@@ -965,7 +965,7 @@ build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
 %%--------------------------------------------------------------------
 get_conf_id_and_profile(JObj) ->
     ConfName = kz_json:get_value(<<"Conference-ID">>, JObj),
-    ProfileName = kz_json:get_ne_value(<<"Profile">>, JObj, <<"undefined">>),
+    ProfileName = kz_json:get_ne_value(<<"Profile">>, JObj, <<"default">>),
     {ConfName, ProfileName}.
 
 -spec get_conference_app(atom(), ne_binary(), kz_json:object(), boolean()) ->
@@ -1186,7 +1186,7 @@ maybe_add_ccvs(BaseProps, ChannelProps) ->
 
 -spec build_base_store_event_props(ne_binary(), kz_proplist(), ne_binary(), api_binary(), ne_binary()) -> kz_proplist().
 build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, App) ->
-    Timestamp = kz_term:to_binary(kz_time:current_tstamp()),
+    Timestamp = kz_term:to_binary(kz_time:now_s()),
     props:filter_undefined(
       [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps, Timestamp)}
       ,{<<"Call-ID">>, UUID}
@@ -1213,7 +1213,7 @@ send_store_vm_call_event(Node, UUID, MediaTransResults) ->
 
 -spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
 send_store_fax_call_event(UUID, Results) ->
-    Timestamp = kz_term:to_binary(kz_time:current_tstamp()),
+    Timestamp = kz_term:to_binary(kz_time:now_s()),
     Prop = [{<<"Msg-ID">>, Timestamp}
            ,{<<"Call-ID">>, UUID}
            ,{<<"Application-Name">>, <<"store_fax">>}
@@ -1754,7 +1754,7 @@ sound_touch_options(JObj) ->
 
 -spec sound_touch_options_fold(sound_touch_option(), sound_touch_option_acc()) -> sound_touch_option_acc().
 sound_touch_options_fold({K, F}, {List, JObj}=Acc) ->
-    case kz_json:get_value(K, JObj) of
+    case kz_json:get_ne_binary_value(K, JObj) of
         'undefined' -> Acc;
         V -> {F(V, List), JObj}
     end.

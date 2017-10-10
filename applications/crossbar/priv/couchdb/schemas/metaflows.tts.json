@@ -1,0 +1,49 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.tts",
+    "description": "Use the Text-to-speech engine to say the provided text",
+    "properties": {
+        "engine": {
+            "default": "flite",
+            "description": "What engine to use (system-dependant)",
+            "type": "string"
+        },
+        "language": {
+            "description": "What language is the text in",
+            "type": "string"
+        },
+        "leg": {
+            "default": "self",
+            "description": "What leg to say the text to",
+            "type": "string"
+        },
+        "terminators": {
+            "default": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "*",
+                "0",
+                "#"
+            ],
+            "description": "What DTMF can terminate the TTS playback",
+            "type": "array"
+        },
+        "text": {
+            "description": "What to say",
+            "type": "string"
+        },
+        "voice": {
+            "default": "female",
+            "description": "What voice to use when speaking",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

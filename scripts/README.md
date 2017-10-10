@@ -77,6 +77,11 @@ Takes the misspellings.txt and checks for common mistakes.
 Each line on the text file has the format `{correct}|{mispelt} [{misspelt} ...]`
 
 
+## check-unstaged.bash
+
+Checks if any unstanged changes are found in the repo and exits if so. Used in CircleCI to fail builds with unstaged changes after applying code checks, spell checking, etc.
+
+
 ## check-xref.escript
 
 An Erlang escript for cross referencing (xref) calls to remote modules. Set \`TO\_XREF\` to ebin paths (or use the default):

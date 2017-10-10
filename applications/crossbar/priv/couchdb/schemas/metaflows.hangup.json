@@ -1,0 +1,7 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.hangup",
+    "description": "Hangup the call leg immediately",
+    "properties": {},
+    "type": "object"
+}

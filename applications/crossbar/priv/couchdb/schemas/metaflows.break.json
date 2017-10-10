@@ -1,0 +1,7 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.break",
+    "description": "Break out of media being sent to a channel",
+    "properties": {},
+    "type": "object"
+}

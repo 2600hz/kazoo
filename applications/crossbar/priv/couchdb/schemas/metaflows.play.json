@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.play",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "id": {
+            "description": "Media ID to play",
+            "type": "string"
+        },
+        "leg": {
+            "default": "both",
+            "description": "Leg to play the media to",
+            "enum": [
+                "self",
+                "peer",
+                "both"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

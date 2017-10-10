@@ -13,8 +13,8 @@
 
 -include("conference.hrl").
 
--type name_pronounced_media() :: {'media_doc_id', ne_binary(), ne_binary()}.
--type name_pronounced_ids()   :: {'temp_doc_id', ne_binary(), ne_binary()} |
+-type name_pronounced_media() :: {atom(), ne_binary(), ne_binary()}.
+-type name_pronounced_ids()   :: {atom(), ne_binary(), ne_binary()} |
                                  name_pronounced_media().
 -type name_pronounced() :: name_pronounced_ids() |
                            'undefined'.

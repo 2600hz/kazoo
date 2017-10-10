@@ -431,7 +431,7 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
     PreviousTree = kz_account:tree(JObj),
     JObj1 = kz_json:set_values([{?SERVICES_PVT_TREE, ToTree}
                                ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
-                               ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                               ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
                                ], JObj),
     %%FIXME: do something about setting pvt_auth_*_id
     case kz_datamgr:save_doc(AccountDb, JObj1) of
@@ -488,7 +488,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
             ToTree = Tree ++ Tail,
             Values = [{?SERVICES_PVT_TREE, ToTree}
                      ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
-                     ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                     ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
                      ],
             AccountDb = kz_util:format_account_db(Descendant),
             %%FIXME: do something about setting pvt_auth_*_id
@@ -518,7 +518,7 @@ move_service(AccountId, NewTree, NewResellerId, Dirty) ->
                       [{?SERVICES_PVT_TREE, NewTree}
                       ,{?SERVICES_PVT_TREE_PREVIOUSLY, kz_account:tree(JObj)}
                       ,{?SERVICES_PVT_IS_DIRTY, Dirty}
-                      ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                      ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
                       ,{?SERVICES_PVT_RESELLER_ID, NewResellerId}
                       ]),
             %%FIXME: do something about setting pvt_auth_*_id

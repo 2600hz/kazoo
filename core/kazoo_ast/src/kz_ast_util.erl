@@ -4,6 +4,7 @@
         ,add_module_ast/3
 
         ,ast_to_list_of_binaries/1
+        ,ast_list_to_list/1
         ,binary_match_to_binary/1
         ,smash_snake/1
 
@@ -91,7 +92,19 @@ binary_match_to_binary(Match) when is_list(Match) ->
 binary_part_to_binary(?BINARY_STRING(V)) -> V;
 binary_part_to_binary(?SUB_BINARY(V)) -> V;
 binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms);
-binary_part_to_binary(?BINARY_FROM_ATOM(Atom)) -> atom_to_binary(Atom, utf8).
+binary_part_to_binary(?BINARY_FROM_ATOM(Atom)) -> atom_to_binary(Atom, 'utf8').
+
+-spec ast_list_to_list(term()) -> list().
+ast_list_to_list(?EMPTY_LIST) -> [];
+ast_list_to_list(?LIST(_, _)=ASTList) ->
+    ast_list_to_list(ASTList, []).
+
+ast_list_to_list(?EMPTY_LIST, List) -> lists:reverse(List);
+ast_list_to_list(?LIST(H, T), List) ->
+    ast_list_to_list(T, [ast_list_el_to_el(H) | List]).
+
+ast_list_el_to_el(?TUPLE(Fields)) ->
+    list_to_tuple(Fields).
 
 %% user_auth -> User Auth
 -spec smash_snake(ne_binary()) -> iolist().

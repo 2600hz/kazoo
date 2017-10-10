@@ -1,0 +1,58 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.sound_touch",
+    "description": "Pitch-shift and other audio effects",
+    "properties": {
+        "action": {
+            "description": "Whether to start or stop touching the sound",
+            "enum": [
+                "start",
+                "stop"
+            ],
+            "type": "string"
+        },
+        "adjust_in_octaves": {
+            "default": 0,
+            "description": "Adjust the pitch in octaves",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "type": "number"
+        },
+        "adjust_in_semitones": {
+            "default": 0,
+            "description": "Asjust the pitch in semitones",
+            "maximum": 14.0,
+            "minimum": -14.0,
+            "type": "number"
+        },
+        "hook_dtmf": {
+            "default": false,
+            "description": "Enable DTMF control of audio modifications",
+            "type": "boolean"
+        },
+        "pitch": {
+            "default": 1.0,
+            "description": "Set the pitch directly (lower number = lower tone)",
+            "minimum": 1.0,
+            "type": "number"
+        },
+        "rate": {
+            "default": 1.0,
+            "description": "Set the rate directly",
+            "minimum": 1.0,
+            "type": "number"
+        },
+        "sending_leg": {
+            "default": false,
+            "description": "Apply the filter to the sending leg",
+            "type": "boolean"
+        },
+        "tempo": {
+            "default": 1.0,
+            "description": "Set the tempo directly",
+            "minimum": 1.0,
+            "type": "number"
+        }
+    },
+    "type": "object"
+}

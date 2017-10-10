@@ -59,7 +59,7 @@ save(Ledger) ->
 -spec save(ledger(), ne_binary()) -> {'ok', ledger()} | {'error', any()}.
 save(Ledger, LedgerId) ->
     Props = [{<<"pvt_type">>, ?PVT_TYPE}
-            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+            ,{<<"pvt_modified">>, kz_time:now_s()}
             ,{<<"pvt_account_id">>, LedgerId}
              | maybe_add_id(Ledger)
             ],
@@ -75,7 +75,7 @@ maybe_add_id(Ledger) ->
                            ,"-"
                            ,(create_hash(Ledger))/binary
                          >>}
-            ,{<<"pvt_created">>, kz_time:current_tstamp()}
+            ,{<<"pvt_created">>, kz_time:now_s()}
             ];
         _ -> []
     end.

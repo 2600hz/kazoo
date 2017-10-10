@@ -163,7 +163,8 @@ maybe_start_from_node_config() ->
         'undefined' -> 'false';
         KazooApps ->
             lager:info("starting applications configured specifically for this node: ~s"
-                      ,[kz_binary:join(KazooApps, <<", ">>)]),
+                      ,[kz_binary:join(KazooApps, <<", ">>)]
+                      ),
             KazooApps
     end.
 

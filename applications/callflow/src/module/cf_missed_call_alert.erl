@@ -87,7 +87,7 @@ send_missed_alert(Call, Notify, Emails) ->
               ,{<<"Account-ID">>, kapps_call:account_id(Call)}
               ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
               ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-              ,{<<"Timestamp">>, kz_time:current_tstamp()}
+              ,{<<"Timestamp">>, kz_time:now_s()}
               ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
               ,{<<"Notify">>, Notify}
               ,{<<"Call-Bridged">>, kapps_call:call_bridged(Call)}

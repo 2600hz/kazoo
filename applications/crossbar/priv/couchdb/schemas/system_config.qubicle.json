@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.qubicle",
+    "description": "Schema for qubicle system_config",
+    "properties": {
+        "enable_event_call_props": {
+            "default": false,
+            "description": "qubicle enable_event_call_props",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

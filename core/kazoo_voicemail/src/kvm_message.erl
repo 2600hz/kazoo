@@ -434,7 +434,7 @@ create_new_message_doc(Call, Props) ->
     Length = props:get_value(<<"Length">>, Props),
     CIDNumber = kvm_util:get_caller_id_number(Call),
     CIDName = kvm_util:get_caller_id_name(Call),
-    Timestamp = kz_time:current_tstamp(),
+    Timestamp = kz_time:now_s(),
     Metadata = kzd_box_message:build_metadata_object(Length, Call, kz_doc:id(JObj), CIDNumber, CIDName, Timestamp),
 
     MsgJObj = kzd_box_message:set_metadata(Metadata, JObj),
@@ -747,7 +747,7 @@ maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
                   ],
             update_metadata(Call, BoxId, MediaId, Fun);
         'nothing' ->
-            Timestamp = kz_time:current_tstamp(),
+            Timestamp = kz_time:now_s(),
             kvm_util:publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp),
             {'ok', Call}
     end.

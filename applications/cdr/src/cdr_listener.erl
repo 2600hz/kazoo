@@ -178,7 +178,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec refresh_views(map()) -> map().
 refresh_views(Counter) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     RefreshTimeout = ?REFRESH_TIMEOUT,
     HandleTimeout =
         fun(AccountId, {Map, List}) ->
@@ -199,15 +199,15 @@ handle_account(Counter, AccountId) ->
     RefreshThreshold = ?REFRESH_THRESHOLD,
     Count = case value(maps:find(AccountId, Counter)) of
                 {From, Value} when Value >= RefreshThreshold ->
-                    _ = kz_util:spawn(fun update_account_view/3, [AccountId, From, kz_time:current_tstamp()]),
-                    {kz_time:current_tstamp(), 0};
+                    _ = kz_util:spawn(fun update_account_view/3, [AccountId, From, kz_time:now_s()]),
+                    {kz_time:now_s(), 0};
                 {From, Value} -> {From, Value + 1}
             end,
     Counter#{ AccountId => Count }.
 
 -spec value({'ok', counter_element()} | 'error') -> counter_element().
 value({ok, Value}) -> Value;
-value(_) -> {kz_time:current_tstamp(), 0}.
+value(_) -> {kz_time:now_s(), 0}.
 
 -spec update_account_view(ne_binary(), gregorian_seconds(), gregorian_seconds()) -> any().
 update_account_view(AccountId, From, To) ->

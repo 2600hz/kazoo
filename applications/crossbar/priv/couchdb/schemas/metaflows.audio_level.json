@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.audio_level",
+    "description": "Allow changing the volume on a channel (including mute/unmute)",
+    "properties": {
+        "action": {
+            "description": "Start or stop the audio adjustment",
+            "enum": [
+                "start",
+                "stop"
+            ],
+            "type": "string"
+        },
+        "level": {
+            "description": "Adjustment level for the audio",
+            "maximum": 4,
+            "minimum": -4,
+            "type": "integer"
+        },
+        "mode": {
+            "description": "What mode to use (depends on direction)",
+            "enum": [
+                "read",
+                "write"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

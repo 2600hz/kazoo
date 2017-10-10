@@ -347,7 +347,7 @@ is_log_type_enabled(<<"success">>, Method, AuthConfig) ->
 
 -spec log_attempts(cb_context:context(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 log_attempts(Context, AccountId, Method, Status, AuthType, Reason) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     MODB = kz_util:format_account_mod_id(AccountId, Now),
 
     LogId = kazoo_modb_util:modb_id(Now),

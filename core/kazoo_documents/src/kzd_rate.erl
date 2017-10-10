@@ -36,6 +36,8 @@
 
 -include("kz_documents.hrl").
 
+-define(KEY_DIRECTION, <<"direction">>).
+
 -type doc() :: kz_json:object().
 -type docs() :: [doc()].
 -type weight_range() :: 1..100.
@@ -46,7 +48,20 @@
 -spec from_map(map()) -> doc().
 from_map(Map) ->
     Rate = kz_doc:public_fields(kz_json:from_map(Map)),
-    ensure_id(set_type(Rate)).
+    Fs = [fun set_type/1
+         ,fun ensure_id/1
+         ,fun maybe_fix_direction/1
+         ],
+    lists:foldl(fun(F, R) -> F(R) end, Rate, Fs).
+
+-spec maybe_fix_direction(doc()) -> doc().
+maybe_fix_direction(Rate) ->
+    case kz_json:get_value(?KEY_DIRECTION, Rate) of
+        'undefined' -> Rate;
+        L when is_list(L) -> Rate;
+        <<"inbound">> -> set_direction(Rate, [<<"inbound">>]);
+        <<"outbound">> -> set_direction(Rate, [<<"outbound">>])
+    end.
 
 -spec ensure_id(doc()) -> doc().
 -spec ensure_id(doc(), api_ne_binary()) -> doc().
@@ -57,6 +72,7 @@ ensure_id(Rate, 'undefined') ->
     ID = list_to_binary([iso_country_code(Rate, <<"XX">>)
                         ,<<"-">>
                         ,prefix(Rate)
+                        ,rate_suffix(Rate)
                         ]),
     kz_doc:set_id(Rate, ID);
 ensure_id(Rate, ID) ->
@@ -217,7 +233,12 @@ constrain_weight(X) -> X.
 direction(Rate) ->
     direction(Rate, ?BOTH_DIRECTIONS).
 direction(Rate, Default) ->
-    kz_json:get_list_value(<<"direction">>, Rate, Default).
+    case kz_json:get_value(<<"direction">>, Rate) of
+        <<"inbound">>=V -> [V];
+        <<"outbound">>=V -> [V];
+        'undefined' -> Default;
+        Directions when is_list(Directions) -> Directions
+    end.
 
 -spec set_direction(doc(), ne_binary() | ne_binaries()) -> doc().
 set_direction(Rate, Directions) when is_list(Directions) ->
@@ -282,3 +303,13 @@ carrier(Rate, Default) ->
 -spec set_carrier(doc(), ne_binary()) -> doc().
 set_carrier(Rate, Carrier) when is_binary(Carrier) ->
     kz_json:set_value(<<"pvt_carrier">>, Carrier, Rate).
+
+-spec rate_suffix(doc()) -> ne_binary().
+-spec rate_suffix(doc(), Default) -> ne_binary() | Default.
+rate_suffix(Rate) ->
+    rate_suffix(Rate, 'undefined').
+rate_suffix(Rate, Default) ->
+    case kz_json:get_ne_binary_value(<<"rate_suffix">>, Rate, Default) of
+        'undefined' -> <<>>;
+        RateSuffix -> <<"-", RateSuffix/binary>>
+    end.

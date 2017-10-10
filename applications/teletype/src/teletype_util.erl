@@ -122,7 +122,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
             ,{<<"pvt_type">>, <<"notify_smtp_log">>}
             ,{<<"account_id">>, AccountId}
             ,{<<"account_db">>, AccountDb}
-            ,{<<"pvt_created">>, kz_time:current_tstamp()}
+            ,{<<"pvt_created">>, kz_time:now_s()}
             ,{<<"template_id">>, get('template_id')}
             ,{<<"template_account_id">>, get('template_account_id')}
             ,{<<"macros">>, get('macros')}
@@ -219,7 +219,7 @@ relay_encoded_email(To, From, Encoded) ->
                                 ,{'receipt', Receipt}
                                 ,#email_receipt{to=To
                                                ,from=From
-                                               ,timestamp=kz_time:current_tstamp()
+                                               ,timestamp=kz_time:now_s()
                                                ,call_id=kz_util:get_callid()
                                                }
                                 ,[{'expires', ?MILLISECONDS_IN_HOUR}]
@@ -819,7 +819,7 @@ fix_timestamp(Timestamp) ->
 
 -spec fix_timestamp(gregorian_seconds() | api_ne_binary(), api_binary() | kz_json:object()) -> kz_proplist().
 fix_timestamp('undefined', Thing) ->
-    fix_timestamp(kz_time:current_tstamp(), Thing);
+    fix_timestamp(kz_time:now_s(), Thing);
 fix_timestamp(?NE_BINARY=Timestamp, Thing) ->
     fix_timestamp(kz_term:to_integer(Timestamp), Thing);
 fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
@@ -883,9 +883,9 @@ find_date_called(DataJObj) ->
             ,<<"fax_timestamp">>
             ,<<"timestamp">>
             ],
-    Timestamp = kz_json:get_first_defined(Paths, DataJObj, kz_time:current_tstamp()),
+    Timestamp = kz_json:get_first_defined(Paths, DataJObj, kz_time:now_s()),
     try kz_term:to_integer(Timestamp)
-    catch _:_ -> kz_time:current_tstamp()
+    catch _:_ -> kz_time:now_s()
     end.
 
 -spec build_from_data(kz_json:object()) -> kz_proplist().

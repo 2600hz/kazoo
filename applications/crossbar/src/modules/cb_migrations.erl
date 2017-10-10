@@ -240,7 +240,7 @@ mark_migration_complete(MigId, AccountId, Context) ->
              ,{<<"auth_account_id">>, AuthAccountId}
              ,{<<"auth_account_name">>, kz_account:fetch_name(AuthAccountId)}
              ,{<<"auth_user_name">>, get_user_name(AuthAccountId, User)}
-             ,{<<"performed_time">>, kz_time:current_tstamp()}
+             ,{<<"performed_time">>, kz_time:now_s()}
              ,{<<"original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
              ,{<<"original_auth_owner_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}
              ]),
@@ -268,7 +268,7 @@ maybe_create_migration_doc(Account) ->
 create_migration_doc(Account) ->
     Doc = kz_json:from_list(
             [{<<"_id">>, ?MIGRATIONS_DOC}
-            ,{<<"pvt_created">>, kz_time:current_tstamp()}
+            ,{<<"pvt_created">>, kz_time:now_s()}
             ,{<<"migrations_performed">>, []}
             ]),
     kz_datamgr:ensure_saved(Account, Doc).

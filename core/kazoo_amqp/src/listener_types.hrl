@@ -33,7 +33,7 @@
 -type responder_callback_fun4() :: fun((kz_json:object(), kz_proplist(), basic_deliver(), amqp_basic()) -> no_return()).
 -type responder_callback_fun() :: responder_callback_fun2() | responder_callback_fun3() | responder_callback_fun4().
 
--type responder_callback() :: atom() | {atom(), atom()} | responder_callback_fun().
+-type responder_callback() :: module() | {module(), function()} | responder_callback_fun().
 -type responder_callback_mapping() :: {ne_binary(), ne_binary()}.
 -type responder_callback_mappings() :: [responder_callback_mapping()].
 

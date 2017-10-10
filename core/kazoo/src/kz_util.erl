@@ -716,7 +716,7 @@ spawn_monitor(Fun, Arguments) ->
 
 -spec set_startup() -> api_seconds().
 set_startup() ->
-    put('$startup', kz_time:current_tstamp()).
+    put('$startup', kz_time:now_s()).
 
 -spec startup() -> api_seconds().
 startup() ->

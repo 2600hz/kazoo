@@ -87,7 +87,7 @@ maybe_insert_schema(_F, ['undefined' | _Keys], _Default, Schema) ->
     ?DEBUG("skipping function ~p with key undefined (~p left)", [_F, _Keys]),
     Schema;
 maybe_insert_schema(F, [K|Ks], Default, Schema) ->
-    Section = kz_json:get_value([<<"properties">>, K], Schema, kz_json:new()),
+    Section = kz_json:get_json_value([<<"properties">>, K], Schema, kz_json:new()),
     Updated = maybe_insert_schema(F, Ks, Default, Section),
     kz_json:insert_value(<<"type">>
                         ,<<"object">>
@@ -144,6 +144,8 @@ guess_type('get_binary_boolean', _) ->
 guess_type('get_binary_value', _) ->
     <<"string">>;
 guess_type('get_ne_binary_value', _) ->
+    <<"string">>;
+guess_type('get_atom_value', _) ->
     <<"string">>;
 guess_type('get_is_true', _) ->
     <<"boolean">>;
@@ -324,6 +326,12 @@ process_match_mfa(#usage{data_var_name=DataName
 process_match_mfa(Acc, _VarName, M, F, As) ->
     process_mfa(Acc, M, F, As).
 
+process_mfa(#usage{data_var_name=DataName
+                  ,usages=Usages
+                  }=Acc
+           ,'kz_doc', 'id', [?VAR(DataName)]
+           ) ->
+    Acc#usage{usages=maybe_add_usage(Usages, {'kz_json', 'get_ne_binary_value', <<"id">>, DataName, 'undefined'})};
 process_mfa(#usage{data_var_name=DataName}=Acc
            ,'kz_json', 'merge_recursive', [_Arg, ?VAR(DataName)]
            ) ->
@@ -458,18 +466,18 @@ arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
     arg_list_has_data_var(DataName, Aliases, T).
 
 arg_to_key(?BINARY_MATCH(Arg)) ->
-    kz_ast_util:binary_match_to_binary(Arg);
-arg_to_key(?ATOM(Arg)) ->
-    Arg;
+    try kz_ast_util:binary_match_to_binary(Arg)
+    catch 'error':'function_clause' -> 'undefined'
+    end;
+arg_to_key(?ATOM(Arg)) -> Arg;
 arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 arg_to_key(?MOD_FUN_ARGS(M, F, As)) ->
     {M, F, length(As)};
 arg_to_key(?VAR(_Arg)) -> 'undefined';
-arg_to_key(?INTEGER(I)) ->
-    I;
-arg_to_key(?EMPTY_LIST) ->
-    [];
+arg_to_key(?INTEGER(I)) -> I;
+arg_to_key(?FLOAT(F)) -> F;
+arg_to_key(?EMPTY_LIST) -> [];
 arg_to_key(?LIST(Head, Tail)) ->
     list_of_keys_to_binary(Head, Tail).
 
@@ -550,6 +558,10 @@ process_mfa_call(#usage{functions=Fs
         [Clauses] when F =:= 'evaluate_rules_for_creation';
                        F =:= 'create_endpoints' ->
             process_mfa_clauses_kz_endpoint(Acc, M, F, As, Clauses);
+        [_Clauses] when M =:= 'kzc_recordings_sup',
+                        F =:= 'start_recording' ->
+            ?DEBUG("checking kzc_recording:init/1~n", []),
+            process_mfa_call(Acc, 'kzc_recording', 'init', [?VAR('_', 'Call'), ?VAR('_', 'Data')]);
         [Clauses] ->
             process_mfa_clauses(Acc, M, F, As, Clauses)
     end.

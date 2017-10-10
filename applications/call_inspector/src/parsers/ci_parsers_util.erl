@@ -31,7 +31,7 @@
 timestamp() ->
     {_, _, Micro} = os:timestamp(),
     kz_term:to_integer(Micro) / ?MICROSECONDS_IN_SECOND +
-        kz_time:current_tstamp().
+        kz_time:now_s().
 
 -spec timestamp(ne_binary() | kz_now()) -> api_float().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"

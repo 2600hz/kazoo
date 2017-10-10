@@ -633,16 +633,15 @@ maybe_regex_caller_id(CallerId, 'undefined', _) -> CallerId;
 maybe_regex_caller_id(CallerId, Regex, Format) ->
     Normalized = knm_converters:normalize(CallerId),
     case re:run(Normalized, Regex, [{'capture', 'all_but_first', 'binary'}]) of
-        {'match', UseCid} ->
+        {'match', [UseCid|_]} ->
             lager:info("cid rewrite match found ~s from normalized caller id ~s"
-                      ,[hd(UseCid), Normalized]),
-            maybe_append_caller_id(
-              maybe_prepend_caller_id(
-                hd(UseCid)
-                ,kz_json:get_ne_value(<<"prefix">>, Format)
-               )
-              ,kz_json:get_ne_value(<<"suffix">>, Format)
-             );
+                      ,[UseCid, Normalized]
+                      ),
+            maybe_append_caller_id(maybe_prepend_caller_id(UseCid
+                                                          ,kz_json:get_ne_value(<<"prefix">>, Format)
+                                                          )
+                                  ,kz_json:get_ne_value(<<"suffix">>, Format)
+                                  );
         _NotMatching -> CallerId
     end.
 
@@ -665,14 +664,14 @@ maybe_append_caller_id(CallerId, Suffix) ->
 -include_lib("eunit/include/eunit.hrl").
 set_caller_id(CIDNumber, CIDName, #kapps_call{}=Call)
   when is_binary(CIDNumber)
-  andalso is_binary(CIDName) ->
+       andalso is_binary(CIDName) ->
     Call#kapps_call{caller_id_number=CIDNumber
                    ,callee_id_name=CIDName
                    }.
 -else.
 set_caller_id(CIDNumber, CIDName, #kapps_call{}=Call)
   when is_binary(CIDNumber)
-  andalso is_binary(CIDName) ->
+       andalso is_binary(CIDName) ->
     JObj = kz_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}
                              ,{<<"Caller-ID-Name">>, CIDName}
                              ]),
@@ -736,14 +735,14 @@ caller_id_number(#kapps_call{caller_id_number=CIDNumber
 -ifdef(TEST).
 set_callee_id(CIDNumber, CIDName, #kapps_call{}=Call)
   when is_binary(CIDNumber)
-  andalso is_binary(CIDName) ->
+       andalso is_binary(CIDName) ->
     Call#kapps_call{callee_id_number=CIDNumber
                    ,callee_id_name=CIDName
                    }.
 -else.
 set_callee_id(CIDNumber, CIDName, #kapps_call{}=Call)
   when is_binary(CIDNumber)
-  andalso is_binary(CIDName) ->
+       andalso is_binary(CIDName) ->
     kapps_call_command:set(kz_json:from_list([{<<"Callee-ID-Number">>, CIDNumber}
                                              ,{<<"Callee-ID-Name">>, CIDName}
                                              ]), 'undefined', Call),
@@ -816,9 +815,9 @@ request_realm(#kapps_call{request_realm=RequestRealm}) ->
 set_from(From, #kapps_call{}=Call) when is_binary(From) ->
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
     Call#kapps_call{from=From
-                     ,from_user=FromUser
-                     ,from_realm=FromRealm
-                    }.
+                   ,from_user=FromUser
+                   ,from_realm=FromRealm
+                   }.
 
 -spec from(call()) -> ne_binary().
 from(#kapps_call{from=From}) ->
@@ -836,9 +835,9 @@ from_realm(#kapps_call{from_realm=FromRealm}) ->
 set_to(To, #kapps_call{}=Call) when is_binary(To) ->
     [ToUser, ToRealm] = binary:split(To, <<"@">>),
     Call#kapps_call{to=To
-                     ,to_user=ToUser
-                     ,to_realm=ToRealm
-                    }.
+                   ,to_user=ToUser
+                   ,to_realm=ToRealm
+                   }.
 
 -spec to(call()) -> ne_binary().
 to(#kapps_call{to=To}) ->
@@ -908,8 +907,8 @@ resource_type(#kapps_call{resource_type=ResourceType}) ->
 set_account_db(<<_/binary>> = AccountDb, #kapps_call{}=Call) ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#kapps_call{account_db=AccountDb
-                                                                         ,account_id=AccountId
-                                                                        }).
+                                                                       ,account_id=AccountId
+                                                                       }).
 
 -spec account_db(call()) -> api_binary().
 account_db(#kapps_call{account_db=AccountDb}) ->
@@ -919,8 +918,8 @@ account_db(#kapps_call{account_db=AccountDb}) ->
 set_account_id(<<_/binary>> = AccountId, #kapps_call{}=Call) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#kapps_call{account_db=AccountDb
-                                                                         ,account_id=AccountId
-                                                                        }).
+                                                                       ,account_id=AccountId
+                                                                       }).
 
 -spec account_id(call()) -> api_binary().
 account_id(#kapps_call{account_id=AccountId}) ->
@@ -952,11 +951,11 @@ set_authorization(AuthorizingType, AuthorizingId, #kapps_call{}=Call)
   when is_binary(AuthorizingType)
        andalso is_binary(AuthorizingId) ->
     set_custom_channel_vars([{<<"Authorizing-Type">>, AuthorizingType}
-                             ,{<<"Authorizing-ID">>, AuthorizingId}
+                            ,{<<"Authorizing-ID">>, AuthorizingId}
                             ]
-                            ,Call#kapps_call{authorizing_type=AuthorizingType
-                                              ,authorizing_id=AuthorizingId
-                                             }
+                           ,Call#kapps_call{authorizing_type=AuthorizingType
+                                           ,authorizing_id=AuthorizingId
+                                           }
                            ).
 
 -spec set_owner_id(ne_binary(), call()) -> call().

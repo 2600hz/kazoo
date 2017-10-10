@@ -526,7 +526,7 @@ is_unique_realm(Realm) ->
 -spec cleanup_signups(#state{}) -> 'ok'.
 cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     lager:debug("cleaning up signups"),
-    Expiration = kz_time:current_tstamp() + Lifespan,
+    Expiration = kz_time:now_s() + Lifespan,
     ViewOptions = [{'startkey', 0}
                   ,{'endkey', Expiration}
                   ,'include_docs'

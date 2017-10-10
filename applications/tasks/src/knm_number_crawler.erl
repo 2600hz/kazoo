@@ -206,4 +206,4 @@ maybe_transition_aging(PN, T, Expiry) ->
 -spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
 is_old_enough(PN, Expiry) ->
     knm_phone_number:modified(PN)
-        < (kz_time:current_tstamp() + Expiry * ?SECONDS_IN_DAY).
+        < (kz_time:now_s() + Expiry * ?SECONDS_IN_DAY).

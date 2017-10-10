@@ -44,6 +44,7 @@ rate_doc(RatedeckId, Cost) ->
     kzd_rate:from_map(#{<<"prefix">> => <<"1222">>
                        ,<<"rate_cost">> => Cost
                        ,<<"ratedeck_id">> => RatedeckId
+                       ,<<"direction">> => <<"inbound">>
                        }
                      ).
 
@@ -62,7 +63,9 @@ upload_csv(API, CSV) ->
 
 upload_csv(API, CSV, _RatedeckId) ->
     CreateResp = pqc_cb_tasks:create(API, "category=rates&action=import", CSV),
-    TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>], kz_json:decode(CreateResp)),
+    TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>]
+                                        ,kz_json:decode(CreateResp)
+                                        ),
     _ExecResp = pqc_cb_tasks:execute(API, TaskId),
 
     _DelResp = wait_for_task(API, TaskId),
@@ -289,6 +292,7 @@ cleanup(API) ->
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->
+    init(),
     API = pqc_cb_api:authenticate(),
     ?INFO("state initialized to ~p", [API]),
     pqc_kazoo_model:new(API).
@@ -366,8 +370,11 @@ command(Model) ->
     AccountName = account_name(),
     AccountId = pqc_cb_accounts:symbolic_account_id(Model, AccountName),
 
-    oneof([{'call', ?MODULE, 'upload_rate', [API, rate_doc(ratedeck_id(), rate_cost())]}
+    RateDoc = rate_doc(ratedeck_id(), rate_cost()),
+
+    oneof([{'call', ?MODULE, 'upload_rate', [API, RateDoc]}
           ,{'call', ?MODULE, 'delete_rate', [API, ratedeck_id()]}
+          ,{'call', ?MODULE, 'get_rate', [API, RateDoc]}
           ,{'call', ?MODULE, 'rate_did', [API, ratedeck_id(), phone_number()]}
           ,pqc_cb_accounts:command(Model, AccountName)
           ,{'call', ?MODULE, 'create_service_plan', [API, ratedeck_id()]}
@@ -399,6 +406,11 @@ next_state(Model
                           ,[{fun pqc_kazoo_model:is_rate_missing/3, [Ratedeck, RateDoc]}
                            ,{fun pqc_kazoo_model:add_rate_to_ratedeck/3, [Ratedeck, RateDoc]}
                            ]);
+next_state(Model
+          ,_APIResp
+          ,{'call', ?MODULE, 'get_rate', [_API, _RateDoc]}
+          ) ->
+    Model;
 next_state(Model
           ,_APIResp
           ,{'call', _, 'delete_rate', [_API, RatedeckId]}
@@ -459,6 +471,23 @@ postcondition1(_Model
               ,{'ok', _TaskId}
               ) ->
     'true';
+postcondition1(Model
+              ,{'call', ?MODULE, 'get_rate', [_API, RateDoc]}
+              ,FetchResp
+              ) ->
+    RatedeckId = kzd_rate:ratedeck(RateDoc),
+    case pqc_kazoo_model:is_rate_missing(Model, RatedeckId, RateDoc) of
+        'true' ->
+            404 =:= kz_json:get_integer_value(<<"error">>, kz_json:decode(FetchResp));
+        'false' ->
+            Data = kz_json:get_json_value(<<"data">>, kz_json:decode(FetchResp), kz_json:new()),
+            kz_json:all(fun({K, V}) ->
+                                F = kz_term:to_atom(K),
+                                V =:= kzd_rate:F(Data)
+                        end
+                       ,RateDoc
+                       )
+    end;
 postcondition1(Model
               ,{'call', _, 'delete_rate', [_API, RatedeckId]}
               ,APIResult

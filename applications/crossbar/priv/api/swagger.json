@@ -2159,6 +2159,7 @@
                     "default": "park",
                     "description": "Action to take for the caller",
                     "enum": [
+                        "direct_park",
                         "park",
                         "retrieve",
                         "auto"
@@ -18015,6 +18016,78 @@
             ],
             "type": "object"
         },
+        "kapi.qubicle_session.create_session": {
+            "description": "AMQP API for qubicle_session.create_session",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Session-Type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID",
+                "Session-Type"
+            ],
+            "type": "object"
+        },
+        "kapi.qubicle_session.delete_session": {
+            "description": "AMQP API for qubicle_session.delete_session",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.qubicle_session.join_queue": {
+            "description": "AMQP API for qubicle_session.join_queue",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Join-Queue-ID": {
+                    "type": "string"
+                },
+                "Session-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID",
+                "Join-Queue-ID",
+                "Session-ID"
+            ],
+            "type": "object"
+        },
         "kapi.rate.req": {
             "description": "AMQP API for rate.req",
             "properties": {
@@ -22026,6 +22099,438 @@
             },
             "type": "object"
         },
+        "metaflows.audio_level": {
+            "description": "Allow changing the volume on a channel (including mute/unmute)",
+            "properties": {
+                "action": {
+                    "description": "Start or stop the audio adjustment",
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
+                    "type": "string"
+                },
+                "level": {
+                    "description": "Adjustment level for the audio",
+                    "maximum": 4,
+                    "minimum": -4,
+                    "type": "integer"
+                },
+                "mode": {
+                    "description": "What mode to use (depends on direction)",
+                    "enum": [
+                        "read",
+                        "write"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.break": {
+            "description": "Break out of media being sent to a channel",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.callflow": {
+            "description": "Run a callflow on an active call",
+            "properties": {
+                "id": {
+                    "description": "The callflow ID to run",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.hangup": {
+            "description": "Hangup the call leg immediately",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.hold": {
+            "description": "Put the leg on hold",
+            "properties": {
+                "moh_aleg": {
+                    "description": "MOH ID for the a-leg",
+                    "type": "string"
+                },
+                "moh_bleg": {
+                    "description": "MOH ID for the b-leg",
+                    "type": "string"
+                },
+                "unhold_key": {
+                    "default": "1",
+                    "description": "DTMF to press to unhold the call",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.hold_control": {
+            "description": "Control the hold on a call",
+            "properties": {
+                "action": {
+                    "default": "toggle",
+                    "description": "How to manipulate the hold on the call",
+                    "enum": [
+                        "hold",
+                        "unhold",
+                        "toggle"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.intercept": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "auto_answer": {
+                    "default": false,
+                    "description": "Auto-answer the leg",
+                    "type": "boolean"
+                },
+                "can_call_self": {
+                    "default": true,
+                    "description": "Can intercept devices of the same targeted user",
+                    "type": "boolean"
+                },
+                "target_id": {
+                    "description": "ID of the target (device or user)",
+                    "type": "string"
+                },
+                "target_type": {
+                    "description": "Type of entity of the target",
+                    "enum": [
+                        "device",
+                        "user",
+                        "number"
+                    ],
+                    "type": "string"
+                },
+                "unbridged_only": {
+                    "default": true,
+                    "description": "Only intercept if the a-leg is unbridged",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.move": {
+            "description": "Move a call from one device to another",
+            "properties": {
+                "auto_answer": {
+                    "default": false,
+                    "description": "Whether to auto-answer the new leg",
+                    "type": "boolean"
+                },
+                "can_call_self": {
+                    "default": true,
+                    "description": "Can intercept devices of the same targeted user",
+                    "type": "boolean"
+                },
+                "device_id": {
+                    "description": "Move the call to a specific device",
+                    "type": "string"
+                },
+                "dial_strategy": {
+                    "default": "simultaneous",
+                    "description": "How to ring the endpoints, if multiple",
+                    "type": "string"
+                },
+                "owner_id": {
+                    "description": "User ID to use for finding endpoints",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.play": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "id": {
+                    "description": "Media ID to play",
+                    "type": "string"
+                },
+                "leg": {
+                    "default": "both",
+                    "description": "Leg to play the media to",
+                    "enum": [
+                        "self",
+                        "peer",
+                        "both"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.record_call": {
+            "description": "Start a call recording",
+            "properties": {
+                "action": {
+                    "default": "toggle",
+                    "description": "Whether to start/stop the recording",
+                    "enum": [
+                        "start",
+                        "stop",
+                        "toggle"
+                    ],
+                    "type": "string"
+                },
+                "format": {
+                    "description": "What format to store the recording",
+                    "enum": [
+                        "mp3",
+                        "wav"
+                    ],
+                    "type": "string"
+                },
+                "label": {
+                    "description": "Add a custom label to the recording",
+                    "type": "string"
+                },
+                "media_name": {
+                    "description": "Name of the recording file",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "HTTP method if using an HTTP destination",
+                    "enum": [
+                        "put",
+                        "post"
+                    ],
+                    "type": "string"
+                },
+                "origin": {
+                    "description": "Track how the recording was started",
+                    "type": "string"
+                },
+                "record_min_sec": {
+                    "description": "Miniumum number of seconds recorded to consider it a valid recording",
+                    "type": "integer"
+                },
+                "record_on_answer": {
+                    "default": false,
+                    "description": "Whether to start recording when the leg is answered",
+                    "type": "boolean"
+                },
+                "record_on_bridge": {
+                    "default": false,
+                    "description": "Whether to start recording when the leg is bridged",
+                    "type": "boolean"
+                },
+                "record_sample_rate": {
+                    "default": 8000,
+                    "description": "Sampling rate for the recording",
+                    "type": "integer"
+                },
+                "time_limit": {
+                    "description": "How long to allow the recording, in seconds",
+                    "type": "integer"
+                },
+                "url": {
+                    "description": "HTTP URL to send the finished recording",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.resume": {
+            "description": "Reconnect the two legs of a call, if possible",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.say": {
+            "description": "Say the provided text",
+            "properties": {
+                "gender": {
+                    "description": "The gender of the voice to say the text",
+                    "enum": [
+                        "feminine",
+                        "masculine",
+                        "neuter"
+                    ],
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Language of the text",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "Toggle the way the text is read to the caller",
+                    "enum": [
+                        "pronounced",
+                        "iterated",
+                        "counted"
+                    ],
+                    "type": "string"
+                },
+                "text": {
+                    "description": "The text to say to the caller",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type of text to say",
+                    "enum": [
+                        "account_number",
+                        "currency",
+                        "current_date",
+                        "current_date_time",
+                        "current_time",
+                        "email_address",
+                        "ip_address",
+                        "items",
+                        "messages",
+                        "name_phonetic",
+                        "name_spelled",
+                        "number",
+                        "persons",
+                        "postal_address",
+                        "short_date_time",
+                        "telephone_extension",
+                        "telephone_number",
+                        "time_measurement",
+                        "url"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.sound_touch": {
+            "description": "Pitch-shift and other audio effects",
+            "properties": {
+                "action": {
+                    "description": "Whether to start or stop touching the sound",
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
+                    "type": "string"
+                },
+                "adjust_in_octaves": {
+                    "default": 0,
+                    "description": "Adjust the pitch in octaves",
+                    "maximum": 1.0,
+                    "minimum": -1.0,
+                    "type": "number"
+                },
+                "adjust_in_semitones": {
+                    "default": 0,
+                    "description": "Asjust the pitch in semitones",
+                    "maximum": 14.0,
+                    "minimum": -14.0,
+                    "type": "number"
+                },
+                "hook_dtmf": {
+                    "default": false,
+                    "description": "Enable DTMF control of audio modifications",
+                    "type": "boolean"
+                },
+                "pitch": {
+                    "default": 1.0,
+                    "description": "Set the pitch directly (lower number = lower tone)",
+                    "minimum": 1.0,
+                    "type": "number"
+                },
+                "rate": {
+                    "default": 1.0,
+                    "description": "Set the rate directly",
+                    "minimum": 1.0,
+                    "type": "number"
+                },
+                "sending_leg": {
+                    "default": false,
+                    "description": "Apply the filter to the sending leg",
+                    "type": "boolean"
+                },
+                "tempo": {
+                    "default": 1.0,
+                    "description": "Set the tempo directly",
+                    "minimum": 1.0,
+                    "type": "number"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.transfer": {
+            "description": "Perform a transfer",
+            "properties": {
+                "captures": {
+                    "default": [
+                        "no_match"
+                    ],
+                    "description": "Capture groups?",
+                    "type": "array"
+                },
+                "leg": {
+                    "description": "Which leg to be the transfer leg",
+                    "type": "string"
+                },
+                "target": {
+                    "description": "The target extension/DID",
+                    "type": "string"
+                },
+                "transfer_type": {
+                    "default": "blind",
+                    "description": "The type of transfer to perform",
+                    "enum": [
+                        "attended",
+                        "blind"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.tts": {
+            "description": "Use the Text-to-speech engine to say the provided text",
+            "properties": {
+                "engine": {
+                    "default": "flite",
+                    "description": "What engine to use (system-dependant)",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "What language is the text in",
+                    "type": "string"
+                },
+                "leg": {
+                    "default": "self",
+                    "description": "What leg to say the text to",
+                    "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate the TTS playback",
+                    "type": "array"
+                },
+                "text": {
+                    "description": "What to say",
+                    "type": "string"
+                },
+                "voice": {
+                    "default": "female",
+                    "description": "What voice to use when speaking",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "multi_factor_provider": {
             "description": "multi factor provider configuration",
             "properties": {
@@ -23997,21 +24502,24 @@
                 },
                 "manual_recurring": {
                     "description": "Monthly recurring items",
-                    "properties": {
-                        "name": {
-                            "description": "A friendly name for the item",
-                            "type": "string"
+                    "items": {
+                        "properties": {
+                            "name": {
+                                "description": "A friendly name for the item",
+                                "type": "string"
+                            },
+                            "quantity": {
+                                "description": "How many of the item are allowed",
+                                "type": "integer"
+                            },
+                            "rates": {
+                                "description": "Item's rate",
+                                "type": "number"
+                            }
                         },
-                        "quantity": {
-                            "description": "How many of the item are allowed",
-                            "type": "integer"
-                        },
-                        "rates": {
-                            "description": "Item's rate",
-                            "type": "number"
-                        }
+                        "type": "object"
                     },
-                    "type": "object"
+                    "type": "array"
                 },
                 "name": {
                     "description": "A friendly name for the service plan",
@@ -24123,7 +24631,7 @@
                             "description": "how to access the host.",
                             "enum": [
                                 "auto",
-                                "host",
+                                "vhost",
                                 "path"
                             ],
                             "type": "string"
@@ -27209,6 +27717,17 @@
             },
             "type": "object"
         },
+        "system_config.konami_pro": {
+            "description": "Schema for konami_pro system_config",
+            "properties": {
+                "route_win_timeout": {
+                    "default": 3000,
+                    "description": "konami_pro route_win_timeout",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.kzt_twiml_util": {
             "description": "Schema for kzt_twiml_util system_config",
             "properties": {
@@ -28699,6 +29218,17 @@
                         "type": "string"
                     },
                     "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.qubicle": {
+            "description": "Schema for qubicle system_config",
+            "properties": {
+                "enable_event_call_props": {
+                    "default": false,
+                    "description": "qubicle enable_event_call_props",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -39073,112 +39603,6 @@
                     },
                     {
                         "$ref": "#/parameters/ATTEMPT_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_planner": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_planner/{PLAN_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "patch": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

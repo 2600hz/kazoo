@@ -90,6 +90,7 @@ existing_modules(WebhooksRoot) ->
             ,"webhooks_disabler"
             ,"webhooks_init"
             ,"webhooks_listener"
+            ,"webhooks_maint_listener"
             ,"webhooks_maintenance"
             ,"webhooks_shared_listener"
             ,"webhooks_skel"

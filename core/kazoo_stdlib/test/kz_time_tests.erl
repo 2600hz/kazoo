@@ -21,8 +21,7 @@ prop_pretty_print_elapsed_s() ->
            ,{non_neg_integer(), range(0,23), range(0, 59), range(0,59)}
            ,begin
                 Seconds = (D * ?SECONDS_IN_DAY) + (H * ?SECONDS_IN_HOUR) + (M * ?SECONDS_IN_MINUTE) + S,
-                Expected = lists:foldl(fun({0, "s"}, "") ->
-                                               ["s", <<"0">>];
+                Expected = lists:foldl(fun({0, "s"}, "") -> ["s", <<"0">>];
                                           ({0, _}, Acc) -> Acc;
                                           ({N, Unit}, Acc) -> [Unit, kz_term:to_binary(N) | Acc]
                                        end
@@ -45,7 +44,13 @@ proper_test_() ->
 -endif.
 
 to_x_test_() ->
-    [?_assertEqual(true, kz_time:current_unix_tstamp() < kz_time:current_tstamp())
+    Unix = kz_time:current_unix_tstamp(),
+    UnixMs = Unix * 1000,
+    Greg = kz_time:now_s(),
+
+    [?_assert(Unix < Greg)
+    ,?_assert(1 >= abs(Greg - kz_time:unix_seconds_to_gregorian_seconds(Unix)))
+    ,?_assert(1 >= abs(Greg - kz_time:unix_timestamp_to_gregorian_seconds(UnixMs)))
     ].
 
 pretty_print_datetime_test_() ->
@@ -67,7 +72,7 @@ month_test_() ->
     ].
 
 greg_secs_to_unix_secs_test() ->
-    GregSecs = kz_time:current_tstamp(),
+    GregSecs = kz_time:now_s(),
     ?assertEqual(GregSecs - ?UNIX_EPOCH_IN_GREGORIAN, kz_time:gregorian_seconds_to_unix_seconds(GregSecs)).
 
 unix_secs_to_greg_secs_test() ->
@@ -93,6 +98,10 @@ more_elapsed_test_() ->
     StartTimestamp = calendar:datetime_to_gregorian_seconds(StartDateTime),
     NowDateTime = {{2014,6,5},{20,7,9}},
     NowTimestamp = calendar:datetime_to_gregorian_seconds(NowDateTime),
+
+    {Mega, Sec, Micro} = StartTS = os:timestamp(),
+    FutureTS = {Mega, Sec + 10, Micro},
+
     TS = 63652663232,
     [?_assertEqual(2, kz_time:elapsed_s(StartTimestamp, NowTimestamp))
     ,?_assertEqual(2000, kz_time:elapsed_ms(StartTimestamp, NowTimestamp))
@@ -100,13 +109,30 @@ more_elapsed_test_() ->
     ,?_assertEqual(<<"2017-1-26">>, kz_time:format_date(TS))
     ,?_assertEqual(<<"15:20:32">>, kz_time:format_time(TS))
     ,?_assertEqual(<<"2017-1-26 15:20:32">>, kz_time:format_datetime(TS))
+
+    ,?_assertEqual(10, kz_time:elapsed_s(StartTS, FutureTS))
+    ,?_assertEqual(10, kz_time:elapsed_s(kz_time:now_s(StartTS), FutureTS))
+    ,?_assertEqual(10, kz_time:elapsed_s(StartTS, kz_time:now_s(FutureTS)))
+
+    ,?_assertEqual(10 * ?MILLISECONDS_IN_SECOND, kz_time:elapsed_ms(StartTS, FutureTS))
+    ,?_assertEqual(10 * ?MILLISECONDS_IN_SECOND, kz_time:elapsed_ms(kz_time:now_ms(StartTS), FutureTS))
+    ,?_assertEqual(10 * ?MILLISECONDS_IN_SECOND, kz_time:elapsed_ms(StartTS, kz_time:now_ms(FutureTS)))
+
+    ,?_assertEqual(10 * ?MICROSECONDS_IN_SECOND, kz_time:elapsed_us(StartTS, FutureTS))
+    ,?_assertEqual(10 * ?MICROSECONDS_IN_SECOND, kz_time:elapsed_us(kz_time:now_us(StartTS), FutureTS))
+    ,?_assertEqual(10 * ?MICROSECONDS_IN_SECOND, kz_time:elapsed_us(StartTS, kz_time:now_us(FutureTS)))
     ].
 
 unitfy_and_timeout_test_() ->
+    {Mega, Sec, Micro} = Start = os:timestamp(),
+    Future = {Mega, Sec + 10, Micro},
+
     [?_assertEqual("", kz_time:unitfy_seconds(0))
-    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, 0))
-    ,?_assertEqual(0, kz_time:decr_timeout(30, 42))
-    ,?_assertEqual(12, kz_time:decr_timeout(42, 30))
+    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, Start))
+    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, Start, Future))
+    ,?_assertEqual(0, kz_time:decr_timeout(10, Start, Future))
+    ,?_assertEqual(0, kz_time:decr_timeout_elapsed(30, 42))
+    ,?_assertEqual(12, kz_time:decr_timeout_elapsed(42, 30))
     ,?_assertEqual(10, kz_time:milliseconds_to_seconds(10*1000))
     ].
 
@@ -130,6 +156,16 @@ iso8601_test_() ->
      || {Date, Expected} <- Tests
     ].
 
+iso8601_time_test_() ->
+    Tests = [{{{2015,4,7},{0,0,0}}, <<"00:00:00">>}
+            ,{{{2015,4,7},{1,3,2}}, <<"01:03:02">>}
+            ,{{{2015,12,12},{12,13,12}}, <<"12:13:12">>}
+            ,{63595733389, <<"17:29:49">>}
+            ],
+    [?_assertEqual(Expected, kz_time:iso8601_time(Date))
+     || {Date, Expected} <- Tests
+    ].
+
 to_gregorian_seconds_test_() ->
     Datetime = {{2017,04,01}, {12,0,0}},
     LASeconds = kz_time:to_gregorian_seconds(Datetime, undefined),
@@ -137,3 +173,38 @@ to_gregorian_seconds_test_() ->
     [?_assertEqual(63658292400, LASeconds)
     ,?_assertEqual(63658281600, NYSeconds)
     ].
+
+tstamps_test_() ->
+    Current = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
+    [?_assert(1 >= abs(Now-Current))].
+
+-ifdef(PERF).
+-define(REPEAT, 1000000).
+
+%% Most recent run on my box:
+%% kz_time_tests:now_s in 0.117557s
+%% kz_time_tests:current_tstamp_s in 0.565916s
+%% kz_time_tests:mono_now_s in 0.107770s
+%% kz_time_tests:erlang_timestamp in 0.104192s
+%% kz_time_tests:os_timestamp in 0.054200s
+
+horse_now_s() ->
+    horse:repeat(?REPEAT, kz_time:now_s()).
+
+horse_current_tstamp_s() ->
+    horse:repeat(?REPEAT, kz_time:current_tstamp()).
+
+horse_mono_now_s() ->
+    horse:repeat(?REPEAT, mono_now_s()).
+
+mono_now_s() ->
+    erlang:monotonic_time('seconds') + ?UNIX_EPOCH_IN_GREGORIAN.
+
+horse_erlang_timestamp() ->
+    horse:repeat(?REPEAT, erlang:timestamp()).
+
+horse_os_timestamp() ->
+    horse:repeat(?REPEAT, os:timestamp()).
+
+-endif.

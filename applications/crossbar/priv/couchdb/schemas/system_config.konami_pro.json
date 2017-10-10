@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.konami_pro",
+    "description": "Schema for konami_pro system_config",
+    "properties": {
+        "route_win_timeout": {
+            "default": 3000,
+            "description": "konami_pro route_win_timeout",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

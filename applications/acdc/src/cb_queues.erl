@@ -685,7 +685,7 @@ fetch_all_current_queue_stats(Context) ->
     fetch_from_amqp(Context, Req).
 
 format_stats(Context, Resp) ->
-    Stats = kz_json:from_list([{<<"current_timestamp">>, kz_time:current_tstamp()}
+    Stats = kz_json:from_list([{<<"current_timestamp">>, kz_time:now_s()}
                               ,{<<"stats">>,
                                 kz_doc:public_fields(
                                   kz_json:get_value(<<"Handled">>, Resp, []) ++
@@ -702,7 +702,7 @@ format_stats(Context, Resp) ->
 fetch_ranged_queue_stats(Context, StartRange) ->
     MaxRange = ?ACDC_ARCHIVE_WINDOW,
 
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     Past = Now - MaxRange,
 
     To = kz_term:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
@@ -726,7 +726,7 @@ fetch_ranged_queue_stats(Context, StartRange) ->
     end.
 
 fetch_ranged_queue_stats(Context, From, To, 'true') ->
-    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, kz_time:current_tstamp()]),
+    lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, kz_time:now_s()]),
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Status">>, cb_context:req_value(Context, <<"status">>)}

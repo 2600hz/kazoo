@@ -13,7 +13,7 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
 
--record(data_connection, {id = {kz_time:current_tstamp(), kz_binary:rand_hex(4)}
+-record(data_connection, {id = {kz_time:now_s(), kz_binary:rand_hex(4)}
                          ,app :: atom() | '$1'
                          ,props = #{} :: map() | '_'
                          ,server :: any() | '$2'

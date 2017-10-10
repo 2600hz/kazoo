@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.move",
+    "description": "Move a call from one device to another",
+    "properties": {
+        "auto_answer": {
+            "default": false,
+            "description": "Whether to auto-answer the new leg",
+            "type": "boolean"
+        },
+        "can_call_self": {
+            "default": true,
+            "description": "Can intercept devices of the same targeted user",
+            "type": "boolean"
+        },
+        "device_id": {
+            "description": "Move the call to a specific device",
+            "type": "string"
+        },
+        "dial_strategy": {
+            "default": "simultaneous",
+            "description": "How to ring the endpoints, if multiple",
+            "type": "string"
+        },
+        "owner_id": {
+            "description": "User ID to use for finding endpoints",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

@@ -202,7 +202,7 @@ download_file(URL, Authorization) ->
             CT = kz_term:to_binary(props:get_value("content-type", RespHeaders)),
             Ext = kz_mime:to_extension(CT),
             FileName = <<"/tmp/fax_printer_"
-                         ,(kz_term:to_binary(kz_time:current_tstamp()))/binary
+                         ,(kz_term:to_binary(kz_time:now_s()))/binary
                          ,"."
                          ,Ext/binary
                        >>,
@@ -299,7 +299,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
               ]),
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                              ,{<<"pvt_job_status">>, <<"queued">>}
-                             ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                             ,{<<"pvt_created">>, kz_time:now_s()}
                              ,{<<"attempts">>, 0}
                              ,{<<"pvt_account_id">>, AccountId}
                              ,{<<"pvt_account_db">>, AccountDb}
@@ -427,16 +427,16 @@ process_registration_result('true', AppId, JObj, Result) ->
 
     RefreshToken = kz_json:get_value(<<"refresh_token">>, Token),
     update_printer(
-      kz_json:set_values(
-        [{<<"pvt_cloud_authorization_code">>, AuthorizationCode}
-        ,{<<"pvt_cloud_refresh_token">>, RefreshToken}
-        ,{<<"pvt_cloud_user_email">>, UserEmail}
-        ,{<<"pvt_cloud_xmpp_jid">>, JID}
-        ,{<<"pvt_cloud_state">>, <<"claimed">>}
-        ,{<<"pvt_cloud_oauth_app">>, AppId}
-        ]
+      kz_json:set_values([{<<"pvt_cloud_authorization_code">>, AuthorizationCode}
+                         ,{<<"pvt_cloud_refresh_token">>, RefreshToken}
+                         ,{<<"pvt_cloud_user_email">>, UserEmail}
+                         ,{<<"pvt_cloud_xmpp_jid">>, JID}
+                         ,{<<"pvt_cloud_state">>, <<"claimed">>}
+                         ,{<<"pvt_cloud_oauth_app">>, AppId}
+                         ]
                         ,JObj
-       )),
+                        )
+     ),
 
     timer:sleep(15 * ?MILLISECONDS_IN_SECOND),
     Payload = props:filter_undefined(
@@ -461,10 +461,9 @@ process_registration_result('false', AppId, JObj, _Result) ->
             lager:debug("Token expired before printer ~s was claimed at ~s",[PrinterId,InviteUrl]),
             Keys = [ K || <<"pvt_cloud", _/binary>> = K <- kz_json:get_keys(JObj)],
             update_printer(
-              kz_json:set_values(
-                [{<<"pvt_cloud_state">>, <<"expired">>}]
+              kz_json:set_values([{<<"pvt_cloud_state">>, <<"expired">>}]
                                 ,kz_json:delete_keys(Keys, JObj)
-               )
+                                )
              );
         'false' ->
             SleepTime = kapps_config:get_integer(?CONFIG_CAT, <<"cloud_registration_pool_interval">>, ?DEFAULT_CLOUD_REG_SLEEP),

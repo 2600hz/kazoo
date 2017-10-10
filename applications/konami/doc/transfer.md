@@ -1,7 +1,7 @@
-
 # In-Call Attended Transfer
 
 ## Overview
+
 ### Terminology
 _2600hz:_ We are an open-source organization building large scale telecommunications software to disrupt the industry.
 
@@ -17,7 +17,9 @@ The purpose is of this project is to allow callers to preform an attended transf
 ### Non-Goals
 
 ### Scenarios
+
 #### App-less Transfer
+
 As a user when I on a call with someone I would like the ability to preform an attended transfer by dialing some feature code into the native dialer.
 
 #### App-based Transfer
@@ -26,11 +28,13 @@ As a user using an application I installed on my mobile device, I would like to 
 ### Prerequisites
 
 ## Functional Specification
+
 Some phones do not support the ability to initiate transfers. The Konami *transfer* module will permit those devices to initiate transfers via star codes.
 
 Additional, transfer will be able to be initiated via Kazoo API requests.
 
 ### In-Call Feature Codes
+
 Say Alice calls Bob from a phone that does not support transfers from the phone, but she needs to transfer Bob to Carol. What's a lady to do?
 
 Fortunately, Alice has configured a metaflow that allows her to press `*2` plus the extension she wishes to dial. Since Carol's extension is 2600, Alice would press `*22600` to initiate the transfer. Bob would be put on hold, and Alice would be connected to Carol. Once Alice hangs up, Bob and Carol would be connected to begin their conversation.
@@ -74,8 +78,10 @@ The API transfer capability will be available to any authenticated API requests 
 ### Konami
 
 #### Transfer Metaflow
+
 The *transfer* module requires being used with Metaflow "patterns". In the example above, Alice's metaflow would contain:
 
+```json
     "metaflows":{
         "numbers":{...}
         ,"patterns":{
@@ -89,8 +95,10 @@ The *transfer* module requires being used with Metaflow "patterns". In the examp
         }
         ,"binding_key":"*"
     }
+```
 
 ##### Configuration
+
 * `takeback_dtmf`: the DTMF sequence the transferor can press to reattach to the transferee leg, canceling the transfer
 * `moh`: a media_id from the account's media holdings, to play to the transferee instead of the default system music-on-hold
 * `ringback`: the tone stream to play to the transferor when the target call leg is being setup. See the [FreeSWITCH TGML](http://wiki.freeswitch.org/wiki/TGML) for samples. Otherwise the `default_ringback` in the `system_config/ecallmgr` doc will be used (if set).
@@ -101,6 +109,7 @@ The *transfer* module requires being used with Metaflow "patterns". In the examp
 
 This requires the cb_channels module to be started: `sup crossbar_maintenance start_module cb_channels`
 
+```json
      POST v1/accounts/{ACCOUNT_ID}/channels/{CALL_ID}
      {
        "data": {
@@ -110,6 +119,7 @@ This requires the cb_channels module to be started: `sup crossbar_maintenance st
          "moh": "media_id"
        }
      }
+```
 
 ##### Configuration
 

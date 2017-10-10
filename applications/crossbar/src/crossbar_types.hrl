@@ -15,7 +15,8 @@
 
 -type resp_data() :: kz_json:object() | kz_json:objects() |
                      kz_json:json_term() | kz_json:json_proplist() |
-                     api_binary() | ne_binaries().
+                     api_binary() | ne_binaries() |
+                     map().
 
 %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
 -type req_file() :: {ne_binary(), kz_json:object()}.
