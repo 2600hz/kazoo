@@ -261,7 +261,7 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
     load_message(MessageId, BoxId, Context, 'true');
 validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
-    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(cb_context:account_id(Context)),
+    RetentionTimestamp = kz_time:now_s() - kvm_util:retention_seconds(cb_context:account_id(Context)),
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', Msg} ->
             case kzd_box_message:utc_seconds(Msg) < RetentionTimestamp of
@@ -793,7 +793,6 @@ load_message_summary(BoxId, Context) ->
                   ,{'key_map', BoxId}
                   ],
     crossbar_view:load_modb(prefix_qs_filter_keys(Context), ?MSG_LISTING_BY_MAILBOX, ViewOptions).
->>>>>>> use crossbar_view in cb_vmboxes
 
 -spec prefix_qs_filter_keys(cb_context:context()) -> cb_context:context().
 prefix_qs_filter_keys(Context) ->

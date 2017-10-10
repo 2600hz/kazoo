@@ -13,8 +13,7 @@
         ,build_with_mapper/2, build_with_mapper/3
         ,is_defined/1, is_only_time_filter/2
 
-        ,by_qs/2, by_qs/3
-        ,doc/2, doc/3
+        ,by_doc/2, by_doc/3
         ]).
 
 -include("crossbar.hrl").
@@ -68,7 +67,8 @@ build_with_mapper(Context, UserMapper, 'true') ->
 %%--------------------------------------------------------------------
 -spec is_defined(cb_context:context()) -> boolean().
 is_defined(Context) ->
-    kz_json:any(fun is_filter_key/1, cb_context:query_string(Context)).
+    cb_context:fetch(Context, 'has_qs_filter', 'true') %% sets by build modb/range load params
+        andalso kz_json:any(fun is_filter_key/1, cb_context:query_string(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,37 +90,24 @@ is_only_time_filter(Context, FilterKey) ->
     kz_json:all(Fun, cb_context:query_string(Context)).
 
 %%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get `doc` from view result and filter if defined
-%% @end
-%%--------------------------------------------------------------------
--spec by_qs(kz_json:object(), cb_context:context()) -> boolean().
-by_qs(JObj, Context) ->
-    doc(JObj, Context, is_defined(Context)).
-
--spec by_qs(kz_json:object(), cb_context:context(), boolean()) -> boolean().
-by_qs(_, _, 'false') -> 'true';
-by_qs(JObj, Context, 'true') ->
-    doc(kz_json:get_value(<<"doc">>, JObj), Context, 'true').
-
-%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Returns 'true' if all of the requested props are found, 'false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec doc(api_object(), cb_context:context()) -> boolean().
-doc(Doc, Context) ->
-    doc(Doc, Context, is_defined(Context)).
+-spec by_doc(api_object(), cb_context:context()) -> boolean().
+by_doc(Doc, Context) ->
+    by_doc(Doc, Context, is_defined(Context)).
 
--spec doc(api_object(), cb_context:context(), boolean()) -> boolean().
-doc(_, _, 'false') ->
+-spec by_doc(api_object(), cb_context:context(), boolean()) -> boolean().
+by_doc(_, _, 'false') ->
+    io:format("~n not filtering ~n"),
     'true';
-doc('undefined', _, 'true') ->
+by_doc('undefined', _, 'true') ->
     lager:debug("no doc was returned (no include_docs?)"),
     'true';
-doc(Doc, Context, 'true') ->
+by_doc(Doc, Context, 'true') ->
+    io:format("~n wtf filtering ~n"),
     filter_doc_by_querystring(Doc, cb_context:query_string(Context)).
 
 %%%===================================================================
