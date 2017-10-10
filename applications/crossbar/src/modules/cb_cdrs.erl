@@ -18,7 +18,7 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
-        ,content_types_provided/1
+        ,content_types_provided/1, content_types_provided/2, content_types_provided/3
         ,validate/1, validate/2, validate/3
         ,to_json/1
         ,to_csv/1
@@ -102,8 +102,7 @@ to_json({Req, Context}) ->
 to_json(Req, Context, {'undefined', _}) ->
     {Req, Context};
 to_json(Req, Context, {ViewName, Options0}) ->
-    Options = [{'limit', ?MAX_BULK}
-              ,{'chunked_mapper', fun load_chunked_cdrs/3}
+    Options = [{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'response_type', 'json'}
                | Options0
               ],
@@ -117,8 +116,7 @@ to_csv({Req, Context}) ->
 to_csv(Req, Context, {'undefined', _}) ->
     {Req, Context};
 to_csv(Req, Context, {ViewName, Options0}) ->
-    Options = [{'limit', ?MAX_BULK}
-              ,{'chunked_mapper', fun load_chunked_cdrs/3}
+    Options = [{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'response_type', 'csv'}
                | Options0
               ],
@@ -172,6 +170,18 @@ resource_exists(_, _) -> 'false'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
+    provided_types(Context).
+
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(Context, _) ->
+    provided_types(Context).
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+content_types_provided(Context, _, _) ->
+    provided_types(Context).
+
+-spec provided_types(cb_context:context()) -> cb_context:context().
+provided_types(Context) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
                                           ,{'to_csv', ?CSV_CONTENT_TYPES}
@@ -312,7 +322,9 @@ load_chunked_cdrs(Context, JObjs0, Db) ->
                         crossbar_filter:by_doc(kz_json:get_value(<<"doc">>, Result), Context)
                     ],
             case cb_context:fetch(Context, 'is_csv') of
-                'true' -> {[normalize_cdr_to_csv(JObj, Context) || JObj <- JObjs], Context};
+                'true' ->
+                    {CSVs, Context1} = lists:foldl(fun normalize_cdr_to_csv/2, {[], Context}, JObjs),
+                    {lists:reverse(CSVs), Context1};
                 _ -> {[normalize_cdr(JObj, Context) || JObj <- JObjs], Context}
             end;
         {'error', _E} ->
@@ -339,16 +351,16 @@ normalize_cdr(JObj, Context) ->
 %% Normalize CDR in CSV
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_cdr_to_csv(kz_json:object(), cb_context:context()) -> ne_binary().
-normalize_cdr_to_csv(JObj, Context) ->
+-spec normalize_cdr_to_csv(kz_json:object(), {kz_json:objects(), cb_context:context()}) -> {kz_json:objects(), cb_context:context()}.
+normalize_cdr_to_csv(JObj, {CSVs, Context}) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0),
     CSV = kz_binary:join([F(JObj, Timestamp) || {_, F} <- csv_rows(Context)], <<",">>),
     case cb_context:fetch(Context, 'started_chunk') of
         'true' ->
-            <<CSV/binary, "\r\n">>;
+            {[<<CSV/binary, "\r\n">>|CSVs], Context};
         'false' ->
             CSVHeader = kz_binary:join([K || {K, _Fun} <- csv_rows(Context)], <<",">>),
-            <<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>
+            {[<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>|CSVs], cb_context:store(Context, 'started_chunk', 'true')}
 
     end.
 
