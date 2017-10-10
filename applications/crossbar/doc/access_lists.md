@@ -31,17 +31,6 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/access_lists
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
-```
-
-
 #### Fetch account-level access lists
 
 > GET /v2/accounts/{ACCOUNT_ID}/access_lists
@@ -90,25 +79,25 @@ curl -v -X POST \
 ```
 
 
-#### Remove device-level access lists
+#### Remove account-level access lists
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
+> DELETE /v2/accounts/{ACCOUNT_ID}/access_lists
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
 ```
 
 
 #### Fetch device-level access lists
 
-> GET /v2/accounts/{ACCOUNT_ID}/access_lists
+> GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
 ```
 
 ```json
@@ -129,13 +118,13 @@ curl -v -X GET \
 
 #### Update device-level access lists
 
-> POST /v2/accounts/{ACCOUNT_ID}/access_lists
+> POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data": {"order": "deny,allow","cidrs": ["127.0.0.3/32"]}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
 ```
 
 ```json
@@ -151,4 +140,15 @@ curl -v -X POST \
     "revision": "{REVISION}",
     "status": "success"
 }
+```
+
+
+#### Remove device-level access lists
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
 ```
