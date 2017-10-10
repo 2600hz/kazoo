@@ -349,7 +349,7 @@ time_range(Context, Options) ->
 -spec time_range(cb_context:context(), options(), ne_binary()) -> time_range() | cb_context:context().
 time_range(Context, Options, Key) ->
     MaxRange = get_max_range(Options),
-    TSTime = kz_time:current_tstamp(),
+    TSTime = kz_time:now_s(),
     RangeTo = get_time_key(Context, <<Key/binary, "_to">>, Options, TSTime),
     RangeFrom = get_time_key(Context, <<Key/binary, "_from">>, Options, RangeTo - MaxRange),
     time_range(Context, MaxRange, Key, RangeFrom, RangeTo).
@@ -727,7 +727,7 @@ format_chunked_response(#{cowboy_req := Req
                ,{<<"request_id">>, cb_context:req_id(Context)}
                ,{<<"node">>, kz_nodes:node_encoded()}
                ,{<<"version">>, kz_util:kazoo_version()}
-               ,{<<"timestamp">>, kz_time:iso8601(kz_time:current_tstamp())}
+               ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
                ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
                ,{<<"auth_token">>, cb_context:auth_token(Context)}
                ],
