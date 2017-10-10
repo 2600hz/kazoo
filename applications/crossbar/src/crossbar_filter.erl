@@ -101,13 +101,11 @@ by_doc(Doc, Context) ->
 
 -spec by_doc(api_object(), cb_context:context(), boolean()) -> boolean().
 by_doc(_, _, 'false') ->
-    io:format("~n not filtering ~n"),
     'true';
 by_doc('undefined', _, 'true') ->
     lager:debug("no doc was returned (no include_docs?)"),
     'true';
 by_doc(Doc, Context, 'true') ->
-    io:format("~n wtf filtering ~n"),
     filter_doc_by_querystring(Doc, cb_context:query_string(Context)).
 
 %%%===================================================================
