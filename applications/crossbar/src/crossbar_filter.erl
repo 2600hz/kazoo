@@ -12,6 +12,9 @@
 -export([build/1
         ,build_with_mapper/2, build_with_mapper/3
         ,is_defined/1, is_only_time_filter/2
+
+        ,by_qs/2, by_qs/3
+        ,doc/2, doc/3
         ]).
 
 -include("crossbar.hrl").
@@ -86,6 +89,40 @@ is_only_time_filter(Context, FilterKey) ->
           end,
     kz_json:all(Fun, cb_context:query_string(Context)).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get `doc` from view result and filter if defined
+%% @end
+%%--------------------------------------------------------------------
+-spec by_qs(kz_json:object(), cb_context:context()) -> boolean().
+by_qs(JObj, Context) ->
+    doc(JObj, Context, is_defined(Context)).
+
+-spec by_qs(kz_json:object(), cb_context:context(), boolean()) -> boolean().
+by_qs(_, _, 'false') -> 'true';
+by_qs(JObj, Context, 'true') ->
+    doc(kz_json:get_value(<<"doc">>, JObj), Context, 'true').
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns 'true' if all of the requested props are found, 'false' if one is not found
+%% @end
+%%--------------------------------------------------------------------
+-spec doc(api_object(), cb_context:context()) -> boolean().
+doc(Doc, Context) ->
+    doc(Doc, Context, is_defined(Context)).
+
+-spec doc(api_object(), cb_context:context(), boolean()) -> boolean().
+doc(_, _, 'false') ->
+    'true';
+doc('undefined', _, 'true') ->
+    lager:debug("no doc was returned (no include_docs?)"),
+    'true';
+doc(Doc, Context, 'true') ->
+    filter_doc_by_querystring(Doc, cb_context:query_string(Context)).
+
 %%%===================================================================
 %%% Load view internal functions
 %%%===================================================================
@@ -116,30 +153,31 @@ true(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec build_filter_map_fun(cb_context:context(), filter_fun(), crossbar_view:user_mapper_fun()) -> crossbar_view:mapper_fun().
 build_filter_map_fun(_, FilterFun, 'undefined') ->
-    fun(Object, Acc) ->
-            case FilterFun(kz_json:get_value(<<"doc">>, Object)) of
-                'true' -> [Object|Acc];
+    fun(JObj, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, JObj)) of
+                'true' -> [JObj|Acc];
                 'false' -> Acc
             end
     end;
 build_filter_map_fun(_, FilterFun, UserMapper) when is_function(UserMapper, 1) ->
-    fun(Object, Acc) ->
-            case FilterFun(kz_json:get_value(<<"doc">>, Object)) of
-                'true' -> [UserMapper(Object)|Acc];
-                'false' -> Acc
-            end
+    fun(JObjs) ->
+            Filtered0 = [JObj
+                         || JObj <- JObjs,
+                            FilterFun(kz_json:get_value(<<"doc">>, JObj))
+                        ],
+            UserMapper(Filtered0)
     end;
 build_filter_map_fun(_, FilterFun, UserMapper) when is_function(UserMapper, 2) ->
-    fun(Object, Acc) ->
-            case FilterFun(kz_json:get_value(<<"doc">>, Object)) of
-                'true' -> UserMapper(Object, Acc);
+    fun(JObj, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, JObj)) of
+                'true' -> UserMapper(JObj, Acc);
                 'false' -> Acc
             end
     end;
 build_filter_map_fun(Context, FilterFun, UserMapper) when is_function(UserMapper, 3) ->
-    fun(Object, Acc) ->
-            case FilterFun(kz_json:get_value(<<"doc">>, Object)) of
-                'true' -> UserMapper(Context, Object, Acc);
+    fun(JObj, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, JObj)) of
+                'true' -> UserMapper(Context, JObj, Acc);
                 'false' -> Acc
             end
     end.
@@ -176,6 +214,12 @@ should_filter_doc(Doc, K, V) ->
             'false'
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns 'true' or 'false' if the prop is found inside the doc
+%% @end
+%%--------------------------------------------------------------------
 -spec filter_prop(kz_json:object(), ne_binary(), any()) -> api_boolean().
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not should_filter(Doc, Key, Val);
@@ -211,8 +255,8 @@ lowerbound(DocTimestamp, QSTimestamp) ->
 should_filter(Val, Val) -> 'true';
 should_filter(Val, FilterVal) ->
     try kz_json:unsafe_decode(FilterVal) of
-        List when is_list(List) ->
-            lists:member(Val, List);
+        List when is_list(List) -> lists:member(Val, List);
+        Val -> 'true';
         _Data ->
             lager:debug("data is not a list: ~p", [_Data]),
             'false'
@@ -222,10 +266,9 @@ should_filter(Val, FilterVal) ->
 
 should_filter(Doc, Key, Val) ->
     Keys = binary_key_to_json_key(Key),
-    should_filter(
-      kz_json:get_binary_value(Keys, Doc, <<>>)
+    should_filter(kz_json:get_binary_value(Keys, Doc, <<>>)
                  ,kz_term:to_binary(Val)
-     ).
+                 ).
 
 -spec has_key(kz_json:object(), ne_binary()) -> boolean().
 has_key(Doc, Key) ->
