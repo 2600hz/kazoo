@@ -806,8 +806,7 @@ prefer_new_context([{'halt', Context1}|_], Req, _Context, _Return) ->
     lager:debug("authn halted"),
     ?MODULE:halt(Req, Context1).
 
--spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
-                            {cowboy_req:req(), cb_context:context()}.
+-spec get_auth_token(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
 get_auth_token(Req0, Context) ->
     case cowboy_req:header(<<"x-auth-token">>, Req0) of
         {'undefined', Req1} ->
@@ -822,8 +821,7 @@ get_auth_token(Req0, Context) ->
             {Req1, set_auth_context(Context, Token, 'x-auth-token')}
     end.
 
--spec get_authorization_token(cowboy_req:req(), cb_context:context()) ->
-                                     {cowboy_req:req(), cb_context:context()}.
+-spec get_authorization_token(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
 get_authorization_token(Req0, Context) ->
     case cowboy_req:header(<<"authorization">>, Req0) of
         {'undefined', Req1} ->
@@ -868,8 +866,7 @@ get_authorization_token_type(Token) -> {Token, 'unknown'}.
 %% otherwise will result in false
 %% @end
 %%--------------------------------------------------------------------
--spec get_pretty_print(cowboy_req:req(), cb_context:context()) ->
-                              {cowboy_req:req(), cb_context:context()}.
+-spec get_pretty_print(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
 get_pretty_print(Req0, Context) ->
     case cowboy_req:header(<<"x-pretty-print">>, Req0) of
         {'undefined', Req1} ->

@@ -24,14 +24,16 @@
         ,to_csv/1
         ]).
 
+-export([load_chunked_cdr_ids/3]).
+
 -include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
 -define(MAX_BULK, kapps_config:get_pos_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
 -define(STALE_CDR, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"cdr_stale_view">>, false)).
 
--define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
+-define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_INTERACTION_LIST, <<"cdrs/interaction_listing">>).
 -define(CB_INTERACTION_LIST_BY_USER, <<"cdrs/interaction_listing_by_owner">>).
 -define(CB_INTERACTION_LIST_BY_ID, <<"cdrs/interaction_listing_by_id">>).
@@ -84,6 +86,12 @@
         ,{<<"reseller_call_type">>, fun col_reseller_call_type/2}
         ]).
 
+-type csv_column_fun() :: fun((kz_json:object(), gregorian_seconds()) -> ne_binary()).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
@@ -94,11 +102,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate'),
     ok.
 
--spec to_json({cowboy_req:req(), cb_context:context()}) -> {cowboy_req:req(), cb_context:context()}.
+-spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_json({Req, Context}) ->
-    to_json(Req, Context, get_view_options(cb_context:req_nouns(Context))).
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsReseller = kz_services:is_reseller(AuthAccountId),
+    to_json(Req, cb_context:store(Context, 'is_reseller', IsReseller), get_view_options(cb_context:req_nouns(Context))).
 
--spec to_json(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> {cowboy_req:req(), cb_context:context()}.
+-spec to_json(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
 to_json(Req, Context, {'undefined', _}) ->
     {Req, Context};
 to_json(Req, Context, {ViewName, Options0}) ->
@@ -108,11 +118,13 @@ to_json(Req, Context, {ViewName, Options0}) ->
               ],
     crossbar_view:send_chunked_modb(Context, Req, ViewName, Options).
 
--spec to_csv({cowboy_req:req(), cb_context:context()}) -> {cowboy_req:req(), cb_context:context()}.
+-spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_csv({Req, Context}) ->
-    to_csv(Req, Context, get_view_options(cb_context:req_nouns(Context))).
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsReseller = kz_services:is_reseller(AuthAccountId),
+    to_csv(Req, cb_context:store(Context, 'is_reseller', IsReseller), get_view_options(cb_context:req_nouns(Context))).
 
--spec to_csv(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> {cowboy_req:req(), cb_context:context()}.
+-spec to_csv(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
 to_csv(Req, Context, {'undefined', _}) ->
     {Req, Context};
 to_csv(Req, Context, {ViewName, Options0}) ->
@@ -312,23 +324,37 @@ maybe_add_stale_to_options(_) ->[].
 %% Loads CDR docs from database and normalized the them.
 %% @end
 %%--------------------------------------------------------------------
--spec load_chunked_cdrs(cb_context:context(), kz_json:objects(), ne_binary()) -> {kz_json:objects(), cb_context:context()}.
-load_chunked_cdrs(Context, JObjs0, Db) ->
-    Ids = [kz_doc:id(JObj) || JObj <- JObjs0],
-    case kz_datamgr:open_docs(Db, Ids, [{'doc_type', <<"cdr">>}]) of
+-spec load_chunked_cdrs(cb_cowboy_payload(), kz_json:objects(), ne_binary()) -> crossbar_view:chunked_mapper_ret().
+load_chunked_cdrs(Payload, JObjs, Db) ->
+    Ids = [kz_doc:id(JObj) || JObj <- JObjs],
+    load_chunked_cdr_ids(Payload, Ids, Db).
+
+%% @public
+-spec load_chunked_cdr_ids(cb_cowboy_payload(), ne_binaries(), ne_binary()) -> crossbar_view:chunked_mapper_ret().
+load_chunked_cdr_ids({_, Context}, [], _) ->
+    {'no_result', Context};
+load_chunked_cdr_ids({Req, Context}, Ids, Db) ->
+    {BulkIds, Remaining} =
+        case length(Ids) < ?MAX_BULK of
+            'true' -> {Ids, []};
+            'false' -> lists:split(?MAX_BULK, Ids)
+        end,
+    case kz_datamgr:open_docs(Db, BulkIds, [{'doc_type', <<"cdr">>}]) of
         {'ok', Results} ->
             JObjs = [kz_json:get_value(<<"doc">>, Result)
                      || Result <- Results,
                         crossbar_filter:by_doc(kz_json:get_value(<<"doc">>, Result), Context)
                     ],
-            case cb_context:fetch(Context, 'is_csv') of
+            case cb_context:fetch(Context, 'is_csv', 'false') of
                 'true' ->
-                    {CSVs, Context1} = lists:foldl(fun normalize_cdr_to_csv/2, {[], Context}, JObjs),
-                    {lists:reverse(CSVs), Context1};
-                _ -> {[normalize_cdr(JObj, Context) || JObj <- JObjs], Context}
+                    P = lists:foldl(fun normalize_cdr_to_csv/2, {Req, Context}, JObjs),
+                    load_chunked_cdr_ids(P, Remaining, Db);
+                'false' ->
+                    P = lists:foldl(fun normalize_cdr_to_jobj/2, {Req, Context}, JObjs),
+                    load_chunked_cdr_ids(P, Remaining, Db)
             end;
         {'error', _E} ->
-            {[], Context}
+            load_chunked_cdr_ids({Req, Context}, Remaining, Db)
     end.
 
 %%--------------------------------------------------------------------
@@ -337,13 +363,15 @@ load_chunked_cdrs(Context, JObjs0, Db) ->
 %% Normalize CDR in JSON
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_cdr(kz_json:object(), cb_context:context()) -> kz_json:object().
-normalize_cdr(JObj, Context) ->
+-spec normalize_cdr_to_jobj(kz_json:object(), cb_cowboy_payload()) -> cb_cowboy_payload().
+normalize_cdr_to_jobj(JObj, {Req, Context}) ->
+    StartedChunk = cb_context:fetch(Context, 'started_chunk'),
     Duration = kz_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
-    kz_json:from_list(
-      [{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]
-     ).
+    NewJObj = kz_json:from_list(
+                [{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]
+               ),
+    {Req, cb_context:store(Context, 'started_chunk', crossbar_view:chunk_send_jsons(Req, [NewJObj], StartedChunk))}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -351,20 +379,20 @@ normalize_cdr(JObj, Context) ->
 %% Normalize CDR in CSV
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_cdr_to_csv(kz_json:object(), {kz_json:objects(), cb_context:context()}) -> {kz_json:objects(), cb_context:context()}.
-normalize_cdr_to_csv(JObj, {CSVs, Context}) ->
+-spec normalize_cdr_to_csv(kz_json:object(), cb_cowboy_payload()) -> cb_cowboy_payload().
+normalize_cdr_to_csv(JObj, {Req, Context}=Payload) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0),
     CSV = kz_binary:join([F(JObj, Timestamp) || {_, F} <- csv_rows(Context)], <<",">>),
     case cb_context:fetch(Context, 'started_chunk') of
         'true' ->
-            {[<<CSV/binary, "\r\n">>|CSVs], Context};
+            'ok' = cowboy_req:chunk(<<CSV/binary, "\r\n">>, Req),
+            Payload;
         'false' ->
             CSVHeader = kz_binary:join([K || {K, _Fun} <- csv_rows(Context)], <<",">>),
-            {[<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>|CSVs], cb_context:store(Context, 'started_chunk', 'true')}
+            'ok' = cowboy_req:chunk(<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>, Req),
+            {Req, cb_context:store(Context, 'started_chunk', 'true')}
 
     end.
-
--type csv_column_fun() :: fun((kz_json:object(), gregorian_seconds()) -> ne_binary()).
 
 -spec csv_rows(cb_context:context()) -> [{ne_binary(), csv_column_fun()}].
 csv_rows(Context) ->

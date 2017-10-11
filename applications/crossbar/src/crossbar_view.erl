@@ -19,6 +19,8 @@
         ,start_end_keys/2, start_end_keys/5
         ,suffix_key_fun/1
 
+        ,chunk_send_jsons/3
+
         ,map_doc_fun/0
         ,map_value_fun/0
         ]).
@@ -50,10 +52,11 @@
                            fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
                            fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
+-type chunked_mapper_ret() :: {binaries() | kz_json:objects() | 'no_result', cb_context:context()}.
+
 -type chunked_mapper_fun() :: 'undefined' |
-                              fun((cb_context:context(), kz_json:objects()) -> {any(), cb_context:context()}) |
-                              fun((cb_context:context(), kz_json:objects(), ne_binary()) -> {any(), cb_context:context()}) |
-                              fun((cb_context:context(), cowboy_req:req(), kz_json:objects(), ne_binary()) -> {any(), cb_context:context()}).
+                              fun((cb_cowboy_payload(), kz_json:objects()) -> chunked_mapper_ret()) |
+                              fun((cb_cowboy_payload(), kz_json:objects(), ne_binary()) -> chunked_mapper_ret()).
 
 -type mapper_fun() :: 'undefined' |
                       fun((kz_json:objects()) -> kz_json:objects()) |
@@ -157,7 +160,7 @@ load_modb(Context, View, Options) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec send_chunked_modb(cb_context:context(), cowboy_req:req(), ne_binary(), options()) -> {cowboy_req:req(), cb_context:context()}.
+-spec send_chunked_modb(cb_context:context(), cowboy_req:req(), ne_binary(), options()) -> cb_cowboy_payload().
 send_chunked_modb(Context, Req, View, Options) ->
     send_chunked(Req, build_load_modb_params(Context, View, Options)).
 
@@ -412,7 +415,7 @@ load_view(Context) ->
 %% Load view results and send in chunk from each databases
 %% @end
 %%--------------------------------------------------------------------
--spec send_chunked(cowboy_req:req(), load_params()) -> {cowboy_req:req(), cb_context:context()}.
+-spec send_chunked(cowboy_req:req(), load_params()) -> cb_cowboy_payload().
 send_chunked(Req0, #{response_type := 'json'}=LoadMap0) ->
     Headers = cowboy_req:get('resp_headers', Req0),
     {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req0),
@@ -503,7 +506,7 @@ fold_query(Db, #{view := View
                ),
     maybe_send_chunked(LoadMap#{total_queried => NewTotalQueried
                                ,last_key => NewLastKey
-                               }, Db, QueriedJObjs ++ FilteredJObj, Filtered);
+                               }, Db, QueriedJObjs ++ FilteredJObj);
 fold_query(Db, #{view := View
                 ,view_options := ViewOptions
                 ,direction := Direction
@@ -527,7 +530,7 @@ fold_query(Db, #{view := View
                ,[DbResultsLength, Filtered, NewTotalQueried]
                ),
 
-    maybe_send_chunked(LoadMap#{total_queried => NewTotalQueried}, Db, QueriedJObjs ++ lists:reverse(FilteredJObj), Filtered).
+    maybe_send_chunked(LoadMap#{total_queried => NewTotalQueried}, Db, QueriedJObjs ++ lists:reverse(FilteredJObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -584,10 +587,10 @@ apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
 %% requesting chunked response.
 %% @end
 %%--------------------------------------------------------------------
- -spec maybe_send_chunked(load_params(), ne_binary(), kz_json:objects(), non_neg_integer()) -> load_params().
- maybe_send_chunked(#{is_chunked := 'true'}=LoadMap, Db, JObjs, Filtered) ->
-    send_chunked_mapper(LoadMap, JObjs, Db, Filtered);
-maybe_send_chunked(LoadMap, _, JObjs, _) ->
+ -spec maybe_send_chunked(load_params(), ne_binary(), kz_json:objects()) -> load_params().
+ maybe_send_chunked(#{is_chunked := 'true'}=LoadMap, Db, JObjs) ->
+    send_chunked_mapper(LoadMap, JObjs, Db);
+maybe_send_chunked(LoadMap, _, JObjs) ->
     LoadMap#{queried_jobjs => JObjs}.
 
 %%--------------------------------------------------------------------
@@ -599,64 +602,64 @@ maybe_send_chunked(LoadMap, _, JObjs, _) ->
 %%       SEND HEADERS!
 %% @end
 %%--------------------------------------------------------------------
--spec send_chunked_mapper(load_params(), kz_json:objects(), ne_binary(), non_neg_integer()) -> load_params().
+-spec send_chunked_mapper(load_params(), kz_json:objects(), ne_binary()) -> load_params().
 send_chunked_mapper(#{response_type := 'json'
                      ,cowboy_req := Req
                      ,context := Context0
-                     ,total_queried := TotalQueried
-                     }=LoadMap, JObjs, Db, Length) ->
+                     }=LoadMap, JObjs, Db) ->
     StartedChunk = maps:get(started_chunk, LoadMap, 'false'),
     Context1 = cb_context:store(Context0, 'started_chunk', StartedChunk),
     ChunkedMapper = maps:get(chunked_mapper, LoadMap, 'undefined'),
 
-    {RespJObjs, Context2} = apply_chunked_mapper(ChunkedMapper, LoadMap#{context => Context1}, JObjs, Db),
+    {Resp, Context2} = apply_chunked_mapper(ChunkedMapper, LoadMap#{context => Context1}, JObjs, Db),
 
-    NewTotalQueried = case length(RespJObjs) of
-                          Length -> TotalQueried;
-                          L when L < Length -> TotalQueried - Length + L
-                      end,
-
-    LoadMap#{started_chunk => send_chunked_json(Req, RespJObjs, StartedChunk)
-            ,total_queried => NewTotalQueried
+    LoadMap#{started_chunk => chunk_send_jsons(Req, Resp, cb_context:fetch(Context2, 'started_chunk', StartedChunk))
             ,context => Context2
             };
  send_chunked_mapper(#{response_type := 'csv'
                       ,cowboy_req := Req
                       ,context := Context0
-                      }=LoadMap, JObjs, Db, _) ->
+                      }=LoadMap, JObjs, Db) ->
     StartedChunk = maps:get(started_chunk, LoadMap, 'false'),
     Context1 = cb_context:store(Context0, 'started_chunk', StartedChunk),
     ChunkedMapper = maps:get(chunked_mapper, LoadMap, 'undefined'),
 
-    {CSV, Context2} = apply_chunked_mapper(ChunkedMapper, LoadMap#{context => Context1}, JObjs, Db),
-    'ok' = cowboy_req:chunk(CSV, Req),
+    {Resp, Context2} = apply_chunked_mapper(ChunkedMapper, LoadMap#{context => Context1}, JObjs, Db),
+    case Resp of
+        [] -> 'ok';
+        'no_result' -> 'ok';
+        _ ->
+            'ok' = cowboy_req:chunk(Resp, Req)
+    end,
     LoadMap#{started_chunk => cb_context:fetch(Context2, 'started_chunk', 'true') %% please, please set this in your code (^.^)
             ,context => Context2
             }.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Encode the JObj and chunked send it.
+%% Encode the JObj and send it in chunked.
 %% @end
 %%--------------------------------------------------------------------
--spec send_chunked_json(cowboy_req:req(), kz_json:objects(), boolean()) -> boolean().
-send_chunked_json(_, [], StartedChunk) ->
+-spec chunk_send_jsons(cowboy_req:req(), kz_json:objects() | 'no_result', boolean()) -> boolean().
+chunk_send_jsons(_, 'no_result', StartedChunk) ->
     StartedChunk;
-send_chunked_json(Req, [JObj|JObjs], StartedChunk) ->
+chunk_send_jsons(_, [], StartedChunk) ->
+    StartedChunk;
+chunk_send_jsons(Req, [JObj|JObjs], StartedChunk) ->
     try kz_json:encode(JObj) of
         JSON when StartedChunk ->
             'ok' = cowboy_req:chunk(<<",", JSON/binary>>, Req),
-            send_chunked_json(Req, JObjs, StartedChunk);
+            chunk_send_jsons(Req, JObjs, StartedChunk);
         JSON ->
             'ok' = cowboy_req:chunk(JSON, Req),
-            send_chunked_json(Req, JObjs, 'true')
+            chunk_send_jsons(Req, JObjs, 'true')
     catch
         'throw':{'json_encode', {'bad_term', _Term}} ->
             lager:debug("json encoding failed on ~p", [_Term]),
-            send_chunked_json(Req, JObjs, StartedChunk);
+            chunk_send_jsons(Req, JObjs, StartedChunk);
         _E:_R ->
             lager:debug("failed to encode response: ~s: ~p", [_E, _R]),
-            send_chunked_json(Req, JObjs, StartedChunk)
+            chunk_send_jsons(Req, JObjs, StartedChunk)
     end.
 
 %%--------------------------------------------------------------------
@@ -667,15 +670,13 @@ send_chunked_json(Req, [JObj|JObjs], StartedChunk) ->
 %% NOTE: Keep the original passed JOBjs ORDER in your mapper!
 %% @end
 %%--------------------------------------------------------------------
--spec apply_chunked_mapper(chunked_mapper_fun(), load_params(), kz_json:objects(), ne_binary()) -> {any(), cb_context:context()}.
-apply_chunked_mapper('undefined', #{context := Context}, JObjs, _) ->
+-spec apply_chunked_mapper(chunked_mapper_fun(), load_params(), kz_json:objects(), ne_binary()) -> chunked_mapper_ret().
+apply_chunked_mapper('undefined', #{context := Context, response_type := 'json'}, JObjs, _) ->
     {JObjs, Context};
-apply_chunked_mapper(Mapper, #{context := Context}, JObjs, _Db) when is_function(Mapper, 2) ->
-    Mapper(Context, JObjs);
-apply_chunked_mapper(Mapper, #{context := Context}, JObjs, Db) when is_function(Mapper, 3) ->
-    Mapper(Context, JObjs, Db);
-apply_chunked_mapper(Mapper, #{context := Context, cowboy_req := Req}, JObjs, Db) when is_function(Mapper, 4) ->
-    Mapper(Context, Req, JObjs, Db).
+apply_chunked_mapper(Mapper, #{cowboy_req := Req, context := Context}, JObjs, _) when is_function(Mapper, 2) ->
+    Mapper({Req, Context}, JObjs);
+apply_chunked_mapper(Mapper, #{cowboy_req := Req, context := Context}, JObjs, Db) when is_function(Mapper, 3) ->
+    Mapper({Req, Context}, JObjs, Db).
 
 %%--------------------------------------------------------------------
 %% @private
