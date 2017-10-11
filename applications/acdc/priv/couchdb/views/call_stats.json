@@ -16,7 +16,7 @@
                 "function(doc) {",
                 "    if ( doc.pvt_type != 'call_stat' )",
                 "        return;",
-                "    emit(doc.entered_timestamp, {"
+                "    emit(doc.entered_timestamp, {",
                 "        id: doc._id,",
                 "        entered_timestamp: doc.entered_timestamp,",
                 "        handled_timestamp: doc.handled_timestamp,",
