@@ -16,7 +16,7 @@
 -endif.
 -include_lib("eunit/include/eunit.hrl").
 
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include("knm.hrl").
 
 %% PROPER TESTING
 -ifdef(PROPER).
