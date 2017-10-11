@@ -36,7 +36,7 @@
                ,id :: api_ne_binary()
                ,type :: api_ne_binary()
                ,number :: ne_binary()
-               ,channels :: kz_json:objects()
+               ,channels = [] :: kz_json:objects()
                ,config :: kz_json:object()
                }).
 -type state() :: #state{}.
@@ -162,12 +162,13 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
                       []
               end,
     AccountDb = kapps_call:account_db(Call),
-    props:filter_undefined(
-      [get_device_sip_username(AccountDb, DeviceId)
-       || DeviceId <- Targets
-      ]).
+    [SIPUsername
+     || DeviceId <- Targets,
+        SIPUsername <- [get_device_sip_username(AccountDb, DeviceId)],
+        'undefined' =/= SIPUsername
+    ].
 
--spec get_device_sip_username(ne_binary(), ne_binary()) -> api_binary().
+-spec get_device_sip_username(ne_binary(), ne_binary()) -> api_ne_binary().
 get_device_sip_username(AccountDb, DeviceId) ->
     {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, DeviceId),
     kz_device:sip_username(JObj).
