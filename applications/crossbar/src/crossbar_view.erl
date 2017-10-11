@@ -489,7 +489,6 @@ chunk_send_jsons(Req, [JObj|JObjs], StartedChunk) ->
 %%--------------------------------------------------------------------
 -spec load_view(load_params() | cb_context:context()) -> cb_context:context().
 load_view(#{is_chunked := 'true', response_type := 'json', cowboy_req := Req0}=LoadMap0) ->
-    io:format("~n JSON chunk LoadMap ~p~n~n", [maps:remove(context, maps:remove(cowboy_req, LoadMap0))]),
     Headers = cowboy_req:get('resp_headers', Req0),
     {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req0),
 
@@ -500,7 +499,6 @@ load_view(#{is_chunked := 'true', response_type := 'json', cowboy_req := Req0}=L
     format_chunked_response(LoadMap1),
     {Req1, cb_context:store(maps:get(context, LoadMap1), 'is_chunked', 'true')};
 load_view(#{is_chunked := 'true', response_type := 'csv', cowboy_req := Req0}=LoadMap0) ->
-    io:format("~n CSV chunk LoadMap ~p~n~n", [maps:remove(context, maps:remove(cowboy_req, LoadMap0))]),
     Headers0 = [{<<"content-type">>, <<"application/octet-stream">>}
                ,{<<"content-disposition">>, <<"attachment; filename=\"result.csv\"">>}
                ],
@@ -510,7 +508,6 @@ load_view(#{is_chunked := 'true', response_type := 'csv', cowboy_req := Req0}=Lo
     LoadMap1 = get_results(LoadMap0#{cowboy_req => Req1}),
     {Req1, cb_context:store(maps:get(context, LoadMap1), 'is_chunked', 'true')};
 load_view(#{}=LoadMap) ->
-    io:format("~n Regular LoadMap ~p~n~n", [maps:remove(context, LoadMap)]),
     format_response(get_results(LoadMap));
 load_view(Context) ->
     Context.
@@ -594,40 +591,24 @@ handle_query_result(LoadMap, [Db|RestDbs]=Dbs, DbResults, Limit) ->
 -spec check_page_size_and_length(load_params(), non_neg_integer(), non_neg_integer() | 'undefined', last_key()) ->
                                         {'exhausted' | 'next_db' | 'same_db', load_params()}.
 %% page_size is exhausted when query is limited by page_size
-check_page_size_and_length(#{page_size := PageSize
-                            ,total_queried := TotalQueried
-                            }=LoadMap, Length, _, LastKey)
+check_page_size_and_length(#{page_size := PageSize, total_queried := TotalQueried}=LoadMap, Length, _, LastKey)
   when is_integer(PageSize)
        andalso PageSize > 0
        andalso TotalQueried + Length == PageSize
        andalso LastKey =/= 'undefined' ->
     lager:debug("page size exhausted: ~b", [PageSize]),
     {'exhausted', LoadMap#{total_queried => TotalQueried + Length}};
-%% query next chunk from same db to find next_start_key/last_key when query is limited by page_size
-check_page_size_and_length(#{page_size := PageSize, total_queried := TotalQueried}=LoadMap, Length, Limit, LastKey)
-  when is_integer(PageSize)
-       andalso is_integer(Limit)
-       andalso PageSize > 0
-       andalso Length == Limit
-       andalso LastKey =/= 'undefined' ->
-    {'same_db', LoadMap#{total_queried => TotalQueried + Length}};
-%% query next_db to find last_key
-check_page_size_and_length(#{page_size := PageSize, total_queried := TotalQueried}=LoadMap, Length, Limit, LastKey)
-  when is_integer(PageSize)
-       andalso is_integer(Limit)
-       andalso PageSize > 0
-       andalso Length == Limit
-       andalso LastKey =:= 'undefined' ->
-    {'next_db', LoadMap#{total_queried => TotalQueried + Length}};
 %% query next_db when it's an unlimited query
 check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, 'undefined', _) ->
     {'next_db', LoadMap#{total_queried => TotalQueried + Length}};
-%% query next chunk from same db when query is chunked and unlimited
-check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, Limit, _)
-  when Length == Limit ->
+%% query next chunk from same db when query is chunked
+check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, Limit, LastKey)
+  when Length =< Limit
+       andalso LastKey =/= 'undefined' ->
+    lager:debug("db has more chunks to give, querying same db again..."),
     {'same_db', LoadMap#{total_queried => TotalQueried + Length}};
 %% just query next_db
-check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, _, _) ->
+check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, _Limit, _LastKey) ->
     {'next_db', LoadMap#{total_queried => TotalQueried + Length}}.
 
 -spec limit_with_last_key(boolean(), api_pos_integer(), pos_integer(), non_neg_integer()) -> api_pos_integer().
@@ -639,8 +620,9 @@ limit_with_last_key('true', 'undefined', ChunkSize, TotalQueried) ->
     1 + ChunkSize - TotalQueried;
 limit_with_last_key('true', PageSize, PageSize, TotalQueried) ->
     1 + PageSize - TotalQueried;
-limit_with_last_key('true', PageSize, ChunkSize, TotalQueried) when ChunkSize > PageSize ->
-    1 + ChunkSize - TotalQueried;
+limit_with_last_key('true', PageSize, ChunkSize, TotalQueried) when ChunkSize < PageSize,
+                                                                    ChunkSize >= TotalQueried ->
+    1 + ChunkSize;
 limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
     1 + PageSize - TotalQueried.
 
