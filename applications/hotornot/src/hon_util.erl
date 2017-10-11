@@ -277,7 +277,7 @@ options_match(RateOptions, RouteOptions) ->
              ,RouteOptions
              ).
 
--spec maybe_add_resource_flag(kapi_rate:req(), ne_binary()) -> kz_proplist().
+-spec maybe_add_resource_flag(kapi_rate:req(), ne_binary()) -> ne_binaries().
 maybe_add_resource_flag(RateReq, AccountId) ->
     case hotornot_config:should_account_filter_by_resource(AccountId) of
         'true' ->
