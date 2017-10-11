@@ -1357,15 +1357,15 @@ create_chunked_resp_envelope(Context) ->
                      encode_start_keys(cb_context:resp_envelope(Context))
                     ),
     RespEnvelope ++
-    props:filter_undefined(
-      [{<<"status">>, <<"success">>}
-      ,{<<"request_id">>, cb_context:req_id(Context)}
-      ,{<<"node">>, kz_nodes:node_encoded()}
-      ,{<<"version">>, kz_util:kazoo_version()}
-      ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
-      ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
-      ,{<<"auth_token">>, cb_context:auth_token(Context)}
-      ]).
+        props:filter_undefined(
+          [{<<"status">>, <<"success">>}
+          ,{<<"request_id">>, cb_context:req_id(Context)}
+          ,{<<"node">>, kz_nodes:node_encoded()}
+          ,{<<"version">>, kz_util:kazoo_version()}
+          ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
+          ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
+          ,{<<"auth_token">>, cb_context:auth_token(Context)}
+          ]).
 
 -spec encode_start_keys(kz_json:object()) -> kz_json:object().
 encode_start_keys(Resp) ->

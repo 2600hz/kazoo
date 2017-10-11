@@ -64,6 +64,7 @@ init() ->
 -spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_json({Req, Context}) ->
     Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_acdc_stats/2}
               ,{'response_type', 'json'}
@@ -74,6 +75,7 @@ to_json({Req, Context}) ->
 -spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_csv({Req, Context}) ->
     Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_acdc_stats/2}
               ,{'response_type', 'csv'}

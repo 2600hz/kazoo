@@ -110,10 +110,10 @@ to_json({Req, Context}) ->
 
 -spec to_json(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
 to_json(Req, Context, {'undefined', _}) ->
-    lager:debug("invalid URL chain for cdrs request"),
-    {Req, cb_context:add_system_error('faulty_request', Context)};
+    {Req, Context};
 to_json(Req, Context, {ViewName, Options0}) ->
     Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'response_type', 'json'}
@@ -133,6 +133,7 @@ to_csv(Req, Context, {'undefined', _}) ->
     {Req, cb_context:add_system_error('faulty_request', Context)};
 to_csv(Req, Context, {ViewName, Options0}) ->
     Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'response_type', 'csv'}
@@ -218,10 +219,10 @@ provided_types(Context) ->
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    validate_date_range(Context).
+    validate_path_and_date_range(Context, cb_context:req_nouns()).
 
 validate(Context, ?PATH_INTERACTION) ->
-    validate_date_range(Context);
+    validate_path_and_date_range(Context, cb_context:req_nouns(Context));
 validate(Context, ?PATH_SUMMARY) ->
     load_cdr_summary(Context);
 validate(Context, CDRId) ->
@@ -231,6 +232,15 @@ validate(Context, ?PATH_LEGS, InteractionId) ->
     load_legs(InteractionId, Context);
 validate(Context, _, _) ->
     lager:debug("invalid URL chain for cdr request"),
+    cb_context:add_system_error('faulty_request', Context).
+
+-spec validate_path_and_date_range(cb_context:context(), req_nouns()) -> cb_context:context().
+validate_path_and_date_range(Context, [{<<"cdrs">>, _}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    validate_date_range(Context);
+validate_path_and_date_range(Context, [{<<"cdrs">>, _}, {<<"users">>, [_]}|_]) ->
+    validate_date_range(Context);
+validate_path_and_date_range(Context, [{<<"cdrs">>, _}|_]) ->
+    lager:debug("invalid URL chain for cdrs request"),
     cb_context:add_system_error('faulty_request', Context).
 
 -spec validate_date_range(cb_context:context()) -> cb_context:context().
@@ -337,15 +347,8 @@ load_chunked_cdrs(Payload, JObjs, Db) ->
 
 %% @public
 -spec load_chunked_cdr_ids(cb_cowboy_payload(), ne_binaries(), ne_binary()) -> crossbar_view:chunked_mapper_ret().
-load_chunked_cdr_ids({_, Context}, [], _) ->
-    {'no_result', Context};
-load_chunked_cdr_ids({Req, Context}, Ids, Db) ->
-    {BulkIds, Remaining} =
-        case length(Ids) < ?MAX_BULK of
-            'true' -> {Ids, []};
-            'false' -> lists:split(?MAX_BULK, Ids)
-        end,
-    case kz_datamgr:open_docs(Db, BulkIds, [{'doc_type', <<"cdr">>}]) of
+load_chunked_cdr_ids({_, Context}, Ids, Db) ->
+    case kz_datamgr:open_docs(Db, Ids, [{'doc_type', <<"cdr">>}]) of
         {'ok', Results} ->
             JObjs = [kz_json:get_value(<<"doc">>, Result)
                      || Result <- Results,
@@ -353,14 +356,14 @@ load_chunked_cdr_ids({Req, Context}, Ids, Db) ->
                     ],
             case cb_context:fetch(Context, 'is_csv', 'false') of
                 'true' ->
-                    P = lists:foldl(fun normalize_cdr_to_csv/2, {Req, Context}, JObjs),
-                    load_chunked_cdr_ids(P, Remaining, Db);
+                    {CSVs, Context1} = lists:foldl(fun normalize_cdr_to_csv/2, {[], Context}, JObjs),
+                    {lists:reverse(CSVs), Context1};
                 'false' ->
-                    P = lists:foldl(fun normalize_cdr_to_jobj/2, {Req, Context}, JObjs),
-                    load_chunked_cdr_ids(P, Remaining, Db)
+                    {[normalize_cdr_to_jobj(JObj, Context) || JObj <- JObjs], Context}
             end;
-        {'error', _E} ->
-            load_chunked_cdr_ids({Req, Context}, Remaining, Db)
+        {'error', _Reason} ->
+            lager:debug("failed to load cdrs doc from ~s: ~p", [Db, _Reason]),
+            {'stop', Context}
     end.
 
 %%--------------------------------------------------------------------
@@ -369,15 +372,11 @@ load_chunked_cdr_ids({Req, Context}, Ids, Db) ->
 %% Normalize CDR in JSON
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_cdr_to_jobj(kz_json:object(), cb_cowboy_payload()) -> cb_cowboy_payload().
-normalize_cdr_to_jobj(JObj, {Req, Context}) ->
-    StartedChunk = cb_context:fetch(Context, 'started_chunk'),
+-spec normalize_cdr_to_jobj(kz_json:object(), cb_context:context()) -> kz_json:object().
+normalize_cdr_to_jobj(JObj, Context) ->
     Duration = kz_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
-    NewJObj = kz_json:from_list(
-                [{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]
-               ),
-    {Req, cb_context:store(Context, 'started_chunk', crossbar_view:chunk_send_jsons(Req, [NewJObj], StartedChunk))}.
+    kz_json:from_list([{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -385,18 +384,17 @@ normalize_cdr_to_jobj(JObj, {Req, Context}) ->
 %% Normalize CDR in CSV
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_cdr_to_csv(kz_json:object(), cb_cowboy_payload()) -> cb_cowboy_payload().
-normalize_cdr_to_csv(JObj, {Req, Context}=Payload) ->
+-spec normalize_cdr_to_csv(kz_json:object(), {binaries(), cb_context:context()}) ->
+                                  {binaries(), cb_context:context()}.
+normalize_cdr_to_csv(JObj, {CSVs, Context}) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0),
     CSV = kz_binary:join([F(JObj, Timestamp) || {_, F} <- csv_rows(Context)], <<",">>),
     case cb_context:fetch(Context, 'started_chunk') of
         'true' ->
-            'ok' = cowboy_req:chunk(<<CSV/binary, "\r\n">>, Req),
-            Payload;
+            {[<<CSV/binary, "\r\n">>|CSVs], Context};
         'false' ->
             CSVHeader = kz_binary:join([K || {K, _Fun} <- csv_rows(Context)], <<",">>),
-            'ok' = cowboy_req:chunk(<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>, Req),
-            {Req, cb_context:store(Context, 'started_chunk', 'true')}
+            {[<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>|CSVs], cb_context:store(Context, 'started_chunk', 'true')}
 
     end.
 

@@ -402,7 +402,7 @@ load_view(#load_view_params{view = View
                            ,context = Context
                            ,start_key = StartKey
                            ,page_size = PageSize
-                           ,dbs = [Db|_]=Dbs
+                           ,dbs = [Db|RestDbs]=Dbs
                            ,direction = _Direction
                            } = LVPs) ->
     Limit = limit_by_page_size(Context, PageSize),
@@ -431,12 +431,12 @@ load_view(#load_view_params{view = View
     lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
     case kz_datamgr:get_results(Db, View, ViewOptions) of
         %% There were more dbs, so move to the next one
-        {'error', 'not_found'} when [] =:= tl(Dbs) ->
+        {'error', 'not_found'} when [] =:= RestDbs ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             crossbar_util:response_missing_view(Context);
         {'error', 'not_found'} ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
-            load_view(LVPs#load_view_params{dbs = tl(Dbs)});
+            load_view(LVPs#load_view_params{dbs = RestDbs});
         {'error', Error} ->
             handle_datamgr_errors(Error, View, Context);
         {'ok', JObjs} ->

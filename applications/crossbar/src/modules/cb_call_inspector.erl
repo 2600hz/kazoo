@@ -19,6 +19,9 @@
 
 -include("crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".call_inspector">>).
+-define(MAX_BULK, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
+
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 
@@ -54,6 +57,7 @@ to_json(Req, Context, {'undefined', _}) ->
     {Req, cb_context:add_system_error('faulty_request', Context)};
 to_json(Req, Context, {ViewName, Options0}) ->
     Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'response_type', 'json'}
@@ -73,6 +77,7 @@ to_csv(Req, Context, {'undefined', _}) ->
     {Req, cb_context:add_system_error('faulty_request', Context)};
 to_csv(Req, Context, {ViewName, Options0}) ->
     Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'response_type', 'csv'}
@@ -120,6 +125,19 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
+    validate_path_and_date_range(Context, cb_context:req_nouns(Context)).
+
+-spec validate_path_and_date_range(cb_context:context(), req_nouns()) -> cb_context:context().
+validate_path_and_date_range(Context, [{<<"call_inspector">>, _}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    validate_date_range(Context);
+validate_path_and_date_range(Context, [{<<"call_inspector">>, _}, {<<"users">>, [_]}|_]) ->
+    validate_date_range(Context);
+validate_path_and_date_range(Context, [{<<"call_inspector">>, _}|_]) ->
+    lager:debug("invalid URL chain for call_inspector request"),
+    cb_context:add_system_error('faulty_request', Context).
+
+-spec validate_date_range(cb_context:context()) -> cb_context:context().
+validate_date_range(Context) ->
     case crossbar_view:time_range(Context) of
         {_StartTime, _EndTime} -> cb_context:set_resp_status(Context, 'success');
         Ctx -> Ctx
