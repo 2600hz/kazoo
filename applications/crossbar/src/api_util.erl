@@ -38,6 +38,7 @@
         ,ensure_content_type/1
         ,create_event_name/2
 
+        ,create_chunked_resp_envelope/1
         ,encode_start_key/1, decode_start_key/1
         ]).
 
@@ -1349,6 +1350,22 @@ do_create_resp_envelope(Context) ->
            end,
 
     encode_start_keys(kz_json:set_values(props:filter_undefined(Resp), cb_context:resp_envelope(Context))).
+
+-spec create_chunked_resp_envelope(cb_context:context()) -> kz_proplist().
+create_chunked_resp_envelope(Context) ->
+    RespEnvelope = kz_json:to_proplist(
+                     encode_start_keys(cb_context:resp_envelope(Context))
+                    ),
+    RespEnvelope ++
+    props:filter_undefined(
+      [{<<"status">>, <<"success">>}
+      ,{<<"request_id">>, cb_context:req_id(Context)}
+      ,{<<"node">>, kz_nodes:node_encoded()}
+      ,{<<"version">>, kz_util:kazoo_version()}
+      ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
+      ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
+      ,{<<"auth_token">>, cb_context:auth_token(Context)}
+      ]).
 
 -spec encode_start_keys(kz_json:object()) -> kz_json:object().
 encode_start_keys(Resp) ->

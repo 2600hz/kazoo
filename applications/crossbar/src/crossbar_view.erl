@@ -89,7 +89,7 @@
                         ,is_chunked => boolean()
                         ,last_key => last_key()
                         ,mapper => mapper_fun()
-                        ,page_size => integer()
+                        ,page_size => pos_integer()
                         ,queried_jobjs => kz_json:objects()
                         ,response_type => 'json' | 'csv'
                         ,should_paginate => boolean()
@@ -220,7 +220,6 @@ build_load_range_params(Context, View, Options) ->
                 ,{'end_time', EndTime}
                 ,{'has_qs_filter', HasQSFilter}
                 ,{'is_chunked ', IsChunked}
-                ,{'last_key', 'undefined'}
                 ,{'mapper', crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)}
                 ,{'page_size', get_limit(Context, Options)}
                 ,{'queried_jobjs', []}
@@ -447,6 +446,34 @@ map_doc_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"doc">>, JObj)|Acc] end.
 -spec map_value_fun() -> mapper_fun().
 map_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Encode the JObj and send it in chunked.
+%% @end
+%%--------------------------------------------------------------------
+-spec chunk_send_jsons(cowboy_req:req(), kz_json:objects() | 'no_result', boolean()) -> boolean().
+chunk_send_jsons(_, 'no_result', StartedChunk) ->
+    StartedChunk;
+chunk_send_jsons(_, [], StartedChunk) ->
+    StartedChunk;
+chunk_send_jsons(Req, [JObj|JObjs], StartedChunk) ->
+    try kz_json:encode(JObj) of
+        JSON when StartedChunk ->
+            'ok' = cowboy_req:chunk(<<",", JSON/binary>>, Req),
+            chunk_send_jsons(Req, JObjs, StartedChunk);
+        JSON ->
+            'ok' = cowboy_req:chunk(JSON, Req),
+            chunk_send_jsons(Req, JObjs, 'true')
+    catch
+        'throw':{'json_encode', {'bad_term', _Term}} ->
+            lager:debug("json encoding failed on ~p", [_Term]),
+            chunk_send_jsons(Req, JObjs, StartedChunk);
+        _E:_R ->
+            lager:debug("failed to encode response: ~s: ~p", [_E, _R]),
+            chunk_send_jsons(Req, JObjs, StartedChunk)
+    end.
+
 %%%===================================================================
 %%% Load view internal functions
 %%%===================================================================
@@ -508,6 +535,7 @@ get_results(#{databases := Dbs}=LoadMap) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fold_query(ne_binary(), load_params()) -> load_params().
+%% page_size exhausted
 fold_query(_, #{page_size := PageSize
                ,last_key := LastKey
                ,total_queried := TotalQueried
@@ -518,6 +546,7 @@ fold_query(_, #{page_size := PageSize
        LastKey =/= 'undefined' ->
     lager:debug("page size exhausted: ~s", [PageSize]),
     LoadMap;
+%% query limited by page_size
 fold_query(Db, #{view := View
                 ,view_options := ViewOptions
                 ,direction := Direction
@@ -541,15 +570,14 @@ fold_query(Db, #{view := View
     Filtered = length(FilteredJObj),
     NewTotalQueried = TotalQueried + Filtered,
 
-    io:format("~nquery took: ~pms last_key took: ~pms apply_filter took: ~pms~n"
-             ,[Pref1/?MILLISECONDS_IN_SECOND, Pref2/?MILLISECONDS_IN_SECOND, Pref3/?MILLISECONDS_IN_SECOND]),
-
-    lager:debug("db_returned: ~b passed_filter: ~p total_queried: ~b next_start_key: ~p"
-               ,[DbResultsLength, Filtered, NewTotalQueried, NewLastKey]
+    lager:debug("db_returned: ~b passed_filter: ~p total_queried: ~b next_start_key: ~p -- query took: ~pms last_key took: ~pms apply_filter took: ~pms"
+               ,[DbResultsLength, Filtered, NewTotalQueried, NewLastKey
+                ,Pref1/?MILLISECONDS_IN_SECOND, Pref2/?MILLISECONDS_IN_SECOND, Pref3/?MILLISECONDS_IN_SECOND
+                ]
                ),
-    maybe_send_chunked(LoadMap#{total_queried => NewTotalQueried
-                               ,last_key => NewLastKey
-                               }, Db, QueriedJObjs ++ FilteredJObj);
+
+    maybe_send_chunked(LoadMap#{total_queried => NewTotalQueried, last_key => NewLastKey}, Db, QueriedJObjs ++ FilteredJObj);
+%% query unlimited
 fold_query(Db, #{view := View
                 ,view_options := ViewOptions
                 ,direction := Direction
@@ -566,11 +594,10 @@ fold_query(Db, #{view := View
     Filtered = length(FilteredJObj),
     NewTotalQueried = TotalQueried + Filtered,
 
-    io:format("~nquery took: ~pms apply_filter took: ~pms~n"
-             ,[Pref1/?MILLISECONDS_IN_SECOND, Pref2/?MILLISECONDS_IN_SECOND]),
-
-    lager:debug("db_returned: ~b passed_filter: ~p total_queried: ~b"
-               ,[DbResultsLength, Filtered, NewTotalQueried]
+    lager:debug("db_returned: ~b passed_filter: ~p total_queried: ~b query took: ~pms apply_filter took: ~pms"
+               ,[DbResultsLength, Filtered, NewTotalQueried
+                ,Pref1/?MILLISECONDS_IN_SECOND, Pref2/?MILLISECONDS_IN_SECOND
+                ]
                ),
 
     maybe_send_chunked(LoadMap#{total_queried => NewTotalQueried}, Db, QueriedJObjs ++ lists:reverse(FilteredJObj)).
@@ -585,8 +612,6 @@ fold_query(Db, #{view := View
 perform_query(Limit, _, _, _) when is_integer(Limit), Limit =< 0 -> [];
 perform_query(_, Db, View, Options) ->
     lager:debug("kz_datamgr:get_results(~s, ~s, ~p)", [Db, View, Options]),
-    io:format("~nkz_datamgr:get_results ~s ~s~n~p~n", [Db, View, Options]),
-
     case kz_datamgr:get_results(Db, View, Options) of
         {'ok', JObjs} -> JObjs;
         {'error', 'not_found'} ->
@@ -596,32 +621,6 @@ perform_query(_, Db, View, Options) ->
             lager:debug("failed to get view ~s result from ~s: ~p", [View, Db, Error]),
             []
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Apply filter function if provided while keep maintaining the result
-%% order.
-%% Filter function can be arity 1 and 2.
-%% @end
-%%--------------------------------------------------------------------
--spec apply_filter(mapper_fun(), kz_json:objects()) -> kz_json:objects().
-apply_filter('undefined', JObjs) ->
-    lists:reverse(JObjs);
-apply_filter(Mapper, JObjs) when is_function(Mapper, 1) ->
-    %% Can I trust you to sort results in the correct direction?
-    Fun = fun(JObj0, Acc) ->
-                  case kz_term:is_empty(JObj0) of
-                      'true' -> Acc;
-                      'false' -> [JObj0|Acc]
-                  end
-          end,
-    lists:foldl(Fun, [], Mapper(JObjs));
-apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
-    [JObj
-     || JObj <- lists:foldl(Mapper, [], JObjs),
-        not kz_term:is_empty(JObj)
-    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -641,13 +640,16 @@ maybe_send_chunked(LoadMap, _, JObjs) ->
 %% @doc
 %% Apply chunked mapper function and send result in chunked
 %%
+%% Please, please set Context `started_chunk` in your code if you're
+%% sending the chunk yourself.
+%% Also return `no_result` if you sent the chunk.
+%%
 %% NOTE: YOU HAVE TO CHECK IF CHUNKED IS STARTED OR NOT IN CSV AND
 %%       SEND HEADERS!
 %% @end
 %%--------------------------------------------------------------------
 -spec send_chunked_mapper(load_params(), kz_json:objects(), ne_binary()) -> load_params().
-send_chunked_mapper(#{response_type := 'json'
-                     ,cowboy_req := Req
+send_chunked_mapper(#{cowboy_req := Req
                      ,context := Context0
                      }=LoadMap, JObjs, Db) ->
     StartedChunk = maps:get(started_chunk, LoadMap, 'false'),
@@ -656,54 +658,40 @@ send_chunked_mapper(#{response_type := 'json'
 
     {Resp, Context2} = apply_chunked_mapper(ChunkedMapper, LoadMap#{context => Context1}, JObjs, Db),
 
-    LoadMap#{started_chunk => chunk_send_jsons(Req, Resp, cb_context:fetch(Context2, 'started_chunk', StartedChunk))
-            ,context => Context2
-            };
-send_chunked_mapper(#{response_type := 'csv'
-                     ,cowboy_req := Req
-                     ,context := Context0
-                     }=LoadMap, JObjs, Db) ->
-    StartedChunk = maps:get(started_chunk, LoadMap, 'false'),
-    Context1 = cb_context:store(Context0, 'started_chunk', StartedChunk),
-    ChunkedMapper = maps:get(chunked_mapper, LoadMap, 'undefined'),
+    IsContextStartedChunk = cb_context:fetch(Context2, 'started_chunk', StartedChunk),
+    NewStartedChunk =
+        case maps:get(response_type, LoadMap) of
+            'json' -> chunk_send_jsons(Req, Resp, IsContextStartedChunk);
+            'csv' ->
+                case Resp of
+                    [] -> 'ok';
+                    'no_result' -> 'ok';
+                    _ -> 'ok' = cowboy_req:chunk(Resp, Req)
+                end,
+                IsContextStartedChunk
+        end,
 
-    {Resp, Context2} = apply_chunked_mapper(ChunkedMapper, LoadMap#{context => Context1}, JObjs, Db),
-    case Resp of
-        [] -> 'ok';
-        'no_result' -> 'ok';
-        _ ->
-            'ok' = cowboy_req:chunk(Resp, Req)
-    end,
-    LoadMap#{started_chunk => cb_context:fetch(Context2, 'started_chunk', 'true') %% please, please set this in your code (^.^)
-            ,context => Context2
-            }.
+    LoadMap#{started_chunk => NewStartedChunk, context => Context2}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Encode the JObj and send it in chunked.
+%% Apply filter function if provided while keep maintaining the result
+%% order.
+%% Filter function can be arity 1 and 2.
 %% @end
 %%--------------------------------------------------------------------
--spec chunk_send_jsons(cowboy_req:req(), kz_json:objects() | 'no_result', boolean()) -> boolean().
-chunk_send_jsons(_, 'no_result', StartedChunk) ->
-    StartedChunk;
-chunk_send_jsons(_, [], StartedChunk) ->
-    StartedChunk;
-chunk_send_jsons(Req, [JObj|JObjs], StartedChunk) ->
-    try kz_json:encode(JObj) of
-        JSON when StartedChunk ->
-            'ok' = cowboy_req:chunk(<<",", JSON/binary>>, Req),
-            chunk_send_jsons(Req, JObjs, StartedChunk);
-        JSON ->
-            'ok' = cowboy_req:chunk(JSON, Req),
-            chunk_send_jsons(Req, JObjs, 'true')
-    catch
-        'throw':{'json_encode', {'bad_term', _Term}} ->
-            lager:debug("json encoding failed on ~p", [_Term]),
-            chunk_send_jsons(Req, JObjs, StartedChunk);
-        _E:_R ->
-            lager:debug("failed to encode response: ~s: ~p", [_E, _R]),
-            chunk_send_jsons(Req, JObjs, StartedChunk)
-    end.
+-spec apply_filter(mapper_fun(), kz_json:objects()) -> kz_json:objects().
+apply_filter('undefined', JObjs) ->
+    lists:reverse(JObjs);
+apply_filter(Mapper, JObjs) when is_function(Mapper, 1) ->
+    %% Can I trust you to return sorted result in the correct direction?
+    Mapper(JObjs);
+apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
+    [JObj
+     || JObj <- lists:foldl(Mapper, [], JObjs),
+        not kz_term:is_empty(JObj)
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -744,62 +732,47 @@ last_key(_LastKey, [Last|JObjs], Limit, Returned) when Returned == Limit ->
 %% @end
 %%--------------------------------------------------------------------
 -spec format_response(load_params()) -> cb_context:context().
-format_response(#{last_key := 'undefined'
-                 ,queried_jobjs := JObjs
-                 ,context := Context
-                 }) ->
-    Envelope = remove_paging(cb_context:resp_envelope(Context)),
-    crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope));
-format_response(#{last_key := NextStartKey
+format_response(#{total_queried := TotalQueried
                  ,queried_jobjs := JObjs
                  ,context := Context
                  }=LoadMap) ->
-    Envelope = add_paging(maps:get(start_key, LoadMap, 'undefined'), length(JObjs), NextStartKey, cb_context:resp_envelope(Context)),
+    NextStartKey = maps:get(last_key, LoadMap, 'undefined'),
+    StartKey = maps:get(start_key, LoadMap, 'undefined'),
+    Envelope = add_paging(StartKey, TotalQueried, NextStartKey, cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope)).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Send the reset of the envelope, properly set page size and
-%% next)start_key
+%% `next_start_key`.
 %% @end
 %%--------------------------------------------------------------------
 -spec format_chunked_response(load_params()) -> 'ok'.
-format_chunked_response(#{cowboy_req := Req
-                         ,last_key := LastKey
-                         ,total_queried := TotalQueried
+format_chunked_response(#{total_queried := TotalQueried
+                         ,cowboy_req := Req
                          ,context := Context
                          }=LoadMap) ->
-    Envelope = [{<<"status">>, <<"success">>}
-               ,{<<"page_size">>, TotalQueried}
-               ,{<<"start_key">>, case maps:get(start_key, LoadMap, 'undefined') of
-                                      'undefined' -> 'udnefined';
-                                      StartKey -> api_util:encode_start_key(StartKey)
-                                  end
-                }
-               ,{<<"next_start_key">>, api_util:encode_start_key(LastKey)}
-               ,{<<"request_id">>, cb_context:req_id(Context)}
-               ,{<<"node">>, kz_nodes:node_encoded()}
-               ,{<<"version">>, kz_util:kazoo_version()}
-               ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
-               ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
-               ,{<<"auth_token">>, cb_context:auth_token(Context)}
-               ],
-    Encoded = [<<"\"", K/binary, "\":\"", (kz_term:to_binary(V))/binary, "\"">> || {K, V} <- Envelope, kz_term:is_not_empty(V)],
+    NextStartKey = maps:get(last_key, LoadMap, 'undefined'),
+    StartKey = maps:get(start_key, LoadMap, 'undefined'),
+    EnvJObj = add_paging(StartKey, TotalQueried, NextStartKey, cb_context:resp_envelope(Context)),
+    EnvProps = api_util:create_chunked_resp_envelope(cb_context:set_resp_envelope(Context, EnvJObj)),
+    Encoded = [<<"\"", K/binary, "\":\"", (kz_term:to_binary(V))/binary, "\"">>
+                   || {K, V} <- EnvProps,
+                      kz_term:is_not_empty(V)
+              ],
     'ok' = cowboy_req:chunk(<<(kz_binary:join(Encoded))/binary, "}">>, Req).
 
--spec add_paging(range_key(), pos_integer(), range_key(), kz_json:object()) -> kz_json:object().
+%% @private
+-spec add_paging(api_range_key(), non_neg_integer(), api_range_key(), kz_json:object()) -> kz_json:object().
 add_paging(StartKey, PageSize, NextStartKey, JObj) ->
+    DeleteKeys = [<<"start_key">>, <<"page_size">>, <<"next_start_key">>],
     kz_json:set_values([{<<"start_key">>, StartKey},
                         {<<"page_size">>, PageSize},
                         {<<"next_start_key">>, NextStartKey}
                        ]
-                      ,JObj
+                      ,kz_json:delete_keys(DeleteKeys, JObj)
                       ).
-
--spec remove_paging(kz_json:object()) -> kz_json:object().
-remove_paging(JObj) ->
-    kz_json:delete_keys([<<"start_key">>, <<"page_size">>, <<"next_start_key">>], JObj).
 
 %%%===================================================================
 %%% Build load view parameters internal functions
