@@ -1,7 +1,7 @@
                 Service Change
 
 
-Date: {{ time_stamp.local | date:"l, F j, Y H:i" }}
+Date: {{ timestamp.local | date:"l, F j, Y H:i" }}
 
 Services for your sub-account '{{sub_account.name}}' have been changed.
 

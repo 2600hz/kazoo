@@ -9,6 +9,20 @@
 -type valid_value() :: ne_binary() | integer().
 -type api_valid_values() :: [{ne_binary(), valid_value() | [valid_value()]}].
 
+-record(kapi_definition, {name :: ne_binary()
+                         ,friendly_name :: ne_binary()
+                         ,description :: ne_binary()
+                         ,build_fun :: fun((api_terms()) -> api_formatter_return())
+                         ,validate_fun :: fun((api_terms()) -> boolean())
+                         ,publish_fun :: fun((...) -> 'ok')
+                         ,binding = 'undefined' :: api_ne_binary()
+                         ,restrict_to = 'undefined' :: api_atom()
+                         ,required_headers :: api_headers()
+                         ,optional_headers :: api_headers()
+                         ,values :: api_valid_values()
+                         ,types :: api_types()
+                         }).
+
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTHN_REQ, AUTHN_RESP, etc, for *) to be considered valid.
 %%%

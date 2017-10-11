@@ -112,12 +112,13 @@ macros(DataJObj) ->
     ,{<<"sub_account">>, sub_account_data(DataJObj)}
     ,{<<"service_changes">>, service_added_data(DataJObj)}
     ,{<<"user">>, auth_user_data(DataJObj)}
-    ,{<<"time_stamp">>, time_stamp(DataJObj)}
+    ,{<<"timestamp">>, timestamp(DataJObj)}
+    ,{<<"time_stamp">>, timestamp(DataJObj)} %% backward compatibility
     ].
 
--spec time_stamp(kz_json:object()) -> kz_proplist().
-time_stamp(DataJObj) ->
-    TS = kz_json:get_integer_value(<<"time_stamp">>, DataJObj),
+-spec timestamp(kz_json:object()) -> kz_proplist().
+timestamp(DataJObj) ->
+    TS = kz_json:get_integer_value(<<"timestamp">>, DataJObj),
     teletype_util:fix_timestamp(TS, DataJObj).
 
 -spec reseller_info_data(kz_json:object()) -> kz_proplist().

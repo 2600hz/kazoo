@@ -60,6 +60,7 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     {Bindings, Responders} = load_module_bindings_and_responders(),
+    lager:debug("bindings: ~p", [Bindings]),
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
                            ,[{'bindings', Bindings}

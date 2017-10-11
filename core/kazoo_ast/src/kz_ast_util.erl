@@ -64,6 +64,8 @@ ast_to_list_of_binaries(ASTList) ->
 
 ast_to_list_of_binaries(?APPEND(First, Second), Binaries) ->
     ast_to_list_of_binaries(Second, ast_to_list_of_binaries(First, Binaries));
+ast_to_list_of_binaries(?SUBTRACT(First, Second), Binaries) ->
+    ast_to_list_of_binaries(First, Binaries) -- ast_to_list_of_binaries(Second, []);
 ast_to_list_of_binaries(?EMPTY_LIST, Binaries) ->
     lists:reverse(Binaries);
 ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_headers', []), Binaries) ->

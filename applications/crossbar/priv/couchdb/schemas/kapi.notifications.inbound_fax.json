@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.notifications.fax_outbound_smtp_error",
-    "description": "AMQP API for notifications.fax_outbound_smtp_error",
+    "_id": "kapi.notifications.inbound_fax",
+    "description": "AMQP API for notifications.inbound_fax",
     "properties": {
         "Account-DB": {
             "type": "string"
@@ -15,10 +15,22 @@
         "Bcc": {
             "type": "string"
         },
-        "Cc": {
+        "Call-ID": {
             "type": "string"
         },
-        "Errors": {
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Cc": {
             "type": "string"
         },
         "Event-Category": {
@@ -29,20 +41,38 @@
         },
         "Event-Name": {
             "enum": [
-                "outbound_smtp_fax_error"
+                "inbound_fax"
             ],
             "type": "string"
         },
-        "Fax-From-Email": {
+        "Fax-ID": {
             "type": "string"
         },
-        "Fax-To-Email": {
+        "Fax-Info": {
+            "type": "string"
+        },
+        "Fax-Notifications": {
+            "type": "string"
+        },
+        "Fax-Timestamp": {
+            "type": "string"
+        },
+        "FaxBox-ID": {
             "type": "string"
         },
         "From": {
             "type": "string"
         },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
         "HTML": {
+            "type": "string"
+        },
+        "Owner-ID": {
             "type": "string"
         },
         "Preview": {
@@ -59,12 +89,21 @@
         },
         "To": {
             "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
         }
     },
     "required": [
         "Account-ID",
-        "Errors",
-        "Fax-From-Email"
+        "Fax-ID",
+        "From-Realm",
+        "From-User",
+        "To-Realm",
+        "To-User"
     ],
     "type": "object"
 }
