@@ -654,9 +654,7 @@ xml_attr_to_conference(Conference, 'exit_sound', Value) ->
 xml_attr_to_conference(Conference, 'enter_sound', Value) ->
     Conference#conference{enter_sound=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'run_time', Value) ->
-    Conference#conference{start_time=kz_time:decr_timeout(kz_time:now_s()
-                                                         ,kz_term:to_integer(Value)
-                                                         )};
+    Conference#conference{start_time=kz_time:now_s() - kz_term:to_integer(Value)};
 xml_attr_to_conference(Conference, _Name, _Value) ->
     lager:debug("unhandled conference k/v ~s: ~p", [_Name, _Value]),
     Conference.
