@@ -20,7 +20,9 @@
         ]).
 -export([mark_dirty/1]).
 
--include("services.hrl").
+-include("tasks.hrl").
+-include_lib("kazoo_services/include/kazoo_services.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -define(SERVER, ?MODULE).
 -define(SCAN_MSG, {'try_sync_service'}).
@@ -29,13 +31,16 @@
 -type state() :: #state{}.
 
 -define(SHOULD_SYNC_SERVICES
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"sync_services">>, 'false')).
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"sync_services">>, 'false')
+       ).
 
 -define(SCAN_RATE
-       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND)).
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND)
+       ).
 
 -define(SYNC_BUFFER_PERIOD
-       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"sync_buffer_period">>, 600)).
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"sync_buffer_period">>, 600)
+       ).
 
 
 %%%===================================================================
@@ -87,6 +92,9 @@ clean(Account) ->
 init([]) ->
     io:format("getting ~s sync_services~n", [?CONFIG_CAT]),
     lager:debug("getting ~s sync_services", [?CONFIG_CAT]),
+
+    maybe_migrate_config(),
+
     case ?SHOULD_SYNC_SERVICES of
         'false' ->
             io:format("not starting sync services~n"),
@@ -97,6 +105,25 @@ init([]) ->
             io:format("started sync services ~p\n", [_Ref]),
             lager:debug("started sync services ~p", [_Ref]),
             {'ok', #state{}}
+    end.
+
+maybe_migrate_config() ->
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"sync_services">>) of
+        'undefined' -> migrate_config();
+        _ -> 'ok'
+    end.
+
+migrate_config() ->
+    lager:info("migrating configs from services to tasks"),
+    Keys = [<<"scan_rate">>, <<"sync_buffer_period">>, <<"sync_services">>],
+    lists:foreach(fun migrate_config/1, Keys).
+
+migrate_config(Key) ->
+    case kapps_config:get(<<"services">>, Key) of
+        'undefined' -> 'ok';
+        Value ->
+            lager:info("migrating ~s: ~p", [Key, Value]),
+            kapps_config:set(?CONFIG_CAT, Key, Value)
     end.
 
 -spec start_sync_service_timer() -> reference().

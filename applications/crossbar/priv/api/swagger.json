@@ -29326,12 +29326,6 @@
                     "description": "allow resellers configure bookkeeper for children billing",
                     "type": "boolean"
                 },
-                "scan_rate": {
-                    "default": 20000,
-                    "description": "services scan rate",
-                    "minimum": 0,
-                    "type": "integer"
-                },
                 "should_save_master_audit_logs": {
                     "default": false,
                     "description": "services should save master audit logs",
@@ -29340,17 +29334,6 @@
                 "support_billing_id": {
                     "default": true,
                     "description": "services support billing id",
-                    "type": "boolean"
-                },
-                "sync_buffer_period": {
-                    "default": 600,
-                    "description": "services sync buffer period",
-                    "minimum": 0,
-                    "type": "integer"
-                },
-                "sync_services": {
-                    "default": false,
-                    "description": "services sync services",
                     "type": "boolean"
                 }
             },
@@ -29839,6 +29822,12 @@
                     "minimum": 0,
                     "type": "integer"
                 },
+                "scan_rate": {
+                    "default": 20000,
+                    "description": "tasks scan_rate",
+                    "minimum": 0,
+                    "type": "integer"
+                },
                 "send_progress_after_processed": {
                     "default": 1000,
                     "description": "tasks send progress after processed",
@@ -29864,6 +29853,22 @@
                     "default": 10000,
                     "description": "tasks soft delete pause in milliseconds",
                     "type": "integer"
+                },
+                "support_billing_id": {
+                    "default": true,
+                    "description": "tasks support_billing_id",
+                    "type": "boolean"
+                },
+                "sync_buffer_period": {
+                    "default": 600,
+                    "description": "tasks sync_buffer_period",
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "sync_services": {
+                    "default": false,
+                    "description": "tasks sync_services",
+                    "type": "boolean"
                 },
                 "unfinished_port_request_lifetime_s": {
                     "default": 2592000,
