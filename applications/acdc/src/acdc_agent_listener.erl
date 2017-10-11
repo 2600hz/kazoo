@@ -83,7 +83,7 @@
                ,my_id :: ne_binary()
                ,my_q :: api_binary() % AMQP queue name
                ,timer_ref :: api_reference()
-               ,sync_resp :: kz_json:object() % furthest along resp
+               ,sync_resp :: api_object() % furthest along resp
                ,supervisor :: pid()
                ,record_calls = 'false' :: boolean()
                ,recording_url :: api_binary() %% where to send recordings after the call
@@ -207,9 +207,9 @@ stop(Srv) -> gen_listener:cast(Srv, {'stop_agent', self()}).
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {'member_connect_resp', ReqJObj}).
 
--spec member_connect_retry(pid(), kz_json:object()) -> 'ok'.
-member_connect_retry(Srv, WinJObj) ->
-    gen_listener:cast(Srv, {'member_connect_retry', WinJObj}).
+-spec member_connect_retry(pid(), ne_binary() | kz_json:object()) -> 'ok'.
+member_connect_retry(Srv, WinOrCallId) ->
+    gen_listener:cast(Srv, {'member_connect_retry', WinOrCallId}).
 
 -spec agent_timeout(pid()) -> 'ok'.
 agent_timeout(Srv) -> gen_listener:cast(Srv, 'agent_timeout').

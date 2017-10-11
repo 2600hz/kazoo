@@ -70,7 +70,7 @@
                                      %% While processing a call
                ,call :: kapps_call:call()
                ,agent_id :: api_ne_binary()
-               ,delivery :: gen_listener:basic_deliver()
+               ,delivery :: gen_listener:basic_deliver() | 'undefined'
                }).
 -type state() :: #state{}.
 
