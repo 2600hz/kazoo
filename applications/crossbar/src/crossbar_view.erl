@@ -9,7 +9,7 @@
 -module(crossbar_view).
 -export([load/2, load/3
         ,load_modb/2, load_modb/3
-        ,send_chunked_modb/4
+        ,send_chunked_modb/3
 
         ,build_load_modb_params/3
         ,build_query/5
@@ -160,8 +160,8 @@ load_modb(Context, View, Options) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec send_chunked_modb(cb_context:context(), cowboy_req:req(), ne_binary(), options()) -> cb_cowboy_payload().
-send_chunked_modb(Context, Req, View, Options) ->
+-spec send_chunked_modb(cb_cowboy_payload(), ne_binary(), options()) -> cb_cowboy_payload().
+send_chunked_modb({Req, Context}, View, Options) ->
     send_chunked(Req, build_load_modb_params(Context, View, Options)).
 
 %%--------------------------------------------------------------------
