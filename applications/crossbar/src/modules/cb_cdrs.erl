@@ -320,7 +320,7 @@ load_interaction_cdr_summary(Context, _Nouns) ->
 -spec load_cdr_summary(cb_context:context()) -> cb_context:context().
 load_cdr_summary(Context) ->
     lager:debug("loading cdr summary for account ~s", [cb_context:account_id(Context)]),
-    case create_view_options(undefined, fun create_summary_view_options/4, Context) of
+    case create_view_options('undefined', fun create_summary_view_options/4, Context) of
         {'ok', ViewOptions} ->
             AccountId = cb_context:account_id(Context),
             DBs = chunked_dbs(AccountId, ViewOptions, fun view_option/2),
@@ -414,7 +414,7 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
        ])
     }.
 
--spec create_interaction_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
+-spec create_interaction_view_options(api_ne_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                              {'ok', crossbar_doc:view_options()}.
 create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     StartKey = maybe_get_start_key_from_req(Context, [CreatedTo]),
@@ -449,9 +449,9 @@ create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
 maybe_add_stale_to_options(true) -> [{stale, ok}];
 maybe_add_stale_to_options(_) ->[].
 
--spec create_summary_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
+-spec create_summary_view_options(api_ne_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                          {'ok', crossbar_doc:view_options()}.
-create_summary_view_options(Context, _, CreatedFrom, CreatedTo) ->
+create_summary_view_options(_, Context, CreatedFrom, CreatedTo) ->
     StartKey = maybe_get_start_key_from_req(Context, CreatedTo),
     {'ok', [{'startkey', StartKey}
            ,{'endkey', CreatedFrom}
@@ -471,8 +471,6 @@ pagination_page_size(Context) ->
     case cb_context:should_paginate(Context)
         andalso cb_context:pagination_page_size(Context)
     of
-        'false' -> 'undefined';
-        'undefined' -> 'undefined';
         PageSize when is_integer(PageSize) -> PageSize + 1;
         _ -> 'undefined'
     end.
