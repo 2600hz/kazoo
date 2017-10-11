@@ -148,7 +148,7 @@ debug_read(Context, CallId) ->
                   ,{'key_map', CallId}
                   ,'include_docs'
                   ],
-    crossbar_doc:load_modb(Context, ?CB_DEBUG_LIST, ViewOptions).
+    crossbar_view:load_modb(Context, ?CB_DEBUG_LIST, ViewOptions).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -185,7 +185,7 @@ normalize_debug_results(Context) ->
 %% the next doc with the same Call-ID are merged with list's head.
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_debug_results_fold(kz_json:object(), sets:set()) -> sets:set().
+-spec normalize_debug_results_fold(kz_json:object(), {sets:set(), kz_json:objects()}) -> {sets:set(), kz_json:objects()}.
 normalize_debug_results_fold(JObj, {Set, []}) ->
     CallId = kz_json:get_value(<<"call_id">>, JObj),
     NewJObj = kz_json:set_value(<<"debug_id">>, debug_id(JObj), JObj),

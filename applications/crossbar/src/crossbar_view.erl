@@ -64,15 +64,15 @@
 
 -type options() :: kazoo_data:view_options() |
                    [{'databases', ne_binaries()} |
-                   {'created_from', pos_integer()} |
-                   {'created_to', pos_integer()} |
-                   {'end_key_map', keymap()} |
-                   {'key_map', keymap()} |
-                   {'mapper', user_mapper_fun()} |
-                   {'max_range', pos_integer()} |
-                   {'start_key_map', keymap()} |
-                   {'chunked_mapper', chunked_mapper_fun()} |
-                   {'response_type', 'json' | 'csv'}
+                    {'created_from', pos_integer()} |
+                    {'created_to', pos_integer()} |
+                    {'end_key_map', keymap()} |
+                    {'key_map', keymap()} |
+                    {'mapper', user_mapper_fun()} |
+                    {'max_range', pos_integer()} |
+                    {'start_key_map', keymap()} |
+                    {'chunked_mapper', chunked_mapper_fun()} |
+                    {'response_type', 'json' | 'csv'}
                    ].
 
 -type load_params() :: #{context => cb_context:context()
@@ -175,7 +175,7 @@ build_load_modb_params(Context, View, Options) ->
     Direction = direction(Context, Options),
     TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
     HasQSFilter = crossbar_filter:is_defined(Context)
-                      andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+        andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
     UserMapper = props:get_value('mapper', Options),
     case time_range(Context, Options, TimeFilterKey) of
         {StartTime, EndTime} ->
@@ -587,8 +587,8 @@ apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
 %% requesting chunked response.
 %% @end
 %%--------------------------------------------------------------------
- -spec maybe_send_chunked(load_params(), ne_binary(), kz_json:objects()) -> load_params().
- maybe_send_chunked(#{is_chunked := 'true'}=LoadMap, Db, JObjs) ->
+-spec maybe_send_chunked(load_params(), ne_binary(), kz_json:objects()) -> load_params().
+maybe_send_chunked(#{is_chunked := 'true'}=LoadMap, Db, JObjs) ->
     send_chunked_mapper(LoadMap, JObjs, Db);
 maybe_send_chunked(LoadMap, _, JObjs) ->
     LoadMap#{queried_jobjs => JObjs}.
@@ -616,10 +616,10 @@ send_chunked_mapper(#{response_type := 'json'
     LoadMap#{started_chunk => chunk_send_jsons(Req, Resp, cb_context:fetch(Context2, 'started_chunk', StartedChunk))
             ,context => Context2
             };
- send_chunked_mapper(#{response_type := 'csv'
-                      ,cowboy_req := Req
-                      ,context := Context0
-                      }=LoadMap, JObjs, Db) ->
+send_chunked_mapper(#{response_type := 'csv'
+                     ,cowboy_req := Req
+                     ,context := Context0
+                     }=LoadMap, JObjs, Db) ->
     StartedChunk = maps:get(started_chunk, LoadMap, 'false'),
     Context1 = cb_context:store(Context0, 'started_chunk', StartedChunk),
     ChunkedMapper = maps:get(chunked_mapper, LoadMap, 'undefined'),

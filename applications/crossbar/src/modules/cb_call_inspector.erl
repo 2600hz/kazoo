@@ -214,7 +214,7 @@ get_cdr_ids(JObjs) ->
 
     lager:debug("found ~p dialogues", [length(FilteredCallIds)]),
 
-    [Id || {?MATCH_CDR_ID(_, CallId), _}=Id <- Ids,
+    [Id || ?MATCH_CDR_ID(_, CallId)=Id <- Ids,
            lists:member(CallId, FilteredCallIds)
     ].
 
