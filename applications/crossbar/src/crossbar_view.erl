@@ -8,11 +8,12 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_view).
 -export([load/2, load/3
+        ,load_range/2, load_range/3
         ,load_modb/2, load_modb/3
-        ,send_chunked_modb/3
 
+        ,build_load_range_params/3
         ,build_load_modb_params/3
-        ,build_query/5
+        ,build_view_query/5
 
         ,direction/1, direction/2
         ,time_range/1, time_range/2, time_range/5
@@ -63,36 +64,41 @@
                       fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
 -type options() :: kazoo_data:view_options() |
-                   [{'databases', ne_binaries()} |
+                   [{'chunked_mapper', chunked_mapper_fun()} |
+                    {'cowboy_req', cowboy_req:req()} |
                     {'created_from', pos_integer()} |
                     {'created_to', pos_integer()} |
+                    {'databases', ne_binaries()} |
                     {'end_key_map', keymap()} |
+                    {'is_chunked', boolean()} |
                     {'key_map', keymap()} |
                     {'mapper', user_mapper_fun()} |
                     {'max_range', pos_integer()} |
-                    {'start_key_map', keymap()} |
-                    {'chunked_mapper', chunked_mapper_fun()} |
-                    {'response_type', 'json' | 'csv'}
+                    {'response_type', 'json' | 'csv'} |
+                    {'start_key_map', keymap()}
                    ].
 
--type load_params() :: #{context => cb_context:context()
+-type load_params() :: #{chunked_mapper => chunked_mapper_fun()
+                        ,context => cb_context:context()
+                        ,cowboy_req => cowboy_req:req()
                         ,databases => ne_binaries()
                         ,direction => direction()
-                        ,page_size => integer()
+                        ,end_key => range_key()
+                        ,end_time => gregorian_seconds()
+                        ,has_qs_filter => boolean()
+                        ,is_chunked => boolean()
+                        ,last_key => last_key()
                         ,mapper => mapper_fun()
+                        ,page_size => integer()
+                        ,queried_jobjs => kz_json:objects()
+                        ,response_type => 'json' | 'csv'
                         ,should_paginate => boolean()
                         ,start_key => range_key()
+                        ,start_time => gregorian_seconds()
+                        ,started_chunk => boolean()
+                        ,total_queried => non_neg_integer()
                         ,view => ne_binary()
                         ,view_options => kazoo_data:view_options()
-                        ,total_queried => non_neg_integer()
-                        ,last_key => last_key()
-                        ,queried_jobjs => kz_json:objects()
-                        ,cowboy_req => cowboy_req:req()
-                        ,is_chunked => boolean()
-                        ,chunked_mapper => chunked_mapper_fun()
-                        ,started_chunk => boolean()
-                        ,response_type => 'json' | 'csv'
-                        ,has_qs_filter => boolean()
                         }.
 
 -type last_key() :: api_range_key().
@@ -131,6 +137,29 @@ load(Context, View, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Equivalent of load/3, setting Options to an empty list.
+%% @end
+%%--------------------------------------------------------------------
+-spec load_range(cb_context:context(), ne_binary()) -> cb_context:context().
+load_range(Context, View) ->
+    load_range(Context, View, []).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function attempts to load the context with the results of a view
+%% run against the accounts database.
+%%
+%% Failure here returns 500 or 503
+%% @end
+%%--------------------------------------------------------------------
+-spec load_range(cb_context:context(), ne_binary(), options()) -> cb_context:context().
+load_range(Context, View, Options) ->
+    load_view(build_load_range_params(Context, View, Options)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Equivalent of load_modb/3, setting Options to an empty list.
 %% @end
 %%--------------------------------------------------------------------
@@ -154,15 +183,61 @@ load_modb(Context, View, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function attempts to load results of a view from account's MODBs
-%% and send result of each database
-%%
-%% Failure here returns 500 or 503
+%% Generates corssbar_view options map for looking up view in time range.
 %% @end
 %%--------------------------------------------------------------------
--spec send_chunked_modb(cb_cowboy_payload(), ne_binary(), options()) -> cb_cowboy_payload().
-send_chunked_modb({Req, Context}, View, Options) ->
-    send_chunked(Req, build_load_modb_params(Context, View, Options)).
+-spec build_load_range_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
+build_load_range_params(Context, View, Options) ->
+    Direction = direction(Context, Options),
+
+    TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
+
+    HasQSFilter = crossbar_filter:is_defined(Context)
+        andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+    UserMapper = props:get_value('mapper', Options),
+
+    IsChunked = props:is_true('is_chunked', Options, 'false'),
+    Req = props:get_value('cowboy_req', Options),
+
+    case time_range(Context, Options, TimeFilterKey) of
+        {StartTime, EndTime}
+          when (IsChunked
+                andalso Req =/= 'undefined'
+               ) orelse not IsChunked ->
+            {StartKey, EndKey} = start_end_keys(Context, Options, Direction, StartTime, EndTime),
+            maps:from_list(
+              props:filter_undefined(
+                [{'chunked_mapper', props:get_value('chunked_mapper', Options)}
+                ,{'cowboy_req', Req}
+                ,{'context', cb_context:setters(Context
+                                               ,[{fun cb_context:set_doc/2, []}
+                                                ,{fun cb_context:store/3, 'has_qs_filter', HasQSFilter}
+                                                ])
+                 }
+                ,{'databases', props:get_value('databases', Options, [cb_context:account_db(Context)])}
+                ,{'direction', Direction}
+                ,{'end_key', EndKey}
+                ,{'end_time', EndTime}
+                ,{'has_qs_filter', HasQSFilter}
+                ,{'is_chunked ', IsChunked}
+                ,{'last_key', 'undefined'}
+                ,{'mapper', crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)}
+                ,{'page_size', get_limit(Context, Options)}
+                ,{'queried_jobjs', []}
+                ,{'response_type', props:get_value('response_type', Options, 'json')}
+                ,{'should_paginate', cb_context:should_paginate(Context)}
+                ,{'start_time', StartTime}
+                ,{'start_key', StartKey}
+                ,{'total_queried', 0}
+                ,{'view', View}
+                ,{'view_options', build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)}
+                ])
+             );
+        {_, _} ->
+            lager:warning("crossbar module has requested a chunked response but did not provide cowboy_req as options"),
+            cb_context:add_system_error('internal_error', Context);
+        Ctx -> Ctx
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -172,34 +247,13 @@ send_chunked_modb({Req, Context}, View, Options) ->
 %%--------------------------------------------------------------------
 -spec build_load_modb_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
 build_load_modb_params(Context, View, Options) ->
-    Direction = direction(Context, Options),
-    TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
-    HasQSFilter = crossbar_filter:is_defined(Context)
-        andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
-    UserMapper = props:get_value('mapper', Options),
-    case time_range(Context, Options, TimeFilterKey) of
-        {StartTime, EndTime} ->
-            {StartKey, EndKey} = start_end_keys(Context, Options, Direction, StartTime, EndTime),
-            maps:from_list(
-              props:filter_undefined(
-                [{'context', cb_context:setters(Context
-                                               ,[{fun cb_context:set_doc/2, []}
-                                                ,{fun cb_context:store/3, 'has_qs_filter', HasQSFilter}
-                                                ])
-                 }
-                ,{'databases', get_range_modbs(Context, Options, Direction, StartTime, EndTime)}
-                ,{'direction', Direction}
-                ,{'page_size', get_limit(Context, Options)}
-                ,{'mapper', crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)}
-                ,{'should_paginate', cb_context:should_paginate(Context)}
-                ,{'start_key', StartKey}
-                ,{'view', View}
-                ,{'view_options', build_query(Options, Direction, StartKey, EndKey, HasQSFilter)}
-                ,{'chunked_mapper', props:get_value('chunked_mapper', Options)}
-                ,{'response_type', props:get_value('response_type', Options, 'json')}
-                ,{'has_qs_filter', HasQSFilter}
-                ])
-             );
+    case build_load_range_params(Context, View, Options) of
+        #{context := Context
+         ,direction := Direction
+         ,start_time := StartTime
+         ,end_time := EndTime
+         }=LoadMap ->
+            LoadMap#{databases => get_range_modbs(Context, Options, Direction, StartTime, EndTime)};
         Ctx -> Ctx
     end.
 
@@ -215,8 +269,8 @@ build_load_modb_params(Context, View, Options) ->
 %% timestamp.
 %% @end
 %%--------------------------------------------------------------------
--spec build_query(options(), direction(), api_range_key(), api_range_key(), boolean()) -> kazoo_data:view_options().
-build_query(Options, Direction, StartKey, EndKey, HasQSFilter) ->
+-spec build_view_query(options(), direction(), api_range_key(), api_range_key(), boolean()) -> kazoo_data:view_options().
+build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter) ->
     DefaultOptions =
         props:filter_undefined(
           [{'startkey', StartKey}
@@ -404,39 +458,28 @@ map_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] 
 %% @end
 %%--------------------------------------------------------------------
 -spec load_view(load_params() | cb_context:context()) -> cb_context:context().
-load_view(#{}=LoadMap) ->
-    format_response(get_results(LoadMap));
-load_view(Context) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load view results and send in chunk from each databases
-%% @end
-%%--------------------------------------------------------------------
--spec send_chunked(cowboy_req:req(), load_params()) -> cb_cowboy_payload().
-send_chunked(Req0, #{response_type := 'json'}=LoadMap0) ->
+load_view(#{is_chunked := 'true', response_type := 'json', cowboy_req := Req0}=LoadMap0) ->
     Headers = cowboy_req:get('resp_headers', Req0),
     {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req0),
 
     'ok' = cowboy_req:chunk("{\"data\":[", Req1),
-    LoadMap1 = get_results(LoadMap0#{cowboy_req => Req1, is_chunked => 'true'}),
+    LoadMap1 = get_results(LoadMap0#{cowboy_req => Req1}),
     'ok' = cowboy_req:chunk("],", Req1),
 
     format_chunked_response(LoadMap1),
     {Req1, cb_context:store(maps:get(context, LoadMap1), 'is_chunked', 'true')};
-send_chunked(Req0, #{response_type := 'csv'}=LoadMap0) ->
-    Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
-                               ,{<<"content-disposition">>, <<"attachment; filename=\"result.csv\"">>}
-                               ]
-                              ,cowboy_req:get('resp_headers', Req0)
-                              ),
+load_view(#{is_chunked := 'true', response_type := 'csv', cowboy_req := Req0}=LoadMap0) ->
+    Headers0 = [{<<"content-type">>, <<"application/octet-stream">>}
+               ,{<<"content-disposition">>, <<"attachment; filename=\"result.csv\"">>}
+               ],
+    Headers = props:set_values(Headers0, cowboy_req:get('resp_headers', Req0)),
     {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req0),
 
-    LoadMap1 = get_results(LoadMap0#{cowboy_req => Req1, is_chunked => 'true'}),
+    LoadMap1 = get_results(LoadMap0#{cowboy_req => Req1}),
     {Req1, cb_context:store(maps:get(context, LoadMap1), 'is_chunked', 'true')};
-send_chunked(_, Context) ->
+load_view(#{}=LoadMap) ->
+    format_response(get_results(LoadMap));
+load_view(Context) ->
     Context.
 
 %%--------------------------------------------------------------------

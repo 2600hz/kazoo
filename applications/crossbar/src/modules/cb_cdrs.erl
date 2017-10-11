@@ -113,11 +113,13 @@ to_json(Req, Context, {'undefined', _}) ->
     lager:debug("invalid URL chain for cdrs request"),
     {Req, cb_context:add_system_error('faulty_request', Context)};
 to_json(Req, Context, {ViewName, Options0}) ->
-    Options = [{'chunked_mapper', fun load_chunked_cdrs/3}
+    Options = [{'is_chunked', 'true'}
+              ,{'cowboy_req', Req}
+              ,{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'response_type', 'json'}
                | Options0
               ],
-    crossbar_view:send_chunked_modb({Req, Context}, ViewName, Options).
+    crossbar_view:load_modb(Context, ViewName, Options).
 
 -spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_csv({Req, Context}) ->
@@ -130,11 +132,13 @@ to_csv(Req, Context, {'undefined', _}) ->
     lager:debug("invalid URL chain for cdrs request"),
     {Req, cb_context:add_system_error('faulty_request', Context)};
 to_csv(Req, Context, {ViewName, Options0}) ->
-    Options = [{'chunked_mapper', fun load_chunked_cdrs/3}
+    Options = [{'is_chunked', 'true'}
+              ,{'cowboy_req', Req}
+              ,{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'response_type', 'csv'}
                | Options0
               ],
-    crossbar_view:send_chunked_modb({Req, cb_context:store(Context, 'is_csv', 'true')}, ViewName, Options).
+    crossbar_view:load_modb(cb_context:store(Context, 'is_csv', 'true'), ViewName, Options).
 
 %%--------------------------------------------------------------------
 %% @private

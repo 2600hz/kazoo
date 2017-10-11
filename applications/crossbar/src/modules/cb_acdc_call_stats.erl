@@ -63,19 +63,23 @@ init() ->
 
 -spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_json({Req, Context}) ->
-    Options = [{'chunked_mapper', fun load_chunked_acdc_stats/2}
-              ,{'mapper', crossbar_view:map_value_fun()}
+    Options = [{'is_chunked', 'true'}
+              ,{'cowboy_req', Req}
+              ,{'chunked_mapper', fun load_chunked_acdc_stats/2}
               ,{'response_type', 'json'}
+              ,{'mapper', crossbar_view:map_value_fun()}
               ],
-    crossbar_view:send_chunked_modb({Req, Context}, ?CB_LIST, Options).
+    crossbar_view:load_modb(Context, ?CB_LIST, Options).
 
 -spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_csv({Req, Context}) ->
-    Options = [{'chunked_mapper', fun load_chunked_acdc_stats/2}
-              ,{'mapper', crossbar_view:map_value_fun()}
+    Options = [{'is_chunked', 'true'}
+              ,{'cowboy_req', Req}
+              ,{'chunked_mapper', fun load_chunked_acdc_stats/2}
               ,{'response_type', 'csv'}
+              ,{'mapper', crossbar_view:map_value_fun()}
               ],
-    crossbar_view:send_chunked_modb({Req, cb_context:store(Context, 'is_csv', 'true')}, ?CB_LIST, Options).
+    crossbar_view:load_modb(cb_context:store(Context, 'is_csv', 'true'), ?CB_LIST, Options).
 
 %%--------------------------------------------------------------------
 %% @private
