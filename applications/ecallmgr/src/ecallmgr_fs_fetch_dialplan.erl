@@ -46,6 +46,7 @@ process(#{}=Map) ->
                ,fun request/1
                ,fun control_p/1
                ,fun timeout_reply/1
+               ,fun maybe_authz/1
                ],
     maybe_expired(kz_maps:exec(Routines, Map)).
 
@@ -81,6 +82,13 @@ add_time_marker(Name, #{}= Map) ->
 %% add_time_marker(Name, Value, #{}= Map) ->
 %%     add_time_marker(Name, Value, Map#{timer => #{}}).
 
+maybe_authz(#{authz_worker := _Authz}=Map) -> Map;
+maybe_authz(#{}=Map) ->
+    case ecallmgr_config:is_true(<<"authz_enabled">>, 'false') of
+        true -> spawn_authorize_call_fun(Map);
+        false -> Map
+    end.
+
 maybe_expired(#{timeout := Timeout}=Map)
   when Timeout =< 0 ->
     lager:warning("timeout before sending route request"),
@@ -100,11 +108,44 @@ wait_for_route_resp(#{timeout := Timeout}=Map) ->
                     wait_for_route_resp(Map#{timeout => NewTimeout, reply => #{payload => Resp, props => Props}});
                 false ->
                     lager:info("received route reply"),
-                    send_reply(Map#{reply => #{payload => Resp, props => Props}})
+                    maybe_wait_for_authz(Map#{reply => #{payload => Resp, props => Props}})
             end
     after Timeout ->
             lager:warning("timeout after ~B receiving route response", [Timeout]),
             send_reply(Map)
+    end.
+
+spawn_authorize_call_fun(#{node := Node, call_id := CallId, jobj := JObj}=Map) ->
+    Ref = make_ref(),
+    Pid = kz_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, JObj]),
+    Map#{authz_worker => {Pid, Ref}}.
+
+authorize_call_fun(Parent, Ref, Node, CallId, JObj) ->
+    kz_util:put_callid(CallId),
+    Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(JObj, CallId, Node)}.
+
+maybe_wait_for_authz(#{authz_worker := _AuthzWorker, reply := #{payload := Reply}}=Map) ->
+    case kz_json:get_value(<<"Method">>, Reply) =/= <<"error">> of
+        'true' -> wait_for_authz(Map);
+        'false' -> send_reply(Map)
+    end;
+maybe_wait_for_authz(#{}=Map) ->
+    send_reply(Map).
+
+wait_for_authz(#{authz_worker := {Pid, Ref}, reply := #{payload := JObj}=Reply}=Map) ->
+    lager:info("waiting for authz reply from worker ~p", [Pid]),
+    receive
+        {'authorize_reply', Ref, 'false'} -> send_reply(forbidden_reply(Map));
+        {'authorize_reply', Ref, 'true'} -> send_reply(Map);
+        {'authorize_reply', Ref, {'true', AuthzCCVs}} ->
+            CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+            J = kz_json:set_value(<<"Custom-Channel-Vars">>
+                                 ,kz_json:merge_jobjs(CCVs, AuthzCCVs)
+                                 ,JObj
+                                 ),
+            send_reply(Map#{reply => Reply#{payload => J}})
+    after 5000 ->
+            lager:warning("timeout waiting for authz reply from worker ~p", [Pid])
     end.
 
 send_reply(#{node := Node, fetch_id := FetchId, reply := #{payload := Reply}}=Map) ->
@@ -126,9 +167,6 @@ wait_for_route_win(Map) ->
     after ?ROUTE_WINNER_TIMEOUT ->
             lager:warning("timeout after ~B receiving route winner", [?ROUTE_WINNER_TIMEOUT])
     end.
-
-        
-
 
 -spec start_call_control(map()) -> 'ok'.
 start_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) ->
@@ -158,6 +196,11 @@ error_message(ErrorCode, ErrorMsg) ->
 timeout_reply(Map) ->
     Map#{reply => #{payload => error_message(<<"no available handlers">>), props => []}}.
 
+
+-spec forbidden_reply(map()) -> map().
+forbidden_reply(#{fetch_id := FetchId}=Map) ->
+    lager:info("received forbidden route response for ~s, sending 403 Incoming call barred", [FetchId]),
+    Map#{reply => #{payload => error_message(<<"403">>, <<"Incoming call barred">>), props => []}}.
 
 -spec route_winner(map()) -> fs_sendmsg_ret().
 route_winner({_Node, _UUID, _Category, _Event, JObj}) ->
