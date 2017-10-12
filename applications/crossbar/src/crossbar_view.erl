@@ -129,7 +129,7 @@
 %% Equivalent of load/3, setting Options to an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec load(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load(cb_context:context(), ne_binary()) -> cb_context:context() | cb_cowboy_payload().
 load(Context, View) ->
     load(Context, View, []).
 
@@ -140,9 +140,10 @@ load(Context, View) ->
 %% run against the accounts database.
 %% @end
 %%--------------------------------------------------------------------
--spec load(cb_context:context(), ne_binary(), options()) -> cb_context:context().
+-spec load(cb_context:context(), ne_binary(), options()) -> cb_context:context() | cb_cowboy_payload().
 load(Context, View, Options) ->
-    load_view(build_load_params(Context, View, Options)).
+    LoadMap = build_load_params(Context, View, Options),
+    load_view(LoadMap, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -150,7 +151,7 @@ load(Context, View, Options) ->
 %% Equivalent of load/3, setting Options to an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec load_range(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_range(cb_context:context(), ne_binary()) -> cb_context:context() | cb_cowboy_payload().
 load_range(Context, View) ->
     load_range(Context, View, []).
 
@@ -161,9 +162,10 @@ load_range(Context, View) ->
 %% results of a view run against the accounts database.
 %% @end
 %%--------------------------------------------------------------------
--spec load_range(cb_context:context(), ne_binary(), options()) -> cb_context:context().
+-spec load_range(cb_context:context(), ne_binary(), options()) -> cb_context:context() | cb_cowboy_payload().
 load_range(Context, View, Options) ->
-    load_view(build_load_range_params(Context, View, Options)).
+    LoadMap = build_load_range_params(Context, View, Options),
+    load_view(LoadMap, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -171,7 +173,7 @@ load_range(Context, View, Options) ->
 %% Equivalent of load_modb/3, setting Options to an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec load_modb(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_modb(cb_context:context(), ne_binary()) -> cb_context:context() | cb_cowboy_payload().
 load_modb(Context, View) ->
     load_modb(Context, View, []).
 
@@ -182,9 +184,10 @@ load_modb(Context, View) ->
 %% run against the account's MODBs.
 %% @end
 %%--------------------------------------------------------------------
--spec load_modb(cb_context:context(), ne_binary(), options()) -> cb_context:context().
+-spec load_modb(cb_context:context(), ne_binary(), options()) -> cb_context:context() | cb_cowboy_payload().
 load_modb(Context, View, Options) ->
-    load_view(build_load_modb_params(Context, View, Options)).
+    LoadMap = build_load_modb_params(Context, View, Options),
+    load_view(LoadMap, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -560,11 +563,11 @@ init_chunk_stream({Req, Context}, 'csv') ->
 %% Load view results based on options.
 %% @end
 %%--------------------------------------------------------------------
--spec load_view(load_params() | cb_context:context()) -> cb_context:context() | cb_cowboy_payload().
-load_view(#{is_chunked := 'true', chunk_response_type := 'json', cowboy_req := Req}=LoadMap) ->
+-spec load_view(load_params() | cb_context:context(), options()) -> cb_context:context() | cb_cowboy_payload().
+load_view(#{is_chunked := 'true', chunk_response_type := 'json', cowboy_req := Req}=LoadMap, _) ->
     LoadMap1 = get_results(LoadMap#{cowboy_req => Req}),
     finish_chunked_json_response(LoadMap1);
-load_view(#{is_chunked := 'true', chunk_response_type := 'csv', cowboy_req := Req}=LoadMap) ->
+load_view(#{is_chunked := 'true', chunk_response_type := 'csv', cowboy_req := Req}=LoadMap, _) ->
     #{context := Context
      ,cowboy_req := Req1
      ,started_chunk := StartedChunk
@@ -574,10 +577,13 @@ load_view(#{is_chunked := 'true', chunk_response_type := 'csv', cowboy_req := Re
             {Req1, cb_context:store(Context, 'is_chunked', 'true')};
         _ -> {Req1, Context}
     end;
-load_view(#{}=LoadMap) ->
+load_view(#{}=LoadMap, _) ->
     format_response(get_results(LoadMap));
-load_view(Context) ->
-    Context.
+load_view(Context, Options) ->
+    case props:get_value('cowboy_req', Options) of
+        'undefined' -> Context;
+        Req -> {Req, Context}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -977,10 +983,9 @@ build_general_load_params(Context, View, Options) ->
 
     {StartKey, EndKey} = start_end_keys(Context, Options, Direction),
 
-    case (IsChunked
-          andalso Req =/= 'undefined'
-         ) orelse
-        not IsChunked
+    case IsChunked
+        andalso Req =/= 'undefined'
+        orelse not IsChunked
     of
         'true' ->
             maps:from_list(
