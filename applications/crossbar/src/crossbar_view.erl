@@ -20,7 +20,7 @@
         ,start_end_keys/2, start_end_keys/5
         ,suffix_key_fun/1
 
-        ,chunk_send_jsons/3
+        ,start_chunk_data_stream/1, chunk_send_jsons/3
 
         ,map_doc_fun/0
         ,map_value_fun/0
@@ -34,7 +34,7 @@
         ,'descending' ,'end_key_map'
         ,'key_map', 'mapper'
         ,'max_range', 'start_key_map'
-        ,'chunked_mapper', 'response_type'
+        ,'chunked_mapper', 'chunk_response_type'
         ,'chunk_size', 'cowboy_req'
         ,'is_chunked'
         ]).
@@ -67,6 +67,7 @@
 
 -type options() :: kazoo_data:view_options() |
                    [{'chunked_mapper', chunked_mapper_fun()} |
+                    {'chunk_response_type', 'json' | 'csv'} |
                     {'chunk_size', pos_integer()} |
                     {'cowboy_req', cowboy_req:req()} |
                     {'created_from', pos_integer()} |
@@ -77,11 +78,11 @@
                     {'key_map', keymap()} |
                     {'mapper', user_mapper_fun()} |
                     {'max_range', pos_integer()} |
-                    {'response_type', 'json' | 'csv'} |
                     {'start_key_map', keymap()}
                    ].
 
 -type load_params() :: #{chunked_mapper => chunked_mapper_fun()
+                        ,chunk_response_type => 'json' | 'csv'
                         ,chunk_size => pos_integer()
                         ,context => cb_context:context()
                         ,cowboy_req => cowboy_req:req()
@@ -95,7 +96,6 @@
                         ,mapper => mapper_fun()
                         ,page_size => pos_integer()
                         ,queried_jobjs => kz_json:objects()
-                        ,response_type => 'json' | 'csv'
                         ,should_paginate => boolean()
                         ,start_key => range_key()
                         ,start_time => gregorian_seconds()
@@ -202,6 +202,7 @@ build_load_range_params(Context, View, Options) ->
 
     IsChunked = props:is_true('is_chunked', Options, 'false'),
     Req = props:get_value('cowboy_req', Options),
+    ChunkType = props:get_value('chunk_response_type', Options, 'json'),
 
     case time_range(Context, Options, TimeFilterKey) of
         {StartTime, EndTime}
@@ -212,11 +213,13 @@ build_load_range_params(Context, View, Options) ->
             maps:from_list(
               props:filter_undefined(
                 [{'chunked_mapper', props:get_value('chunked_mapper', Options)}
+                ,{'chunk_response_type', ChunkType}
                 ,{'chunk_size', get_chunk_size(Options)}
                 ,{'cowboy_req', Req}
                 ,{'context', cb_context:setters(Context
                                                ,[{fun cb_context:set_doc/2, []}
                                                 ,{fun cb_context:store/3, 'has_qs_filter', HasQSFilter}
+                                                ,{fun cb_context:store/3, 'chunk_response_type', ChunkType}
                                                 ])
                  }
                 ,{'databases', props:get_value('databases', Options, [cb_context:account_db(Context)])}
@@ -228,10 +231,10 @@ build_load_range_params(Context, View, Options) ->
                 ,{'mapper', crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)}
                 ,{'page_size', get_limit(Context, Options)}
                 ,{'queried_jobjs', []}
-                ,{'response_type', props:get_value('response_type', Options, 'json')}
                 ,{'should_paginate', cb_context:should_paginate(Context)}
                 ,{'start_time', StartTime}
                 ,{'start_key', StartKey}
+                ,{'started_chunk', 'false'}
                 ,{'total_queried', 0}
                 ,{'view', View}
                 ,{'view_options', build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)}
@@ -477,6 +480,22 @@ chunk_send_jsons(Req, [JObj|JObjs], StartedChunk) ->
             chunk_send_jsons(Req, JObjs, StartedChunk)
     end.
 
+-spec start_chunk_data_stream(cb_cowboy_payload()) -> cb_cowboy_payload().
+start_chunk_data_stream({Req, Context}) ->
+start_chunk_data_stream({Req, _}, 'json') ->
+    Headers = cowboy_req:get('resp_headers', Req),
+    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
+    'ok' = cowboy_req:chunk("{\"data\":[", Req1),
+    {Req1, cb_context:store(Context, 'started_chunk', 'true')};
+start_chunk_data_stream({Req, _}, 'csv') ->
+    Headers0 = [{<<"content-type">>, <<"application/octet-stream">>}
+               ,{<<"content-disposition">>, <<"attachment; filename=\"result.csv\"">>}
+               ],
+    Headers = props:set_values(Headers0, cowboy_req:get('resp_headers', Req)),
+    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
+    {Req1, cb_context:store(Context, 'started_chunk', 'true')}.
+
+
 %%%===================================================================
 %%% Load view internal functions
 %%%===================================================================
@@ -488,25 +507,19 @@ chunk_send_jsons(Req, [JObj|JObjs], StartedChunk) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_view(load_params() | cb_context:context()) -> cb_context:context().
-load_view(#{is_chunked := 'true', response_type := 'json', cowboy_req := Req0}=LoadMap0) ->
-    Headers = cowboy_req:get('resp_headers', Req0),
-    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req0),
-
-    'ok' = cowboy_req:chunk("{\"data\":[", Req1),
-    LoadMap1 = get_results(LoadMap0#{cowboy_req => Req1}),
-    'ok' = cowboy_req:chunk("],", Req1),
-
-    format_chunked_response(LoadMap1),
-    {Req1, cb_context:store(maps:get(context, LoadMap1), 'is_chunked', 'true')};
-load_view(#{is_chunked := 'true', response_type := 'csv', cowboy_req := Req0}=LoadMap0) ->
-    Headers0 = [{<<"content-type">>, <<"application/octet-stream">>}
-               ,{<<"content-disposition">>, <<"attachment; filename=\"result.csv\"">>}
-               ],
-    Headers = props:set_values(Headers0, cowboy_req:get('resp_headers', Req0)),
-    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req0),
-
-    LoadMap1 = get_results(LoadMap0#{cowboy_req => Req1}),
-    {Req1, cb_context:store(maps:get(context, LoadMap1), 'is_chunked', 'true')};
+load_view(#{is_chunked := 'true', chunk_response_type := 'json', cowboy_req := Req}=LoadMap) ->
+    LoadMap1 = get_results(LoadMap#{cowboy_req => Req}),
+    finish_chunked_json_response(LoadMap1);
+load_view(#{is_chunked := 'true', chunk_response_type := 'csv', cowboy_req := Req0}=LoadMap) ->
+    #{context := Context
+     ,cowboy_req := Req1
+     ,started_chunk := StartedChunk
+     }= LoadMap1 = get_results(LoadMap#{cowboy_req => Req1}),
+    case cb_context:resp_status(Context) of
+        'success' when StartedChunk ->
+            {Req1, cb_context:store(Context, 'is_chunked', 'true')};
+        _ -> handle_error(LoadMap1)
+    end;
 load_view(#{}=LoadMap) ->
     format_response(get_results(LoadMap));
 load_view(Context) ->
@@ -532,9 +545,9 @@ get_results(#{databases := Dbs}=LoadMap) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fold_query(ne_binaries(), load_params()) -> load_params().
-fold_query([], LoadMap) ->
+fold_query([], #{context := Context}=LoadMap) ->
     lager:debug("databases exhausted"),
-    LoadMap;
+    LoadMap#{context := cb_context:set_resp_status(Context, 'success')};
 %% query is limited by page_size
 fold_query([Db|RestDbs]=Dbs, #{view := View
                               ,view_options := ViewOpts
@@ -591,13 +604,19 @@ handle_query_result(LoadMap, [Db|RestDbs]=Dbs, DbResults, Limit) ->
 -spec check_page_size_and_length(load_params(), non_neg_integer(), non_neg_integer() | 'undefined', last_key()) ->
                                         {'exhausted' | 'next_db' | 'same_db', load_params()}.
 %% page_size is exhausted when query is limited by page_size
-check_page_size_and_length(#{page_size := PageSize, total_queried := TotalQueried}=LoadMap, Length, _, LastKey)
+check_page_size_and_length(#{context := Context
+                            ,page_size := PageSize
+                            ,total_queried := TotalQueried
+                            }=LoadMap, Length, _, LastKey)
   when is_integer(PageSize)
        andalso PageSize > 0
        andalso TotalQueried + Length == PageSize
        andalso LastKey =/= 'undefined' ->
     lager:debug("page size exhausted: ~b", [PageSize]),
-    {'exhausted', LoadMap#{total_queried => TotalQueried + Length}};
+    {'exhausted', LoadMap#{total_queried => TotalQueried + Length
+                          ,cb_context:set_resp_status(Context, 'success')
+                          }
+    };
 %% query next_db when it's an unlimited query
 check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, 'undefined', _) ->
     {'next_db', LoadMap#{total_queried => TotalQueried + Length}};
@@ -665,7 +684,7 @@ send_chunked_mapper(#{cowboy_req := Req
 
     IsContextStartedChunk = cb_context:fetch(Context2, 'started_chunk', StartedChunk),
 
-    case {Resp, maps:get(response_type, LoadMap)} of
+    case {Resp, maps:get(chunk_response_type, LoadMap)} of
         {'stop', _} ->
             {'stop', LoadMap#{context => Context2}};
         {SentLength, 'json'} when is_integer(SentLength) ->
@@ -713,7 +732,7 @@ apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec apply_chunked_mapper(chunked_mapper_fun(), load_params(), kz_json:objects(), ne_binary()) -> chunked_mapper_ret().
-apply_chunked_mapper('undefined', #{context := Context, response_type := 'json'}, JObjs, _) ->
+apply_chunked_mapper('undefined', #{context := Context, chunk_response_type := 'json'}, JObjs, _) ->
     {JObjs, Context};
 apply_chunked_mapper(Mapper, #{cowboy_req := Req, context := Context}, JObjs, _) when is_function(Mapper, 2) ->
     Mapper({Req, Context}, JObjs);
@@ -763,11 +782,14 @@ format_response(#{total_queried := TotalQueried
 %% `next_start_key`.
 %% @end
 %%--------------------------------------------------------------------
--spec format_chunked_response(load_params()) -> 'ok'.
-format_chunked_response(#{total_queried := TotalQueried
-                         ,cowboy_req := Req
-                         ,context := Context
-                         }=LoadMap) ->
+--spec finish_chunked_json_response(load_params(), boolean()) -> 'ok'.
+finish_chunked_json_response(#{started_chunk := 'false', cowboy_req := Req}, 'false') ->
+    {Req, Context};
+finish_chunked_json_response(#{total_queried := TotalQueried
+                              ,started_chunk := 'true'
+                              ,cowboy_req := Req
+                              ,context := Context
+                              }=LoadMap, _) ->
     NextStartKey = maps:get(last_key, LoadMap, 'undefined'),
     StartKey = maps:get(start_key, LoadMap, 'undefined'),
     EnvJObj = add_paging(StartKey, TotalQueried, NextStartKey, cb_context:resp_envelope(Context)),
@@ -776,7 +798,7 @@ format_chunked_response(#{total_queried := TotalQueried
                    || {K, V} <- EnvProps,
                       kz_term:is_not_empty(V)
               ],
-    'ok' = cowboy_req:chunk(<<(kz_binary:join(Encoded))/binary, "}">>, Req).
+    'ok' = cowboy_req:chunk(<<"], ", (kz_binary:join(Encoded))/binary, "}">>, Req).
 
 %% @private
 -spec add_paging(api_range_key(), non_neg_integer(), api_range_key(), kz_json:object()) -> kz_json:object().

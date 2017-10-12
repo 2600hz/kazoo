@@ -67,7 +67,7 @@ to_json({Req, Context}) ->
               ,{'chunk_size', ?MAX_BULK}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_acdc_stats/2}
-              ,{'response_type', 'json'}
+              ,{'chunk_response_type', 'json'}
               ,{'mapper', crossbar_view:map_value_fun()}
               ],
     crossbar_view:load_modb(Context, ?CB_LIST, Options).
@@ -78,7 +78,7 @@ to_csv({Req, Context}) ->
               ,{'chunk_size', ?MAX_BULK}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_acdc_stats/2}
-              ,{'response_type', 'csv'}
+              ,{'chunk_response_type', 'csv'}
               ,{'mapper', crossbar_view:map_value_fun()}
               ],
     crossbar_view:load_modb(cb_context:store(Context, 'is_csv', 'true'), ?CB_LIST, Options).
