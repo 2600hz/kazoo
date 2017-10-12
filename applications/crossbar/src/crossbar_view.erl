@@ -16,8 +16,12 @@
         ,build_view_query/5
 
         ,direction/1, direction/2
+
+        ,start_end_keys/2, start_end_keys/3
+
         ,time_range/1, time_range/2, time_range/5
-        ,start_end_keys/2, start_end_keys/5
+        ,ranged_start_end_keys/2, ranged_start_end_keys/5
+
         ,suffix_key_fun/1
 
         ,init_chunk_stream/1, chunk_send_jsons/2, chunk_send_jsons/3
@@ -47,8 +51,12 @@
 -type api_range_key() :: kz_json:api_json_term().
 -type range_keys() :: {api_range_key(), api_range_key()}.
 
--type keymap_fun() :: fun((range_key()) -> api_range_key()).
--type keymap() :: 'nil' | api_ne_binary() | ne_binaries() | integer() | keymap_fun().
+-type keymap_fun() :: fun((cb_context:context()) -> api_range_key()) |
+                      fun((cb_context:context(), kazoo_data:view_options()) -> api_range_key()) |
+                      'undefined'.
+
+-type range_keymap_fun() :: fun((range_key()) -> api_range_key()).
+-type keymap() :: 'nil' | api_ne_binary() | ne_binaries() | integer() | range_keymap_fun().
 
 -type user_mapper_fun() :: 'undefined' |
                            fun((kz_json:objects()) -> kz_json:objects()) |
@@ -73,12 +81,12 @@
                     {'created_from', pos_integer()} |
                     {'created_to', pos_integer()} |
                     {'databases', ne_binaries()} |
-                    {'end_key_map', keymap()} |
+                    {'end_key_map', keymap() | range_keymap_fun()} |
                     {'is_chunked', boolean()} |
-                    {'key_map', keymap()} |
+                    {'key_map', keymap() | range_keymap_fun()} |
                     {'mapper', user_mapper_fun()} |
                     {'max_range', pos_integer()} |
-                    {'start_key_map', keymap()}
+                    {'start_key_map', keymap() | range_keymap_fun()}
                    ].
 
 -type load_params() :: #{chunked_mapper => chunked_mapper_fun()
@@ -110,7 +118,7 @@
 -export_type([range_key/0, api_range_key/0, range_keys/0
              ,options/0, direction/0
              ,mapper_fun/0 ,user_mapper_fun/0
-             ,keymap/0, keymap_fun/0
+             ,keymap/0, range_keymap_fun/0, keymap_fun/0
              ,time_range/0
              ]
             ).
@@ -130,13 +138,11 @@ load(Context, View) ->
 %% @doc
 %% This function attempts to load the context with the results of a view
 %% run against the accounts database.
-%%
-%% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
 -spec load(cb_context:context(), ne_binary(), options()) -> cb_context:context().
 load(Context, View, Options) ->
-    load_view(build_load_modb_params(Context, View, Options)).
+    load_view(build_load_params(Context, View, Options)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -151,10 +157,8 @@ load_range(Context, View) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function attempts to load the context with the results of a view
-%% run against the accounts database.
-%%
-%% Failure here returns 500 or 503
+%% This function attempts to load the context with the timestamped
+%% results of a view run against the accounts database.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_range(cb_context:context(), ne_binary(), options()) -> cb_context:context().
@@ -176,8 +180,6 @@ load_modb(Context, View) ->
 %% @doc
 %% This function attempts to load the context with the results of a view
 %% run against the account's MODBs.
-%%
-%% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
 -spec load_modb(cb_context:context(), ne_binary(), options()) -> cb_context:context().
@@ -187,29 +189,27 @@ load_modb(Context, View, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Generates corssbar_view options map for looking up view in time range.
+%% Generates corssbar_view options map for querying view in time range.
 %% @end
 %%--------------------------------------------------------------------
--spec build_load_range_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
-build_load_range_params(Context, View, Options) ->
+-spec build_load_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
+build_load_params(Context, View, Options) ->
     Direction = direction(Context, Options),
 
-    TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
-
-    HasQSFilter = crossbar_filter:is_defined(Context)
-        andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+    HasQSFilter = crossbar_filter:is_defined(Context),
     UserMapper = props:get_value('mapper', Options),
 
     IsChunked = props:is_true('is_chunked', Options, 'false'),
     Req = props:get_value('cowboy_req', Options),
     ChunkType = props:get_value('chunk_response_type', Options, 'json'),
 
-    case time_range(Context, Options, TimeFilterKey) of
-        {StartTime, EndTime}
-          when (IsChunked
-                andalso Req =/= 'undefined'
-               ) orelse not IsChunked ->
-            {StartKey, EndKey} = start_end_keys(Context, Options, Direction, StartTime, EndTime),
+    {StartKey, EndKey} = start_end_keys(Context, Options, Direction),
+
+    case (IsChunked
+          andalso Req =/= 'undefined'
+         ) orelse not IsChunked
+    of
+        'true' ->
             maps:from_list(
               props:filter_undefined(
                 [{'chunked_mapper', props:get_value('chunked_mapper', Options)}
@@ -218,6 +218,7 @@ build_load_range_params(Context, View, Options) ->
                 ,{'cowboy_req', Req}
                 ,{'context', cb_context:setters(Context
                                                ,[{fun cb_context:set_doc/2, []}
+                                                ,{fun cb_context:set_resp_status/2, 'success'}
                                                 ,{fun cb_context:store/3, 'has_qs_filter', HasQSFilter}
                                                 ,{fun cb_context:store/3, 'chunk_response_type', ChunkType}
                                                 ])
@@ -225,14 +226,12 @@ build_load_range_params(Context, View, Options) ->
                 ,{'databases', props:get_value('databases', Options, [cb_context:account_db(Context)])}
                 ,{'direction', Direction}
                 ,{'end_key', EndKey}
-                ,{'end_time', EndTime}
                 ,{'has_qs_filter', HasQSFilter}
                 ,{'is_chunked', IsChunked}
                 ,{'mapper', crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)}
                 ,{'page_size', get_limit(Context, Options)}
                 ,{'queried_jobjs', []}
                 ,{'should_paginate', cb_context:should_paginate(Context)}
-                ,{'start_time', StartTime}
                 ,{'start_key', StartKey}
                 ,{'started_chunk', 'false'}
                 ,{'total_queried', 0}
@@ -240,19 +239,47 @@ build_load_range_params(Context, View, Options) ->
                 ,{'view_options', build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)}
                 ])
              );
-        {_, _} ->
+        'false' ->
             lager:warning("crossbar module has requested a chunked response but did not provide cowboy_req as options"),
-            cb_context:add_system_error('internal_error', Context);
+            cb_context:add_system_error('internal_error', Context)
+    end.
+
+-spec build_load_range_params(cb_context:context(), ne_binary(), options()) ->
+                                     load_params() | cb_context:context().
+build_load_range_params(Context, View, Options) ->
+    TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
+
+    HasQSFilter = crossbar_filter:is_defined(Context)
+        andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+
+    case build_load_params(Context, View, Options) of
+        #{direction := Direction
+         ,context := Context1
+         }=LoadMap ->
+            case time_range(Context1, Options, TimeFilterKey) of
+                {StartTime, EndTime} ->
+                    {StartKey, EndKey} = ranged_start_end_keys(Context1, Options, Direction, StartTime, EndTime),
+                    LoadMap#{context => cb_context:store(Context1, 'has_qs_filter', HasQSFilter)
+                            ,end_key => EndKey
+                            ,end_time => EndTime
+                            ,has_qs_filter => HasQSFilter
+                            ,start_time => StartTime
+                            ,start_key => StartKey
+                            ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
+                            };
+                Ctx -> Ctx
+            end;
         Ctx -> Ctx
     end.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Generates corssbar_view options map for looking up MODBs view.
+%% Generates corssbar_view options map for querying MODBs view.
 %% @end
 %%--------------------------------------------------------------------
--spec build_load_modb_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
+-spec build_load_modb_params(cb_context:context(), ne_binary(), options()) ->
+                                    load_params() | cb_context:context().
 build_load_modb_params(Context, View, Options) ->
     case build_load_range_params(Context, View, Options) of
         #{context := Context1
@@ -304,15 +331,55 @@ build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Equivalent of `start_end_keys/5`, find time ranges and direction
-%% and pass them to `start_end_keys/5`.
+%% Equivalent of `start_end_keys/3`, set direction
 %% @end
 %%--------------------------------------------------------------------
--spec start_end_keys(cb_context:cb_context(), options()) -> range_keys().
+-spec start_end_keys(cb_context:context(), options()) -> range_keys().
 start_end_keys(Context, Options) ->
+    start_end_keys(Context, Options, direction(Context, Options)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find start/end keys based on direction.
+%% If `start_key` or `end_key` is present in the request they will be
+%% used used instead.
+%%
+%% See get_key_maps/2 to find out possible key map options.
+%%
+%% The keys will be swapped if direction is descending.
+%% @end
+%%--------------------------------------------------------------------
+-spec start_end_keys(cb_context:context(), options(), direction()) -> range_keys().
+start_end_keys(Context, Options, Direction) ->
+    {OptsStartK, OptsEndK} = get_start_end_keys(Context, Options),
+
+    case {cb_context:req_value(Context, <<"start_key">>)
+         ,cb_context:req_value(Context, <<"end_key">>)
+         }
+    of
+        {'undefined', 'undefined'} when Direction =:= 'ascending'  -> {OptsStartK, OptsEndK};
+        {StartKeyReq, 'undefined'} when Direction =:= 'ascending'  -> {StartKeyReq, OptsEndK};
+        {'undefined', EndKeyReq}   when Direction =:= 'ascending'  -> {OptsStartK, EndKeyReq};
+        {StartKeyReq, EndKeyReq}   when Direction =:= 'ascending'  -> {StartKeyReq, EndKeyReq};
+        {'undefined', 'undefined'} when Direction =:= 'descending' -> {OptsEndK, OptsStartK};
+        {StartKeyReq, 'undefined'} when Direction =:= 'descending' -> {StartKeyReq, OptsStartK};
+        {'undefined', EndKeyReq}   when Direction =:= 'descending' -> {OptsEndK, EndKeyReq};
+        {StartKeyReq, EndKeyReq}   when Direction =:= 'descending' -> {StartKeyReq, EndKeyReq}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Equivalent of `ranged_start_end_keys/5`, find time ranges and direction
+%% and pass them to `ranged_start_end_keys/5`.
+%% @end
+%%--------------------------------------------------------------------
+-spec ranged_start_end_keys(cb_context:cb_context(), options()) -> range_keys().
+ranged_start_end_keys(Context, Options) ->
     {StartTime, EndTime} = time_range(Context, Options),
     Direction = direction(Context, Options),
-    start_end_keys(Context, Options, Direction, StartTime, EndTime).
+    ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -326,8 +393,8 @@ start_end_keys(Context, Options) ->
 %% The keys will be swapped if direction is descending.
 %% @end
 %%--------------------------------------------------------------------
--spec start_end_keys(cb_context:cb_context(), options(), direction(), gregorian_seconds(), gregorian_seconds()) -> range_keys().
-start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
+-spec ranged_start_end_keys(cb_context:cb_context(), options(), direction(), gregorian_seconds(), gregorian_seconds()) -> range_keys().
+ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
     {StartKeyMap, EndKeyMap} = get_range_key_maps(Options),
     case {cb_context:req_value(Context, <<"start_key">>)
          ,cb_context:req_value(Context, <<"end_key">>)
@@ -351,7 +418,7 @@ start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
 %% cb_cdrs for example.
 %% @end
 %%--------------------------------------------------------------------
--spec suffix_key_fun(keymap()) -> keymap_fun().
+-spec suffix_key_fun(keymap()) -> range_keymap_fun().
 suffix_key_fun('undefined') -> fun(_) -> 'undefined' end;
 suffix_key_fun(K) when is_binary(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_integer(K) -> fun(Ts) -> [Ts, K] end;
@@ -521,7 +588,7 @@ init_chunk_stream({Req, Context}, 'csv') ->
 %% Load view results based on options.
 %% @end
 %%--------------------------------------------------------------------
--spec load_view(load_params() | cb_context:context()) -> cb_context:context().
+-spec load_view(load_params() | cb_context:context()) -> cb_context:context() | cb_cowboy_payload().
 load_view(#{is_chunked := 'true', chunk_response_type := 'json', cowboy_req := Req}=LoadMap) ->
     LoadMap1 = get_results(LoadMap#{cowboy_req => Req}),
     finish_chunked_json_response(LoadMap1);
@@ -1010,8 +1077,32 @@ get_max_range(Options) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Build customized start/end key mapper. If a map option is not
-%% present in the options, the timestamp will be used as the key.
+%% Build customized start/end key mapper
+%% @end
+%%--------------------------------------------------------------------
+-spec get_start_end_keys(cb_context:context(), options()) -> {keymap_fun(), keymap_fun()}.
+get_start_end_keys(Context, Options) ->
+    case props:get_value('key_map', Options) of
+        'undefined' ->
+            {map_keymap(Context, Options, props:get_value('start_key_map', Options))
+            ,map_keymap(Context, Options, props:get_value('end_key_map', Options))
+            };
+        KeyMap ->
+            {map_keymap(Context, Options, KeyMap)
+            ,map_keymap(Context, Options, KeyMap)
+            }
+    end.
+
+-spec map_keymap(cb_context:context(), options(), keymap_fun()) -> api_range_key().
+map_keymap(Context, _, Fun) when is_function(Fun, 1) -> Fun(Context) ;
+map_keymap(Context, Options, Fun) when is_function(Fun, 2) -> Fun(Options, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Build customized start/end key mapper for ranged query.
+%% If a map option is not present in the options, the timestamp
+%% will be used as the key.
 %%
 %% Possible key maps options:
 %%   - `key_map`: use this to map both start/end keys
@@ -1025,24 +1116,24 @@ get_max_range(Options) ->
 %%   - a function/1: To customize your own key using a function
 %% @end
 %%--------------------------------------------------------------------
--spec get_range_key_maps(options()) -> {keymap_fun(), keymap_fun()}.
+-spec get_range_key_maps(options()) -> {range_keymap_fun(), range_keymap_fun()}.
 get_range_key_maps(Options) ->
     case props:get_value('key_map', Options) of
         'undefined' ->
             {get_key_map(props:get_value('start_key_map', Options))
             ,get_key_map(props:get_value('end_key_map', Options))
             };
-        KeyMap -> {map_keymap(KeyMap), map_keymap(KeyMap)}
+        KeyMap -> {map_range_keymap(KeyMap), map_range_keymap(KeyMap)}
     end.
 
--spec get_key_map('undefined' | keymap()) -> keymap_fun().
+-spec get_key_map('undefined' | keymap()) -> range_keymap_fun().
 get_key_map('undefined') -> fun kz_term:identity/1;
-get_key_map(KeyMap) -> map_keymap(KeyMap).
+get_key_map(KeyMap) -> map_range_keymap(KeyMap).
 
--spec map_keymap(keymap()) -> keymap_fun().
-map_keymap('nil') -> fun(_) -> 'undefined' end;
-map_keymap('undefined') -> fun(_) -> 'undefined' end;
-map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
-map_keymap(K) when is_integer(K) -> fun(Ts) -> [K, Ts] end;
-map_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
-map_keymap(K) when is_function(K, 1) -> K.
+-spec map_range_keymap(keymap()) -> range_keymap_fun().
+map_range_keymap('nil') -> fun(_) -> 'undefined' end;
+map_range_keymap('undefined') -> fun(_) -> 'undefined' end;
+map_range_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
+map_range_keymap(K) when is_integer(K) -> fun(Ts) -> [K, Ts] end;
+map_range_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
+map_range_keymap(K) when is_function(K, 1) -> K.
