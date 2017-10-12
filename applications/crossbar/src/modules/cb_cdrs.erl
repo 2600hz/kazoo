@@ -219,7 +219,7 @@ provided_types(Context) ->
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    validate_path_and_date_range(Context, cb_context:req_nouns()).
+    validate_path_and_date_range(Context, cb_context:req_nouns(Context)).
 
 validate(Context, ?PATH_INTERACTION) ->
     validate_path_and_date_range(Context, cb_context:req_nouns(Context));
@@ -347,7 +347,7 @@ load_chunked_cdrs(Payload, JObjs, Db) ->
 
 %% @public
 -spec load_chunked_cdr_ids(cb_cowboy_payload(), ne_binaries(), ne_binary()) -> crossbar_view:chunked_mapper_ret().
-load_chunked_cdr_ids({_, Context}, Ids, Db) ->
+load_chunked_cdr_ids({Req, Context}, Ids, Db) ->
     case kz_datamgr:open_docs(Db, Ids, [{'doc_type', <<"cdr">>}]) of
         {'ok', Results} ->
             JObjs = [kz_json:get_value(<<"doc">>, Result)
@@ -357,13 +357,13 @@ load_chunked_cdr_ids({_, Context}, Ids, Db) ->
             case cb_context:fetch(Context, 'is_csv', 'false') of
                 'true' ->
                     {CSVs, Context1} = lists:foldl(fun normalize_cdr_to_csv/2, {[], Context}, JObjs),
-                    {lists:reverse(CSVs), Context1};
+                    {lists:reverse(CSVs), {Req, Context1}};
                 'false' ->
-                    {[normalize_cdr_to_jobj(JObj, Context) || JObj <- JObjs], Context}
+                    {[normalize_cdr_to_jobj(JObj, Context) || JObj <- JObjs], {Req, Context}}
             end;
         {'error', _Reason} ->
             lager:debug("failed to load cdrs doc from ~s: ~p", [Db, _Reason]),
-            {'stop', Context}
+            {'stop', {Req, Context}}
     end.
 
 %%--------------------------------------------------------------------
@@ -394,7 +394,7 @@ normalize_cdr_to_csv(JObj, {CSVs, Context}) ->
             {[<<CSV/binary, "\r\n">>|CSVs], Context};
         'false' ->
             CSVHeader = kz_binary:join([K || {K, _Fun} <- csv_rows(Context)], <<",">>),
-            {[<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>|CSVs], cb_context:store(Context, 'started_chunk', 'true')}
+            {[<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>|CSVs], Context}
 
     end.
 

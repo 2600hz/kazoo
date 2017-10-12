@@ -158,13 +158,13 @@ load_stats_summary(Context, _Nouns) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_chunked_acdc_stats(cb_cowboy_payload(), kz_json:objects()) -> crossbar_view:chunked_mapper_ret().
-load_chunked_acdc_stats({_, Context}, JObjs) ->
+load_chunked_acdc_stats({Req, Context}, JObjs) ->
     case cb_context:fetch(Context, 'is_csv', 'false') of
         'true' ->
             {CSVs, Context1} = lists:foldl(fun normalize_stat_to_csv/2, {[], Context}, JObjs),
-            {lists:reverse(CSVs), Context1};
+            {lists:reverse(CSVs), {Req, Context1}};
         'false' ->
-            {[kz_json:from_list([{K, F(JObj)} || {K, F} <- ?COLUMNS]) || JObj <- JObjs], Context}
+            {[kz_json:from_list([{K, F(JObj)} || {K, F} <- ?COLUMNS]) || JObj <- JObjs], {Req, Context}}
     end.
 
 -spec normalize_stat_to_csv(kz_json:objects(), {binaries(), cb_context:context()}) -> {binaries(), cb_context:context()}.
