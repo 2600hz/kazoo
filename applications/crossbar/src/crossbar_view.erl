@@ -516,23 +516,29 @@ chunk_send_jsons({_, Context}=Payload, JObjs) ->
                               cb_cowboy_payload().
 chunk_send_jsons(Payload, [], _) ->
     Payload;
-chunk_send_jsons({Req, _}=Payload, [JObj|JObjs], StartedChunk) ->
-    try kz_json:encode(JObj) of
+chunk_send_jsons({Req, _}=Payload, JObjs, StartedChunk) ->
+    try do_encode_to_json(JObjs) of
         JSON when StartedChunk ->
             'ok' = cowboy_req:chunk(<<",", JSON/binary>>, Req),
-            chunk_send_jsons(Payload, JObjs, StartedChunk);
+            Payload;
         JSON ->
-            P = {Req1, _} = init_chunk_stream(Payload, 'json'),
+            Payload2 = {Req1, _} = init_chunk_stream(Payload, 'json'),
             'ok' = cowboy_req:chunk(JSON, Req1),
-            chunk_send_jsons(P, JObjs, 'true')
+            Payload2
     catch
         'throw':{'json_encode', {'bad_term', _Term}} ->
             lager:debug("json encoding failed on ~p", [_Term]),
-            chunk_send_jsons(Payload, JObjs, StartedChunk);
+            Payload;
         _E:_R ->
             lager:debug("failed to encode response: ~s: ~p", [_E, _R]),
-            chunk_send_jsons(Payload, JObjs, StartedChunk)
+            Payload
     end.
+
+%% private
+-spec do_encode_to_json(kz_json:objects()) -> binary().
+do_encode_to_json(JObjs) ->
+    Encoded = kz_json:encode(JObjs),
+    binary:part(Encoded, 1, size(Encoded) - 2).
 
 -spec init_chunk_stream(cb_cowboy_payload()) -> cb_cowboy_payload().
 init_chunk_stream({_, Context}=Payload) ->
