@@ -70,7 +70,6 @@
 -define(SYSCONF_SET_RESP_VALUES, [{<<"Event-Name">>, <<"set_resp">>} | ?SYSCONF_VALUES]).
 
 -define(SYSCONF_TYPES, [{?CAT_KEY, fun is_binary/1}
-                       ,{?KEY_KEY, fun is_binary/1}
                        ,{<<"Node">>, fun is_binary/1}
                        ]).
 
