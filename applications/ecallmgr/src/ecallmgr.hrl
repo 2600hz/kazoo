@@ -301,6 +301,7 @@
                               ,{<<"Default-Language">>, <<"default_language">>}
                               ,{<<"RECORD_STEREO">>, <<"RECORD_STEREO">>}
                               ,{<<"RECORD_SOFTWARE">>, <<"RECORD_SOFTWARE">>}
+                              ,{<<"From-User">>, <<"sip_from_user">>}
                               ,{<<"From-URI">>, <<"sip_from_uri">>}
                               ,{<<"To-URI">>, <<"sip_to_uri">>}
                               ,{<<"Request-URI">>, <<"sip_req_uri">>}
