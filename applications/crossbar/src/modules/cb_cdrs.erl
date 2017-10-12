@@ -113,7 +113,7 @@ to_json(Req, Context, {'undefined', _}) ->
     {Req, Context};
 to_json(Req, Context, {ViewName, Options0}) ->
     Options = [{'is_chunked', 'true'}
-              ,{'chunk_size', ?MAX_BULK}
+              ,{'chunk_size', 100}
               ,{'cowboy_req', Req}
               ,{'chunked_mapper', fun load_chunked_cdrs/3}
               ,{'chunk_response_type', 'json'}
