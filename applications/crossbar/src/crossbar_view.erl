@@ -11,9 +11,9 @@
         ,load_range/2, load_range/3
         ,load_modb/2, load_modb/3
 
+        ,build_load_params/3
         ,build_load_range_params/3
         ,build_load_modb_params/3
-        ,build_view_query/5
 
         ,direction/1, direction/2
 
@@ -32,7 +32,7 @@
 
 -include("crossbar.hrl").
 
--define(CB_VIEW_OPTIONS,
+-define(CB_SPECIFIC_VIEW_OPTIONS,
         ['ascending', 'created_from'
         ,'created_to', 'databases'
         ,'descending' ,'end_key_map'
@@ -189,73 +189,42 @@ load_modb(Context, View, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Generates corssbar_view options map for querying view in time range.
+%% Generates corssbar_view options map for querying view.
 %% @end
 %%--------------------------------------------------------------------
 -spec build_load_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
 build_load_params(Context, View, Options) ->
-    Direction = direction(Context, Options),
+    case build_general_load_params(Context, View, Options) of
+        #{direction := Direction
+         ,context := Context1
+         }=LoadMap ->
+            HasQSFilter = crossbar_filter:is_defined(Context1),
+            UserMapper = props:get_value('mapper', Options),
 
-    HasQSFilter = crossbar_filter:is_defined(Context),
-    UserMapper = props:get_value('mapper', Options),
+            {StartKey, EndKey} = start_end_keys(Context1, Options, Direction),
 
-    IsChunked = props:is_true('is_chunked', Options, 'false'),
-    Req = props:get_value('cowboy_req', Options),
-    ChunkType = props:get_value('chunk_response_type', Options, 'json'),
-
-    {StartKey, EndKey} = start_end_keys(Context, Options, Direction),
-
-    case (IsChunked
-          andalso Req =/= 'undefined'
-         ) orelse not IsChunked
-    of
-        'true' ->
-            maps:from_list(
-              props:filter_undefined(
-                [{'chunked_mapper', props:get_value('chunked_mapper', Options)}
-                ,{'chunk_response_type', ChunkType}
-                ,{'chunk_size', get_chunk_size(Options)}
-                ,{'cowboy_req', Req}
-                ,{'context', cb_context:setters(Context
-                                               ,[{fun cb_context:set_doc/2, []}
-                                                ,{fun cb_context:set_resp_status/2, 'success'}
-                                                ,{fun cb_context:store/3, 'has_qs_filter', HasQSFilter}
-                                                ,{fun cb_context:store/3, 'chunk_response_type', ChunkType}
-                                                ])
-                 }
-                ,{'databases', props:get_value('databases', Options, [cb_context:account_db(Context)])}
-                ,{'direction', Direction}
-                ,{'end_key', EndKey}
-                ,{'has_qs_filter', HasQSFilter}
-                ,{'is_chunked', IsChunked}
-                ,{'mapper', crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)}
-                ,{'page_size', get_limit(Context, Options)}
-                ,{'queried_jobjs', []}
-                ,{'should_paginate', cb_context:should_paginate(Context)}
-                ,{'start_key', StartKey}
-                ,{'started_chunk', 'false'}
-                ,{'total_queried', 0}
-                ,{'view', View}
-                ,{'view_options', build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)}
-                ])
-             );
-        'false' ->
-            lager:warning("crossbar module has requested a chunked response but did not provide cowboy_req as options"),
-            cb_context:add_system_error('internal_error', Context)
+            LoadMap#{context => cb_context:store(Context1, 'has_qs_filter', HasQSFilter)
+                    ,end_key => EndKey
+                    ,mapper => crossbar_filter:build_with_mapper(Context1, UserMapper, HasQSFilter)
+                    ,start_key => StartKey
+                    ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
+                    };
+        Ctx -> Ctx
     end.
 
 -spec build_load_range_params(cb_context:context(), ne_binary(), options()) ->
                                      load_params() | cb_context:context().
 build_load_range_params(Context, View, Options) ->
-    TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
-
-    HasQSFilter = crossbar_filter:is_defined(Context)
-        andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
-
-    case build_load_params(Context, View, Options) of
+    case build_general_load_params(Context, View, Options) of
         #{direction := Direction
          ,context := Context1
          }=LoadMap ->
+            TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
+            UserMapper = props:get_value('mapper', Options),
+
+            HasQSFilter = crossbar_filter:is_defined(Context)
+                andalso not crossbar_filter:is_only_time_filter(Context, TimeFilterKey),
+
             case time_range(Context1, Options, TimeFilterKey) of
                 {StartTime, EndTime} ->
                     {StartKey, EndKey} = ranged_start_end_keys(Context1, Options, Direction, StartTime, EndTime),
@@ -263,6 +232,7 @@ build_load_range_params(Context, View, Options) ->
                             ,end_key => EndKey
                             ,end_time => EndTime
                             ,has_qs_filter => HasQSFilter
+                            ,mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
                             ,start_time => StartTime
                             ,start_key => StartKey
                             ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
@@ -308,11 +278,13 @@ build_load_modb_params(Context, View, Options) ->
 build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter) ->
     DeleteKeys = ['startkey', 'endkey'
                  ,'ascending', 'limit'
-                  | ?CB_VIEW_OPTIONS
+                  | ?CB_SPECIFIC_VIEW_OPTIONS
                  ],
     DefaultOptions =
         props:filter_undefined(
-          [{'startkey', StartKey}, {'endkey', EndKey}, Direction
+          [{'startkey', StartKey}
+          ,{'endkey', EndKey}
+          ,Direction
            | props:delete_keys(DeleteKeys, Options)
           ]),
 
@@ -989,6 +961,54 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 %%%===================================================================
 %%% Build load view parameters internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Generates general corssbar_view options map for querying view.
+%% @end
+%%--------------------------------------------------------------------
+build_general_load_params(Context, View, Options) ->
+    Direction = direction(Context, Options),
+
+    IsChunked = props:is_true('is_chunked', Options, 'false'),
+    Req = props:get_value('cowboy_req', Options),
+    ChunkType = props:get_value('chunk_response_type', Options, 'json'),
+
+    {StartKey, EndKey} = start_end_keys(Context, Options, Direction),
+
+    case (IsChunked
+          andalso Req =/= 'undefined'
+         ) orelse not IsChunked
+    of
+        'true' ->
+            maps:from_list(
+              props:filter_undefined(
+                [{'chunked_mapper', props:get_value('chunked_mapper', Options)}
+                ,{'chunk_response_type', ChunkType}
+                ,{'chunk_size', get_chunk_size(Options)}
+                ,{'cowboy_req', Req}
+                ,{'context', cb_context:setters(Context
+                                               ,[{fun cb_context:set_doc/2, []}
+                                                ,{fun cb_context:set_resp_status/2, 'success'}
+                                                ,{fun cb_context:store/3, 'chunk_response_type', ChunkType}
+                                                ])
+                 }
+                ,{'databases', props:get_value('databases', Options, [cb_context:account_db(Context)])}
+                ,{'direction', Direction}
+                ,{'is_chunked', IsChunked}
+                ,{'page_size', get_limit(Context, Options)}
+                ,{'queried_jobjs', []}
+                ,{'should_paginate', cb_context:should_paginate(Context)}
+                ,{'started_chunk', 'false'}
+                ,{'total_queried', 0}
+                ,{'view', View}
+                ])
+             );
+        'false' ->
+            lager:warning("crossbar module has requested a chunked response but did not provide cowboy_req as options"),
+            cb_context:add_system_error('internal_error', Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
