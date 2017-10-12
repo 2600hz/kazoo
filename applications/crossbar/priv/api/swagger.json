@@ -25891,6 +25891,12 @@
                     "description": "crossbar ip",
                     "type": "string"
                 },
+                "load_view_chunk_size": {
+                    "default": 50,
+                    "description": "crossbar load_view_chunk_size",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "magic_path_patterns": {
                     "default": [
                         "/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw",
@@ -26192,6 +26198,17 @@
                     "default": 500,
                     "description": "crossbar.braintree maximum account credit",
                     "type": "number"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.crossbar.call_inspector": {
+            "description": "Schema for crossbar.call_inspector system_config",
+            "properties": {
+                "maximum_bulk": {
+                    "default": 50,
+                    "description": "crossbar call_inspector maximum_bulk",
+                    "type": "integer"
                 }
             },
             "type": "object"

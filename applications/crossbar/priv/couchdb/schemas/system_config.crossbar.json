@@ -45,6 +45,12 @@
             "description": "crossbar ip",
             "type": "string"
         },
+        "load_view_chunk_size": {
+            "default": 50,
+            "description": "crossbar load_view_chunk_size",
+            "minimum": 1,
+            "type": "integer"
+        },
         "magic_path_patterns": {
             "default": [
                 "/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw",
