@@ -53,14 +53,15 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
     CallID = ts_callflow:get_aleg_id(State),
     'true' = kapi_dialplan:bridge_endpoint_v(Endpoint),
 
-    MediaHandling = case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception-Account-ID">>], JObj) =/= 'undefined'
-                        orelse kz_term:is_false(kz_json:get_value(<<"Bypass-Media">>, Endpoint))
+    InceptionAccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Inception-Account-ID">>], JObj),
+    MediaHandling = case 'undefined' =/= InceptionAccountId
+                        orelse kz_json:is_false(<<"Bypass-Media">>, Endpoint)
                     of
                         'true' -> <<"process">>; %% bypass media is false, process media
                         'false' -> <<"bypass">>
                     end,
 
-    Id = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Endpoint),
+    Id = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Endpoint),
 
     Command = [{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [Endpoint]}
@@ -73,7 +74,7 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
                                        ,?APP_NAME, ?APP_VERSION
                                        )
               ],
-    State1 = ts_callflow:set_failover(State, kz_json:get_value(<<"Failover">>, Endpoint, kz_json:new())),
+    State1 = ts_callflow:set_failover(State, kz_json:get_json_value(<<"Failover">>, Endpoint, kz_json:new())),
     State2 = ts_callflow:set_endpoint_data(State1, Endpoint),
     send_park(State2, Command).
 
@@ -170,14 +171,14 @@ try_failover(State) ->
 
 -spec failover(ts_callflow:state(), kz_json:object()) -> 'ok'.
 failover(State, Failover) ->
-    case kz_json:get_ne_value(<<"e164">>, Failover) of
+    case kz_json:get_ne_binary_value(<<"e164">>, Failover) of
         'undefined' ->
-            try_failover_sip(State, kz_json:get_value(<<"sip">>, Failover));
+            try_failover_sip(State, kz_json:get_ne_binary_value(<<"sip">>, Failover));
         DID ->
             try_failover_e164(State, DID)
     end.
 
--spec try_failover_sip(ts_callflow:state(), api_binary()) -> 'ok'.
+-spec try_failover_sip(ts_callflow:state(), api_ne_binary()) -> 'ok'.
 try_failover_sip(_, 'undefined') ->
     lager:info("SIP failover undefined");
 try_failover_sip(State, SIPUri) ->
@@ -206,8 +207,8 @@ try_failover_sip(State, SIPUri) ->
 -spec try_failover_e164(ts_callflow:state(), ne_binary()) -> 'ok'.
 try_failover_e164(State, ToDID) ->
     RouteReq = ts_callflow:get_request_data(State),
-    OriginalCIdNumber = kz_json:get_value(<<"Caller-ID-Number">>, RouteReq),
-    OriginalCIdName = kz_json:get_value(<<"Caller-ID-Name">>, RouteReq),
+    OriginalCIdNumber = kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, RouteReq),
+    OriginalCIdName = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, RouteReq),
     CallID = ts_callflow:get_aleg_id(State),
     AccountId = ts_callflow:get_account_id(State),
 
@@ -228,12 +229,12 @@ try_failover_e164(State, ToDID) ->
           ,{<<"Flags">>, kz_json:get_value(<<"flags">>, Endpoint)}
           ,{<<"Timeout">>, Timeout}
           ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, Endpoint)}
-          ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"Outbound-Caller-ID-Name">>, Endpoint, OriginalCIdName)}
-          ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"Outbound-Caller-ID-Number">>, Endpoint, OriginalCIdNumber)}
-          ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, Endpoint)}
-          ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"Hunt-Account-ID">>, Endpoint)}
+          ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"Outbound-Caller-ID-Name">>, Endpoint, OriginalCIdName)}
+          ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"Outbound-Caller-ID-Number">>, Endpoint, OriginalCIdNumber)}
+          ,{<<"Ringback">>, kz_json:get_ne_binary_value(<<"ringback">>, Endpoint)}
+          ,{<<"Hunt-Account-ID">>, kz_json:get_ne_binary_value(<<"Hunt-Account-ID">>, Endpoint)}
           ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
-          ,{<<"Inception">>,  kz_json:get_value(<<"Inception">>, CCVs)}
+          ,{<<"Inception">>,  kz_json:get_ne_binary_value(<<"Inception">>, CCVs)}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
            | kz_api:default_headers(ts_callflow:get_worker_queue(State)
                                    ,?APP_NAME, ?APP_VERSION
@@ -270,9 +271,9 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     RoutingData1 = routing_data(ToDID, AccountId),
 
     CidOptions  = props:get_value(<<"Caller-ID-Options">>, RoutingData1),
-    CidFormat   = kz_json:get_ne_value(<<"format">>, CidOptions),
-    OldCNum = kz_json:get_value(<<"Caller-ID-Number">>, JObj),
-    OldCNam = kz_json:get_value(<<"Caller-ID-Name">>, JObj, OldCNum),
+    CidFormat   = kz_json:get_json_value(<<"format">>, CidOptions),
+    OldCNum = kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj),
+    OldCNam = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, OldCNum),
     NewCallerId = maybe_anonymize_caller_id(State, {OldCNam, OldCNum}, CidFormat),
     RoutingData = RoutingData1 ++ NewCallerId,
 
@@ -444,7 +445,8 @@ callee_id([JObj | T]) ->
             end
     end.
 
--spec maybe_anonymize_caller_id(ts_callflow:state(), {ne_binary(), ne_binary()}, ne_binary()) -> kz_proplist().
+-spec maybe_anonymize_caller_id(ts_callflow:state(), {ne_binary(), ne_binary()}, api_object()) ->
+                                       kz_proplist().
 maybe_anonymize_caller_id(State, DefaultCID, CidFormat) ->
     AccountId = ts_callflow:get_account_id(State),
     CCVs = ts_callflow:get_custom_channel_vars(State),
