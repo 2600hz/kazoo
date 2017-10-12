@@ -420,6 +420,13 @@
                           ,'loopback::bowout'
                           ]).
 
+-define(FS_FETCH_SECTIONS, ['configuration'
+                           ,'directory'
+                           ,'dialplan'
+                           ,'channels'
+                           ,'languages'
+                           ]).
+
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
                          ,<<"FreeSWITCH-IPv4">>, <<"FreeSWITCH-IPv6">>, <<"Event-Date-Local">>
                          ,<<"Event-Date-GMT">>, <<"Event-Date-Timestamp">>, <<"Event-Calling-File">>
@@ -502,6 +509,16 @@
 
 -define(FS_OPTION_MSG(Node), {'option', Node}).
 
+-define(FS_NODE_GRACE_PERIOD_REG, 'fs_node_grace_period').
+-define(FS_NODE_GRACE_PERIOD_MSG(Node), {'fs_node_grace_period', Node}).
+-define(FS_NODEDOWN_REG, 'fs_node_down').
+-define(FS_NODEDOWN_MSG(Node, Options), {'fs_node_down', Node, Options}).
+-define(FS_NODEDOWN(Node), {'fs_node_down', Node}).
+-define(FS_NODEUP_REG, 'fs_node_up').
+-define(FS_NODEUP_MSG(Node, Options), {'fs_node_up', Node, Options}).
+
+-define(ROUTE_WINNER_EVENT, <<"ROUTE_WINNER">>).
+
 -define(FS_CARRIER_ACL_LIST, <<"trusted">>).
 -define(FS_SBC_ACL_LIST, <<"authoritative">>).
 
@@ -566,6 +583,8 @@
         ]).
 
 -define(HTTP_GET_PREFIX, "http_cache://").
+-define(CALL_CTL_NAME(C), kz_term:to_atom(<<"callctl_", C/binary>>, 'true')).
+-define(CALLCTL_SUPERVISOR_NAME(Node), kz_term:to_atom(<<"call_ctl_sup_", (kz_term:to_binary(Node))/binary>>, true)).
 
 -define(ECALLMGR_HRL, 'true').
 -endif.
