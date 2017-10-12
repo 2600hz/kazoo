@@ -531,7 +531,7 @@ filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
        Filter =:= ?VM_FOLDER_SAVED;
        Filter =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
-    QsFiltered = filtered_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
+    QsFiltered = crossbar_filter:by_doc(Mess, Context),
     case QsFiltered
         orelse kzd_box_message:folder(Mess) =:= Filter
     of
@@ -542,7 +542,7 @@ filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
 filter_messages(_, [], _Context, Selected) -> Selected;
 filter_messages([Mess|Messages], Filters, Context, Selected) ->
     Id = kzd_box_message:media_id(Mess),
-    QsFiltered = filtered_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
+    QsFiltered = crossbar_filter:by_doc(Mess, Context),
 
     case QsFiltered
         orelse lists:member(Id, Filters)
@@ -1102,11 +1102,6 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
                 end,
     Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
-
--spec filtered_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
-filtered_by_qs(_, 'false', _Context) -> 'false';
-filtered_by_qs(JObj, 'true', Context) ->
-    crossbar_doc:filtered_doc_by_qs(JObj, Context).
 
 %%--------------------------------------------------------------------
 %% @private

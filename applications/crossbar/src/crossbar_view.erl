@@ -979,7 +979,8 @@ build_general_load_params(Context, View, Options) ->
 
     case (IsChunked
           andalso Req =/= 'undefined'
-         ) orelse not IsChunked
+         ) orelse
+        not IsChunked
     of
         'true' ->
             maps:from_list(

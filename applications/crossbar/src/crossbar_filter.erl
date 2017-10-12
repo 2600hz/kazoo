@@ -18,6 +18,11 @@
 
 -include("crossbar.hrl").
 
+-ifdef(TEST).
+-export([filter_doc_by_querystring/2
+        ]).
+-endif.
+
 -type filter_fun() :: fun((kz_json:object()) -> boolean()).
 
 -export_type([filter_fun/0]).
@@ -67,7 +72,7 @@ build_with_mapper(Context, UserMapper, 'true') ->
 %%--------------------------------------------------------------------
 -spec is_defined(cb_context:context()) -> boolean().
 is_defined(Context) ->
-    cb_context:fetch(Context, 'has_qs_filter', 'true') %% sets by build modb/range load params
+    cb_context:fetch(Context, 'has_qs_filter', 'true') %% set by crossbar_view build load params only
         andalso kz_json:any(fun is_filter_key/1, cb_context:query_string(Context)).
 
 %%--------------------------------------------------------------------
