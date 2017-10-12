@@ -59,6 +59,7 @@ version(Node, Timeout) ->
         'timeout' -> {'error', 'timeout'};
         Result -> Result
     catch
+        exit:{{nodedown, _Node}, _} -> {error, nodedown}; 
         _E:_R ->
             lager:info("failed to get mod_kazoo version from ~s: ~p ~p"
                       ,[Node, _E, _R]),
