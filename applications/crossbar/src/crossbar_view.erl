@@ -633,9 +633,6 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
                ,[View, Db, maps:get(start_key, LoadMap, "no_start_key"), PageSize, LimitWithLast, Direction]
                ),
 
-    % io:format("~nquerying view '~s' from '~s', starting at '~p' with page size ~b and limit ~p in direction ~s~n"
-    %            ,[View, Db, maps:get(start_key, LoadMap, "no_start_key"), PageSize, LimitWithLast, Direction]
-    %            ),
     NextStartKey = maps:get(last_key, LoadMap, props:get_value('startkey', ViewOpts)),
     ViewOptions = props:filter_undefined(
                     [{'limit', LimitWithLast}
@@ -644,7 +641,6 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
                     ]),
 
     lager:debug("kz_datamgr:get_results(~s, ~s, ~p)", [Db, View, ViewOptions]),
-    %% io:format("~nViewOptions ~p~n", [ViewOptions]),
     case kz_datamgr:get_results(Db, View, ViewOptions) of
         {'error', 'not_found'} when [] =:= RestDbs ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
@@ -653,7 +649,6 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             fold_query(RestDbs, LoadMap);
         {'error', Error} ->
-            %% io:format("~n Error ~p", [Error]),
             LoadMap#{context => crossbar_doc:handle_datamgr_errors(Error, View, Context)};
         {'ok', JObjs} ->
             handle_query_result(LoadMap, Dbs, JObjs, LimitWithLast)
@@ -679,7 +674,6 @@ handle_query_result(LoadMap, [Db|RestDbs]=Dbs, Results, Limit) ->
     Filtered = length(FilteredJObj),
 
     lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, Filtered, LastKey]),
-    %% io:format("~ndb_returned: ~b passed_filter: ~p next_start_key: ~p~n", [ResultsLength, Filtered, LastKey]),
 
     {LengthOrStop, LoadMap2} =
         maybe_send_in_chunk(LoadMap#{last_key => LastKey}, Db, FilteredJObj, Filtered),
@@ -713,7 +707,6 @@ check_page_size_and_length(#{context := Context
        andalso TotalQueried + Length == PageSize
        andalso LastKey =/= 'undefined' ->
     lager:debug("page size exhausted: ~b", [PageSize]),
-    %% io:format("~npage size exhausted: ~b~n", [PageSize]),
     {'exhausted', LoadMap#{total_queried => TotalQueried + Length
                           ,context => cb_context:set_resp_status(Context, 'success')
                           ,start_key => LastKey
@@ -727,47 +720,37 @@ check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, Lim
   when Length =< Limit
        andalso LastKey =/= 'undefined' ->
     lager:debug("db has more chunks to give, querying same db again..."),
-    %% io:format("~ndb has more chunks to give, querying same db again...~nLimit ~p LastKey ~p Length ~p page_size ~p old total_queried ~p"
-    %%    , [Limit, LastKey, Length, maps:get(page_size, LoadMap), maps:get(total_queried, LoadMap) ]),
     {'same_db', LoadMap#{total_queried => TotalQueried + Length}};
 %% just query next_db
 check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, _Limit, _LastKey) ->
-    %% io:format("~njust next_db~n"),
     {'next_db', LoadMap#{total_queried => TotalQueried + Length}}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Apply filter to result, find last key and if chunk is requested
-%% apply chunked mapper function.
-%% Then check page_size, limit,  result length and chunk size to see
-%% we're done or shall continue.
+%% Find out db request limit to use based on chunk size and remaining
+%% amount to satisfy page_size
 %% @end
 %%--------------------------------------------------------------------
 -spec limit_with_last_key(boolean(), api_pos_integer(), pos_integer(), non_neg_integer()) ->
                                  api_pos_integer().
+%% un-chunked unlimited request
 limit_with_last_key('false', 'undefined', _, _) ->
-    %% io:format("~nno chunked, undefined page_size ~n"),
     'undefined';
+%% un-chunked limited request
 limit_with_last_key('false', PageSize, _, TotalQueried) ->
-    %% io:format("~nno chunked with page_size ~p ~n", [{PageSize, TotalQueried}]),
     1 + PageSize - TotalQueried;
+%% chunked unlimited request
 limit_with_last_key('true', 'undefined', ChunkSize, TotalQueried) ->
-    %% io:format("~nundefined page_size ~p ~n", [{ChunkSize, TotalQueried}]),
     1 + ChunkSize - TotalQueried;
+%% same chunk_size and page_size
 limit_with_last_key('true', PageSize, PageSize, TotalQueried) ->
-    %% io:format("~nsame page_size ~p ~n", [{PageSize, TotalQueried}]),
     1 + PageSize - TotalQueried;
-limit_with_last_key('true', PageSize, ChunkSize, TotalQueried) when ChunkSize < PageSize,
-                                                                    ChunkSize > TotalQueried ->
-    %% io:format("~nchunkSize < PageSize and ChunkSize >= TotalQueried ~p", [{PageSize, ChunkSize, TotalQueried}]),
+%% chunk_size is lower than remaining amount to query, forcing chunk_size
+limit_with_last_key('true', PageSize, ChunkSize, TotalQueried) when ChunkSize < (PageSize - TotalQueried) ->
     1 + ChunkSize;
-limit_with_last_key('true', PageSize, ChunkSize, TotalQueried) when ChunkSize < PageSize,
-                                                                    ChunkSize == TotalQueried ->
-    %% io:format("~nchunkSize < PageSize and ChunkSize == TotalQueried ~p", [{PageSize, ChunkSize, TotalQueried}]),
-    2;
+%% page_size is bigger than chunk size, using page_size
 limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
-    %% io:format("~nother ~p ~n", [{PageSize, _ChunkSize, TotalQueried}]),
     1 + PageSize - TotalQueried.
 
 %%--------------------------------------------------------------------
@@ -926,17 +909,13 @@ apply_chunked_mapper(Mapper, #{cowboy_req := Req
 -spec last_key(last_key(), kz_json:objects(), non_neg_integer() | 'undefined', non_neg_integer()) ->
                       {last_key(), kz_json:objects()}.
 last_key(LastKey, [], _, _) ->
-    %% io:format("~n empty ~p~n", [LastKey]),
     {LastKey, []};
 last_key(LastKey, JObjs, 'undefined', _) ->
-    %% io:format("~n unlimited ~p~n", [LastKey]),
     {LastKey, lists:reverse(JObjs)};
 last_key(LastKey, JObjs, Limit, Returned) when Returned < Limit ->
-    %% io:format("~nReturned < Limit LastKey ~p~n", [LastKey]),
     {LastKey, lists:reverse(JObjs)};
 last_key(_LastKey, JObjs, Limit, Returned) when Returned == Limit ->
     [Last|JObjs1] = lists:reverse(JObjs),
-    %% io:format("~nReturned == Limit LastKey ~p~n", [kz_json:get_value(<<"key">>, Last)]),
     {kz_json:get_value(<<"key">>, Last), JObjs1}.
 
 %%--------------------------------------------------------------------
