@@ -327,6 +327,16 @@
                               ,{<<"tts_voice">>, <<"tts_voice">>}
                               ]).
 
+-define(CALLER_PROFILE_VARS, [{<<"Caller-ID-Name">>, <<"caller_id_name">>}
+                             ,{<<"Caller-ID-Number">>, <<"caller_id_number">>}
+                             ,{<<"Callee-ID-Name">>, <<"callee_id_name">>}
+                             ,{<<"Callee-ID-Number">>, <<"callee_id_number">>}
+                             ,{<<"Caller-Callee-ID-Name">>, <<"callee_id_name">>}
+                             ,{<<"Caller-Callee-ID-Number">>, <<"callee_id_number">>}
+                             ,{<<"Caller-Caller-ID-Name">>, <<"caller_id_name">>}
+                             ,{<<"Caller-Caller-ID-Number">>, <<"caller_id_number">>}
+                             ]).
+
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}] Dialplan-related
 %% applications convert from FS-named applications to Kazoo-named
 %% Dialplan applications
