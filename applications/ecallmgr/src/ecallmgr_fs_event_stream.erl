@@ -54,7 +54,6 @@ start_link(Node, Bindings) ->
 init([Node, Bindings]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream">>])),
-    _ = kz_amqp_channel:requisition(),
     request_event_stream(#state{node=Node
                                ,bindings=Bindings
                                ,idle_alert=idle_alert_timeout()
@@ -80,6 +79,7 @@ handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
                                    ])
     of
         {'ok', Socket} ->
+            _ = kz_amqp_channel:requisition(),
             lager:debug("opened event stream socket to ~p:~p for ~p"
                        ,[IP, Port, get_event_bindings(State)]),
             {'noreply', State#state{socket=Socket}, Timeout};
