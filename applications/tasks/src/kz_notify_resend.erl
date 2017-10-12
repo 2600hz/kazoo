@@ -336,7 +336,6 @@ db_bulk_result(JObj) ->
     end.
 
 -spec handle_result(kz_amqp_worker:request_return()) -> boolean().
-handle_result('ok') -> 'true';
 handle_result({'ok', Resp}) -> is_completed(Resp);
 handle_result({'error', [Error|_]=List}) ->
     case kz_json:is_json_object(Error) of
@@ -440,7 +439,7 @@ collecting([JObj|_]) ->
         _ -> 'false'
     end.
 
--spec is_completed(kz_json:objects()) -> boolean().
+-spec is_completed(kz_json:object() | kz_json:objects()) -> boolean().
 is_completed([]) -> 'false';
 is_completed([JObj|_]) ->
     case kapi_notifications:notify_update_v(JObj)
@@ -450,4 +449,5 @@ is_completed([JObj|_]) ->
         %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
-    end.
+    end;
+is_completed(JObj) -> is_completed([JObj]).
