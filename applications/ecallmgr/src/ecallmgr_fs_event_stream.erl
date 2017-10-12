@@ -277,6 +277,7 @@ maybe_bind(Node, Bindings, Attempts) ->
         {'EXIT', {'timeout',_}} ->
             lager:debug("timeout on attempt ~b to bind: ~p", [Attempts, Bindings]),
             maybe_bind(Node, Bindings, Attempts+1);
+        {'EXIT', {{'nodedown',_}, _}} -> {'error', 'nodedown'};
         {'error', _Reason} ->
             lager:debug("failed on attempt ~b to bind: ~p", [Attempts, _Reason]),
             maybe_bind(Node, Bindings, Attempts+1)
