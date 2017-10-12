@@ -70,7 +70,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {call :: kapps_call:call()
+-record(state, {call :: kapps_call:call() | 'undefined'
                ,acdc_queue_id :: api_ne_binary() % the ACDc Queue ID
                ,msg_queue_id :: api_ne_binary() % the AMQP Queue ID of the ACDc Queue process
                ,agent_id :: api_ne_binary()
@@ -78,8 +78,8 @@
                ,acct_id :: api_ne_binary()
                ,fsm_pid :: api_pid()
                ,agent_queues = [] :: ne_binaries()
-               ,last_connect :: kz_now() | undefined % last connection
-               ,last_attempt :: kz_now() | undefined % last attempt to connect
+               ,last_connect :: kz_now() | 'undefined' % last connection
+               ,last_attempt :: kz_now() | 'undefined' % last attempt to connect
                ,my_id :: ne_binary()
                ,my_q :: api_binary() % AMQP queue name
                ,timer_ref :: api_reference()
