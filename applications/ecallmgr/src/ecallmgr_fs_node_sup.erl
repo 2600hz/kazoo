@@ -35,6 +35,8 @@
 -define(NODE_WORKER, ?NODE_CHILD_TYPE(<<"worker">>)).
 -define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
 
+-define(NODE_MODULES_KEY(R), [<<"configuration">>, R, <<"modules">>]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -122,8 +124,8 @@ init([Node, Options]) ->
 
     NodeB = kz_term:to_binary(Node),
     Args = [Node, Options],
-    M = kazoo_bindings:map(<<"freeswitch.node.modules">>, []),
-    Modules = lists:foldl(fun(A, B) -> A ++ B end, [], M),
+    
+    Modules = node_modules(Options),
     JObj = maybe_correct_modules(Modules),
     Children = kz_json:foldr(fun(Module, V, Acc) ->
                                      Type = kz_json:get_ne_binary_value(<<"type">>, V),
@@ -156,7 +158,7 @@ maybe_correct_modules(Modules)
   when is_list(Modules) ->
     FixedModules = [fix_module(Mod) || Mod <- Modules],
     maybe_correct_modules(kz_json:from_list(FixedModules));
-maybe_correct_modules(JObj) -> set_order(JObj).
+maybe_correct_modules(JObj) -> JObj.
 
 -spec fix_module_type(ne_binary()) -> kz_json:object().
 fix_module_type(<<"pus_", _/binary>>) ->
@@ -177,16 +179,6 @@ fix_module(Mod) ->
     ModInv = list_to_binary(lists:reverse(binary_to_list(Module))),
     {Module, fix_module_type(ModInv)}.
 
--spec set_order(kz_json:object()) -> kz_json:object().
-set_order(JObj) ->
-    kz_json:from_list(lists:sort(fun set_config_first/2, kz_json:to_proplist(JObj))).
-
--spec set_config_first(tuple(), tuple()) -> boolean().
-set_config_first({<<"config">>, _}, _) -> 'true';
-set_config_first({<<"node">>, <<"config">>}, _) -> 'false';
-set_config_first({<<"node">>, _}, _) -> 'true';
-set_config_first(_, _) -> 'false'.
-
 -spec which_children(SupRef) -> [{Id,Child,Type,Modules}] | {'EXIT', any()} when
       SupRef :: supervisor:sup_ref(),
       Id :: supervisor:child_id() | undefined,
@@ -195,3 +187,8 @@ set_config_first(_, _) -> 'false'.
       Modules :: supervisor:modules().
 which_children(Supervisor) ->
     catch supervisor:which_children(Supervisor).
+
+node_modules(Options) ->
+    ClientVersion = props:get_value('client_version', Options),
+    {_, Release, _} = freeswitch:release(ClientVersion),
+    ecallmgr_config:get_ne_binaries(?NODE_MODULES_KEY(Release), ?NODE_MODULES).
