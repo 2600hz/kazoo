@@ -339,9 +339,10 @@ send_tasks(Tasks, Election) ->
     case amqp_leader_proc:alive(Election) -- [node()] of
         [] -> 'ok';
         Alive ->
-            Election = amqp_leader_proc:broadcast({'from_leader', {'tasks', Tasks}},
-                                                  Alive,
-                                                  Election),
+            Election = amqp_leader_proc:broadcast({'from_leader', {'tasks', Tasks}}
+                                                 ,Alive
+                                                 ,Election
+                                                 ),
             'ok'
     end.
 
