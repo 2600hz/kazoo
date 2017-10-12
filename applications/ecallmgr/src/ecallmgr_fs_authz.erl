@@ -274,11 +274,11 @@ allow_call(Props, _CallId, _Node) ->
              ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
              ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
-    case props:is_true(<<"Call-Setup">>, Props, 'false') of
-        'false' ->
+    case kzd_freeswitch:is_call_setup(Props) of
+        'true' ->
             lager:info("channel is authorized (with channel vars)"),
             {'true', kz_json:from_list(Vars)};
-        'true' ->
+        'false' ->
             lager:info("channel is authorized"),
             'true'
     end.
