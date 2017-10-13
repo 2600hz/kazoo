@@ -1,0 +1,39 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2013-2017, 2600Hz
+%%% @doc
+%%% Track the FreeSWITCH channel information, and provide accessors
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
+%%%-------------------------------------------------------------------
+-module(ecallmgr_fs_event_stream_notify_gproc).
+
+
+-export([init/0]).
+
+-export([notify_event/1
+        ]).
+
+
+-include("ecallmgr.hrl").
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+-spec init() -> 'ok'.
+init() ->
+    kazoo_bindings:bind(<<"event_stream.notify.call_event.*">>, ?MODULE, 'notify_event'),
+    'ok'.
+
+-spec notify_event(tuple()) -> any().
+notify_event({Node, UUID, _Category, Event, JObj}) ->
+    kz_util:put_callid(JObj),
+    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, Event)}, {'event', UUID , JObj}),
+    maybe_send_call_event(UUID, Event, JObj, Node).
+
+-spec maybe_send_call_event(api_binary(), ne_binary(), kz_json:object(), atom()) -> any().
+maybe_send_call_event('undefined', _, _, _) -> 'ok';
+maybe_send_call_event(CallId, Event, JObj, Node) ->
+    gproc:send({'p', 'l', ?FS_CALL_EVENT_MSG(Node, Event, CallId)}, {'event', Event, CallId, JObj}),
+    gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', CallId, JObj}).
