@@ -440,7 +440,7 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
             NewResellerId = kz_services:find_reseller_id(ToAccount),
             {'ok', _} = replicate_account_definition(JObj1),
             {'ok', _} = move_descendants(AccountId, ToTree, NewResellerId),
-            {'ok', _} = kz_service_sync:mark_dirty(AccountId),
+            {'ok', _} = kz_services:mark_dirty(AccountId),
             move_service(AccountId, ToTree, NewResellerId, 'true')
     end.
 
