@@ -22,9 +22,11 @@
 -define(SERVER, ?MODULE).
 
 -type bindings() :: atom() | [atom(),...] | ne_binary() | ne_binaries().
+-type profile() :: {atom() | ne_binary(), bindings()}.
 
 -record(state, {node :: atom()
                ,bindings :: bindings()
+               ,profile_name :: atom() | ne_binary()
                ,ip :: inet:ip_address() | 'undefined'
                ,port :: inet:port_number() | 'undefined'
                ,socket :: inet:socket() | 'undefined'
@@ -59,11 +61,12 @@ start_link(Node, Bindings) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | bindings()]) -> {'ok', state()} | {'stop', any()}.
-init([Node, Bindings]) ->
+-spec init([atom() | profile()]) -> {'ok', state()} | {'stop', any()}.
+init([Node, {Name, Bindings}]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream">>])),
+    kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream-">>, kz_term:to_binary(Name)])),
     request_event_stream(#state{node=Node
+                               ,profile_name=Name
                                ,bindings=Bindings
                                ,idle_alert=idle_alert_timeout()
                                }).
