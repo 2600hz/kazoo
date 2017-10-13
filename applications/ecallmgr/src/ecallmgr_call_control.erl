@@ -652,7 +652,7 @@ handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp, cu
         'true' -> handle_execute_complete(CurrApp, EventUUID, JObj, State);
         'false' -> State
     end;
-handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp, current_cmd_uuid=CurEventUUID}=State) ->
+handle_execute_complete(_AppName, _EventUUID, _JObj, State) ->
     State.
     
 -spec flush_group_id(queue:queue(), kz_term:api_binary(), kz_term:ne_binary()) -> queue:queue().
