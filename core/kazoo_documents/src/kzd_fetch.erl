@@ -409,7 +409,7 @@ maybe_update_referred_ccv(JObj, CCVs) ->
                           ).
 
 -spec update_referred_by_ccv(api_binary(), kz_proplist()) -> kz_proplist().
-update_referred_by_ccv('undefined', CCVs) -> kz_json:delete(<<"Referred-By">>, CCVs);
+update_referred_by_ccv('undefined', CCVs) -> kz_json:delete_key(<<"Referred-By">>, CCVs);
 update_referred_by_ccv(ReferredBy, CCVs) ->
     kz_json:set_value(<<"Referred-By">>
                      ,kz_http_util:urldecode(ReferredBy)
@@ -417,7 +417,7 @@ update_referred_by_ccv(ReferredBy, CCVs) ->
                      ).
 
 -spec update_referred_to_ccv(api_binary(), kz_proplist()) -> kz_proplist().
-update_referred_to_ccv('undefined', CCVs) -> kz_json:delete(<<"Referred-To">>, CCVs);
+update_referred_to_ccv('undefined', CCVs) -> kz_json:delete_key(<<"Referred-To">>, CCVs);
 update_referred_to_ccv(ReferredTo, CCVs) ->
     kz_json:set_value(<<"Referred-To">>
                      ,kz_http_util:urldecode(ReferredTo)
