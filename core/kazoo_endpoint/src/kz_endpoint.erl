@@ -1991,14 +1991,14 @@ maybe_record_endpoint({Endpoint, Call, CallFwd, Actions} = Acc) ->
             end
     end.
 
--spec profile(ne_binary(), ne_binary()) -> kz_json:object().
+-spec profile(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 profile(EndpointId, AccountId) ->
     case ?MODULE:get(EndpointId, AccountId) of
         {'ok', Endpoint} -> generate_profile(EndpointId, AccountId, Endpoint);
         Error -> Error
     end.
 
--spec generate_profile(ne_binary(), ne_binary(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec generate_profile(ne_binary(), ne_binary(), kz_json:object()) -> {'ok', kz_json:object()}.
 generate_profile(EndpointId, AccountId, Endpoint) ->
     %% I DON'T LIKE THIS
     %% kz_endpoint should not depend on kapps_call
@@ -2009,6 +2009,12 @@ generate_profile(EndpointId, AccountId, Endpoint) ->
     %% the 1st i notice is that i need to create a kapps_call to reuse the generation of the CCVs
     %% same thing with kz_attributes dependency on kapps_call
     %% we also should implement a kzd_endpoint to access the returned JObj properties
+
+    %% we need to implement profile for resources so that inbound gets its properties filled
+    %% we get X-AUTH-ACL-Token from kamailio into freeswitch
+    %% freeswitch only accepts inbound traffic from kamailio
+    %% freeswitch asks for properties of ACL-Token
+    %%
 
     Realm = kz_json:get_value(<<"realm">>, Endpoint),
     CallFuns = [{fun kapps_call:set_account_id/2, AccountId}
