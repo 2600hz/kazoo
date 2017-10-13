@@ -245,7 +245,7 @@ validate(Context) ->
     validate_notifications(maybe_update_db(Context), ReqVerb).
 
 validate(Context, ?SMTP_LOG) ->
-    crossba_view:load_modb(Context, ?CB_LIST_SMTP_LOG, [{mapper, crossba_view:map_value_fun()}]);
+    crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, [{mapper, crossbar_view:map_value_fun()}]);
 validate(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     DbId = kz_notification:db_id(Id),
