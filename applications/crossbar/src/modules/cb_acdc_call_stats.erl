@@ -28,7 +28,7 @@
 -include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".acdc_call_stats">>).
--define(MAX_BULK, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
+-define(MAX_BULK, kapps_config:get_pos_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
 -define(CB_LIST, <<"call_stats/crossbar_listing">>).
 
 -define(COLUMNS

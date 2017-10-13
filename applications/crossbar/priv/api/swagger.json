@@ -26078,6 +26078,7 @@
                 "maximum_bulk": {
                     "default": 50,
                     "description": "The maximum number of call stats to load in a request",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "maximum_range": {
@@ -26208,6 +26209,7 @@
                 "maximum_bulk": {
                     "default": 50,
                     "description": "crossbar call_inspector maximum_bulk",
+                    "minimum": 1,
                     "type": "integer"
                 }
             },
