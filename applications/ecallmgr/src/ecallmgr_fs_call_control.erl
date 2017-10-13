@@ -125,6 +125,7 @@ handle_event(JObj, _Deliver, Basic, _State) ->
     Props = [{'basic', Basic}],
     case kz_api:event_name(JObj) of
         <<"route_resp">> -> handle_route_resp(JObj, Props);
+        ?ROUTE_WINNER_EVENT -> handle_route_winner(JObj, Props);
         Event -> handle_call_control(Event, JObj, Props)
     end.
 
@@ -140,6 +141,11 @@ handle_call_control(Event, JObj, _Props) ->
 handle_route_resp(JObj, Props) ->
     Pid = kz_term:to_pid(kz_api:reply_to(JObj)),
     Pid ! {'route_resp', JObj, Props},
+    'ignore'.
+
+handle_route_winner(JObj, Props) ->
+    Pid = kz_term:to_pid(kz_api:reply_to(JObj)),
+    Pid ! {'route_winner', JObj, Props},
     'ignore'.
 
 %%--------------------------------------------------------------------
