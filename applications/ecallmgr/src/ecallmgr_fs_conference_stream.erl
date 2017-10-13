@@ -51,7 +51,7 @@ handle_event(#{node := Node, payload := JObj}) ->
 
 -spec process_event(ne_binary(), kz_json:object(), atom()) -> any().
 process_event(<<"conference-create">>, JObj, Node) ->
-    ecallmgr_fs_conferences:create(JObj, Node),
+    _ = ecallmgr_fs_conferences:create(JObj, Node),
     ConferenceId = kzd_conference:conference_id(JObj),
     UUID = kzd_conference:instance_id(JObj),
     ecallmgr_conference_control_sup:start_conference_control(Node, ConferenceId, UUID);
