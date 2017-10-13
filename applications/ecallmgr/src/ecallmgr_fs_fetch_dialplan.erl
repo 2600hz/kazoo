@@ -202,8 +202,8 @@ forbidden_reply(#{fetch_id := FetchId}=Map) ->
     lager:info("received forbidden route response for ~s, sending 403 Incoming call barred", [FetchId]),
     Map#{reply => #{payload => error_message(<<"403">>, <<"Incoming call barred">>), props => []}}.
 
--spec route_winner(map()) -> fs_sendmsg_ret().
-route_winner({_Node, _UUID, _Category, _Event, JObj}) ->
+-spec route_winner(map()) -> any().
+route_winner(#{payload := JObj}) ->
     NodeWinner = kzd_fetch:ccv(JObj, <<"Ecallmgr-Node">>),
     case NodeWinner =:= kz_term:to_binary(node()) of
         true ->
