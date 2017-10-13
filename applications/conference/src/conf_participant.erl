@@ -431,7 +431,7 @@ sync_participant(<<"add-member">>, JObj, Call, Participant) ->
 sync_participant(<<"del-member">>, _JObj, Call, Participant) ->
     kapps_call_command:hangup(Call),
     Participant;
-sync_participant(<<"conference-destroyed">>, _JObj, _Call, Participant) ->
+sync_participant(<<"conference-destroyed">>, _JObj, Call, Participant) ->
     kapps_call_command:hangup(Call),
     Participant;
 sync_participant(_Event, _JObj, _Call, Participant) -> Participant.
