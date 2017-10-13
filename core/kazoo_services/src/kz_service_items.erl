@@ -14,7 +14,7 @@
 -export([find/3]).
 -export([update/2]).
 
--type items() :: dict:dict().
+-opaque items() :: dict:dict().
 -export_type([items/0]).
 
 -include("services.hrl").
@@ -38,13 +38,12 @@ empty() ->
 -spec get_updated_items(items(), items()) -> items().
 -spec get_updated_items(any(), kz_service_item:item(), items(), items()) -> items().
 get_updated_items(UpdatedItems, ExistingItems) ->
-    dict:fold(
-      fun(Key, UpdatedItem, DifferingItems) ->
-              get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems)
-      end
+    dict:fold(fun(Key, UpdatedItem, DifferingItems) ->
+                      get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems)
+              end
              ,dict:new()
              ,UpdatedItems
-     ).
+             ).
 
 get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems) ->
     case get_item(Key, ExistingItems) of
