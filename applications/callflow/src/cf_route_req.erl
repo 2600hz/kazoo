@@ -55,7 +55,7 @@ handle_req(JObj, Props) ->
                            ,kapps_call:call(), kzd_callflow:doc()
                            ,boolean()
                            ) -> 'ok'.
-maybe_prepend_preflow(JObj, Props, Call, Callflow, x = NoMatch) ->
+maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
     AccountId = kapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
         {'error', _E} ->
@@ -70,13 +70,11 @@ maybe_prepend_preflow(JObj, Props, Call, Callflow, x = NoMatch) ->
                     NewCallflow = kzd_callflow:prepend_preflow(Callflow, PreflowId),
                     maybe_reply_to_req(JObj, Props, Call, NewCallflow, NoMatch)
             end
-    end;
-maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
-    maybe_reply_to_req(JObj, Props, Call, Callflow, NoMatch).
+    end.
 
 -spec maybe_reply_to_req(kz_json:object(), kz_proplist()
                         ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
-maybe_reply_to_req(JObj, Props, Call, Flow, x = NoMatch) ->
+maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request for ~s", [kz_doc:id(Flow)
                                                              ,kapps_call:account_id(Call)
                                                              ,kapps_call:request_user(Call)
@@ -87,11 +85,7 @@ maybe_reply_to_req(JObj, Props, Call, Flow, x = NoMatch) ->
             ControllerQ = props:get_value('queue', Props),
             NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
             send_route_response(Flow, JObj, NewCall)
-    end;
-maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
-    ControllerQ = props:get_value('queue', Props),
-    NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
-    send_route_response(Flow, JObj, NewCall).
+    end.
 
 
 -spec has_tokens(kapps_call:call(), kz_json:object()) -> boolean().
