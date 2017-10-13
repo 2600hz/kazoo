@@ -310,7 +310,7 @@ route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
     Context = context(JObj, Props),
-    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
+    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ [unset_custom_sip_headers()] ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
