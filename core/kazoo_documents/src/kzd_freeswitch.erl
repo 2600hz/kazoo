@@ -541,14 +541,10 @@ conference_uuid(JObj) ->
     kz_json:get_ne_binary_value(<<"Conference-Unique-ID">>, JObj).
 
 -spec join_time(data()) -> gregorian_seconds().
--spec join_time(data(), Default) -> gregorian_seconds() | Default.
 join_time(Props) ->
-<<<<<<< Upstream, based on 2600hz/master
     join_time(Props, kz_time:now_s()).
-=======
-    join_time(Props, kz_time:current_tstamp()).
 
->>>>>>> b8f37dd update node in kz_api
+-spec join_time(data(), Default) -> gregorian_seconds() | Default.
 join_time(Props, Default) ->
     props:get_integer_value(<<"Join-Time">>, Props, Default).
 
