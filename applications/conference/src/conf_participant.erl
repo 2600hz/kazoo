@@ -428,7 +428,12 @@ log_conference_join('false'=_Moderator, ParticipantId, Conference) ->
 -spec sync_participant(kz_term:ne_binary(), kz_json:objects(), kapps_call:call(), participant()) -> participant().
 sync_participant(<<"add-member">>, JObj, Call, Participant) ->
     sync_participant(JObj, Call, Participant);
-sync_participant(<<"conference-destroyed">>, _JObj, _Call, Participant) -> Participant;
+sync_participant(<<"del-member">>, _JObj, Call, Participant) ->
+    kapps_call_command:hangup(Call),
+    Participant;
+sync_participant(<<"conference-destroyed">>, _JObj, _Call, Participant) ->
+    kapps_call_command:hangup(Call),
+    Participant;
 sync_participant(_Event, _JObj, _Call, Participant) -> Participant.
 
 -spec sync_participant(kz_json:objects(), kapps_call:call(), participant()) ->
