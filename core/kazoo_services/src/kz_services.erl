@@ -1636,7 +1636,7 @@ maybe_clean_old_billing_id(#kz_services{}=Services) ->
 -spec clean(ne_binary()) -> kz_std_return().
 clean(Account) ->
     AccountId = kz_util:format_account_id(Account),
-    case kz_services:fetch_services_doc(AccountId, 'true') of
+    case ?MODULE:fetch_services_doc(AccountId, 'true') of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} ->
             immediate_sync(AccountId, kz_doc:set_soft_deleted(ServicesJObj, 'true'))
@@ -1660,7 +1660,7 @@ immediate_sync(AccountId, ServicesJObj) ->
 sync(Account) ->
     AccountId = kz_util:format_account_id(Account),
     kz_util:put_callid(<<AccountId/binary, "-sync">>),
-    case kz_services:fetch_services_doc(AccountId, 'true') of
+    case ?MODULE:fetch_services_doc(AccountId, 'true') of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} ->
             sync(AccountId, ServicesJObj)
@@ -1720,7 +1720,7 @@ sync_services(AccountId, ServicesJObj, ServiceItems) ->
 
 -spec sync_services_bookkeeper(ne_binary(), kz_json:object(), kz_service_items:items()) -> 'ok' | 'delinquent' | 'retry'.
 sync_services_bookkeeper(AccountId, ServicesJObj, ServiceItems) ->
-    Bookkeeper = kz_services:select_bookkeeper(AccountId),
+    Bookkeeper = ?MODULE:select_bookkeeper(AccountId),
     lager:debug("attempting to sync with bookkeeper ~s", [Bookkeeper]),
     Result = Bookkeeper:sync(ServiceItems, AccountId),
     maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper),
@@ -1729,7 +1729,7 @@ sync_services_bookkeeper(AccountId, ServicesJObj, ServiceItems) ->
 -spec maybe_sync_transactions(ne_binary(), kzd_services:doc()) -> 'ok'.
 -spec maybe_sync_transactions(ne_binary(), kzd_services:doc(), atom()) -> 'ok'.
 maybe_sync_transactions(AccountId, ServicesJObj) ->
-    Bookkeeper = kz_services:select_bookkeeper(AccountId),
+    Bookkeeper = ?MODULE:select_bookkeeper(AccountId),
     maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper).
 
 maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper) ->
@@ -1834,7 +1834,7 @@ get_billing_id(AccountId, ServicesJObj) ->
 
 -spec mark_dirty(ne_binary() | kzd_services:doc()) -> kz_std_return().
 mark_dirty(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    case kz_services:fetch_services_doc(AccountId, true) of
+    case ?MODULE:fetch_services_doc(AccountId, 'true') of
         {'error', _}=E -> E;
         {'ok', ServicesJObj} -> mark_dirty(ServicesJObj)
     end;
