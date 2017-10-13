@@ -379,7 +379,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
 handle_event(JObj, State) ->
-    case kz_api:node(JObj) =:= kz_term:to_binary(node()) of
+    case kapi_globals:node(JObj) =:= node() of
         'true' -> 'ignore';
         'false' ->
             {'reply', [{'state', State}

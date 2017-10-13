@@ -687,7 +687,7 @@ get_atom_value(Key, JObj) ->
 get_atom_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_atom/1)
+        Value -> safe_cast(Value, Default, fun(V)-> kz_term:to_atom(V, 'true') end)
     end.
 
 -spec get_boolean_value(path(), object() | objects()) -> api_atom().

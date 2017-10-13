@@ -97,9 +97,9 @@ app_name(JObj) ->
 app_version(JObj) ->
     kz_json:get_value(?KEY_APP_VERSION, JObj).
 
--spec node(kz_json:object()) -> api_binary().
+-spec node(kz_json:object()) -> atom().
 node(JObj) ->
-    kz_json:get_value(?KEY_NODE, JObj).
+    kz_json:get_atom_value(?KEY_NODE, JObj).
 
 -spec msg_id(api_terms()) -> api_binary().
 msg_id(Props) when is_list(Props) ->
