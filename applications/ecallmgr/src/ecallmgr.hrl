@@ -381,14 +381,13 @@
                               ,{<<"playback">>, <<"play_macro">>}
                               ]).
 
--define(FS_EVENTS, [['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']
-                   ,['DETECTED_TONE', 'DTMF','CHANNEL_PROGRESS_MEDIA']
-                   ,['RECORD_START', 'RECORD_STOP']
-                   ,['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE_COMPLETE']
-                   ,['CHANNEL_DATA','CALL_UPDATE', 'CALL_SECURE']
-                   ,['CHANNEL_HOLD', 'CHANNEL_UNHOLD']
-                   ,['PRESENCE_IN']
-                   ]).
+-define(FAX_EVENTS, ['spandsp::txfaxresult'
+                    ,'spandsp::rxfaxresult'
+                    ,'spandsp::txfaxpageresult'
+                    ,'spandsp::rxfaxpageresult'
+                    ,'spandsp::txfaxnegociateresult'
+                    ,'spandsp::rxfaxnegociateresult'
+                    ]).
 
 -define(FS_SOFIA_TRANSFER_EVENTS, ['sofia::transferor'
                                   ,'sofia::transferee'
@@ -397,28 +396,20 @@
                                   ]).
 -define(IS_SOFIA_TRANSFER(N), lists:member(kz_term:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
 
--define(FS_CUSTOM_EVENTS, [['kazoo::noop'
-                           ,'kazoo::masquerade'
-                           ]
-                          ,['sofia::transferor'
-                           ,'sofia::transferee'
-                           ,'sofia::replaced'
-                           ,'sofia::intercepted'
-                           ]
-                          ,'conference::maintenance'
-                          ,['spandsp::txfaxresult'
-                           ,'spandsp::rxfaxresult'
-                           ,'spandsp::txfaxpageresult'
-                           ,'spandsp::rxfaxpageresult'
-                           ,'spandsp::txfaxnegociateresult'
-                           ,'spandsp::rxfaxnegociateresult'
-                           ]
-                          ,['KZ::DELIVERY_REPORT'
-                           ,'SMS::DELIVERY_REPORT'
-                           ,'KZ::MESSAGE'
-                           ]
-                          ,'loopback::bowout'
-                          ]).
+-define(FS_EVENTS, [{channel, ['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']}
+                   ,{bridge, ['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE']}
+                   ,{media, ['DETECTED_TONE', 'DTMF','CHANNEL_PROGRESS_MEDIA']}
+                   ,{record, ['RECORD_START', 'RECORD_STOP']}
+                   ,{callflow, ['ROUTE_WINNER', 'CHANNEL_EXECUTE_COMPLETE']}
+                   ,{presence, ['PRESENCE_IN']}
+                   ,{channel_full_update, ['CHANNEL_DATA','CALL_UPDATE', 'CALL_SECURE']}
+                   ,{channel_update, ['CHANNEL_HOLD','CHANNEL_UNHOLD']}
+                   ,{conference, ['conference::maintenance']}
+                   ,{fax, ?FAX_EVENTS}
+                   ,{kazoo, ['kazoo::noop', 'kazoo::masquerade']}
+                   ,{transfer, ?FS_SOFIA_TRANSFER_EVENTS}
+                   ,{loopback, ['loopback::bowout']}
+                   ]).
 
 -define(FS_FETCH_SECTIONS, ['configuration'
                            ,'directory'

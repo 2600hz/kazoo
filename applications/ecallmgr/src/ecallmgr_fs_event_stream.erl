@@ -20,9 +20,11 @@
 -define(SERVER, ?MODULE).
 
 -type bindings() :: atom() | [atom(),...] | kz_term:ne_binary() | kz_term:ne_binaries().
+-type profile() :: {atom() | kz_term:ne_binary(), bindings()}.
 
 -record(state, {node :: atom()
                ,bindings :: bindings()
+               ,profile_name :: atom() | ne_binary()
                ,ip :: inet:ip_address() | 'undefined'
                ,port :: inet:port_number() | 'undefined'
                ,socket :: inet:socket() | 'undefined'
@@ -50,11 +52,12 @@ start_link(Node, Bindings) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([atom() | bindings()]) -> {'ok', state()} | {'stop', any()}.
-init([Node, Bindings]) ->
+-spec init([atom() | profile()]) -> {'ok', state()} | {'stop', any()}.
+init([Node, {Name, Bindings}]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream">>])),
+    kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream-">>, kz_term:to_binary(Name)])),
     request_event_stream(#state{node=Node
+                               ,profile_name=Name
                                ,bindings=Bindings
                                ,idle_alert=idle_alert_timeout()
                                }).
@@ -150,31 +153,10 @@ handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
 
-<<<<<<< Upstream, based on 2600hz/master
--spec handle_fs_props(kz_term:api_binary(), kzd_freeswitch:data(), atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
-handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL) ->
-    kz_util:put_callid(UUID),
-    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-    EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
-                                        ,{<<"Switch-URI">>, SwitchURI}
-                                        ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
-                                        ]
-                                       )
-        ++ Props ,
-    ecallmgr_events:event(EventName, UUID, EventProps, Node).
-
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_server' when it is about to
 %% terminate. It should be the opposite of `Module:init/1' and do any
 %% necessary cleaning up. When it returns, the `gen_server' terminates
-=======
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
->>>>>>> 2ce04e3 plugable event stream processing
 %% with Reason. The return value is ignored.
 %%
 %% @end
