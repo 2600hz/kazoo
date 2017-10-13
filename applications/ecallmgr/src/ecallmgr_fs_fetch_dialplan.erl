@@ -51,7 +51,7 @@ process(#{}=Map) ->
     maybe_expired(kz_maps:exec(Routines, Map)).
 
 request(#{request := _Request}=Map) -> Map;
-request(#{node := Node, fetch_id := FetchId, call_id := UUID, control_q := ControlQ, jobj := JObj}=Map) ->
+request(#{node := Node, fetch_id := FetchId, call_id := UUID, control_q := ControlQ, payload := JObj}=Map) ->
     Map#{request => ecallmgr_fs_router_util:route_req(ControlQ, UUID, FetchId, kz_json:to_proplist(JObj), Node)}.
 
 control_p(#{control_p := _Pid}=Map) -> Map;
@@ -59,7 +59,7 @@ control_p(#{request := Request}=Map) ->
     Map#{request => [{<<"Request-From-PID">>, kz_term:to_binary(self())} | Request], control_p => self()}.
     
 timeout(#{timeout := _Timeout}=Map) -> Map;
-timeout(#{jobj := JObj}=Map) ->
+timeout(#{payload := JObj}=Map) ->
     T0 = kz_json:get_integer_value(<<"Fetch-Timestamp-Micro">>, JObj),
     T1 = kz_json:get_integer_value(<<"Fetch-Timeout">>, JObj),
     T3 = kz_time:now_us(),
@@ -69,7 +69,7 @@ timeout(#{jobj := JObj}=Map) ->
     Map#{timeout => T6 - 100}.
               
 call_id(#{call_id := _CallId}=Map) -> Map;
-call_id(#{jobj := JObj}=Map) ->
+call_id(#{payload := JObj}=Map) ->
     Map#{call_id => kzd_fetch:call_id(JObj)}.
 
 add_time_marker(Name, #{timer := Timer}= Map) ->
@@ -115,7 +115,7 @@ wait_for_route_resp(#{timeout := Timeout}=Map) ->
             send_reply(Map)
     end.
 
-spawn_authorize_call_fun(#{node := Node, call_id := CallId, jobj := JObj}=Map) ->
+spawn_authorize_call_fun(#{node := Node, call_id := CallId, payload := JObj}=Map) ->
     Ref = make_ref(),
     Pid = kz_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, JObj]),
     Map#{authz_worker => {Pid, Ref}}.

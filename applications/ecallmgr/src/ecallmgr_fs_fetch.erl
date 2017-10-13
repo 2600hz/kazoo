@@ -108,7 +108,6 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'fetch', JObj}, #state{node=Node}=State) ->
-%    lager:debug_unsafe("fetch configuration request from ~s: ~s", [Node, kz_json:encode(JObj, ['pretty'])]),
     _ = kz_util:spawn(fun handle_fetch_req/2, [Node, JObj]),
     {'noreply', State};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
@@ -160,7 +159,7 @@ handle_fetch_req(Node, JObj) ->
     Context = kzd_fetch:hunt_context(JObj),
     RKs = lists:filter(fun kz_term:is_not_empty/1, [<<"fetch">>, Section, Tag, Name, Key, Context]),
     Routing = kz_binary:join(RKs, <<".">>),
-    Map = #{node => Node, section => kz_term:to_atom(Section, 'true'), fetch_id => FetchId, jobj => JObj},
+    Map = #{node => Node, section => kz_term:to_atom(Section, 'true'), fetch_id => FetchId, payload => JObj},
     case kazoo_bindings:map(Routing, Map) of
         [] -> not_found(Map);
         _ -> 'ok'

@@ -30,11 +30,11 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"fetch.configuration.acl.conf">>, ?MODULE, 'acl'),
+    kazoo_bindings:bind(<<"fetch.configuration.configuration.name.acl.conf">>, ?MODULE, 'acl'),
     'ok'.
 
 -spec acl(tuple()) -> fs_sendmsg_ret().
-acl({Node, Id, _JObj}) ->
+acl(#{node := Node, fetch_id := Id}) ->
     kz_util:put_callid(Id),
 
     SysconfResp = ecallmgr_config:fetch(<<"acls">>, kz_json:new(), ecallmgr_fs_node:fetch_timeout(Node)),

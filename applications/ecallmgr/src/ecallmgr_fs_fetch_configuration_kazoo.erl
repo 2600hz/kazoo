@@ -30,11 +30,11 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"fetch.configuration.kazoo.conf">>, ?MODULE, 'kazoo'),
+    kazoo_bindings:bind(<<"fetch.configuration.configuration.name.kazoo.conf">>, ?MODULE, 'kazoo'),
     'ok'.
 
 -spec kazoo(tuple()) -> fs_sendmsg_ret().
-kazoo({Node, Id, JObj}) ->
+kazoo(#{node := Node, fetch_id := Id, payload := JObj}) ->
     kz_util:put_callid(Id),
     lager:debug("received configuration request for kazoo configuration ~p , ~p", [Node, Id]),
     fetch_mod_kazoo_config(Node, Id, kz_api:event_name(JObj), JObj).
