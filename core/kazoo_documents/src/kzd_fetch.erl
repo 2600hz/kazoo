@@ -477,29 +477,29 @@ fetch_action(JObj, Default) ->
                               ,<<"action">>
                               ], JObj, Default).
 
--spec fetch_key_name(data()) -> api_binary().
+-spec fetch_key_name(data()) -> api_ne_binary().
 fetch_key_name(JObj) ->
-    kz_json:get_value(<<"Fetch-Key-Name">>, JObj).
+    kz_json:get_ne_binary_value(<<"Fetch-Key-Name">>, JObj).
 
--spec fetch_key_value(data()) -> api_binary().
+-spec fetch_key_value(data()) -> api_ne_binary().
 fetch_key_value(JObj) ->
-    kz_json:get_value(<<"Fetch-Key-Value">>, JObj).
+    kz_json:get_ne_binary_value(<<"Fetch-Key-Value">>, JObj).
 
 -spec fetch_node(data()) -> api_binary().
 fetch_node(JObj) ->
     kz_json:get_value(<<"Node">>, JObj).
 
--spec fetch_section(data()) -> api_binary().
+-spec fetch_section(data()) -> api_ne_binary().
 fetch_section(JObj) ->
-    kz_json:get_value(<<"Fetch-Section">>, JObj).
+    kz_json:get_ne_binary_value(<<"Fetch-Section">>, JObj).
 
--spec fetch_tag(data()) -> api_binary().
+-spec fetch_tag(data()) -> api_ne_binary().
 fetch_tag(JObj) ->
-    kz_json:get_value(<<"Fetch-Tag">>, JObj).
+    kz_json:get_ne_binary_value(<<"Fetch-Tag">>, JObj).
 
--spec fetch_user(data()) -> api_binary().
+-spec fetch_user(data()) -> api_ne_binary().
 fetch_user(JObj) ->
-    kz_json:get_value(<<"user">>, JObj).
+    kz_json:get_ne_binary_value(<<"user">>, JObj).
 
 -spec fetch_auth_endpoint(data()) -> api_binary().
 fetch_auth_endpoint(JObj) ->
