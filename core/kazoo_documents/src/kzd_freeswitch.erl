@@ -19,6 +19,7 @@
         ,caller_id_name/1, caller_id_name/2
         ,caller_id_number/1, caller_id_number/2
         ,ccvs/1, ccv/2, ccv/3
+        ,set_ccv/3, set_ccvs/2
         ,channel_authorized/1
         ,conference_name/1, conference_profile_name/1, conference_uuid/1
         ,dialed_number/1
@@ -62,6 +63,7 @@
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 -define(CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 -define(CCV_HEADER(Key), <<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>).
+-define(CCVs, <<"Custom-Channel-Vars">>).
 
 -spec caller_id_name(data()) -> api_binary().
 -spec caller_id_name(data(), Default) -> ne_binary() | Default.
@@ -156,8 +158,11 @@ call_id(JObj) ->
     kz_json:get_ne_binary_value(<<"Call-ID">>, JObj).
 
 -spec other_leg_call_id(data()) -> api_binary().
-other_leg_call_id(Props) ->
-    props:get_value(<<"Other-Leg-Unique-ID">>, Props).
+other_leg_call_id(Props)
+  when is_list(Props) ->
+    props:get_value(<<"Other-Leg-Unique-ID">>, Props);
+other_leg_call_id(JObj) ->
+    kz_json:get_ne_binary_value(<<"Other-Leg-Unique-ID">>, JObj).
 
 -spec original_call_direction(data()) -> api_binary().
 original_call_direction(Props) ->
@@ -267,17 +272,6 @@ to_did(Props)
                            );
 to_did(JObj) ->
     kz_json:get_ne_binary_value(<<"To-DID">>, JObj).
-
--spec ccv(data(), ne_binary()) -> api_binary() | ne_binaries().
-ccv(Props, Key) ->
-    ccv(Props, Key, 'undefined').
-
--spec ccv(data(), ne_binary(), Default) -> ne_binary() | ne_binaries() | Default.
-ccv(Props, Key, Default)
-  when is_list(Props) ->
-    props:get_value(Key, ccvs(Props), Default);
-ccv(JObj, Key, Default) ->
-    kz_json:get_ne_binary_value(Key, ccvs(JObj), Default).
 
 -spec hangup_code(data()) -> api_binary().
 hangup_code(Props)
@@ -412,6 +406,31 @@ presence_id(Props) ->
 -spec presence_direction(data()) -> api_binary().
 presence_direction(Props) ->
     props:get_value(<<"Presence-Call-Direction">>, Props).
+
+-spec ccv(data(), ne_binary()) -> api_binary() | ne_binaries().
+ccv(Props, Key) ->
+    ccv(Props, Key, 'undefined').
+
+-spec ccv(data(), ne_binary(), Default) -> ne_binary() | ne_binaries() | Default.
+ccv(Props, Key, Default)
+  when is_list(Props) ->
+    props:get_value(Key, ccvs(Props), Default);
+ccv(JObj, Key, Default) ->
+    kz_json:get_ne_binary_value(Key, ccvs(JObj), Default).
+
+-spec set_ccv(data(), ne_binary(), term()) -> data().
+set_ccv(Props, Key, Value)
+  when is_list(Props) ->
+    props:set_value(?CCV(Key), Props, Value);
+set_ccv(JObj, Key, Value) ->
+    kz_json:set_value([?CCVs, Key], JObj, Value).
+
+-spec set_ccvs(data(), [tuple()]) -> data().
+set_ccvs(Props, Values)
+  when is_list(Props) ->
+    props:set_values([{?CCV(Key), Value} || {Key, Value} <- Values], Props);
+set_ccvs(JObj, Values) ->
+    kz_json:set_values([{[?CCVs, Key], Value} || {Key, Value} <- Values], JObj).
 
 -spec channel_var_map({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary() | ne_binaries()}.
 channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
