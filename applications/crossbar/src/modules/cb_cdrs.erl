@@ -330,9 +330,9 @@ get_view_options([{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>, [OwnerId]}|_]
 get_view_options(_) ->
     {'undefined', []}.
 
--spec maybe_add_stale_to_options(crossbar_doc:view_options()) -> crossbar_doc:view_options().
-maybe_add_stale_to_options(true) -> [{stale, ok}];
-maybe_add_stale_to_options(_) ->[].
+-spec maybe_add_stale_to_options(boolean()) -> crossbar_doc:view_options().
+maybe_add_stale_to_options('true') -> [{'stale', 'ok'}];
+maybe_add_stale_to_options('false') ->[].
 
 %%--------------------------------------------------------------------
 %% @private

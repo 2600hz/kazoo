@@ -31,6 +31,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(CB_SPECIFIC_VIEW_OPTIONS,
         ['ascending', 'created_from'
@@ -56,7 +57,7 @@
                       'undefined'.
 
 -type range_keymap_fun() :: fun((range_key()) -> api_range_key()).
--type keymap() :: 'nil' | api_ne_binary() | ne_binaries() | integer() | range_keymap_fun().
+-type keymap() :: 'nil' | api_ne_binary() | ne_binaries() | integer()| ?EMPTY_JSON_OBJECT | range_keymap_fun().
 
 -type user_mapper_fun() :: 'undefined' |
                            fun((kz_json:objects()) -> kz_json:objects()) |
@@ -1126,7 +1127,7 @@ get_max_range(Options) ->
 %% Build customized start/end key mapper
 %% @end
 %%--------------------------------------------------------------------
--spec get_start_end_keys(cb_context:context(), options()) -> {keymap_fun(), keymap_fun()}.
+-spec get_start_end_keys(cb_context:context(), options()) -> {api_range_key(), api_range_key()}.
 get_start_end_keys(Context, Options) ->
     case props:get_value('key_map', Options) of
         'undefined' ->
@@ -1140,6 +1141,7 @@ get_start_end_keys(Context, Options) ->
     end.
 
 -spec map_keymap(cb_context:context(), options(), keymap_fun()) -> api_range_key().
+map_keymap(_, _, 'undefined')  -> 'undefined';
 map_keymap(Context, _, Fun) when is_function(Fun, 1) -> Fun(Context) ;
 map_keymap(Context, Options, Fun) when is_function(Fun, 2) -> Fun(Options, Context).
 
