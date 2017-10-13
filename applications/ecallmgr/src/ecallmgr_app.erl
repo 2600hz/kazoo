@@ -14,8 +14,6 @@
         ]).
 -export([stop/1]).
 
--export([freeswitch_node_modules/0]).
-
 %% Application callbacks
 
 %% @doc Implement the application start behaviour.
@@ -23,7 +21,8 @@
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     _ = node_bindings(),
-    _ = freeswitch_nodesup_bind(),
+    _ = event_stream_bind(),
+    _ = fetch_handlers_bind(),
     ecallmgr_sup:start_link().
 
 -spec request(kz_nodes:request_acc()) -> kz_nodes:request_acc().
@@ -47,7 +46,8 @@ request(Acc) ->
 %% @doc Implement the application stop behaviour.
 -spec stop(any()) -> any().
 stop(_State) ->
-    _ = freeswitch_nodesup_unbind(),
+    _ = event_stream_unbind(),
+    _ = fetch_handlers_unbind(),
     _ = kz_nodes_bindings:unbind('ecallmgr', ?MODULE),
     'ok'.
 
@@ -75,16 +75,42 @@ node_bindings() ->
     _ = kz_nodes_bindings:bind('ecallmgr', ?MODULE),
     'ok'.
 
--spec freeswitch_nodesup_bind() -> 'ok'.
-freeswitch_nodesup_bind() ->
-    _ = kazoo_bindings:bind(<<"freeswitch.node.modules">>, ?MODULE, 'freeswitch_node_modules'),
+-define(EVENTSTREAM_MODS, ['ecallmgr_fs_channel_stream'
+                          ,'ecallmgr_fs_event_stream_notify_gproc'
+                          ,'ecallmgr_call_event_publisher'
+                          ,'ecallmgr_fs_conference_stream'
+                          ,'ecallmgr_fs_conference_publish'
+                          ]).
+
+-define(EVENTSTREAM_PUBLISHERS_MODS, ['ecallmgr_call_event_publisher'
+                                     ,'ecallmgr_fs_conference_publish'
+                                     ]).
+
+-spec event_stream_bind() -> 'ok'.
+event_stream_bind() ->
+    [Mod:init() || Mod <- ?EVENTSTREAM_MODS],
     'ok'.
 
--spec freeswitch_nodesup_unbind() -> 'ok'.
-freeswitch_nodesup_unbind() ->
-    _ = kazoo_bindings:unbind(<<"freeswitch.node.modules">>, ?MODULE, 'freeswitch_node_modules'),
+-spec event_stream_unbind() -> 'ok'.
+event_stream_unbind() ->
+    [kazoo_bindings:flush_mod(Mod) || Mod <- ?EVENTSTREAM_MODS],
     'ok'.
 
--spec freeswitch_node_modules() -> kz_term:ne_binaries().
-freeswitch_node_modules() ->
-    application:get_env(?APP, 'node_modules', ?NODE_MODULES).
+-define(FETCH_HANDLERS_MODS, ['ecallmgr_fs_fetch_configuration_acl'
+                             ,'ecallmgr_fs_fetch_configuration_conference'
+                             ,'ecallmgr_fs_fetch_configuration_kazoo'
+                             ,'ecallmgr_fs_fetch_configuration_sofia'
+                             ,'ecallmgr_fs_fetch_dialplan'
+                             ,'ecallmgr_fs_fetch_channels'
+                             ,'ecallmgr_fs_fetch_directory'
+                             ]).
+
+-spec fetch_handlers_bind() -> 'ok'.
+fetch_handlers_bind() ->
+    [Mod:init() || Mod <- ?FETCH_HANDLERS_MODS],
+    'ok'.
+
+-spec fetch_handlers_unbind() -> 'ok'.
+fetch_handlers_unbind() ->
+    [kazoo_bindings:flush_mod(Mod) || Mod <- ?FETCH_HANDLERS_MODS],
+    'ok'.

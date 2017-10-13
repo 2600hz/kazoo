@@ -123,7 +123,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), basic_deliver(), amqp_basic(), state()) -> {'reply', kz_proplist()}.
+-spec handle_event(kz_json:object(), basic_deliver(), amqp_basic(), state()) -> 'ignore'.
 handle_event(JObj, _Deliver, Basic, _State) ->
     Props = [{'basic', Basic}],
     case kz_api:event_name(JObj) of

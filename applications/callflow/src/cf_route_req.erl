@@ -71,9 +71,7 @@ maybe_prepend_preflow(RouteReq, Props, Call, Callflow, NoMatch) ->
                     NewCallflow = kzd_callflows:prepend_preflow(Callflow, PreflowId),
                     maybe_reply_to_req(RouteReq, Props, Call, NewCallflow, NoMatch)
             end
-    end;
-maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
-    maybe_reply_to_req(JObj, Props, Call, Callflow, NoMatch).
+    end.
 
 -spec maybe_reply_to_req(kapi_route:req(), kz_term:proplist()
                         ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
