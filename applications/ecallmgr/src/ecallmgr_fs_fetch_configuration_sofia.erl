@@ -33,7 +33,7 @@ init() ->
     kazoo_bindings:bind(<<"fetch.configuration.configuration.name.sofia.conf">>, ?MODULE, 'sofia'),
     'ok'.
 
--spec sofia(tuple()) -> fs_sendmsg_ret().
+-spec sofia(map()) -> fs_sendmsg_ret().
 sofia(#{node := Node, fetch_id := Id}) ->
     kz_util:put_callid(Id),
     case ecallmgr_config:is_true(<<"sofia_conf">>) of
