@@ -63,7 +63,7 @@
                           }).
 
 -record(channel, {uuid :: api_binary() | '$1' | '$2' | '_'
-                 ,destination :: ne_binary() | '_'
+                 ,destination :: api_binary() | '_'
                  ,direction :: api_binary() | '$1' | '_'
                  ,account_id :: api_binary() | '$1' | '$2' | '_'
                  ,account_billing :: api_binary() | '$7' | '_'
