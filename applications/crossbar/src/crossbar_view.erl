@@ -198,7 +198,7 @@ load_modb(Context, View, Options) ->
 %%--------------------------------------------------------------------
 -spec build_load_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
 build_load_params(Context, View, Options) ->
-    case build_general_load_params(Context, View, Options) of
+    try build_general_load_params(Context, View, Options) of
         #{direction := Direction
          ,context := Context1
          }=LoadMap ->
@@ -214,12 +214,18 @@ build_load_params(Context, View, Options) ->
                     ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
                     };
         Ctx -> Ctx
+    catch
+        _E:_T ->
+            lager:debug("exception occurred during building view options for ~s", [View]),
+            ST = erlang:get_stacktrace(),
+            kz_util:log_stacktrace(ST),
+            cb_context:add_system_error('datastore_fault', Context)
     end.
 
 -spec build_load_range_params(cb_context:context(), ne_binary(), options()) ->
                                      load_params() | cb_context:context().
 build_load_range_params(Context, View, Options) ->
-    case build_general_load_params(Context, View, Options) of
+    try build_general_load_params(Context, View, Options) of
         #{direction := Direction
          ,context := Context1
          }=LoadMap ->
@@ -244,6 +250,12 @@ build_load_range_params(Context, View, Options) ->
                 Ctx -> Ctx
             end;
         Ctx -> Ctx
+    catch
+        _E:_T ->
+            lager:debug("exception occurred during building range view options for ~s", [View]),
+            ST = erlang:get_stacktrace(),
+            kz_util:log_stacktrace(ST),
+            cb_context:add_system_error('datastore_fault', Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -656,7 +668,16 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
         {'error', Error} ->
             LoadMap#{context => crossbar_doc:handle_datamgr_errors(Error, View, Context)};
         {'ok', JObjs} ->
-            handle_query_result(LoadMap, Dbs, JObjs, LimitWithLast)
+            %% catching crashes when applying users map functions (filter map and chunk map)
+            %% so we can handle errors when request is chunked (and chunk is already started)
+            try handle_query_result(LoadMap, Dbs, JObjs, LimitWithLast)
+            catch
+                _E:_T ->
+                    lager:debug("exception occurred during querying db ~s for view ~s", [Db, View]),
+                    ST = erlang:get_stacktrace(),
+                    kz_util:log_stacktrace(ST),
+                    LoadMap#{context => cb_context:add_system_error('datastore_fault', Context)}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -790,8 +811,9 @@ maybe_send_in_chunk(#{queried_jobjs := QueriedJObjs}=LoadMap, _, JObjs, Length) 
 %% When an error occurred (a db request error) and you want to
 %% stop sending chunks, return 'stop'. If the chunk is already
 %% started it will be finished by the regular envelope. If chunk is not
-%% started yet, a regular Crossbar error will be generated. For this
-%% don't forget to set appropriate error to the Context.
+%% started yet, a regular Crossbar error will be generated
+%% (non-chunked response). So don't forget to add appropriate error
+%% to the Context.
 %%
 %% If returning your result as JObj or CSV, it will be handled and sent
 %% by this module.
@@ -801,8 +823,8 @@ maybe_send_in_chunk(#{queried_jobjs := QueriedJObjs}=LoadMap, _, JObjs, Length) 
 %% to the correct order again(unless you have customize sort order)
 %%
 %% Note: For CSV, you have to check if chunk is started, if not
-%%       create the header and add it to the first element (binary)
-%%       of you're response.
+%%       create the header and add it to the first element
+%%       (<<Headers/binary, "\r\n", FirstRow/binary>>) of you're response.
 %% @end
 %%--------------------------------------------------------------------
 -spec send_chunked_mapper(load_params(), kz_json:objects(), ne_binary()) ->
@@ -957,12 +979,16 @@ finish_chunked_json_response(#{started_chunk := 'false'
                               ,context := Context
                               ,cowboy_req := Req
                               }) ->
+    %% chunk is not started, so return payload. api_util will handle errors
+    %% set in Context if resp_status is not success.
     {Req, Context};
 finish_chunked_json_response(#{total_queried := TotalQueried
                               ,started_chunk := 'true'
                               ,cowboy_req := Req
                               ,context := Context
                               }=LoadMap) ->
+    %% Because chunk is already started closing envelope,
+    %% no matter what Context resp_status is success or not.
     NextStartKey = maps:get(last_key, LoadMap, 'undefined'),
     StartKey = maps:get(start_key, LoadMap, 'undefined'),
     EnvJObj = add_paging(StartKey, TotalQueried, NextStartKey, cb_context:resp_envelope(Context)),
