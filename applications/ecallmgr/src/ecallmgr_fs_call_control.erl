@@ -22,7 +22,6 @@
         ]).
 
 -include("ecallmgr.hrl").
--include("gen_server_spec.hrl").
 
 -define(RESPONDERS, []).
 
@@ -69,12 +68,14 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
     lager:info("starting new fs amqp event listener for ~s", [Node]),
     {'ok', #{node => Node, options => Options}}.
 
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -88,6 +89,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'gen_listener',{'is_consuming', 'false'}}, State) ->
     {'noreply', State#{active => 'false'}};
 handle_cast({'gen_listener',{'is_consuming', 'true'}}, State) ->
@@ -108,6 +110,7 @@ handle_cast(_Cast, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -159,6 +162,7 @@ handle_route_winner(JObj, Props) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("fs amqp authn termination: ~p", [ _Reason]).
 
@@ -170,6 +174,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {'ok', NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

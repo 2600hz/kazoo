@@ -274,14 +274,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-%% handle_cast('init', #state{node=Node
-%%                           ,call_id=CallId
-%%                           }=State) ->
-%% %    gproc:reg({'p', 'l', 'call_control'}),
-%%     reg_for_call_related_events(CallId),
-%%     bind_to_events(Node, CallId),
-%%     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
-%%     {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
 handle_cast({'update_node', Node}, #state{node=OldNode}=State) ->
@@ -1088,11 +1080,6 @@ execute_control_request(Cmd, #state{node=Node
     CmdLeg = kz_api:call_id(Cmd),
     CallLeg = which_call_leg(CmdLeg, OtherLegs, CallId),
 
-%%     try Mod:exec_cmd(Node, CallLeg, Cmd, self()) of
-%%         {'ok', EventUUID} when Insert /= 'now' -> gen_server:cast(Srv, {'event_execute', EventUUID});
-%%         {'ok', _EventUUID} -> Srv ! {'queue_advance', CallId};
-%%         'ok' -> Srv ! {'queue_advance', CallId};
-%%         {error, _Error} -> Srv ! {'force_queue_advance', CallId}
     try Mod:exec_cmd(Node, CallLeg, Cmd, self())
     catch
         'throw':{'error', 'baduuid'} ->
@@ -1241,25 +1228,6 @@ bind(Node, CallId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-%% -spec unbind_from_events(atom(), ne_binary()) -> 'true'.
-%% unbind_from_events(Node, CallId) ->
-%%     lager:debug("unbinding from call ~s events on node ~s", [CallId, Node]),
-%%     _ = (catch gproc:unreg({'p', 'l', {'call_event', Node, CallId}})),
-%% %%     _ = (catch gproc:unreg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}})),
-%% %%     _ = (catch gproc:unreg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}})),
-%%     'true'.
-
-%% -spec reg_for_call_related_events(ne_binary()) -> 'ok'.
-%% reg_for_call_related_events(CallId) ->
-%% %%    gproc:reg({'p', 'l', {'call_control', CallId}}),
-%%     gproc:reg({'p', 'l', ?LOOPBACK_BOWOUT_REG(CallId)}).
-
-%% -spec unreg_for_call_related_events(ne_binary()) -> 'ok'.
-%% unreg_for_call_related_events(CallId) ->
-%% %    (catch gproc:unreg({'p', 'l', {'call_control', CallId}})),
-%%     (catch gproc:unreg({'p', 'l', ?LOOPBACK_BOWOUT_REG(CallId)})),
-%%     'ok'.
-
 -spec handle_replaced(kz_term:proplist(), state()) ->
                              {'noreply', state()}.
 handle_replaced(JObj, #state{fetch_id=FetchId
@@ -1341,8 +1309,6 @@ handle_event_info(CallId, JObj, #state{call_id=CallId
                                       }=State) ->
     Application = kz_call_event:application_name(JObj),
     case kz_call_event:event_name(JObj) of
-%%         <<"kazoo::", _/binary>> ->
-%%             {'noreply', handle_execute_complete(Application, JObj, State)};
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             {'noreply', handle_execute_complete(Application, kz_call_event:application_uuid(JObj), JObj, State)};
 %%         <<"RECORD_STOP">> ->
