@@ -124,14 +124,11 @@ by_doc(Doc, Context, 'true') ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build(cb_context:context(), boolean()) -> filter_fun().
-build(_, 'false') -> fun true/1;
+build(_, 'false') -> fun kz_term:always_true/1;
 build(Context, 'true') ->
     fun(Doc) ->
             filter_doc_by_querystring(Doc, cb_context:query_string(Context))
     end.
-
--spec true(any()) -> 'true'.
-true(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
