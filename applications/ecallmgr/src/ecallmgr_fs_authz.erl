@@ -34,13 +34,13 @@
 -spec authorize(kzd_freeswitch:data(), ne_binary(), atom()) -> authz_reply().
 authorize(Props, CallId, Node) ->
     kz_util:put_callid(CallId),
-%%     Routines = [fun is_authz_enabled/2
-%%                ,fun is_mobile_device/2
-%%                ,fun maybe_authorize_conference_number/2
-%%                ,fun maybe_channel_recovering/2
-%%                ,fun is_global_resource/2
-%%                ,fun is_consuming_resource/2               
-%%                ],
+    %%     Routines = [fun is_authz_enabled/2
+    %%                ,fun is_mobile_device/2
+    %%                ,fun maybe_authorize_conference_number/2
+    %%                ,fun maybe_channel_recovering/2
+    %%                ,fun is_global_resource/2
+    %%                ,fun is_consuming_resource/2
+    %%                ],
     AuthorizeReply = is_mobile_device(Props, Node),
     lager:info("channel is~s authorized", [authorized_log(AuthorizeReply)]),
     _ = ecallmgr_fs_channel:set_authorized(CallId, was_authorized(AuthorizeReply)),
@@ -205,7 +205,7 @@ authorize_account(JObj, Props, CallId, Node) ->
     lager:debug("channel is authorized by account ~s as ~s", [AccountId, Type]),
     CCVs = [{<<"Account-ID">>, AccountId}
            ,{<<"Account-Billing">>, Type}
-             | maybe_add_outbound_flags(ChanVars)
+            | maybe_add_outbound_flags(ChanVars)
            ],
     P = kzd_freeswitch:set_ccvs(Props, CCVs),
 

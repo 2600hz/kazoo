@@ -97,14 +97,14 @@ send_cmd(Node, UUID, "xferext", Dialplan) ->
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    lager:debug("building xferext on node ~s: ~s", [Node, V]),
-                    {App, Arg} = case binary:split(kz_term:to_binary(V), <<" ">>) of
-                                     [AppName, AppArgs] -> {AppName, AppArgs};
-                                     [AppName] -> {AppName, <<>>}
-                                 end,                                     
-                    [{<<"call-command">>, <<"execute">>}
-                    ,{<<"execute-app-name">>, kz_term:to_binary(App)}
-                    ,{<<"execute-app-arg">>, kz_term:to_binary(Arg)}
-                    ]                                      
+                   {App, Arg} = case binary:split(kz_term:to_binary(V), <<" ">>) of
+                                    [AppName, AppArgs] -> {AppName, AppArgs};
+                                    [AppName] -> {AppName, <<>>}
+                                end,
+                   [{<<"call-command">>, <<"execute">>}
+                   ,{<<"execute-app-name">>, kz_term:to_binary(App)}
+                   ,{<<"execute-app-arg">>, kz_term:to_binary(Arg)}
+                   ]
                end || {_K, V} <- Dialplan],
     freeswitch:cmds(Node, UUID, XferExt);
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
