@@ -23,7 +23,7 @@
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
 -record(kz_service_update, {bt_subscription :: braintree_subscription:subscription()
-                           ,plan_id :: ne_binary()
+                           ,plan_id :: api_ne_binary()
                            }).
 
 -record(kz_service_updates, {bt_subscriptions = [] :: [update()]
@@ -620,10 +620,9 @@ fetch_or_create_subscription(PlanId, #kz_service_updates{bt_subscriptions=[]
 fetch_or_create_subscription(PlanId, #kz_service_updates{bt_subscriptions=Subscriptions
                                                         ,bt_customer=Customer
                                                         }) ->
-    case lists:keyfind(PlanId, #kz_service_update.plan_id, Subscriptions) of
-        'false' ->
-            fetch_or_create_subscription(PlanId, Customer);
-        #kz_service_update{bt_subscription=Subscription} -> Subscription
+    case find_subscription_by_plan_id(PlanId, Subscriptions) of
+        'undefined' -> fetch_or_create_subscription(PlanId, Customer);
+        Subscription -> Subscription
     end;
 fetch_or_create_subscription(PlanId, #bt_customer{}=Customer) ->
     try braintree_customer:get_subscription(PlanId, Customer) of
@@ -636,6 +635,20 @@ fetch_or_create_subscription(PlanId, #bt_customer{}=Customer) ->
         'throw':{'not_found', _} ->
             lager:debug("creating new subscription for plan id ~s", [PlanId]),
             braintree_customer:new_subscription(PlanId, Customer)
+    end.
+
+-spec find_subscription_by_plan_id(ne_binary(), [update()]) ->
+                                          'undefined' |
+                                          braintree_subscription:subscription().
+find_subscription_by_plan_id(PlanId, Subscriptions) ->
+    case [Subscription || #kz_service_update{bt_subscription=Subscription
+                                            ,plan_id=UpdatePlanId
+                                            } <- Subscriptions,
+                          UpdatePlanId =:= PlanId
+         ]
+    of
+        [] -> 'undefined';
+        [Subscription] -> Subscription
     end.
 
 %% @private
