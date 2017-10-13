@@ -50,7 +50,9 @@ maybe_sip_auth_response(Node, Id, JObj) ->
 maybe_kamailio_association(Node, Id, JObj) ->
     kamailio_association(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj)).
 
--spec kamailio_association(atom(), ne_binary(), ne_binary(), ne_binary()) -> fs_handlecall_ret().
+-spec kamailio_association(atom(), ne_binary(), api_ne_binary(), api_ne_binary()) -> fs_handlecall_ret().
+kamailio_association(Node, Id, 'undefined', _AccountId) -> directory_not_found(Node, Id);
+kamailio_association(Node, Id, _EndpointId, 'undefined') -> directory_not_found(Node, Id);
 kamailio_association(Node, Id, EndpointId, AccountId) ->
     case kz_endpoint:profile(EndpointId, AccountId) of
         {ok, Endpoint} ->
