@@ -653,7 +653,6 @@ handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp, cu
         'false' -> State
     end;
 handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp, current_cmd_uuid=CurEventUUID}=State) ->
-    lager:debug_unsafe("call control received ~s with ~s but our state is ~s , ~s : ~s", [AppName, EventUUID, CurrApp, CurEventUUID, kz_json:encode(JObj, ['pretty'])]),
     State.
     
 -spec flush_group_id(queue:queue(), kz_term:api_binary(), kz_term:ne_binary()) -> queue:queue().
