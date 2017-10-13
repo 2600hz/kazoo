@@ -27,7 +27,7 @@ handle_req(ApiJObj, _Props) ->
     Default = kz_json:get_value(<<"Default">>, ApiJObj),
     Node = kz_json:get_binary_value(<<"Node">>, ApiJObj),
 
-    lager:debug("received sysconf get for ~s:~s from ~s", [Category, Key, Node]),
+    lager:debug("received sysconf get for ~s:~p from ~s", [Category, Key, Node]),
 
     Value = get_value(Category, Key, Default, Node),
     RespQ = kz_json:get_value(<<"Server-ID">>, ApiJObj),
