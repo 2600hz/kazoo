@@ -9,7 +9,7 @@
 -export([register_binding/3, register_bindings/3]).
 -export([search_for_route/5, search_for_route/6]).
 -export([reply_affirmative/6]).
--export([route_req/4]).
+-export([route_req/4, route_req/5]).
 
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 -include("ecallmgr.hrl").
@@ -111,8 +111,13 @@ reply_forbidden(Section, Node, FetchId) ->
     end.
 
 -spec reply_affirmative(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> search_ret().
-reply_affirmative(Section, Node, FetchId, _CallId, JObj, Props) ->
+reply_affirmative(Section, Node, FetchId, _CallId, JObj0, Props) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
+    CCVs = kz_json:set_values([{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj0)}
+                              ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj0)}
+                              ], kz_json:get_value(<<"Custom-Channel-Vars">>, JObj0, kz_json:new())),
+    JObj = kz_json:set_value(<<"Custom-Channel-Vars">>, CCVs, JObj0),
+    
     {'ok', XML} = route_resp_xml(Section, JObj, Props),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
@@ -133,6 +138,10 @@ route_resp_xml(_, Section, JObj, Props) ->
 
 -spec route_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> kz_term:proplist().
 route_req(CallId, FetchId, Props, Node) ->
+    route_req(<<>>, CallId, FetchId, Props, Node).
+
+-spec route_req(binary(), ne_binary(), ne_binary(), kz_proplist(), atom()) -> kz_proplist().
+route_req(ServerId, CallId, FetchId, Props, Node) ->
     AccountId = kzd_freeswitch:account_id(Props),
     Context = kzd_freeswitch:hunt_context(Props, ?DEFAULT_FREESWITCH_CONTEXT),
 
@@ -154,6 +163,7 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
       ,{<<"Custom-Routing-Headers">>, props:get_value(<<"Custom-Routing-Headers">>, Props)}
       ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+      ,{<<"DTMF-Type">>, props:get_value(<<"variable_switch_r_sdp">>, Props, <<"101 telephone-event">>)}
       ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
@@ -161,6 +171,7 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
       ,{<<"Msg-ID">>, FetchId}
       ,{<<"Origination-Call-ID">>, kzd_freeswitch:origination_call_id(Props)}
+      ,{<<"Remote-SDP">>, props:get_value(<<"variable_switch_r_sdp">>, Props)}
       ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
       ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
       ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
@@ -171,7 +182,7 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
       ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
       ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+       | kz_api:default_headers(ServerId, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec route_req_ccvs(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
