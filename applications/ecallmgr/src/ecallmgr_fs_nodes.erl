@@ -895,4 +895,5 @@ print_summary([{_, Node}|Nodes], Count) ->
 
 -spec nodedown(atom()) -> 'ok'.
 nodedown(Node) ->
-    ?SERVER ! {'nodedown', Node}.
+    ?SERVER ! {'nodedown', Node},
+    'ok'.

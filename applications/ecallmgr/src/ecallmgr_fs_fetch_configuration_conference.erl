@@ -31,7 +31,7 @@ init() ->
     kazoo_bindings:bind(<<"fetch.configuration.configuration.name.conference.conf">>, ?MODULE, 'conference'),
     'ok'.
 
--spec conference(tuple()) -> fs_sendmsg_ret().
+-spec conference(map()) -> fs_sendmsg_ret().
 conference(#{node := Node, fetch_id := Id, payload := JObj}) ->
     kz_util:put_callid(Id),
     fetch_conference_config(Node, Id, kz_api:event_name(JObj), JObj).

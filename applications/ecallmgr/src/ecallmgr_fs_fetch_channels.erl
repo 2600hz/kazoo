@@ -25,7 +25,7 @@ init() ->
     'ok'.
 
 
--spec channel_req(tuple()) -> 'ok'.
+-spec channel_req(map()) -> 'ok'.
 channel_req(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
     UUID = kzd_fetch:call_id(JObj),
     ForUUID = kz_json:get_value(<<"refer-for-channel-id">>, JObj),

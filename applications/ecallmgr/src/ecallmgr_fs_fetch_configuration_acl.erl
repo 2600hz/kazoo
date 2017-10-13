@@ -33,7 +33,7 @@ init() ->
     kazoo_bindings:bind(<<"fetch.configuration.configuration.name.acl.conf">>, ?MODULE, 'acl'),
     'ok'.
 
--spec acl(tuple()) -> fs_sendmsg_ret().
+-spec acl(map()) -> fs_sendmsg_ret().
 acl(#{node := Node, fetch_id := Id}) ->
     kz_util:put_callid(Id),
 

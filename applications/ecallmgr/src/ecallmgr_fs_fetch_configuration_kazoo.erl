@@ -33,7 +33,7 @@ init() ->
     kazoo_bindings:bind(<<"fetch.configuration.configuration.name.kazoo.conf">>, ?MODULE, 'kazoo'),
     'ok'.
 
--spec kazoo(tuple()) -> fs_sendmsg_ret().
+-spec kazoo(map()) -> fs_sendmsg_ret().
 kazoo(#{node := Node, fetch_id := Id, payload := JObj}) ->
     kz_util:put_callid(Id),
     lager:debug("received configuration request for kazoo configuration ~p , ~p", [Node, Id]),
