@@ -451,7 +451,10 @@ db_create(DbName) ->
     db_create(DbName, []).
 
 db_create(DbName, Options) when ?VALID_DBNAME(DbName) ->
-    kzs_db:db_create(kzs_plan:plan(DbName), DbName, Options);
+    case kzs_db:db_create(kzs_plan:plan(DbName), DbName, Options) of
+        'false' -> 'false';
+        _ -> 'true'
+    end;
 db_create(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_create(Db, Options);
@@ -1042,7 +1045,7 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
                             data_error().
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
 -spec put_attachment(text(), docid(), ne_binary(), ne_binary(), kz_proplist()) ->
-                            {'ok', kz_json:object()} |
+                            {'ok', kz_json:object()} | {'ok', kz_json:object(), kz_proplist()} |
                             data_error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
