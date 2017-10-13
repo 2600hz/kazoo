@@ -319,7 +319,7 @@ maybe_convert_units(_, Value) -> Value.
 %%--------------------------------------------------------------------
 -spec read_ledger(cb_context:context(), ne_binary()) -> cb_context:context().
 read_ledger(Context, Ledger) ->
-    ViewOptions = [{'key_map', Ledger}
+    ViewOptions = [{'range_keymap', Ledger}
                   ,{'mapper', fun normalize_view_results/3}
                   ,'include_docs'
                   ],

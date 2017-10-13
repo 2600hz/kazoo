@@ -201,8 +201,8 @@ get_view_options([{<<"call_inspector">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     {?CB_LIST, []};
 get_view_options([{<<"call_inspector">>, []}, {<<"users">>, [OwnerId]}|_]) ->
     {?CB_LIST_BY_USER
-    ,[{'start_key_map', [OwnerId]}
-     ,{'end_key_map', [OwnerId]}
+    ,[{'range_start_keymap', [OwnerId]}
+     ,{'range_end_keymap', [OwnerId]}
      ]
     };
 get_view_options(_) ->

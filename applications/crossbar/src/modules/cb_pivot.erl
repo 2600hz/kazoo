@@ -102,7 +102,7 @@ validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
 -spec debug_summary(cb_context:context()) -> cb_context:context().
 debug_summary(Context) ->
     ViewOptions = [{'mapper', crossbar_view:map_value_fun()}
-                  ,{'key_map', 'nil'}
+                  ,{'range_keymap', 'nil'}
                   ,{'limit', limit_by_page_size(Context)}
                   ],
     maybe_normalize_debug_results(crossbar_view:load_modb(Context, ?CB_FIRST_ITERATION, ViewOptions)).
@@ -149,7 +149,7 @@ debug_read(Context, ?MATCH_MODB_PREFIX(Year, Month, CallId)) ->
     end;
 debug_read(Context, CallId) ->
     ViewOptions = [{'mapper', fun normalize_debug_read/2}
-                  ,{'key_map', CallId}
+                  ,{'range_keymap', CallId}
                   ,'include_docs'
                   ],
     crossbar_view:load_modb(Context, ?CB_DEBUG_LIST, ViewOptions).

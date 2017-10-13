@@ -34,30 +34,34 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(CB_SPECIFIC_VIEW_OPTIONS,
-        ['ascending', 'created_from'
-        ,'created_to', 'databases'
-        ,'descending' ,'end_key_map'
-        ,'key_map', 'mapper'
-        ,'max_range', 'start_key_map'
+        ['ascending', 'databases'
+        ,'descending', 'mapper'
+
+        %% non-range query
+        ,'end_keymap', 'keymap', 'start_keymap'
+
+        %% chunked query
         ,'chunked_mapper', 'chunk_response_type'
-        ,'chunk_size', 'cowboy_req'
-        ,'is_chunked'
+        ,'chunk_size', 'cowboy_req', 'is_chunked'
+
+        %% ranged query
+        ,'created_to', 'created_from', 'max_range'
+        ,'range_end_keymap', 'range_keymap', 'range_start_keymap'
         ]).
 
 -type direction() :: 'ascending' | 'descending'.
 
 -type time_range() :: {gregorian_seconds(), gregorian_seconds()}.
 
--type range_key() :: kz_json:json_term().
--type api_range_key() :: kz_json:api_json_term().
+-type api_range_key() :: 'undefined' | kazoo_data:range_key().
 -type range_keys() :: {api_range_key(), api_range_key()}.
 
 -type keymap_fun() :: fun((cb_context:context()) -> api_range_key()) |
-                      fun((cb_context:context(), kazoo_data:view_options()) -> api_range_key()) |
-                      'undefined'.
+                      fun((cb_context:context(), kazoo_data:view_options()) -> api_range_key()).
+-type keymap() :: api_range_key() | keymap_fun().
 
--type range_keymap_fun() :: fun((range_key()) -> api_range_key()).
--type keymap() :: 'nil' | api_ne_binary() | ne_binaries() | integer()| ?EMPTY_JSON_OBJECT | range_keymap_fun().
+-type range_keymap_fun() :: fun((gregorian_seconds()) -> api_range_key()).
+-type range_keymap() :: 'nil' | api_range_key() | range_keymap_fun().
 
 -type user_mapper_fun() :: 'undefined' |
                            fun((kz_json:objects()) -> kz_json:objects()) |
@@ -75,19 +79,28 @@
                       fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
 -type options() :: kazoo_data:view_options() |
-                   [{'chunked_mapper', chunked_mapper_fun()} |
+                   [{'databases', ne_binaries()} |
+                    {'mapper', user_mapper_fun()} |
+                    {'max_range', pos_integer()} |
+
+                    %% for non-ranged query
+                    {'end_keymap', keymap()} |
+                    {'keymap', keymap()} |
+                    {'start_keymap', keymap()} |
+
+                    %% for chunked query
+                    {'chunked_mapper', chunked_mapper_fun()} |
                     {'chunk_response_type', 'json' | 'csv'} |
                     {'chunk_size', pos_integer()} |
                     {'cowboy_req', cowboy_req:req()} |
+                    {'is_chunked', boolean()} |
+
+                    %% for ranged/modb query
                     {'created_from', pos_integer()} |
                     {'created_to', pos_integer()} |
-                    {'databases', ne_binaries()} |
-                    {'end_key_map', keymap() | range_keymap_fun()} |
-                    {'is_chunked', boolean()} |
-                    {'key_map', keymap() | range_keymap_fun()} |
-                    {'mapper', user_mapper_fun()} |
-                    {'max_range', pos_integer()} |
-                    {'start_key_map', keymap() | range_keymap_fun()}
+                    {'range_end_keymap', range_keymap()} |
+                    {'range_keymap', range_keymap()} |
+                    {'range_start_keymap', range_keymap()}
                    ].
 
 -type load_params() :: #{chunked_mapper => chunked_mapper_fun()
@@ -97,7 +110,7 @@
                         ,cowboy_req => cowboy_req:req()
                         ,databases => ne_binaries()
                         ,direction => direction()
-                        ,end_key => range_key()
+                        ,end_key => kazoo_data:range_key()
                         ,end_time => gregorian_seconds()
                         ,has_qs_filter => boolean()
                         ,is_chunked => boolean()
@@ -106,7 +119,7 @@
                         ,page_size => pos_integer()
                         ,queried_jobjs => kz_json:objects()
                         ,should_paginate => boolean()
-                        ,start_key => range_key()
+                        ,start_key => kazoo_data:range_key()
                         ,start_time => gregorian_seconds()
                         ,started_chunk => boolean()
                         ,total_queried => non_neg_integer()
@@ -116,11 +129,11 @@
 
 -type last_key() :: api_range_key().
 
--export_type([range_key/0, api_range_key/0, range_keys/0
+-export_type([range_keys/0, time_range/0
              ,options/0, direction/0
              ,mapper_fun/0 ,user_mapper_fun/0
-             ,keymap/0, range_keymap_fun/0, keymap_fun/0
-             ,time_range/0
+             ,keymap/0, keymap_fun/0
+             ,range_keymap/0, range_keymap_fun/0
              ]
             ).
 
@@ -207,12 +220,11 @@ build_load_params(Context, View, Options) ->
 
             {StartKey, EndKey} = start_end_keys(Context1, Options, Direction),
 
-            LoadMap#{context => cb_context:store(Context1, 'has_qs_filter', HasQSFilter)
-                    ,end_key => EndKey
-                    ,mapper => crossbar_filter:build_with_mapper(Context1, UserMapper, HasQSFilter)
-                    ,start_key => StartKey
-                    ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
-                    };
+            Params = LoadMap#{context => cb_context:store(Context1, 'has_qs_filter', HasQSFilter)
+                             ,mapper => crossbar_filter:build_with_mapper(Context1, UserMapper, HasQSFilter)
+                             ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
+                             },
+            maybe_set_start_end_keys(Params, StartKey, EndKey);
         Ctx -> Ctx
     catch
         _E:_T ->
@@ -238,15 +250,14 @@ build_load_range_params(Context, View, Options) ->
             case time_range(Context1, Options, TimeFilterKey) of
                 {StartTime, EndTime} ->
                     {StartKey, EndKey} = ranged_start_end_keys(Context1, Options, Direction, StartTime, EndTime),
-                    LoadMap#{context => cb_context:store(Context1, 'has_qs_filter', HasQSFilter)
-                            ,end_key => EndKey
-                            ,end_time => EndTime
-                            ,has_qs_filter => HasQSFilter
-                            ,mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
-                            ,start_time => StartTime
-                            ,start_key => StartKey
-                            ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
-                            };
+                    Params = LoadMap#{context => cb_context:store(Context1, 'has_qs_filter', HasQSFilter)
+                                     ,end_time => EndTime
+                                     ,has_qs_filter => HasQSFilter
+                                     ,mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
+                                     ,start_time => StartTime
+                                     ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
+                                     },
+                    maybe_set_start_end_keys(Params, StartKey, EndKey);
                 Ctx -> Ctx
             end;
         Ctx -> Ctx
@@ -406,8 +417,9 @@ ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
 %% cb_cdrs for example.
 %% @end
 %%--------------------------------------------------------------------
--spec suffix_key_fun(keymap()) -> range_keymap_fun().
-suffix_key_fun('undefined') -> fun(_) -> 'undefined' end;
+-spec suffix_key_fun(range_keymap()) -> range_keymap_fun().
+suffix_key_fun('nil') -> fun(_) -> 'undefined' end;
+suffix_key_fun('undefined') -> fun kz_term:identity/1;
 suffix_key_fun(K) when is_binary(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_integer(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_list(K) -> fun(Ts) -> [Ts | K] end;
@@ -657,7 +669,7 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
                      | props:delete('startkey', ViewOpts)
                     ]),
 
-    lager:debug("kz_datamgr:get_results(~s, ~s, ~p)", [Db, View, ViewOptions]),
+    lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
     case kz_datamgr:get_results(Db, View, ViewOptions) of
         {'error', 'not_found'} when [] =:= RestDbs ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
@@ -763,10 +775,10 @@ check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, _Li
 %%--------------------------------------------------------------------
 -spec limit_with_last_key(boolean(), api_pos_integer(), pos_integer(), non_neg_integer()) ->
                                  api_pos_integer().
-%% un-chunked unlimited request
+%% non-chunked unlimited request
 limit_with_last_key('false', 'undefined', _, _) ->
     'undefined';
-%% un-chunked limited request
+%% non-chunked limited request
 limit_with_last_key('false', PageSize, _, TotalQueried) ->
     1 + PageSize - TotalQueried;
 %% chunked unlimited request
@@ -818,7 +830,7 @@ maybe_send_in_chunk(#{queried_jobjs := QueriedJObjs}=LoadMap, _, JObjs, Length) 
 %% If returning your result as JObj or CSV, it will be handled and sent
 %% by this module.
 %%
-%% The passed JObjs parameter is in the correct order, if you changing
+%% The passed JObjs parameter is in the correct order, if you're changing
 %% the JObjs (looping over, change/replace) do not forget to reverse it
 %% to the correct order again(unless you have customize sort order)
 %%
@@ -1091,6 +1103,11 @@ get_chunk_size(Options) ->
         _ -> kapps_config:get_pos_integer(?CONFIG_CAT, <<"load_view_chunk_size">>, 50)
     end.
 
+-spec maybe_set_start_end_keys(load_params(), api_range_key(), api_range_key()) -> load_params().
+maybe_set_start_end_keys(LoadMap, 'undefined', 'undefined') -> LoadMap;
+maybe_set_start_end_keys(LoadMap, StartKey, 'undefined') -> LoadMap#{start_key => StartKey};
+maybe_set_start_end_keys(LoadMap, 'undefined', EndKey) -> LoadMap#{end_key => EndKey};
+maybe_set_start_end_keys(LoadMap, StartKey, EndKey) -> LoadMap#{start_key => StartKey, end_key => EndKey}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1155,10 +1172,10 @@ get_max_range(Options) ->
 %%--------------------------------------------------------------------
 -spec get_start_end_keys(cb_context:context(), options()) -> {api_range_key(), api_range_key()}.
 get_start_end_keys(Context, Options) ->
-    case props:get_value('key_map', Options) of
+    case props:get_value('keymap', Options) of
         'undefined' ->
-            {map_keymap(Context, Options, props:get_value('start_key_map', Options))
-            ,map_keymap(Context, Options, props:get_value('end_key_map', Options))
+            {map_keymap(Context, Options, props:get_first_defined(['startkey', 'start_keymap'], Options))
+            ,map_keymap(Context, Options, props:get_first_defined(['endkey', 'end_keymap'], Options))
             };
         KeyMap ->
             {map_keymap(Context, Options, KeyMap)
@@ -1166,10 +1183,10 @@ get_start_end_keys(Context, Options) ->
             }
     end.
 
--spec map_keymap(cb_context:context(), options(), keymap_fun()) -> api_range_key().
-map_keymap(_, _, 'undefined')  -> 'undefined';
+-spec map_keymap(cb_context:context(), options(), keymap()) -> api_range_key().
 map_keymap(Context, _, Fun) when is_function(Fun, 1) -> Fun(Context) ;
-map_keymap(Context, Options, Fun) when is_function(Fun, 2) -> Fun(Options, Context).
+map_keymap(Context, Options, Fun) when is_function(Fun, 2) -> Fun(Options, Context);
+map_keymap(_, _, ApiRangeKey) -> ApiRangeKey.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1179,9 +1196,9 @@ map_keymap(Context, Options, Fun) when is_function(Fun, 2) -> Fun(Options, Conte
 %% will be used as the key.
 %%
 %% Possible key maps options:
-%%   - `key_map`: use this to map both start/end keys
-%%   - `start_key_map`: maps start key only
-%%   - `end_key_map`: maps end key only
+%%   - `range_keymap`: use this to map both start/end keys
+%%   - `range_start_keymap`: maps start key only
+%%   - `range_end_keymap`: maps end key only
 %%
 %% Possible maps type:
 %%   - a binary value: to construct keys like [<<"account">>, Timestamp]
@@ -1192,21 +1209,17 @@ map_keymap(Context, Options, Fun) when is_function(Fun, 2) -> Fun(Options, Conte
 %%--------------------------------------------------------------------
 -spec get_range_key_maps(options()) -> {range_keymap_fun(), range_keymap_fun()}.
 get_range_key_maps(Options) ->
-    case props:get_value('key_map', Options) of
+    case props:get_value('range_keymap', Options) of
         'undefined' ->
-            {get_key_map(props:get_value('start_key_map', Options))
-            ,get_key_map(props:get_value('end_key_map', Options))
+            {map_range_keymap(props:get_value('range_start_keymap', Options))
+            ,map_range_keymap(props:get_value('range_end_keymap', Options))
             };
         KeyMap -> {map_range_keymap(KeyMap), map_range_keymap(KeyMap)}
     end.
 
--spec get_key_map('undefined' | keymap()) -> range_keymap_fun().
-get_key_map('undefined') -> fun kz_term:identity/1;
-get_key_map(KeyMap) -> map_range_keymap(KeyMap).
-
--spec map_range_keymap(keymap()) -> range_keymap_fun().
+-spec map_range_keymap(range_keymap()) -> range_keymap_fun().
 map_range_keymap('nil') -> fun(_) -> 'undefined' end;
-map_range_keymap('undefined') -> fun(_) -> 'undefined' end;
+map_range_keymap('undefined') -> fun kz_term:identity/1;
 map_range_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
 map_range_keymap(K) when is_integer(K) -> fun(Ts) -> [K, Ts] end;
 map_range_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;

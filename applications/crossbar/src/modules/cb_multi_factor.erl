@@ -139,7 +139,7 @@ validate(Context) ->
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
     Options = [{mapper, crossbar_view:map_value_fun()}
-              ,{key_map, <<"multi_factor">>}
+              ,{'range_keymap', <<"multi_factor">>}
               ],
     crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, Options);
 validate(Context, ConfigId) ->

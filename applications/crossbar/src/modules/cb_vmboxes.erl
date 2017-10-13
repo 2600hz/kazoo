@@ -790,7 +790,7 @@ load_message_summary(BoxId, Context) ->
 
     ViewOptions = [{'mapper', Mapper}
                   ,{'max_range', MaxRange}
-                  ,{'key_map', BoxId}
+                  ,{'range_keymap', BoxId}
                   ],
     crossbar_view:load_modb(prefix_qs_filter_keys(Context), ?MSG_LISTING_BY_MAILBOX, ViewOptions).
 
