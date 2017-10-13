@@ -63,7 +63,7 @@
                            fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
                            fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
--type chunked_mapper_ret() :: {binaries() | kz_json:objects() | non_neg_integer() | 'stop', cb_context:context()}.
+-type chunked_mapper_ret() :: {binaries() | kz_json:objects() | non_neg_integer() | 'stop', cb_cowboy_payload()}.
 
 -type chunked_mapper_fun() :: 'undefined' |
                               fun((cb_cowboy_payload(), kz_json:objects()) -> chunked_mapper_ret()) |
