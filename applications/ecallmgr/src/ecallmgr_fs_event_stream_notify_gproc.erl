@@ -26,8 +26,8 @@ init() ->
     kazoo_bindings:bind(<<"event_stream.notify.call_event.*">>, ?MODULE, 'notify_event'),
     'ok'.
 
--spec notify_event(tuple()) -> any().
-notify_event({Node, UUID, _Category, Event, JObj}) ->
+-spec notify_event(map()) -> any().
+notify_event(#{node := Node, call_id := UUID, event := Event, payload := JObj}) ->
     kz_util:put_callid(JObj),
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, Event)}, {'event', UUID , JObj}),
     maybe_send_call_event(UUID, Event, JObj, Node).

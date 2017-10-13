@@ -283,34 +283,40 @@ handle_fs_event(Node, JObj, Channel) ->
     UUID = kz_api:call_id(JObj),
     Category = kz_api:event_category(JObj),
     Event = kz_api:event_name(JObj),
-    run_bindings(Node, UUID, Category, Event, JObj).
+    Ctx = #{node => Node
+           ,call_id => UUID
+           ,category => Category
+           ,event => Event
+           ,payload => JObj
+           },
+    run_bindings(Ctx).
 
-run_bindings(Node, UUID, Category, Event, JObj) ->
-    Stages = [fun run_event/5
-             ,fun run_process/5
-             ,fun run_notify/5
-             ,fun run_publish/5
+run_bindings(Ctx) ->
+    Stages = [fun run_event/1
+             ,fun run_process/1
+             ,fun run_notify/1
+             ,fun run_publish/1
              ],
-    Fun = fun(StageFun) -> StageFun(Node, UUID, Category, Event, JObj) end,
+    Fun = fun(StageFun) -> StageFun(Ctx) end,
     lists:foreach(Fun, Stages).
 
-run_event(Node, UUID, Category, Event, JObj) ->
-    Routing = create_routing(<<"event">>, Category, Event),
-    kazoo_bindings:map(Routing, {Node, UUID, Category, Event, JObj}).
+run_event(Ctx) ->
+    Routing = create_routing(<<"event">>, Ctx),
+    kazoo_bindings:map(Routing, Ctx).
 
-run_process(Node, UUID, Category, Event, JObj) ->
-    Routing = create_routing(<<"process">>, Category, Event),
-    kazoo_bindings:map(Routing, {Node, UUID, Category, Event, JObj}).
+run_process(Ctx) ->
+    Routing = create_routing(<<"process">>, Ctx),
+    kazoo_bindings:map(Routing, Ctx).
 
-run_notify(Node, UUID, Category, Event, JObj) ->
-    Routing = create_routing(<<"notify">>, Category, Event),
-    kazoo_bindings:map(Routing, {Node, UUID, Category, Event, JObj}).
+run_notify(Ctx) ->
+    Routing = create_routing(<<"notify">>, Ctx),
+    kazoo_bindings:map(Routing, Ctx).
 
-run_publish(Node, UUID, Category, Event, JObj) ->
-    Routing = create_routing(<<"publish">>, Category, Event),
-    kazoo_bindings:map(Routing, {Node, UUID, Category, Event, JObj}).
+run_publish(Ctx) ->
+    Routing = create_routing(<<"publish">>, Ctx),
+    kazoo_bindings:map(Routing, Ctx).
 
-create_routing(Name, undefined, Event) ->
-    create_routing(Name, <<"invalid">>, Event);
-create_routing(Name, Category, Event) ->
+create_routing(Name, #{category := undefined} = Ctx) ->
+    create_routing(Name, Ctx#{category => <<"invalid">>});
+create_routing(Name, #{category := Category, event := Event}) ->
     <<"event_stream.", Name/binary, ".", Category/binary, ".", Event/binary>>.
