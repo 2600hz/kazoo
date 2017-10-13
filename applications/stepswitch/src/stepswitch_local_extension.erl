@@ -290,7 +290,7 @@ build_local_extension(#state{number_props=Props
     {CEDNum, CEDName} = local_extension_callee_id(OffnetJObj, Number),
     Realm = get_account_realm(AccountId),
     FromRealm = get_account_realm(OriginalAccountId),
-    FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
+    FromURI = <<CIDNum/binary, "@", Realm/binary>>,
     CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetJObj, kz_json:new()),
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetJObj),
 
@@ -306,12 +306,16 @@ build_local_extension(#state{number_props=Props
                    [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, kz_json:get_value(<<"Retain-CID">>, CCVsOrig)}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, FromURI}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}                  
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", Realm/binary>>}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, FromURI}
+                   
                    ,{<<"Resource-ID">>, AccountId}
-                   ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
+                   ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+                   ,{<<"From-URI">>, <<"sip:", CIDNum/binary, "@", FromRealm/binary>>}
                    ,{<<"Resource-Type">>, <<"onnet-termination">>}
+                   
                    ]),
 
     Endpoint = kz_json:from_list(
