@@ -33,7 +33,7 @@ exec_cmd(<<"send_http">>, Args, JObj, Node, Options) ->
     Method = <<"kz_http_", (kz_json:get_value(<<"Http-Method">>, Args, <<"put">>))/binary>>,
     Default = ecallmgr_config:is_true([?NODE_CMD_CONFIG, <<"send_http">>, <<"delete_on_success">>], 'false'),
     DeleteOnSuccess = kz_json:is_true(<<"Delete-On-Success">>, JObj, Default),
-    send_http(Node, Version, File, Url, Method, JObj, DeleteOnSuccess);
+    send_http(Node, File, Url, Method, JObj, DeleteOnSuccess);
 
 exec_cmd(Cmd, _Args, JObj, _Node, _Options) ->
     reply_error(<<Cmd/binary, " not_implemented">>, JObj).
@@ -61,10 +61,6 @@ reply_error(Error, EventData, JObj) ->
     Queue = kz_api:server_id(JObj),
     kz_amqp_worker:cast(API, fun(P) -> kapi_switch:publish_reply(Queue, P) end).
 
--spec reply_success(kz_json:object()) -> 'ok'.
-reply_success(JObj) ->
-    reply_success(JObj, []).
-
 -spec reply_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 reply_success(JObj, Response) ->
     Values = [{<<"Result">>, <<"success">>}
@@ -77,31 +73,15 @@ reply_success(JObj, Response) ->
     kz_amqp_worker:cast(API, fun(P) -> kapi_switch:publish_reply(Queue, P) end).
 
 -spec send_http(atom(), binary(), binary(), binary(), kz_term:ne_binary(), kz_json:object(), boolean()) -> 'ok'.
-send_http(Node, Version, File, Url, Method, JObj, DeleteOnSuccess) ->
+send_http(Node, File, Url, Method, JObj, DeleteOnSuccess) ->
     lager:debug("processing http_send command : ~s / ~s", [File, Url]),
     Args = <<Url/binary, " ", File/binary>>,
-    {Api, Fun} = send_http_api_and_callback_funs(Version),
     M = kz_term:to_atom(Method, 'true'),
     A = kz_term:to_list(Args),
-    case Api(Node, M, A, Fun, [JObj, DeleteOnSuccess, File, Node]) of
+    case freeswitch:bgapi4(Node, M, A, fun send_http_cb/4, [JObj, DeleteOnSuccess, File, Node]) of
         {'error', _} -> reply_error(<<"failure">>, JObj);
         {'ok', JobId} -> lager:debug("send_http command started ~p", [JobId])
     end.
-
-send_http_api_and_callback_funs(Version)->
-    case Version >= <<"mod_kazoo v1.4">> of
-        'true' -> {fun freeswitch:bgapi4/5, fun send_http_cb/4};
-        'false' -> {fun freeswitch:bgapi/5, fun send_http_cb/3}
-    end.
-
--spec send_http_cb(atom(), kz_term:ne_binary(), list()) -> 'ok'.
-send_http_cb('ok', <<"+OK", _/binary>>, [JobId, JObj, DeleteOnSuccess, File, Node]) ->
-    lager:debug("processed http_send command with success : ~s", [JobId]),
-    _ = maybe_delete_file(Node, File, DeleteOnSuccess),
-    reply_success(JObj);
-send_http_cb(_, Reply, [JobId, JObj | _]) ->
-    lager:debug("error processing http_send : ~p : ~s", [Reply, JobId]),
-    reply_error(Reply, JObj).
 
 -spec send_http_cb(atom(), kz_term:ne_binary(), kz_term:proplist(), list()) -> 'ok'.
 send_http_cb('ok', <<"+OK", _/binary>>, [ undefined | FSProps], [JobId, JObj, DeleteOnSuccess, File, Node]) ->
