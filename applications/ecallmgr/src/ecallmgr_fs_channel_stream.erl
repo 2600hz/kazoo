@@ -37,8 +37,8 @@ init() ->
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_UNHOLD">>, ?MODULE, 'channel_unhold'),
     'ok'.
 
--spec channel_create(tuple()) -> any().
-channel_create({Node, UUID, _Category, _Event, JObj}) ->
+-spec channel_create(map()) -> any().
+channel_create(#{node := Node, call_id := UUID, payload := JObj}) ->
     maybe_authorize_channel(Node, UUID, JObj),
     ecallmgr_fs_channels:new(jobj_to_record(Node, UUID, JObj)).
 

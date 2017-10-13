@@ -44,8 +44,8 @@ init() ->
 %%% Internal functions
 %%%===================================================================
 
--spec handle_event(tuple()) -> 'ok'.
-handle_event({Node, _UUID, _Category, _Event, JObj}) ->
+-spec handle_event(map()) -> 'ok'.
+handle_event(#{node := Node, payload := JObj}) ->
     Event = kzd_conference:event(JObj),
     process_event(Event, JObj, Node).
 

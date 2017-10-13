@@ -25,7 +25,7 @@ init() ->
     kazoo_bindings:bind(<<"event_stream.publish.call_event.*">>, ?MODULE, 'publish_call_event'),
     'ok'.
 
--spec publish_call_event(tuple()) -> any().
-publish_call_event({_Node, _UUID, _Category, _Event, JObj}) ->
+-spec publish_call_event(map()) -> any().
+publish_call_event(#{payload := JObj}) ->
     kz_util:put_callid(JObj),
     kapi_call:publish_event(JObj).
