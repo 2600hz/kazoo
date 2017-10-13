@@ -235,7 +235,7 @@ originate_quickcall(Endpoints, Call, Context) ->
               end,
     {DefaultCIDNumber, DefaultCIDName} = kz_attributes:caller_id(CIDType, Call),
     lager:debug("quickcall default cid ~s : ~s : ~s", [CIDType, DefaultCIDNumber, DefaultCIDName]),
-
+    CallId = <<(cb_context:req_id(Context))/binary, "-quickcall">>,
     Request =
         kz_json:from_list(
           [{<<"Application-Name">>, <<"transfer">>}
@@ -249,6 +249,8 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Outbound-Caller-ID-Number">>, kapps_call:request_user(Call)}
           ,{<<"Outbound-Callee-ID-Name">>, get_cid_name(Context, DefaultCIDName)}
           ,{<<"Outbound-Callee-ID-Number">>, get_cid_number(Context, DefaultCIDNumber)}
+          ,{<<"Outbound-Call-ID">>, CallId}
+          ,{<<"Origination-Call-ID">>, CallId}
           ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
           ,{<<"Continue-On-Fail">>, 'false'}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
