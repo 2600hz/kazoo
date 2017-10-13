@@ -30,11 +30,11 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"fetch.configuration.sofia.conf">>, ?MODULE, 'sofia'),
+    kazoo_bindings:bind(<<"fetch.configuration.configuration.name.sofia.conf">>, ?MODULE, 'sofia'),
     'ok'.
 
 -spec sofia(tuple()) -> fs_sendmsg_ret().
-sofia({Node, Id, _JObj}) ->
+sofia(#{node := Node, fetch_id := Id}) ->
     kz_util:put_callid(Id),
     case ecallmgr_config:is_true(<<"sofia_conf">>) of
         'false' ->
