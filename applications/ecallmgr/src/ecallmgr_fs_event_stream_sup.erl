@@ -15,13 +15,8 @@
 -export([init/1]).
 
 -define(EVENTS, ?FS_EVENTS).
--define(CUSTOM_EVENTS, ?FS_CUSTOM_EVENTS).
-%% -define(EVENTS, application:get_env(?APP, 'event_stream', ?FS_EVENTS)).
-%%-define(CUSTOM_EVENTS, application:get_env(?APP, 'event_stream_custom', ?FS_CUSTOM_EVENTS)).
 
--define(CHILDREN, [event_child(Node, Event) || Event <- ?EVENTS]
-        ++ [event_child(Node, Subclass) || Subclass <- ?CUSTOM_EVENTS]).
-%%        ++ [custom_child(Node, Subclass) || Subclass <- ?CUSTOM_EVENTS]).
+-define(CHILDREN, [event_child(Node, Event) || Event <- ?EVENTS]).
 
 %%==============================================================================
 %% API functions
@@ -73,9 +68,3 @@ init([Node, _Props]) ->
 -spec event_child(atom(), atom()) -> kz_types:sup_child_spec().
 event_child(Node, Event) ->
     ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event], 'transient').
-%%    ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, 'undefined'], 'transient').
-
-%% -spec custom_child(atom(), atom()) -> sup_child_spec().
-%% custom_child(Node, Subclass) ->
-%%     ?WORKER_NAME_ARGS_TYPE(Subclass, 'ecallmgr_fs_event_stream', [Node, 'CUSTOM', Subclass], 'transient').
-
