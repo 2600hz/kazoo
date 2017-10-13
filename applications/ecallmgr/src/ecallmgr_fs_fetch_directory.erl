@@ -9,9 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_fetch_directory).
 
--export([directory_lookup/1
-        ,directory_not_found/1
-        ]).
+-export([directory_lookup/1]).
 -export([lookup_user/4]).
 -export([init/0]).
 
@@ -36,7 +34,7 @@ directory_lookup(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
     case kzd_fetch:fetch_action(JObj, <<"sip_auth">>) of
         <<"reverse-auth-lookup">> -> lookup_user(Node, FetchId, <<"reverse-lookup">>, JObj);
         <<"sip_auth">> -> maybe_sip_auth_response(Node, FetchId, JObj);
-        _Other -> directory_not_found({Node, FetchId, JObj})
+        _Other -> directory_not_found(Node, FetchId)
     end.
 
 -spec maybe_sip_auth_response(atom(), ne_binary(), kz_json:object()) -> fs_handlecall_ret().
@@ -50,10 +48,10 @@ maybe_sip_auth_response(Node, Id, JObj) ->
 
 -spec maybe_kamailio_association(atom(), ne_binary(), kz_json:object()) -> fs_handlecall_ret().
 maybe_kamailio_association(Node, Id, JObj) ->
-    kamailio_association(Node, Id, JObj, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj)).
+    kamailio_association(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj)).
 
--spec kamailio_association(atom(), ne_binary(), kz_json:object(), ne_binary(), ne_binary()) -> fs_handlecall_ret().
-kamailio_association(Node, Id, JObj, EndpointId, AccountId) ->
+-spec kamailio_association(atom(), ne_binary(), ne_binary(), ne_binary()) -> fs_handlecall_ret().
+kamailio_association(Node, Id, EndpointId, AccountId) ->
     case kz_endpoint:profile(EndpointId, AccountId) of
         {ok, Endpoint} ->
             lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
@@ -62,11 +60,11 @@ kamailio_association(Node, Id, JObj, EndpointId, AccountId) ->
             freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml));
         {error, _Err} ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
-            directory_not_found({Node, Id, JObj})
+            directory_not_found(Node, Id)
     end.
 
--spec directory_not_found({atom(), ne_binary(), kz_json:object()}) -> fs_handlecall_ret().
-directory_not_found(#{node := Node, fetch_id := FetchId, payload := _JObj}) ->
+-spec directory_not_found(atom(), ne_binary()) -> fs_handlecall_ret().
+directory_not_found(Node, FetchId) ->
     {'ok', Xml} = ecallmgr_fs_xml:not_found(),
     lager:debug("sending directory not found XML to ~w", [Node]),
     freeswitch:fetch_reply(Node, FetchId, 'directory', iolist_to_binary(Xml)).
