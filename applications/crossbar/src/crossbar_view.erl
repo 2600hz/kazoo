@@ -625,6 +625,7 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
                               ,chunk_size := ChunkSize
                               ,total_queried := TotalQueried
                               ,context := Context
+                              ,last_key := LastKey
                               }=LoadMap) ->
     PageSize = maps:get(page_size, LoadMap, 'undefined'),
     LimitWithLast = limit_with_last_key(IsChunked, PageSize, ChunkSize, TotalQueried),
@@ -633,7 +634,10 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
                ,[View, Db, maps:get(start_key, LoadMap, "no_start_key"), PageSize, LimitWithLast, Direction]
                ),
 
-    NextStartKey = maps:get(last_key, LoadMap, props:get_value('startkey', ViewOpts)),
+    NextStartKey = case LastKey of
+                       'undefined' -> props:get_value('startkey', ViewOpts);
+                       _ -> LastKey
+                   end,
     ViewOptions = props:filter_undefined(
                     [{'limit', LimitWithLast}
                     ,{'startkey', NextStartKey}
@@ -675,8 +679,7 @@ handle_query_result(LoadMap, [Db|RestDbs]=Dbs, Results, Limit) ->
 
     lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, Filtered, LastKey]),
 
-    {LengthOrStop, LoadMap2} =
-        maybe_send_in_chunk(LoadMap#{last_key => LastKey}, Db, FilteredJObj, Filtered),
+    {LengthOrStop, LoadMap2} = maybe_send_in_chunk(LoadMap, Db, FilteredJObj, Filtered),
 
     case LengthOrStop =/= 'stop'
         andalso check_page_size_and_length(LoadMap2, LengthOrStop, Limit, LastKey)
@@ -701,7 +704,7 @@ handle_query_result(LoadMap, [Db|RestDbs]=Dbs, Results, Limit) ->
 check_page_size_and_length(#{context := Context
                             ,page_size := PageSize
                             ,total_queried := TotalQueried
-                            }=LoadMap, Length, _, LastKey)
+                            }=LoadMap, Length, _Limit, LastKey)
   when is_integer(PageSize)
        andalso PageSize > 0
        andalso TotalQueried + Length == PageSize
@@ -710,20 +713,24 @@ check_page_size_and_length(#{context := Context
     {'exhausted', LoadMap#{total_queried => TotalQueried + Length
                           ,context => cb_context:set_resp_status(Context, 'success')
                           ,start_key => LastKey
+                          ,last_key => LastKey
                           }
     };
-%% query next_db when it's an unlimited query
-check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, 'undefined', _) ->
-    {'next_db', LoadMap#{total_queried => TotalQueried + Length}};
 %% query next chunk from same db when query is chunked
-check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, Limit, LastKey)
-  when Length =< Limit
-       andalso LastKey =/= 'undefined' ->
+check_page_size_and_length(#{total_queried := TotalQueried, last_key := OldLastKey}=LoadMap, Length, _Limit, LastKey)
+  when OldLastKey =/= LastKey,
+       LastKey =/= 'undefined' ->
     lager:debug("db has more chunks to give, querying same db again..."),
-    {'same_db', LoadMap#{total_queried => TotalQueried + Length}};
+    {'same_db', LoadMap#{total_queried => TotalQueried + Length
+                        ,last_key => LastKey
+                        }
+    };
 %% just query next_db
-check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, _Limit, _LastKey) ->
-    {'next_db', LoadMap#{total_queried => TotalQueried + Length}}.
+check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, _Limit, LastKey) ->
+    {'next_db', LoadMap#{total_queried => TotalQueried + Length
+                        ,last_key => LastKey
+                        }
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -741,8 +748,8 @@ limit_with_last_key('false', 'undefined', _, _) ->
 limit_with_last_key('false', PageSize, _, TotalQueried) ->
     1 + PageSize - TotalQueried;
 %% chunked unlimited request
-limit_with_last_key('true', 'undefined', ChunkSize, TotalQueried) ->
-    1 + ChunkSize - TotalQueried;
+limit_with_last_key('true', 'undefined', ChunkSize, _) ->
+    1 + ChunkSize;
 %% same chunk_size and page_size
 limit_with_last_key('true', PageSize, PageSize, TotalQueried) ->
     1 + PageSize - TotalQueried;

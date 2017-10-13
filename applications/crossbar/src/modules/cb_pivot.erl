@@ -93,6 +93,10 @@ validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
 %% @private
 %% @doc
 %% Load an instance from the database
+%%
+%% Proper pagination is merely impossible for this API since we debugs
+%% are in two documents, setting limit to 2 * PagSize is a bad choice.
+%% What if the response or even the request debug document is not exists?
 %% @end
 %%--------------------------------------------------------------------
 -spec debug_summary(cb_context:context()) -> cb_context:context().
