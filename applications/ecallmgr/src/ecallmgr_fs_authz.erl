@@ -210,12 +210,11 @@ authorize_account(JObj, Props, CallId, Node) ->
     ChanVars  = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
 
     lager:debug("channel is authorized by account ~s as ~s", [AccountId, Type]),
-    P = props:set_values([{?GET_CCV(<<"Account-ID">>), AccountId}
-                         ,{?GET_CCV(<<"Account-Billing">>), Type}
-                          | maybe_add_outbound_flags(ChanVars)
-                         ]
-                        ,Props
-                        ),
+    CCVs = [{<<"Account-ID">>, AccountId}
+           ,{<<"Account-Billing">>, Type}
+             | maybe_add_outbound_flags(ChanVars)
+           ],
+    P = kzd_freeswitch:set_ccvs(Props, CCVs),
 
     authorize_reseller(JObj, P, CallId, Node).
 
@@ -223,36 +222,34 @@ authorize_account(JObj, Props, CallId, Node) ->
 maybe_add_outbound_flags(JObj) ->
     case kz_json:get_value(<<"Outbound-Flags">>, JObj) of
         'undefined' -> [];
-        Flags -> [{?GET_CCV(<<"Outbound-Flags">>), Flags}]
+        Flags -> [{<<"Outbound-Flags">>, Flags}]
     end.
 
 -spec authorize_reseller(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
                                 authz_reply().
 authorize_reseller(JObj, Props, CallId, Node) ->
-    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
+    AccountId = kzd_freeswitch:account_id(Props),
     case kz_json:get_value(<<"Reseller-ID">>, JObj, AccountId) of
         AccountId -> set_ccv_trunk_usage(JObj, Props, CallId, Node);
         ResellerId ->
             Type = kz_json:get_value(<<"Reseller-Billing">>, JObj),
             lager:debug("channel is authorized by reseller ~s as ~s", [ResellerId, Type]),
-            P = props:set_values([{?GET_CCV(<<"Reseller-ID">>), ResellerId}
-                                 ,{?GET_CCV(<<"Reseller-Billing">>), Type}
-                                 ]
-                                ,Props
-                                ),
+            P = kzd_freeswitch:set_ccvs(Props, [{<<"Reseller-ID">>, ResellerId}
+                                               ,{<<"Reseller-Billing">>, Type}
+                                               ]),
             set_ccv_trunk_usage(JObj, P, CallId, Node)
     end.
 
 -spec set_ccv_trunk_usage(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
                                  authz_reply().
 set_ccv_trunk_usage(JObj, Props, CallId, Node) ->
-    Usage = [{?GET_CCV(Key), TrunkUsage}
+    Usage = [{Key, TrunkUsage}
              || Key <- [<<"Account-Trunk-Usage">>
                        ,<<"Reseller-Trunk-Usage">>
                        ],
                 'undefined' =/= (TrunkUsage = kz_call_event:custom_channel_var(JObj, Key))
             ],
-    P = props:set_values(props:filter_undefined(Usage), Props),
+    P = kzd_freeswitch:set_ccvs(Props, props:filter_undefined(Usage)),
     rate_call(P, CallId, Node).
 
 -spec rate_call(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
@@ -389,10 +386,10 @@ maybe_update_callee_id(JObj, Acc) ->
 authz_req(Props) ->
     AccountId = kzd_freeswitch:account_id(Props),
     props:filter_undefined(
-      [{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-      ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
+      [{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
+      ,{<<"To">>, kz_json:get_ne_binary_value(<<"To">>, Props)}
+      ,{<<"From">>, kz_json:get_ne_binary_value(<<"From">>, Props)}
+      ,{<<"Request">>, kz_json:get_ne_binary_value(<<"Request">>, Props)}
       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
       ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
       ,{<<"Caller-ID-Name">>
@@ -403,8 +400,8 @@ authz_req(Props) ->
        }
       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
-      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-      ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_util:custom_application_vars(Props))}
+      ,{<<"Custom-Channel-Vars">>, kzd_freeswitch:ccvs(Props)}
+      ,{<<"Custom-Application-Vars">>, kzd_freeswitch:cavs(Props)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
