@@ -158,7 +158,7 @@ handle_info(_Info, State) ->
 -spec handle_event(kz_json:object(), state()) -> 'ignore'.
 handle_event(JObj, #state{name=Name}) ->
     _ = case (V=kapi_conf:doc_update_v(JObj))
-            andalso (kz_api:node(JObj) =/= kz_term:to_binary(node())
+            andalso (kz_api:node(JObj) =/= node()
                      orelse kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Name, 'name')
                     )
         of
