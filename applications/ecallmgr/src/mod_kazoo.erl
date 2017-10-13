@@ -59,7 +59,7 @@ version(Node, Timeout) ->
         'timeout' -> {'error', 'timeout'};
         Result -> Result
     catch
-        exit:{{nodedown, _Node}, _} -> {error, nodedown}; 
+        exit:{{nodedown, _Node}, _} -> {error, nodedown};
         _E:_R ->
             lager:info("failed to get mod_kazoo version from ~s: ~p ~p"
                       ,[Node, _E, _R]),
@@ -375,7 +375,7 @@ bgapi4(Node, Cmd, Args, Fun, CallBackParams, Self) ->
     catch
         _E:_R ->
             lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
-                       ,[Cmd, Node, _E, _R]),
+                      ,[Cmd, Node, _E, _R]),
             Self ! {'api', {'error', 'exception'}}
     end.
 
@@ -392,7 +392,7 @@ bgapi4_result(JobId, Fun, CallBackParams) ->
         _Other -> lager:debug("unexpected message from freeswitch : ~p", [_Other])
     end.
 
-    
+
 -spec internal_fs_error(binary()) -> {'error', binary()}.
 internal_fs_error(Reason) ->
     Error = kz_binary:strip(binary:replace(Reason, <<"\n">>, <<>>)),

@@ -57,7 +57,7 @@ request(#{node := Node, fetch_id := FetchId, call_id := UUID, control_q := Contr
 control_p(#{control_p := _Pid}=Map) -> Map;
 control_p(#{request := Request}=Map) ->
     Map#{request => [{<<"Request-From-PID">>, kz_term:to_binary(self())} | Request], control_p => self()}.
-    
+
 timeout(#{timeout := _Timeout}=Map) -> Map;
 timeout(#{payload := JObj}=Map) ->
     T0 = kz_json:get_integer_value(<<"Fetch-Timestamp-Micro">>, JObj),
@@ -67,7 +67,7 @@ timeout(#{payload := JObj}=Map) ->
     T5 = T1 - T4,
     T6 = T5 div 1000,
     Map#{timeout => T6 - 100}.
-              
+
 call_id(#{call_id := _CallId}=Map) -> Map;
 call_id(#{payload := JObj}=Map) ->
     Map#{call_id => kzd_fetch:call_id(JObj)}.
@@ -189,9 +189,9 @@ error_message(ErrorMsg) ->
 
 error_message(ErrorCode, ErrorMsg) ->
     kz_json:from_list([{<<"Method">>, <<"error">>}
-              ,{<<"Route-Error-Code">>, ErrorCode}
-              ,{<<"Route-Error-Message">>, ErrorMsg}
-              ]).
+                      ,{<<"Route-Error-Code">>, ErrorCode}
+                      ,{<<"Route-Error-Message">>, ErrorMsg}
+                      ]).
 
 timeout_reply(Map) ->
     Map#{reply => #{payload => error_message(<<"no available handlers">>), props => []}}.

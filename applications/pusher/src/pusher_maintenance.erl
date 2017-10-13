@@ -13,6 +13,7 @@
 -export([add_google_app/2
         ,add_apple_app/2, add_apple_app/3
         ]).
+-export([flush/0]).
 
 -spec add_google_app(binary(), binary()) -> 'ok'.
 add_google_app(AppId, Secret) ->
@@ -32,3 +33,7 @@ add_apple_app(AppId, Certfile, Host) ->
             'ok';
         {'error', _} = Err -> Err
     end.
+
+-spec flush() -> any().
+flush() ->
+    kz_cache:flush_local(?CACHE_NAME).
