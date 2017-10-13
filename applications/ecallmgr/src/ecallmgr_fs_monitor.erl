@@ -49,7 +49,7 @@ start_link(Node, Options) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', state()}.
+-spec init([atom() | kz_proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
@@ -102,7 +102,7 @@ handle_cast(_Cast, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'nodedown', Node}, State) ->
-    ecallmgr_fs_nodes:nodedown(Node),
+    _ = ecallmgr_fs_nodes:nodedown(Node),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
