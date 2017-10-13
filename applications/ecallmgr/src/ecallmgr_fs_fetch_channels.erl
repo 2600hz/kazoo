@@ -26,7 +26,7 @@ init() ->
 
 
 -spec channel_req(tuple()) -> 'ok'.
-channel_req(#{node := Node, fetch_id := FetchId, jobj := JObj}) ->
+channel_req(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
     UUID = kzd_fetch:call_id(JObj),
     ForUUID = kz_json:get_value(<<"refer-for-channel-id">>, JObj),
     {'ok', ForChannel} = ecallmgr_fs_channel:fetch(ForUUID, 'proplist'),

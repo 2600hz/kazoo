@@ -30,7 +30,7 @@ init() ->
 %%% Internal functions
 %%%===================================================================
 -spec directory_lookup(map()) -> fs_handlecall_ret().
-directory_lookup(#{node := Node, fetch_id := FetchId, jobj := JObj}) ->
+directory_lookup(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
     kz_util:put_callid(FetchId),
     lager:debug("received fetch request (~s) user directory from ~s", [FetchId, Node]),
     case kzd_fetch:fetch_action(JObj, <<"sip_auth">>) of
@@ -56,9 +56,9 @@ maybe_kamailio_association(Node, Id, JObj) ->
 kamailio_association(Node, Id, JObj, EndpointId, AccountId) ->
     case kz_endpoint:profile(EndpointId, AccountId) of
         {ok, Endpoint} ->
-            lager:debug("building authn resp for ~s@~s from endpoint", [EndpointId, AccountId]),
+            lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
             {'ok', Xml} = ecallmgr_fs_xml:directory_resp_endpoint_xml(Endpoint),
-            lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
+            lager:debug("sending directory XML to ~w: ~s", [Node, Xml]),
             freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml));
         {error, _Err} ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
@@ -66,9 +66,9 @@ kamailio_association(Node, Id, JObj, EndpointId, AccountId) ->
     end.
 
 -spec directory_not_found({atom(), ne_binary(), kz_json:object()}) -> fs_handlecall_ret().
-directory_not_found(#{node := Node, fetch_id := FetchId, jobj := _JObj}) ->
+directory_not_found(#{node := Node, fetch_id := FetchId, payload := _JObj}) ->
     {'ok', Xml} = ecallmgr_fs_xml:not_found(),
-    lager:debug("sending authn not found XML to ~w", [Node]),
+    lager:debug("sending directory not found XML to ~w", [Node]),
     freeswitch:fetch_reply(Node, FetchId, 'directory', iolist_to_binary(Xml)).
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_handlecall_ret().
