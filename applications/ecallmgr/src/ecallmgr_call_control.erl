@@ -911,11 +911,11 @@ insert_command(#state{node=Node
             _ = execute_queue_commands(Commands, DefJObj, State),
             CommandQ;
         <<"noop">> ->
-            execute_control_request(JObj, State),
+            _ = execute_control_request(JObj, State),
             maybe_filter_queue(kz_json:get_value(<<"Filter-Applications">>, JObj), CommandQ);
         _ ->
             lager:debug("recv and executing ~s now!", [AName]),
-            execute_control_request(JObj, State),
+            _ = execute_control_request(JObj, State),
             CommandQ
     end;
 insert_command(#state{node=Node, call_id=CallId}, 'flush', JObj) ->

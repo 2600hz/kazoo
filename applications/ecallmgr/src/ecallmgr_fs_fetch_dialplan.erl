@@ -163,13 +163,13 @@ send_reply(#{node := Node, fetch_id := FetchId, reply := #{payload := Reply}}=Ma
 wait_for_route_win(Map) ->
     receive
         {'route_winner', JObj, Props} ->
-            start_call_control(Map#{winner => #{payload => JObj, props => Props}})
+            activate_call_control(Map#{winner => #{payload => JObj, props => Props}})
     after ?ROUTE_WINNER_TIMEOUT ->
             lager:warning("timeout after ~B receiving route winner", [?ROUTE_WINNER_TIMEOUT])
     end.
 
--spec start_call_control(map()) -> 'ok'.
-start_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) ->
+-spec activate_call_control(map()) -> {'ok', map()}.
+activate_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) ->
     kz_util:put_callid(CallId),
     CCVs = kzd_fetch:ccvs(JObj),
     ControllerQ = kzd_fetch:controller_queue(JObj),

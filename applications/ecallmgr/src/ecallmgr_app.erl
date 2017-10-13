@@ -88,12 +88,12 @@ node_bindings() ->
 
 -spec event_stream_bind() -> 'ok'.
 event_stream_bind() ->
-    [Mod:init() || Mod <- ?EVENTSTREAM_MODS],
+    _ = [Mod:init() || Mod <- ?EVENTSTREAM_MODS],
     'ok'.
 
 -spec event_stream_unbind() -> 'ok'.
 event_stream_unbind() ->
-    [kazoo_bindings:flush_mod(Mod) || Mod <- ?EVENTSTREAM_MODS],
+    _ = [kazoo_bindings:flush_mod(Mod) || Mod <- ?EVENTSTREAM_MODS],
     'ok'.
 
 -define(FETCH_HANDLERS_MODS, ['ecallmgr_fs_fetch_configuration_acl'
@@ -107,10 +107,10 @@ event_stream_unbind() ->
 
 -spec fetch_handlers_bind() -> 'ok'.
 fetch_handlers_bind() ->
-    [Mod:init() || Mod <- ?FETCH_HANDLERS_MODS],
+    _ = [Mod:init() || Mod <- ?FETCH_HANDLERS_MODS],
     'ok'.
 
 -spec fetch_handlers_unbind() -> 'ok'.
 fetch_handlers_unbind() ->
-    [kazoo_bindings:flush_mod(Mod) || Mod <- ?FETCH_HANDLERS_MODS],
+    _ = [kazoo_bindings:flush_mod(Mod) || Mod <- ?FETCH_HANDLERS_MODS],
     'ok'.
