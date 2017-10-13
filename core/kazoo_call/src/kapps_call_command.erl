@@ -2761,7 +2761,6 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
     case get_event_type(JObj) of
         {<<"error">>, _, <<"bridge">>} ->
             lager:debug("channel execution error while waiting for bridge"),
-%            lager:debug("channel execution error while waiting for bridge: ~s", [kz_json:encode(JObj)]),
             {'error', JObj};
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
             CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
@@ -2856,7 +2855,7 @@ wait_for_hangup(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     {'ok', 'channel_hungup'};
                 _Evt ->
-%                    lager:debug("ignoring: ~p", [_Evt]),
+                                                %                    lager:debug("ignoring: ~p", [_Evt]),
                     wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
             end;
         _ -> wait_for_hangup(kz_time:decr_timeout(Timeout, Start))

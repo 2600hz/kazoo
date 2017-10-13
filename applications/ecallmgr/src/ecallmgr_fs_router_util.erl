@@ -117,7 +117,7 @@ reply_affirmative(Section, Node, FetchId, _CallId, JObj0, Props) ->
                               ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj0)}
                               ], kz_json:get_value(<<"Custom-Channel-Vars">>, JObj0, kz_json:new())),
     JObj = kz_json:set_value(<<"Custom-Channel-Vars">>, CCVs, JObj0),
-    
+
     {'ok', XML} = route_resp_xml(Section, JObj, Props),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of

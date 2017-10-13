@@ -71,8 +71,8 @@ directory_resp_endpoint_xml(JObj) ->
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
     VariablesEl = variables_el(VariableEls),
     Expires = ecallmgr_util:maybe_add_expires_deviation_ms(
-                        kz_json:get_value(<<"Expires">>,JObj)
-                       ),
+                kz_json:get_value(<<"Expires">>,JObj)
+               ),
     Number = kz_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
     ProfileEls = [variable_el(K, V) || {K, V} <- get_profile_params(JObj)],
     ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
@@ -439,7 +439,7 @@ route_resp_ringback(JObj) ->
 route_resp_ccvs(JObj) ->
     CCVs = [{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
            ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
-             | kz_json:to_proplist(<<"Custom-Channel-Vars">>, JObj)
+            | kz_json:to_proplist(<<"Custom-Channel-Vars">>, JObj)
            ],
     action_el(<<"kz_multiset">>, route_ccvs_list(CCVs)).
 

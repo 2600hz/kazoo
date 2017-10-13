@@ -105,7 +105,7 @@ send_cmd(Node, UUID, "xferext", Dialplan) ->
                     {App, Arg} = case binary:split(kz_term:to_binary(V), <<" ">>) of
                                      [AppName, AppArgs] -> {AppName, AppArgs};
                                      [AppName] -> {AppName, <<>>}
-                                 end,                                     
+                                 end,
                     [{<<"call-command">>, <<"execute">>}
                     ,{<<"execute-app-name">>, kz_term:to_binary(App)}
                     ,{<<"execute-app-arg">>, kz_term:to_binary(Arg)}

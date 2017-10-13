@@ -134,7 +134,7 @@ maybe_fetch_conference_profile(Node, Id, <<"page">> = Profile, Conference) ->
 maybe_fetch_conference_profile(Node, Id, Profile, _Conference) ->
     [AccountId | _] = binary:split(Profile, <<"_">>),
     fetch_conference_profile(Node, Id, Profile, AccountId).
-    
+
 -spec fetch_conference_profile(atom(), ne_binary(), api_binary(), api_binary()) -> fs_sendmsg_ret().
 fetch_conference_profile(Node, Id, Profile, AccountId) ->
     Cmd = [{<<"Request">>, <<"Conference">>}

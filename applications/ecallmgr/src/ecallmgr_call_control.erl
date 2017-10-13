@@ -131,8 +131,8 @@ node(Srv) ->
 hostname(Srv) ->
     Node = ?MODULE:node(Srv),
     case binary:split(kz_term:to_binary(Node), <<"@">>) of
-       [_, Hostname] -> Hostname;
-       Other -> Other
+        [_, Hostname] -> Hostname;
+        Other -> Other
     end.
 
 -spec queue_name(kz_term:api_pid()) -> kz_term:api_ne_binary().
@@ -214,7 +214,7 @@ init_control(Pid, #{node := Node
             register(Name, self()),
             gen_server:enter_loop(?MODULE, [], State, {'local', Name});
         _Other ->
-                lager:debug("INIT_CONTROL5")
+            lager:debug("INIT_CONTROL5")
     catch
         _Ex:_Err ->
             lager:debug("BINDINGS ~p : ~p", [_Ex, _Err]),
@@ -228,7 +228,7 @@ init_control(Pid, #{node := Node
                    ,controller_q := ControllerQ
                    ,controller_p := ControllerP
                    ,control_q := ControlQ
-                   ,initial_ccvs := CCVs                   
+                   ,initial_ccvs := CCVs
                    }) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
     Name = ?CALL_CTL_NAME(CallId),
@@ -353,7 +353,7 @@ handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
             {'noreply', State};
         {ResigningUUID, AcquiringUUID} ->
             lager:debug("replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
-%%            {'noreply', handle_sofia_replaced(AcquiringUUID, State)};
+            %%            {'noreply', handle_sofia_replaced(AcquiringUUID, State)};
             {'noreply', State#state{call_id=AcquiringUUID}};
         {_UUID, _AcuiringUUID} ->
             lager:debug("ignoring bowout for ~s", [_UUID]),
@@ -467,13 +467,13 @@ publish_route_win(#state{call_id=CallId
                          ,Q
                          ,";Call-Control-PID="
                          ,kz_term:to_binary(self())
-                         ]),    
+                         ]),
     Command = [{<<"call-command">>, <<"execute">>}
               ,{<<"execute-app-name">>, App}
               ,{<<"execute-app-arg">>, Arg}
               ],
     freeswitch:cast_cmd(Node, CallId, Command),
-    
+
     Win = [{<<"Msg-ID">>, CallId}
           ,{<<"Reply-To-PID">>, ControllerP}
           ,{<<"Call-ID">>, CallId}
@@ -531,7 +531,7 @@ handle_channel_destroyed(#state{sanity_check_tref=SCTRef
     %% have not been executed on freeswitch but were already queued (for example in xferext).
     %% Commonly events like masquerade, noop, etc
     _ = case CurrentApp =:= 'undefined'
-%            orelse is_post_hangup_command(CurrentApp)
+                                                %            orelse is_post_hangup_command(CurrentApp)
         of
             'true' -> 'ok';
             'false' ->
@@ -569,32 +569,32 @@ force_queue_advance(#state{call_id=CallId
             case CallUp
                 andalso execute_control_request(Cmd, State)
             of
-                    'false' ->
-                        lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
-                        maybe_send_error_resp(CallId, Cmd),
-                        self() ! {'force_queue_advance', CallId},
-                        State#state{command_q=CmdQ1
-                                   ,current_app=AppName
-                                   ,current_cmd=Cmd
-                                   ,keep_alive_ref=get_keep_alive_ref(State)
-                                   ,msg_id=MsgId
-                                   };
+                'false' ->
+                    lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
+                    maybe_send_error_resp(CallId, Cmd),
+                    self() ! {'force_queue_advance', CallId},
+                    State#state{command_q=CmdQ1
+                               ,current_app=AppName
+                               ,current_cmd=Cmd
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
+                               };
                 'ok' ->
-                        State#state{command_q=CmdQ1
-                                   ,current_app=AppName
-                                   ,current_cmd=Cmd
-                                   ,keep_alive_ref=get_keep_alive_ref(State)
-                                   ,msg_id=MsgId
-                                   };
+                    State#state{command_q=CmdQ1
+                               ,current_app=AppName
+                               ,current_cmd=Cmd
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
+                               };
                 {'ok', EventUUID} ->
-                        State#state{command_q=CmdQ1
-                                   ,current_app=AppName
-                                   ,current_cmd=Cmd
-                                   ,current_cmd_uuid = EventUUID
-                                   ,keep_alive_ref=get_keep_alive_ref(State)
-                                   ,msg_id=MsgId
-                                   }
-                end
+                    State#state{command_q=CmdQ1
+                               ,current_app=AppName
+                               ,current_cmd=Cmd
+                               ,current_cmd_uuid = EventUUID
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
+                               }
+            end
     end.
 
 %%------------------------------------------------------------------------------
@@ -606,7 +606,7 @@ handle_execute_complete('undefined', _, _JObj, State) ->
     lager:debug_unsafe("call control received undefined : ~s", [kz_json:encode(_JObj, ['pretty'])]),
     State;
 handle_execute_complete(_, 'undefined', _JObj, State) ->
-    lager:debug_unsafe("call control received undefined : ~s", [kz_json:encode(_JObj, ['pretty'])]),    
+    lager:debug_unsafe("call control received undefined : ~s", [kz_json:encode(_JObj, ['pretty'])]),
     State;
 handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_cmd_uuid='undefined'}=State) ->
     State;
@@ -620,8 +620,8 @@ handle_execute_complete(<<"noop">>, EventUUID, JObj, #state{msg_id=CurrMsgId, cu
             State
     end;
 handle_execute_complete(<<"playback">> = AppName, EventUUID, JObj, #state{current_app=AppName
-                                                              ,current_cmd_uuid=EventUUID
-                                                              ,command_q=CmdQ}=State) ->
+                                                                         ,current_cmd_uuid=EventUUID
+                                                                         ,command_q=CmdQ}=State) ->
     lager:debug("playback finished, checking for group-id/DTMF termination"),
     S = case kz_json:get_value(<<"DTMF-Digit">>, JObj) of
             'undefined' ->
@@ -646,7 +646,7 @@ handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp, cu
     end;
 handle_execute_complete(_AppName, _EventUUID, _JObj, State) ->
     State.
-    
+
 -spec flush_group_id(queue:queue(), kz_term:api_binary(), kz_term:ne_binary()) -> queue:queue().
 flush_group_id(CmdQ, 'undefined', _) -> CmdQ;
 flush_group_id(CmdQ, GroupId, AppName) ->
@@ -659,13 +659,13 @@ flush_group_id(CmdQ, GroupId, AppName) ->
 
 -spec forward_queue(state()) -> state().
 forward_queue(#state{call_id = CallId
-                     ,is_node_up = INU
-                     ,is_call_up = CallUp
-                     ,command_q = CmdQ
+                    ,is_node_up = INU
+                    ,is_call_up = CallUp
+                    ,command_q = CmdQ
                     }=State) ->
     case INU
-             andalso queue:out(CmdQ)
-        of
+        andalso queue:out(CmdQ)
+    of
         'false' ->
             %% if the node is down, don't inject the next FS event
             lager:debug("not continuing until the media node becomes available"),
@@ -677,30 +677,30 @@ forward_queue(#state{call_id = CallId
             AppName = kapi_dialplan:application_name(Cmd),
             MsgId = kz_api:msg_id(Cmd),
             case CallUp
-                     andalso execute_control_request(Cmd, State)
-                of
+                andalso execute_control_request(Cmd, State)
+            of
                 'false' ->
                     lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
                     maybe_send_error_resp(CallId, Cmd),
                     self() ! {'force_queue_advance', CallId},
                     State#state{command_q = CmdQ1
-                                ,current_app = AppName
-                                ,current_cmd = Cmd
-                                ,msg_id = MsgId
+                               ,current_app = AppName
+                               ,current_cmd = Cmd
+                               ,msg_id = MsgId
                                };
                 'ok' ->
                     State#state{command_q = CmdQ1
-                                ,current_app = AppName
-                                ,current_cmd = Cmd
-                                ,msg_id = MsgId
+                               ,current_app = AppName
+                               ,current_cmd = Cmd
+                               ,msg_id = MsgId
                                };
                 {'ok', EventUUID} ->
                     MsgId = kz_json:get_value(<<"Msg-ID">>, Cmd, <<>>),
                     State#state{command_q = CmdQ1
-                                ,current_app = AppName
-                                ,current_cmd_uuid = EventUUID
-                                ,current_cmd = Cmd
-                                ,msg_id = MsgId
+                               ,current_app = AppName
+                               ,current_cmd_uuid = EventUUID
+                               ,current_cmd = Cmd
+                               ,msg_id = MsgId
                                }
             end
     end.
@@ -725,12 +725,12 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, State)->
 %%     unbind_from_events(Node, CallId),
 %%     unreg_for_call_related_events(CallId),
 %%     gen_server:rm_binding(self(), 'call', [{'callid', CallId}]),
-%% 
+%%
 %%     kz_util:put_callid(ReplacedBy),
 %%     bind_to_events(Node, ReplacedBy),
 %%     reg_for_call_related_events(ReplacedBy),
 %%     gen_server:add_binding(self(), 'call', [{'callid', ReplacedBy}]),
-%% 
+%%
 %%     lager:info("...call id updated, continuing post-transfer"),
 %%     Commands = [kz_json:set_value(<<"Call-ID">>, ReplacedBy, JObj)
 %%                 || JObj <- queue:to_list(CommandQ)
@@ -752,7 +752,7 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, State)->
 %%         CallId -> add_leg(JObj, LegId, State);
 %%         OtherLeg -> maybe_add_cleg(JObj, OtherLeg, LegId, State)
 %%     end.
-%% 
+%%
 %% -spec add_leg(kz_proplist(), ne_binary(), state()) -> state().
 %% add_leg(_JObj, LegId, #state{other_legs=Legs}=State) ->
 %%     case lists:member(LegId, Legs) of
@@ -761,14 +761,14 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, State)->
 %%             lager:debug("added leg ~s to call", [LegId]),
 %%             State#state{other_legs=[LegId|Legs]}
 %%     end.
-%% 
+%%
 %% -spec maybe_add_cleg(kz_proplist(), api_binary(), api_binary(), state()) -> state().
 %% maybe_add_cleg(JObj, OtherLeg, LegId, #state{other_legs=Legs}=State) ->
 %%     case lists:member(OtherLeg, Legs) of
 %%         'true' -> add_cleg(JObj, OtherLeg, LegId, State);
 %%         'false' -> State
 %%     end.
-%% 
+%%
 %% -spec add_cleg(kz_proplist(), api_binary(), api_binary(), state()) -> state().
 %% add_cleg(_JObj, _OtherLeg, 'undefined', State) -> State;
 %% add_cleg(_JObj, _OtherLeg, LegId, #state{other_legs=Legs}=State) ->
@@ -789,7 +789,7 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, State)->
 %%         'true' -> remove_leg(JObj, State);
 %%         'false' -> State
 %%     end.
-%% 
+%%
 %% -spec remove_leg(kz_proplist(), state()) -> state().
 %% remove_leg(JObj, #state{other_legs=Legs
 %%                        }=State) ->
@@ -831,44 +831,44 @@ handle_dialplan(JObj, #state{call_id=CallId
             case CallUp
                 andalso execute_control_request(Cmd, State)
             of
-                    'false' ->
-                        lager:debug("command '~s' is not valid after hangup, ignoring", [AppName]),
-                        maybe_send_error_resp(CallId, Cmd),
-                        self() ! {'force_queue_advance', CallId},
-                        State#state{command_q=NewCmdQ1
-                                   ,current_app=AppName
-                                   ,current_cmd=Cmd
-                                   ,keep_alive_ref=get_keep_alive_ref(State)
-                                   ,msg_id=MsgId
-                                   };
-                 {'error', Error} ->
-                        lager:debug("command '~s' returned an error ~p", [AppName, Error]),
-                        maybe_send_error_resp(AppName, CallId, Cmd, Error),
-                        self() ! {'force_queue_advance', CallId},
-                        State#state{command_q=NewCmdQ1
-                                   ,current_app=AppName
-                                   ,current_cmd=Cmd
-                                   ,keep_alive_ref=get_keep_alive_ref(State)
-                                   ,msg_id=MsgId
-                                   };
+                'false' ->
+                    lager:debug("command '~s' is not valid after hangup, ignoring", [AppName]),
+                    maybe_send_error_resp(CallId, Cmd),
+                    self() ! {'force_queue_advance', CallId},
+                    State#state{command_q=NewCmdQ1
+                               ,current_app=AppName
+                               ,current_cmd=Cmd
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
+                               };
+                {'error', Error} ->
+                    lager:debug("command '~s' returned an error ~p", [AppName, Error]),
+                    maybe_send_error_resp(AppName, CallId, Cmd, Error),
+                    self() ! {'force_queue_advance', CallId},
+                    State#state{command_q=NewCmdQ1
+                               ,current_app=AppName
+                               ,current_cmd=Cmd
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
+                               };
                 'ok' ->
-                        self() ! {'force_queue_advance', CallId},
-                        State#state{command_q=NewCmdQ1
-                                   ,current_app=AppName
-                                   ,current_cmd=Cmd
-                                   ,keep_alive_ref=get_keep_alive_ref(State)
-                                   ,msg_id=MsgId
-                                   };
+                    self() ! {'force_queue_advance', CallId},
+                    State#state{command_q=NewCmdQ1
+                               ,current_app=AppName
+                               ,current_cmd=Cmd
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
+                               };
                 {'ok', EventUUID} ->
-                        State#state{command_q=NewCmdQ1
-                                   ,current_app=AppName
-                                   ,current_cmd_uuid = EventUUID
-                                   ,current_cmd=Cmd
-                                   ,keep_alive_ref=get_keep_alive_ref(State)
-                                   ,msg_id=MsgId
-                                   }
-                        
-                end;
+                    State#state{command_q=NewCmdQ1
+                               ,current_app=AppName
+                               ,current_cmd_uuid = EventUUID
+                               ,current_cmd=Cmd
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
+                               }
+
+            end;
         'false' ->
             State#state{command_q=NewCmdQ
                        ,keep_alive_ref=get_keep_alive_ref(State)
@@ -1069,7 +1069,7 @@ execute_control_request(Cmd, #state{node=Node
                                    }) ->
     kz_util:put_callid(CallId),
     Srv = self(),
-%%    Insert = kz_json:get_atom_value(<<"Insert-At">>, Cmd, 'tail'),
+    %%    Insert = kz_json:get_atom_value(<<"Insert-At">>, Cmd, 'tail'),
 
     Application = kapi_dialplan:application_name(Cmd),
 
@@ -1174,13 +1174,13 @@ send_error_resp(CallId, Cmd, Msg) ->
 
 -spec send_error_resp(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg, _Channel) ->
-%%    CCVs = error_ccvs(Channel),
+    %%    CCVs = error_ccvs(Channel),
 
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(Cmd)}
            ,{<<"Error-Message">>, Msg}
            ,{<<"Request">>, Cmd}
            ,{<<"Call-ID">>, CallId}
-%%           ,{<<"Custom-Channel-Vars">>, CCVs}
+            %%           ,{<<"Custom-Channel-Vars">>, CCVs}
             | kz_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("sending execution error: ~p", [Resp]),
@@ -1231,20 +1231,20 @@ bind(Node, CallId) ->
 -spec handle_replaced(kz_term:proplist(), state()) ->
                              {'noreply', state()}.
 handle_replaced(JObj, #state{fetch_id=FetchId
-                             ,node=_Node
-                             ,call_id=_CallId
-                             }=State) ->
+                            ,node=_Node
+                            ,call_id=_CallId
+                            }=State) ->
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId ->
             ReplacedBy = kz_json:get_value(<<"Replaced-By">>, JObj),
             case ecallmgr_fs_channel:fetch(ReplacedBy) of
                 {'ok', _Channel} ->
-%%                     OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
-%%                     OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-%%                     CDR = kz_json:get_value(<<"interaction_id">>, Channel),
-%%                     kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
-%%                     ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
-%%                     ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    %%                     OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
+                    %%                     OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+                    %%                     CDR = kz_json:get_value(<<"interaction_id">>, Channel),
+                    %%                     kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+                    %%                     ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    %%                     ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
                     {'noreply', handle_sofia_replaced(ReplacedBy, State)};
                 _Else ->
                     lager:debug("channel replaced was not handled : ~p", [_Else]),
@@ -1258,9 +1258,9 @@ handle_replaced(JObj, #state{fetch_id=FetchId
 -spec handle_transferee(kz_term:proplist(), state()) ->
                                {'noreply', state()}.
 handle_transferee(JObj, #state{fetch_id=FetchId
-                               ,node=_Node
-                               ,call_id=CallId
-                               }=State) ->
+                              ,node=_Node
+                              ,call_id=CallId
+                              }=State) ->
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId ->
             lager:info("we (~s) have been transferred, terminate immediately", [CallId]),
@@ -1280,25 +1280,25 @@ handle_transferor(_Props, #state{fetch_id=_FetchId
 
 -spec handle_intercepted(atom(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 handle_intercepted(_Node, _CallId, _Props) ->
-%%     _ = case {props:get_value(<<"Core-UUID">>, Props)
-%%              ,props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props)
-%%              }
-%%         of
-%%             {A, A} -> 'ok';
-%%             {_, 'undefined'} ->
-%%                 UUID = props:get_value(<<"intercepted_by">>, Props),
-%%                 case ecallmgr_fs_channel:fetch(UUID) of
-%%                     {'ok', Channel} ->
-%%                         CDR = kz_json:get_value(<<"interaction_id">>, Channel),
-%%                         kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
-%%                         ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}]);
-%%                     _ -> 'ok'
-%%                 end;
-%%             _ ->
-%%                 UUID = props:get_value(<<"intercepted_by">>, Props),
-%%                 CDR = props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), Props),
-%%                 ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
-%%         end,
+    %%     _ = case {props:get_value(<<"Core-UUID">>, Props)
+    %%              ,props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props)
+    %%              }
+    %%         of
+    %%             {A, A} -> 'ok';
+    %%             {_, 'undefined'} ->
+    %%                 UUID = props:get_value(<<"intercepted_by">>, Props),
+    %%                 case ecallmgr_fs_channel:fetch(UUID) of
+    %%                     {'ok', Channel} ->
+    %%                         CDR = kz_json:get_value(<<"interaction_id">>, Channel),
+    %%                         kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+    %%                         ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}]);
+    %%                     _ -> 'ok'
+    %%                 end;
+    %%             _ ->
+    %%                 UUID = props:get_value(<<"intercepted_by">>, Props),
+    %%                 CDR = props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), Props),
+    %%                 ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
+    %%         end,
     'ok'.
 
 -spec handle_event_info(kz_term:ne_binary(), kzd_freeswitch:data(), state()) ->
@@ -1311,8 +1311,8 @@ handle_event_info(CallId, JObj, #state{call_id=CallId
     case kz_call_event:event_name(JObj) of
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             {'noreply', handle_execute_complete(Application, kz_call_event:application_uuid(JObj), JObj, State)};
-%%         <<"RECORD_STOP">> ->
-%%             {'noreply', handle_execute_complete(Application, JObj, State)};
+        %%         <<"RECORD_STOP">> ->
+        %%             {'noreply', handle_execute_complete(Application, JObj, State)};
         <<"CHANNEL_DESTROY">> ->
             {'noreply', handle_channel_destroyed(JObj, State)};
         <<"CHANNEL_TRANSFEREE">> ->

@@ -59,7 +59,7 @@ channel_bridge({_Node, UUID, _Category, _Event, JObj}) ->
     OtherLeg = kz_json:get_ne_binary_value(<<"Bridge-B-Unique-ID">>, JObj),
     ecallmgr_fs_channels:updates(UUID, props:filter_undefined(
                                          [{#channel.other_leg, OtherLeg}
-%%                                          | update_callee(UUID, Props)
+                                          %%                                          | update_callee(UUID, Props)
                                          ]
                                         )
                                 ),
@@ -94,7 +94,7 @@ jobj_to_record(Node, UUID, JObj) ->
     #channel{uuid=UUID
             ,destination=kz_json:get_value(<<"Caller-Destination-Number">>, JObj)
             ,direction=kz_json:get_value(<<"Call-Direction">>, JObj)
-            
+
             ,account_id=props:get_value(<<"Account-ID">>, CCVs)
             ,account_billing=props:get_value(<<"Account-Billing">>, CCVs)
             ,authorizing_id=props:get_value(<<"Authorizing-ID">>, CCVs)
@@ -107,11 +107,11 @@ jobj_to_record(Node, UUID, JObj) ->
             ,reseller_id=props:get_value(<<"Reseller-ID">>, CCVs)
             ,reseller_billing=props:get_value(<<"Reseller-Billing">>, CCVs)
             ,precedence=kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
-            
+
             ,presence_id=kz_json:get_value(<<"Presence-ID">>, JObj)
             ,realm=props:get_value(<<"Realm">>, CCVs)
             ,username=props:get_value(<<"Username">>, CCVs)
-            
+
             ,answered=kz_json:get_value(<<"Answer-State">>, JObj) =:= <<"answered">>
             ,node=Node
             ,timestamp=kz_time:current_tstamp()
@@ -119,19 +119,19 @@ jobj_to_record(Node, UUID, JObj) ->
             ,profile=kz_json:get_value(<<"Caller-Profile">>, JObj, ?DEFAULT_FS_PROFILE)
             ,context=kz_json:get_value(<<"Caller-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT)
             ,dialplan=kz_json:get_value(<<"Caller-Dialplan">>, JObj, ?DEFAULT_FS_DIALPLAN)
-            
+
             ,other_leg=OtherLeg
             ,handling_locally=handling_locally(props:get_value(<<"Ecallmgr-Node">>, CCVs), OtherLeg)
-            
+
             ,to_tag=kz_json:get_value(<<"To-Tag">>, JObj)
             ,from_tag=kz_json:get_value(<<"From-Tag">>, JObj)
-            
+
             ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
-            
+
             ,is_loopback=kz_json:is_true(<<"Channel-Is-Loopback">>, JObj)
             ,loopback_leg_name=kz_json:get_value(<<"Channel-Loopback-Leg">>, JObj)
             ,loopback_other_leg=kz_json:get_value(<<"Channel-Loopback-Other-Leg-ID">>, JObj)
-            
+
             ,callflow_id=props:get_value(<<"CallFlow-ID">>, CCVs)
             ,cavs=CAVs
             }.

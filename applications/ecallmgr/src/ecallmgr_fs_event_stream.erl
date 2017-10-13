@@ -107,7 +107,7 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', _MonitorRef, _Type, _Object, _Info}, State)->
     kz_amqp_channel:requisition(),
-    {'noreply', State};    
+    {'noreply', State};
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,idle_alert=Timeout

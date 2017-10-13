@@ -237,7 +237,7 @@ pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
               ],
     CmdExport = kz_binary:join([<<K/binary, "=", V/binary>> || {K, V} <- Exports], <<" ">>),
     [{"application", "kz_multiset continue_on_fail=true hangup_after_bridge=true"}
-    ,{"application", <<"kz_export ", CmdExport/binary>>}       
+    ,{"application", <<"kz_export ", CmdExport/binary>>}
      |DP
     ].
 

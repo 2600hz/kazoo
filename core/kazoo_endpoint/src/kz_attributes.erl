@@ -117,7 +117,7 @@ maybe_get_endpoint_cid(Validate, Attribute, Call) ->
             maybe_normalize_cid('undefined', 'undefined', Validate, Attribute, Call);
         {'ok', JObj} ->
             get_endpoint_cid(Validate, Attribute, JObj, Call)
-   end.
+    end.
 
 -spec get_endpoint_cid(boolean(), ne_binary(), kz_json:object(), kapps_call:call()) -> cid().
 get_endpoint_cid(Validate, Attribute, JObj, Call) ->

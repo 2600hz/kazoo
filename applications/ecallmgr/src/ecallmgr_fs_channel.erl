@@ -450,7 +450,7 @@ get_realm_from_props(Props) ->
 %%             ];
 %%         _ -> []
 %%     end.
-%% 
+%%
 %% -spec maybe_update_callee_field(api_binary(), api_binary()) -> api_binary().
 %% maybe_update_callee_field(Value, 'undefined') -> Value;
 %% maybe_update_callee_field(_Value, Existing) -> Existing.

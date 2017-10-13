@@ -36,7 +36,7 @@ start_link() ->
                                 supervisor:start_child(Pid, []),
                                 timer:sleep(500)
                             end
-                              || _N <- lists:seq(1, Workers)
+                            || _N <- lists:seq(1, Workers)
                            ]
                   end),
     {'ok', Pid}.

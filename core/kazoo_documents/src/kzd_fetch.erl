@@ -58,7 +58,7 @@
         ,fetch_section/1
         ,fetch_winning_pid/1
         ,switch_url/1, switch_uri/1
-        
+
         ,controller_queue/1, controller_pid/1
         ,hunt_context/1
         ,node/1

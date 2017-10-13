@@ -307,15 +307,15 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, kz_json:get_value(<<"Retain-CID">>, CCVsOrig)}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}                  
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, FromURI}
-                   
+
                    ,{<<"Resource-ID">>, AccountId}
                    ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
                    ,{<<"From-URI">>, <<"sip:", CIDNum/binary, "@", FromRealm/binary>>}
                    ,{<<"Resource-Type">>, <<"onnet-termination">>}
-                   
+
                    ]),
 
     Endpoint = kz_json:from_list(

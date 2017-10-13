@@ -212,7 +212,7 @@ authorize_account(JObj, Props, CallId, Node) ->
     lager:debug("channel is authorized by account ~s as ~s", [AccountId, Type]),
     CCVs = [{<<"Account-ID">>, AccountId}
            ,{<<"Account-Billing">>, Type}
-             | maybe_add_outbound_flags(ChanVars)
+            | maybe_add_outbound_flags(ChanVars)
            ],
     P = kzd_freeswitch:set_ccvs(Props, CCVs),
 

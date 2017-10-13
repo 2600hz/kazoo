@@ -120,7 +120,7 @@ init([Node, Options]) ->
 
     NodeB = kz_term:to_binary(Node),
     Args = [Node, Options],
-    
+
     Modules = node_modules(Options),
     JObj = maybe_correct_modules(Modules),
     Children = kz_json:foldr(fun(Module, V, Acc) ->

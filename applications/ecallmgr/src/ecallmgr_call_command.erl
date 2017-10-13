@@ -679,26 +679,26 @@ maybe_answer(Node, UUID, 'false') ->
                                     {'execute', atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()} |
                                     {'return', kz_term:ne_binary()}.
 prepare_app_maybe_move(Node, UUID, _JObj, Target, OtherNode) ->
-            lager:debug("target ~s is on ~s, not ~s, need to redirect", [Target, OtherNode, Node]),
+    lager:debug("target ~s is on ~s, not ~s, need to redirect", [Target, OtherNode, Node]),
 
-            _ = prepare_app_usurpers(Node, UUID),
+    _ = prepare_app_usurpers(Node, UUID),
 
-            lager:debug("now issue the redirect to ~s", [OtherNode]),
-            _ = ecallmgr_channel_redirect:redirect(UUID, OtherNode),
-            {'return', <<"target is on different media server: ", (kz_term:to_binary(OtherNode))/binary>>}.
+    lager:debug("now issue the redirect to ~s", [OtherNode]),
+    _ = ecallmgr_channel_redirect:redirect(UUID, OtherNode),
+    {'return', <<"target is on different media server: ", (kz_term:to_binary(OtherNode))/binary>>}.
 
 -spec prepare_app_maybe_move_remote(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), atom(), kz_json:object()) ->
                                            {kz_term:ne_binary(), kz_term:ne_binary()} |
                                            {'execute', atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()} |
                                            {'return', kz_term:ne_binary()}.
 prepare_app_maybe_move_remote(Node, UUID, _JObj, TargetCallId, TargetNode, ChannelStatusJObj) ->
-            lager:debug("target ~s is on ~s, not ~s, need to redirect", [TargetCallId, TargetNode, Node]),
+    lager:debug("target ~s is on ~s, not ~s, need to redirect", [TargetCallId, TargetNode, Node]),
 
-            _ = prepare_app_usurpers(Node, UUID),
+    _ = prepare_app_usurpers(Node, UUID),
 
-            lager:debug("now issue the redirect to ~s", [TargetNode]),
-            _ = ecallmgr_channel_redirect:redirect_remote(UUID, ChannelStatusJObj),
-            {'return', <<"target is on different media server: ", (kz_term:to_binary(TargetNode))/binary>>}.
+    lager:debug("now issue the redirect to ~s", [TargetNode]),
+    _ = ecallmgr_channel_redirect:redirect_remote(UUID, ChannelStatusJObj),
+    {'return', <<"target is on different media server: ", (kz_term:to_binary(TargetNode))/binary>>}.
 
 -spec prepare_app_usurpers(atom(), kz_term:ne_binary()) -> 'ok'.
 prepare_app_usurpers(Node, UUID) ->
