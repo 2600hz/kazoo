@@ -101,9 +101,9 @@ app_name(JObj) ->
 app_version(JObj) ->
     kz_json:get_value(?KEY_APP_VERSION, JObj).
 
--spec node(kz_json:object()) -> kz_term:api_ne_binary().
+-spec node(kz_json:object()) -> atom().
 node(JObj) ->
-    kz_json:get_ne_binary_value(?KEY_NODE, JObj).
+    kz_json:get_atom_value(?KEY_NODE, JObj).
 
 -spec msg_id(kz_term:api_terms()) -> kz_term:api_ne_binary().
 msg_id(API) -> msg_id(API, 'undefined').

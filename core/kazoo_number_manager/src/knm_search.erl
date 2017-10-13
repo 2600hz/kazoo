@@ -147,15 +147,15 @@ handle_info(_Info, State) ->
     {'noreply', State, ?POLLING_INTERVAL}.
 
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, #{node := Node}) ->
-    _ = case kz_api:node(JObj) =/= Node
-            andalso kz_api:event_name(JObj)
-        of
-            <<"flush">> -> kz_util:spawn(fun handle_flush/1, [JObj]);
-            <<"request">> -> kz_util:spawn(fun handle_search/1, [JObj]);
-            <<"number">> -> kz_util:spawn(fun handle_number/1, [JObj]);
-            _ -> 'ok'
-        end,
+handle_event(JObj, _State) ->
+    case kz_api:node(JObj) =/= node()
+        andalso kz_api:event_name(JObj)
+    of
+        <<"flush">> -> kz_util:spawn(fun handle_flush/1, [JObj]);
+        <<"request">> -> kz_util:spawn(fun handle_search/1, [JObj]);
+        <<"number">> -> kz_util:spawn(fun handle_number/1, [JObj]);
+        _ -> 'ok'
+    end,
     'ignore'.
 
 %%------------------------------------------------------------------------------

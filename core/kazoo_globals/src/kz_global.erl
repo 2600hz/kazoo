@@ -58,8 +58,7 @@
 
 -spec from_jobj(kz_json:object(), atom()) -> global().
 from_jobj(JObj, Zone) ->
-    Node = kz_api:node(JObj),
-    #kz_global{node=kz_term:to_atom(Node, 'true')
+    #kz_global{node=kapi_globals:node(JObj)
               ,zone=Zone
               ,server = kz_api:server_id(JObj)
               ,name = kapi_globals:name(JObj)
