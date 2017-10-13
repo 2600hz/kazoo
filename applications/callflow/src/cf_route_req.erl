@@ -100,7 +100,7 @@ has_tokens(Call, Flow) ->
                 'true' -> 'true';
                 'false' ->
                     lager:warning("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
-                    'true'
+                    'false'
             end
     end.
 
