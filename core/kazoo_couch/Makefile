@@ -11,6 +11,6 @@ compile-first:
 	$(MAKE) compile -C $(ROOT)/core/kazoo_data/
 
 compile-first-test:
-	$(MAKE) compile -C $(ROOT)/core/kazoo_data/
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_data/
 
 include $(ROOT)/make/kz.mk

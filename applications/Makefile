@@ -25,4 +25,4 @@ test: ACTION = test
 test: $(MAKEDIRS)
 
 $(MAKEDIRS):
-	$(MAKE) -j -C $(@D) $(ACTION)
+	$(MAKE) -C $(@D) $(ACTION)

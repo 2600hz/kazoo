@@ -24,14 +24,13 @@ ITU_URL = https://raw.githubusercontent.com/mledoze/countries/c212082894e48e8be1
 
 SOURCES = src/*.erl src/*/*.erl $(ITU)
 
-COMPILE_MOAR = $(ITU)
 CLEAN_MOAR = clean-generated
 
 all: compile
 
-compile: $(ITU_FILE)
+compile: $(ITU)
 
-compile-test: $(ITU_FILE) compile-also
+compile-test: $(ITU) compile-also
 
 compile-also:
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
@@ -42,7 +41,7 @@ clean-generated:
 	$(if $(wildcard $(ITU)), rm $(ITU))
 
 $(ITU_FILE):
-	wget -O $@ $(ITU_URL)
+	wget -qO $@ $(ITU_URL)
 
 $(ITU): $(ITU_FILE) $(ITU_SRC)
 	@cat $(ITU_SRC) >$(ITU)

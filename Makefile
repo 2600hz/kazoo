@@ -10,10 +10,10 @@ KAZOODIRS = core/Makefile applications/Makefile
 all: compile rel/dev-vm.args
 
 compile: ACTION = all
-compile: deps $(KAZOODIRS)
+compile: deps kazoo
 
 $(KAZOODIRS):
-	$(MAKE) -C $(@D) $(ACTION)
+	$(MAKE) -j -C $(@D) $(ACTION)
 
 clean: ACTION = clean
 clean: $(KAZOODIRS)
