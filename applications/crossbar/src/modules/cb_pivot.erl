@@ -78,14 +78,11 @@ resource_exists(?DEBUG_PATH_TOKEN, _) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) ->
-                      cb_context:context().
-
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?DEBUG_PATH_TOKEN) ->
     debug_summary(Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) ->cb_context:context().
 validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
     debug_read(Context, CallId).
 

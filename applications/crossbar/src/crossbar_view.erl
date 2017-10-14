@@ -656,7 +656,7 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
     PageSize = maps:get(page_size, LoadMap, 'undefined'),
     LimitWithLast = limit_with_last_key(IsChunked, PageSize, ChunkSize, TotalQueried),
 
-    lager:debug("querying view '~s' from '~s', starting at '~p' with page size ~b and limit ~p in direction ~s"
+    lager:debug("querying view '~s' from '~s', starting at '~p' with page size ~p and limit ~p in direction ~s"
                ,[View, Db, maps:get(start_key, LoadMap, "no_start_key"), PageSize, LimitWithLast, Direction]
                ),
 
@@ -1057,6 +1057,7 @@ build_general_load_params(Context, View, Options) ->
                 ,{'context', cb_context:setters(Context
                                                ,[{fun cb_context:set_doc/2, []}
                                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                                ,{fun cb_context:store/3, 'view_direction', Direction}
                                                 ,{fun cb_context:store/3, 'chunk_response_type', ChunkType}
                                                 ])
                  }
