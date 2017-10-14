@@ -689,14 +689,12 @@ load_summary_by_range_fold(Context, Type, From, To) ->
 
 -spec load_summary_by_number(cb_context:context(), ne_binary()) -> cb_context:context().
 load_summary_by_number(Context, Number) ->
-    ViewOptions = [{'keys', build_keys(Context, Number)}
-                  ,'include_docs'
-                  ],
-    crossbar_doc:load_view(?ALL_PORT_REQ_NUMBERS
-                          ,ViewOptions
-                          ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                          ,fun normalize_view_results/2
-                          ).
+    Options = [{'keys', build_keys(Context, Number)}
+              ,{'mapper', fun normalize_view_results/2}
+              ,{'databases', [?KZ_PORT_REQUESTS_DB]}
+              ,'include_docs'
+              ],
+    crossbar_view:load(Context, ?ALL_PORT_REQ_NUMBERS, Options).
 
 -spec build_keys(cb_context:context(), ne_binary()) -> [ne_binaries()].
 build_keys(Context, Number) ->
@@ -852,9 +850,7 @@ should_summarize_descendant_requests(Context) ->
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(Res, Acc) ->
-    [leak_pvt_fields(Res
-                    ,knm_port_request:public_fields(kz_json:get_value(<<"doc">>, Res))
-                    )
+    [leak_pvt_fields(Res, knm_port_request:public_fields(kz_json:get_value(<<"doc">>, Res)))
      | Acc
     ].
 

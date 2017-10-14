@@ -46,7 +46,7 @@
 
         %% ranged query
         ,'created_to', 'created_from', 'max_range'
-        ,'range_end_keymap', 'range_keymap', 'range_start_keymap'
+        ,'range_end_keymap', 'range_key_name', 'range_keymap', 'range_start_keymap'
         ]).
 
 -type direction() :: 'ascending' | 'descending'.
@@ -100,6 +100,7 @@
                     {'created_to', pos_integer()} |
                     {'range_end_keymap', range_keymap()} |
                     {'range_keymap', range_keymap()} |
+                    {'range_key_name', ne_binary()} |
                     {'range_start_keymap', range_keymap()}
                    ].
 
@@ -241,7 +242,7 @@ build_load_range_params(Context, View, Options) ->
         #{direction := Direction
          ,context := Context1
          }=LoadMap ->
-            TimeFilterKey = props:get_ne_binary_value('range_key', Options, <<"created">>),
+            TimeFilterKey = props:get_ne_binary_value('range_key_name', Options, <<"created">>),
             UserMapper = props:get_value('mapper', Options),
 
             HasQSFilter = crossbar_filter:is_defined(Context)
@@ -478,7 +479,7 @@ time_range(Context) -> time_range(Context, []).
 %%--------------------------------------------------------------------
 -spec time_range(cb_context:context(), options()) -> time_range() | cb_context:context().
 time_range(Context, Options) ->
-    time_range(Context, Options, props:get_ne_binary_value('range_key', Options, <<"created">>)).
+    time_range(Context, Options, props:get_ne_binary_value('range_key_name', Options, <<"created">>)).
 
 -spec time_range(cb_context:context(), options(), ne_binary()) -> time_range() | cb_context:context().
 time_range(Context, Options, Key) ->

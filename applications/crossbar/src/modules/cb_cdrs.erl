@@ -302,14 +302,14 @@ get_view_options([{<<"cdrs">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
 get_view_options([{<<"cdrs">>, []}, {<<"users">>, [OwnerId]}|_]) ->
     {?CB_LIST_BY_USER
     ,[{'range_start_keymap', [OwnerId]}
-     ,{'range_start_keymap', [OwnerId]}
+     ,{'range_end_keymap', [OwnerId]}
      ]
     };
 get_view_options([{<<"cdrs">>, [?PATH_INTERACTION]}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     {?CB_INTERACTION_LIST
     ,props:filter_undefined(
        [{'range_start_keymap', []}
-       ,{'range_start_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
+       ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
        ,{'group', 'true'}
        ,{'group_level', 2}
        ,{'reduce', 'true'}
@@ -320,7 +320,7 @@ get_view_options([{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>, [OwnerId]}|_]
     {?CB_INTERACTION_LIST_BY_USER
     ,props:filter_undefined(
        [{'range_start_keymap', [OwnerId]}
-       ,{'range_start_keymap', fun(Ts) -> [OwnerId, Ts, kz_json:new()] end}
+       ,{'range_end_keymap', fun(Ts) -> [OwnerId, Ts, kz_json:new()] end}
        ,{'group', 'true'}
        ,{'group_level', 3}
        ,{'reduce', 'true'}
