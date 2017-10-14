@@ -40,7 +40,7 @@ clean-generated:
 	$(if $(wildcard $(ITU)), rm $(ITU))
 
 $(ITU_FILE):
-	wget -qO $@ $(ITU_URL)
+	wget -O $@ $(ITU_URL)
 
 $(ITU): $(ITU_FILE) $(ITU_SRC)
 	@cat $(ITU_SRC) >$(ITU)
