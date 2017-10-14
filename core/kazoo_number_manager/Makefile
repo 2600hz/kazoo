@@ -29,7 +29,9 @@ CLEAN_MOAR = clean-generated
 
 all: compile
 
-compile-test: compile-also
+compile: $(ITU_FILE)
+
+compile-test: $(ITU_FILE) compile-also
 
 compile-also:
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
