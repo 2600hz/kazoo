@@ -30,7 +30,7 @@ all: compile
 
 compile: $(ITU)
 
-compile-test: $(ITU) compile-also
+compile-test: compile-also
 
 compile-also:
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
