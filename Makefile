@@ -65,13 +65,12 @@ deps/Makefile: .erlang.mk
 	cp $(ROOT)/make/Makefile.deps deps/Makefile
 
 core:
-	$(MAKE) -C core/ all
+	$(MAKE) -j -C core/ all
 
-apps:
-	$(MAKE) -C applications/ all
+apps: core
+	$(MAKE) -j -C applications/ all
 
-kazoo: core apps
-
+kazoo: apps
 
 $(RELX):
 	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
