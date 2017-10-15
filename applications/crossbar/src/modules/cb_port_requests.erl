@@ -658,10 +658,10 @@ load_summary(Context, {IsRanged, Opts}) ->
 -spec view_key_options(cb_context:context(), ne_binary(), boolean()) -> {boolean(), cb_context:context()}.
 view_key_options(Context, Type, 'true') ->
     {'true'
-     ,[{'range_start_keymap', [cb_context:account_id(Context), Type]}
-      ,{'range_end_keymap', [cb_context:account_id(Context), Type]}
-      ,{'range_key_name', <<"modified">>}
-      ]
+    ,[{'range_start_keymap', [cb_context:account_id(Context), Type]}
+     ,{'range_end_keymap', [cb_context:account_id(Context), Type]}
+     ,{'range_key_name', <<"modified">>}
+     ]
     };
 view_key_options(Context, Type, 'false') ->
     {'false'

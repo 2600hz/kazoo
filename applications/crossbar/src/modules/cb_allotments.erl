@@ -115,7 +115,7 @@ load_allotments(Context) ->
             Msg = <<"allotments are not configured for this account yet">>,
             crossbar_util:response_400(Msg, kz_json:new(), Context);
         'true' ->
-        cb_context:set_resp_data(C, kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(C)))
+            cb_context:set_resp_data(C, kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(C)))
     end.
 
 
