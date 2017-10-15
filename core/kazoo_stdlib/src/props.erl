@@ -194,7 +194,7 @@ get_integer_value(Key, Props) ->
 get_integer_value(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
-        Val -> kz_term:to_integer(Val)
+        Val -> kz_term:safe_cast(Val, Default, fun kz_term:to_integer/1)
     end.
 
 -spec get_atom_value(kz_proplist_key(), kz_proplist()) ->
@@ -206,7 +206,7 @@ get_atom_value(Key, Props) ->
 get_atom_value(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
-        Val -> kz_term:to_atom(Val)
+        Val -> kz_term:safe_cast(Val, Default, fun kz_term:to_atom/1)
     end.
 
 -spec get_binary_value(kz_proplist_key() | [kz_proplist_key()], kz_proplist()) -> api_binary().
@@ -217,12 +217,12 @@ get_binary_value(Key, Props) ->
 get_binary_value(Keys, Props, Default) when is_list(Keys) ->
     case get_first_defined(Keys, Props) of
         'undefined' -> Default;
-        V -> kz_term:to_binary(V)
+        V -> kz_term:safe_cast(V, Default, fun kz_term:to_binary/1)
     end;
 get_binary_value(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
-        V -> kz_term:to_binary(V)
+        V -> kz_term:safe_cast(V, Default, fun kz_term:to_binary/1)
     end.
 
 -spec get_ne_binary_value(kz_proplist_key(), kz_proplist()) -> api_binary().
@@ -234,7 +234,7 @@ get_ne_binary_value(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
         <<>> -> Default;
-        V -> kz_term:to_binary(V)
+        V -> kz_term:safe_cast(V, Default, fun kz_term:to_binary/1)
     end.
 
 -spec get_keys(kz_proplist()) -> [kz_proplist_key()] | [].

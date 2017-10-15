@@ -28,6 +28,8 @@
         ,to_lower_char/1
         ,to_pid/1
 
+        ,safe_cast/3
+
         ,error_to_binary/1
         ]).
 -export([is_true/1, is_false/1
@@ -212,6 +214,15 @@ is_true(<<"true">>) -> 'true';
 is_true("true") -> 'true';
 is_true('true') -> 'true';
 is_true(_) -> 'false'.
+
+
+-type caster() :: fun((any()) -> any()).
+-spec safe_cast(any(), any(), caster()) -> any().
+safe_cast(Value, Default, CastFun) ->
+    try CastFun(Value)
+    catch
+        _:_ -> Default
+    end.
 
 -spec always_true(any()) -> 'true'.
 always_true(_) -> 'true'.

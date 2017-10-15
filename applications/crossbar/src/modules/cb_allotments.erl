@@ -194,10 +194,11 @@ get_consumed_mode(Context) ->
 
 -spec maybe_req_seconds(cb_context:context(), api_binary()) -> api_seconds().
 maybe_req_seconds(Context, Key) ->
-    T = cb_context:req_value(Context, Key),
-    case kz_term:is_empty(T) of
-        'true' -> 'undefined';
-        'false' -> kz_term:to_integer(T)
+    Val = cb_context:req_value(Context, Key),
+    case kz_term:safe_cast(Val, 'undefined', fun kz_term:to_integer/1) of
+        'undefined' -> 'undefined';
+        T when T > 0 -> T;
+        _ -> 'undefined'
     end.
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
