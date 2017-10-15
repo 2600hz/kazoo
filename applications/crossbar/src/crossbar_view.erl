@@ -1139,7 +1139,7 @@ get_limit(Context, Options) ->
 get_time_key(Context, Key, Options, Default) ->
     case props:get_integer_value(Key, Options) of
         'undefined' ->
-            case kz_term:safe_cast(cb_context:req_value(Context, Key), 'undefined', fun kz_term:to_integer/1) of
+            case kz_term:safe_cast(cb_context:req_value(Context, Key), Default, fun kz_term:to_integer/1) of
                 T when T > 0 -> T;
                 _ -> Default
             end;
