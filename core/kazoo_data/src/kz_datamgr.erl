@@ -1043,6 +1043,7 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
 -spec put_attachment(text(), docid(), ne_binary(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
+                            {'ok', kz_json:object(), kz_proplist()} |
                             data_error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
@@ -1051,13 +1052,9 @@ put_attachment(DbName, {DocType, DocId}, AName, Contents, Options) ->
     put_attachment(DbName, DocId, AName, Contents, maybe_add_doc_type(DocType, Options));
 put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME(DbName) ->
     case attachment_options(DbName, DocId, Options) of
-        {'ok', NewOptions} -> kzs_attachments:put_attachment(kzs_plan:plan(DbName, NewOptions)
-                                                            ,DbName
-                                                            ,DocId
-                                                            ,AName
-                                                            ,Contents
-                                                            ,props:delete('plan_override', NewOptions)
-                                                            );
+        {'ok', NewOpts} ->
+            NewOptions = props:delete('plan_override', NewOpts),
+            kzs_attachments:put_attachment(kzs_plan:plan(DbName, NewOptions), DbName, DocId, AName, Contents, NewOptions);
         {'error', _} = Error -> Error
     end;
 put_attachment(DbName, DocId, AName, Contents, Options) ->
