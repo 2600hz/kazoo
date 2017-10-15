@@ -37,14 +37,14 @@
         ['ascending', 'databases'
         ,'descending', 'mapper'
 
-        %% non-range query
+         %% non-range query
         ,'end_keymap', 'keymap', 'start_keymap'
 
-        %% chunked query
+         %% chunked query
         ,'chunked_mapper', 'chunk_response_type'
         ,'chunk_size', 'cowboy_req', 'is_chunked'
 
-        %% ranged query
+         %% ranged query
         ,'created_to', 'created_from', 'max_range'
         ,'range_end_keymap', 'range_key_name', 'range_keymap', 'range_start_keymap'
         ]).
@@ -502,20 +502,15 @@ time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
     Path = <<Key/binary, "_from">>,
     case RangeTo - RangeFrom of
         N when N < 0 ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<Path/binary, " is prior to ", Key/binary, "_to">>}
-                    ,{<<"cause">>, RangeFrom}
-                    ]),
-            cb_context:add_validation_error(Path, <<"date_range">>, Msg, Context);
+            Msg = kz_term:to_binary(io_lib:format("~s ~b is prior to ~s ~b", [Path, RangeFrom, <<Key/binary, "_to">>, RangeTo])),
+            JObj = kz_json:from_list([{<<"message">>, Msg}, {<<"cause">>, RangeFrom}]),
+            lager:debug("~s", [Msg]),
+            cb_context:add_validation_error(Path, <<"date_range">>, JObj, Context);
         N when N > MaxRange ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<Key/binary, "_to is more than "
-                                       ,(integer_to_binary(MaxRange))/binary
-                                       ," seconds from ", Path/binary>>
-                     }
-                    ,{<<"cause">>, RangeTo}
-                    ]),
-            cb_context:add_validation_error(Path, <<"date_range">>, Msg, Context);
+            Msg = kz_term:to_binary(io_lib:format("~s ~b is more than ~b seconds from ~s ~b", [<<Key/binary, "_to">>, RangeTo, MaxRange, Path, RangeFrom])),
+            JObj = kz_json:from_list([{<<"message">>, Msg}, {<<"cause">>, RangeTo}]),
+            lager:debug("~s", [Msg]),
+            cb_context:add_validation_error(Path, <<"date_range">>, JObj, Context);
         _ ->
             {RangeFrom, RangeTo}
     end.
