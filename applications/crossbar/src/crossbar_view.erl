@@ -1217,6 +1217,7 @@ get_range_key_maps(Options) ->
 -spec map_range_keymap(range_keymap()) -> range_keymap_fun().
 map_range_keymap('nil') -> fun(_) -> 'undefined' end;
 map_range_keymap('undefined') -> fun kz_term:identity/1;
+map_range_keymap(['undefined']) -> fun(Ts) -> [Ts] end;
 map_range_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
 map_range_keymap(K) when is_integer(K) -> fun(Ts) -> [K, Ts] end;
 map_range_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
