@@ -269,7 +269,7 @@ validate(Context, ?OUTBOX, Id, ?ATTACHMENT) ->
 
 -spec validate_outgoing_fax(cb_context:context(), http_method()) -> cb_context:context().
 validate_outgoing_fax(Context, ?HTTP_GET) ->
-    outgoing_summary(cb_context:set_account_db(Context, ?KZ_FAXES_DB));
+    outgoing_summary(Context);
 validate_outgoing_fax(Context, ?HTTP_PUT) ->
     create(cb_context:set_account_db(Context, ?KZ_FAXES_DB)).
 
@@ -485,7 +485,7 @@ on_successful_validation('undefined', Context) ->
         andalso kzd_fax:document_url(cb_context:doc(Context)) =:= 'undefined'
     of
         'true' ->
-            Property = [<<"document">>,<<"url">>],
+            Property = [<<"document">>, <<"url">>],
             Code = <<"required">>,
             Message = <<"add document url or upload a document">>,
             cb_context:add_validation_error(Property, Code, Message, Context);
@@ -550,24 +550,6 @@ maybe_add_timezone(_Context, Timezone) ->
 initial_job_status([]) -> <<"pending">>;
 initial_job_status(_) -> <<"attaching_files">>.
 
--spec get_filter_doc(cb_context:context()) -> kz_json:object().
-get_filter_doc(Context) ->
-    case cb_context:fetch(Context, <<"faxbox">>) of
-        'undefined' -> maybe_user_filter_doc(Context);
-        JObj -> JObj
-    end.
-
--spec maybe_user_filter_doc(cb_context:context()) -> kz_json:object().
-maybe_user_filter_doc(Context) ->
-    case cb_context:user_id(Context) of
-        'undefined' -> kz_json:new();
-        UserId ->
-            Options = [{'id', UserId}
-                      ,{'type', <<"user">>}
-                      ],
-            kz_doc:update_pvt_parameters(kz_json:new(), 'undefined', Options)
-    end.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -575,49 +557,68 @@ maybe_user_filter_doc(Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec fax_modb_summary(cb_context:context(), ne_binary()) -> cb_context:context().
-fax_modb_summary(Context, Folder) ->
-    JObj = get_filter_doc(Context),
-    {View, PreFilter, PostFilter} = get_incoming_view_and_filter(JObj, Folder),
-    case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
-        {'ok', ViewOptions0} ->
-            ViewOptions = cb_modules_util:make_modb_view_descending(ViewOptions0),
-            crossbar_doc:load_view(View
-                                  ,['include_docs' | ViewOptions]
-                                  ,cb_context:set_resp_status(Context, 'success')
-                                  ,fun normalize_modb_view_results/2
-                                  );
-        Ctx -> Ctx
-    end.
-
 -spec inbox_summary(cb_context:context()) -> cb_context:context().
 inbox_summary(Context) -> fax_modb_summary(Context, ?INBOX).
 
 -spec outbox_summary(cb_context:context()) -> cb_context:context().
 outbox_summary(Context) -> fax_modb_summary(Context, ?OUTBOX).
 
--spec get_incoming_view_and_filter(kz_json:object(), ne_binary()) ->
-                                          {ne_binary(), api_binaries(), api_binaries()}.
-get_incoming_view_and_filter(JObj, Folder) ->
-    Id = kz_doc:id(JObj),
-    case kz_doc:type(JObj) of
-        <<"faxbox">> -> {?CB_LIST_BY_FAXBOX, [Id, Folder], 'undefined'};
-        <<"user">> -> {?CB_LIST_BY_OWNERID, [Id, Folder], 'undefined'};
-        _Else -> {?CB_LIST_BY_FOLDER, [Folder], [kz_json:new()]}
+-spec fax_modb_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+fax_modb_summary(Context, Folder) ->
+    {ViewName, Opts} = get_view_and_filter(Context, get_filter_doc(Context), Folder),
+    Options = [{'mapper', fun normalize_modb_view_results/2}
+              ,'include_docs'
+               | Opts
+              ],
+    crossbar_view:load_modb(Context, ViewName, Options).
+
+-spec get_view_and_filter(cb_context:context(), {api_ne_binary(), api_ne_binary()}, api_ne_binary()) ->
+                                 {ne_binary(), crossbar_view:options()}.
+get_view_and_filter(_, {?NE_BINARY=Id, <<"faxbox">>}, ?NE_BINARY=Folder) ->
+    {?CB_LIST_BY_FAXBOX
+    ,[{'range_keymap', [Id, Folder]}]
+    };
+get_view_and_filter(_, {?NE_BINARY=Id, <<"user">>}, ?NE_BINARY=Folder) ->
+    {?CB_LIST_BY_OWNERID
+    ,[{'range_keymap', [Id, Folder]}]
+    };
+get_view_and_filter(_, {_, _}, ?NE_BINARY=Folder) ->
+    {?CB_LIST_BY_FOLDER
+    ,[{'range_start_keymap', [Folder]}
+     ,{'range_end_keymap', fun(Ts) -> [Folder, Ts, kz_json:new()] end}
+     ]
+    };
+get_view_and_filter(_, {?NE_BINARY=Id, <<"faxbox">>}, 'undefined') ->
+    {?CB_LIST_BY_FAXBOX
+    ,[{'key', Id}]
+    };
+get_view_and_filter(Context, {_, _}, 'undefined') ->
+    {?CB_LIST_BY_ACCOUNT
+    ,[{'startkey', [cb_context:account_id(Context)]}
+     ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
+     ]
+    }.
+
+-spec get_filter_doc(cb_context:context()) -> {api_ne_binary(), api_ne_binary()}.
+get_filter_doc(Context) ->
+    case cb_context:fetch(Context, <<"faxbox">>) of
+        'undefined' -> maybe_user_filter_doc(Context);
+        JObj -> {kz_doc:id(JObj), kz_doc:type(JObj)}
+    end.
+
+-spec maybe_user_filter_doc(cb_context:context()) -> {api_ne_binary(), api_ne_binary()}.
+maybe_user_filter_doc(Context) ->
+    case cb_context:user_id(Context) of
+        'undefined' -> {'undefined', 'undefined'};
+        UserId -> {UserId, <<"user">>}
     end.
 
 -spec load_smtp_log(cb_context:context()) -> cb_context:context().
 load_smtp_log(Context) ->
-    case cb_modules_util:range_modb_view_options(Context) of
-        {'ok', ViewOptions0} ->
-            ViewOptions = cb_modules_util:make_modb_view_descending(ViewOptions0),
-            crossbar_doc:load_view(?CB_LIST_SMTP_LOG
-                                  ,['include_docs' | ViewOptions]
-                                  ,Context
-                                  ,fun normalize_view_results/2
-                                  );
-        Ctx -> Ctx
-    end.
+    Options = [{'mapper', crossbar_view:map_value_fun()}
+              ,'include_docs'
+              ],
+    crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, Options).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -668,31 +669,13 @@ set_fax_binary(Context, AttachmentId) ->
 -spec outgoing_summary(cb_context:context()) -> cb_context:context().
 outgoing_summary(Context) ->
     JObj = cb_context:fetch(Context, <<"faxbox">>, kz_json:new()),
-    {View, ViewOptions} =
-        case kz_doc:type(JObj) of
-            <<"faxbox">> ->
-                {?CB_LIST_BY_FAXBOX
-                ,[{'key', kz_doc:id(JObj)}
-                 ,'include_docs'
-                 ]};
-            _Else ->
-                {?CB_LIST_BY_ACCOUNT
-                ,[{'startkey', [cb_context:account_id(Context)]}
-                 ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
-                 ,'include_docs'
-                 ]}
-        end,
-
-    crossbar_doc:load_view(View
-                          ,ViewOptions
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
--spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
+    {ViewName, Opts} = get_view_and_filter(Context, {kz_doc:id(JObj), kz_doc:type(JObj)}, 'undefined'),
+    Options = [{'mapper', crossbar_bindings:map_value_fun()}
+              ,{'databases', [?KZ_FAXES_DB]}
+              ,'include_docs'
+               | Opts
+              ],
+    crossbar_view:load(Context, ViewName, Options).
 
 %%--------------------------------------------------------------------
 %% @private
