@@ -5,6 +5,9 @@
         "active_resources_by_rules": {
             "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'caller_id_options': doc.caller_id_options,'flags':doc.flags||[]}); }"
         },
+        "endpoints_lookup": {
+            "map": "function(doc) { if (typeof doc.caller_id === 'undefined') return; for(var type in doc.caller_id) emit([doc.caller_id[type].number, type], doc.pvt_type); }"
+        },
         "groups": {
             "map": "function (doc) {if (doc.pvt_type != 'group' || doc.pvt_deleted || !doc.endpoints) return;emit(null, doc.endpoints);}"
         },

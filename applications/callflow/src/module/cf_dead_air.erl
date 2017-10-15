@@ -3,7 +3,7 @@
 %%% @doc
 %%%
 %%% Answers to the call and switches media off
-%%% Could be usefull for external calls/conferences recording over inbound leg
+%%% Could be useful for external calls/conferences recording over inbound leg
 %%%
 %%% "data":{}
 %%%

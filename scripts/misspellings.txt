@@ -190,3 +190,5 @@ whether|wether
 willful|wilfull
 withhold|withold
 writing|writting writeing
+search|seacrh
+useful|usefull

@@ -1,0 +1,50 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.route_to_cid",
+    "description": "Endpoints lookup by cid number",
+    "properties": {
+        "can_call_self": {
+            "description": "Toggle whether devices of the same owner can call each other",
+            "type": "boolean"
+        },
+        "can_text_self": {
+            "description": "Toggle whether devices of the same owner can text each other",
+            "type": "boolean"
+        },
+        "cid_types": {
+            "default": [
+                "internal"
+            ],
+            "description": "CID types to perform search: internal, external, custom",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+        },
+        "delay": {
+            "default": 0,
+            "description": "How long to delay ringing the device, in seconds",
+            "type": "integer"
+        },
+        "endpoint_types": {
+            "default": [],
+            "description": "Endpoint types to perform search: user, device",
+            "type": "array"
+        },
+        "static_invite": {
+            "description": "Override the SIP Username",
+            "type": "string"
+        },
+        "suppress_clid": {
+            "description": "Suppress sending caller ID",
+            "type": "boolean"
+        },
+        "timeout": {
+            "default": 0,
+            "description": "Time, in seconds, to wait for device to bridge",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}
