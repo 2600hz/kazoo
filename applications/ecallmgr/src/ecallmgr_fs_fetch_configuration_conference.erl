@@ -28,7 +28,7 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"fetch.configuration.configuration.name.conference.conf">>, ?MODULE, 'conference'),
+    kazoo_bindings:bind(<<"fetch.configuration.*.*.conference.conf">>, ?MODULE, 'conference'),
     'ok'.
 
 -spec conference(map()) -> fs_sendmsg_ret().

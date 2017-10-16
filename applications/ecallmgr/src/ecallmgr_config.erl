@@ -280,7 +280,7 @@ fetch(Key, Default, Node, RequestTimeout) ->
                                  ),
     case ReqResp of
         {'error', _R} ->
-            lager:debug("unable to get config for key '~s' failed: ~p", [Key, _R]),
+            lager:debug("unable to get config for key '~p' failed: ~p", [Key, _R]),
             Default;
         {'ok', JObj} ->
             Value = get_response_value(JObj, Default),
