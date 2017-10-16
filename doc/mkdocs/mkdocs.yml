@@ -135,6 +135,7 @@ pages:
       - 'applications/pivot/doc/issues.md'
   - 'Websockets':
     - 'applications/blackhole/doc/README.md'
+    - 'Ping': 'applications/blackhole/doc/ping.md'
     - 'Bindings': 'applications/blackhole/doc/bindings.md'
     - 'API': 'applications/crossbar/doc/websockets.md'
     - 'HAProxy configuration': 'applications/blackhole/doc/haproxy.md'
