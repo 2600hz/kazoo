@@ -56,6 +56,7 @@
         ,fetch_key_value/1
         ,fetch_tag/1
         ,fetch_section/1
+        ,fetch_version/1
         ,fetch_winning_pid/1
         ,switch_url/1, switch_uri/1
 
@@ -512,6 +513,10 @@ fetch_winning_pid(JObj) ->
                               ]
                              ,JObj
                              ).
+
+-spec fetch_version(data()) -> api_ne_binary().
+fetch_version(JObj) ->
+    kz_json:get_ne_binary_value(<<"Fetch-Version">>, JObj).
 
 -spec hunt_context(data()) -> api_binary().
 hunt_context(JObj) ->

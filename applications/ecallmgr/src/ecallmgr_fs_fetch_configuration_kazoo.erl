@@ -30,7 +30,7 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"fetch.configuration.configuration.name.kazoo.conf">>, ?MODULE, 'kazoo'),
+    kazoo_bindings:bind(<<"fetch.configuration.community.*.kazoo.conf">>, ?MODULE, 'kazoo'),
     'ok'.
 
 -spec kazoo(map()) -> fs_sendmsg_ret().

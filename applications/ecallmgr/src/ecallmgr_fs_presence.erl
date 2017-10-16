@@ -144,7 +144,7 @@ status(JObj) ->
 
 -spec answer_state(kz_json:object()) -> kz_term:ne_binary().
 answer_state(JObj) ->
-    kz_term:to_lower_binary(props:get_value(<<"Answer-State">>, JObj)).
+    kz_term:to_lower_binary(kz_json:get_value(<<"Answer-State">>, JObj)).
 
 -spec presence_status(kz_json:object()) -> kz_term:ne_binary().
 presence_status(JObj) ->
