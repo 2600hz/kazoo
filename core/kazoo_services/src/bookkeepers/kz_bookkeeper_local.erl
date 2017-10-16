@@ -31,7 +31,7 @@ is_good_standing(_AccountId, _Status) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(kz_service_item:items(), ne_binary()) -> bookkeeper_sync_result().
+-spec sync(kz_service_items:items(), ne_binary()) -> bookkeeper_sync_result().
 sync(_Items, _AccountId) -> 'ok'.
 
 %%--------------------------------------------------------------------

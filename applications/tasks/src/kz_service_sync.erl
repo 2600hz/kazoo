@@ -6,23 +6,25 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_sync).
--behaviour(gen_server).
+-behaviour(gen_listener).
 
--export([start_link/0]).
--export([sync/1]).
--export([clean/1]).
+-export([start_link/0
+        ,maintenance_req/2
+        ]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
+        ,handle_event/2
         ,terminate/2
         ,code_change/3
         ]).
--export([mark_dirty/1]).
 
 -include("tasks.hrl").
 -include_lib("kazoo_services/include/kazoo_services.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
+-include_lib("kazoo_amqp/include/kz_amqp.hrl").
 
 -define(SERVER, ?MODULE).
 -define(SCAN_MSG, {'try_sync_service'}).
@@ -38,10 +40,15 @@
        ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND)
        ).
 
--define(SYNC_BUFFER_PERIOD
-       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"sync_buffer_period">>, 600)
-       ).
-
+-define(RESTRICTIONS, [kapi_maintenance:restrict_to_clean_services(<<"*">>)]).
+-define(BINDINGS, [{'maintenance', [{'restrict_to', ?RESTRICTIONS}]}]).
+-define(RESPONDERS, [{{?MODULE, 'maintenance_req'}
+                     ,[{<<"maintenance">>, <<"req">>}]
+                     }
+                    ]).
+-define(QUEUE_NAME, <<?MODULE_STRING>>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -52,26 +59,39 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?SERVER, [], []).
+    gen_listener:start_link(?SERVER
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ,{'declare_exchanges', [{?EXCHANGE_SYSCONF, ?TYPE_SYSCONF}]}
+                            ]
+                           ,[]
+                           ).
 
--spec sync(ne_binary()) -> kz_std_return().
-sync(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    kz_util:put_callid(<<AccountId/binary, "-sync">>),
-    case kz_services:fetch_services_doc(AccountId, 'true') of
-        {'error', _}=E -> E;
-        {'ok', ServicesJObj} ->
-            sync(AccountId, ServicesJObj)
-    end.
+-spec maintenance_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
+maintenance_req(MaintJObj, _Props) ->
+    'true' = kapi_maintenance:req_v(MaintJObj),
+    process_maintenance_req(MaintJObj, kapi_maintenance:req_action(MaintJObj)).
 
--spec clean(ne_binary()) -> kz_std_return().
-clean(Account) ->
-    AccountId = kz_util:format_account_id(Account),
-    case kz_services:fetch_services_doc(AccountId, true) of
-        {'error', _}=E -> E;
-        {'ok', ServicesJObj} ->
-            immediate_sync(AccountId, kz_doc:set_soft_deleted(ServicesJObj, 'true'))
-    end.
+process_maintenance_req(MaintJObj, <<"clean_services">>) ->
+    AccountId = kapi_maintenance:req_database(MaintJObj),
+    _ = kz_services:clean(AccountId),
+    send_resp(MaintJObj, 'true').
+
+-spec send_resp(kapi_mainteannce:req(), 'true') -> 'ok'.
+send_resp(MaintJObj, Results) ->
+    Resp = [{<<"Code">>, code(Results)}
+           ,{<<"Message">>, message(Results)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(MaintJObj)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_maintenance:publish_resp(kz_api:server_id(MaintJObj), Resp).
+
+code('true') -> 200.
+
+message('true') -> <<"Success">>.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -191,6 +211,10 @@ maybe_clear_dictionary_entry({{'phone_number_doc', _AccountId}=Key, _Doc}) ->
     erase(Key);
 maybe_clear_dictionary_entry(_) -> 'ok'.
 
+-spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+handle_event(_JObj, _State) ->
+    {'reply', []}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -221,17 +245,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec sync(ne_binary(), kz_json:object()) -> kz_std_return().
-sync(AccountId, ServicesJObj) ->
-    case get_billing_id(AccountId, ServicesJObj) of
-        AccountId -> maybe_sync_services(AccountId, ServicesJObj);
-        BillingId ->
-            io:format("Account ~s is configured to use the credit card of ~s, following billing tree~n"
-                     ,[AccountId, BillingId]),
-            lager:debug("account ~s is configured to use the credit card of ~s, following billing tree"
-                       ,[AccountId, BillingId]),
-            sync(BillingId)
-    end.
+
+-define(SYNC_BUFFER_PERIOD
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"sync_buffer_period">>, 600)
+       ).
 
 -spec maybe_sync_service() -> kz_std_return().
 maybe_sync_service() ->
@@ -267,21 +284,21 @@ bump_modified(JObj) ->
             [RevNum, _] = binary:split(kz_doc:revision(ServicesJObj), <<"-">>),
             kz_util:put_callid(<<AccountId/binary, "-", RevNum/binary>>),
             lager:debug("start synchronization of services with bookkeepers"),
-            maybe_follow_billing_id(AccountId, ServicesJObj)
+            maybe_follow_sync_billing_id(AccountId, ServicesJObj)
     end.
 
--spec maybe_follow_billing_id(ne_binary(), kzd_services:doc()) -> kz_std_return().
-maybe_follow_billing_id(AccountId, ServicesJObj) ->
-    case get_billing_id(AccountId, ServicesJObj) of
-        AccountId -> maybe_sync_services(AccountId, ServicesJObj);
-        BillingId -> follow_billing_id(BillingId, AccountId, ServicesJObj)
+-spec maybe_follow_sync_billing_id(ne_binary(), kzd_services:doc()) -> kz_std_return().
+maybe_follow_sync_billing_id(AccountId, ServicesJObj) ->
+    case kz_services:get_billing_id(AccountId, ServicesJObj) of
+        AccountId -> kz_services:sync(AccountId, ServicesJObj);
+        BillingId -> follow_sync_billing_id(BillingId, AccountId, ServicesJObj)
     end.
 
--spec follow_billing_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_std_return().
-follow_billing_id(BillingId, AccountId, ServicesJObj) ->
+-spec follow_sync_billing_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_std_return().
+follow_sync_billing_id(BillingId, AccountId, ServicesJObj) ->
     %% NOTE: First try to make the parent (to be billed) as dirty
     %%  if that is successful then mark the current service doc cleans
-    case mark_dirty(BillingId) of
+    case kz_services:mark_dirty(BillingId) of
         {'ok', _} ->
             lager:debug("following billing id ~s", [BillingId]),
             mark_clean(ServicesJObj);
@@ -292,183 +309,10 @@ follow_billing_id(BillingId, AccountId, ServicesJObj) ->
             E
     end.
 
--spec maybe_sync_services(ne_binary(), kzd_services:doc()) -> kz_std_return().
-maybe_sync_services(AccountId, ServicesJObj) ->
-    case kz_service_plans:create_items(ServicesJObj) of
-        {'error', 'no_plans'} ->
-            lager:debug("no services plans found"),
-            _ = maybe_sync_transactions(AccountId, ServicesJObj),
-            _ = mark_clean_and_status(kzd_services:status_good(), ServicesJObj),
-            maybe_sync_reseller(AccountId, ServicesJObj);
-        {'ok', ServiceItems} ->
-            sync_services(AccountId, ServicesJObj, ServiceItems)
-    end.
-
--spec sync_services(ne_binary(), kzd_services:doc(), kz_service_items:items()) -> kz_std_return().
-sync_services(AccountId, ServicesJObj, ServiceItems) ->
-    try sync_services_bookkeeper(AccountId, ServicesJObj, ServiceItems) of
-        'ok' ->
-            _ = mark_clean_and_status(kzd_services:status_good(), ServicesJObj),
-            io:format("synchronization with bookkeeper complete (good-standing)~n"),
-            lager:debug("synchronization with bookkeeper complete (good-standing)"),
-            maybe_sync_reseller(AccountId, ServicesJObj);
-        'delinquent' ->
-            _ = mark_clean_and_status(kzd_services:status_delinquent(), ServicesJObj),
-            io:format("synchronization with bookkeeper complete (delinquent)~n"),
-            lager:debug("synchronization with bookkeeper complete (delinquent)"),
-            maybe_sync_reseller(AccountId, ServicesJObj);
-        'retry' ->
-            io:format("synchronization with bookkeeper complete (retry)~n"),
-            lager:debug("synchronization with bookkeeper complete (retry)"),
-            {'error', 'retry'}
-    catch
-        'throw':{Reason, _}=_R ->
-            lager:info("bookkeeper error: ~p", [_R]),
-            _ = mark_clean_and_status(kz_term:to_binary(Reason), ServicesJObj),
-            maybe_sync_reseller(AccountId, ServicesJObj);
-        _E:R ->
-            lager:info("unable to sync services(~p): ~p", [_E, R]),
-            kz_util:log_stacktrace(),
-            {'error', R}
-    end.
-
--spec sync_services_bookkeeper(ne_binary(), kz_json:object(), kz_service_items:items()) -> 'ok' | 'delinquent' | 'retry'.
-sync_services_bookkeeper(AccountId, ServicesJObj, ServiceItems) ->
-    Bookkeeper = kz_services:select_bookkeeper(AccountId),
-    lager:debug("attempting to sync with bookkeeper ~s", [Bookkeeper]),
-    Result = Bookkeeper:sync(ServiceItems, AccountId),
-    maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper),
-    Result.
-
--spec maybe_sync_transactions(ne_binary(), kzd_services:doc()) -> 'ok'.
--spec maybe_sync_transactions(ne_binary(), kzd_services:doc(), atom()) -> 'ok'.
-maybe_sync_transactions(AccountId, ServicesJObj) ->
-    Bookkeeper = kz_services:select_bookkeeper(AccountId),
-    maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper).
-
-maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper) ->
-    case kzd_services:transactions(ServicesJObj) of
-        [] -> 'ok';
-        Trs ->
-            Transactions = maybe_delete_topup_transaction(AccountId, Trs),
-            sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions)
-    end.
-
--spec maybe_delete_topup_transaction(ne_binary(), kz_json:objects()) -> kz_json:objects().
-maybe_delete_topup_transaction(AccountId, Transactions) ->
-    NonTopup = lists:filter(
-                 fun(J) ->
-                         kz_json:get_integer_value(<<"pvt_code">>, J) =/= ?CODE_TOPUP
-                 end, Transactions
-                ),
-    case NonTopup of
-        Transactions -> Transactions;
-        _Other ->
-            case kz_topup:should_topup(AccountId) of
-                'true' -> Transactions;
-                'false' -> NonTopup
-            end
-    end.
-
--spec sync_transactions(ne_binary(), kzd_services:doc(), atom(), kz_json:objects()) ->
-                               'ok'.
-sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions) ->
-    BillingId = kzd_services:billing_id(ServicesJObj),
-    FailedTransactions = Bookkeeper:charge_transactions(BillingId, Transactions),
-    case kz_datamgr:save_doc(?KZ_SERVICES_DB
-                            ,kzd_services:set_transactions(ServicesJObj, FailedTransactions)
-                            )
-    of
-        {'error', _E} ->
-            lager:warning("failed to clean pending transactions ~p", [_E]);
-        {'ok', _} ->
-            handle_topup_transactions(AccountId, Transactions, FailedTransactions)
-    end.
-
--spec handle_topup_transactions(ne_binary(), kz_json:objects(), kz_json:objects() | integer()) -> 'ok'.
-handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
-    case did_topup_failed(Failed) of
-        'true' -> 'ok';
-        'false' -> handle_topup_transactions(Account, JObjs, 3)
-    end;
-handle_topup_transactions(_, [], _) -> 'ok';
-handle_topup_transactions(Account, [JObj|JObjs]=List, Retry) when Retry > 0 ->
-    case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
-        ?CODE_TOPUP ->
-            Amount = kz_json:get_value(<<"pvt_amount">>, JObj),
-            Transaction = kz_transaction:credit(Account, Amount),
-            Transaction1 = kz_transaction:set_reason(wht_util:topup(), Transaction),
-            case kz_transaction:save(Transaction1) of
-                {'ok', _} -> 'ok';
-                {'error', 'conflict'} ->
-                    lager:warning("did not write top up transaction for account ~s already exist for today", [Account]);
-                {'error', _E} ->
-                    lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p), retrying ~p..."
-                               ,[_E, Account, Amount, Retry]
-                               ),
-                    handle_topup_transactions(Account, List, Retry-1)
-            end;
-        _ -> handle_topup_transactions(Account, JObjs, 3)
-    end;
-handle_topup_transactions(Account, _, _) ->
-    lager:error("failed to write top up transaction for account ~s too many retries", [Account]).
-
--spec did_topup_failed(kz_json:objects()) -> boolean().
-did_topup_failed(JObjs) ->
-    lists:foldl(
-      fun(JObj, Acc) ->
-              case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
-                  ?CODE_TOPUP -> 'true';
-                  _ -> Acc
-              end
-      end
-               ,'false'
-               ,JObjs
-     ).
-
--spec maybe_sync_reseller(ne_binary(), kzd_services:doc()) -> kz_std_return().
-maybe_sync_reseller(AccountId, ServicesJObj) ->
-    case kzd_services:reseller_id(ServicesJObj, AccountId) of
-        AccountId -> {'ok', ServicesJObj};
-        ResellerId ->
-            lager:debug("marking reseller ~s as dirty", [ResellerId]),
-            mark_dirty(ResellerId)
-    end.
-
--spec get_billing_id(ne_binary(), kzd_services:doc()) -> ne_binary().
-get_billing_id(AccountId, ServicesJObj) ->
-    case kzd_services:is_reseller(ServicesJObj) of
-        'true' -> AccountId;
-        'false' ->
-            case ?SUPPORT_BILLING_ID of
-                'true' -> kzd_services:billing_id(ServicesJObj, AccountId);
-                'false' -> AccountId
-            end
-    end.
-
--spec mark_dirty(ne_binary() | kzd_services:doc()) -> kz_std_return().
-mark_dirty(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    case kz_services:fetch_services_doc(AccountId, true) of
-        {'error', _}=E -> E;
-        {'ok', ServicesJObj} -> mark_dirty(ServicesJObj)
-    end;
-mark_dirty(ServicesJObj) ->
-    Values = [{?SERVICES_PVT_IS_DIRTY, 'true'}
-             ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
-             ],
-    kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)).
-
 -spec mark_clean(kzd_services:doc()) -> kz_std_return().
 mark_clean(ServicesJObj) ->
     kz_datamgr:save_doc(?KZ_SERVICES_DB, kzd_services:set_is_dirty(ServicesJObj, 'false')).
 
--spec mark_clean_and_status(ne_binary(), kzd_services:doc()) -> kz_std_return().
-mark_clean_and_status(Status, ServicesJObj) ->
-    lager:debug("marking services clean with status ~s", [Status]),
-    Values = [{?SERVICES_PVT_IS_DIRTY, 'false'}
-             ,{?SERVICES_PVT_STATUS, Status}
-             ],
-    kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)).
 
 -spec maybe_update_billing_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->
@@ -486,19 +330,5 @@ maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->
                                ,[BillingId, AccountId]
                                ),
                     kz_datamgr:save_doc(?KZ_SERVICES_DB, kzd_services:set_billing_id(ServicesJObj, AccountId))
-            end
-    end.
-
--spec immediate_sync(ne_binary(), kzd_services:doc()) -> kz_std_return().
-immediate_sync(AccountId, ServicesJObj) ->
-    case kz_service_plans:create_items(ServicesJObj) of
-        {'error', 'no_plans'}=E -> E;
-        {'ok', ServiceItems} ->
-            %% TODO: support other bookkeepers...
-            try kz_bookkeeper_braintree:sync(ServiceItems, AccountId) of
-                _ -> {'ok', ServicesJObj}
-            catch
-                'throw':{_, R} -> {'error', R};
-                _E:R -> {'error', R}
             end
     end.

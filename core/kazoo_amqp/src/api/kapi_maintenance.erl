@@ -13,12 +13,14 @@
 
 -export([refresh_database/1, refresh_database/2, refresh_database/3
         ,refresh_views/1, refresh_views/2, refresh_views/3
+        ,clean_services/1, clean_services/2
         ]).
 
 -export([restrict_to_db/1
         ,restrict_to_classification/1
         ,restrict_to_views_db/1
         ,restrict_to_views_classification/1
+        ,restrict_to_clean_services/1
         ]).
 
 -export([req_action/1
@@ -40,6 +42,7 @@
 
 -define(REFRESH_DB, <<"refresh_database">>).
 -define(REFRESH_VIEWS, <<"refresh_views">>).
+-define(CLEAN_SERVICES, <<"clean_services">>).
 
 -define(REQ_HEADERS, [?KEY_ACTION]).
 -define(OPTIONAL_REQ_HEADERS, [?KEY_CLASSIFICATION
@@ -49,6 +52,7 @@
                     ,{<<"Event-Category">>, ?EVENT_CAT}
                     ,{?KEY_ACTION, [?REFRESH_DB
                                    ,?REFRESH_VIEWS
+                                   ,?CLEAN_SERVICES
                                    ]}
                     ]).
 -define(REQ_TYPES, [{?KEY_CLASSIFICATION, fun(C) -> is_binary(C)
@@ -101,12 +105,14 @@ resp_v(JObj) ->
 -define(REFRESH_DB_TYPE(Type), {'refresh_db', 'type', Type}).
 -define(REFRESH_VIEWS_DB(Db), {'refresh_views', 'db', Db}).
 -define(REFRESH_VIEWS_TYPE(Type), {'refresh_views', 'type', Type}).
+-define(CLEAN_SERVICES_ID(AccountId), {'clean_services', AccountId}).
 
 -type db_type() :: kz_datamgr:db_classification() | ne_binary().
 -type binding() :: ?REFRESH_DB_DB(ne_binary()) |
                    ?REFRESH_DB_TYPE(db_type()) |
                    ?REFRESH_VIEWS_DB(ne_binary()) |
-                   ?REFRESH_VIEWS_TYPE(db_type()).
+                   ?REFRESH_VIEWS_TYPE(db_type()) |
+                   ?CLEAN_SERVICES_ID(ne_binary()).
 -type bind_prop() :: {'restrict_to', [binding()]}.
 -type binds() :: [bind_prop()].
 
@@ -126,6 +132,10 @@ restrict_to_views_db(Db) ->
 restrict_to_views_classification(Classification) ->
     ?REFRESH_VIEWS_TYPE(Classification).
 
+-spec restrict_to_clean_services(ne_binary()) -> ?CLEAN_SERVICES_ID(ne_binary()).
+restrict_to_clean_services(AccountId) ->
+    ?CLEAN_SERVICES_ID(AccountId).
+
 -spec refresh_routing_db(ne_binary(), ne_binary()) -> ne_binary().
 refresh_routing_db(RefreshWhat, <<_/binary>>=Db) ->
     refresh_routing(RefreshWhat, kz_datamgr:db_classification(Db), Db).
@@ -133,6 +143,9 @@ refresh_routing_db(RefreshWhat, <<_/binary>>=Db) ->
 -spec refresh_routing_classification(ne_binary(), db_type()) -> ne_binary().
 refresh_routing_classification(RefreshWhat, Classification) ->
     refresh_routing(RefreshWhat, Classification, <<"*">>).
+
+refresh_routing_clean_services(AccountId) ->
+    refresh_routing(?CLEAN_SERVICES, 'account', AccountId).
 
 -spec refresh_routing(ne_binary(), db_type(), ne_binary()) -> ne_binary().
 refresh_routing(RefreshWhat, Classification, Database) ->
@@ -163,6 +176,9 @@ bind_to_q(Queue, [?REFRESH_VIEWS_DB(Db)|Rest], Props) ->
 bind_to_q(Queue, [?REFRESH_VIEWS_TYPE(Classification)|Rest], Props) ->
     amqp_util:bind_q_to_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
     bind_to_q(Queue, Rest, Props);
+bind_to_q(Queue, [?CLEAN_SERVICES_ID(AccountId)|Rest], Props) ->
+    amqp_util:bind_q_to_sysconf(Queue, refresh_routing_clean_services(AccountId)),
+    bind_to_q(Queue, Rest, Props);
 bind_to_q(_Queue, [], _Props) -> 'ok'.
 
 -spec unbind_q(ne_binary(), binds()) -> 'ok'.
@@ -183,6 +199,9 @@ unbind_from_q(Queue, [?REFRESH_VIEWS_DB(Db)|Rest], Props) ->
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?REFRESH_VIEWS_TYPE(Classification)|Rest], Props) ->
     amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
+    unbind_from_q(Queue, Rest, Props);
+unbind_from_q(Queue, [?CLEAN_SERVICES_ID(AccountId)|Rest], Props) ->
+    amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_clean_services(AccountId)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(_Queue, [], _Props) -> 'ok'.
 
@@ -294,13 +313,39 @@ refresh_views(Database, Worker, Classification) ->
     MsgId = msg_id(Database),
     kz_util:put_callid(MsgId),
 
-    Req = [{?KEY_ACTION, <<"refresh_views">>}
+    Req = [{?KEY_ACTION, ?REFRESH_VIEWS}
           ,{?KEY_CLASSIFICATION, Classification}
           ,{?KEY_DATABASE, Database}
           ,{?KEY_MSG_ID, MsgId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
+    kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
+
+    Resp = wait_for_response(MsgId, 30 * ?MILLISECONDS_IN_SECOND),
+    kz_util:put_callid(OldCallId),
+    Resp.
+
+-spec clean_services(ne_binary()) -> kz_amqp_worker:request_return().
+-spec clean_services(ne_binary(), pid()) -> kz_amqp_worker:request_return().
+clean_services(AccountId) ->
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    kz_amqp_worker:relay_to(Worker, self()),
+    Result = clean_services(AccountId, Worker),
+    kz_amqp_worker:checkin_worker(Worker),
+    Result.
+
+clean_services(AccountId, Worker) ->
+    OldCallId = kz_util:get_callid(),
+    MsgId = kz_binary:join([<<"clean_services">>, AccountId, kz_binary:rand_hex(8)], $-),
+    kz_util:put_callid(MsgId),
+
+    Req = [{?KEY_ACTION, ?CLEAN_SERVICES}
+          ,{?KEY_CLASSIFICATION, <<"account">>}
+          ,{?KEY_DATABASE, AccountId}
+          ,{?KEY_MSG_ID, MsgId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
     kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
 
     Resp = wait_for_response(MsgId, 30 * ?MILLISECONDS_IN_SECOND),

@@ -195,7 +195,7 @@ post(Context) ->
                        ]).
 
 post(Context, ?SYNCHRONIZATION) ->
-    kz_service_sync:sync(cb_context:account_id(Context)),
+    _ = kz_services:sync(cb_context:account_id(Context)),
     cb_context:set_resp_status(Context, 'success');
 post(Context, ?RECONCILIATION) ->
     try kz_services:reconcile(cb_context:account_id(Context)) of
