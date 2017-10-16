@@ -579,6 +579,16 @@ force_queue_advance(#state{call_id=CallId
                                ,keep_alive_ref=get_keep_alive_ref(State)
                                ,msg_id=MsgId
                                };
+                {'error', Error} ->
+                    lager:debug("command '~s' returned an error ~p", [AppName, Error]),
+                    maybe_send_error_resp(AppName, CallId, Cmd, Error),
+                    self() ! {'force_queue_advance', CallId},
+                    State#state{command_q=CmdQ1
+                               ,current_app=AppName
+                               ,current_cmd=Cmd
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
+                               };
                 'ok' ->
                     State#state{command_q=CmdQ1
                                ,current_app=AppName
@@ -687,6 +697,16 @@ forward_queue(#state{call_id = CallId
                                ,current_app = AppName
                                ,current_cmd = Cmd
                                ,msg_id = MsgId
+                               };
+                {'error', Error} ->
+                    lager:debug("command '~s' returned an error ~p", [AppName, Error]),
+                    maybe_send_error_resp(AppName, CallId, Cmd, Error),
+                    self() ! {'force_queue_advance', CallId},
+                    State#state{command_q=CmdQ1
+                               ,current_app=AppName
+                               ,current_cmd=Cmd
+                               ,keep_alive_ref=get_keep_alive_ref(State)
+                               ,msg_id=MsgId
                                };
                 'ok' ->
                     State#state{command_q = CmdQ1
