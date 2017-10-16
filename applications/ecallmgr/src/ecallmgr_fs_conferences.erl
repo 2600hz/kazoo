@@ -162,7 +162,7 @@ participants(Name) ->
 participants_to_json(Participants) ->
     participants_to_json(Participants, []).
 
--spec participant_create(kzd_freeswitch:data(), atom()) -> participant().
+-spec participant_create(kz_evt_freeswitch:data(), atom()) -> participant().
 participant_create(Props, Node) ->
     gen_server:call(?SERVER, {'participant_create', Props, Node}).
 

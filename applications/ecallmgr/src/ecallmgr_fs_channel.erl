@@ -342,7 +342,7 @@ props_to_record(Props, Node) ->
 
     #channel{uuid=UUID
             ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
-            ,direction=kzd_freeswitch:call_direction(Props)
+            ,direction=kz_evt_freeswitch:call_direction(Props)
             ,account_id=props:get_value(<<"Account-ID">>, CCVs)
             ,account_billing=props:get_value(<<"Account-Billing">>, CCVs)
             ,authorizing_id=props:get_value(<<"Authorizing-ID">>, CCVs)
@@ -373,9 +373,9 @@ props_to_record(Props, Node) ->
             ,to_tag=props:get_value(<<"variable_sip_to_tag">>, Props)
             ,from_tag=props:get_value(<<"variable_sip_from_tag">>, Props)
             ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
-            ,is_loopback=kzd_freeswitch:is_loopback(Props)
-            ,loopback_leg_name=kzd_freeswitch:loopback_leg_name(Props)
-            ,loopback_other_leg=kzd_freeswitch:loopback_other_leg(Props)
+            ,is_loopback=kz_evt_freeswitch:is_loopback(Props)
+            ,loopback_leg_name=kz_evt_freeswitch:loopback_leg_name(Props)
+            ,loopback_other_leg=kz_evt_freeswitch:loopback_other_leg(Props)
             ,callflow_id=props:get_value(<<"CallFlow-ID">>, CCVs)
             ,cavs=CAVs
             }.
@@ -443,8 +443,8 @@ get_realm_from_props(Props) ->
 %%         {'ok', #channel{callee_number = Num2
 %%                        ,callee_name = Name2
 %%                        }} ->
-%%             Num1 = kzd_freeswitch:callee_id_number(Props),
-%%             Name1 = kzd_freeswitch:callee_id_name(Props),
+%%             Num1 = kz_evt_freeswitch:callee_id_number(Props),
+%%             Name1 = kz_evt_freeswitch:callee_id_name(Props),
 %%             [{#channel.callee_number, maybe_update_callee_field(Num1, Num2)}
 %%             ,{#channel.callee_name, maybe_update_callee_field(Name1, Name2)}
 %%             ];

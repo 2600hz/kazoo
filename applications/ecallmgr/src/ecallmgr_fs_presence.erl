@@ -86,8 +86,8 @@ expires(<<"terminated">>) -> 20.
 
 -spec build_presence_event(kz_term:api_binary(), map()) -> any().
 build_presence_event(UUID, #{payload := JObj}) ->
-    ToTag = kzd_freeswitch:to_tag(JObj),
-    FromTag = kzd_freeswitch:from_tag(JObj),
+    ToTag = kz_evt_freeswitch:to_tag(JObj),
+    FromTag = kz_evt_freeswitch:from_tag(JObj),
 
     {FromUser, Realm} = get_user_realm(JObj),
     PresenceId = <<FromUser/binary, "@", Realm/binary>>,
@@ -99,7 +99,7 @@ build_presence_event(UUID, #{payload := JObj}) ->
 
     State = presence_status(JObj),
     Expires = expires(State),
-    SwitchURI = kzd_freeswitch:switch_uri(JObj),
+    SwitchURI = kz_evt_freeswitch:switch_uri(JObj),
 
     Payload = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}

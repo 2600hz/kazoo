@@ -827,7 +827,7 @@ should_update_uuid(OldUUID, Props) ->
         _ -> 'false'
     end.
 
--spec handle_fs_event(kzd_freeswitch:data(), created_uuid()) -> created_uuid().
+-spec handle_fs_event(kz_evt_freeswitch:data(), created_uuid()) -> created_uuid().
 handle_fs_event(Props, 'undefined') ->
     case should_update_uuid('undefined', Props) of
         'false' -> 'undefined';

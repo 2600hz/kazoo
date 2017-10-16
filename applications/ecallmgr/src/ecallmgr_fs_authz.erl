@@ -49,11 +49,11 @@ authorized_log({'true', _}) -> "";
 authorized_log('true') -> "";
 authorized_log('false') -> " not".
 
--spec kill_channel(kzd_freeswitch:data(), atom()) -> 'ok'.
+-spec kill_channel(kz_evt_freeswitch:data(), atom()) -> 'ok'.
 kill_channel(Props, Node) ->
-    Direction = kzd_freeswitch:call_direction(Props),
-    ResourceType = kzd_freeswitch:resource_type(Props, <<"audio">>),
-    CallId = kzd_freeswitch:call_id(Props),
+    Direction = kz_evt_freeswitch:call_direction(Props),
+    ResourceType = kz_evt_freeswitch:resource_type(Props, <<"audio">>),
+    CallId = kz_evt_freeswitch:call_id(Props),
     lager:debug("killing unauthorized channel"),
     kill_channel(Direction, ResourceType, CallId, Node).
 
@@ -68,13 +68,13 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
     _ = freeswitch:api(Node, 'uuid_kill', kz_term:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     'ok'.
 
--spec is_mobile_device(kzd_freeswitch:data()) -> authz_reply().
-is_mobile_device(Props) ->
-    <<"mobile">> =:=  kzd_freeswitch:authorizing_type(Props).
+-spec is_mobile_device(kz_evt_freeswitch:data()) -> boolean().
+is_mobile_device(Props, Node) ->
+    <<"mobile">> =:=  kz_evt_freeswitch:authorizing_type(Props).
 
--spec maybe_authorized_channel(kzd_freeswitch:data(), atom()) -> authz_reply().
+-spec maybe_authorized_channel(kz_evt_freeswitch:data(), atom()) -> authz_reply().
 maybe_authorized_channel(Props, Node) ->
-    case kzd_freeswitch:channel_authorized(Props) of
+    case kz_evt_freeswitch:channel_authorized(Props) of
         <<"true">> ->
             lager:debug("channel is already authorized"),
             'true';
@@ -83,26 +83,26 @@ maybe_authorized_channel(Props, Node) ->
             'false';
         _Else ->
             maybe_authorize_conference_number(Props)
-                orelse maybe_channel_recovering(Props, kzd_freeswitch:call_id(Props), Node)
+                orelse maybe_channel_recovering(Props, kz_evt_freeswitch:call_id(Props), Node)
     end.
 
--spec maybe_authorize_conference_number(kzd_freeswitch:data()) -> authz_reply().
+-spec maybe_authorize_conference_number(kz_evt_freeswitch:data()) -> boolean().
 maybe_authorize_conference_number(Props) ->
     lager:debug("is destination number 'conference': ~s"
-               ,[kzd_freeswitch:hunt_destination_number(Props)]
+               ,[kz_evt_freeswitch:hunt_destination_number(Props)]
                ),
-    <<"conference">> =:= kzd_freeswitch:hunt_destination_number(Props).
+    <<"conference">> =:= kz_evt_freeswitch:hunt_destination_number(Props).
 
--spec maybe_channel_recovering(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec maybe_channel_recovering(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 maybe_channel_recovering(Props, CallId, Node) ->
-    case kzd_freeswitch:is_channel_recovering(Props, 'false') of
+    case kz_evt_freeswitch:is_channel_recovering(Props, 'false') of
         'false' -> is_authz_enabled(Props, CallId, Node);
         'true' ->
             lager:info("channel is authorized because it is recovering"),
             allow_call(Props, CallId, Node)
     end.
 
--spec is_authz_enabled(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec is_authz_enabled(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 is_authz_enabled(Props, CallId, Node) ->
     case kapps_config:is_true(?APP_NAME, <<"authz_enabled">>, 'false') of
         'true' -> is_global_resource(Props, CallId, Node);
@@ -111,9 +111,9 @@ is_authz_enabled(Props, CallId, Node) ->
             allow_call(Props, CallId, Node)
     end.
 
--spec is_global_resource(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec is_global_resource(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 is_global_resource(Props, CallId, Node) ->
-    case kzd_freeswitch:is_consuming_global_resource(Props, 'true')
+    case kz_evt_freeswitch:is_consuming_global_resource(Props, 'true')
         orelse kapps_config:is_true(?APP_NAME, <<"authz_local_resources">>, 'false')
     of
         'true' -> is_consuming_resource(Props, CallId, Node);
@@ -122,28 +122,28 @@ is_global_resource(Props, CallId, Node) ->
             allow_call(Props, CallId, Node)
     end.
 
--spec is_consuming_resource(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec is_consuming_resource(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 is_consuming_resource(Props, CallId, Node) ->
-    case kzd_freeswitch:call_direction(Props) of
+    case kz_evt_freeswitch:call_direction(Props) of
         <<"outbound">> ->
             is_consuming_outbound_resource(Props, CallId, Node);
         <<"inbound">> ->
             is_consuming_inbound_resource(Props, CallId, Node)
     end.
 
--spec is_consuming_outbound_resource(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec is_consuming_outbound_resource(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 is_consuming_outbound_resource(Props, CallId, Node) ->
-    case kzd_freeswitch:resource_id(Props) of
+    case kz_evt_freeswitch:resource_id(Props) of
         'undefined' ->
             lager:debug("outbound channel is authorized because it is not consuming a resource"),
             allow_call(Props, CallId, Node);
         _ResourceId -> request_channel_authorization(Props, CallId, Node)
     end.
 
--spec is_consuming_inbound_resource(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec is_consuming_inbound_resource(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 is_consuming_inbound_resource(Props, CallId, Node) ->
-    case kzd_freeswitch:authorizing_id(Props) =:= 'undefined'
-        orelse kzd_freeswitch:authorizing_type(Props) =:= <<"resource">>
+    case kz_evt_freeswitch:authorizing_id(Props) =:= 'undefined'
+        orelse kz_evt_freeswitch:authorizing_type(Props) =:= <<"resource">>
     of
         'true' -> request_channel_authorization(Props, CallId, Node);
         'false' ->
@@ -151,7 +151,7 @@ is_consuming_inbound_resource(Props, CallId, Node) ->
             allow_call(Props, CallId, Node)
     end.
 
--spec request_channel_authorization(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
+-spec request_channel_authorization(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) ->
                                            authz_reply().
 request_channel_authorization(Props, CallId, Node) ->
     lager:debug("channel authorization request started"),
@@ -167,7 +167,7 @@ request_channel_authorization(Props, CallId, Node) ->
             authz_default(Props, CallId, Node)
     end.
 
--spec authz_response(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec authz_response(kz_json:object(), kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 authz_response(JObj, Props, CallId, Node) ->
     case kz_json:is_true(<<"Is-Authorized">>, JObj)
         orelse kz_json:is_true(<<"Soft-Limit">>, JObj)
@@ -202,7 +202,7 @@ authz_response(JObj, Props, CallId, Node) ->
             end
     end.
 
--spec authorize_account(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
+-spec authorize_account(kz_json:object(), kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) ->
                                authz_reply().
 authorize_account(JObj, Props, CallId, Node) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
@@ -214,7 +214,7 @@ authorize_account(JObj, Props, CallId, Node) ->
            ,{<<"Account-Billing">>, Type}
             | maybe_add_outbound_flags(ChanVars)
            ],
-    P = kzd_freeswitch:set_ccvs(Props, CCVs),
+    P = kz_evt_freeswitch:set_ccvs(Props, CCVs),
 
     authorize_reseller(JObj, P, CallId, Node).
 
@@ -225,22 +225,22 @@ maybe_add_outbound_flags(JObj) ->
         Flags -> [{<<"Outbound-Flags">>, Flags}]
     end.
 
--spec authorize_reseller(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
+-spec authorize_reseller(kz_json:object(), kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) ->
                                 authz_reply().
 authorize_reseller(JObj, Props, CallId, Node) ->
-    AccountId = kzd_freeswitch:account_id(Props),
+    AccountId = kz_evt_freeswitch:account_id(Props),
     case kz_json:get_value(<<"Reseller-ID">>, JObj, AccountId) of
         AccountId -> set_ccv_trunk_usage(JObj, Props, CallId, Node);
         ResellerId ->
             Type = kz_json:get_value(<<"Reseller-Billing">>, JObj),
             lager:debug("channel is authorized by reseller ~s as ~s", [ResellerId, Type]),
-            P = kzd_freeswitch:set_ccvs(Props, [{<<"Reseller-ID">>, ResellerId}
+            P = kz_evt_freeswitch:set_ccvs(Props, [{<<"Reseller-ID">>, ResellerId}
                                                ,{<<"Reseller-Billing">>, Type}
                                                ]),
             set_ccv_trunk_usage(JObj, P, CallId, Node)
     end.
 
--spec set_ccv_trunk_usage(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
+-spec set_ccv_trunk_usage(kz_json:object(), kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) ->
                                  authz_reply().
 set_ccv_trunk_usage(JObj, Props, CallId, Node) ->
     Usage = [{Key, TrunkUsage}
@@ -249,29 +249,29 @@ set_ccv_trunk_usage(JObj, Props, CallId, Node) ->
                        ],
                 'undefined' =/= (TrunkUsage = kz_call_event:custom_channel_var(JObj, Key))
             ],
-    P = kzd_freeswitch:set_ccvs(Props, props:filter_undefined(Usage)),
+    P = kz_evt_freeswitch:set_ccvs(Props, props:filter_undefined(Usage)),
     rate_call(P, CallId, Node).
 
--spec rate_call(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec rate_call(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 rate_call(Props, CallId, Node) ->
     _P = kz_util:spawn(fun rate_channel/2, [Props, Node]),
     lager:debug("rating call in ~p", [_P]),
     allow_call(Props, CallId, Node).
 
--spec allow_call(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
+-spec allow_call(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 allow_call(Props, _CallId, _Node) ->
     lager:debug("channel authorization succeeded, allowing call"),
     Vars = props:filter_undefined(
-             [{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
-             ,{<<"Account-Billing">>, kzd_freeswitch:account_billing(Props)}
-             ,{<<"Account-Trunk-Usage">>, kzd_freeswitch:account_trunk_usage(Props)}
-             ,{<<"Reseller-ID">>, kzd_freeswitch:reseller_id(Props)}
-             ,{<<"Reseller-Billing">>, kzd_freeswitch:reseller_billing(Props)}
-             ,{<<"Reseller-Trunk-Usage">>, kzd_freeswitch:reseller_trunk_usage(Props)}
-             ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
+             [{<<"Account-ID">>, kz_evt_freeswitch:account_id(Props)}
+             ,{<<"Account-Billing">>, kz_evt_freeswitch:account_billing(Props)}
+             ,{<<"Account-Trunk-Usage">>, kz_evt_freeswitch:account_trunk_usage(Props)}
+             ,{<<"Reseller-ID">>, kz_evt_freeswitch:reseller_id(Props)}
+             ,{<<"Reseller-Billing">>, kz_evt_freeswitch:reseller_billing(Props)}
+             ,{<<"Reseller-Trunk-Usage">>, kz_evt_freeswitch:reseller_trunk_usage(Props)}
+             ,{<<"Global-Resource">>, kz_evt_freeswitch:is_consuming_global_resource(Props)}
              ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
-    case kzd_freeswitch:is_call_setup(Props) of
+    case kz_evt_freeswitch:is_call_setup(Props) of
         'true' ->
             lager:info("channel is authorized (with channel vars)"),
             {'true', kz_json:from_list(Vars)};
@@ -280,11 +280,11 @@ allow_call(Props, _CallId, _Node) ->
             'true'
     end.
 
--spec rate_channel(kzd_freeswitch:data(), atom()) -> 'ok'.
+-spec rate_channel(kz_evt_freeswitch:data(), atom()) -> 'ok'.
 rate_channel(Props, Node) ->
-    CallId = kzd_freeswitch:call_id(Props),
+    CallId = kz_evt_freeswitch:call_id(Props),
     kz_util:put_callid(CallId),
-    Direction = kzd_freeswitch:call_direction(Props),
+    Direction = kz_evt_freeswitch:call_direction(Props),
     ReqResp = kz_amqp_worker:call(rating_req(CallId, Props)
                                  ,fun kapi_rate:publish_req/1
                                  ,fun kapi_rate:resp_v/1
@@ -293,23 +293,23 @@ rate_channel(Props, Node) ->
                                  ),
     rate_channel_resp(Props, Node, ReqResp).
 
--spec rate_channel_resp(kzd_freeswitch:data(), atom(), kz_amqp_worker:request_return()) -> 'ok'.
+-spec rate_channel_resp(kz_evt_freeswitch:data(), atom(), kz_amqp_worker:request_return()) -> 'ok'.
 rate_channel_resp(Props, Node, {'ok', RespJObj}) ->
     maybe_set_rating_ccvs(Props, RespJObj, Node);
 rate_channel_resp(Props, Node, {'error', _R}) ->
     lager:debug("rate request lookup failed: ~p", [_R]),
 
     %% disconnect only per_minute channels
-    case <<"per_minute">> =:= kzd_freeswitch:account_billing(Props)
-        orelse <<"per_minute">> =:= kzd_freeswitch:reseller_billing(Props)
+    case <<"per_minute">> =:= kz_evt_freeswitch:account_billing(Props)
+        orelse <<"per_minute">> =:= kz_evt_freeswitch:reseller_billing(Props)
     of
         'true' -> maybe_kill_unrated_channel(Props, Node);
         'false' -> 'ok'
     end.
 
--spec maybe_kill_unrated_channel(kzd_freeswitch:data(), atom()) -> 'ok'.
+-spec maybe_kill_unrated_channel(kz_evt_freeswitch:data(), atom()) -> 'ok'.
 maybe_kill_unrated_channel(Props, Node) ->
-    Direction = kzd_freeswitch:call_direction(Props),
+    Direction = kz_evt_freeswitch:call_direction(Props),
 
     case kapps_config:is_true(?APP_NAME, <<Direction/binary, "_rate_required">>, 'false') of
         'false' -> 'ok';
@@ -318,7 +318,7 @@ maybe_kill_unrated_channel(Props, Node) ->
             kill_channel(Props, Node)
     end.
 
--spec authz_default(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> {'ok', kz_term:ne_binary()} | boolean().
+-spec authz_default(kz_evt_freeswitch:data(), kz_term:ne_binary(), atom()) -> {'ok', ne_binary()} | boolean().
 %% TODO: fix use of authz_default
 authz_default(Props, CallId, Node) ->
     case kapps_config:get_ne_binary(?APP_NAME, <<"authz_default_action">>, <<"deny">>) =:= <<"deny">>
@@ -330,7 +330,7 @@ authz_default(Props, CallId, Node) ->
             'false'
     end.
 
--spec maybe_set_rating_ccvs(kzd_freeswitch:data(), kz_json:object(), atom()) -> 'ok'.
+-spec maybe_set_rating_ccvs(kz_evt_freeswitch:data(), kz_json:object(), atom()) -> 'ok'.
 maybe_set_rating_ccvs(Props, JObj, Node) ->
     case kz_json:get_value(<<"Rate">>, JObj) of
         'undefined' -> maybe_kill_unrated_channel(Props, Node);
@@ -382,48 +382,48 @@ maybe_update_callee_id(JObj, Acc) ->
         'false' -> [{<<"Rate">>, Rate}|Acc]
     end.
 
--spec authz_req(kzd_freeswitch:data()) -> kz_term:proplist().
+-spec authz_req(kz_evt_freeswitch:data()) -> kz_term:proplist().
 authz_req(Props) ->
-    AccountId = kzd_freeswitch:account_id(Props),
+    AccountId = kz_evt_freeswitch:account_id(Props),
     props:filter_undefined(
-      [{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
+      [{<<"Call-ID">>, kz_evt_freeswitch:call_id(Props)}
       ,{<<"To">>, kz_json:get_ne_binary_value(<<"To">>, Props)}
       ,{<<"From">>, kz_json:get_ne_binary_value(<<"From">>, Props)}
       ,{<<"Request">>, kz_json:get_ne_binary_value(<<"Request">>, Props)}
-      ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-      ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
+      ,{<<"Call-Direction">>, kz_evt_freeswitch:call_direction(Props)}
+      ,{<<"Other-Leg-Call-ID">>, kz_evt_freeswitch:other_leg_call_id(Props)}
       ,{<<"Caller-ID-Name">>
-       ,kzd_freeswitch:caller_id_name(Props, kapps_call:unknown_caller_id_name(AccountId))
+       ,kz_evt_freeswitch:caller_id_name(Props, kapps_call:unknown_caller_id_name(AccountId))
        }
       ,{<<"Caller-ID-Number">>
-       ,kzd_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))
+       ,kz_evt_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))
        }
-      ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
-      ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
-      ,{<<"Custom-Channel-Vars">>, kzd_freeswitch:ccvs(Props)}
-      ,{<<"Custom-Application-Vars">>, kzd_freeswitch:cavs(Props)}
+      ,{<<"From-Network-Addr">>, kz_evt_freeswitch:from_network_ip(Props)}
+      ,{<<"From-Network-Port">>, kz_evt_freeswitch:from_network_port(Props)}
+      ,{<<"Custom-Channel-Vars">>, kz_evt_freeswitch:ccvs(Props)}
+      ,{<<"Custom-Channel-Vars">>, kz_evt_freeswitch:cavs(Props)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec outbound_flags(kzd_freeswitch:data()) -> [binary()] | 'undefined'.
+-spec outbound_flags(kz_evt_freeswitch:data()) -> [binary()] | 'undefined'.
 outbound_flags(Props) ->
-    case kzd_freeswitch:outbound_flags(Props) of
+    case kz_evt_freeswitch:outbound_flags(Props) of
         'undefined' -> 'undefined';
         <<_/binary>> = Flags -> binary:split(Flags, <<"|">>);
         Flags when is_list(Flags) -> Flags
     end.
 
--spec rating_req(kz_term:ne_binary(), kzd_freeswitch:data()) -> kz_term:proplist().
+-spec rating_req(kz_term:ne_binary(), kz_evt_freeswitch:data()) -> kz_term:proplist().
 rating_req(CallId, Props) ->
-    props:filter_undefined([{<<"To-DID">>, kzd_freeswitch:to_did(Props)}
-                           ,{<<"From-DID">>, kzd_freeswitch:caller_id_number(Props)}
+    props:filter_undefined([{<<"To-DID">>, kz_evt_freeswitch:to_did(Props)}
+                           ,{<<"From-DID">>, kz_evt_freeswitch:caller_id_number(Props)}
                            ,{<<"Call-ID">>, CallId}
-                           ,{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
-                           ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
+                           ,{<<"Account-ID">>, kz_evt_freeswitch:account_id(Props)}
+                           ,{<<"Direction">>, kz_evt_freeswitch:call_direction(Props)}
                            ,{<<"Send-Empty">>, 'true'}
                            ,{<<"Outbound-Flags">>, outbound_flags(Props)}
-                           ,{<<"Resource-ID">>, kzd_freeswitch:ccv(Props, <<"Resource-ID">>)}
-                           ,{<<"Authorizing-Type">>, kzd_freeswitch:authorizing_type(Props)}
+                           ,{<<"Resource-ID">>, kz_evt_freeswitch:ccv(Props, <<"Resource-ID">>)}
+                           ,{<<"Authorizing-Type">>, kz_evt_freeswitch:authorizing_type(Props)}
                             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                            ]).
 
