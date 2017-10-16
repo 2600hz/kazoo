@@ -18,7 +18,7 @@ get_pos_integer(Key) ->
 get_pos_integer(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
-        Value -> as_integer(Value, Default, fun(V) -> V > 0 end)
+        {'ok', Value} -> as_integer(Value, Default, fun(V) -> V > 0 end)
     end.
 
 -spec get_ne_binary(ne_binary()) -> api_ne_binary().
