@@ -28,7 +28,7 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"fetch.dialplan.context_2">>, ?MODULE, 'dialplan'),
+    kazoo_bindings:bind(<<"fetch.dialplan.*.route_req.context_2">>, ?MODULE, 'dialplan'),
     kazoo_bindings:bind(<<"event_stream.event.dialplan.ROUTE_WINNER">>, ?MODULE, 'route_winner'),
     'ok'.
 
@@ -62,7 +62,8 @@ timeout(#{timeout := _Timeout}=Map) -> Map;
 timeout(#{payload := JObj}=Map) ->
     T0 = kz_json:get_integer_value(<<"Fetch-Timestamp-Micro">>, JObj),
     T1 = kz_json:get_integer_value(<<"Fetch-Timeout">>, JObj),
-    T3 = kz_time:now_us(),
+    lager:debug("TIMEOUT ~p , ~p, ~p, ~p", [T0, T1, kz_time:now_us(), erlang:system_time('micro_seconds')]),
+    T3 = erlang:system_time('micro_seconds'), %kz_time:now_us(),
     T4 = T3 - T0,
     T5 = T1 - T4,
     T6 = T5 div 1000,

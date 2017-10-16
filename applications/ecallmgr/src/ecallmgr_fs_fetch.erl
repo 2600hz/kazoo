@@ -151,15 +151,26 @@ code_change(_OldVsn, State, _Extra) ->
 -spec handle_fetch_req(atom(), kz_json:object()) -> fs_sendmsg_ret().
 handle_fetch_req(Node, JObj) ->
     kz_util:put_callid(JObj),
+%%    lager:debug_unsafe("FETCH : ~s", [kz_json:encode(JObj, ['pretty'])]),
     FetchId = kzd_fetch:fetch_uuid(JObj),
+    CoreUUID = kzd_fetch:core_uuid(JObj),
     Key = kzd_fetch:fetch_key_value(JObj),
-    Tag = kzd_fetch:fetch_tag(JObj),
-    Name = kzd_fetch:fetch_key_name(JObj),
     Section = kzd_fetch:fetch_section(JObj),
-    Context = kzd_fetch:hunt_context(JObj),
-    RKs = lists:filter(fun kz_term:is_not_empty/1, [<<"fetch">>, Section, Tag, Name, Key, Context]),
+    Version = kzd_fetch:fetch_version(JObj),
+    Event = kz_term:to_lower_binary(kz_api:event_name(JObj)),
+
+    RKs = lists:filter(fun kz_term:is_not_empty/1, [<<"fetch">>, Section, Version, Event, Key]),
+
     Routing = kz_binary:join(RKs, <<".">>),
-    Map = #{node => Node, section => kz_term:to_atom(Section, 'true'), fetch_id => FetchId, payload => JObj},
+    lager:debug("requesting binding for ~s", [Routing]),
+    Map = #{node => Node
+           ,section => kz_term:to_atom(Section, 'true')
+           ,fetch_id => FetchId
+           ,payload => JObj
+           ,version => kz_term:to_atom(Version, 'true')
+           ,core_uuid => kz_term:to_atom(CoreUUID, 'true')
+           ,routing => Routing
+           },
     case kazoo_bindings:map(Routing, Map) of
         [] -> not_found(Map);
         _ -> 'ok'
