@@ -18,6 +18,9 @@
         "Billing-Seconds": {
             "type": "string"
         },
+        "Call-Debug": {
+            "type": "object"
+        },
         "Call-Direction": {
             "type": "string"
         },
