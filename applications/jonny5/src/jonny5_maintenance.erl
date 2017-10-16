@@ -239,7 +239,7 @@ pretty_print_field(Name, Value) when is_number(Value) ->
 pretty_print_field(Name, Value) ->
     io:format("~-25s: ~s~n", [Name, Value]).
 
--spec current_balance(ne_binary()) -> ne_binary().
+-spec current_balance(ne_binary()) -> iolist().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
         {'ok', Balance} -> kz_term:to_list(wht_util:units_to_dollars(Balance));

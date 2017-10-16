@@ -26,7 +26,7 @@
                   ,hangup_dtmf :: api_binary()
                   ,collect_dtmf = 'false' :: boolean()
                   ,record_call :: boolean()
-                  ,call_timeout :: kz_timeout()
+                  ,call_timeout :: kz_timeout() | 'undefined'
                   ,call_time_limit :: kz_timeout()
                   ,start :: kz_now()
                   ,call_b_leg :: api_binary()
@@ -524,9 +524,8 @@ handle_dtmf_event(#dial_req{call=Call
             lager:info("collecting dtmf ~s", [DTMF]),
             LoopFun(
               update_offnet_timers(
-                DialReq#dial_req{
-                  call=kzt_util:add_digit_collected(DTMF, Call)
-                 }));
+                DialReq#dial_req{call=kzt_util:add_digit_collected(DTMF, Call)}
+               ));
         _DTMF ->
             lager:info("caller pressed dtmf tone but we're not collecting it"),
             wait_for_offnet_events(update_offnet_timers(DialReq))
@@ -681,10 +680,9 @@ recording_name(ALeg, BLeg) ->
     iolist_to_binary([DateTime, "_", ALeg, "_to_", BLeg, ".mp3"]).
 
 -spec handle_offnet_timeout(dial_req()) -> {'ok', kapps_call:call()}.
-handle_offnet_timeout(#dial_req{
-                         call=Call
+handle_offnet_timeout(#dial_req{call=Call
                                ,call_timeout='undefined'
-                        }) ->
+                               }) ->
     lager:info("call timeout exceeded"),
     kapps_call_command:hangup(Call),
     {'ok', kzt_util:update_call_status(?STATUS_COMPLETED, Call)};
@@ -693,10 +691,9 @@ handle_offnet_timeout(#dial_req{call=Call}) ->
     {'ok', kzt_util:update_call_status(?STATUS_NOANSWER, Call)}.
 
 -spec handle_conference_timeout(dial_req()) -> {'ok', kapps_call:call()}.
-handle_conference_timeout(#dial_req{
-                             call=Call
+handle_conference_timeout(#dial_req{call=Call
                                    ,call_timeout='undefined'
-                            }) ->
+                                   }) ->
     lager:debug("time limit for conference exceeded"),
     kapps_call_command:park(Call),
     {'ok', kzt_util:update_call_status(?STATUS_COMPLETED, Call)};

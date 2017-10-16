@@ -156,9 +156,6 @@ handle_DATA(From, [To|_]=ToList, Data, #state{to='undefined'}=State) ->
     handle_DATA(From, ToList, Data, State#state{to=To});
 handle_DATA(From, To, Data, #state{doc='undefined'}=State) ->
     case check_faxbox(State) of
-        {'ok', #state{doc='undefined'}=NewState} ->
-            lager:error("check_faxbox returned no error but also no doc : ~p", [NewState]),
-            {'error', "552 unable to process", NewState};
         {'ok', NewState} -> handle_DATA(From, To, Data, NewState);
         Error -> Error
     end;

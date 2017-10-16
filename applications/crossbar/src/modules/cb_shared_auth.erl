@@ -259,12 +259,16 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
 %%--------------------------------------------------------------------
 -spec import_missing_data(kz_json:object()) -> boolean().
 import_missing_data(RemoteData) ->
-    Account = kz_json:get_value(<<"account">>, RemoteData),
+    import_missing_data(kz_json:get_json_value(<<"account">>, RemoteData)
+                       ,kz_json:get_json_value(<<"user">>, RemoteData)
+                       ).
+
+import_missing_data('undefined', _User) -> 'false';
+import_missing_data(_Account, 'undefined') -> 'false';
+import_missing_data(Account, User) ->
     AccountId = kz_doc:account_id(Account),
-    User = kz_json:get_value(<<"user">>, RemoteData),
-    UserId = kz_doc:id(User),
     import_missing_account(AccountId, Account)
-        andalso import_missing_user(AccountId, UserId, User).
+        andalso import_missing_user(AccountId, kz_doc:id(User), User).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -273,16 +277,13 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api_binary(), api_object()) -> boolean().
+-spec import_missing_account(api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
     'false';
-import_missing_account(_AccountId, 'undefined') ->
-    lager:debug("shared auth reply did not define an account definition"),
-    'false';
 import_missing_account(AccountId, Account) ->
     %% check if the account database exists
-    Db = kz_util:format_account_id(AccountId, 'encoded'),
+    Db = kz_util:format_account_db(AccountId),
     case kz_datamgr:db_exists(Db) of
         %% if the account database exists make sure it has the account
         %% definition, because when couch is acting up it can skip this
@@ -295,13 +296,14 @@ import_missing_account(AccountId, Account) ->
                     lager:debug("missing local account definition, creating from shared auth response"),
                     Doc = kz_doc:delete_revision(Account),
                     Event = <<"*.execute.post.accounts">>,
-                    Context1 = crossbar_bindings:fold(Event
-                                                     ,[cb_context:set_doc(
-                                                         cb_context:set_account_db(cb_context:new(), Db)
-                                                                         ,Doc)
-                                                      ,AccountId
-                                                      ]),
-                    case cb_context:resp_status(Context1) of
+
+                    Context = cb_context:setters(cb_context:new()
+                                                ,[{fun cb_context:set_account_db/2,  Db}
+                                                 ,{fun cb_context:set_doc/2, Doc}
+                                                 ]),
+                    PostContext = crossbar_bindings:fold(Event, [Context, AccountId]),
+
+                    case cb_context:resp_status(PostContext) of
                         'success' ->
                             lager:debug("updated account definition"),
                             'true';
@@ -335,15 +337,12 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(api_binary(), api_binary(), api_object()) -> boolean().
+-spec import_missing_user(ne_binary(), api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
     'false';
-import_missing_user(_, _, 'undefined') ->
-    lager:debug("shared auth reply did not define an user object"),
-    'false';
 import_missing_user(AccountId, UserId, User) ->
-    Db = kz_util:format_account_id(AccountId, 'encoded'),
+    Db = kz_util:format_account_db(AccountId),
     case kz_datamgr:lookup_doc_rev(Db, UserId) of
         {'ok', _} ->
             lager:debug("remote user ~s already exists locally in account ~s", [UserId, AccountId]),
@@ -351,10 +350,13 @@ import_missing_user(AccountId, UserId, User) ->
         _Else ->
             Doc = kz_doc:delete_revision(User),
             Event = <<"*.execute.put.users">>,
-            Context1 = crossbar_bindings:fold(Event, [cb_context:set_doc(
-                                                        cb_context:set_account_db(cb_context:new(), Db)
-                                                                        ,Doc)]),
-            case cb_context:resp_status(Context1) of
+            Context = cb_context:setters(cb_context:new()
+                                        ,[{fun cb_context:set_account_db/2,  Db}
+                                         ,{fun cb_context:set_doc/2, Doc}
+                                         ]),
+            PostContext = crossbar_bindings:fold(Event, [Context, AccountId]),
+
+            case cb_context:resp_status(PostContext) of
                 'success' ->
                     lager:debug("imported user ~s in account ~s", [UserId, AccountId]),
                     'true';

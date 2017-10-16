@@ -308,8 +308,11 @@ validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_POST) ->
 validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_DELETE) ->
     Options = [{'key', Id}],
     case kz_datamgr:get_result_keys(cb_context:account_db(Context), ?PROVIDERS_APP_VIEW, Options) of
-        [] -> Context;
-        _ -> cb_context:add_system_error(<<"apps exist for provider">>, Context)
+        {'ok', []} -> Context;
+        {'ok', _} -> cb_context:add_system_error(<<"apps exist for provider">>, Context);
+        {'error', _E} ->
+            lager:info("failed to get result keys: ~p", [_E]),
+            cb_context:add_system_error(<<"datastore error">>, Context)
     end;
 
 %% validating /auth/links/{link_id}

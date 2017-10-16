@@ -47,8 +47,8 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include("knm.hrl").
 
--record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
-                    ,services :: kz_services:services()
+-record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number() | 'undefined'
+                    ,services :: kz_services:services() | 'undefined'
                     ,transactions = [] :: kz_transaction:transactions()
                     ,charges = [] :: [{ne_binary(), non_neg_integer()}]
                     }).

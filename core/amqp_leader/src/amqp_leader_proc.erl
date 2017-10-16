@@ -138,7 +138,9 @@ workers(_) -> [].
 -spec candidates(sign()) -> atoms().
 candidates(_) -> [node()].
 
--spec broadcast(atom(), atoms(), sign()) -> sign().
+-type msg() :: {'from_leader', any()}.
+
+-spec broadcast(msg(), atoms(), sign()) -> sign().
 broadcast(Msg, _Nodes, #sign{name = Name} = Sign) ->
     send({Name, 'broadcast'}, Msg),
     Sign.

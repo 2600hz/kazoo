@@ -278,7 +278,7 @@ enter_loop(Module, Options, ModuleState, ServerName, Timeout) ->
     gen_server:enter_loop(?MODULE, [], MyState, ServerName, Timeout).
 
 -spec add_responder(server_ref(), responder_callback(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
-add_responder(Srv, Responder, Key) when not is_list(Key) ->
+add_responder(Srv, Responder, {_,_}=Key) ->
     add_responder(Srv, Responder, [Key]);
 add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {'add_responder', Responder, Keys}).

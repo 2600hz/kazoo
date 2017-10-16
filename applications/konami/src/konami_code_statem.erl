@@ -512,7 +512,7 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                ,b_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
--spec maybe_add_call_event_bindings(api_binary() | kapps_call:call()) -> 'ok'.
+-spec maybe_add_call_event_bindings(api_ne_binary() | kapps_call:call()) -> 'ok'.
 -spec maybe_add_call_event_bindings(kapps_call:call(), listen_on()) -> 'ok'.
 maybe_add_call_event_bindings('undefined') -> 'ok';
 maybe_add_call_event_bindings(<<_/binary>> = Leg) -> konami_event_listener:add_call_binding(Leg);
