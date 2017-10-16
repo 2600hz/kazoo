@@ -1292,7 +1292,7 @@ handle_intercepted(_Node, _CallId, _Props) ->
     %%         end,
     'ok'.
 
--spec handle_event_info(ne_binary(), kzd_freeswitch:data(), state()) ->
+-spec handle_event_info(ne_binary(), kz_evt_freeswitch:data(), state()) ->
                                {'noreply', state()} |
                                {'stop', any(), state()}.
 handle_event_info(CallId, JObj, #state{call_id=CallId
