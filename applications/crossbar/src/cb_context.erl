@@ -390,7 +390,7 @@ pagination_page_size(Context, _Version) ->
                 PageSize when PageSize > 0 -> PageSize;
                 _ ->
                     lager:debug("~p is not bigger than zero, using default page size", [V]),
-                    pagination_page_size();
+                    pagination_page_size()
             end
     end.
 
