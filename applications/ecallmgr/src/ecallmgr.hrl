@@ -552,6 +552,7 @@
           ?FS_GENERATED_EVENT_FILTERS
           ++ ?CONFERENCE_VARS
           ++ ?FS_MOD_KAZOO_EVENT_FILTERS
+          ++ ?FS_PRESERVED_EVENT_FILTERS
          )
        ).
 
