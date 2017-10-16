@@ -10,13 +10,13 @@
 
 -export([init/0
         ,handle_req/1
+        ,process_req/3
         ]).
 
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"fax_inbound_error_to_email">>).
--define(TEMPLATE_ID_FILTERED, <<"fax_inbound_error_to_email_filtered">>).
--define(MOD_CONFIG_CAT(TemplateId), ?TEMPLATE_CONFIG_CAT(TemplateId)).
+-define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -31,10 +31,8 @@
 -define(TEMPLATE_SUBJECT, <<"Error receiving fax from {% firstof caller_id.name fax.remote_station_id %} ({% firstof fax.remote_station_id caller_id.number \"Unknown Number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Inbound Fax Negotiation Error to Email">>).
--define(FILTERED_TEMPLATE_NAME, <<"Inbound Fax Receive Error to Email">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_FILTERED_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
@@ -43,33 +41,23 @@
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    Fields = [{'macros', ?TEMPLATE_MACROS}
-             ,{'subject', ?TEMPLATE_SUBJECT}
-             ,{'category', ?TEMPLATE_CATEGORY}
-             ,{'cc', ?TEMPLATE_CC}
-             ,{'bcc', ?TEMPLATE_BCC}
-             ],
-    FilteredParams = [{'friendly_name', ?FILTERED_TEMPLATE_NAME}
-                     ,{'to', ?TEMPLATE_FILTERED_TO}
-                     ,{'from', ?TEMPLATE_FROM}
-                     ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                      | Fields
-                     ],
-    UnfilteredParams = [{'friendly_name', ?TEMPLATE_NAME}
-                       ,{'to', ?TEMPLATE_TO}
-                       ,{'from', ?TEMPLATE_FROM}
-                       ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                        | Fields
-                       ],
-    teletype_templates:init(?TEMPLATE_ID_FILTERED, FilteredParams),
-    teletype_templates:init(?TEMPLATE_ID, UnfilteredParams),
+    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ]),
     teletype_bindings:bind(<<"inbound_fax_error">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> handle_req_ret().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:fax_inbound_error_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+-spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
 handle_req(JObj, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
     teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
@@ -80,52 +68,17 @@ handle_req(JObj, 'true') ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    case is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'disabled' ->
-            teletype_util:notification_disabled(DataJObj, kz_binary:join(["both ", ?TEMPLATE_ID, " and ", ?TEMPLATE_ID_FILTERED]));
-        {TemplateId, TemplateMetaJObj} ->
-            lager:debug("handling ~s", [TemplateId]),
-            handle_fax_inbound(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID, TemplateMetaJObj)
-    end.
-
--spec is_notice_enabled(ne_binary(), kz_json:object(), ne_binary()) -> {ne_binary(), kz_json:object()} | 'disabled'.
-is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) ->
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
+        'false' -> {'disabled', ?TEMPLATE_ID};
         'true' ->
+            lager:debug("handling ~s", [?TEMPLATE_ID]),
             {'ok', TemplateMetaJObj} =
-                teletype_templates:fetch_notification(?MOD_CONFIG_CAT(?TEMPLATE_ID), AccountId),
-            {?TEMPLATE_ID, TemplateMetaJObj};
-        'false' ->
-            is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED)
-    end;
-is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED) ->
-    {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_notification(?MOD_CONFIG_CAT(?TEMPLATE_ID_FILTERED), AccountId),
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED)
-        andalso is_true_fax_error(JObj, TemplateMetaJObj)
-    of
-        'false' -> 'disabled';
-        'true' -> {?TEMPLATE_ID_FILTERED, TemplateMetaJObj}
+                teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
+            process_req(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID, TemplateMetaJObj)
     end.
 
-%% see: https://wiki.freeswitch.org/wiki/Variable_fax_result_code
--spec is_true_fax_error(kz_json:object(), kz_json:object()) -> boolean().
-is_true_fax_error(JObj, AccountTemplateJObj) ->
-    {'ok', SysTemplateMetaJObj} =
-        teletype_templates:fetch_notification(?MOD_CONFIG_CAT(?TEMPLATE_ID_FILTERED), ?KZ_CONFIG_DB),
-    Code = kz_json:get_value(<<"Fax-Result-Code">>, JObj),
-    DefaultCodes = kz_json:get_first_defined([<<"filter_error_codes">>, [<<"default">>, <<"filter_error_codes">>]]
-                                            ,SysTemplateMetaJObj
-                                            ,[<<"0">>, <<"49">>]
-                                            ),
-    Codes = kz_json:get_first_defined([<<"filter_error_codes">>, [<<"default">>, <<"filter_error_codes">>]]
-                                     ,AccountTemplateJObj
-                                     ,DefaultCodes
-                                     ),
-    not lists:member(Code, Codes).
-
--spec handle_fax_inbound(kz_json:object(), ne_binary(), kz_json:object()) -> 'ok'.
-handle_fax_inbound(DataJObj, TemplateId, TemplateMetaJObj) ->
+-spec process_req(kz_json:object(), ne_binary(), kz_json:object()) -> handle_req_ret().
+process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
     TemplateData = build_template_data(DataJObj),
     {Macros, EmailAttachements} = teletype_fax_util:add_attachments(DataJObj, TemplateData, 'false'),
 
@@ -143,14 +96,14 @@ handle_fax_inbound(DataJObj, TemplateId, TemplateMetaJObj) ->
         case teletype_util:is_preview(DataJObj) of
             'true' -> DataJObj;
             'false' ->
-                kz_json:set_value(<<"to">>, teletype_fax_util:to_email_addresses(DataJObj, ?MOD_CONFIG_CAT(TemplateId)), DataJObj)
+                kz_json:set_value(<<"to">>, teletype_fax_util:to_email_addresses(DataJObj, ?MOD_CONFIG_CAT), DataJObj)
         end,
 
-    Emails = teletype_util:find_addresses(EmailsJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT(TemplateId)),
+    Emails = teletype_util:find_addresses(EmailsJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> {'completed', TemplateId};
+        {'error', Reason} -> {'failed', TemplateId, Reason}
     end.
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
