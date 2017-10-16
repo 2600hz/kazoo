@@ -14,7 +14,7 @@
         ,system_params/0
         ,account_params/1
         ,user_params/1
-        ,send_update/2, send_update/3
+        ,send_update/2, send_update/3, send_update/4
         ,find_addresses/3
         ,find_account_rep_email/1
         ,find_account_admin_email/1
@@ -29,6 +29,8 @@
 
         ,default_from_address/0
         ,default_reply_to/0
+
+        ,template_system_value/1, template_system_value/2, template_system_value/3
 
         ,open_doc/3
         ,is_preview/1
@@ -448,24 +450,31 @@ find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
 find_account_db(_, JObj) -> kapi_notifications:account_db(JObj, 'false').
 
 -spec send_update(kz_json:object(), ne_binary()) -> 'ok'.
--spec send_update(kz_json:object(), ne_binary(), api_binary()) -> 'ok'.
--spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 send_update(DataJObj, Status) ->
     send_update(DataJObj, Status, 'undefined').
+
+-spec send_update(kz_json:object(), ne_binary(), api_binary()) -> 'ok'.
 send_update(DataJObj, Status, Message) ->
+    send_update(DataJObj, Status, Message, 'undefined').
+
+-spec send_update(kz_json:object(), ne_binary(), api_binary(), api_object()) -> 'ok'.
+send_update(DataJObj, Status, Message, Metadata) ->
     send_update(kz_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], DataJObj)
                ,kz_json:get_first_defined([<<"msg_id">>, <<"Msg-ID">>], DataJObj)
                ,Status
                ,Message
+               ,Metadata
                ).
 
-send_update('undefined', _, _, _) ->
+-spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary(), api_object()) -> 'ok'.
+send_update('undefined', _, _, _, _) ->
     lager:debug("no response queue available, not publishing update");
-send_update(RespQ, MsgId, Status, Msg) ->
+send_update(RespQ, MsgId, Status, Msg, Metadata) ->
     Prop = props:filter_undefined(
              [{<<"Status">>, Status}
              ,{<<"Failure-Message">>, Msg}
              ,{<<"Msg-ID">>, MsgId}
+             ,{<<"Metadata">>, Metadata}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
@@ -760,6 +769,22 @@ admin_emails_from_system_template(ConfigCat, Key, JObj) ->
             end;
         Emails -> Emails
     end.
+
+-spec template_system_value(ne_binary()) -> kz_json:object().
+template_system_value(TemplateId) ->
+    ConfigCat = teletype_templates:doc_id(TemplateId),
+    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, ConfigCat) of
+        {'ok', JObj} -> JObj;
+        {'error', _} -> kz_json:new()
+    end.
+
+-spec template_system_value(ne_binary(), ne_binary()) -> any().
+template_system_value(TemplateId, Key) ->
+    template_system_value(TemplateId, Key, 'undefined').
+
+-spec template_system_value(ne_binary(), ne_binary(), any()) -> any().
+template_system_value(TemplateId, Key, Default) ->
+    kz_json:get_value(Key, template_system_value(TemplateId), Default).
 
 -spec open_doc(ne_binary(), api_binary(), kz_json:object()) ->
                       {'ok', kz_json:object()} |

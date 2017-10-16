@@ -52,6 +52,12 @@
                       {'reply_to', api_binary()}.
 -type init_params() :: [init_param(),...].
 
+-type handle_req_ret() :: 'ok' |
+                          {'disabled', ne_binary()} |
+                          {'ignored', ne_binary()} |
+                          {'completed', ne_binary()} |
+                          {'failed', ne_binary(), any()}.
+
 -define(TEXT_PLAIN, <<"text/plain">>).
 -define(TEXT_HTML, <<"text/html">>).
 
