@@ -235,8 +235,8 @@ authorize_reseller(JObj, Props, CallId, Node) ->
             Type = kz_json:get_value(<<"Reseller-Billing">>, JObj),
             lager:debug("channel is authorized by reseller ~s as ~s", [ResellerId, Type]),
             P = kz_evt_freeswitch:set_ccvs(Props, [{<<"Reseller-ID">>, ResellerId}
-                                               ,{<<"Reseller-Billing">>, Type}
-                                               ]),
+                                                  ,{<<"Reseller-Billing">>, Type}
+                                                  ]),
             set_ccv_trunk_usage(JObj, P, CallId, Node)
     end.
 
