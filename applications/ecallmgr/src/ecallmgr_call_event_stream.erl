@@ -58,7 +58,7 @@ generic_call_event_props(Props) ->
 
     [{<<"Timestamp">>, NormalizedFSTimestamp}
     ,{<<"Msg-ID">>, kz_term:to_binary(FSTimestamp)}
-    ,{<<"Origination-Call-ID">>, kz_evt_freeswitch:origination_call_id(Props)}
+    ,{<<"Origination-Call-ID">>, kzd_freeswitch:origination_call_id(Props)}
     ,{<<"Call-ID">>, get_call_id(Props)}
     ,{<<"Transfer-History">>, get_transfer_history(Props)}
     ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
@@ -66,9 +66,9 @@ generic_call_event_props(Props) ->
     ,{<<"Disposition">>, get_disposition(Props)}
     ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
     ,{<<"Channel-Moving">>, get_channel_moving(Props)}
-    ,{<<"Call-Direction">>, kz_evt_freeswitch:call_direction(Props)}
-    ,{<<"Caller-ID-Number">>, kz_evt_freeswitch:caller_id_number(Props)}
-    ,{<<"Caller-ID-Name">>, kz_evt_freeswitch:caller_id_name(Props)}
+    ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
+    ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props)}
+    ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props)}
     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
@@ -315,7 +315,7 @@ get_channel_state(Props) ->
 
 -spec get_call_id(kz_proplist()) -> api_binary().
 get_call_id(Props) ->
-    kz_evt_freeswitch:call_id(Props).
+    kzd_freeswitch:call_id(Props).
 
 -spec get_other_leg(kz_proplist()) -> api_binary().
 get_other_leg(Props) ->
@@ -323,7 +323,7 @@ get_other_leg(Props) ->
 
 -spec get_event_name(kz_proplist()) -> api_binary().
 get_event_name(Props) ->
-    case kz_evt_freeswitch:application_name(Props) of
+    case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"CHANNEL_TRANSFEREE">>;
         <<"sofia::transferor">> -> <<"CHANNEL_TRANSFEROR">>;
         <<"sofia::replaced">> -> <<"CHANNEL_REPLACED">>;
@@ -336,7 +336,7 @@ get_event_name(Props) ->
 
 -spec get_fs_event_name(kz_proplist()) -> api_binary().
 get_fs_event_name(Props) ->
-    case kz_evt_freeswitch:event_name(Props) of
+    case kzd_freeswitch:event_name(Props) of
         <<"DETECTED_TONE">> ->
             case props:get_value(<<"Detected-Fax-Tone">>, Props) of
                 'undefined' -> <<"DETECTED_TONE">>;
@@ -347,7 +347,7 @@ get_fs_event_name(Props) ->
 
 -spec get_application_name(kz_proplist()) -> api_binary().
 get_application_name(Props) ->
-    case kz_evt_freeswitch:application_name(Props) of
+    case kzd_freeswitch:application_name(Props) of
         <<"sofia::transferee">> -> <<"transfer">>;
         <<"sofia::transferor">> -> <<"transfer">>;
         <<"sofia::replaced">> -> <<"transfer">>;
@@ -358,7 +358,7 @@ get_application_name(Props) ->
 
 -spec get_raw_application_name(kz_proplist()) -> api_binary().
 get_raw_application_name(Props) ->
-    kz_evt_freeswitch:raw_application_name(Props).
+    kzd_freeswitch:raw_application_name(Props).
 
 -spec get_fax_success(kz_proplist()) -> api_boolean().
 get_fax_success(Props) ->
@@ -383,7 +383,7 @@ get_fax_ecm_used(Props) ->
 
 -spec get_serialized_history(kz_proplist()) -> binaries().
 get_serialized_history(Props) ->
-    case kz_evt_freeswitch:transfer_history(Props) of
+    case kzd_freeswitch:transfer_history(Props) of
         'undefined' -> [];
         History when is_binary(History) ->
             ecallmgr_util:unserialize_fs_array(History);
@@ -435,15 +435,15 @@ create_trnsf_history_object(_Params) ->
 
 -spec get_hangup_cause(kz_proplist()) -> api_binary().
 get_hangup_cause(Props) ->
-    kz_evt_freeswitch:hangup_cause(Props).
+    kzd_freeswitch:hangup_cause(Props).
 
 -spec get_disposition(kz_proplist()) -> api_binary().
 get_disposition(Props) ->
-    kz_evt_freeswitch:disposition(Props).
+    kzd_freeswitch:disposition(Props).
 
 -spec get_hangup_code(kz_proplist()) -> api_binary().
 get_hangup_code(Props) ->
-    kz_evt_freeswitch:hangup_code(Props).
+    kzd_freeswitch:hangup_code(Props).
 
 -spec get_billing_seconds(kz_proplist()) -> api_binary().
 get_billing_seconds(Props) ->
@@ -466,8 +466,8 @@ callee_call_event_props(Props) ->
             ,{<<"Callee-ID-Name">>, Name}
             ];
         _ ->
-            [{<<"Callee-ID-Number">>, kz_evt_freeswitch:callee_id_number(Props)}
-            ,{<<"Callee-ID-Name">>, kz_evt_freeswitch:callee_id_name(Props)}
+            [{<<"Callee-ID-Number">>, kzd_freeswitch:callee_id_number(Props)}
+            ,{<<"Callee-ID-Name">>, kzd_freeswitch:callee_id_name(Props)}
             ]
     end.
 
