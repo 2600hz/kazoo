@@ -29,7 +29,11 @@ start_link() ->
 bind(EventName, Module, Fun) ->
     bind(<<"notification">>, EventName, Module, Fun).
 bind(EventCategory, EventName, Module, Fun) ->
-    kazoo_bindings:bind(?ROUTING_KEY(EventCategory, EventName), Module, Fun).
+    Binding = ?ROUTING_KEY(EventCategory, EventName),
+    case kazoo_bindings:bind(Binding, Module, Fun) of
+        'ok' -> lager:debug("~s has been binded", [Binding]);
+        {'error', 'exists'} -> lager:debug("bind for ~s exists", [Binding])
+    end.
 
 -spec flush_mod(module()) -> 'ok'.
 flush_mod(Module) ->

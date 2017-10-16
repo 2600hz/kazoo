@@ -38,10 +38,10 @@
 -define(FAILED_TEMPLATE_NAME, <<"Transaction Problem">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
--define(TEMPLATE_FROM(Id), teletype_util:default_from_address(?MOD_CONFIG_CAT(Id))).
+-define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO(Id), teletype_util:default_reply_to(?MOD_CONFIG_CAT(Id))).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
 
 -spec init() -> 'ok'.
 init() ->
@@ -54,14 +54,14 @@ init() ->
               ],
     SucessParams = [{'friendly_name', ?SUCCESS_TEMPLATE_NAME}
                    ,{'subject', ?SUCCESS_TEMPLATE_SUBJECT}
-                   ,{'from', ?TEMPLATE_FROM(?SUCCESS_TEMPLATE_ID)}
-                   ,{'reply_to', ?TEMPLATE_REPLY_TO(?SUCCESS_TEMPLATE_ID)}
+                   ,{'from', ?TEMPLATE_FROM}
+                   ,{'reply_to', ?TEMPLATE_REPLY_TO}
                     | Fields
                    ],
     FailedParams = [{'friendly_name', ?FAILED_TEMPLATE_NAME}
                    ,{'subject', ?FAILED_TEMPLATE_SUBJECT}
-                   ,{'from', ?TEMPLATE_FROM(?FAILED_TEMPLATE_ID)}
-                   ,{'reply_to', ?TEMPLATE_REPLY_TO(?FAILED_TEMPLATE_ID)}
+                   ,{'from', ?TEMPLATE_FROM}
+                   ,{'reply_to', ?TEMPLATE_REPLY_TO}
                     | Fields
                    ],
     teletype_templates:init(?SUCCESS_TEMPLATE_ID, SucessParams),

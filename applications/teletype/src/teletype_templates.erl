@@ -48,16 +48,15 @@ params(TemplateId=?NE_BINARY) ->
 params(Module)
   when is_atom(Module) ->
     TemplateId = Module:id(),
-    ModConfigCat = teletype_util:template_config_cat(TemplateId),
     [{macros, Module:macros()}
     ,{subject, Module:subject()}
     ,{category, Module:category()}
     ,{friendly_name, Module:friendly_name()}
-    ,{to, Module:to(ModConfigCat)}
-    ,{from, Module:from(ModConfigCat)}
-    ,{cc, Module:cc(ModConfigCat)}
-    ,{bcc, Module:bcc(ModConfigCat)}
-    ,{reply_to, Module:reply_to(ModConfigCat)}
+    ,{to, Module:to()}
+    ,{from, Module:from()}
+    ,{cc, Module:cc()}
+    ,{bcc, Module:bcc()}
+    ,{reply_to, Module:reply_to()}
     ,{html, TemplateId}
     ,{text, TemplateId}
     ].
@@ -349,9 +348,7 @@ maybe_decode_html(HTML) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), init_params()) ->
-                    {'ok', kz_json:object()} |
-                    kz_datamgr:data_error().
+-spec create(ne_binary(), init_params()) -> 'ok'.
 create(DocId, Params) ->
     lager:debug("attempting to create template ~s", [DocId]),
     TemplateJObj =
@@ -418,7 +415,7 @@ update(TemplateJObj, Params) ->
                   {'ok', kz_json:object()} |
                   {'error', any()}.
 save(TemplateJObj) ->
-    SaveJObj = kz_doc:update_pvt_parameters(TemplateJObj, ?KZ_CONFIG_DB),
+    SaveJObj = kz_doc:update_pvt_parameters(TemplateJObj, ?KZ_CONFIG_DB, [{'type', kz_notification:pvt_type()}]),
     case kz_datamgr:save_doc(?KZ_CONFIG_DB, SaveJObj) of
         {'ok', _JObj}=OK ->
             lager:debug("saved updated template ~s(~s) to ~s"

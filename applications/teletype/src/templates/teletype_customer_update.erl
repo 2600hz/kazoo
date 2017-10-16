@@ -37,10 +37,10 @@
 -define(THIRD_PARTY_DATA, <<"databag">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
 
 -spec init() -> 'ok'.
 init() ->
@@ -148,10 +148,8 @@ send_update_to_user(UserJObj, DataJObj) ->
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
                                           ,Macros
                ),
-    Emails = maybe_replace_to_field(
-               teletype_util:find_addresses(DataJObj, TemplateMetaJObj, maybe_expand_mod_config_cat(DataJObj))
-                                   ,kz_json:get_value(<<"email">>, UserJObj)
-              ),
+    DefaultEmails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, maybe_expand_mod_config_cat(DataJObj)),
+    Emails = maybe_replace_to_field(DefaultEmails, kz_json:get_value(<<"email">>, UserJObj)),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> 'ok';
         {'error', Reason} -> {error, kz_term:to_binary(Reason)}

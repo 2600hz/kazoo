@@ -15,7 +15,7 @@
         ,subject/0
         ,category/0
         ,friendly_name/0
-        ,to/1, from/1, cc/1, bcc/1, reply_to/1
+        ,to/0, from/0, cc/0, bcc/0, reply_to/0
         ]).
 -export([handle_req/1]).
 
@@ -23,12 +23,6 @@
 
 -define(TEMPLATE_ID, <<"system_alert">>).
 -define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
-
--define(SHOULD_USE_EMAIL
-       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true')).
--define(SUBSCRIBER_URL
-       ,kapps_config:get_string(?MOD_CONFIG_CAT, <<"subscriber_url">>)).
-
 
 -spec id() -> ne_binary().
 id() -> <<"system_alert">>.
@@ -50,20 +44,20 @@ category() -> <<"system">>.
 -spec friendly_name() -> ne_binary().
 friendly_name() -> <<"System Notifications">>.
 
--spec to(ne_binary()) -> kz_json:object().
-to(_) -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
+-spec to() -> kz_json:object().
+to() -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
 
--spec from(ne_binary()) -> api_ne_binary().
-from(ModConfigCat) -> teletype_util:default_from_address(ModConfigCat).
+-spec from() -> api_ne_binary().
+from() -> teletype_util:default_from_address().
 
--spec cc(ne_binary()) -> kz_json:object().
-cc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+-spec cc() -> kz_json:object().
+cc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec bcc(ne_binary()) -> kz_json:object().
-bcc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+-spec bcc() -> kz_json:object().
+bcc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec reply_to(ne_binary()) -> api_ne_binary().
-reply_to(ModConfigCat) -> teletype_util:default_reply_to(ModConfigCat).
+-spec reply_to() -> api_ne_binary().
+reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
 init() ->
@@ -86,9 +80,12 @@ handle_req(JObj, 'true') ->
         'undefined' -> handle_req_as_email(JObj, 'true');
         _Format ->
             lager:debug("using format string '~s'", [_Format]),
-            UseEmail = ?SHOULD_USE_EMAIL,
+
+            {'ok', SysTemplateJObj} = teletype_templates:fetch_notification(id(), ?KZ_CONFIG_DB),
+            UseEmail = kz_json:is_true(<<"enable_email_alerts">>, SysTemplateJObj, 'true'),
+            SubscriberUrl = kz_json:get_value(<<"subscriber_url">>, JObj),
             handle_req_as_email(JObj, UseEmail),
-            handle_req_as_http(JObj, ?SUBSCRIBER_URL, UseEmail)
+            handle_req_as_http(JObj, SubscriberUrl, UseEmail)
     end.
 
 -spec handle_req_as_http(kz_json:object(), api_binary(), boolean()) -> 'ok'.

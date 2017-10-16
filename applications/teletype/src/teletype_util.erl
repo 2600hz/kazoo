@@ -27,8 +27,8 @@
 
         ,get_parent_account_id/1
 
-        ,default_from_address/1
-        ,default_reply_to/1
+        ,default_from_address/0
+        ,default_reply_to/0
 
         ,open_doc/3
         ,is_preview/1
@@ -409,26 +409,12 @@ maybe_add_parent_params(AccountId, AccountJObj) ->
             ]
     end.
 
--spec default_from_address(ne_binary()) -> ne_binary().
--spec default_from_address(kz_json:object(), ne_binary()) -> ne_binary().
-default_from_address(ConfigCat) ->
-    default_from_address(kz_json:new(), ConfigCat).
-default_from_address(JObj, ConfigCat) ->
-    ConfigDefault = list_to_binary([<<"no_reply@">>, net_adm:localhost()]),
-    kz_json:get_ne_binary_value(<<"send_from">>
-                               ,JObj
-                               ,kapps_config:get_ne_binary(ConfigCat, <<"default_from">>, ConfigDefault)
-                               ).
+-spec default_from_address() -> ne_binary().
+default_from_address() ->
+    list_to_binary([<<"no_reply@">>, net_adm:localhost()]).
 
--spec default_reply_to(ne_binary()) -> api_ne_binary().
--spec default_reply_to(kz_json:object(), ne_binary()) -> api_ne_binary().
-default_reply_to(ConfigCat) ->
-    default_reply_to(kz_json:new(), ConfigCat).
-default_reply_to(JObj, ConfigCat) ->
-    kz_json:get_ne_binary_value(<<"reply_to">>
-                               ,JObj
-                               ,kapps_config:get_ne_binary(ConfigCat, <<"default_reply_to">>)
-                               ).
+-spec default_reply_to() -> api_ne_binary().
+default_reply_to() -> 'undefined'.
 
 -spec render_subject(ne_binary(), kz_proplist()) -> binary().
 render_subject(Template, Macros) ->
@@ -751,20 +737,27 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
     case find_account_rep_email(kapi_notifications:account_id(DataJObj)) of
         'undefined' ->
             lager:debug("didn't find account rep for '~s'", [Key]),
-            find_default(ConfigCat, Key);
+            admin_emails_from_system_template(ConfigCat, Key);
         Emails -> Emails
     end.
 
--spec find_default(ne_binary(), kz_json:path()) -> api_ne_binaries().
-find_default(ConfigCat, Key) ->
-    case kapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
+-spec admin_emails_from_system_template(ne_binary(), kz_json:path()) -> api_ne_binaries().
+admin_emails_from_system_template(ConfigCat, Key) ->
+    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, ConfigCat) of
+        {'ok', JObj} -> admin_emails_from_system_template(ConfigCat, Key, JObj);
+        {'error', _} -> 'undefined'
+    end.
+
+-spec admin_emails_from_system_template(ne_binary(), kz_json:path(), kz_json:object()) -> api_ne_binaries().
+admin_emails_from_system_template(ConfigCat, Key, JObj) ->
+    case check_address_value(kz_json:get_ne_value([<<"default">>, <<"default_", Key/binary>>], JObj)) of
         'undefined' ->
-            lager:debug("no default in ~s for default_~s", [ConfigCat, Key]),
-            'undefined';
-        <<>> ->
-            lager:debug("empty default in ~s for default_~s", [ConfigCat, Key]),
-            'undefined';
-        <<_/binary>> = Email -> [Email];
+            case check_address_value(kz_json:get_ne_value(Key, JObj)) of
+                'undefined' ->
+                    lager:debug("no default in ~s for default_~s", [ConfigCat, Key]),
+                    'undefined';
+                Emails -> Emails
+            end;
         Emails -> Emails
     end.
 

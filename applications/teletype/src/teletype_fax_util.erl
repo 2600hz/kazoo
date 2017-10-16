@@ -102,7 +102,8 @@ to_email_addresses(_, _, Emails)
     Emails;
 to_email_addresses(_DataJObj, ModConfigCat, _) ->
     lager:debug("can not find email address for the fax notification, maybe using defaults"),
-    case kapps_config:get_ne_binary_or_ne_binaries(ModConfigCat, <<"default_to">>) of
+    {'ok', SysTemplateJObj} = teletype_templates:fetch_notification(ModConfigCat, ?KZ_CONFIG_DB),
+    case kz_json:get_value(<<"default_to">>, SysTemplateJObj) of
         'undefined' -> 'undefined';
         ?NE_BINARY=Email -> [Email];
         Emails when is_list(Emails) -> Emails

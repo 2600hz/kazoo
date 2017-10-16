@@ -29,10 +29,10 @@
 -define(TEMPLATE_NAME, <<"Admin Port Request">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
 
 -spec init() -> 'ok'.
 init() ->
@@ -137,12 +137,14 @@ maybe_set_to(DataJObj) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     case find_port_authority(MasterAccountId, AccountId) of
         'undefined' -> DataJObj;
-        <<_/binary>> = To ->
+        ?NE_BINARY=To ->
             lager:debug("found port authority: ~p", [To]),
             kz_json:set_value(<<"to">>, [To], DataJObj);
-        [_|_] = To ->
+        [?NE_BINARY=_|_] = To ->
             lager:debug("found port authority: ~p", [To]),
-            kz_json:set_value(<<"to">>, To, DataJObj)
+            kz_json:set_value(<<"to">>, To, DataJObj);
+        _ ->
+            DataJObj
     end.
 
 -spec find_port_authority(ne_binary(), ne_binary()) -> api_binary() | ne_binaries().
@@ -150,7 +152,8 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
     case kz_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
             lager:debug("failed to find master account ~s, using system value", [MasterAccountId]),
-            kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>);
+            {'ok', SysTemplateJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, ?KZ_CONFIG_DB),
+            kz_json:get_value(<<"default_to">>, SysTemplateJObj);
         {'ok', JObj} ->
             lager:debug("getting master account's port authority"),
             kz_whitelabel:port_authority(JObj)
