@@ -84,8 +84,8 @@ to_hex_binary(S) ->
     << <<(to_hex_char(B div 16)), (to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
 
 
--spec to_integer(string() | binary() | integer() | float()) -> integer().
--spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
+-spec to_integer(string() | binary() | number()) -> integer().
+-spec to_integer(string() | binary() | number(), 'strict' | 'notstrict') -> integer().
 to_integer(X) -> to_integer(X, 'notstrict').
 
 to_integer(X, _) when is_integer(X) -> X;
