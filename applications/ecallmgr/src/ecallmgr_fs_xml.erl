@@ -763,19 +763,9 @@ get_channel_params_fold(Key, Val) ->
             {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
     end.
 
--spec get_custom_sip_headers(kz_json:object() | kz_term:proplist()) -> kz_json:json_proplist().
-get_custom_sip_headers([_|_]=Props) ->
-    [normalize_custom_sip_header_name(P) || P <- props:filter(fun is_custom_sip_header/1, Props)];
+-spec get_custom_sip_headers(kz_json:object()) -> kz_json:json_proplist().
 get_custom_sip_headers(JObj) ->
     kz_json:to_proplist(kz_json:get_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new())).
-
--spec normalize_custom_sip_header_name(any()) -> any().
-normalize_custom_sip_header_name({<<"variable_", K/binary>>, V}) -> {K, V};
-normalize_custom_sip_header_name(A) -> A.
-
--spec is_custom_sip_header(any()) -> boolean().
-is_custom_sip_header({<<"variable_sip_h_X-", _/binary>>, _}) -> 'true';
-is_custom_sip_header(_) -> 'false'.
 
 -spec arrange_acl_node({kz_term:ne_binary(), kz_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
