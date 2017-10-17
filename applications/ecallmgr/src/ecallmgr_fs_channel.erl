@@ -381,7 +381,7 @@ other_leg_handling_locally(OtherLeg) ->
         _ -> 'false'
     end.
 
--spec handling_locally(kz_proplist(), api_binary()) -> boolean().
+-spec handling_locally(kz_proplist(), api_ne_binary()) -> boolean().
 handling_locally(Props, 'undefined') ->
     props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
         =:= kz_term:to_binary(node());
@@ -392,7 +392,7 @@ handling_locally(Props, OtherLeg) ->
         _ -> other_leg_handling_locally(OtherLeg)
     end.
 
--spec get_username(kz_proplist()) -> api_binary().
+-spec get_username(kz_proplist()) -> api_ne_binary().
 get_username(Props) ->
     case props:get_first_defined([?GET_CCV(<<"Username">>)
                                  ,<<"variable_user_name">>
@@ -404,7 +404,7 @@ get_username(Props) ->
         Username -> kz_term:to_lower_binary(Username)
     end.
 
--spec get_realm(kz_proplist()) -> api_binary().
+-spec get_realm(kz_proplist()) -> api_ne_binary().
 get_realm(Props) ->
     case props:get_first_defined([?GET_CCV(<<"Realm">>)
                                  ,<<"variable_domain_name">>

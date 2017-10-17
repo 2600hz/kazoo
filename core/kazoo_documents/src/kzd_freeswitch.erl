@@ -145,7 +145,7 @@ other_leg_call_id(Props) ->
 original_call_direction(Props) ->
     props:get_value(<<"Call-Direction">>, Props).
 
--spec call_direction(data()) -> api_binary().
+-spec call_direction(data()) -> api_ne_binary().
 call_direction(Props) ->
     props:get_first_defined([<<"Application-Logical-Direction">>
                             ,?CCV(<<"Application-Logical-Direction">>)

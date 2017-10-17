@@ -57,7 +57,8 @@ config_req_not_handled(Node, Id, Conf) ->
     lager:debug("ignoring conf ~s: ~s", [Conf, Id]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(NotHandled)).
 
--spec fetch_mod_kazoo_config_action(atom(), ne_binary(), api_ne_binary(), kz_proplist()) -> fs_sendmsg_ret().
+-spec fetch_mod_kazoo_config_action(atom(), ne_binary(), api_ne_binary(), kz_json:object()) ->
+                                           fs_sendmsg_ret().
 fetch_mod_kazoo_config_action(Node, Id, <<"request-filter">>, _Data) ->
     {'ok', Xml} = ecallmgr_fs_xml:event_filters_resp_xml(?FS_EVENT_FILTERS),
     lager:debug("replying with xml response for request-filter params request"),
