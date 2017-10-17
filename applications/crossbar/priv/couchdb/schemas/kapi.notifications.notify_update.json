@@ -39,6 +39,9 @@
         "HTML": {
             "type": "string"
         },
+        "Metadata": {
+            "type": "string"
+        },
         "Preview": {
             "type": "string"
         },
