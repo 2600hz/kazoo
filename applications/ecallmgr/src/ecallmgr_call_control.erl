@@ -93,7 +93,7 @@
                ,controller_q :: api_binary()
                ,controller_p :: api_pid()
                ,control_q :: api_binary()
-               ,initial_ccvs :: kz_json:object()
+               ,initial_ccvs :: api_object()
                ,node_down_tref :: api_reference()
                ,current_cmd_uuid :: api_binary()
                }).
