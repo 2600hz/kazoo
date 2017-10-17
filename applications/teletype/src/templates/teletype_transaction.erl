@@ -55,14 +55,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"transaction">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> handle_req_ret().
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:transaction_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -79,11 +79,11 @@ handle_req(JObj, 'true') ->
     case kz_json:is_true(<<"success">>, DataJObj) %% check if it's for transaction success template
         andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
     of
-        'false' -> {'disabled', ?TEMPLATE_ID};
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData), ?TEMPLATE_ID)
     end.
 
--spec process_req(kz_json:object(), ne_binary()) -> handle_req_ret().
+-spec process_req(kz_json:object(), ne_binary()) -> template_response().
 process_req(DataJObj, TemplateId) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -103,8 +103,8 @@ process_req(DataJObj, TemplateId) ->
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> {'completed', TemplateId};
-        {'error', Reason} -> {'failed', TemplateId, Reason}
+        'ok' -> teletype_util:notification_completed(TemplateId);
+        {'error', Reason} -> teletype_util:notification_failed(TemplateId, Reason)
     end.
 
 -spec service_plan_data(kz_json:object()) -> kz_proplist().

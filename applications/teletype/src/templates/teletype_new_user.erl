@@ -66,10 +66,10 @@ init() ->
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:new_user_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [id()]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(id(), <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [id()]),
 
@@ -78,11 +78,11 @@ handle_req(JObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
-        'false' -> {'disabled', id()};
+        'false' -> teletype_util:notification_disabled(DataJObj, id());
         'true' -> do_handle_req(DataJObj)
     end.
 
--spec do_handle_req(kz_json:object()) -> handle_req_ret().
+-spec do_handle_req(kz_json:object()) -> template_response().
 do_handle_req(DataJObj) ->
     UserId = kz_json:get_value(<<"user_id">>, DataJObj),
     {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
@@ -98,7 +98,7 @@ do_handle_req(DataJObj) ->
         'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec process_req(kz_json:object()) -> handle_req_ret().
+-spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
     Macros = macros(DataJObj),
 
@@ -112,8 +112,8 @@ process_req(DataJObj) ->
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, id()),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> {'completed', id()};
-        {'error', Reason} -> {'failed', id(), Reason}
+        'ok' -> teletype_util:notification_completed(id());
+        {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
     end.
 
 -spec macros(kz_json:object()) -> kz_proplist().

@@ -51,14 +51,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"inbound_fax_error">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> handle_req_ret().
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:fax_inbound_error_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -67,8 +67,8 @@ handle_req(JObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case is_notice_enabled(AccountId, JObj) of
-        'disabled' -> {'disabled', ?TEMPLATE_ID};
-        'ignored' -> {'ignored', ?TEMPLATE_ID};
+        'disabled' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+        'ignored' -> teletype_util:notification_ignored(?TEMPLATE_ID);
         TemplateMetaJObj ->
             lager:debug("handling ~s", [?TEMPLATE_ID]),
             teletype_fax_inbound_error_to_email:process_req(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID, TemplateMetaJObj)
@@ -89,12 +89,8 @@ is_notice_enabled(AccountId, JObj) ->
 %% see: https://wiki.freeswitch.org/wiki/Variable_fax_result_code
 -spec is_true_fax_error(kz_json:object(), kz_json:object()) -> boolean().
 is_true_fax_error(JObj, AccountTemplateJObj) ->
-    SysTemplateMetaJObj = teletype_util:template_system_value(?TEMPLATE_ID),
+    DefaultCodes = teletype_util:template_system_value(?TEMPLATE_ID, <<"filter_error_codes">>, [<<"0">>, <<"49">>]),
     Code = kz_json:get_value(<<"Fax-Result-Code">>, JObj),
-    DefaultCodes = kz_json:get_first_defined([<<"filter_error_codes">>, [<<"default">>, <<"filter_error_codes">>]]
-                                            ,SysTemplateMetaJObj
-                                            ,[<<"0">>, <<"49">>]
-                                            ),
     Codes = kz_json:get_first_defined([<<"filter_error_codes">>, [<<"default">>, <<"filter_error_codes">>]]
                                      ,AccountTemplateJObj
                                      ,DefaultCodes

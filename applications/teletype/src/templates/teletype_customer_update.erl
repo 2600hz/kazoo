@@ -56,14 +56,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"customer_update">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> handle_req_rets().
+-spec handle_req(kz_json:object()) -> template_responses().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:customer_update_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> handle_req_rets().
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_responses().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -71,12 +71,12 @@ handle_req(JObj, 'true') ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case teletype_util:is_notice_enabled(AccountId, JObj, maybe_expand_template_id(DataJObj)) of
-        'false' -> {'disabled', maybe_expand_template_id(DataJObj)};
+        'false' -> teletype_util:notification_disabled(DataJObj, maybe_expand_template_id(DataJObj));
         'true' ->
             process_req(DataJObj, teletype_util:is_preview(DataJObj))
     end.
 
--spec process_req(kz_json:object(), boolean()) -> handle_req_rets().
+-spec process_req(kz_json:object(), boolean()) -> template_responses().
 process_req(DataJObj, 'true') ->
     [send_update_to_user(kz_json:new(), DataJObj)];
 process_req(DataJObj, 'false') ->
@@ -85,7 +85,7 @@ process_req(DataJObj, 'false') ->
         'undefined' -> process_accounts(DataJObj)
     end.
 
--spec process_accounts(kz_json:object()) -> handle_req_rets().
+-spec process_accounts(kz_json:object()) -> template_responses().
 process_accounts(DataJObj) ->
     SenderId = kz_json:get_value(<<"account_id">>, DataJObj),
     ViewOpts = [{'startkey', [SenderId]}
@@ -100,7 +100,7 @@ process_accounts(DataJObj) ->
             [{'error', kz_term:to_binary(Msg), ?TEMPLATE_ID}]
     end.
 
--spec process_account(ne_binary(), kz_json:object()) -> handle_req_rets().
+-spec process_account(ne_binary(), kz_json:object()) -> template_responses().
 process_account(AccountId, DataJObj) ->
     case kz_json:get_value(<<"user_type">>, DataJObj) of
         ?MATCH_ACCOUNT_RAW(UserId) ->
@@ -112,7 +112,7 @@ process_account(AccountId, DataJObj) ->
             lists:flatten(select_users_to_update([kz_json:get_value(<<"value">>, User) || User <- Users], DataJObj))
     end.
 
--spec select_users_to_update(kz_json:objects(), kz_json:object()) -> handle_req_rets().
+-spec select_users_to_update(kz_json:objects(), kz_json:object()) -> template_responses().
 select_users_to_update(Users, DataJObj) ->
     case kz_json:get_value(<<"user_type">>, DataJObj) of
         <<"all_users">> ->
@@ -121,7 +121,7 @@ select_users_to_update(Users, DataJObj) ->
             [send_update_to_user(User, DataJObj) || User <- Users, kzd_user:is_account_admin(User)]
     end.
 
--spec send_update_to_user(kz_json:object(), kz_json:object()) -> handle_req_ret().
+-spec send_update_to_user(kz_json:object(), kz_json:object()) -> template_response().
 send_update_to_user(UserJObj, DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -138,8 +138,8 @@ send_update_to_user(UserJObj, DataJObj) ->
     DefaultEmails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, maybe_expanded_config_id(DataJObj)),
     Emails = maybe_replace_to_field(DefaultEmails, kz_json:get_value(<<"email">>, UserJObj)),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> {'completed', ?TEMPLATE_ID};
-        {'error', Reason} -> {'failed', ?TEMPLATE_ID, Reason}
+        'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
+        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
 -spec maybe_replace_to_field(email_map(), api_binary()) -> email_map().

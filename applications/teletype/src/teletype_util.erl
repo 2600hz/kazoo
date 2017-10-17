@@ -781,13 +781,13 @@ template_system_value(TemplateId) ->
         {'error', _} -> kz_json:new()
     end.
 
--spec template_system_value(ne_binary(), ne_binary()) -> any().
+-spec template_system_value(ne_binary(), kz_json:path()) -> any().
 template_system_value(TemplateId, Key) ->
     template_system_value(TemplateId, Key, 'undefined').
 
--spec template_system_value(ne_binary(), ne_binary(), any()) -> any().
+-spec template_system_value(ne_binary(), kz_json:path(), any()) -> any().
 template_system_value(TemplateId, Key, Default) ->
-    kz_json:get_value(Key, template_system_value(TemplateId), Default).
+    kz_json:get_first_defined([Key, lists:flatten([<<"default">>, Key])], template_system_value(TemplateId), Default).
 
 -spec open_doc(ne_binary(), api_binary(), kz_json:object()) ->
                       {'ok', kz_json:object()} |
@@ -933,19 +933,19 @@ public_proplist(Key, JObj) ->
        )
      ).
 
--spec notification_completed(ne_binary()) -> handle_req_ret().
+-spec notification_completed(ne_binary()) -> template_response().
 notification_completed(TemplateId) -> {'completed', TemplateId}.
 
--spec notification_ignored(ne_binary()) -> handle_req_ret().
+-spec notification_ignored(ne_binary()) -> template_response().
 notification_ignored(TemplateId) -> {'ignored', TemplateId}.
 
--spec notification_failed(ne_binary(), any()) -> handle_req_ret().
-notification_failed(TemplateId, Reason) -> {'ignored', Reason, TemplateId}.
+-spec notification_failed(ne_binary(), any()) -> template_response().
+notification_failed(TemplateId, Reason) -> {'failed', Reason, TemplateId}.
 
--spec notification_disabled(kz_json:object(), ne_binary()) -> 'ok'.
+-spec notification_disabled(ne_binary(), kz_json:object()) -> template_response().
 notification_disabled(DataJObj, TemplateId) ->
     AccountId = kapi_notifications:account_id(DataJObj),
-    lager:debug("notification ~s handling is not configured for account ~s", [TemplateId, AccountId]),
+    lager:debug("notification ~s is disabled for account ~s", [TemplateId, AccountId]),
     {'disabled', TemplateId}.
 
 -spec maybe_get_attachments(kz_json:object() | api_binary()) -> attachments().

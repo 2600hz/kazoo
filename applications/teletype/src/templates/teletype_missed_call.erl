@@ -51,14 +51,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"missed_call">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> handle_req_ret().
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:missed_call_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -67,11 +67,11 @@ handle_req(JObj, 'true') ->
 
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> {'disabled', ?TEMPLATE_ID};
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> handle_req_ret().
+-spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
 
@@ -95,8 +95,8 @@ process_req(DataJObj) ->
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> {'completed', ?TEMPLATE_ID};
-        {'error', Reason} -> {'failed', ?TEMPLATE_ID, Reason}
+        'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
+        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
 -spec build_missed_call_data(kz_json:object()) -> kz_proplist().

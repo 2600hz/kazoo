@@ -48,14 +48,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"port_scheduled">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> handle_req_ret().
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:port_scheduled_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -64,11 +64,11 @@ handle_req(JObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> {'disabled', ?TEMPLATE_ID};
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> handle_req_ret().
+-spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
     PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
@@ -83,7 +83,7 @@ process_req(DataJObj) ->
         'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec handle_port_request(kz_json:object()) -> handle_req_ret().
+-spec handle_port_request(kz_json:object()) -> template_response().
 handle_port_request(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -107,6 +107,6 @@ handle_port_request(DataJObj) ->
 
     EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
-        'ok' -> {'completed', ?TEMPLATE_ID};
-        {'error', Reason} -> {'failed', ?TEMPLATE_ID, Reason}
+        'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
+        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.

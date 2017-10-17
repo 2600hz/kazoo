@@ -52,14 +52,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"inbound_fax_error">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> handle_req_ret().
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:fax_inbound_error_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -68,7 +68,7 @@ handle_req(JObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> {'disabled', ?TEMPLATE_ID};
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' ->
             lager:debug("handling ~s", [?TEMPLATE_ID]),
             {'ok', TemplateMetaJObj} =
@@ -76,7 +76,7 @@ handle_req(JObj, 'true') ->
             process_req(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID, TemplateMetaJObj)
     end.
 
--spec process_req(kz_json:object(), ne_binary(), kz_json:object()) -> handle_req_ret().
+-spec process_req(kz_json:object(), ne_binary(), kz_json:object()) -> template_response().
 process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
     TemplateData = build_template_data(DataJObj),
     {Macros, EmailAttachements} = teletype_fax_util:add_attachments(DataJObj, TemplateData, 'false'),
@@ -101,8 +101,8 @@ process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
     Emails = teletype_util:find_addresses(EmailsJObj, TemplateMetaJObj, TemplateId),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
-        'ok' -> {'completed', TemplateId};
-        {'error', Reason} -> {'failed', TemplateId, Reason}
+        'ok' -> teletype_util:notification_completed(TemplateId);
+        {'error', Reason} -> teletype_util:notification_failed(TemplateId, Reason)
     end.
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
