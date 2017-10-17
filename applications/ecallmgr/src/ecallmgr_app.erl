@@ -82,6 +82,7 @@ node_bindings() ->
                           ,'ecallmgr_call_event_publisher'
                           ,'ecallmgr_fs_conference_stream'
                           ,'ecallmgr_fs_conference_publish'
+                          ,'ecallmgr_fs_presence'
                           ]).
 
 -define(EVENTSTREAM_PUBLISHERS_MODS, ['ecallmgr_call_event_publisher'
