@@ -439,7 +439,7 @@ save(TemplateJObj) ->
 update_from_params(TemplateJObj, Params) ->
     lists:foldl(fun update_from_param/2
                ,{'false', TemplateJObj}
-               ,Params
+               ,[{'pvt_type', kz_notification:pvt_type()} | Params]
                ).
 
 %%--------------------------------------------------------------------
@@ -447,7 +447,7 @@ update_from_params(TemplateJObj, Params) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_from_param(init_param(), update_acc()) -> update_acc().
+-spec update_from_param(init_param() | {'pvt_type', ne_binary()}, update_acc()) -> update_acc().
 update_from_param({'macros', Macros}, Acc) ->
     update_macros(Macros, Acc);
 update_from_param({'text', Basename}, Acc) ->
@@ -469,7 +469,13 @@ update_from_param({'bcc', BCC}, Acc) ->
 update_from_param({'from', From}, Acc) ->
     update_from(From, Acc);
 update_from_param({'reply_to', ReplyTo}, Acc) ->
-    update_reply_to(ReplyTo, Acc).
+    update_reply_to(ReplyTo, Acc);
+update_from_param({'pvt_type', PvtType}, Acc) ->
+    update_field(PvtType
+                ,Acc
+                ,fun kz_doc:type/1
+                ,fun kz_doc:set_type/2
+                ).
 
 %%--------------------------------------------------------------------
 %% @private
