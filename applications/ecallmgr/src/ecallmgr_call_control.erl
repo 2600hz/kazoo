@@ -565,7 +565,7 @@ force_queue_advance(#state{call_id=CallId
             State#state{current_app='undefined', current_cmd_uuid='undefined'};
         {{'value', Cmd}, CmdQ1} ->
             AppName = kapi_dialplan:application_name(Cmd),
-            MsgId = kz_json:get_value(<<"Msg-ID">>, Cmd),
+            MsgId = kz_api:msg_id(Cmd),
             case CallUp
                 andalso execute_control_request(Cmd, State)
             of
@@ -620,8 +620,10 @@ handle_execute_complete(_, 'undefined', _JObj, State) ->
     State;
 handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_cmd_uuid='undefined'}=State) ->
     State;
-handle_execute_complete(<<"noop">>, EventUUID, JObj, #state{msg_id=CurrMsgId, current_cmd_uuid=EventUUID}=State) ->
-    NoopId = kz_json:get_value(<<"Application-Response">>, JObj),
+handle_execute_complete(<<"noop">>, EventUUID, JObj, #state{msg_id=CurrMsgId
+                                                           ,current_cmd_uuid=EventUUID
+                                                           }=State) ->
+    NoopId = kz_json:get_ne_binary_value(<<"Application-Response">>, JObj),
     case NoopId =:= CurrMsgId of
         'false' ->
             lager:debug("received noop execute complete with incorrect id ~s (expecting ~s)"
@@ -631,7 +633,8 @@ handle_execute_complete(<<"noop">>, EventUUID, JObj, #state{msg_id=CurrMsgId, cu
     end;
 handle_execute_complete(<<"playback">> = AppName, EventUUID, JObj, #state{current_app=AppName
                                                                          ,current_cmd_uuid=EventUUID
-                                                                         ,command_q=CmdQ}=State) ->
+                                                                         ,command_q=CmdQ
+                                                                         }=State) ->
     lager:debug("playback finished, checking for group-id/DTMF termination"),
     S = case kz_json:get_value(<<"DTMF-Digit">>, JObj) of
             'undefined' ->
@@ -644,11 +647,15 @@ handle_execute_complete(<<"playback">> = AppName, EventUUID, JObj, #state{curren
                 State#state{command_q=flush_group_id(CmdQ, GroupId, AppName)}
         end,
     forward_queue(S);
-handle_execute_complete(AppName, EventUUID, _, #state{current_app=AppName, current_cmd_uuid=EventUUID}=State) ->
+handle_execute_complete(AppName, EventUUID, _, #state{current_app=AppName
+                                                     ,current_cmd_uuid=EventUUID
+                                                     }=State) ->
     lager:debug("~s execute complete, advancing control queue", [AppName]),
     forward_queue(State);
-handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp, current_cmd_uuid=EventUUID}=State) ->
-    RawAppName = kz_json:get_value(<<"Raw-Application-Name">>, JObj, AppName),
+handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp
+                                                        ,current_cmd_uuid=EventUUID
+                                                        }=State) ->
+    RawAppName = kz_json:get_ne_binary_value(<<"Raw-Application-Name">>, JObj, AppName),
     CurrentAppName = ecallmgr_util:convert_kazoo_app_name(CurrApp),
     case lists:member(RawAppName, CurrentAppName) of
         'true' -> handle_execute_complete(CurrApp, EventUUID, JObj, State);
@@ -669,23 +676,29 @@ flush_group_id(CmdQ, GroupId, AppName) ->
 
 -spec forward_queue(state()) -> state().
 forward_queue(#state{call_id = CallId
-                    ,is_node_up = INU
+                    ,is_node_up = IsNodeUp
                     ,is_call_up = CallUp
                     ,command_q = CmdQ
                     }=State) ->
-    case INU
+    case IsNodeUp
         andalso queue:out(CmdQ)
     of
         'false' ->
             %% if the node is down, don't inject the next FS event
             lager:debug("not continuing until the media node becomes available"),
-            State#state{current_app='undefined', current_cmd_uuid='undefined', msg_id='undefined'};
+            State#state{current_app='undefined'
+                       ,current_cmd_uuid='undefined'
+                       ,msg_id='undefined'
+                       };
         {'empty', _} ->
             lager:debug("no call commands remain queued, hibernating"),
-            State#state{current_app='undefined', current_cmd_uuid='undefined', msg_id='undefined'};
+            State#state{current_app='undefined'
+                       ,current_cmd_uuid='undefined'
+                       ,msg_id='undefined'
+                       };
         {{'value', Cmd}, CmdQ1} ->
-            AppName = kapi_dialplan:application_name(Cmd),
-            MsgId = kz_api:msg_id(Cmd),
+            AppName = kz_json:get_ne_binary_value(<<"Application-Name">>, Cmd),
+            MsgId = kz_api:msg_id(Cmd, <<>>),
             case CallUp
                 andalso execute_control_request(Cmd, State)
             of
@@ -715,7 +728,7 @@ forward_queue(#state{call_id = CallId
                                ,msg_id = MsgId
                                };
                 {'ok', EventUUID} ->
-                    MsgId = kz_json:get_value(<<"Msg-ID">>, Cmd, <<>>),
+                    MsgId = kz_api:msg_id(Cmd, <<>>),
                     State#state{command_q = CmdQ1
                                ,current_app = AppName
                                ,current_cmd_uuid = EventUUID
@@ -985,33 +998,29 @@ insert_queue_command_into_queue(InsertFun, CommandQueue, JObj) ->
                ,kz_json:get_list_value(<<"Commands">>, JObj)
                ).
 
--spec queue_insert_fun('tail' | 'head') -> function().
+-type insert_fun() :: fun((kz_json:object(), queue:queue()) -> queue:queue()).
+-spec queue_insert_fun('tail' | 'head') -> insert_fun().
+-spec queue_insert_fun('tail' | 'head', insert_fun()) -> insert_fun().
 queue_insert_fun('tail') ->
-    fun(JObj, Q) ->
-            'true' = kapi_dialplan:v(JObj),
-            case kapi_dialplan:application_name(JObj) of
-                'undefined' -> Q;
-                <<"noop">> = AppName ->
-                    MsgId = kz_api:msg_id(JObj),
-                    lager:debug("inserting at the tail of the control queue call command ~s(~s)", [AppName, MsgId]),
-                    queue:in(JObj, Q);
-                AppName ->
-                    lager:debug("inserting at the tail of the control queue call command ~s", [AppName]),
-                    queue:in(JObj, Q)
-            end
-    end;
+    queue_insert_fun('tail', fun queue:in/2);
+
 queue_insert_fun('head') ->
-    fun(JObj, Q) ->
+    queue_insert_fun('head', fun queue:in_r/2).
+
+queue_insert_fun(Position, QueueFun) when is_function(QueueFun, 2) ->
+    fun(JObj, Queue) ->
             'true' = kapi_dialplan:v(JObj),
             case kapi_dialplan:application_name(JObj) of
-                'undefined' -> Q;
+                'undefined' -> Queue;
                 <<"noop">> = AppName ->
                     MsgId = kz_api:msg_id(JObj),
                     lager:debug("inserting at the head of the control queue call command ~s(~s)", [AppName, MsgId]),
-                    queue:in_r(JObj, Q);
+                    QueueFun(JObj, Queue);
                 AppName ->
-                    lager:debug("inserting at the head of the control queue call command ~s", [AppName]),
-                    queue:in_r(JObj, Q)
+                    lager:debug("inserting at the ~p of the control queue call command ~s"
+                               ,[Position, AppName]
+                               ),
+                    QueueFun(JObj, Queue)
             end
     end.
 
