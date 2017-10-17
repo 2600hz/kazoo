@@ -548,22 +548,14 @@
          )
        ).
 
-%% if we change this, we should also in .app file
-%%
 -define(NODE_MODULES,
-        [<<"config">>
-        ,<<"node">>
+        [<<"node">>
+        ,<<"monitor">>
         ,<<"event_stream_sup">>
-        ,<<"authn">>
-        ,<<"channel">>
-        ,<<"conference">>
-        ,<<"msg">>
+        ,<<"fetch_sup">>
+        ,<<"call_control_sup">>
         ,<<"notify">>
-        ,<<"recordings">>
         ,<<"resource">>
-        ,<<"route_sup">>
-        ,<<"channel_hold">>
-        ,<<"presence">>
         ]).
 
 -define(CALL_CTL_NAME(C), kz_term:to_atom(<<"callctl_", C/binary>>, 'true')).
