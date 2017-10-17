@@ -104,7 +104,7 @@ other_leg_call_id(JObj) ->
 original_call_direction(JObj) ->
     kz_json:get_binary_value(<<"Call-Direction">>, JObj).
 
--spec call_direction(data()) -> api_binary().
+-spec call_direction(data()) -> api_ne_binary().
 call_direction(JObj) ->
     kz_json:get_ne_binary_value(<<"Call-Direction">>, JObj).
 

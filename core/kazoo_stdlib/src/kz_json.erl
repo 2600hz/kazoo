@@ -100,6 +100,7 @@
 -export([flatten/1, flatten/2
         ,expand/1
         ,diff/2
+        ,to_log/1, to_log/2
         ]).
 
 -export([sum/2, sum/3]).
@@ -1549,3 +1550,11 @@ utf8_binary(Value) when is_binary(Value) ->
     end;
 utf8_binary(Value) ->
     Value.
+
+-spec to_log(object()) -> 'ok'.
+-spec to_log(object(), ne_binary()) -> 'ok'.
+to_log(JObj) ->
+    to_log(JObj, <<"JObj">>).
+
+to_log(JObj, Header) ->
+    props:to_log(to_proplist(JObj), Header).
