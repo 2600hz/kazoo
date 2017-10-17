@@ -95,7 +95,7 @@ switch_hostname(JObj) ->
 conference_node(JObj) ->
     kz_json:get_ne_binary_value(<<"Conference-Node">>, JObj).
 
--spec account_id(data()) -> data().
+-spec account_id(data()) -> api_ne_binary().
 account_id(JObj) ->
     kz_json:get_ne_binary_value(<<"Account-ID">>, JObj).
 
