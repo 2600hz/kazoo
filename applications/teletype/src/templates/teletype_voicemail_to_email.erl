@@ -145,7 +145,7 @@ maybe_process_req(DataJObj, false) ->
                        ,[kz_json:get_value(<<"voicemail_box">>, DataJObj)]
                        ),
     lager:debug(Msg),
-    teletype_util:notification_completed(id());
+    teletype_util:notification_ignored(id());
 maybe_process_req(DataJObj, true) ->
     do_process_req(DataJObj).
 

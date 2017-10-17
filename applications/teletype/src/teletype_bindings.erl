@@ -62,20 +62,24 @@ notification(JObj) ->
             lager:debug("~s", [FailureMsg]),
             teletype_util:send_update(JObj, <<"failed">>, FailureMsg);
         BindingResult ->
-            maybe_send_update(JObj, RoutingKey, lists:foldl(fun check_result/2, maps:new(), BindingResult))
+            maybe_send_update(JObj, RoutingKey, lists:foldl(fun check_result/2, {RoutingKey, maps:new()}, BindingResult))
     end.
 
 -spec maybe_send_update(kz_json:object(), ne_binary(), map()) -> 'ok'.
-maybe_send_update(_, RoutingKey, #{'completed' := _Successes}=Map) ->
+maybe_send_update(JObj, RoutingKey, #{'completed' := _Completed}=Map) ->
     %% for now we just only care about at least one success
-    print_result(RoutingKey, Map);
+    print_result(RoutingKey, Map),
+    Metadata = kz_json:from_list(maps:to_list(Map)),
+    teletype_util:send_update(JObj, <<"completed">>, 'undefined', Metadata);
 maybe_send_update(JObj, RoutingKey, #{'failed' := [{_, Reason}|_]}=Map) ->
     %% for now just send the first error as failure message
     print_result(RoutingKey, Map),
     Metadata = kz_json:from_list(maps:to_list(Map)),
     teletype_util:send_update(JObj, <<"failed">>, Reason, Metadata);
-maybe_send_update(_, RoutingKey, Map) ->
-    print_result(RoutingKey, Map).
+maybe_send_update(JObj, RoutingKey, Map) ->
+    print_result(RoutingKey, Map),
+    Metadata = kz_json:from_list(maps:to_list(Map)),
+    teletype_util:send_update(JObj, <<"completed">>, 'undefined', Metadata).
 
 -spec print_result(ne_binary(), map()) -> 'ok'.
 print_result(RoutingKey, Map) ->

@@ -104,10 +104,20 @@ handle_resp(NotifyType, Req, {'timeout', _}=Resp) ->
 %%--------------------------------------------------------------------
 -spec check_for_failure(api_ne_binary(), api_terms(), {'ok' | 'returned' | 'timeout', kz_json:objects()}) -> 'ok'.
 check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
+    Reason = json_to_reason(Resp),
     case is_completed(Responses) of
-        'true' -> 'ok';
-        'false' -> maybe_handle_error(NotifyType, Req, json_to_failure_reason(Resp))
+        'true' -> maybe_log_metadata(NotifyType, Reason);
+        'false' -> maybe_handle_error(NotifyType, Req, Reason)
     end.
+
+%% @private
+-spec maybe_log_metadata(api_ne_binary(), failure_reason()) -> 'ok'.
+maybe_log_metadata('undefined', _) -> 'ok';
+maybe_log_metadata(_, {<<"completed">>, 'undefined'}) -> 'ok';
+maybe_log_metadata(NotifyType, {<<"completed">>=Reason, Metadata}) ->
+    lager:debug("publishing ~s resulted in ~s. full result: ~p", [NotifyType, Reason, Metadata]);
+maybe_log_metadata(_, _) -> 'ok'.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -131,7 +141,7 @@ maybe_handle_error(NotifyType, Req, Reason) ->
 %%--------------------------------------------------------------------
 -spec handle_error(ne_binary(), api_terms(), failure_reason()) -> 'ok'.
 handle_error(NotifyType, Req, {Reason, Metadata}) ->
-    lager:warning("attempt for publishing notification ~s was unsuccessful: ~p", [NotifyType, Reason]),
+    lager:warning("attempt to publishing notification ~s was unsuccessful: ~p", [NotifyType, Reason]),
     Props = props:filter_undefined(
               [{<<"description">>, <<"failed to publish notification">>}
               ,{<<"failure_reason">>, Reason}
@@ -153,8 +163,8 @@ save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
     lager:error("max try to save payload for notification ~s publish attempt", [_NotifyType]);
 save_pending_notification(NotifyType, JObj, Loop) ->
     case kz_datamgr:save_doc(?KZ_PENDING_NOTIFY_DB, JObj) of
-        {'ok', _} ->
-            lager:warning("payload for failed notification ~s publish attempt was saved to ~s", [NotifyType, kz_doc:id(JObj)]);
+        {'ok', _SavedJObj} ->
+            lager:warning("payload for failed ~s publish attempt is saved to ~s", [NotifyType, kz_doc:id(_SavedJObj)]);
         {'error', 'not_found'} ->
             kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             save_pending_notification(NotifyType, JObj, Loop - 1);
@@ -163,7 +173,7 @@ save_pending_notification(NotifyType, JObj, Loop) ->
         {'error', 'conflict'} ->
             save_pending_notification(NotifyType, JObj, Loop - 1);
         {'error', _E} ->
-            lager:error("failed to save payload for notification ~s publish attempt: ~p", [NotifyType, _E])
+            lager:error("failed to save payload for ~s publish attempt: ~p", [NotifyType, _E])
     end.
 
 %%--------------------------------------------------------------------
@@ -246,7 +256,7 @@ handle_amqp_worker_error({'badarg', _}) ->
     <<"sending the amqp resulted in failure: badarg error">>;
 handle_amqp_worker_error(Error) ->
     case kz_json:is_json_object(Error) of
-        'true' -> json_to_failure_reason(Error);
+        'true' -> json_to_reason(Error);
         'false' ->
             {<<"sending the amqp resulted in failure: ", (cast_to_binary(Error))/binary>>, 'undefined'}
     end.
@@ -260,17 +270,17 @@ handle_amqp_worker_error(Error) ->
 %% For now we just only get the first failed response.
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_failure_reason(any()) -> failure_reason().
-json_to_failure_reason({'returned', JObjs}) when is_list(JObjs) ->
+-spec json_to_reason(any()) -> failure_reason().
+json_to_reason({'returned', JObjs}) when is_list(JObjs) ->
     kz_json:find(<<"message">>, JObjs, <<"unknown broker error">>);
 
-json_to_failure_reason({ErrorType, JObjs}) when is_list(JObjs) ->
+json_to_reason({ErrorType, JObjs}) when is_list(JObjs) ->
     Reasons = [<<"failed">>, <<"pending">>, <<"completed">>],
     Fun = fun(Reason, Acc) -> find_reason_from_jsons(Reason, JObjs, Acc) end,
 
     case lists:foldl(Fun, maps:new(), Reasons) of
         #{<<"completed">> := [JObj|_]} ->
-            {<<"it shouldn't be here">>, kz_json:get_value(<<"Metadata">>, JObj)};
+            {<<"completed">>, kz_json:get_value(<<"Metadata">>, JObj)};
         #{<<"failed">> := [JObj|_]} ->
             FailureMsg = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj, <<"unknown_reason">>),
             {<<"teletype failed with reason ", FailureMsg/binary>>, kz_json:get_value(<<"Metadata">>, JObj)};
@@ -281,14 +291,14 @@ json_to_failure_reason({ErrorType, JObjs}) when is_list(JObjs) ->
             {<<"received ", (cast_to_binary(ErrorType))/binary, " without any response from teletype">>, 'undefined'}
     end;
 
-json_to_failure_reason({ErrorType, JObj}) ->
-    json_to_failure_reason({ErrorType, [JObj]});
+json_to_reason({ErrorType, JObj}) ->
+    json_to_reason({ErrorType, [JObj]});
 
-json_to_failure_reason(JObjs) when is_list(JObjs) ->
-    json_to_failure_reason({'error', JObjs});
+json_to_reason(JObjs) when is_list(JObjs) ->
+    json_to_reason({'error', JObjs});
 
-json_to_failure_reason(JObj) ->
-    json_to_failure_reason({'error', [JObj]}).
+json_to_reason(JObj) ->
+    json_to_reason({'error', [JObj]}).
 
 %%--------------------------------------------------------------------
 %% @private
