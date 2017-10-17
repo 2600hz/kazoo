@@ -24,7 +24,7 @@ handle_record_stop(#{node := Node, call_id := UUID, payload := JObj}) ->
     MediaRecorder = kz_call_event:custom_channel_var(JObj, <<"Media-Recorder">>),
     maybe_store_recording(IsLocal, MediaRecorder, JObj, UUID, Node).
 
--spec maybe_store_recording(boolean(), api_binary(), kz_proplist(), ne_binary(), atom()) ->
+-spec maybe_store_recording(boolean(), api_ne_binary(), kz_json:object(), ne_binary(), atom()) ->
                                    'ok' |
                                    'error' |
                                    ecallmgr_util:send_cmd_ret() |
