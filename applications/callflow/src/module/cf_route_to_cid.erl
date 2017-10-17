@@ -39,7 +39,7 @@ handle(Data, Call) ->
 endpoints_lookup(Data, Call) ->
     lists:foldl(fun(CIDType, Acc) -> cid_type_based_lookup(CIDType, Data, Call) ++ Acc end
                ,[]
-               ,kz_json:get_value(<<"cid_types">>, Data, [<<"internal">>])
+               ,kz_json:get_value(<<"cid_types">>, Data)
                ).
 
 -spec cid_type_based_lookup(ne_binary(), kz_json:object(), kapps_call:call()) -> kz_proplist().
