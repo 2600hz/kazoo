@@ -96,6 +96,7 @@
 -export([flatten/1, flatten/2
         ,expand/1
         ,diff/2
+        ,to_log/1, to_log/2
         ]).
 
 -export([sum/2, sum/3]).
@@ -1291,3 +1292,11 @@ exec(Funs, ?JSON_WRAPPER(_)=JObj) ->
 exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
 exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
 exec_fold(F, C) when is_function(F, 1) -> F(C).
+
+-spec to_log(object()) -> 'ok'.
+-spec to_log(object(), ne_binary()) -> 'ok'.
+to_log(JObj) ->
+    to_log(JObj, <<"JObj">>).
+
+to_log(JObj, Header) ->
+    props:to_log(to_proplist(JObj), Header).
