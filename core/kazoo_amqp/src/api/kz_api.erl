@@ -30,7 +30,7 @@
         ,account_id/1
         ,server_id/1
         ,queue_id/1
-        ,msg_id/1
+        ,msg_id/1, msg_id/2
         ,msg_reply_id/1
         ,event_category/1
         ,event_name/1
