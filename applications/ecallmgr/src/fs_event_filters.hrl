@@ -31,8 +31,8 @@
         ,<<"Event-Subclass">>
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
-        ,<<"Hunt-Callee-ID-Number">>
         ,<<"Hunt-Destination-Number">>
+        ,<<"Other-Leg-ANI">>
         ,<<"Other-Leg-Call-ID">>
         ,<<"Other-Leg-Callee-ID-Number">>
         ,<<"Other-Leg-Caller-ID-Name">>
@@ -40,6 +40,7 @@
         ,<<"Other-Leg-Channel-Name">>
         ,<<"Other-Leg-Destination-Number">>
         ,<<"Other-Leg-Direction">>
+        ,<<"Other-Leg-RDNIS">>
         ,<<"Other-Leg-Unique-ID">>
         ,<<"Record-File-Path">>
         ,<<"Resigning-UUID">>
@@ -52,12 +53,6 @@
         ,<<"kazoo_application_name">>
         ,<<"kazoo_application_response">>
         ,<<"kazoo_event_name">>
-        ,<<"sip_auth_realm">>
-        ,<<"sip_loopback_req_uri">>
-        ,<<"sip_req_host">>
-        ,<<"sip_req_uri">>
-        ,<<"sip_to_host">>
-        ,<<"sip_to_user">>
         ,<<"variable_billmsec">>
         ,<<"variable_billsec">>
         ,<<"variable_bridge_hangup_cause">>
@@ -122,11 +117,9 @@
         ,<<"variable_silence_hits_exhausted">>
         ,<<"variable_sip_auth_realm">>
         ,<<"variable_sip_call_id">>
-        ,<<"variable_sip_contact_user">>
         ,<<"variable_sip_from_tag">>
         ,<<"variable_sip_from_uri">>
         ,<<"variable_sip_from_user">>
-        ,<<"variable_sip_invite_domain">>
         ,<<"variable_sip_loopback_req_uri">>
         ,<<"variable_sip_origination_call_id">>
         ,<<"variable_sip_refer_to">>
