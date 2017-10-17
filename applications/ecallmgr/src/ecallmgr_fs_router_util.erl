@@ -59,8 +59,8 @@ spawn_authorize_call_fun(Node, CallId, Props) ->
     Pid = kz_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, Props]),
     {Pid, Ref}.
 
--spec authorize_call_fun(pid(), reference(), atom(), ne_binary(), kzd_freeswitch:data()) ->
-                                {'authorize_reply', reference(), ecallmgr_fs_authz:authz_reply()}.
+-spec authorize_call_fun(pid(), Reference, atom(), ne_binary(), kzd_freeswitch:data()) ->
+                                {'authorize_reply', Reference, ecallmgr_fs_authz:authz_reply()}.
 authorize_call_fun(Parent, Ref, Node, CallId, Props) ->
     kz_util:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
