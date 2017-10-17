@@ -175,6 +175,7 @@ pages:
         - 'Ring Group': 'applications/callflow/doc/ring_group.md'
         - 'Ring Group Toggle': 'applications/callflow/doc/ring_group_toggle.md'
         - 'Page Group': 'applications/callflow/doc/page_group.md'
+        - 'Dynamic lookup': 'applications/callflow/doc/route_to_cid.md'
     - 'Call Parking': 'applications/callflow/doc/park.md'
     - 'Call Recording':
         - 'Record Call': 'applications/callflow/doc/record_call.md'
