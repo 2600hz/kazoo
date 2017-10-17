@@ -61,7 +61,7 @@ should_publish_doc(Doc) ->
 -spec should_publish_db_changes(ne_binary()) -> boolean().
 should_publish_db_changes(DbName) ->
     Key = <<"publish_", (kz_term:to_binary(kzs_util:db_classification(DbName)))/binary, "_changes">>,
-    kapps_config:get_is_true(?CONFIG_CAT, Key, 'true').
+    kazoo_data_config:get_is_true(Key, 'true').
 
 -spec publish_doc(ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
 publish_doc(DbName, Doc, JObj) ->
@@ -90,7 +90,7 @@ do_publish_db(DbName, Action) ->
                                  )
         ],
     Fun = fun(P) -> kapi_conf:publish_db_update(Action, DbName, P) end,
-    kapps_util:amqp_pool_send(Props, Fun).
+    kz_amqp_worker:cast(Props, Fun).
 
 -spec publish_fields(kz_json:object()) -> kz_proplist().
 -spec publish_fields(kz_json:object(), kz_json:object()) -> kz_json:object().

@@ -437,7 +437,7 @@ id(JObj, Default) ->
 set_id(JObj, Id) ->
     kz_json:set_value(?KEY_ID, Id, JObj).
 
--spec type(kz_json:object()) -> api_binary().
+-spec type(kz_json:object()) -> api_ne_binary().
 -spec type(kz_json:object(), Default) -> ne_binary() | Default.
 type(JObj) ->
     type(JObj, 'undefined').

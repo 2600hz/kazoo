@@ -379,9 +379,12 @@ db_view_cleanup(DbName) ->
             'false'
     end.
 
--spec db_view_update(ne_binary(), views_listing()) -> boolean().
--spec db_view_update(ne_binary(), views_listing(), boolean()) -> boolean().
-
+-spec db_view_update(ne_binary(), views_listing()) ->
+                            boolean() |
+                            {'error', 'invalid_db_name'}.
+-spec db_view_update(ne_binary(), views_listing(), boolean()) ->
+                            boolean() |
+                            {'error', 'invalid_db_name'}.
 db_view_update(DbName, Views) ->
     db_view_update(DbName, Views, 'false').
 
@@ -499,7 +502,7 @@ db_delete(DbName, Options) ->
 -spec db_archive(ne_binary()) -> 'ok' | data_error().
 -spec db_archive(ne_binary(), ne_binary()) -> 'ok' | data_error().
 db_archive(DbName) ->
-    Folder = kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
+    Folder = kazoo_data_config:get_ne_binary(<<"default_archive_folder">>, <<"/tmp">>),
     db_archive(DbName, filename:join([<<Folder/binary, "/", DbName/binary, ".json">>])).
 
 db_archive(DbName, Filename) when ?VALID_DBNAME(DbName) ->
@@ -1223,7 +1226,7 @@ maybe_create_view(DbName, Plan, DesignDoc, Options) ->
     case props:get_value('view_json', Options) of
         'undefined' -> {'error', 'not_found'};
         ViewJson ->
-            db_view_update(DbName, ViewJson),
+            'true' = db_view_update(DbName, ViewJson),
             kzs_view:get_results(Plan, DbName, DesignDoc, Options)
     end.
 
@@ -1425,7 +1428,7 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
 %%------------------------------------------------------------------------------
 -spec max_bulk_insert() -> pos_integer().
 max_bulk_insert() ->
-    kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_insert">>, 2000).
+    kazoo_data_config:get_pos_integer(<<"max_bulk_insert">>, 2000).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -1435,11 +1438,11 @@ max_bulk_insert() ->
 %%------------------------------------------------------------------------------
 -spec max_bulk_read() -> pos_integer().
 max_bulk_read() ->
-    kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_read">>, 2000).
+    kazoo_data_config:get_pos_integer(<<"max_bulk_read">>, 2000).
 
 -spec max_bulk_read(view_options()) -> pos_integer().
 max_bulk_read(ViewOptions) ->
-    AskedFor = props:get_integer_value(max_bulk_read, ViewOptions, max_bulk_read()),
+    AskedFor = props:get_integer_value('max_bulk_read', ViewOptions, max_bulk_read()),
     UpperBound = min(AskedFor, max_bulk_read()),
     max(UpperBound, 1).
 
