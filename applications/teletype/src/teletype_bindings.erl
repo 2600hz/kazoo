@@ -92,7 +92,7 @@ print_result(RoutingKey, Map) ->
                ,[RoutingKey, Completed, Failed, Ignored, Disabled, maps:to_list(Map)]
                ).
 
--spec check_result(any(), {ne_binary(), map()}) -> map().
+-spec check_result(any(), {ne_binary(), map()}) -> {ne_binary(), map()}.
 
 check_result('ok', {RoutingKey, Map}) ->
     {RoutingKey, maps:update_with('completed', update_with(RoutingKey), [RoutingKey], Map)};
