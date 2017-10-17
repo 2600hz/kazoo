@@ -12,7 +12,8 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `can_call_self` | Toggle whether devices of the same owner can call each other | `boolean()` |   | `false`
 `can_text_self` | Toggle whether devices of the same owner can text each other | `boolean()` |   | `false`
-`cid_types` | CID types to perform seacrh: internal, external, custom | `array()` | `[]` | `false`
+`cid_types.[]` |   | `string()` |   | `false`
+`cid_types` | CID types to perform seacrh: internal, external, custom | `array(string())` | `["internal"]` | `false`
 `delay` | How long to delay ringing the device, in seconds | `integer()` | `0` | `false`
 `endpoint_types` | Endpoint types to perform seacrh: user, device | `array()` | `[]` | `false`
 `static_invite` | Override the SIP Username | `string()` |   | `false`

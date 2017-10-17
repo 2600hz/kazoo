@@ -12,8 +12,14 @@
             "type": "boolean"
         },
         "cid_types": {
-            "default": [],
+            "default": [
+                "internal"
+            ],
             "description": "CID types to perform seacrh: internal, external, custom",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
             "type": "array"
         },
         "delay": {
