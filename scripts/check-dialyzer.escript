@@ -116,7 +116,7 @@ do_warn(PLT, Paths) ->
 
 do_warn_path({_, []}, Acc) -> Acc;
 do_warn_path({'beams', Beams}, {N, PLT}) ->
-    try lists:split(10, Beams) of
+    try lists:split(5, Beams) of
         {Ten, Rest} ->
             do_warn_path({'beams', Rest}
                         ,{N + scan_and_print(PLT, Ten), PLT}
@@ -126,7 +126,7 @@ do_warn_path({'beams', Beams}, {N, PLT}) ->
             {N + scan_and_print(PLT, Beams), PLT}
     end;
 do_warn_path({'app', Beams}, {N, PLT}) ->
-    try lists:split(10, Beams) of
+    try lists:split(5, Beams) of
         {Ten, Rest} ->
             do_warn_path({'app', Rest}
                         ,{N + scan_and_print(PLT, Ten), PLT}
