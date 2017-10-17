@@ -671,15 +671,8 @@ does_attachment_exist(DocId, AName) ->
                              {'ok', kz_json:object()} |
                              {'error', any()}.
 save_attachment(DocId, AName, ContentType, Contents) ->
-    case
-        kz_datamgr:put_attachment(
-          ?KZ_CONFIG_DB
-                                 ,DocId
-                                 ,AName
-                                 ,Contents
-                                 ,[{'content_type', kz_term:to_list(ContentType)}]
-         )
-    of
+    Options = [{'content_type', kz_term:to_list(ContentType)}],
+    case kz_datamgr:put_attachment(?KZ_CONFIG_DB, DocId, AName, Contents, Options) of
         {'ok', _UpdatedJObj}=OK ->
             lager:debug("added attachment ~s to ~s", [AName, DocId]),
             OK;

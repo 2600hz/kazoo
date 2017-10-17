@@ -53,10 +53,10 @@
 -type init_params() :: [init_param(),...].
 
 -type template_response() :: 'ok' |
-                          {'disabled', ne_binary()} |
-                          {'ignored', ne_binary()} |
-                          {'completed', ne_binary()} |
-                          {'failed', ne_binary(), any()}.
+                             {'disabled', ne_binary()} |
+                             {'ignored', ne_binary()} |
+                             {'completed', ne_binary()} |
+                             {'failed', ne_binary(), any()}.
 -type template_responses() :: [template_response()].
 
 -define(TEXT_PLAIN, <<"text/plain">>).
