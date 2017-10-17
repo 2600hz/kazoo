@@ -236,8 +236,8 @@ module_from_binary(<<"teletype_", _/binary>> = Template) ->
         'false' -> invalid_module(Template);
         Module -> {'ok', Module}
     end;
-module_from_binary(Module) ->
-    invalid_module(Module).
+module_from_binary(?NE_BINARY=Module) ->
+    module_from_binary(<<"teletype_", Module/binary>>).
 
 -spec invalid_module(ne_binary()) -> {'error', 'invalid_mod'}.
 invalid_module(Module) ->

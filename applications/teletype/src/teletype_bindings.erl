@@ -62,7 +62,8 @@ notification(JObj) ->
             lager:debug("~s", [FailureMsg]),
             teletype_util:send_update(JObj, <<"failed">>, FailureMsg);
         BindingResult ->
-            maybe_send_update(JObj, RoutingKey, lists:foldl(fun check_result/2, {RoutingKey, maps:new()}, BindingResult))
+            {_, Map} = lists:foldl(fun check_result/2, {RoutingKey, maps:new()}, BindingResult),
+            maybe_send_update(JObj, RoutingKey, Map)
     end.
 
 -spec maybe_send_update(kz_json:object(), ne_binary(), map()) -> 'ok'.
@@ -94,60 +95,60 @@ print_result(RoutingKey, Map) ->
 -spec check_result(any(), {ne_binary(), map()}) -> map().
 
 check_result('ok', {RoutingKey, Map}) ->
-    maps:update_with('completed', update_with(RoutingKey), [RoutingKey], Map);
+    {RoutingKey, maps:update_with('completed', update_with(RoutingKey), [RoutingKey], Map)};
 
-check_result({'completed', TemplateId}, {_, Map}) ->
-    maps:update_with('completed', update_with(TemplateId), [TemplateId], Map);
+check_result({'completed', TemplateId}, {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('completed', update_with(TemplateId), [TemplateId], Map)};
 
-check_result({'ignored', TemplateId}, {_, Map}) ->
-    maps:update_with('ignored', update_with(TemplateId), [TemplateId], Map);
+check_result({'ignored', TemplateId}, {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('ignored', update_with(TemplateId), [TemplateId], Map)};
 
-check_result({'disabled', TemplateId}, {_, Map}) ->
-    maps:update_with('disabled', update_with(TemplateId), [TemplateId], Map);
+check_result({'disabled', TemplateId}, {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('disabled', update_with(TemplateId), [TemplateId], Map)};
 
-check_result({'failed', TemplateId, Reason}, {_, Map}) ->
-    maps:update_with('failed', update_with({TemplateId, Reason}), [{TemplateId, Reason}], Map);
+check_result({'failed', TemplateId, Reason}, {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('failed', update_with({TemplateId, Reason}), [{TemplateId, Reason}], Map)};
 
 check_result({'EXIT', {'error', 'missing_data',  Missing}}, {RoutingKey, Map}) ->
     Reason = <<"missing_data: ", (kz_term:to_binary(Missing))/binary>>,
-    maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map);
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
 check_result({'EXIT', {'error', 'failed_template',  ModuleName}}, {RoutingKey, Map}) ->
     %% teletype_templates:build_renderer, probably it's only for teletype startup
     Reason = <<"failed_template: ", (kz_term:to_binary(ModuleName))/binary>>,
-    maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map);
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
 check_result({'EXIT',{'error', 'template_error',  Reason}}, {RoutingKey, Map}) ->
     Reason = <<"template_error: ", (kz_term:to_binary(Reason))/binary>>,
-    maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map);
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
 check_result({'EXIT', {'function_clause', _ST}}, {RoutingKey, Map}) ->
     Reason = <<"template_error: crashed with function_clause">>,
-    maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map);
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
 check_result({'EXIT', {'undef', _ST}}, {RoutingKey, Map}) ->
     Reason = <<"template_error: crashed with undef">>,
-    maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map);
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
 check_result({'EXIT', {'error', {'badmatch',  _}}}, {RoutingKey, Map}) ->
     %% Some templates (like voicemail_new) is matching against successful open_doc
     %% If it failed due to the document or attachment is not stored yet or db timeout
     %% let the publisher save the payload
     Reason = <<"badmatch">>,
-    maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map);
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
 check_result({'EXIT', {'error', Reason}}, {RoutingKey, Map}) ->
     ReasonBin = try kz_term:to_binary(Reason)
                 catch _:_ -> <<"unknown error throw-ed">>
                 end,
-    maps:update_with('failed', update_with({RoutingKey, ReasonBin}), [{RoutingKey, ReasonBin}], Map);
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, ReasonBin}), [{RoutingKey, ReasonBin}], Map)};
 
 check_result({'EXIT', {_Exp, _ST}}, {RoutingKey, Map}) ->
     Reason = <<"template_error: crashed with exception">>,
-    maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map);
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
 check_result(_Other, {RoutingKey, Map}) ->
     Reason = <<"unknown_template_error">>,
-    maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map).
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)}.
 
 update_with(Value) -> fun(ResultList) -> [Value | ResultList] end.
