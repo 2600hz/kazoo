@@ -14,7 +14,6 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"fax_outbound_smtp_error_to_email">>).
--define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS, kz_json:from_list([])).
 
@@ -41,11 +40,11 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"outbound_smtp_fax_error">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> handle_req_ret().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:fax_outbound_smtp_error_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+-spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
 handle_req(JObj, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
     teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
@@ -57,13 +56,13 @@ handle_req(JObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+        'false' -> {'disabled', ?TEMPLATE_ID};
         'true' ->
             teletype_util:send_update(DataJObj, <<"pending">>),
             process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> handle_req_ret().
 process_req(DataJObj) ->
     Macros = build_macros(DataJObj),
 
@@ -82,14 +81,11 @@ process_req(DataJObj) ->
                 kz_json:set_value(<<"to">>, [kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)], DataJObj)
         end,
 
-    Emails = teletype_util:find_addresses(EmailsJObj
-                                         ,TemplateMetaJObj
-                                         ,?MOD_CONFIG_CAT
-                                         ),
+    Emails = teletype_util:find_addresses(EmailsJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> {'completed', ?TEMPLATE_ID};
+        {'error', Reason} -> {'failed', ?TEMPLATE_ID, Reason}
     end.
 
 -spec build_macros(kz_json:object()) -> kz_proplist().

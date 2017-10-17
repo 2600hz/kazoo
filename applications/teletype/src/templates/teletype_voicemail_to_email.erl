@@ -70,11 +70,11 @@ init() ->
     teletype_templates:init(?MODULE),
     teletype_bindings:bind(<<"voicemail_new">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> handle_req_ret().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:voicemail_new_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+-spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
 handle_req(JObj, 'false') ->
     lager:debug("invalid data for ~s", [id()]),
     teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
@@ -86,11 +86,11 @@ handle_req(JObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
-        'false' -> teletype_util:notification_disabled(DataJObj, id());
+        'false' -> {'disabled', id()};
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> handle_req_ret().
 process_req(DataJObj) ->
     VMBoxJObj = get_vmbox(DataJObj),
     UserJObj = get_owner(VMBoxJObj, DataJObj),
@@ -134,22 +134,22 @@ maybe_add_user_email(BoxEmails, UserEmail, 'false') -> lists:delete(UserEmail, B
 maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
 
 
--spec maybe_process_req(kz_json:object()) -> 'ok'.
+-spec maybe_process_req(kz_json:object()) -> handle_req_ret().
 maybe_process_req(DataJObj) ->
     HasEmail = kz_term:is_not_empty(kz_json:get_value(<<"to">>, DataJObj)),
     maybe_process_req(DataJObj, HasEmail).
 
--spec maybe_process_req(kz_json:object(), boolean()) -> 'ok'.
+-spec maybe_process_req(kz_json:object(), boolean()) -> handle_req_ret().
 maybe_process_req(DataJObj, false) ->
     Msg = io_lib:format("request or box ~s has no emails or owner doesn't want emails"
                        ,[kz_json:get_value(<<"voicemail_box">>, DataJObj)]
                        ),
     lager:debug(Msg),
-    teletype_util:send_update(DataJObj, <<"completed">>, kz_term:to_binary(Msg));
+    {'completed', id()};
 maybe_process_req(DataJObj, true) ->
     do_process_req(DataJObj).
 
--spec do_process_req(kz_json:object()) -> 'ok'.
+-spec do_process_req(kz_json:object()) -> handle_req_ret().
 do_process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
     Macros0 = macros(DataJObj),
@@ -162,11 +162,11 @@ do_process_req(DataJObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_CONFIG_CAT(id())),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, id()),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, props:get_value(<<"attachments">>, Macros0)) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> {'completed', id()};
+        {'error', Reason} -> {'failed', id(), Reason}
     end.
 
 -spec macros(kz_json:object()) -> kz_proplist().

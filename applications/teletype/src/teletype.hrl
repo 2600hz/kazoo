@@ -57,6 +57,7 @@
                           {'ignored', ne_binary()} |
                           {'completed', ne_binary()} |
                           {'failed', ne_binary(), any()}.
+-type handle_req_rets() :: [handle_req_ret()].
 
 -define(TEXT_PLAIN, <<"text/plain">>).
 -define(TEXT_HTML, <<"text/html">>).

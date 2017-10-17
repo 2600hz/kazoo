@@ -118,7 +118,7 @@ check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
 maybe_handle_error('undefined', _, _) ->
     lager:warning("not saving unknown notification type");
 maybe_handle_error(NotifyType, Req, Reason) ->
-    AccountId = kapi_notifications:find_account_id(Req),
+    AccountId = kapi_notifications:account_id(Req),
     should_persist_notify(AccountId)
         andalso should_handle_notify_type(NotifyType, AccountId)
         andalso handle_error(NotifyType, Req, Reason).
@@ -141,7 +141,7 @@ handle_error(NotifyType, Req, {Reason, Metadata}) ->
               ,{<<"attempts">>, 1}
               ]),
     PvtOptions = [{'type', <<"failed_notify">>}
-                 ,{'account_id', kapi_notifications:find_account_id(Req)}
+                 ,{'account_id', kapi_notifications:account_id(Req)}
                  ,{'account_db', ?KZ_PENDING_NOTIFY_DB}
                  ],
     JObj = kz_doc:update_pvt_parameters(kz_json:from_list_recursive(Props), 'undefined', PvtOptions),
@@ -260,7 +260,7 @@ handle_amqp_worker_error(Error) ->
 %% For now we just only get the first failed response.
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_failure_reason(atom()) -> failure_reason().
+-spec json_to_failure_reason(any()) -> failure_reason().
 json_to_failure_reason({'returned', JObjs}) when is_list(JObjs) ->
     kz_json:find(<<"message">>, JObjs, <<"unknown broker error">>);
 

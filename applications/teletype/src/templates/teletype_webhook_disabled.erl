@@ -15,7 +15,6 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"webhook_disabled">>).
--define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -54,11 +53,11 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"webhook_disabled">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> handle_req_ret().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:webhook_disabled_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+-spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
 handle_req(JObj, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
     teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
@@ -70,11 +69,11 @@ handle_req(JObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+        'false' -> {'disabled', ?TEMPLATE_ID};
         'true' -> process_req(DataJObj, AccountId)
     end.
 
--spec process_req(kz_json:object(), ne_binary()) -> 'ok'.
+-spec process_req(kz_json:object(), ne_binary()) -> handle_req_ret().
 process_req(DataJObj, AccountId) ->
     HookId = kz_json:get_value(<<"hook_id">>, DataJObj),
 
@@ -85,7 +84,7 @@ process_req(DataJObj, AccountId) ->
     ReqData = kz_json:set_value(<<"hook">>, HookJObj, DataJObj),
     process_req(kz_json:merge_jobjs(DataJObj, ReqData)).
 
--spec process_req(kz_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> handle_req_ret().
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
     Macros = [{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -106,11 +105,11 @@ process_req(DataJObj) ->
                                           ,Macros
                ),
 
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> {'completed', ?TEMPLATE_ID};
+        {'error', Reason} -> {'failed', ?TEMPLATE_ID, Reason}
     end.
 
 -spec hook_data(kzd_webhook:doc()) -> kz_proplist().

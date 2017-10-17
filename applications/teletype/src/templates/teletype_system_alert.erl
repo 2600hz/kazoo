@@ -21,8 +21,6 @@
 
 -include("teletype.hrl").
 
--define(TEMPLATE_ID, <<"system_alert">>).
--define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -spec id() -> ne_binary().
 id() -> <<"system_alert">>.
@@ -65,11 +63,11 @@ init() ->
     teletype_templates:init(?MODULE),
     teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> handle_req_rets().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:system_alert_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+-spec handle_req(kz_json:object(), boolean()) -> handle_req_rets().
 handle_req(JObj, 'false') ->
     lager:debug("invalid data for ~s", [id()]),
     teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
@@ -77,52 +75,47 @@ handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [id()]),
 
     case kz_json:get_value([<<"Details">>, <<"Format">>], JObj) of
-        'undefined' -> handle_req_as_email(JObj, 'true');
+        'undefined' -> process_req_as_email(JObj, 'true');
         _Format ->
             lager:debug("using format string '~s'", [_Format]),
 
-            {'ok', SysTemplateJObj} = teletype_templates:fetch_notification(id(), ?KZ_CONFIG_DB),
-            UseEmail = kz_json:is_true(<<"enable_email_alerts">>, SysTemplateJObj, 'true'),
+            UseEmail = kz_term:is_true(teletype_util:template_system_value(id(), <<"enable_email_alerts">>, 'true')),
             SubscriberUrl = kz_json:get_value(<<"subscriber_url">>, JObj),
-            handle_req_as_email(JObj, UseEmail),
-            handle_req_as_http(JObj, SubscriberUrl, UseEmail)
+            [process_req_as_email(JObj, UseEmail)
+            ,process_req_as_http(JObj, SubscriberUrl)
+            ]
     end.
 
--spec handle_req_as_http(kz_json:object(), api_binary(), boolean()) -> 'ok'.
-handle_req_as_http(_JObj, 'undefined', _UseEmail) -> 'ok';
-handle_req_as_http(JObj, Url, UseEmail) ->
+-spec process_req_as_http(kz_json:object(), api_binary()) -> handle_req_ret().
+process_req_as_http(_JObj, 'undefined') ->
+    {'ignored', <<(id())/binary, "_http">>};
+process_req_as_http(JObj, Url) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = kz_json:encode(JObj),
     case kz_http:post(kz_term:to_list(Url), Headers, Encoded) of
         {'ok', _2xx, _ResponseHeaders, _ResponseBody}
           when (_2xx - 200) < 100 -> %% ie: match "2"++_
-            _ = not UseEmail
-                andalso teletype_util:send_update(JObj, <<"completed">>),
-            lager:debug("JSON data successfully POSTed to '~s'", [Url]);
-        _Error ->
-            lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),
-            maybe_send_email(JObj, UseEmail)
+            lager:debug("JSON data successfully POSTed to '~s'", [Url]),
+            {'completed', <<(id())/binary, "_http">>};
+        Error ->
+            lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url, Error]),
+            Reason = kz_term:to_binary(io_lib:format("~p", [Error])),
+            {'failed', Reason, <<(id())/binary, "_http">>}
     end.
 
--spec maybe_send_email(kz_json:object(), boolean()) -> 'ok'.
-maybe_send_email(JObj, 'false') ->
-    handle_req_as_email(JObj, 'true');
-maybe_send_email(_JObj, 'true') ->
-    'ok'.
-
--spec handle_req_as_email(kz_json:object(), boolean() | kz_json:object()) -> 'ok'.
-handle_req_as_email(_JObj, 'false') ->
+-spec process_req_as_email(kz_json:object(), boolean() | kz_json:object()) -> handle_req_ret().
+process_req_as_email(_JObj, 'false') ->
     lager:debug("email not enabled for system alerts");
-handle_req_as_email(JObj, 'true') ->
+process_req_as_email(JObj, 'true') ->
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
     case teletype_util:is_notice_enabled_default(id()) of
-        'false' -> teletype_util:notification_disabled(DataJObj, id());
-        'true' -> process_req(DataJObj)
+        'false' -> {'disabled', <<(id())/binary, "_email">>};
+        'true' -> process_req_as_email(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
-process_req(DataJObj) ->
+-spec process_req_as_email(kz_json:object()) -> handle_req_ret().
+process_req_as_email(DataJObj) ->
     Macros = macros(DataJObj),
 
     %% Populate templates
@@ -141,15 +134,15 @@ process_req(DataJObj) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     Emails = teletype_util:find_addresses(kz_json:set_value(<<"account_id">>, MasterAccountId, DataJObj)
                                          ,TemplateMetaJObj
-                                         ,?TEMPLATE_CONFIG_CAT(id())
+                                         ,id()
                                          ),
 
     Attachments = teletype_util:maybe_get_attachments(DataJObj),
 
     put('skip_smtp_log', 'true'),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, Attachments) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> {'completed', <<(id())/binary, "_email">>};
+        {'error', Reason} -> {'failed', <<(id())/binary, "_email">>, Reason}
     end.
 
 -spec macros(kz_json:object()) -> kz_proplist().

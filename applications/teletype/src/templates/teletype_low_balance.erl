@@ -62,11 +62,11 @@ init() ->
     teletype_templates:init(?MODULE),
     teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> handle_req_ret().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:low_balance_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
+-spec handle_req(kz_json:object(), boolean()) -> handle_req_ret().
 handle_req(JObj, 'false') ->
     lager:debug("invalid data for ~s", [id()]),
     teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
@@ -78,11 +78,11 @@ handle_req(JObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
-        'false' -> teletype_util:notification_disabled(DataJObj, id());
+        'false' -> {'disabled', id()};
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> handle_req_ret().
 process_req(DataJObj) ->
     Macros = macros(DataJObj),
 
@@ -93,11 +93,11 @@ process_req(DataJObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj]),
     Subject = teletype_util:render_subject(Subject0, Macros),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_CONFIG_CAT(id())),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, id()),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> {'completed', id()};
+        {'error', Reason} -> {'failed', id(), Reason}
     end.
 
 -spec macros(kz_json:object()) -> kz_proplist().

@@ -606,9 +606,6 @@ find_account_id(Req, GetFun) ->
         _ -> 'undefined'
     end.
 
--spec account_db(kz_json:object(), boolean()) -> api_ne_binary().
-account_db(JObj, StrictMODB) ->
-
 -spec account_db(api_terms(), boolean()) -> api_ne_binary().
 account_db('undefined', _) -> 'undefined';
 account_db(Req, StrictMODB) when is_list(Req) -> find_account_db(Req, StrictMODB, fun props:get_first_defined/2);
@@ -619,7 +616,7 @@ find_account_db(Req, StrictMODB, GetFun) ->
     Paths = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
     case GetFun(Paths, Req) of
         'undefined' ->
-            case account_id(JObj, GetFun) of
+            case find_account_id(Req, GetFun) of
                 'undefined' -> 'undefined';
                 AccountId -> kz_util:format_account_db(AccountId)
             end;

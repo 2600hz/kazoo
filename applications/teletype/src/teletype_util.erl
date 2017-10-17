@@ -40,7 +40,10 @@
 
         ,public_proplist/2
 
+        ,notification_completed/1
+        ,notification_ignored/1
         ,notification_disabled/2
+        ,notification_failed/2
 
         ,maybe_get_attachments/1
         ,fetch_attachment_from_url/1
@@ -930,11 +933,20 @@ public_proplist(Key, JObj) ->
        )
      ).
 
+-spec notification_completed(ne_binary()) -> handle_req_ret().
+notification_completed(TemplateId) -> {'completed', TemplateId}.
+
+-spec notification_ignored(ne_binary()) -> handle_req_ret().
+notification_ignored(TemplateId) -> {'ignored', TemplateId}.
+
+-spec notification_failed(ne_binary(), any()) -> handle_req_ret().
+notification_failed(TemplateId, Reason) -> {'ignored', Reason, TemplateId}.
+
 -spec notification_disabled(kz_json:object(), ne_binary()) -> 'ok'.
 notification_disabled(DataJObj, TemplateId) ->
     AccountId = kapi_notifications:account_id(DataJObj),
-    lager:debug("notification ~s handling not configured for account ~s", [TemplateId, AccountId]),
-    send_update(DataJObj, <<"completed">>).
+    lager:debug("notification ~s handling is not configured for account ~s", [TemplateId, AccountId]),
+    {'disabled', TemplateId}.
 
 -spec maybe_get_attachments(kz_json:object() | api_binary()) -> attachments().
 maybe_get_attachments('undefined') -> [];

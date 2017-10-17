@@ -16,7 +16,6 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"fax_inbound_error_to_email">>).
--define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -96,10 +95,10 @@ process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
         case teletype_util:is_preview(DataJObj) of
             'true' -> DataJObj;
             'false' ->
-                kz_json:set_value(<<"to">>, teletype_fax_util:to_email_addresses(DataJObj, ?MOD_CONFIG_CAT), DataJObj)
+                kz_json:set_value(<<"to">>, teletype_fax_util:to_email_addresses(DataJObj, TemplateId), DataJObj)
         end,
 
-    Emails = teletype_util:find_addresses(EmailsJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(EmailsJObj, TemplateMetaJObj, TemplateId),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> {'completed', TemplateId};

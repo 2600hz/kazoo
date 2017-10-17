@@ -15,7 +15,6 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"transaction_failed">>).
--define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
