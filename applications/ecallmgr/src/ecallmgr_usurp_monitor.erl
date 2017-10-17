@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--type state() :: #{}.
+-type state() :: map().
 
 -define(BINDINGS, [{'call', [{'restrict_to', [<<"usurp_control">>]}
                             ,'federate'
