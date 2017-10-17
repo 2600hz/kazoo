@@ -39,7 +39,7 @@ handle(Data, Call) ->
 endpoints_lookup(Data, Call) ->
     lists:foldl(fun(CIDType, Acc) -> cid_type_based_lookup(CIDType, Data, Call) ++ Acc end
                ,[]
-               ,kz_json:get_value(<<"cid_types">>, Data, [])
+               ,kz_json:get_value(<<"cid_types">>, Data, [<<"internal">>])
                ).
 
 -spec cid_type_based_lookup(ne_binary(), kz_json:object(), kapps_call:call()) -> kz_proplist().
@@ -69,4 +69,4 @@ endpoint_format(EndpointId, EndpointType, Data) ->
              ,{<<"delay">>,0}
              ,{<<"timeout">>,kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S)}
              ],
-    kz_json:set_values(Values, kz_json:new()).
+    kz_json:from_list(Values).
