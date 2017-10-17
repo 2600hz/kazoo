@@ -35,7 +35,7 @@ exec_cmd(Node, UUID, JObj, _ControlPid, UUID) ->
         {'return', Result} -> Result;
         {_AppName, 'noop'} -> 'ok';
         {AppName, AppData} -> ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
-        {AppName, AppData, NewNode} -> ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
+        %% {AppName, AppData, NewNode} -> ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
         [_|_]=Apps -> ecallmgr_util:send_cmds(Node, UUID, Apps)
     end;
 exec_cmd(_Node, _UUID, JObj, _ControlPid, _DestId) ->
@@ -48,7 +48,7 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
     case get_fs_app(Node, UUID, JObj, App) of
         {'error', Msg} -> throw({'msg', Msg});
         {'return', _Result} -> [];
-        {_AppName, _AppData, _NewNode} -> [];
+        %% {_AppName, _AppData, _NewNode} -> [];
         {AppName, AppData} -> [{AppName, AppData}];
         [_|_]=Apps -> Apps
     end.
