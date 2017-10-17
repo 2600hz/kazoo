@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--type state() :: #{'node':=atom(), 'options':=kz_proplist()}.
+-type state() :: map().
 
 %%%===================================================================
 %% @doc Starts the server
