@@ -1145,15 +1145,12 @@ which_call_leg(CmdLeg, OtherLegs, CallId) ->
     end.
 
 -spec maybe_send_error_resp(ne_binary(), kz_json:object()) -> 'ok'.
--spec maybe_send_error_resp(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_send_error_resp(ne_binary(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 maybe_send_error_resp(CallId, Cmd) ->
+    AppName = kz_json:get_ne_binary_value(<<"Application-Name">>, Cmd),
     Msg = <<"Could not execute dialplan action: "
-            ,(kz_json:get_value(<<"Application-Name">>, Cmd))/binary
+            ,AppName/binary
           >>,
-    maybe_send_error_resp(CallId, Cmd, Msg).
-
-maybe_send_error_resp(CallId, Cmd, Msg) ->
-    AppName = kz_json:get_value(<<"Application-Name">>, Cmd),
     maybe_send_error_resp(AppName, CallId, Cmd, Msg).
 
 maybe_send_error_resp(<<"hangup">>, _CallId, _Cmd, _Msg) -> 'ok';
@@ -1165,7 +1162,7 @@ send_error_resp(CallId, Cmd) ->
     send_error_resp(CallId
                    ,Cmd
                    ,<<"Could not execute dialplan action: "
-                      ,(kz_json:get_value(<<"Application-Name">>, Cmd))/binary
+                      ,(kz_json:get_ne_binary_value(<<"Application-Name">>, Cmd))/binary
                     >>
                    ).
 
@@ -1180,7 +1177,7 @@ send_error_resp(CallId, Cmd, Msg) ->
 send_error_resp(CallId, Cmd, Msg, _Channel) ->
     %%    CCVs = error_ccvs(Channel),
 
-    Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Cmd)}
+    Resp = [{<<"Msg-ID">>, kz_api:msg_id(Cmd)}
            ,{<<"Error-Message">>, Msg}
            ,{<<"Request">>, Cmd}
            ,{<<"Call-ID">>, CallId}
@@ -1231,7 +1228,7 @@ bind(Node, CallId) ->
     lager:debug("binding to call ~s events on node ~s", [CallId, Node]),
     'true' = gproc:reg({'p', 'l', {'call_event', Node, CallId}}),
     'true' = gproc:reg({'p', 'l', ?LOOPBACK_BOWOUT_REG(CallId)}),
-    true.
+    'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1239,7 +1236,7 @@ bind(Node, CallId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_replaced(kz_proplist(), state()) ->
+-spec handle_replaced(kz_json:object(), state()) ->
                              {'noreply', state()}.
 handle_replaced(JObj, #state{fetch_id=FetchId
                             ,node=_Node
@@ -1247,7 +1244,7 @@ handle_replaced(JObj, #state{fetch_id=FetchId
                             }=State) ->
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId ->
-            ReplacedBy = kz_json:get_value(<<"Replaced-By">>, JObj),
+            ReplacedBy = kz_json:get_ne_binary_value(<<"Replaced-By">>, JObj),
             case ecallmgr_fs_channel:fetch(ReplacedBy) of
                 {'ok', _Channel} ->
                     %%                     OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
@@ -1266,7 +1263,7 @@ handle_replaced(JObj, #state{fetch_id=FetchId
             {'noreply', State}
     end.
 
--spec handle_transferee(kz_proplist(), state()) ->
+-spec handle_transferee(kz_json:object(), state()) ->
                                {'noreply', state()}.
 handle_transferee(JObj, #state{fetch_id=FetchId
                               ,node=_Node
@@ -1281,16 +1278,16 @@ handle_transferee(JObj, #state{fetch_id=FetchId
             {'noreply', State}
     end.
 
--spec handle_transferor(kz_proplist(), state()) ->
+-spec handle_transferor(kz_json:object(), state()) ->
                                {'noreply', state()}.
-handle_transferor(_Props, #state{fetch_id=_FetchId
-                                ,node=_Node
-                                ,call_id=_CallId
-                                }=State) ->
+handle_transferor(_JObj, #state{fetch_id=_FetchId
+                               ,node=_Node
+                               ,call_id=_CallId
+                               }=State) ->
     {'noreply', State}.
 
--spec handle_intercepted(atom(), ne_binary(), kz_proplist()) -> 'ok'.
-handle_intercepted(_Node, _CallId, _Props) ->
+-spec handle_intercepted(atom(), api_ne_binary(), kz_json:object()) -> 'ok'.
+handle_intercepted(_Node, _CallId, _JObj) ->
     %%     _ = case {props:get_value(<<"Core-UUID">>, Props)
     %%              ,props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props)
     %%              }
