@@ -21,7 +21,7 @@
 
 -include("callflow.hrl").
 
--type state() :: #{}.
+-type state() :: map().
 
 -define(SERVER, ?MODULE).
 
