@@ -655,7 +655,7 @@ load_summary(Context, {IsRanged, Opts}) ->
         'false' -> crossbar_view:load(Context1, View, Options)
     end.
 
--spec view_key_options(cb_context:context(), ne_binary(), boolean()) -> {boolean(), cb_context:context()}.
+-spec view_key_options(cb_context:context(), ne_binary(), boolean()) -> {boolean(), crossbar_view:options()}.
 view_key_options(Context, Type, 'true') ->
     {'true'
     ,[{'range_start_keymap', [cb_context:account_id(Context), Type]}

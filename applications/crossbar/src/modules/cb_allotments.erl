@@ -121,7 +121,7 @@ load_allotments(Context) ->
 
 -spec load_consumed(cb_context:context(), crossbar_status()) -> cb_context:context().
 load_consumed(Context, 'success') ->
-    Allotments = kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(cb_context:doc(Context))),
+    Allotments = kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context)),
     Mode = get_consumed_mode(Context),
     {ContextResult, _, Result} = kz_json:foldl(fun foldl_consumed/3, {Context, Mode, kz_json:new()}, Allotments),
     case cb_context:resp_status(ContextResult) of
