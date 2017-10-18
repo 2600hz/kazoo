@@ -49,12 +49,12 @@ maybe_update_metaflow(Data, Call, Results, CallId) ->
             lager:debug("no matching originate_uuid"),
             {'stop', Call};
         [OriginateUUID|_] ->
-            ControlQueue = kz_json:get_value(<<"Outbound-Call-Control-Queue">>, OriginateUUID),
-            lager:debug("should use ~s for control of ~s", [ControlQueue, CallId]),
+            ControlQueue = kapps_call:control_queue(kapps_call:from_originate_uuid(JObj, Call)),
+            lager:debug("should use ~p for control of ~s", [ControlQueue, CallId]),
             maybe_update_metaflow_control(Data, Call, CallId, ControlQueue, source_leg_of_dtmf(Data, Call))
     end.
 
--spec maybe_update_metaflow_control(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), 'a' | 'b') ->
+-spec maybe_update_metaflow_control(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kapps_call:ctrl_queue(), 'a' | 'b') ->
                                            {'stop', kapps_call:call()}.
 maybe_update_metaflow_control(_Data, Call, CallId, ControlQueue, 'a') ->
     lager:debug("update ~s to ~s with ctl ~s", [kapps_call:call_id(Call), CallId, ControlQueue]),

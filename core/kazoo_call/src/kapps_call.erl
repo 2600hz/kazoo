@@ -32,9 +32,6 @@
 
 -export([set_control_queue/2, control_queue/1, control_queue_direct/1]).
 -export([control_queue_helper/2, clear_control_queue_helper/1]).
--export([set_control_pid/2, control_pid/1, control_pid_direct/1]).
--export([control_pid_helper/2, clear_control_pid_helper/1]).
--export([clear_control_helper/1]).
 
 -export([set_controller_queue/2, controller_queue/1]).
 
@@ -169,9 +166,14 @@
                     ,origination_call_id :: kz_term:api_ne_binary() %% need to track the originating call id, if found
                     ,context :: kz_term:api_ne_binary()
                     ,control_q :: kz_term:api_binary()                   %% The control queue provided on route win
+                    ,control_p :: kz_term:api_pid()                      %% The control pid provided on route win
                     ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                    ,control_p :: kz_term:api_pid()                   %% The control pid provided on route win
                     ,control_p_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                    ,controller_q :: api_binary()                %%
+                    ,caller_id_name :: api_ne_binary()      %% The caller name
+                    ,caller_id_number :: api_ne_binary() %% The caller number
+                    ,callee_id_name :: api_binary()                     %% The callee name
+                    ,callee_id_number :: api_binary()                   %% The callee number
                     ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
                     ,switch_hostname :: kz_term:api_ne_binary()                    %% The switch hostname (as reported by the switch)
                     ,switch_url :: kz_term:api_binary()                         %% The switch url
@@ -214,10 +216,12 @@
 
 -type call() :: #kapps_call{}.
 -export_type([call/0]).
-
 -export_type([kapps_api_std_return/0]).
 
--type kapps_helper_function() :: fun((kz_term:api_binary(), call()) -> kz_term:api_binary()).
+-type control_queue() :: {kz_term:api_binary(), kz_term:api_binary()}.
+-export_type([control_queue/0]).
+
+-type kapps_helper_function() :: fun((control_queue(), call()) -> control_queue()).
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #kapps_call.caller_id_name}
                       ,{<<"Caller-ID-Number">>, #kapps_call.caller_id_number}
@@ -237,7 +241,6 @@ clear_helpers(#kapps_call{}=Call) ->
     Fs = [fun clear_custom_publish_function/1
          ,fun clear_call_id_helper/1
          ,fun clear_control_queue_helper/1
-         ,fun clear_control_pid_helper/1
          ],
     exec(Fs, Call).
 
@@ -395,7 +398,8 @@ from_originate_uuid(JObj) ->
 -spec from_originate_uuid(kz_json:object(), call()) -> call().
 from_originate_uuid(JObj, #kapps_call{}=Call) ->
     'true' = kapi_resource:originate_uuid_v(JObj),
-    Call#kapps_call{control_q=kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj, control_queue(Call))
+    Call#kapps_call{control_q=kz_json:get_binary_value(<<"Outbound-Call-Control-Queue">>, JObj, control_q(control_queue(Call)))
+                   ,control_p=kz_json:get_binary_value(<<"Outbound-Call-Control-PID">>, JObj, control_p(control_queue(Call)))
                    ,call_id=kz_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
                    }.
 
@@ -407,7 +411,8 @@ from_originate_ready(JObj) ->
 -spec from_originate_ready(kz_json:object(), call()) -> call().
 from_originate_ready(JObj, #kapps_call{}=Call) ->
     'true' = kapi_resource:originate_ready_v(JObj),
-    Call#kapps_call{control_q=kz_json:get_value(<<"Control-Queue">>, JObj, control_queue(Call))
+    Call#kapps_call{control_q=kz_json:get_binary_value(<<"Control-Queue">>, JObj, control_q(control_queue(Call)))
+                   ,control_p=kz_json:get_binary_value(<<"Control-PID">>, JObj, control_p(control_queue(Call)))
                    ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, call_id(Call))
                    }.
 
@@ -444,8 +449,8 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
     Call#kapps_call{call_id = kz_json:get_ne_binary_value(<<"Call-ID">>, JObj, call_id_direct(Call))
                    ,origination_call_id = kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, JObj, origination_call_id(Call))
                    ,context=kz_json:get_ne_binary_value(<<"Context">>, JObj, context(Call))
-                   ,control_q = kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
-                   ,control_p = kz_json:get_ne_binary_value(<<"Control-PID">>, JObj, control_pid_direct(Call))
+                   ,control_q = kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj, control_q(Call))
+                   ,control_p = kz_json:get_ne_binary_value(<<"Control-PID">>, JObj, control_p(Call))
                    ,controller_q = kz_json:get_ne_binary_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
                    ,caller_id_name = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
                    ,caller_id_number = kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj, caller_id_number(Call))
@@ -527,8 +532,8 @@ to_proplist(#kapps_call{}=Call) ->
     ,{<<"Callee-ID-Number">>, callee_id_number(Call)}
     ,{<<"Caller-ID-Name">>, caller_id_name(Call)}
     ,{<<"Caller-ID-Number">>, caller_id_number(Call)}
-    ,{<<"Control-PID">>, control_pid_direct(Call)}
-    ,{<<"Control-Queue">>, control_queue_direct(Call)}
+    ,{<<"Control-PID">>, control_p(Call)}
+    ,{<<"Control-Queue">>, control_q(Call)}
     ,{<<"Controller-Queue">>, controller_queue(Call)}
     ,{<<"Custom-Application-Vars">>, custom_application_vars(Call)}
     ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
@@ -645,19 +650,21 @@ context(#kapps_call{context=Context}, _Default) -> Context.
 set_context(#kapps_call{}=Call, Context) ->
     Call#kapps_call{context=Context}.
 
--spec set_control_queue(kz_term:ne_binary(), call()) -> call().
-set_control_queue(ControlQ, #kapps_call{}=Call) when is_binary(ControlQ) ->
-    Call#kapps_call{control_q=ControlQ}.
+-spec set_control_queue(control_queue(), call()) -> call().
+set_control_queue({ControlQ, ControlP}, #kapps_call{}=Call) when is_binary(ControlQ) ->
+    Call#kapps_call{control_q=ControlQ, control_p=ControlP}.
 
--spec control_queue(call()) -> kz_term:api_binary().
-control_queue(#kapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
-    Fun(ControlQ, Call);
-control_queue(#kapps_call{control_q=ControlQ}=Call) ->
-    default_helper_function(ControlQ, Call).
+-spec control_queue(call()) -> control_queue().
+control_queue(#kapps_call{control_q=ControlQ, control_p=ControlP, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
+    Fun({ControlQ, ControlP}, Call);
+control_queue(#kapps_call{control_q=ControlQ, control_p=ControlP}=Call) ->
+    default_helper_function({ControlQ, ControlP}, Call).
 
--spec control_queue_direct(call()) -> kz_term:api_binary().
-control_queue_direct(#kapps_call{control_q=ControlQ}) ->
-    ControlQ.
+-spec control_queue_direct(call()) -> control_queue().
+control_queue_direct(#kapps_call{control_q=ControlQ
+                                ,control_p=ControlP
+                                }) ->
+    {ControlQ, ControlP}.
 
 -spec control_queue_helper(kapps_helper_function(), call()) -> call().
 control_queue_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
@@ -667,33 +674,13 @@ control_queue_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
 clear_control_queue_helper(#kapps_call{}=Call) ->
     Call#kapps_call{control_q_helper=fun default_helper_function/2}.
 
--spec set_control_pid(pid(), call()) -> call().
-set_control_pid(ControlP, #kapps_call{}=Call) when is_pid(ControlP) ->
-    Call#kapps_call{control_p=ControlP}.
+-spec control_q(call() | control_queue()) -> api_binary().
+control_q(#kapps_call{control_q=ControlQ}) -> ControlQ;
+control_q({ControlQ, _}) -> ControlQ.
 
--spec control_pid(call()) -> api_binary().
--spec control_pid_direct(call()) -> api_binary().
-control_pid(#kapps_call{control_p=ControlP, control_p_helper=Fun}=Call) when is_function(Fun, 2) ->
-    Fun(ControlP, Call);
-control_pid(#kapps_call{control_p=ControlP}=Call) ->
-    default_helper_function(ControlP, Call).
-
-control_pid_direct(#kapps_call{control_p=ControlP}) ->
-    ControlP.
-
--spec control_pid_helper(kapps_helper_function(), call()) -> call().
-control_pid_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
-    Call#kapps_call{control_p_helper=Fun}.
-
--spec clear_control_pid_helper(call()) -> call().
-clear_control_pid_helper(#kapps_call{}=Call) ->
-    Call#kapps_call{control_p_helper=fun default_helper_function/2}.
-
--spec clear_control_helper(call()) -> call().
-clear_control_helper(#kapps_call{}=Call) ->
-    Call#kapps_call{control_p_helper=fun default_helper_function/2
-                   ,control_q_helper=fun default_helper_function/2
-                   }.
+-spec control_p(call() | control_queue()) -> api_binary().
+control_p(#kapps_call{control_p=ControlP}) -> ControlP;
+control_p({_, ControlP}) -> ControlP.
 
 -spec set_controller_queue(kz_term:ne_binary(), call()) -> call().
 set_controller_queue(ControllerQ, #kapps_call{}=Call) when is_binary(ControllerQ) ->

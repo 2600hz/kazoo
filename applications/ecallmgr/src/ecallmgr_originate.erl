@@ -245,7 +245,7 @@ handle_cast({'originate_ready'}, #state{node=_Node}=State) ->
                      ,queue=Q
                      }=State1} ->
             CtrlQ = gen_listener:queue_name(Pid),
-            _ = publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
+            _ = publish_originate_ready(CtrlQ, Pid, UUID, JObj, Q, ServerId),
             {'noreply', State1#state{tref=start_abandon_timer()}};
         {'error', _E} ->
             lager:debug("failed to start control process: ~p", [_E]),
@@ -285,7 +285,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
             lager:debug("originate is executing, waiting for completion"),
             bind_to_call_events(CallId),
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
-            _ = publish_originate_started(ServerId, CallId, JObj, CtrlQ),
+            _ = publish_originate_started(ServerId, CallId, JObj, CtrlQ, CtrlPid),
             {'noreply', State#state{uuid={'api', CallId}}};
         {'error', Error} ->
             lager:debug("failed to originate: ~p", [Error]),
@@ -661,14 +661,15 @@ publish_error(Error, UUID, Request, ServerId) ->
 cleanup_error(<<"-ERR ", E/binary>>) -> E;
 cleanup_error(E) -> E.
 
--spec publish_originate_ready(kz_term:ne_binary(), created_uuid() | kz_term:ne_binary(), kz_json:object(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
-publish_originate_ready(CtrlQ, {_, UUID}, Request, Q, ServerId) ->
-    publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId);
-publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
+-spec publish_originate_ready(kz_term:ne_binary(), pid(), created_uuid() | kz_term:ne_binary(), kz_json:object(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
+publish_originate_ready(CtrlQ, CtrlP, {_, UUID}, Request, Q, ServerId) ->
+    publish_originate_ready(CtrlQ, CtrlP, UUID, Request, Q, ServerId);
+publish_originate_ready(CtrlQ, CtrlP, UUID, Request, Q, ServerId) ->
     lager:debug("originate command is ready, waiting for originate_execute"),
     Props = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Request, UUID)}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Control-Queue">>, CtrlQ}
+            ,{<<"Control-PID">>, kz_term:to_binary(CtrlP)}
              | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
             ],
     kapi_dialplan:publish_originate_ready(ServerId, Props).
@@ -691,24 +692,26 @@ publish_originate_resp(ServerId, JObj, UUID) ->
                               ], JObj),
     kapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_started(kz_term:api_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-publish_originate_started('undefined', _, _, _) -> 'ok';
-publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
+-spec publish_originate_started(kz_term:api_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), pid()) -> 'ok'.
+publish_originate_started('undefined', _, _, _, _) -> 'ok';
+publish_originate_started(ServerId, CallId, JObj, CtrlQ, CtrlP) ->
     Resp = kz_json:from_list(
              [{<<"Call-ID">>, CallId}
              ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
              ,{<<"Control-Queue">>, CtrlQ}
+             ,{<<"Control-PID">>, kz_term:to_binary(CtrlP)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapi_resource:publish_originate_started(ServerId, Resp).
 
--spec publish_originate_uuid(kz_term:api_binary(), created_uuid() | kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-publish_originate_uuid('undefined', _, _, _) -> 'ok';
-publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
+-spec publish_originate_uuid(kz_term:api_binary(), created_uuid() | kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), pid()) -> 'ok'.
+publish_originate_uuid('undefined', _, _, _, _) -> 'ok';
+publish_originate_uuid(ServerId, UUID, JObj, CtrlQ, CtrlP) ->
     Resp = props:filter_undefined(
              [{<<"Outbound-Call-ID">>, UUID}
              ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-             ,{<<"Outbound-Call-Control-Queue">>, CtrlQueue}
+             ,{<<"Outbound-Call-Control-Queue">>, CtrlQ}
+             ,{<<"Outbound-Call-Control-PID">>, kz_term:to_binary(CtrlP)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("sent originate_uuid to ~s", [ServerId]),
@@ -719,7 +722,7 @@ maybe_send_originate_uuid({_, UUID}, Pid, #state{server_id=ServerId
                                                 ,originate_req=JObj
                                                 }) ->
     CtlQ = gen_listener:queue_name(Pid),
-    publish_originate_uuid(ServerId, UUID, JObj, CtlQ).
+    publish_originate_uuid(ServerId, UUID, JObj, CtlQ, Pid).
 
 -spec find_originate_timeout(kz_json:object()) -> pos_integer().
 find_originate_timeout(JObj) ->

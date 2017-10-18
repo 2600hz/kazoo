@@ -2968,8 +2968,7 @@ send_command(Command, Call) when is_list(Command) ->
     'true' = kapps_call:is_call(Call),
 
     CustomPublisher = kapps_call:custom_publish_function(Call),
-    CtrlQ = kapps_call:control_queue(Call),
-    CtrlP = kapps_call:control_pid(Call),
+    {CtrlQ, CtrlP} = kapps_call:control_queue(Call),
     case is_function(CustomPublisher, 2) of
         'true' -> CustomPublisher(Command, Call);
         'false' when is_binary(CtrlQ) ->
@@ -2981,9 +2980,9 @@ send_command(Command, Call) when is_list(Command) ->
                 Pid when is_pid(Pid) -> _ = kz_amqp_channel:consumer_pid(Pid), 'ok';
                 _Else -> 'ok'
             end,
-            Insert = props:filter_undefined([{<<"Call-ID">>, CallId}
-                                            ,{?KEY_DELIVER_TO_PID, CtrlP}
-                                            ]),
+            Insert = [{<<"Call-ID">>, CallId}
+                     ,{?KEY_DELIVER_TO_PID, CtrlP}
+                     ],
             Prop =
                 props:insert_values(Insert, Command) ++
                 kz_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion),
