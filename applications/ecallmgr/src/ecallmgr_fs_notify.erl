@@ -192,15 +192,15 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
             lager:error("invalid contact : ~p : ~p", [RegistrationContact, Registration]);
         Contact ->
             SIPHeaders = <<"X-KAZOO-AOR : ", ToAccount/binary, "\r\n">>,
-            Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-                      ,{"contact-uri", Contact}
-                      ,{"extra-headers", SIPHeaders}
-                      ,{"to-uri", To}
-                      ,{"from-uri", From}
-                      ,{"event-string", "message-summary"}
-                      ,{"content-type", "application/simple-message-summary"}
-                      ,{"content-length", kz_term:to_list(length(Body))}
-                      ,{"body", lists:flatten(Body)}
+            Headers = [{<<"profile">>, <<?DEFAULT_FS_PROFILE>>}
+                      ,{<<"contact-uri">>, Contact}
+                      ,{<<"extra-headers">>, SIPHeaders}
+                      ,{<<"to-uri">>, To}
+                      ,{<<"from-uri">>, From}
+                      ,{<<"event-string">>, <<"message-summary">>}
+                      ,{<<"content-type">>, <<"application/simple-message-summary">>}
+                      ,{<<"content-length">>, kz_term:to_binary(length(Body))}
+                      ,{<<"body">>, Body}
                       ],
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
             lager:debug("sent MWI update to '~s' via ~s: ~p", [Contact, Node, Resp])
