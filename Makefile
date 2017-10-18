@@ -5,7 +5,7 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged
 
 all: compile rel/dev-vm.args
 
@@ -241,3 +241,53 @@ sdks:
 
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
+
+
+CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
+TO_FMT := $(git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
+CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
+
+circle-pre:
+	@pip install --upgrade pip
+	@pip install PyYAML mkdocs pyembed-markdown jsonschema
+
+circle-docs:
+	@./scripts/state-of-docs.sh || true
+	@$(MAKE) apis
+	@$(MAKE) docs
+
+circle-codechecks:
+	@./scripts/code_checks.bash $(CHANGED)
+	@$(MAKE) code_checks
+	@./scripts/validate-js.sh $(CHANGED)
+
+circle-fmt:
+	@$(if $(TO_FMT), $(MAKE) fmt)
+	@$(MAKE) elvis
+
+circle-build:
+	@$(MAKE) clean deps kazoo xref sup_completion
+
+circle-schemas:
+	@$(MAKE) validate-schemas
+	@$(if $(CHANGED_SWAGGER), $(MAKE) circle-swagger)
+
+circle-swagger:
+	@-$(MAKE) validate-swagger
+
+circle-unstaged:
+	echo Unstaged changes!
+	git status --porcelain
+	git --no-pager diff
+	echo 'Maybe try `make apis` and see if that fixes anything ;)'
+	exit 1
+
+circle-dialyze:
+	@$(MAKE) build-plt
+	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze
+
+circle-release:
+	@$(MAKE) build-ci-release
+
+circle: circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release
+	@$(if $(git status --porcelain | wc -l), $(MAKE) circle-unstaged)
