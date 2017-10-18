@@ -17,6 +17,7 @@
         ,channel_bridge/1
         ,channel_unbridge/1
         ,channel_data/1
+        ,channel_sync/1
         ,channel_hold/1, channel_unhold/1
         ]).
 
@@ -35,6 +36,7 @@ init() ->
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_DATA">>, ?MODULE, 'channel_data'),
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_HOLD">>, ?MODULE, 'channel_hold'),
     kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_UNHOLD">>, ?MODULE, 'channel_unhold'),
+    kazoo_bindings:bind(<<"event_stream.process.call_event.CHANNEL_SYNC">>, ?MODULE, 'channel_sync'),
     'ok'.
 
 -spec channel_create(map()) -> any().
@@ -42,20 +44,24 @@ channel_create(#{node := Node, call_id := UUID, payload := JObj}) ->
     maybe_authorize_channel(Node, UUID, JObj),
     ecallmgr_fs_channels:new(jobj_to_record(Node, UUID, JObj)).
 
--spec channel_destroy(tuple()) -> any().
-channel_destroy({Node, UUID, _Category, _Event, _JObj}) ->
+-spec channel_destroy(map()) -> any().
+channel_destroy(#{node := Node, call_id := UUID}) ->
     _ = ecallmgr_fs_channels:destroy(UUID, Node).
 
--spec channel_answer(tuple()) -> any().
-channel_answer({_Node, UUID, _Category, _Event, _JObj}) ->
+-spec channel_answer(map()) -> any().
+channel_answer(#{call_id := UUID}) ->
     _ = ecallmgr_fs_channels:update(UUID, #channel.answered, 'true').
 
--spec channel_data(tuple()) -> any().
-channel_data({Node, UUID, _Category, _Event, JObj}) ->
+-spec channel_data(map()) -> any().
+channel_data(#{node := Node, call_id := UUID, payload := JObj}) ->
     ecallmgr_fs_channels:updates(UUID, jobj_to_update(Node, UUID, JObj)).
 
--spec channel_bridge(tuple()) -> any().
-channel_bridge({_Node, UUID, _Category, _Event, JObj}) ->
+-spec channel_sync(map()) -> any().
+channel_sync(#{node := Node, call_id := UUID, payload := JObj}) ->
+    ecallmgr_fs_channels:updates(UUID, jobj_to_update(Node, UUID, JObj)).
+
+-spec channel_bridge(map()) -> any().
+channel_bridge(#{call_id := UUID, payload := JObj}) ->
     OtherLeg = kz_json:get_ne_binary_value(<<"Bridge-B-Unique-ID">>, JObj),
     ecallmgr_fs_channels:updates(UUID, props:filter_undefined(
                                          [{#channel.other_leg, OtherLeg}
@@ -65,18 +71,18 @@ channel_bridge({_Node, UUID, _Category, _Event, JObj}) ->
                                 ),
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, UUID).
 
--spec channel_unbridge(tuple()) -> any().
-channel_unbridge({_Node, UUID, _Category, _Event, JObj}) ->
+-spec channel_unbridge(map()) -> any().
+channel_unbridge(#{call_id := UUID, payload := JObj}) ->
     OtherLeg = kz_json:get_ne_binary_value(<<"Bridge-B-Unique-ID">>, JObj),
     ecallmgr_fs_channels:update(UUID, #channel.other_leg, 'undefined'),
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, 'undefined').
 
--spec channel_hold(tuple()) -> any().
-channel_hold({_Node, UUID, _Category, _Event, _JObj}) ->
+-spec channel_hold(map()) -> any().
+channel_hold(#{call_id := UUID}) ->
     ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'true').
 
--spec channel_unhold(tuple()) -> any().
-channel_unhold({_Node, UUID, _Category, _Event, _JObj}) ->
+-spec channel_unhold(map()) -> any().
+channel_unhold(#{call_id := UUID}) ->
     ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'false').
 
 %%%===================================================================
@@ -155,7 +161,7 @@ handling_locally(Node, OtherLeg) ->
     end.
 
 maybe_authorize_channel(Node, UUID, JObj) ->
-    case kz_json:get_value([<<"Custom-Channel-Vars-X">>, <<"Ecallmgr-Node">>], JObj) =:= kz_term:to_binary(node()) of
+    case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], JObj) =:= kz_term:to_binary(node()) of
         'true' -> authorize_channel(Node, UUID, JObj);
         'false' -> 'ok'
     end.
