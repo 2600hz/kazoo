@@ -262,7 +262,7 @@ circle-codechecks:
 	@./scripts/validate-js.sh $(CHANGED)
 
 circle-fmt:
-	@$(if "$(TO_FMT)", $(MAKE) fmt)
+	@$(if $(TO_FMT), $(MAKE) fmt)
 	@$(MAKE) elvis
 
 circle-build:
