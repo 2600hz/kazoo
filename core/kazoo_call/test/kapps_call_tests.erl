@@ -288,7 +288,7 @@ validate_kapps_call_trunkstore_req(Call) ->
 
 validate_kapps_call_trunkstore_win(Call) ->
     [{"verify control queue is 'undefined'"
-     ,?_assertEqual('undefined', kapps_call:control_queue(Call))
+     ,?_assertEqual({<<"ecallmgr@apps001.2600hz.local-<0.28561.28>-a4a36185">>, <<"<0.456.0>">>}, kapps_call:control_queue(Call))
      }
     ,{"verify the CCV channel authorized is the expected value"
      ,?_assertEqual(<<"true">>, kapps_call:custom_channel_var(<<"Channel-Authorized">>, Call))
