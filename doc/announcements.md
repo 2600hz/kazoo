@@ -2,19 +2,6 @@
 
 This file will serve as a reference point for upcoming announcements, both of the temporal nature (this library will be deprecated in 6 months) and version-specific (upgrading from X to Y will require A, B, and C).
 
-
-## Notices
-
-
-### Further Module Name Changes in Core
-
-As the code base has grown and new authors have joined the team over the years, the core module naming has become increasingly inconsistent. In order to make module names predictable, remove obscure references (such as wht\\\_\*) and adhere to stronger coding standards, we will be making these consistent. This will be the last refactor to core and as before the `scripts/wh-to-kz.sh` script will be extended to provide developers with a tool to refactor any modules they have created.
-
-This final refactor has been contentious as we discussed the value a consistent naming scheme in core would bring. This has delayed the final phase of the renaming initiative but we are now preparing to preform this action. We feel that the benefits outweigh disadvantages and understand that once 4.0 has been released as stable we will not have an opportunity to correct this until the next major version.
-
-We hope that you agree and are not inconvenienced by this change. As always we are here to help or answer any questions! Thank you for your understanding.
-
-
 ## Versions
 
 ### 4.2
@@ -50,6 +37,19 @@ We hope that you agree and are not inconvenienced by this change. As always we a
 
     cb\_queues and cb\_agents have been moved to be part of ACDc's modules. Please know that you will need acdc present if you wish to use ACDc's Crossbar endpoints in a particular Erlang VM.
 
+3. The configuration /etc/kazoo/core/vm.args should no longer be modified locally
+
+    Changes to vm.args is resulting in RPMnew files that will keep kazoo from starting - simply overwrite the vm.args with vm.args.rpmnew
+    
+    Also, you should no longer edit vm.args all parameters are now pulled from config.ini.
+
+4. Kamailio Auto Discovery of FreeSWITCH servers
+
+    Kamilio will automatically manage the dispatcher list, drawn from the list of FreeSWITCH servers connected to eCallMgr.  To check the current status use the command: kazoo-Kamailio status
+
+    > **Note:** Dbtext, /etc/kazoo/kamailio/dbtext, is no longer used.  You can override the automatic discovery and set the dispatcher list manually but you must use the SQL interface: KazooDB
+    
+    > **Note:** Make sure your Kamailio is properly federated on a multi-zone cluster to avoid inter zone call looping
 
 ### 4.0
 
