@@ -416,7 +416,8 @@ load_view(#load_view_params{view = View
           ]),
 
     IncludeOptions =
-        case has_qs_filter(Context) of
+        case has_qs_filter(Context)
+            orelse should_load_full_docs(Context) of
             'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
             'false' -> DefaultOptions
         end,
@@ -994,16 +995,32 @@ apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
     end.
 
 -spec maybe_apply_custom_filter(cb_context:context(), filter_fun(), kz_json:objects()) -> kz_json:objects().
-maybe_apply_custom_filter(_Context, 'undefined', JObjs) -> JObjs;
+maybe_apply_custom_filter(Context, 'undefined', JObjs) ->
+    maybe_apply_custom_filter(Context, fun(X, Acc) -> [X | Acc] end, JObjs);
 maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
     Fun = case is_function(FilterFun, 2) of
               'true' -> FilterFun;
               'false' -> fun(J, Acc) -> FilterFun(Context, J, Acc) end
           end,
     [JObj
-     || JObj <- lists:foldl(Fun, [], JObjs),
+     || JObj <- lists:foldl(maybe_full_docs_fun(Context, Fun), [], JObjs),
         not kz_term:is_empty(JObj)
     ].
+
+maybe_full_docs_fun(Context, Fun) ->
+    maybe_full_docs_fun(Context, Fun, should_load_full_docs(Context)).
+maybe_full_docs_fun(_Context, Fun, 'false') ->
+    Fun;
+maybe_full_docs_fun(_Context, Fun, 'true') ->
+    lager:debug("loading full docs"),
+    %% Check whether something has been added by the filter function to
+    %% decide whether whe should add this doc
+    fun(J, Acc) ->
+            case Fun(J, Acc) of
+                Acc -> Acc;
+                _ -> [kz_json:get_value(<<"doc">>, J) | Acc]
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1280,6 +1297,17 @@ is_filter_key({<<"created_to">>, _}) -> 'true';
 is_filter_key({<<"modified_from">>, _}) -> 'true';
 is_filter_key({<<"modified_to">>, _}) -> 'true';
 is_filter_key(_) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a context, determine if the full docs should be loaded in a
+%% load_view
+%% @end
+%%--------------------------------------------------------------------
+should_load_full_docs(Context) ->
+    kz_term:is_true(cb_context:req_param(Context, <<"full_docs">>))
+        andalso kapps_config:get_is_true(?CONFIG_CAT, <<"allow_fetch_full_docs">>, 'false').
 
 %%--------------------------------------------------------------------
 %% @private
