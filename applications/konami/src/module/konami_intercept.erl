@@ -49,7 +49,7 @@ maybe_update_metaflow(Data, Call, Results, CallId) ->
             lager:debug("no matching originate_uuid"),
             {'stop', Call};
         [OriginateUUID|_] ->
-            ControlQueue = kapps_call:control_queue(kapps_call:from_originate_uuid(JObj, Call)),
+            ControlQueue = kapps_call:control_queue(kapps_call:from_originate_uuid(OriginateUUID, Call)),
             lager:debug("should use ~p for control of ~s", [ControlQueue, CallId]),
             maybe_update_metaflow_control(Data, Call, CallId, ControlQueue, source_leg_of_dtmf(Data, Call))
     end.
