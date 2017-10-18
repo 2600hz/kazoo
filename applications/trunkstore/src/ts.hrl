@@ -45,7 +45,7 @@
                            ,route_req_jobj = kz_json:new() :: kz_json:object()
                            ,ep_data = kz_json:new() :: kz_json:object() %% data for the endpoint, either an actual endpoint or an offnet request
                            ,amqp_worker :: api_pid()
-                           ,callctl_q :: api_ne_binary()
+                           ,callctl_q :: api_control_q()
                            ,call_cost = 0.0 :: float()
                            ,failover :: api_object()
                            ,kapps_call :: kapps_call:call()

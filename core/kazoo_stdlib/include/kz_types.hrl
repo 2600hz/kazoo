@@ -66,6 +66,8 @@
 -type api_non_neg_integer() :: non_neg_integer() | 'undefined'.
 -type api_float() :: float() | 'undefined'.
 
+-type api_control_q() :: {binary(), binary()} | 'undefined'.
+
 -type kz_deeplist() :: iolist(). %[any() | kz_deeplist()].
 
 -type kz_std_return() :: {'ok', any()} | {'error', any()}.

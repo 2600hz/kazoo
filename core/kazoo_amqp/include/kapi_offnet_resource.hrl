@@ -11,6 +11,7 @@
 -define(KEY_CCVS, <<"Custom-Channel-Vars">>).
 -define(KEY_REQUESTOR_CCVS, <<"Requestor-Custom-Channel-Vars">>).
 -define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
+-define(KEY_CONTROL_PID, <<"Control-PID">>).
 -define(KEY_CSHS, <<"Custom-SIP-Headers">>).
 -define(KEY_REQUESTOR_CSHS, <<"Requestor-Custom-SIP-Headers">>).
 -define(KEY_ENABLE_T38 ,<<"Enable-T38-Fax">>).

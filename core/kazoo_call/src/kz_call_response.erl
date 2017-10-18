@@ -29,13 +29,13 @@ config_doc_id() ->
 %% played as part of the error.
 %% @end
 %%--------------------------------------------------------------------
--spec send(ne_binary(), ne_binary(), api_binary()) ->
+-spec send(ne_binary(), api_control_q(), ne_binary()) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary() | kapps_call:call(), ne_binary(), api_binary(), api_binary()) ->
+-spec send(ne_binary() | kapps_call:call(), api_control_q(), api_binary(), api_binary()) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary(), ne_binary(), api_binary(), api_binary(), api_binary()) ->
+-spec send(ne_binary(), api_control_q(), api_binary(), api_binary(), api_binary()) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
 
@@ -109,7 +109,7 @@ send(CallId, CtrlQ, Code, Cause, Media) ->
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId}.
 
--spec do_send(ne_binary(), ne_binary(), kz_json:objects()) -> 'ok'.
+-spec do_send(ne_binary(), api_control_q(), kz_json:objects()) -> 'ok'.
 do_send(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
               ,{<<"Call-ID">>, CallId}
@@ -117,12 +117,7 @@ do_send(CallId, CtrlQ, Commands) ->
               ,{<<"Msg-ID">>, kz_binary:rand_hex(6)}
                | kz_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
               ],
-    kz_amqp_worker:cast(Command
-                       ,fun(C) ->
-                                {'ok', Payload} = kapi_dialplan:queue(C),
-                                kapi_dialplan:publish_action(CtrlQ, Payload)
-                        end
-                       ).
+    kz_amqp_worker:cast(Command, fun(P) -> kapi_dialplan:publish_command(CtrlQ, P) end).
 
 %%--------------------------------------------------------------------
 %% @public

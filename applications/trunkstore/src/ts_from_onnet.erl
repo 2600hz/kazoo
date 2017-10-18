@@ -213,10 +213,8 @@ send_park(State, Command) ->
 send_offnet(State, Command) ->
     CtlQ = ts_callflow:get_control_queue(State),
     ts_callflow:send_command(State
-                            ,[{<<"Control-Queue">>, CtlQ}
-                              |Command
-                             ]
-                            ,fun kapi_offnet_resource:publish_req/1
+                            ,Command
+                            ,fun(P) -> kapi_offnet_resource:publish_ctl_req(CtlQ, P) end
                             ),
     Timeout = props:get_integer_value(<<"Timeout">>, Command),
     wait_for_bridge(State, CtlQ, Timeout).

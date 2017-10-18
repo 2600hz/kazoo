@@ -34,7 +34,7 @@
 -record(state, {endpoints = [] :: kz_json:objects()
                ,resource_req :: kapi_offnet_resource:req()
                ,request_handler :: api_pid()
-               ,control_queue :: api_binary()
+               ,control_queue :: api_control_q()
                ,response_queue :: api_binary()
                ,queue :: api_binary()
                ,timeout :: api_reference()
