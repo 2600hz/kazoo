@@ -15,7 +15,10 @@
             "properties": {
                 "bucket": {
                     "description": "Bucket name to store data to",
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^\\s]*$",
+                    "minLength": 6,
+                    "maxLength": 63
                 },
                 "bucket_access_method": {
                     "description": "how to access the host.",
@@ -31,12 +34,17 @@
                     "type": "boolean"
                 },
                 "host": {
-                    "description": "the s3 host",
-                    "type": "string"
+                    "description": "the s3 host, leave empty for default",
+                    "type": "string",
+                    "pattern": "^[^\\s]*$",
+                    "minLength": 1
                 },
                 "key": {
                     "description": "AWS Key to use",
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^\\s]*$",
+                    "minLength": 1,
+                    "maxLength": 128,
                 },
                 "port": {
                     "description": "port to use",
@@ -44,7 +52,9 @@
                 },
                 "region": {
                     "description": "the region where the bucket is located",
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^\\s]*$",
+                    "minLength": 1
                 },
                 "scheme": {
                     "description": "scheme to use to access host",
@@ -56,7 +66,10 @@
                 },
                 "secret": {
                     "description": "AWS Secret to use",
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^\\s]*$",
+                    "minLength": 1,
+                    "maxLength": 128,
                 }
             },
             "required": [
