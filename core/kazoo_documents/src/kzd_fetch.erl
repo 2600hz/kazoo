@@ -24,7 +24,7 @@
         ,fetch_winning_pid/1
         ,controller_queue/1, controller_pid/1
         ,node/1
-        
+
         ,auth_nonce/1
         ,auth_response/1
         ,auth_expires/1
