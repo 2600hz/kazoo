@@ -39,7 +39,7 @@ directory_lookup(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
 
 -spec maybe_sip_auth_response(atom(), ne_binary(), kz_json:object()) -> fs_handlecall_ret().
 maybe_sip_auth_response(Node, Id, JObj) ->
-    case kz_json:get_value(<<"sip_auth_response">>, JObj) of
+    case kzd_fetch:auth_response(JObj) of
         'undefined' -> maybe_kamailio_association(Node, Id, JObj);
         _ ->
             lager:debug("attempting to get device password to verify SIP auth response"),
@@ -71,50 +71,49 @@ directory_not_found(Node, FetchId) ->
     lager:debug("sending directory not found XML to ~w", [Node]),
     freeswitch:fetch_reply(Node, FetchId, 'directory', iolist_to_binary(Xml)).
 
--spec lookup_user(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_handlecall_ret().
-lookup_user(Node, Id, Method,  Props) ->
-    Domain = props:get_value(<<"domain">>, Props),
+-spec lookup_user(atom(), ne_binary(), ne_binary(), kz_json:object()) -> fs_handlecall_ret().
+lookup_user(Node, Id, Method,  JObj) ->
+    Domain = kz_json:get_value(<<"domain">>, JObj),
     {'ok', Xml} =
-        case get_auth_realm(Props) of
+        case get_auth_realm(JObj) of
             AuthRealm=?NE_BINARY ->
                 [Realm|_] = binary:split(AuthRealm, [<<":">>, <<";">>]),
-                Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
-                ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Props),
+                Username = kz_json:get_first_defined([<<"user">>, <<"Auth-User">>], JObj),
+                ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, JObj),
                 handle_lookup_resp(Method, Domain, Username, ReqResp);
             _R ->
-                lager:error("bad auth realm: ~p", [_R]),
-                props:to_log(Props, <<"lookup_user">>),
+                lager:error_unsafe("bad auth realm: ~p : ~s", [_R, kz_json:encode(JObj, ['pretty'])]),
                 ecallmgr_fs_xml:not_found()
         end,
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
     freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
 
--spec get_auth_realm(kz_proplist()) -> ne_binary().
-get_auth_realm(Props) ->
-    case props:get_first_defined([<<"sip_auth_realm">>
-                                 ,<<"domain">>
-                                 ], Props)
+-spec get_auth_realm(kz_json:object()) -> ne_binary().
+get_auth_realm(JObj) ->
+    case kz_json:get_first_defined([<<"sip_auth_realm">>
+                                   ,<<"domain">>
+                                   ], JObj)
     of
-        'undefined' -> get_auth_uri_realm(Props);
+        'undefined' -> get_auth_uri_realm(JObj);
         Realm ->
             case kz_network_utils:is_ipv4(Realm)
                 orelse kz_network_utils:is_ipv6(Realm)
             of
-                'true' -> get_auth_uri_realm(Props);
+                'true' -> get_auth_uri_realm(JObj);
                 'false' -> kz_term:to_lower_binary(Realm)
             end
     end.
 
--spec get_auth_uri_realm(kz_proplist()) -> ne_binary().
-get_auth_uri_realm(Props) ->
-    AuthURI = props:get_value(<<"sip_auth_uri">>, Props, <<>>),
+-spec get_auth_uri_realm(kz_json:object()) -> ne_binary().
+get_auth_uri_realm(JObj) ->
+    AuthURI = kz_json:get_value(<<"sip_auth_uri">>, JObj, <<>>),
     case binary:split(AuthURI, <<"@">>) of
         [_, Realm] -> kz_term:to_lower_binary(Realm);
         _Else ->
-            props:get_first_defined([<<"Auth-Realm">>
-                                    ,<<"sip_request_host">>
-                                    ,<<"sip_to_host">>
-                                    ], Props)
+            kz_json:get_first_defined([<<"Auth-Realm">>
+                                      ,<<"sip_request_host">>
+                                      ,<<"sip_to_host">>
+                                      ], JObj)
     end.
 
 -spec handle_lookup_resp(ne_binary(), ne_binary(), ne_binary()
@@ -137,35 +136,35 @@ handle_lookup_resp(_, _, _, {'error', _R}) ->
     lager:debug("authn request lookup failed: ~p", [_R]),
     ecallmgr_fs_xml:not_found().
 
--spec maybe_query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec maybe_query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), kz_json:object()) ->
                                    {'ok', kz_json:object()} |
                                    {'error', any()}.
-maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
+maybe_query_registrar(Realm, Username, Node, Id, Method, JObj) ->
     case kz_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
-        {'error', 'not_found'} -> query_registrar(Realm, Username, Node, Id, Method, Props)
+        {'error', 'not_found'} -> query_registrar(Realm, Username, Node, Id, Method, JObj)
     end.
 
--spec query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), kz_json:object()) ->
                              {'ok', kz_json:object()} |
                              {'error', any()}.
-query_registrar(Realm, Username, Node, Id, Method, Props) ->
+query_registrar(Realm, Username, Node, Id, Method, JObj) ->
     lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm, Method]),
     Req = [{<<"Msg-ID">>, Id}
-          ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-          ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-          ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Props)}
-          ,{<<"Orig-Port">>, ecallmgr_util:get_orig_port(Props)}
+          ,{<<"To">>, kzd_fetch:auth_to(JObj)}
+          ,{<<"From">>, kzd_fetch:auth_from(JObj)}
+          ,{<<"Orig-IP">>, kzd_fetch:from_network_ip(JObj)}
+          ,{<<"Orig-Port">>, kzd_fetch:from_network_port(JObj)}
           ,{<<"Method">>, Method}
           ,{<<"Auth-User">>, Username}
           ,{<<"Auth-Realm">>, Realm}
-          ,{<<"Expires">>, props:get_value(<<"expires">>, Props)}
-          ,{<<"Auth-Nonce">>, props:get_value(<<"sip_auth_nonce">>, Props)}
-          ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
-          ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
-          ,{<<"User-Agent">>, props:get_value(<<"sip_user_agent">>, Props)}
+          ,{<<"Expires">>, kzd_fetch:auth_expires(JObj)}
+          ,{<<"Auth-Nonce">>, kzd_fetch:auth_nonce(JObj)}
+          ,{<<"Auth-Response">>, kzd_fetch:auth_response(JObj)}
+          ,{<<"Custom-SIP-Headers">>, kzd_fetch:ccvs(JObj)}
+          ,{<<"User-Agent">>, kzd_fetch:user_agent(JObj)}
           ,{<<"Media-Server">>, kz_term:to_binary(Node)}
-          ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
+          ,{<<"Call-ID">>, kzd_fetch:call_id(JObj)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
