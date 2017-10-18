@@ -46,23 +46,38 @@ stop_active_parser(Id)
 -spec start_freeswitch_parser(text(), text(), text()) -> 'no_return'.
 start_freeswitch_parser(Filename, LogIP, LogPort) ->
     Args = [{'parser_args', Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
-    {'ok', Name} = ci_parsers_sup:start_child('ci_parser_freeswitch', Args),
-    io:format("started ~p\n", [Name]),
-    'no_return'.
+    case ci_parsers_sup:start_child('ci_parser_freeswitch', Args) of
+        {'ok', Name} ->
+            io:format("started ~p\n", [Name]),
+            'no_return';
+        {'error', Reason} ->
+            io:format("failed to start parser: ~p\n", [Reason]),
+            'no_return'
+    end.
 
 -spec start_kamailio_parser(text(), text(), text()) -> 'no_return'.
 start_kamailio_parser(Filename, LogIP, LogPort) ->
     Args = [{'parser_args', Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
-    {'ok', Name} = ci_parsers_sup:start_child('ci_parser_kamailio', Args),
-    io:format("started ~p\n", [Name]),
-    'no_return'.
+    case ci_parsers_sup:start_child('ci_parser_kamailio', Args) of
+        {'ok', Name} ->
+            io:format("started ~p\n", [Name]),
+            'no_return';
+        {'error', Reason} ->
+            io:format("failed to start parser: ~p\n", [Reason]),
+            'no_return'
+    end.
 
 -spec start_hep_parser(text(), text()) -> 'no_return'.
 start_hep_parser(IP, Port) ->
     Args = [{'parser_args', kz_term:to_binary(IP), kz_term:to_integer(Port)}],
-    {'ok', Name} = ci_parsers_sup:start_child('ci_parser_hep', Args),
-    io:format("started ~p\n", [Name]),
-    'no_return'.
+    case ci_parsers_sup:start_child('ci_parser_hep', Args) of
+        {'ok', Name} ->
+            io:format("started ~p\n", [Name]),
+            'no_return';
+        {'error', Reason} ->
+            io:format("failed to start parser: ~p\n", [Reason]),
+            'no_return'
+    end.
 
 -spec flush() -> 'ok'.
 flush() -> ci_datastore:flush().

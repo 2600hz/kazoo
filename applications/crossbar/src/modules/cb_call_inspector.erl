@@ -213,7 +213,7 @@ filter_callids(CallIds) ->
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_filter_req/1
-                                    ,{call_inspector, true}
+                                    ,{call_inspector, fun kapi_inspector:filter_resp_v/1, true}
                                     )
     of
         {ok, JObjs} ->
