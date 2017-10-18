@@ -1,0 +1,189 @@
+{
+    "_attachments": {
+        "template.text/html": {
+            "content_type": "text/html",
+            "digest": "md5-ZEefC4wFGW/r4GYOvgBBUQ==",
+            "length": 9020,
+            "revpos": 96,
+            "stub": true
+        },
+        "template.text/plain": {
+            "content_type": "text/plain",
+            "digest": "md5-5jYTJGXdXClQb0vQQNkdFA==",
+            "length": 617,
+            "revpos": 95,
+            "stub": true
+        }
+    },
+    "_id": "notification.missed_call",
+    "_rev": "97-71c2b670fea908c85306a9f44f623668",
+    "bcc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "category": "sip",
+    "cc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "friendly_name": "Missed Call",
+    "from": "no-reply@example.com",
+    "macros": {
+        "account.id": {
+            "description": "Account ID",
+            "friendly_name": "Account ID",
+            "i18n_label": "account_id"
+        },
+        "account.language": {
+            "description": "Account Language",
+            "friendly_name": "Account Language",
+            "i18n_label": "account_language"
+        },
+        "account.name": {
+            "description": "Name of the account",
+            "friendly_name": "Account Name",
+            "i18n_label": "account_name"
+        },
+        "account.parent_id": {
+            "description": "Parent Account ID",
+            "friendly_name": "Parent Account ID",
+            "i18n_label": "account_parent_id"
+        },
+        "account.parent_name": {
+            "description": "Parent Account Name",
+            "friendly_name": "Parent Account Name",
+            "i18n_label": "account_parent_name"
+        },
+        "account.parent_realm": {
+            "description": "Parent Account Realm",
+            "friendly_name": "Parent Account Realm",
+            "i18n_label": "account_parent_realm"
+        },
+        "account.realm": {
+            "description": "SIP Realm of the account",
+            "friendly_name": "Account Realm",
+            "i18n_label": "account_realm"
+        },
+        "account.timezone": {
+            "description": "Account Timezone",
+            "friendly_name": "Account Timezone",
+            "i18n_label": "account_timezone"
+        },
+        "call_id": {
+            "description": "Call ID of the caller",
+            "friendly_name": "Call ID",
+            "i18n_label": "call_id"
+        },
+        "callee_id.name": {
+            "description": "Name of the callee",
+            "friendly_name": "Callee ID Name",
+            "i18n_label": "callee_id_name"
+        },
+        "callee_id.number": {
+            "description": "Number of the callee",
+            "friendly_name": "Callee ID Number",
+            "i18n_label": "callee_id_number"
+        },
+        "caller_id.name": {
+            "description": "Name of the caller",
+            "friendly_name": "Caller ID Name",
+            "i18n_label": "caller_id_name"
+        },
+        "caller_id.number": {
+            "description": "Number of the caller",
+            "friendly_name": "Caller ID Number",
+            "i18n_label": "caller_id_number"
+        },
+        "date_called.local": {
+            "description": "When was the voicemail left (Local time)",
+            "friendly_name": "Date",
+            "i18n_label": "date_called_local"
+        },
+        "date_called.utc": {
+            "description": "When was the voicemail left (UTC)",
+            "friendly_name": "Date (UTC)",
+            "i18n_label": "date_called_utc"
+        },
+        "from.realm": {
+            "description": "SIP From Realm",
+            "friendly_name": "From Realm",
+            "i18n_label": "from_realm"
+        },
+        "from.user": {
+            "description": "SIP From Username",
+            "friendly_name": "From User",
+            "i18n_label": "from_user"
+        },
+        "missed_call.reason": {
+            "description": "Reason why the call is terminated without been bridged or left a voicemail message",
+            "friendly_name": "Missed Call Reason",
+            "i18n_label": "missed_call_reasom"
+        },
+        "system.encoded_hostname": {
+            "description": "Hostname of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Hostname",
+            "i18n_label": "system_encoded_hostname"
+        },
+        "system.encoded_node": {
+            "description": "Node name of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Node",
+            "i18n_label": "system_encoded_node"
+        },
+        "system.hostname": {
+            "description": "Hostname of system generating the email",
+            "friendly_name": "Hostname",
+            "i18n_label": "system_hostname"
+        },
+        "system.node": {
+            "description": "Node name of system generating the email",
+            "friendly_name": "Node",
+            "i18n_label": "system_node"
+        },
+        "to.realm": {
+            "description": "SIP To Realm",
+            "friendly_name": "To Realm",
+            "i18n_label": "to_realm"
+        },
+        "to.user": {
+            "description": "SIP To Username",
+            "friendly_name": "To User",
+            "i18n_label": "to_user"
+        },
+        "user.email": {
+            "description": "Email of the user",
+            "friendly_name": "Email",
+            "i18n_label": "user_email"
+        },
+        "user.first_name": {
+            "description": "First name of the user",
+            "friendly_name": "First Name",
+            "i18n_label": "user_first_name"
+        },
+        "user.last_name": {
+            "description": "Last name of the user",
+            "friendly_name": "Last Name",
+            "i18n_label": "user_last_name"
+        },
+        "user.timezone": {
+            "description": "Timezone of the user",
+            "friendly_name": "Timezone",
+            "i18n_label": "user_timezone"
+        },
+        "user.username": {
+            "description": "Username",
+            "friendly_name": "Username",
+            "i18n_label": "username"
+        }
+    },
+    "pvt_account_db": "system_config",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63675350016,
+    "pvt_document_hash": "a9dd4f37dba637e2f44560a830be692b",
+    "pvt_modified": 63675350016,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "notification",
+    "subject": "Missed call from {{caller_id.name}} ({{caller_id.number}})",
+    "to": {
+        "type": "original"
+    }
+}

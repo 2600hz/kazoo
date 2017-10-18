@@ -120,7 +120,7 @@ get_current_balance(DataJObj) ->
 -spec get_balance_threshold(kz_json:object()) -> ne_binary().
 get_balance_threshold(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    wht_util:pretty_print_dollars(low_balance_threshold(AccountId)).
+    wht_util:pretty_print_dollars(kz_account:low_balance_threshold(AccountId)).
 
 -spec build_macro_data(kz_json:object()) -> kz_proplist().
 build_macro_data(DataJObj) ->
@@ -135,7 +135,6 @@ build_macro_data(DataJObj) ->
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
     maybe_add_user_data(UserKey, Acc, DataJObj);
 maybe_add_macro_key(_Key, Acc, _DataJObj) ->
-    ?LOG_DEBUG("unprocessed macro key ~s: ~p", [_Key, _DataJObj]),
     Acc.
 
 -spec maybe_add_user_data(kz_json:path(), kz_proplist(), kz_json:object()) -> kz_proplist().
@@ -143,7 +142,6 @@ maybe_add_user_data(Key, Acc, DataJObj) ->
     User = get_user(DataJObj),
     case kz_json:get_value(Key, User) of
         'undefined' ->
-            ?LOG_DEBUG("unprocessed user macro key ~s: ~p", [Key, User]),
             Acc;
         V ->
             UserMacros = props:get_value(<<"user">>, Acc, []),
@@ -154,7 +152,7 @@ maybe_add_user_data(Key, Acc, DataJObj) ->
 get_user(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     UserId = kz_json:get_value(<<"user_id">>, DataJObj),
-    case fetch_user(AccountId, UserId) of
+    case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             ?LOG_DEBUG("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
@@ -162,21 +160,8 @@ get_user(DataJObj) ->
     end.
 
 -ifdef(TEST).
-current_account_dollars(?AN_ACCOUNT_ID) -> {ok, 38.6592}.
-
-low_balance_threshold(?AN_ACCOUNT_ID) ->
-    {ok,AccountJObj} = kz_json:fixture(?APP, "an_account.json"),
-    kz_account:low_balance_threshold(AccountJObj).
-
-fetch_user(?AN_ACCOUNT_ID, ?AN_ACCOUNT_USER_ID) ->
-    kz_json:fixture(?APP, "an_account_user.json").
+current_account_dollars(_) -> {ok, 3.6592}.
 -else.
 current_account_dollars(AccountId) ->
     wht_util:current_account_dollars(AccountId).
-
-low_balance_threshold(AccountId) ->
-    kz_account:low_balance_threshold(AccountId).
-
-fetch_user(AccountId, UserId) ->
-    kzd_user:fetch(AccountId, UserId).
 -endif.

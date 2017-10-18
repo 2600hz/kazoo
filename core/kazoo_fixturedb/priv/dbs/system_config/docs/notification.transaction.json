@@ -1,0 +1,269 @@
+{
+    "_attachments": {
+        "template.text/html": {
+            "content_type": "text/html",
+            "digest": "md5-85ko7pTq/FpdeVIt0OFwRA==",
+            "length": 12813,
+            "revpos": 176,
+            "stub": true
+        },
+        "template.text/plain": {
+            "content_type": "text/plain",
+            "digest": "md5-BatnzjVMM1mYNH0PF2r+Fg==",
+            "length": 2213,
+            "revpos": 175,
+            "stub": true
+        }
+    },
+    "_id": "notification.transaction",
+    "_rev": "177-97b66aecbf00a7fe2ccf40e3795f8669",
+    "bcc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "category": "account",
+    "cc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "friendly_name": "Transaction Success",
+    "from": "no-reply@example.com",
+    "macros": {
+        "account.id": {
+            "description": "Account ID",
+            "friendly_name": "Account ID",
+            "i18n_label": "account_id"
+        },
+        "account.language": {
+            "description": "Account Language",
+            "friendly_name": "Account Language",
+            "i18n_label": "account_language"
+        },
+        "account.name": {
+            "description": "Name of the account",
+            "friendly_name": "Account Name",
+            "i18n_label": "account_name"
+        },
+        "account.parent_id": {
+            "description": "Parent Account ID",
+            "friendly_name": "Parent Account ID",
+            "i18n_label": "account_parent_id"
+        },
+        "account.parent_name": {
+            "description": "Parent Account Name",
+            "friendly_name": "Parent Account Name",
+            "i18n_label": "account_parent_name"
+        },
+        "account.parent_realm": {
+            "description": "Parent Account Realm",
+            "friendly_name": "Parent Account Realm",
+            "i18n_label": "account_parent_realm"
+        },
+        "account.realm": {
+            "description": "SIP Realm of the account",
+            "friendly_name": "Account Realm",
+            "i18n_label": "account_realm"
+        },
+        "account.timezone": {
+            "description": "Account Timezone",
+            "friendly_name": "Account Timezone",
+            "i18n_label": "account_timezone"
+        },
+        "plan.activation_charge": {
+            "description": "Activation Charge",
+            "friendly_name": "Activation Charge",
+            "i18n_label": "plan_activation_charge"
+        },
+        "plan.category": {
+            "description": "Plan Category",
+            "friendly_name": "Plan Category",
+            "i18n_label": "plan_category"
+        },
+        "plan.id": {
+            "description": "Plan ID",
+            "friendly_name": "Plan ID",
+            "i18n_label": "plan_id"
+        },
+        "plan.item": {
+            "description": "Plan Item",
+            "friendly_name": "Plan Item",
+            "i18n_label": "plan_item"
+        },
+        "system.encoded_hostname": {
+            "description": "Hostname of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Hostname",
+            "i18n_label": "system_encoded_hostname"
+        },
+        "system.encoded_node": {
+            "description": "Node name of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Node",
+            "i18n_label": "system_encoded_node"
+        },
+        "system.hostname": {
+            "description": "Hostname of system generating the email",
+            "friendly_name": "Hostname",
+            "i18n_label": "system_hostname"
+        },
+        "system.node": {
+            "description": "Node name of system generating the email",
+            "friendly_name": "Node",
+            "i18n_label": "system_node"
+        },
+        "transaction.add_ons": {
+            "description": "Total Add-Ons Cost Amount",
+            "friendly_name": "Add-Ons",
+            "i18n_label": "add_ons"
+        },
+        "transaction.address.company": {
+            "description": "Billing Address Company",
+            "friendly_name": "Billing Address Company",
+            "i18n_label": "address_company"
+        },
+        "transaction.address.country_name": {
+            "description": "Billing Cddress Nountry_name",
+            "friendly_name": "Billing Address Country Name",
+            "i18n_label": "address_country_name"
+        },
+        "transaction.address.email": {
+            "description": "Billing Address Email",
+            "friendly_name": "Billing Address Email",
+            "i18n_label": "bill_addr_email"
+        },
+        "transaction.address.extended_address": {
+            "description": "Billing Address Extended Address",
+            "friendly_name": "Billing Address Extended Address",
+            "i18n_label": "address_extended_address"
+        },
+        "transaction.address.first_name": {
+            "description": "Billing Address First Name",
+            "friendly_name": "Billing Address First Name",
+            "i18n_label": "address_first_name"
+        },
+        "transaction.address.last_name": {
+            "description": "Billing Address Last_ Nme",
+            "friendly_name": "Billing Address Last Name",
+            "i18n_label": "address_last_name"
+        },
+        "transaction.address.locality": {
+            "description": "Billing Address Locality",
+            "friendly_name": "Billing Address Locality",
+            "i18n_label": "address_locality"
+        },
+        "transaction.address.phone": {
+            "description": "Billing Address Phone",
+            "friendly_name": "Billing Address Phone",
+            "i18n_label": "address_phone"
+        },
+        "transaction.address.postal_code": {
+            "description": "Billing Pd Cess postal_code",
+            "friendly_name": "Billing Address Postal Code",
+            "i18n_label": "address_postal_code"
+        },
+        "transaction.address.region": {
+            "description": "Billing Address Region",
+            "friendly_name": "Billing Address Region",
+            "i18n_label": "address_region"
+        },
+        "transaction.address.street_address": {
+            "description": "Billing Address Street Address",
+            "friendly_name": "Billing Address Street Address",
+            "i18n_label": "address_street_address"
+        },
+        "transaction.amount": {
+            "description": "The Transaction amount",
+            "friendly_name": "Amount",
+            "i18n_label": "amount"
+        },
+        "transaction.card_last_four": {
+            "description": "The Last Four Digits of Card",
+            "friendly_name": "Card-Last-Four",
+            "i18n_label": "card_last_four"
+        },
+        "transaction.currency_code": {
+            "description": "Currency Code",
+            "friendly_name": "Currency-Code",
+            "i18n_label": "currency_code"
+        },
+        "transaction.date.local": {
+            "description": "Local Date Time",
+            "friendly_name": "Local Date Time",
+            "i18n_label": "date_local"
+        },
+        "transaction.date.timezone": {
+            "description": "Local Timezone",
+            "friendly_name": "Local Timezone",
+            "i18n_label": "date_timezone"
+        },
+        "transaction.date.utc": {
+            "description": "UTC Date Time",
+            "friendly_name": "UTC Date Time",
+            "i18n_label": "date_utc"
+        },
+        "transaction.discounts": {
+            "description": "Total Discounts Amount",
+            "friendly_name": "Discounts",
+            "i18n_label": "discounts"
+        },
+        "transaction.id": {
+            "description": "Transaction ID",
+            "friendly_name": "ID",
+            "i18n_label": "id"
+        },
+        "transaction.purchase_order": {
+            "description": "Purchase Order Reason",
+            "friendly_name": "Purchase-Order",
+            "i18n_label": "purchase_order"
+        },
+        "transaction.response": {
+            "description": "Transaction processor response",
+            "friendly_name": "Response",
+            "i18n_label": "response"
+        },
+        "transaction.success": {
+            "description": "Whether or not the Transaction was successful",
+            "friendly_name": "Success",
+            "i18n_label": "success"
+        },
+        "transaction.tax_amount": {
+            "description": "Tax Amount",
+            "friendly_name": "Tax-Amount",
+            "i18n_label": "tax_amount"
+        },
+        "user.email": {
+            "description": "Email of the user",
+            "friendly_name": "Email",
+            "i18n_label": "user_email"
+        },
+        "user.first_name": {
+            "description": "First name of the user",
+            "friendly_name": "First Name",
+            "i18n_label": "user_first_name"
+        },
+        "user.last_name": {
+            "description": "Last name of the user",
+            "friendly_name": "Last Name",
+            "i18n_label": "user_last_name"
+        },
+        "user.timezone": {
+            "description": "Timezone of the user",
+            "friendly_name": "Timezone",
+            "i18n_label": "user_timezone"
+        },
+        "user.username": {
+            "description": "Username",
+            "friendly_name": "Username",
+            "i18n_label": "username"
+        }
+    },
+    "pvt_account_db": "system_config",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63675350017,
+    "pvt_document_hash": "fe1875c96ed73688201e71d664ada016",
+    "pvt_modified": 63675350017,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "notification",
+    "subject": "Receipt for your payment of account '{{account.name}}'",
+    "to": {
+        "type": "admins"
+    }
+}

@@ -179,6 +179,10 @@ wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
+-ifdef(TEST).
+store_local(_, _, _, _) ->
+    'ok'.
+-else.
 store_local(Srv, K, V, Props) when is_atom(Srv) ->
     case whereis(Srv) of
         'undefined' ->
@@ -192,6 +196,7 @@ store_local(Srv, K, V, Props) when is_pid(Srv) ->
                                              ,callback=get_props_callback(Props)
                                              ,origin=get_props_origin(Props)
                                              }}).
+-endif.
 
 -spec peek_local(atom(), any()) -> {'ok', any()} |
                                    {'error', 'not_found'}.
@@ -221,12 +226,21 @@ erase_local(Srv, K) ->
     end.
 
 -spec flush_local(text() | atom()) -> 'ok'.
+-ifdef(TEST).
+flush_local(_) ->
+    'ok'.
+-else.
 flush_local(Srv) when not is_atom(Srv) ->
     flush_local(kz_term:to_atom(Srv));
 flush_local(Srv) ->
     gen_server:cast(Srv, {'flush'}).
+-endif.
 
 -spec fetch_keys_local(atom()) -> list().
+-ifdef(TEST).
+fetch_keys_local(_) ->
+    [].
+-else.
 fetch_keys_local(Srv) ->
     MatchSpec = [{#cache_obj{key = '$1'
                             ,_ = '_'
@@ -235,9 +249,14 @@ fetch_keys_local(Srv) ->
                  ,['$1']
                  }],
     ets:select(Srv, MatchSpec).
+-endif.
 
 -spec filter_erase_local(atom(), fun((any(), any()) -> boolean())) ->
                                 non_neg_integer().
+-ifdef(TEST).
+filter_erase_local(_, _) ->
+    0.
+-else.
 filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V}, Count) ->
                       case Pred(K, V) of
@@ -249,8 +268,13 @@ filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
              ,0
              ,Srv
              ).
+-endif.
 
 -spec filter_local(atom(), fun((any(), any()) -> boolean())) -> [{any(), any()}].
+-ifdef(TEST).
+filter_local(_, _) ->
+    [].
+-else.
 filter_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V}, Acc) ->
                       case Pred(K, V) of
@@ -262,6 +286,7 @@ filter_local(Srv, Pred) when is_function(Pred, 2) ->
              ,[]
              ,Srv
              ).
+-endif.
 
 -spec dump_local(text()) -> 'ok'.
 dump_local(Srv) -> dump_local(Srv, 'false').
@@ -280,6 +305,10 @@ dump_local(Srv, ShowValue) ->
     'ok'.
 
 -spec dump_table(ets:tab(), boolean()) -> 'ok'.
+-ifdef(TEST).
+dump_table(_Tab, _) ->
+    'ok'.
+-else.
 dump_table(Tab, ShowValue) ->
     Now = kz_time:now_s(),
     io:format("Table ~p~n", [ets:info(Tab, 'name')]),
@@ -316,6 +345,7 @@ display_cache_obj(#cache_obj{key=Key
         'false' -> 'ok'
     end,
     io:format("~n", []).
+-endif.
 
 -spec wait_for_key_local(atom(), any()) -> {'ok', any()} |
                                            {'error', 'timeout'}.
@@ -325,6 +355,10 @@ display_cache_obj(#cache_obj{key=Key
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT).
 
+-ifdef(TEST).
+wait_for_key_local(_, _, _) ->
+    {error, timeout}.
+-else.
 wait_for_key_local(Srv, Key, Timeout) ->
     {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}),
     lager:debug("waiting for message with ref ~p", [Ref]),
@@ -333,6 +367,7 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {'store', Ref, Value} -> {'ok', Value};
         {_, Ref, _} -> {'error', 'timeout'}
     end.
+-endif.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -634,6 +669,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-ifndef(TEST).
 -spec get_props_expires(kz_proplist()) -> kz_timeout().
 get_props_expires(Props) ->
     case props:get_value('expires', Props) of
@@ -653,6 +689,7 @@ get_props_callback(Props) ->
 
 -spec get_props_origin(kz_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
+-endif.
 
 -spec expire_objects(ets:tab(), [ets:tab()]) -> non_neg_integer().
 -spec expire_objects(ets:tab(), [ets:tab()], list()) -> non_neg_integer().

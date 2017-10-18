@@ -12,10 +12,6 @@
         ,handle_req/1
         ]).
 
--ifdef(TEST).
--export([macros/1]).
--endif.
-
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"topup">>).

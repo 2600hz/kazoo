@@ -19,6 +19,9 @@
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 -spec maybe_publish_docs(ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
+-ifdef(TEST).
+maybe_publish_docs(_, _, _) -> 'ok'.
+-else.
 maybe_publish_docs(Db, Docs, JObjs) ->
     _ = kz_datamgr:change_notice()
         andalso should_publish_db_changes(Db)
@@ -35,16 +38,24 @@ publish_docs(Db, Docs, JObjs) ->
                   ]
           end),
     'ok'.
+-endif.
 
 -spec maybe_publish_doc(ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-ifdef(TEST).
+maybe_publish_doc(_, _, _) -> 'ok'.
+-else.
 maybe_publish_doc(Db, Doc, JObj) ->
     _ = kz_datamgr:change_notice()
         andalso should_publish_db_changes(Db)
         andalso should_publish_doc(Doc)
         andalso kz_util:spawn(fun publish_doc/3, [Db, Doc, JObj]),
     kzs_cache:flush_cache_doc(Db, JObj).
+-endif.
 
 -spec publish_db(ne_binary(), kapi_conf:action()) -> boolean().
+-ifdef(TEST).
+publish_db(_, _) -> 'true'.
+-else.
 publish_db(DbName, Action) ->
     _ = kz_util:spawn(fun() -> do_publish_db(DbName, Action) end),
     'true'.
@@ -62,6 +73,7 @@ should_publish_doc(Doc) ->
 should_publish_db_changes(DbName) ->
     Key = <<"publish_", (kz_term:to_binary(kzs_util:db_classification(DbName)))/binary, "_changes">>,
     kazoo_data_config:get_is_true(Key, 'true').
+-endif.
 
 -spec publish_doc(ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
 publish_doc(DbName, Doc, JObj) ->
@@ -77,6 +89,7 @@ publish_doc(DbName, Doc, JObj) ->
             publish('edited', kz_term:to_binary(DbName), publish_fields(Doc, JObj))
     end.
 
+-ifndef(TEST).
 -spec do_publish_db(ne_binary(), kapi_conf:action()) -> 'ok'.
 do_publish_db(DbName, Action) ->
     Props =
@@ -91,6 +104,7 @@ do_publish_db(DbName, Action) ->
         ],
     Fun = fun(P) -> kapi_conf:publish_db_update(Action, DbName, P) end,
     kz_amqp_worker:cast(Props, Fun).
+-endif.
 
 -spec publish_fields(kz_json:object()) -> kz_proplist().
 -spec publish_fields(kz_json:object(), kz_json:object()) -> kz_json:object().

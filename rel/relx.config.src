@@ -9,6 +9,7 @@ ToFilterOut = [rabbitmq_codegen
               ,'.settings'
               ,skel
               ,parse_trans
+              ,meck
               ]
 ++ case os:getenv("KAZOO_DEV") of
        Str when is_list(Str) ->

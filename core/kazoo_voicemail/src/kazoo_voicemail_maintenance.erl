@@ -21,11 +21,6 @@
 
 -include("kz_voicemail.hrl").
 
--define(LOG(Format, Args),
-        lager:debug(Format, Args),
-        io:format(Format ++ "\n", Args)
-       ).
-
 -define(VIEW_MISSING_METADATA, <<"mailbox_messages/missing_metadata">>).
 
 %%--------------------------------------------------------------------
@@ -95,7 +90,7 @@ modb_filter(_, _, _) -> 'false'.
 -spec recover_messages(ne_binaries(), non_neg_integer()) -> 'ok'.
 recover_messages([], _) -> 'ok';
 recover_messages([MODb|MODbs], Total) ->
-    ?LOG("(~p/~p) attempting to recover voicemail messages from ~s", [length(MODbs)+1, Total, MODb]),
+    ?SUP_LOG_DEBUG("(~p/~p) attempting to recover voicemail messages from ~s", [length(MODbs)+1, Total, MODb]),
     _ = recover_missing_metadata(MODb),
     timer:sleep(50),
     recover_messages(MODbs, Total).
@@ -104,12 +99,12 @@ recover_messages([MODb|MODbs], Total) ->
 recover_missing_metadata(MODb) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(MODb, ?VIEW_MISSING_METADATA, ViewOptions) of
-        {'ok', []} -> ?LOG("  no messages found with missing metadata", []);
+        {'ok', []} -> ?SUP_LOG_DEBUG("  no messages found with missing metadata", []);
         {'ok', Messages} ->
             JObjs = [kz_json:get_value(<<"doc">>, Message) || Message <- Messages],
             recover_missing_metadata(MODb, JObjs);
         {'error', 'not_found'} ->
-            ?LOG("  adding view ~s", [?VIEW_MISSING_METADATA]),
+            ?SUP_LOG_DEBUG("  adding view ~s", [?VIEW_MISSING_METADATA]),
             _ = kapi_maintenance:refresh_database(MODb),
             _ = kapi_maintenance:refresh_views(MODb),
             recover_missing_metadata(MODb);
@@ -117,7 +112,7 @@ recover_missing_metadata(MODb) ->
             timer:sleep(1000),
             recover_missing_metadata(MODb);
         {'error', _R} ->
-            ?LOG("  unable to query missing_metadata view: ~p", [_R])
+            ?SUP_LOG_DEBUG("  unable to query missing_metadata view: ~p", [_R])
     end.
 
 -spec recover_missing_metadata(ne_binary(), kz_json:objects()) -> 'ok'.
@@ -131,14 +126,14 @@ maybe_rebuild_message_metadata(JObj) ->
     case kz_doc:attachment_names(JObj) of
         [AttachmentName|_] -> rebuild_message_metadata(JObj, AttachmentName);
         _Else ->
-            ?LOG("  ~s missing attachment, skipping", [kz_json:get_value(<<"_id">>, JObj)]),
+            ?SUP_LOG_DEBUG("  ~s missing attachment, skipping", [kz_json:get_value(<<"_id">>, JObj)]),
             JObj
     end.
 
 -spec rebuild_message_metadata(kz_json:object(), ne_binary()) -> kz_json:object().
 rebuild_message_metadata(JObj, AttachmentName) ->
     MediaId = kz_json:get_value(<<"_id">>, JObj),
-    ?LOG("  rebuilding metadata for ~s", [MediaId]),
+    ?SUP_LOG_DEBUG("  rebuilding metadata for ~s", [MediaId]),
     Length = kz_doc:attachment_length(JObj, AttachmentName, 0),
     AccountId = kz_doc:account_id(JObj),
     CIDNumber = kz_privacy:anonymous_caller_id_number(AccountId),
@@ -164,7 +159,7 @@ renotify(Account, MessageId) ->
     MODb = get_modb(Account, MessageId),
     AccountId = get_account_id(Account),
     case kz_datamgr:open_doc(MODb, MessageId) of
-        {'error', _R} -> ?LOG("unable to find message ~s in ~s: ~p", [MODb, MessageId, _R]);
+        {'error', _R} -> ?SUP_LOG_DEBUG("unable to find message ~s in ~s: ~p", [MODb, MessageId, _R]);
         {'ok', JObj} ->
             Call = rebuild_kapps_call(JObj, AccountId),
             BoxId = kzd_box_message:source_id(JObj),
@@ -179,21 +174,21 @@ renotify(Account, MessageId) ->
 
 -spec log_renotify_result(ne_binary(), ne_binary(), kz_amqp_worker:request_return()) -> 'ok'.
 log_renotify_result(MessageId, BoxId, {'ok', JObj}) ->
-    ?LOG("re-notify sent message ~s from mailbox ~s: ~s"
-        ,[MessageId, BoxId, kz_json:encode(JObj)]
-        );
+    ?SUP_LOG_DEBUG("re-notify sent message ~s from mailbox ~s: ~s"
+                  ,[MessageId, BoxId, kz_json:encode(JObj)]
+                  );
 log_renotify_result(MessageId, BoxId, {'error', JObj}) ->
-    ?LOG("re-notify failed to send message ~s from mailbox ~s: ~s"
-        ,[MessageId, BoxId, kz_json:encode(JObj)]
-        );
+    ?SUP_LOG_DEBUG("re-notify failed to send message ~s from mailbox ~s: ~s"
+                  ,[MessageId, BoxId, kz_json:encode(JObj)]
+                  );
 log_renotify_result(MessageId, BoxId, {'timeout', JObjs}) ->
-    ?LOG("re-notify timed out sending message ~s from mailbox ~s: ~s"
-        ,[MessageId, BoxId, kz_json:encode(JObjs)]
-        );
+    ?SUP_LOG_DEBUG("re-notify timed out sending message ~s from mailbox ~s: ~s"
+                  ,[MessageId, BoxId, kz_json:encode(JObjs)]
+                  );
 log_renotify_result(MessageId, BoxId, Result) ->
-    ?LOG("unexpected error in re-notify sending message ~s from mailbox ~s: ~p"
-        ,[MessageId, BoxId, Result]
-        ).
+    ?SUP_LOG_DEBUG("unexpected error in re-notify sending message ~s from mailbox ~s: ~p"
+                  ,[MessageId, BoxId, Result]
+                  ).
 
 -spec get_modb(ne_binary(), ne_binary()) -> ne_binary().
 get_modb(?MATCH_MODB_SUFFIX_ENCODED(_A, _B, _C, _Y, _M) = MODb, _) -> MODb;

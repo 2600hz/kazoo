@@ -115,7 +115,7 @@ running_apps_list() ->
 
 -spec initialize_kapps() -> 'ok'.
 initialize_kapps() ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     kz_datamgr:db_exists(?KZ_ACCOUNTS_DB)
         orelse kapps_maintenance:refresh(),
     kapps_config:migrate(),

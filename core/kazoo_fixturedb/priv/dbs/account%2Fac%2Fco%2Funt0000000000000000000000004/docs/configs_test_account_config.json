@@ -1,0 +1,55 @@
+{
+    "_id": "configs_test_account_config",
+    "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
+    "one_root_key": "sub_account",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000004",
+    "pvt_account_id": "account0000000000000000000000004",
+    "pvt_created": 63668324118,
+    "pvt_modified": 63668324118,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "account_config",
+    "root_obj_key": {
+        "2subaccount": "2subaccount_only",
+        "b_empty_list": [],
+        "b_key": "sub_account",
+        "b_keys": [
+            "OneSubAccount",
+            "TwoSubAccount"
+        ],
+        "bol_key": false,
+        "f_key": 1.5,
+        "i_key": 3456,
+        "list_of_json": [
+            {
+                "name": "sub_account"
+            }
+        ],
+        "obj_empty_test": {
+            "obj_empty_sometimes": {},
+            "wand": "dnaw"
+        },
+        "obj_key": {
+            "from": "sub_account"
+        },
+        "sub+parent+empty_reseller+system": {
+            "from": "sub_account",
+            "obj_empty_sometimes": {},
+            "sub_account": true
+        },
+        "sub+parent+system": {
+            "from": "sub_account",
+            "obj_empty_sometimes": {},
+            "sub_account": true
+        },
+        "sub+reseller+system": {
+            "from": "sub_account",
+            "obj_empty_sometimes": {},
+            "sub_account": true
+        },
+        "sub_account+system": {
+            "from": "sub_account",
+            "obj_empty_sometimes": {},
+            "sub_account": true
+        }
+    }
+}

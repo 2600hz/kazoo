@@ -46,8 +46,8 @@ save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
                            Ok;
         Else -> Else
     catch
-        Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
-                 'failed'
+        Ex:Er -> ?LOG_DEBUG("exception ~p : ~p", [Ex, Er]),
+                 {'error', 'failed'}
     end.
 
 

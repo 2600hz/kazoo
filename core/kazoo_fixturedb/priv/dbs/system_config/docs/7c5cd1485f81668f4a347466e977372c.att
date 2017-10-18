@@ -1,0 +1,9 @@
+                Password Reset Request
+
+
+Hello{% if user.first_name or user.last_name %} {{user.first_name}} {{user.last_name}}{% endif %},
+
+We received a request to change the password of your VoIP services of account "{{account.name}}".
+If you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:
+
+{{link}}

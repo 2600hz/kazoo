@@ -382,7 +382,7 @@ send_empty_channel_resp(CallId, JObj) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs channels"),
     _ = ets:new(?CHANNELS_TBL, ['set'

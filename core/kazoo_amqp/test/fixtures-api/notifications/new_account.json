@@ -1,0 +1,15 @@
+{
+    "Account-API-Key": "apikey0000000000000000000000000000000000000000000000000000000003",
+    "Account-DB": "account%2Fac%2Fco%2Funt0000000000000000000000003",
+    "Account-ID": "account0000000000000000000000003",
+    "Account-Name": "Sub-Sub Account",
+    "Account-Realm": "paustu8.sip.2600hz.local",
+    "App-Name": "4.0.0",
+    "App-Version": "crossbar",
+    "Event-Category": "notification",
+    "Event-Name": "new_account",
+    "Msg-ID": "8a63d13585ed037f",
+    "Node": "kazoo_apps@apps001.example.com",
+    "Server-ID": "kazoo_apps@apps001.example.com-<0.595.0>-1f0d0793",
+    "System-Log-ID": "8a63d13585ed037f"
+}

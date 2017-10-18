@@ -1,20 +1,20 @@
 {
-    "_id": "configs_test_cat",
+    "_id": "configs_test_account_config",
     "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
-    "one_root_key": "subaccount2",
-    "pvt_account_db": "account%2F5b%2Fb4%2Fa2b6323bd02a77f1049669073643",
-    "pvt_account_id": "5bb4a2b6323bd02a77f1049669073643",
+    "one_root_key": "SubAccount",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000004",
+    "pvt_account_id": "account0000000000000000000000004",
     "pvt_created": 63668324118,
     "pvt_modified": 63668324118,
-    "pvt_node": "kazoo_apps@test.com",
+    "pvt_node": "kazoo_apps@example.com",
     "pvt_type": "account_config",
     "root_obj_key": {
         "2subaccount": "2subaccount_only",
         "b_empty_list": [],
-        "b_key": "subaccount2",
+        "b_key": "SubAccount",
         "b_keys": [
-            "OneSubAccount2",
-            "TwoSubAccount2"
+            "OneSubAccount",
+            "TwoSubAccount"
         ],
         "bol_key": false,
         "f_key": 1.5,
@@ -24,7 +24,7 @@
             "wand": "dnaw"
         },
         "obj_key": {
-            "from": "subaccount2"
+            "from": "SubAccount"
         }
     }
 }

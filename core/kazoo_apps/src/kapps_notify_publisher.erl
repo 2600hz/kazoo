@@ -102,7 +102,7 @@ handle_resp(NotifyType, Req, {'timeout', _}=Resp) ->
 %% check for notify update messages from teletype/notify apps
 %% @end
 %%--------------------------------------------------------------------
--spec check_for_failure(api_ne_binary(), api_terms(), {'ok' | 'returned' | 'timeout', kz_json:objects()}) -> 'ok'.
+-spec check_for_failure(api_ne_binary(), api_terms(), {'ok' | 'returned' | 'timeout', kz_json:object() | kz_json:objects()}) -> 'ok'.
 check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
     Reason = json_to_reason(Resp),
     case is_completed(Responses) of
@@ -199,7 +199,7 @@ collecting([JObj|_]) ->
 %% If it failed check the reason to see should it be handled.
 %% @end
 %%--------------------------------------------------------------------
--spec is_completed(kz_json:objects()) -> boolean().
+-spec is_completed(kz_json:object() | kz_json:objects()) -> boolean().
 is_completed([]) -> 'false';
 is_completed([JObj|_]) ->
     case kapi_notifications:notify_update_v(JObj)
@@ -214,7 +214,9 @@ is_completed([JObj|_]) ->
         %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
-    end.
+    end;
+is_completed(JObj) ->
+    is_completed([JObj]).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -346,7 +346,7 @@ handle_fs_xml_flush(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs handler"),
     _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
@@ -770,7 +770,7 @@ start_node_stats(#node{}) ->
 
 -spec start_preconfigured_servers() -> 'ok'.
 start_preconfigured_servers() ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     case get_configured_nodes() of
         Nodes when is_list(Nodes) ->
             _ = [kz_util:spawn(fun start_node_from_config/1, [N]) || N <- Nodes];

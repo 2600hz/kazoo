@@ -25,7 +25,7 @@
 -spec init({atom(), 'http'}, cowboy_req:req(), kz_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'}.
 init({_Any, 'http'}, Req0, HandlerOpts) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {Path, Req1} = cowboy_req:path(Req0),
     case get_magic_token(Path) of
         'undefined' -> {'ok', Req1, 'undefined'};

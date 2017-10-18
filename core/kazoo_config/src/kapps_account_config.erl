@@ -118,12 +118,12 @@ get_global(Account, Category) ->
     case load_config_from_account(account_id(Account), Category) of
         {ok, JObj} -> JObj;
         {error, no_account_id} ->
-            maybe_new_system_doc(load_config_from_system(Account, Category), Category);
+            maybe_new_doc(load_config_from_system(Account, Category), Category);
         {error, _} ->
             case load_config_from_reseller(Account, Category) of
                 {ok, JObj} -> JObj;
                 {error, _} ->
-                    maybe_new_system_doc(load_config_from_system(Account, Category), Category)
+                    maybe_new_doc(load_config_from_system(Account, Category), Category)
             end
     end.
 
@@ -140,12 +140,26 @@ get_from_reseller(Account, Category, Key) ->
 
 -spec get_from_reseller(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:api_json_term().
 get_from_reseller(Account, Category, Key, Default) ->
-    case load_config_from_reseller(Account, Category) of
+    case maybe_load_config_from_reseller(Account, Category) of
         {ok, JObj} ->
             get_global_from_doc(Category, Key, Default, JObj);
         {error, _} ->
             kapps_config:get(Category, Key, Default)
     end.
+
+-ifdef(TEST).
+%% for passing knm tests
+maybe_load_config_from_reseller(Account, _) when Account =:= <<"master_account_6992af0e9504d0b27">>;
+                                                 Account =:= <<"reseller_account_b113394f16cb76d">>;
+                                                 Account =:= <<"child_account_670a04df0014d0b27a">>;
+                                                 Account =:= <<"unrelated_account_b113394f16cb71">> ->
+    {error, not_found};
+maybe_load_config_from_reseller(Account, Category) ->
+    load_config_from_reseller(Account, Category).
+-else.
+maybe_load_config_from_reseller(Account, Category) ->
+    load_config_from_reseller(Account, Category).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -268,18 +282,6 @@ load_config_from_system(_Account, Category) ->
     end.
 
 -spec load_config_from_reseller(api_account(), ne_binary()) -> kazoo_data:get_results_return().
--ifdef(TEST).
-load_config_from_reseller(Account, Category) ->
-    AccountId = account_id(Account),
-    case AccountId =/= no_account_id
-        andalso find_reseller_account(AccountId)
-    of
-        false -> {error, not_found};
-        [] -> {error, not_found};
-        [ResellerId] ->
-            give_me_something(<<"reseller_jobj">>, ResellerId, Category)
-    end.
--else.
 load_config_from_reseller(Account, Category) ->
     AccountId = account_id(Account),
     case AccountId =/= no_account_id
@@ -289,22 +291,14 @@ load_config_from_reseller(Account, Category) ->
         [] -> {error, not_found};
         [ResellerId] -> load_config_from_account(ResellerId, Category)
     end.
--endif.
 
 -spec load_config_from_account(account_or_not(), ne_binary()) -> kazoo_data:get_results_return().
--ifdef(TEST).
-load_config_from_account(no_account_id, _Category) ->
-    {error, no_account_id};
-load_config_from_account(AccountId, Category) ->
-    give_me_something(<<"account">>, AccountId, Category).
--else.
 load_config_from_account(no_account_id, _Category) ->
     {error, no_account_id};
 load_config_from_account(AccountId, Category) ->
     DocId = kapps_config_util:account_doc_id(Category),
     AccountDb = kz_util:format_account_db(AccountId),
     kz_datamgr:open_cache_doc(AccountDb, DocId, [{cache_failures, [not_found]}]).
--endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -321,7 +315,7 @@ load_config_from_account(AccountId, Category) ->
 %%--------------------------------------------------------------------
 -spec load_config_from_ancestors(ne_binary(), ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(AccountId, Category) ->
-    load_config_from_ancestors(AccountId, Category, is_reseller_account(AccountId)).
+    load_config_from_ancestors(AccountId, Category, kz_services:is_reseller(AccountId)).
 
 -spec load_config_from_ancestors(ne_binary(), ne_binary(), boolean()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(_, _, true) ->
@@ -352,7 +346,7 @@ load_config_from_ancestors_fold([], _Category, JObjs) ->
     {ok, JObjs};
 load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
     case {load_config_from_account(ParentId, Category)
-         ,is_reseller_account(ParentId)
+         ,kz_services:is_reseller(ParentId)
          }
     of
         {{ok, JObj}, true} ->
@@ -369,21 +363,6 @@ load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
             lager:debug("failed to get category ~s for account ~s: ~p", [Category, ParentId, _Reason]),
             load_config_from_ancestors_fold(AncestorIds, Category, JObjs)
     end.
-
--ifdef(TEST).
-is_reseller_account(AccountId) ->
-    give_me_something(<<"is_reseller">>, AccountId, undefined).
-find_reseller_account(AccountId) ->
-    case give_me_something(<<"reseller_id">>, AccountId, undefined) of
-        [AccountId] -> [];
-        Other -> Other
-    end.
-get_account_tree(AccountId) ->
-    give_me_something(<<"parent_id">>, AccountId, undefined).
--else.
--spec is_reseller_account(ne_binary()) -> boolean().
-is_reseller_account(AccountId) ->
-    kz_services:is_reseller(AccountId).
 
 -spec find_reseller_account(ne_binary()) -> ne_binaries().
 find_reseller_account(AccountId) ->
@@ -403,7 +382,6 @@ get_account_tree(AccountId) ->
             lager:debug("failed to find account ~p parents: ~p", [AccountId, _Reason]),
             []
     end.
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -412,10 +390,6 @@ get_account_tree(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set(api_account(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
--ifdef(TEST).
-set(_, _, Key, Value) ->
-    kz_json:set_value(Key, Value, kz_json:new()).
--else.
 set(Account, Category, Key, Value) ->
     maybe_set_account(account_id(Account), Category, Key, Value).
 
@@ -428,7 +402,6 @@ maybe_set_account(AccountId, Category, Key, Value) ->
     AccountDb = kz_util:format_account_db(AccountId),
     {ok, JObj2} = kz_datamgr:ensure_saved(AccountDb, JObj1),
     JObj2.
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -438,10 +411,6 @@ maybe_set_account(AccountId, Category, Key, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_global(api_account(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
--ifdef(TEST).
-set_global(_, _, Key, Value) ->
-    kz_json:set_value(Key, Value, kz_json:new()).
--else.
 set_global(Account, Category, Key, Value) ->
     set_account_or_merge_global(account_id(Account), Category, Key, Value).
 
@@ -456,7 +425,6 @@ set_account_or_merge_global(AccountId, Category, Key, Value) ->
     AccountDb = kz_util:format_account_db(AccountId),
     {ok, JObj1} = kz_datamgr:ensure_saved(AccountDb, Doc1),
     JObj1.
--endif.
 
 -spec update_config_for_saving(ne_binary(), kz_json:object()) -> kz_json:object().
 update_config_for_saving(AccountId, JObj) ->
@@ -545,16 +513,6 @@ maybe_merge_results(#{results := JObjs}, false) ->
     {ok, lists:last(JObjs)}.
 
 -spec store_in_strategy_cache(map(), kz_json:object()) -> {ok, kz_json:object()}.
--ifdef(TEST).
-store_in_strategy_cache(#{account_id := AccountId
-                         ,strategy := Strategy
-                         ,category := Category
-                         ,results := JObjs
-                         }, Result) ->
-    _CacheKey = strategy_cache_key(AccountId, Category, Strategy),
-    _Origins = lists:foldl(fun config_origins/2, [], JObjs),
-    {ok, Result}.
--else.
 store_in_strategy_cache(#{account_id := AccountId
                          ,strategy := Strategy
                          ,category := Category
@@ -564,7 +522,6 @@ store_in_strategy_cache(#{account_id := AccountId
     Origins = lists:foldl(fun config_origins/2, [], JObjs),
     kz_cache:store_local(?KAPPS_CONFIG_CACHE, CacheKey, Result, [{origin, Origins}]),
     {ok, Result}.
--endif.
 
 -spec config_origins(kz_json:object(), list()) -> list().
 config_origins(Doc, Acc) ->
@@ -647,11 +604,9 @@ account_id_from_jobj(_Obj, false) ->
 maybe_format_account_id(undefined) -> no_account_id;
 maybe_format_account_id(Account) -> kz_util:format_account_id(Account).
 
--spec maybe_new_system_doc({ok, kz_json:object()} | {error, any()}, ne_binary()) -> kz_json:object().
-maybe_new_system_doc({ok, JObj}, Category) ->
-    kz_doc:set_id(kz_doc:set_account_db(JObj, ?KZ_CONFIG_DB), Category);
-maybe_new_system_doc({error, _}, Category) ->
-    kz_doc:set_id(kz_doc:set_account_db(kz_json:new(), ?KZ_CONFIG_DB), Category).
+-spec maybe_new_doc({ok, kz_json:object()} | {error, any()}, ne_binary()) -> kz_json:object().
+maybe_new_doc({ok, JObj}, _) -> JObj;
+maybe_new_doc({error, _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
 
 
 %% ====================================================================
@@ -792,88 +747,3 @@ remove_config_setting(AccountDb, [{Id, Node, Setting} | Keys], JObj, Removed) ->
 %% NOTE: to support nested keys, update this merge function
 config_setting_key(Node, Setting) ->
     [Node, Setting].
-
--ifdef(TEST).
--spec give_me_something(ne_binary(), no_account_id, any()) ->
-                               undefined |
-                               boolean() |
-                               {ok, kz_json:object()} |
-                               {error, not_found | no_account_id}.
-%% An Account Config
-give_me_something(<<"account">>, AccountId, _)
-  when AccountId =:= ?CUSTOMIZED_RESELLER_UNDEFINED;
-       AccountId =:= ?CUSTOMIZED_SUBACCOUNT_1_UNDEFINED ->
-    {ok, kz_json:new()};
-give_me_something(<<"account">>, AccountId, _)
-  when AccountId =:= ?CUSTOMIZED_RESELLER_HIER; %%only load_from_ancestors
-       AccountId =:= ?SELF_RESELLER ->
-    {ok, kapps_config_util:fixture("test_cat_reseller")};
-give_me_something(<<"account">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
-    {ok, kapps_config_util:fixture("test_cat_subaccount_1")};
-%% only load_from_ancestors (clause below)
-give_me_something(<<"account">>, AccountId, _)
-  when AccountId =:= ?CUST_A_CUST_P_CUST_R;
-       AccountId =:= ?CUST_A_CUST_P_404_R;
-       AccountId =:= ?CUST_A_CUST_P_EMPTY_R;
-       AccountId =:= ?CUST_A_404_P_CUST_R;
-       AccountId =:= ?CUST_A_404_P_404_R ->
-    {ok, kapps_config_util:fixture("test_cat_subaccount_2")};
-give_me_something(<<"account">>, _AccountId, _) ->
-    {error, not_found};
-
-%% Reseller Id (load_from_reseller, load_from_ancestors when account tree is empty)
-give_me_something(<<"reseller_id">>, ?CUSTOMIZED_RESELLER, _) ->
-    [?SELF_RESELLER];
-give_me_something(<<"reseller_id">>, ?SELF_RESELLER, _) ->
-    [?SELF_RESELLER];
-give_me_something(<<"reseller_id">>, _AccountId, _) ->
-    [];
-
-%% A Reseller Config (only load_from_reseller)
-give_me_something(<<"reseller_jobj">>, ?SELF_RESELLER, _) ->
-    {ok, kapps_config_util:fixture("test_cat_reseller")};
-
-%% Account Tree (only load_from_ancestors)
-give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_CUST_R, _) ->
-    [?A_MASTER_ACCOUNT_ID
-    ,?CUSTOMIZED_RESELLER_HIER
-    ,?CUSTOMIZED_SUBACCOUNT_1
-    ];
-give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_404_R, _) ->
-    [?A_MASTER_ACCOUNT_ID
-    ,?NOT_CUSTOMIZED_RESELLER
-    ,?CUSTOMIZED_SUBACCOUNT_1
-    ];
-give_me_something(<<"parent_id">>, ?CUST_A_CUST_P_EMPTY_R, _) ->
-    [?A_MASTER_ACCOUNT_ID
-    ,?CUSTOMIZED_RESELLER_UNDEFINED
-    ,?CUSTOMIZED_SUBACCOUNT_1
-    ];
-give_me_something(<<"parent_id">>, ?CUST_A_404_P_CUST_R, _) ->
-    [?A_MASTER_ACCOUNT_ID
-    ,?CUSTOMIZED_RESELLER_HIER
-    ,?NOT_CUSTOMIZED_ALL_ACCOUNTS
-    ];
-give_me_something(<<"parent_id">>, ?CUST_A_404_P_404_R, _) ->
-    [?A_MASTER_ACCOUNT_ID
-    ,?NOT_CUSTOMIZED_RESELLER
-    ,?NOT_CUSTOMIZED_ALL_ACCOUNTS
-    ];
-give_me_something(<<"parent_id">>, ?CUSTOMIZED_SUBACCOUNT_1, _) ->
-    [?A_MASTER_ACCOUNT_ID
-    ,?CUSTOMIZED_RESELLER_HIER
-    ];
-give_me_something(<<"parent_id">>, _AccountId, _) ->
-    [];
-
-%% Is Reseller (only load_from_ancestors)
-give_me_something(<<"is_reseller">>, AccountId, _)
-  when AccountId =:= ?SELF_RESELLER;
-       AccountId =:= ?CUSTOMIZED_RESELLER_UNDEFINED;
-       AccountId =:= ?CUSTOMIZED_RESELLER_HIER;
-       AccountId =:= ?NOT_CUSTOMIZED_RESELLER ->
-    true;
-give_me_something(<<"is_reseller">>, _AccountId, _) ->
-    false.
-
--endif.

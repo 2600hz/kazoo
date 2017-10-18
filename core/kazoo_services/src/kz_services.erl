@@ -273,7 +273,21 @@ fetch_services_doc(?UNRELATED_ACCOUNT_ID, _NotFromCache)
     {error, not_found};
 fetch_services_doc(?WRONG_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
-    {error, wrong}.
+    {error, wrong};
+fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), _NotFromCache) ->
+    try kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
+        {ok, _}=OK -> OK;
+        {error, _} ->
+            ?LOG_DEBUG("~n~n NO SERVICE DOC FOR AccountId: ~p~n~n", [AccountId]),
+            kz_util:log_stacktrace(),
+            {error, wrong}
+            %% Not throwing since this is needed for one of the kapps_account_config test
+            %% {error, _}=Error ->
+            %% throw(Error)
+    catch %% for tests that did not start kazoo_fixturedb
+        error:badarg ->
+            {error, wrong}
+    end.
 -else.
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), cache_failures=Option) ->
     kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId, [Option]);
@@ -1335,10 +1349,10 @@ cascade_quantities(#kz_services{cascade_quantities = JObj}) -> JObj.
 
 -spec cascade_quantities(ne_binary(), boolean()) -> kz_json:object().
 cascade_quantities(Account=?NE_BINARY, 'false') ->
-    ?LOG_DEBUG("computing cascade quantities for ~s", [Account]),
+    lager:debug("computing cascade quantities for ~s", [Account]),
     do_cascade_quantities(Account, <<"services/cascade_quantities">>);
 cascade_quantities(Account=?NE_BINARY, 'true') ->
-    ?LOG_DEBUG("computing reseller cascade quantities for ~s", [Account]),
+    lager:debug("computing reseller cascade quantities for ~s", [Account]),
     do_cascade_quantities(Account, <<"services/reseller_quantities">>).
 
 -spec do_cascade_quantities(ne_binary(), ne_binary()) -> kz_json:object().
@@ -1383,7 +1397,22 @@ cascade_results(<<"services/reseller_quantities">>, ?A_RESELLER_ACCOUNT_ID) ->
          ,?ITEM(<<"phone_numbers">>, <<"did_us">>, 7)
          ,?ITEM(<<"users">>, <<"admin">>, 1)
          ,?ITEM(<<"users">>, <<"user">>, 1)
-         ]}.
+         ]};
+cascade_results(View, AccountId) ->
+    ViewOptions = ['group'
+                  ,'reduce'
+                  ,{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
+                  ],
+    case kz_datamgr:get_results(?KZ_SERVICES_DB, View, ViewOptions) of
+        {ok, _}=OK -> OK;
+        {error, _}=Error ->
+            ?LOG_DEBUG("~n~n NO VIEW FOR AccountId: ~p View: ~p~n~n", [AccountId, View]),
+            kz_util:log_stacktrace(),
+            Error
+            %% Not throwing since this is needed for one of the kapps_account_config test
+            %% throw(Error)
+    end.
 -else.
 cascade_results(View, AccountId) ->
     ViewOptions = ['group'
@@ -1536,7 +1565,9 @@ fetch_account(?A_MASTER_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_master_account.j
 fetch_account(?A_RESELLER_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_reseller_account.json");
 fetch_account(?A_SUB_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_sub_account.json");
 fetch_account(?B_SUB_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_sub_account.json");
-fetch_account(?UNRELATED_ACCOUNT_ID) -> kz_json:fixture(?APP, "unrelated_account.json").
+fetch_account(?UNRELATED_ACCOUNT_ID) -> kz_json:fixture(?APP, "unrelated_account.json");
+%% Line below is needed for one of the kapps_account_config test
+fetch_account(Account) -> kz_account:fetch(Account).
 -else.
 fetch_account(Account) -> kz_account:fetch(Account).
 -endif.

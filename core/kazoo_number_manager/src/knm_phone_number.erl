@@ -1518,9 +1518,9 @@ remove_denied_features(PN) ->
     DeniedFeatures = knm_providers:features_denied(PN),
     RemoveFromPvt = lists:usort(lists:flatmap(fun remove_in_private/1, DeniedFeatures)),
     RemoveFromPub = lists:usort(lists:flatmap(fun remove_in_public/1, DeniedFeatures)),
-    ?LOG_WARN("removing out of sync pvt features: ~s"
+    ?LOG_WARNING("removing out of sync pvt features: ~s"
              ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
-    ?LOG_WARN("removing out of sync pub features: ~s"
+    ?LOG_WARNING("removing out of sync pub features: ~s"
              ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
     NewPvt = kz_json:prune_keys(RemoveFromPvt, features(PN)),
     NewPub = kz_json:prune_keys(RemoveFromPub, doc(PN)),

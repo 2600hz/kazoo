@@ -1,0 +1,53 @@
+                Service Change
+
+
+Date: {{ time_stamp.local | date:"l, F j, Y H:i" }}
+
+Services for your sub-account '{{sub_account.name}}' have been changed.
+
+{% if service_changes %} Here is the summary of changes.
+=== Service Change Summary ===
+
+============================================
+{% for srv_cat, srv_item in service_changes %}
+Service Category: {{srv_cat}}
+{% for item, quantity in srv_item %}
+*   Item: {{item}}  Quantity: {{quantity}}
+{% endfor %}
+--------------------------------------------
+{% endfor %}
+
+{% endif %}
+
+
+Questions?
+Please email us and we'll be happy to help.
+
+Need to update your billing info?
+The Billing section can be accessed by your account owner{% if user.first_name or user.last_name %}, {{user.first_name}} {{user.last_name}}{% endif %}.
+
+
+Thank you for your business!
+
+
+
+{% if user.first_name or user.email %}User Information Making this Change
+
+    Name: {{user.first_name}} {{user.last_name}}
+    Email: {{user.email}}
+
+{% endif %}Affected Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+Re-seller Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

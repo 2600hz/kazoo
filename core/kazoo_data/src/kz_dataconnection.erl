@@ -185,7 +185,7 @@ connection_ready(Connection) ->
 reset_connection(Connection) ->
     C = Connection#data_connection{connected = false, ready = false},
     %% TODO: this is disabled for the moment to maintain backward
-    %% compatablity with couch_mgr which always assumed the connection
+    %% compatibility with couch_mgr which always assumed the connection
     %% was available
     %%    kz_dataconnections:update(C),
     C.

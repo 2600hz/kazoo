@@ -1,0 +1,36 @@
+                New Account
+
+
+> Thank you for registering!
+
+Welcome{% if admin.first_name %} {{admin.first_name}}{% else %} dear customer{% endif %},
+
+    Your account new '{{account.name}}' is ready to use,
+    here are some details to help get you started!
+
+
+=== Account Information ===
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+{% if admin.first_name or admin.email %}
+
+
+=== Administrator User Information ===
+
+    Name: {{admin.first_name}} {{admin.last_name}}
+    Email: {{admin.email}}
+    Timezone: {{admin.timezone}}
+{% endif %}{% if account.parent_id %}
+
+
+=== Parent Account Information ===
+
+    Account ID: {{account.parent_id}}
+    Account Name: {{account.parent_name}}
+    Account Realm: {{account.parent_realm}}{% endif %}
+
+
+
+Sent from {{system.encoded_node}}

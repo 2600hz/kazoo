@@ -1,0 +1,26 @@
+                Unfinished Port Request Reminder
+
+
+Port request "{{port_request.name}}" of account '{{account.name}}' has been submitted
+a while back, but didn't have any action on it.
+
+Please review the port request and fully sumbitted or cancel it.
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

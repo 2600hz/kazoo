@@ -1,0 +1,64 @@
+{
+    "_id": "account0000000000000000000000003",
+    "_rev": "3000-8f6bdc399b13a2f382927b1a5ed760f5",
+    "billing_id": "account0000000000000000000000003",
+    "plans": {},
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000003",
+    "pvt_account_id": "account0000000000000000000000003",
+    "pvt_created": 63648184037,
+    "pvt_dirty": true,
+    "pvt_document_hash": "c9641eba5c99737bb9c46b470ead6faf",
+    "pvt_modified": 63673596345,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_reseller": false,
+    "pvt_reseller_id": "account0000000000000000000000002",
+    "pvt_status": "good_standing",
+    "pvt_tree": [
+        "account0000000000000000000000001",
+        "account0000000000000000000000002"
+    ],
+    "pvt_type": "service",
+    "pvt_vsn": "1",
+    "quantities": {
+        "billing": {},
+        "branding": {
+            "whitelabel": 0
+        },
+        "devices": {
+            "mobile": 0,
+            "sip_device": 1,
+            "softphone": 0
+        },
+        "ips": {
+            "dedicated": 0
+        },
+        "ledgers": {},
+        "limits": {
+            "inbound_trunks": 1,
+            "outbound_trunks": 1,
+            "twoway_trunks": 2
+        },
+        "number_carriers": {
+            "knm_local": 0,
+            "knm_mdn": 0,
+            "knm_other": 0
+        },
+        "number_services": {
+            "inbound_cnam": 0,
+            "local": 0,
+            "outbound_cnam": 0
+        },
+        "phone_numbers": {
+            "did_us": 0
+        },
+        "phone_numbers_non_billable": {
+            "did_us": 0
+        },
+        "ratedeck_name": {},
+        "ui_apps": {},
+        "users": {
+            "admin": 1,
+            "user": 0
+        }
+    }
+}

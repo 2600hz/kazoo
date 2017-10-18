@@ -50,7 +50,7 @@ api_version_constraint(NotVersion) ->
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
     _ = [
          lager:warning("System config ~s validation error:~p", [Config, Error])

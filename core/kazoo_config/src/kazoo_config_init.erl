@@ -51,7 +51,7 @@ maybe_load_file([File|T]) ->
             maybe_load_file(T);
 
         {'error', _}=Error ->
-            lager:warning("error loading file ~s: ~s", [File, Error]),
+            lager:warning("error loading file ~s: ~p", [File, Error]),
             maybe_load_file(T)
     end.
 

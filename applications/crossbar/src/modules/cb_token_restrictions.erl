@@ -32,11 +32,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("test/cb_token_restrictions_test.hrl").
 
--define(LOG_DEBUG(F), ?debugFmt(F ++ "\n", [])).
--define(LOG_DEBUG(F, A), ?debugFmt(F ++ "\n", A)).
--else.
--define(LOG_DEBUG(F), lager:debug(F)).
--define(LOG_DEBUG(F, A), lager:debug(F, A)).
 -endif.
 
 -include("crossbar.hrl").
@@ -161,13 +156,13 @@ get_auth_restrictions(AuthDoc) ->
 -else.
 -spec get_auth_restrictions(api_object()) -> api_object().
 get_auth_restrictions('undefined') ->
-    ?LOG_DEBUG("no auth doc to check"),
+    lager:debug("no auth doc to check"),
     'undefined';
 get_auth_restrictions(AuthDoc) ->
     AuthModule = kz_json:get_atom_value(<<"method">>, AuthDoc),
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc),
     OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, AuthDoc),
-    ?LOG_DEBUG("checking for restrictions for ~s in ~s using ~s method", [OwnerId, AccountId, AuthModule]),
+    lager:debug("checking for restrictions for ~s in ~s using ~s method", [OwnerId, AccountId, AuthModule]),
     crossbar_util:get_token_restrictions(AuthModule, AccountId, OwnerId).
 -endif.
 

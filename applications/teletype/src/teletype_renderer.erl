@@ -43,19 +43,21 @@ render(TemplateId, Template, TemplateData) ->
                     {'error', any()}.
 
 render(Renderer, TemplateId, _Template, _TemplateData, 0) ->
-    lager:error("rendering of ~p failed after several tries", [TemplateId]),
+    ?LOG_ERROR("rendering of ~p failed after several tries", [TemplateId]),
     exit(Renderer, 'kill'),
     {'error', 'render_failed'};
 
 render(Renderer, TemplateId, Template, TemplateData, Tries) ->
     Start = kz_time:now_s(),
     PoolStatus = poolboy:status(teletype_sup:render_farm_name()),
+    %% ?LOG_INFO("starting render of ~p", [TemplateId]),
     lager:info("starting render of ~p", [TemplateId]),
     case do_render(Renderer, TemplateId, Template, TemplateData) of
         {'error', 'render_failed'} ->
-            lager:info("render failed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
+            ?LOG_INFO("render failed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
             render(Renderer, TemplateId, Template, TemplateData, Tries-1);
         GoodReturn ->
+            %% LOG_INFO("render completed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
             lager:info("render completed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
             poolboy:checkin(teletype_sup:render_farm_name(), Renderer),
             GoodReturn
@@ -84,17 +86,17 @@ next_renderer(BackoffMs) ->
     Farm = teletype_sup:render_farm_name(),
     try poolboy:checkout(Farm, false, 2 * ?MILLISECONDS_IN_SECOND) of
         'full' ->
-            lager:critical("render farm pool is full! waiting ~bms", [BackoffMs]),
+            ?LOG_CRITICAL("render farm pool is full! waiting ~bms", [BackoffMs]),
             timer:sleep(BackoffMs),
             next_renderer(next_backoff(BackoffMs));
         WorkerPid when is_pid(WorkerPid) -> WorkerPid
     catch
         'exit':{'timeout', {'gen_server', 'call', _Args}} ->
-            lager:critical("render farm overwhelmed!! back off ~b", [BackoffMs]),
+            ?LOG_CRITICAL("render farm overwhelmed!! back off ~b", [BackoffMs]),
             timer:sleep(BackoffMs),
             next_renderer(next_backoff(BackoffMs));
         _E:_R ->
-            lager:warning("failed to checkout: ~s: ~p", [_E, _R]),
+            ?LOG_CRITICAL("failed to checkout: ~s: ~p", [_E, _R]),
             timer:sleep(BackoffMs),
             next_renderer(next_backoff(BackoffMs))
     end.
@@ -114,12 +116,14 @@ init(_) ->
     ModuleBin = <<"teletype_", Self/binary, "_", (kz_binary:rand_hex(4))/binary>>,
     Module = kz_term:to_atom(ModuleBin, true),
     kz_util:put_callid(Module),
+    %% ?LOG_DEBUG("starting template renderer, using ~s as compiled module name", [Module]),
     lager:debug("starting template renderer, using ~s as compiled module name", [Module]),
     {'ok', Module}.
 
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModule) ->
-    lager:debug("trying to compile template ~s as ~s for ~p", [_TemplateId, TemplateModule, _From]),
+    %% l?LOG_DEBUG("trying to compile template ~s as ~s for ~w", [_TemplateId, TemplateModule, _From]),
+    lager:debug("trying to compile template ~s as ~s for ~w", [_TemplateId, TemplateModule, _From]),
     {'reply'
     ,kz_template:render(Template, TemplateModule, TemplateData)
     ,TemplateModule

@@ -1,0 +1,49 @@
+                Payment Receipt
+
+
+Date: {{transaction.date.local|date:"l, F j, Y H:i"}}
+Invoice ID: {{transaction.id}}
+
+
+		Thank you for being a customer!
+			We received your payment
+
+We've successfully charged {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}{% if transaction.card_last_four %} to your card with four last digits {{transaction.card_last_four}} {% endif %}
+on {{transaction.date.local|date:"n/j/Y"}}.
+
+{% if transaction.address %}
+-------------------------
+
+Billed To:
+{% if transaction.address.first_name %}{{transaction.address.first_name}} {% endif %} {% if transaction.address.last_name %}{{transaction.address.last_name}}
+{% endif %} {% if transaction.address.company %}{{transaction.address.company}}
+{% endif %} {% if transaction.address.locality %}{{transaction.address.locality}}, {% endif %} {% if transaction.address.region %}{{transaction.address.region}} {% endif %} {% if transaction.address.postal_code %}{{transaction.address.postal_code}} {% endif %} {% if transaction.address.country_name %} - {{transaction.address.country_name}}{% endif %}
+
+Billing Address:
+{% if transaction.address.street_address %}{{transaction.address.street_address}}
+{% endif %} {% if transaction.address.extended_address %}{{transaction.address.extended_address}}
+{% endif %} {% if transaction.address.locality %}{{transaction.address.locality}}, {% endif %} {% if transaction.address.region %}{{transaction.address.region}} {% endif %} {% if transaction.address.postal_code %}{{transaction.address.postal_code}}{% endif %} {% if transaction.address.country_name %} - {{transaction.address.country_name}}{% endif %}
+
+-------------------------
+{% endif %}
+
+Questions?
+Please email us and we'll be happy to help.
+
+Need to update your billing info?
+The Billing section can be accessed by your account owner{% if user.first_name or user.last_name %}, {{user.first_name}} {{user.last_name}}{% endif %}.
+
+
+Thank you for your business!
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

@@ -278,7 +278,7 @@ wait_for_available(Fun, Timeout) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = ets:new(?TAB, ['named_table'
                       ,{'keypos', #kz_amqp_connections.connection}
                       ,'protected'

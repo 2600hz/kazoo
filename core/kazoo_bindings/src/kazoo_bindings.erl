@@ -388,7 +388,7 @@ gift_data() -> 'ok'.
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:debug("starting bindings server"),
     {'ok', #state{}}.
 
@@ -705,28 +705,28 @@ fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
 
 -spec log_undefined(atom(), atom(), non_neg_integer(), list()) -> 'ok'.
 log_undefined(M, F, Length, [{M, F, _Args,_}|_]) ->
-    lager:debug("undefined function ~s:~s/~b", [M, F, Length]);
+    ?LOG_DEBUG("undefined function ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->
-    lager:debug("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
-    lager:debug("in call ~s:~s/~b", [M, F, Length]);
+    ?LOG_DEBUG("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
+    ?LOG_DEBUG("in call ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, ST) ->
-    lager:debug("undefined function ~s:~s/~b", [M, F, Length]),
+    ?LOG_DEBUG("undefined function ~s:~s/~b", [M, F, Length]),
     kz_util:log_stacktrace(ST).
 
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
-    lager:info("unable to find function clause for ~s:~s/~b", [M, F, Length]);
+    ?LOG_INFO("unable to find function clause for ~s:~s/~b", [M, F, Length]);
 log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
-    lager:error("unable to find function clause for ~s:~s(~s) in ~s:~p"
-               ,[RealM, RealF
-                ,kz_binary:join([kz_term:to_binary(io_lib:format("~p",[A])) || A <- RealArgs], <<", ">>)
-                ,props:get_value('file', Where), props:get_value('line', Where)
-                ]
-               ),
-    lager:error("as part of ~s:~s/~p", [M, F, Length]),
-    _ = [lager:error("st: ~p", [ST]) || ST <- _ST],
+    ?LOG_ERROR("unable to find function clause for ~s:~s(~s) in ~s:~p"
+              ,[RealM, RealF
+               ,kz_binary:join([kz_term:to_binary(io_lib:format("~p",[A])) || A <- RealArgs], <<", ">>)
+               ,props:get_value('file', Where), props:get_value('line', Where)
+               ]
+              ),
+    ?LOG_ERROR("as part of ~s:~s/~p", [M, F, Length]),
+    _ = [?LOG_ERROR("st: ~p", [ST]) || ST <- _ST],
     'ok';
 log_function_clause(M, F, Lenth, ST) ->
-    lager:error("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
+    ?LOG_ERROR("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
     kz_util:log_stacktrace(ST).
 
 -spec map_processor(ne_binary(), payload(), kz_rt_options()) -> map_results().

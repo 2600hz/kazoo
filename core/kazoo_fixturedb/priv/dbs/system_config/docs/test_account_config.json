@@ -1,0 +1,73 @@
+{
+    "_id": "test_account_config",
+    "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
+    "default": {
+        "one_root_key": "system_config",
+        "root_b_key": "root_system",
+        "root_b_keys": [
+            "One",
+            "Two"
+        ],
+        "root_bol_key": true,
+        "root_f_key": 1.2,
+        "root_i_key": 123456,
+        "root_obj_key": {
+            "b_empty_list": [],
+            "b_key": "obj_system",
+            "b_keys": [
+                "One",
+                "Two"
+            ],
+            "bol_key": true,
+            "f_key": 1.2,
+            "i_key": 123456,
+            "obj_empty_test": {
+                "banana": "darim",
+                "obj_empty_sometimes": {
+                    "from": "system",
+                    "system": true
+                }
+            },
+            "obj_key": {
+                "from": "system"
+            },
+            "sub+parent+empty_reseller+system": {
+                "from": "system_config",
+                "obj_empty_sometimes": {
+                    "from": "system"
+                },
+                "system_config": true
+            },
+            "sub+parent+system": {
+                "from": "system_config",
+                "obj_empty_sometimes": {
+                    "from": "system"
+                },
+                "system_config": true
+            },
+            "sub+reseller+system": {
+                "from": "system_config",
+                "obj_empty_sometimes": {
+                    "from": "system"
+                },
+                "system_config": true
+            },
+            "sub_account+system": {
+                "from": "system_config",
+                "obj_empty_sometimes": {
+                    "from": "system",
+                    "system_config": true
+                },
+                "system_config": true
+            },
+            "system_key": "system_only"
+        },
+        "system_ne_only": "system_config"
+    },
+    "pvt_account_db": "system",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63668324118,
+    "pvt_modified": 63668324118,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "config"
+}

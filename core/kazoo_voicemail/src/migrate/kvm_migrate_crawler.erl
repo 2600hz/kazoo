@@ -107,7 +107,7 @@ account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth) ->
 
 -spec account_maybe_failed(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds(), any()) -> 'ok'.
 account_maybe_failed(_Server, _AccountId, _FirstOfMonth, _LastOfMonth, 'timeout') ->
-    ?WARNING("ignoring 'timeout' error for worker of account ~s", [_AccountId]);
+    ?SUP_LOG_WARNING("ignoring 'timeout' error for worker of account ~s", [_AccountId]);
 account_maybe_failed(Server, AccountId, FirstOfMonth, LastOfMonth, Reason) ->
     gen_server:call(Server, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}}).
 
@@ -133,10 +133,10 @@ init(Pid) ->
     lager:debug("started ~s", [?SERVER]),
     case kapps_util:get_all_accounts('raw') of
         [] ->
-            ?ERROR("********** no account found, going down **********", []),
+            ?SUP_LOG_ERROR("********** no account found, going down **********", []),
             {'stop', #state{}};
         Ids ->
-            ?WARNING("################### BEGINNING MIGRATING VOICEMAIL FOR ~b ACCOUNTS ###################~n~n", [length(Ids)]),
+            ?SUP_LOG_WARNING("################### BEGINNING MIGRATING VOICEMAIL FOR ~b ACCOUNTS ###################~n~n", [length(Ids)]),
             AccountIds = kz_term:shuffle_list(Ids),
             %% first start migrating messages in retention durations
             Queue = populate_queue(AccountIds, kz_time:now_s()),
@@ -216,7 +216,7 @@ handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
                                            ,retention_passed = 'true'
                                            ,calling_process = Pid
                                            }=State) ->
-    ?WARNING("~n~n########## voicemail migration is finished", []),
+    ?SUP_LOG_WARNING("~n~n########## voicemail migration is finished", []),
     print_summary(State),
     case is_pid(Pid) of
         'false' -> 'ok';
@@ -295,7 +295,7 @@ spawn_worker(#state{account_queue = Queue
 
 maybe_spawn_worker(#state{account_ids = AccountIds
                          }=State, 'retention_passed') ->
-    ?WARNING("~n########## all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails ##########~n", []),
+    ?SUP_LOG_WARNING("~n########## all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails ##########~n", []),
     State#state{retention_passed = 'true'
                ,account_queue = populate_queue(AccountIds)
                };
@@ -414,11 +414,11 @@ populate_queue(AccountIds, LastOfMonth) ->
     queue:from_list(Props).
 
 maybe_remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth, 'normal'}, Queue) ->
-    ?WARNING("########## account ~s is migrated"
-            ,[AccountId]),
+    ?SUP_LOG_WARNING("########## account ~s is migrated"
+                    ,[AccountId]),
     {'false', AccountId, remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth}, Queue)};
 maybe_remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth, _Reason}, Queue) ->
-    ?ERROR("********** account ~s migration failed: ~p **********", [AccountId, _Reason]),
+    ?SUP_LOG_ERROR("********** account ~s migration failed: ~p **********", [AccountId, _Reason]),
     {'true', AccountId, remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth}, Queue)}.
 
 -spec remove_account_from_queue(next_account(), queue:queue()) -> queue:queue().

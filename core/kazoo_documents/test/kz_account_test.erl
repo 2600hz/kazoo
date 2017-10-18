@@ -9,6 +9,7 @@
 -module(kz_account_test).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(ID, <<"_id">>).
 -define(TREE, <<"pvt_tree">>).
@@ -17,7 +18,51 @@
 -define(SUB_ACCOUNT_ID, <<"account0000000000000000000000002">>).
 -define(SUB_SUB_ACCOUNT_ID, <<"account0000000000000000000000003">>).
 
-validate_fixtures_test_() ->
+kz_account_test_() ->
+    {setup
+    ,fun setup/0
+    ,fun cleanup/1
+    ,fun(_) ->
+             [test_account_doc_against_fixture()
+             ,test_undefined_account_id()
+             ,test_account_id()
+             ,test_account_name()
+             ,test_account_realm()
+             ,test_language()
+             ,test_timezone()
+             ,test_parent_account_id()
+             ,test_account_tree()
+             ,test_notification_preference()
+             ,test_enabled()
+             ,test_api_key()
+             ,test_superduper_admin()
+             ,test_allow_number_additions()
+             ,test_reseller()
+             ]
+     end
+    }.
+
+setup() ->
+    ?LOG_DEBUG(":: Setting up Kazoo FixtureDB"),
+
+    {ok, _} = application:ensure_all_started(kazoo_config),
+    {ok, LinkPid} = kazoo_data_link_sup:start_link(),
+
+    LinkPid.
+
+cleanup(LinkPid) ->
+    _DataLink = erlang:exit(LinkPid, normal),
+    Ref = monitor(process, LinkPid),
+    receive
+        {'DOWN', Ref, process, LinkPid, _Reason} ->
+            _KConfig = application:stop(kazoo_config),
+            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: ~p kazoo_config: ~p", [_DataLink, _KConfig])
+    after 1000 ->
+            _KConfig = application:stop(kazoo_config),
+            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: timeout kazoo_config: ~p", [_KConfig])
+    end.
+
+test_account_doc_against_fixture() ->
     {'ok', Schema} = kz_json_schema:fload(<<"accounts">>),
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     {'ok', SubAccount} = kz_account:fetch(?SUB_ACCOUNT_ID),
@@ -27,7 +72,7 @@ validate_fixtures_test_() ->
     ,{"validate sub-sub account fixture", ?_assertMatch({'ok', _}, validate(Schema, SubSubAccount))}
     ].
 
-fetch_test_() ->
+test_undefined_account_id() ->
     [?_assertEqual({error,invalid_db_name}, kz_account:fetch(undefined))
     ,?_assertEqual(undefined, kz_account:fetch_realm(undefined))
     ,?_assertEqual(undefined, kz_account:fetch_name(undefined))
@@ -42,11 +87,11 @@ new_test_() ->
 type_test_() ->
     [{"validate type returns the expected value", ?_assertEqual(<<"account">>, kz_account:type())}].
 
-id_test_() ->
+test_account_id() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     [{"validate id returns the expected value", ?_assertEqual(?MASTER_ACCOUNT_ID, kz_account:id(MasterAccount))}].
 
-name_test_() ->
+test_account_name() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"name">>, MasterAccount),
     Updated = kz_account:set_name(MasterAccount, <<"updated">>),
@@ -57,7 +102,7 @@ name_test_() ->
     ,{"validate set_name changes the name", ?_assertEqual(<<"updated">>, kz_account:name(Updated))}
     ].
 
-realm_test_() ->
+test_account_realm() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"realm">>, MasterAccount),
     Updated = kz_account:set_realm(MasterAccount, <<"updated">>),
@@ -68,7 +113,7 @@ realm_test_() ->
     ,{"validate set_realm changes the realm", ?_assertEqual(<<"updated">>, kz_account:realm(Updated))}
     ].
 
-language_test_() ->
+test_language() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"language">>, MasterAccount),
     Updated = kz_account:set_language(MasterAccount, <<"updated">>),
@@ -78,7 +123,7 @@ language_test_() ->
     ,{"validate set_language changes the language", ?_assertEqual(<<"updated">>, kz_account:language(Updated))}
     ].
 
-timezone_test_() ->
+test_timezone() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"timezone">>, MasterAccount),
     Invalid = kz_json:set_value(<<"timezone">>, <<"inherit">>, MasterAccount),
@@ -91,7 +136,7 @@ timezone_test_() ->
     ,{"validate set_timezone changes the timezone", ?_assertEqual(<<"updated">>, kz_account:timezone(Updated))}
     ].
 
-parent_account_id_test_() ->
+test_parent_account_id() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     {'ok', SubAccount} = kz_account:fetch(?SUB_ACCOUNT_ID),
     {'ok', SubSubAccount} = kz_account:fetch(?SUB_SUB_ACCOUNT_ID),
@@ -106,7 +151,7 @@ parent_account_id_test_() ->
      }
     ].
 
-tree_test_() ->
+test_account_tree() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     {'ok', SubAccount} = kz_account:fetch(?SUB_ACCOUNT_ID),
     {'ok', SubSubAccount} = kz_account:fetch(?SUB_SUB_ACCOUNT_ID),
@@ -115,7 +160,7 @@ tree_test_() ->
     ,?_assertEqual([?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID], kz_account:tree(SubSubAccount))
     ].
 
-notification_preference_test_() ->
+test_notification_preference() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"pvt_notification_preference">>, MasterAccount),
     Updated = kz_account:set_notification_preference(MasterAccount, <<"notify">>),
@@ -124,7 +169,7 @@ notification_preference_test_() ->
     ,{"validate set_notification_preference changes the notification_preference", ?_assertEqual(<<"notify">>, kz_account:notification_preference(Updated))}
     ].
 
-enabled_test_() ->
+test_enabled() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Disabled = kz_account:disable(MasterAccount),
     ReEnabled = kz_account:enable(MasterAccount),
@@ -133,7 +178,7 @@ enabled_test_() ->
     ,{"validate enable returns the expected value", ?_assert(kz_account:is_enabled(ReEnabled))}
     ].
 
-api_key_test_() ->
+test_api_key() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"pvt_api_key">>, MasterAccount),
     Updated = kz_account:set_api_key(MasterAccount, <<"updated">>),
@@ -142,7 +187,7 @@ api_key_test_() ->
     ,{"validate set_api_key changes the api_key", ?_assertEqual(<<"updated">>, kz_account:api_key(Updated))}
     ].
 
-superduper_admin_test_() ->
+test_superduper_admin() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"pvt_superduper_admin">>, MasterAccount),
     Updated = kz_account:set_superduper_admin(MasterAccount, 'false'),
@@ -151,7 +196,7 @@ superduper_admin_test_() ->
     ,{"validate set_superduper_admin changes the superduper_admin", ?_assertNot(kz_account:is_superduper_admin(Updated))}
     ].
 
-allow_number_additions_test_() ->
+test_allow_number_additions() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     Missing = kz_json:delete_key(<<"pvt_wnm_allow_additions">>, MasterAccount),
     Updated = kz_account:set_allow_number_additions(MasterAccount, 'false'),
@@ -179,7 +224,7 @@ trial_time_test_() ->
      }
     ].
 
-reseller_test_() ->
+test_reseller() ->
     {'ok', MasterAccount} = kz_account:fetch(?MASTER_ACCOUNT_ID),
     DemotedMasterAccount = kz_account:demote(MasterAccount),
     Missing = kz_json:delete_key(<<"pvt_reseller">>, MasterAccount),

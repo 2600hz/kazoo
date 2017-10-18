@@ -1,0 +1,112 @@
+                System Alert
+
+
+There was problem in your VoIP services.
+
+Here is all related information:
+
+--------------------
+Message:
+--------------------
+{{message}}
+--------------------{% if request %}
+
+=== Producer Details ===
+
+{% for key, value in request %}
+{{ key }}: {{ value }}
+-------------
+{% endfor %}
+
+#####################################
+#####################################
+{% endif %}{% if details %}
+
+=== Alert Details ===
+
+{% for key, value in details %}{{ key }}: {{ value }}
+-------------
+{% endfor %}
+
+#####################################
+#####################################
+{% endif %}{% if callflow %}
+
+=== Callflow Details ===
+
+{% for key, value in callflow %}{{ key }}: {{ value }}
+-------------
+{% endfor %}
+
+#####################################
+#####################################
+{% endif %}{% if error_details %}
+
+=== Error Details ===
+
+{% for key, value in error_details %}{{ key }}: {{ value }}
+-------------
+{% endfor %}
+
+#####################################
+#####################################
+{% endif %}{% if http_headers %}
+
+=== HTTP Headers ===
+
+{% for header in http_headers %}{{ header }}
+-------------
+{% endfor %}
+
+#####################################
+#####################################
+{% endif %}{% if key_store %}
+
+=== Key Value Store ===
+
+{% for key, value in key_store %}{{ key }}: {{ value }}
+-------------
+{% endfor %}
+
+#####################################
+#####################################
+{% endif %}{% if channel_vars %}
+
+=== Channel Variables ===
+
+{% for key, value in channel_vars %}{{ key }}: {{ value }}
+-------------
+{% endfor %}
+
+#####################################
+#####################################
+{% endif %}{% if sip_headers %}
+
+=== SIP Headers ===
+
+{% for key, value in sip_headers %}{{ key }}: {{ value }}
+-------------
+{% endfor %}
+
+#####################################
+#####################################
+{% endif %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+Administrator User Information
+
+    Name: {{user.first_name}} {{user.last_name}}
+    Email: {{user.email}}
+    Timezone: {{user.timezone}}
+
+
+
+Sent from {{system.encoded_node}}

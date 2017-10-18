@@ -285,6 +285,7 @@ fetch_cached_dataplan(Key, Fun) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, PT) of
         {'ok', Plan} -> Plan;
         {'error', 'not_found'} ->
+            %% ?LOG_DEBUG("~ncreating new dataplan ~p", [Key]),
             lager:debug("creating new dataplan ~p", [Key]),
             {Keys, PlanJObj} = Fun(Key),
             Plan = kz_json:to_map(PlanJObj),

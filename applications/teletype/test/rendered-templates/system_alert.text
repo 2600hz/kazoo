@@ -1,0 +1,97 @@
+                System Alert
+
+
+There was problem in your VoIP services.
+
+Here is all related information:
+
+--------------------
+Message:
+--------------------
+blocked +11862857925@32.161.202.122 to +13976931309 / Account Sub-Sub Account / Reseller Sub Account
+--------------------
+
+=== Producer Details ===
+
+
+msg_id: daf66bebfd4bb2e7
+-------------
+
+node: kazoo_apps@apps001.app.com
+-------------
+
+
+#####################################
+#####################################
+
+
+=== Alert Details ===
+
+to: +13976931309@192.81.135.31
+-------------
+soft_limit: false
+-------------
+reseller_billing: limits_enforced
+-------------
+request: +13976931309
+-------------
+from: +11862857925@32.161.202.122
+-------------
+format: blocked ~s to ~s / Account ~s / Reseller ~s
+-------------
+classification: did_us
+-------------
+call_id: 1466960406_915632423@32.161.202.122
+-------------
+call_direction: inbound
+-------------
+account_twoway_trunks: 0
+-------------
+account_resource_calls: 0/-1
+-------------
+account_outbound_trunks: 0/0
+-------------
+account_max_postpay: 0.0
+-------------
+account_inbound_trunks: 0/0
+-------------
+account_id: account0000000000000000000000003
+-------------
+account_enforce_limits: true
+-------------
+account_calls: 1/-1
+-------------
+account_burst_trunks: 0
+-------------
+account_billing: limits_enforced
+-------------
+account_balance: 0.0
+-------------
+account_allow_prepay: true
+-------------
+account_allow_postpay: false
+-------------
+
+
+#####################################
+#####################################
+
+
+
+
+Account Information
+
+    Account ID: account0000000000000000000000003
+    Account Name: Sub-Sub Account
+    Account Realm: paustu8.sip.2600hz.local
+
+
+Administrator User Information
+
+    Name: User Three
+    Email: user-3001@2600hz.local
+    Timezone: Europe/Paris
+
+
+
+Sent from zSWyes4Y7hdsgJ0-bONIoA

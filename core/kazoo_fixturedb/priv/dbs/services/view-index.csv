@@ -1,0 +1,7 @@
+view_name, view_options, view_file_name
+services/cascade_quantities, [group,reduce,{startkey,[<<"account0000000000000000000000003">>]},{endkey,[<<"account0000000000000000000000003">>,{[]}]}], services+cascade_quantities-dffd4eaab58007e68e839f620b80d77c.json
+services/cascade_quantities, [group,reduce,{startkey,[<<"account0000000000000000000000004">>]},{endkey,[<<"account0000000000000000000000004">>,{[]}]}], services+cascade_quantities-0808030edda6a9f2d15b9c6fcdbf2cb3.json
+services/cascade_quantities, [group,reduce,{startkey,[<<"account0000000000000000000000002">>]},{endkey,[<<"account0000000000000000000000002">>,{[]}]}], services+cascade_quantities-75b29937921832639b76e5baf8799f5e.json
+services/cascade_quantities, [group,reduce,{startkey,[<<"account0000000000000000000000001">>]},{endkey,[<<"account0000000000000000000000001">>,{[]}]}], services+cascade_quantities-df3560a4530455839a5495bc915f0514.json
+services/cascade_quantities, [group,reduce,{startkey,[<<"account0000000000000000000000001">>]},{endkey,[<<"account0000000000000000000000001">>,{[]}]}], services+cascade_quantities-df3560a4530455839a5495bc915f0514.json
+services/reseller_quantities, [group,reduce,{startkey,[<<"account0000000000000000000000002">>]},{endkey,[<<"account0000000000000000000000002">>,{[]}]}], services+reseller_quantities-75b29937921832639b76e5baf8799f5e.json

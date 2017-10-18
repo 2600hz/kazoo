@@ -1,0 +1,28 @@
+                New Fax
+
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
+
+You received a new fax document from {{caller_id.name}} ({{caller_id.number}}){% if fax.box_name %} in your faxbox {{fax.box_name}}{% endif %}.
+
+
+=== Fax Details ===
+
+    Sender: {{caller_id.name}} ({{caller_id.number}})
+    Callee: {{to.user}} (originally dialed number)
+    Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}{% if fax.total_pages %}
+    Total Pages: {{fax.total_pages}}{% endif %}{% if fax.media %}
+    Document Name: {{fax.media}}{% endif %}{% if fax.document_type %}
+    Document Type: {{fax.document_type|upper}}{% endif %}{% if fax.document_size %}
+    Document Size: {{fax.document_size|filesizeformat}}{% endif %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

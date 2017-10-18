@@ -1,0 +1,41 @@
+{
+    "_id": "test_account_config_reseller_system",
+    "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
+    "default": {
+        "one_root_key": "system_config",
+        "root_obj_key": {
+            "b_empty_list": [],
+            "b_key": "system-reseller",
+            "b_keys": [
+                "OneSystem+reseller"
+            ],
+            "bol_key": false,
+            "f_key": 2.3,
+            "i_key": 56456,
+            "list_of_json": [
+                {
+                    "name": "system+reseller"
+                }
+            ],
+            "obj_empty_test": {
+                "banana": "darim",
+                "obj_empty_sometimes": {
+                    "from": "system",
+                    "system": true
+                }
+            },
+            "obj_key": {
+                "from": "system"
+            },
+            "reseller_system_only": "from_system",
+            "system_key": "system_only"
+        }
+    },
+    "one_root_key": "reseller_system",
+    "pvt_account_db": "system_config",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63668324118,
+    "pvt_modified": 63668324118,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "config"
+}
