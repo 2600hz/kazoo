@@ -1254,7 +1254,7 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id='undef
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), MediaId) of
         {'ok', JObj} -> check_media_source(AttachmentName, Box, Call, JObj);
-        _ -> overwrite_unavailable_greeting(AttachmentName, Box, Call)
+        _ -> record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id='undefined'}, Call)
     end.
 
 -spec check_media_source(ne_binary(), mailbox(), kapps_call:call(), kz_json:object()) ->
@@ -1866,7 +1866,8 @@ get_new_attachment_url(AttachmentName, MediaId, #mailbox{owner_id=OwnerId}, Call
     _ = case kz_datamgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
                 maybe_remove_attachments(AccountDb, MediaId, JObj);
-            {'error', _} -> 'ok'
+            {'error', _E} ->
+                lager:warning("media doc ~s with error : ~p", [MediaId, _E])
         end,
     Opts = props:filter_undefined([{'doc_owner', OwnerId}]),
     kz_media_url:store(AccountDb, {<<"media">>, MediaId}, AttachmentName, Opts).
