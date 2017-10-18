@@ -15,7 +15,6 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"port_request_admin">>).
--define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -29,10 +28,10 @@
 -define(TEMPLATE_NAME, <<"Admin Port Request">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
 
 -spec init() -> 'ok'.
 init() ->
@@ -49,14 +48,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"port_request">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:port_request_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -69,7 +68,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
     PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
@@ -84,7 +83,7 @@ process_req(DataJObj) ->
         'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec handle_port_request(kz_json:object()) -> 'ok'.
+-spec handle_port_request(kz_json:object()) -> template_response().
 handle_port_request(DataJObj) ->
     Macros = props:filter_undefined(
                [{<<"system">>, teletype_util:system_params()}
@@ -99,14 +98,12 @@ handle_port_request(DataJObj) ->
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT),
     Subject = teletype_util:render_subject(Subject0, Macros),
 
-    Emails = teletype_util:find_addresses(maybe_set_emails(DataJObj), TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(maybe_set_emails(DataJObj), TemplateMetaJObj, ?TEMPLATE_ID),
     EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
-        'ok' ->
-            teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} ->
-            teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
+        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
 -spec account_tree(ne_binary()) -> kz_proplist().
@@ -137,12 +134,14 @@ maybe_set_to(DataJObj) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     case find_port_authority(MasterAccountId, AccountId) of
         'undefined' -> DataJObj;
-        <<_/binary>> = To ->
+        ?NE_BINARY=To ->
             lager:debug("found port authority: ~p", [To]),
             kz_json:set_value(<<"to">>, [To], DataJObj);
-        [_|_] = To ->
+        [?NE_BINARY=_|_] = To ->
             lager:debug("found port authority: ~p", [To]),
-            kz_json:set_value(<<"to">>, To, DataJObj)
+            kz_json:set_value(<<"to">>, To, DataJObj);
+        _ ->
+            DataJObj
     end.
 
 -spec find_port_authority(ne_binary(), ne_binary()) -> api_binary() | ne_binaries().
@@ -150,7 +149,7 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
     case kz_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
             lager:debug("failed to find master account ~s, using system value", [MasterAccountId]),
-            kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>);
+            teletype_util:template_system_value(?TEMPLATE_ID, <<"default_to">>);
         {'ok', JObj} ->
             lager:debug("getting master account's port authority"),
             kz_whitelabel:port_authority(JObj)

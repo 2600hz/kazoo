@@ -48,16 +48,15 @@ params(TemplateId=?NE_BINARY) ->
 params(Module)
   when is_atom(Module) ->
     TemplateId = Module:id(),
-    ModConfigCat = teletype_util:template_config_cat(TemplateId),
     [{macros, Module:macros()}
     ,{subject, Module:subject()}
     ,{category, Module:category()}
     ,{friendly_name, Module:friendly_name()}
-    ,{to, Module:to(ModConfigCat)}
-    ,{from, Module:from(ModConfigCat)}
-    ,{cc, Module:cc(ModConfigCat)}
-    ,{bcc, Module:bcc(ModConfigCat)}
-    ,{reply_to, Module:reply_to(ModConfigCat)}
+    ,{to, Module:to()}
+    ,{from, Module:from()}
+    ,{cc, Module:cc()}
+    ,{bcc, Module:bcc()}
+    ,{reply_to, Module:reply_to()}
     ,{html, TemplateId}
     ,{text, TemplateId}
     ].
@@ -349,9 +348,7 @@ maybe_decode_html(HTML) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), init_params()) ->
-                    {'ok', kz_json:object()} |
-                    kz_datamgr:data_error().
+-spec create(ne_binary(), init_params()) -> 'ok'.
 create(DocId, Params) ->
     lager:debug("attempting to create template ~s", [DocId]),
     TemplateJObj =
@@ -418,7 +415,7 @@ update(TemplateJObj, Params) ->
                   {'ok', kz_json:object()} |
                   {'error', any()}.
 save(TemplateJObj) ->
-    SaveJObj = kz_doc:update_pvt_parameters(TemplateJObj, ?KZ_CONFIG_DB),
+    SaveJObj = kz_doc:update_pvt_parameters(TemplateJObj, ?KZ_CONFIG_DB, [{'type', kz_notification:pvt_type()}]),
     case kz_datamgr:save_doc(?KZ_CONFIG_DB, SaveJObj) of
         {'ok', _JObj}=OK ->
             lager:debug("saved updated template ~s(~s) to ~s"
@@ -442,7 +439,7 @@ save(TemplateJObj) ->
 update_from_params(TemplateJObj, Params) ->
     lists:foldl(fun update_from_param/2
                ,{'false', TemplateJObj}
-               ,Params
+               ,[{'pvt_type', kz_notification:pvt_type()} | Params]
                ).
 
 %%--------------------------------------------------------------------
@@ -450,7 +447,7 @@ update_from_params(TemplateJObj, Params) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_from_param(init_param(), update_acc()) -> update_acc().
+-spec update_from_param(init_param() | {'pvt_type', ne_binary()}, update_acc()) -> update_acc().
 update_from_param({'macros', Macros}, Acc) ->
     update_macros(Macros, Acc);
 update_from_param({'text', Basename}, Acc) ->
@@ -472,7 +469,13 @@ update_from_param({'bcc', BCC}, Acc) ->
 update_from_param({'from', From}, Acc) ->
     update_from(From, Acc);
 update_from_param({'reply_to', ReplyTo}, Acc) ->
-    update_reply_to(ReplyTo, Acc).
+    update_reply_to(ReplyTo, Acc);
+update_from_param({'pvt_type', PvtType}, Acc) ->
+    update_field(PvtType
+                ,Acc
+                ,fun kz_doc:type/1
+                ,fun kz_doc:set_type/2
+                ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -668,15 +671,8 @@ does_attachment_exist(DocId, AName) ->
                              {'ok', kz_json:object()} |
                              {'error', any()}.
 save_attachment(DocId, AName, ContentType, Contents) ->
-    case
-        kz_datamgr:put_attachment(
-          ?KZ_CONFIG_DB
-                                 ,DocId
-                                 ,AName
-                                 ,Contents
-                                 ,[{'content_type', kz_term:to_list(ContentType)}]
-         )
-    of
+    Options = [{'content_type', kz_term:to_list(ContentType)}],
+    case kz_datamgr:put_attachment(?KZ_CONFIG_DB, DocId, AName, Contents, Options) of
         {'ok', _UpdatedJObj}=OK ->
             lager:debug("added attachment ~s to ~s", [AName, DocId]),
             OK;

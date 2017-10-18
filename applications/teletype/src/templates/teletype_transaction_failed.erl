@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz Inc
+%%% @copyright (C) 2014-2017, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   Hesaam Farhang
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(teletype_first_occurrence).
+-module(teletype_transaction_failed).
 
 -export([init/0
         ,handle_req/1
@@ -14,20 +14,24 @@
 
 -include("teletype.hrl").
 
--define(TEMPLATE_ID, <<"first_occurrence">>).
+-define(TEMPLATE_ID, <<"transaction_failed">>).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          [?MACRO_VALUE(<<"event">>, <<"event">>, <<"Event">>, <<"Event">>)
-           | ?USER_MACROS
+          [?MACRO_VALUE(<<"plan.id">>, <<"plan_id">>, <<"Plan ID">>, <<"Plan ID">>)
+          ,?MACRO_VALUE(<<"plan.category">>, <<"plan_category">>, <<"Plan Category">>, <<"Plan Category">>)
+          ,?MACRO_VALUE(<<"plan.item">>, <<"plan_item">>, <<"Plan Item">>, <<"Plan Item">>)
+          ,?MACRO_VALUE(<<"plan.activation_charge">>, <<"plan_activation_charge">>, <<"Activation Charge">>, <<"Activation Charge">>)
+           | ?TRANSACTION_MACROS
+           ++ ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
           ]
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"First {{event}} on account '{{account.name}}'">>).
--define(TEMPLATE_CATEGORY, <<"sip">>).
--define(TEMPLATE_NAME, <<"First Occurrence">>).
+-define(TEMPLATE_SUBJECT, <<"Payment problem for your account '{{account.name}}'">>).
+-define(TEMPLATE_CATEGORY, <<"account">>).
+-define(TEMPLATE_NAME, <<"Transaction Problem">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address()).
@@ -48,11 +52,11 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"first_occurrence">>, ?MODULE, 'handle_req').
+    teletype_bindings:bind(<<"transaction">>, ?MODULE, 'handle_req').
 
 -spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
-    handle_req(JObj, kapi_notifications:first_occurrence_v(JObj)).
+    handle_req(JObj, kapi_notifications:transaction_v(JObj)).
 
 -spec handle_req(kz_json:object(), boolean()) -> template_response().
 handle_req(_, 'false') ->
@@ -61,40 +65,18 @@ handle_req(_, 'false') ->
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
+    'true' = kapi_notifications:transaction_v(JObj),
+    kz_util:put_callid(JObj),
+
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
+    ReqData =
+        kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
+    case kz_json:is_false(<<"success">>, DataJObj) %% check if it's for transaction failed template
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
+    of
         'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
-        'true' -> process_req(DataJObj)
-    end.
-
--spec build_macro_data(kz_json:object()) -> kz_proplist().
-build_macro_data(DataJObj) ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    [{<<"system">>, teletype_util:system_params()}
-    ,{<<"account">>, teletype_util:account_params(DataJObj)}
-    ,{<<"user">>, teletype_util:user_params(teletype_util:find_account_admin(AccountId))}
-    ,{<<"event">>, kz_json:get_binary_value(<<"occurrence">>, DataJObj)}
-    ].
-
--spec process_req(kz_json:object()) -> template_response().
-process_req(DataJObj) ->
-    Macros = build_macro_data(DataJObj),
-
-    %% Load templates
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
-
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, kapi_notifications:account_id(DataJObj)),
-
-    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-                                          ,Macros
-                                          ),
-
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
-
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
-        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
+        'true' -> teletype_transaction:process_req(kz_json:merge_jobjs(DataJObj, ReqData), ?TEMPLATE_ID)
     end.

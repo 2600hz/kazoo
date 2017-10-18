@@ -29,6 +29,17 @@ We hope that you agree and are not inconvenienced by this change. As always we a
 
     The big change (that should be mostly transparent) is that `kz_time:now_s/0` returns Gregorian seconds instead of Unix Epoch seconds. The majority of code either doesn't care or expected Gregorian seconds, so this change should have minimal impact on existing code. If you need a Unix timestamp, `kz_time:current_unix_tstamp/0` is what you want.
 
+3.
+    Starting with Kazoo 4.2 Teletype templates are using their own Teletype specific Email configuration from system configuration. Previously some properties like `from`, `to`, `cc`, `bcc`, etc... were read from `notify.{TEMPLATE_ID}` documents in `system_config` database to initialize the system templates. This has been changed to read from `notification.{TEMPLATE_ID}` which it's the place actual Teletype templates are saved.
+
+    If you directly made configurations to these documents, you need to re-configure them in the Teletype templates documents.
+
+    > **Note:** This change is not affecting users which are using the Notify application
+
+    > **Note:** This only applied to templates from **system**, not account's specific templates
+
+    > **Note:** Those parameters are the default values, that means if Teletype can't find the value in the notification payload it receives or account's template then it falls back to these system values (if necessary)
+
 ### 4.1
 
 1.  `kz_util` refactoring

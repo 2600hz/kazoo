@@ -52,6 +52,13 @@
                       {'reply_to', api_binary()}.
 -type init_params() :: [init_param(),...].
 
+-type template_response() :: 'ok' |
+                             {'disabled', ne_binary()} |
+                             {'ignored', ne_binary()} |
+                             {'completed', ne_binary()} |
+                             {'failed', ne_binary(), any()}.
+-type template_responses() :: [template_response()].
+
 -define(TEXT_PLAIN, <<"text/plain">>).
 -define(TEXT_HTML, <<"text/html">>).
 

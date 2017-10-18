@@ -71,9 +71,9 @@ add_document_data(FaxDoc, Macros, [{ContentType, Filename, Bin}]) ->
     props:set_value(<<"fax">>, FaxMacros, Macros).
 
 -spec to_email_addresses(kz_json:object(), ne_binary()) -> api_binaries().
-to_email_addresses(DataJObj, ModConfigCat) ->
-    BoxEmailPath = case binary:split(ModConfigCat, <<".">>) of
-                       [_, <<"fax_inbound", _/binary>>] ->
+to_email_addresses(DataJObj, TemplateId) ->
+    BoxEmailPath = case TemplateId of
+                       <<"fax_inbound", _/binary>> ->
                            [<<"notifications">>, <<"inbound">>, <<"email">>, <<"send_to">>]; %% inbound from faxbox doc
                        _ ->
                            [<<"notifications">>, <<"outbound">>, <<"email">>, <<"send_to">>] %% outbound from faxbox doc
@@ -89,7 +89,7 @@ to_email_addresses(DataJObj, ModConfigCat) ->
             ,[<<"owner">>, <<"username">>] %% user document
             ],
     Emails = kz_json:get_first_defined(Paths, DataJObj),
-    Found = to_email_addresses(DataJObj, ModConfigCat, Emails),
+    Found = to_email_addresses(DataJObj, TemplateId, Emails),
     lager:debug("found emails: ~p", [Found]),
     Found.
 
@@ -100,9 +100,9 @@ to_email_addresses(_, _, Emails)
   when is_list(Emails)
        andalso length(Emails) > 0 ->
     Emails;
-to_email_addresses(_DataJObj, ModConfigCat, _) ->
+to_email_addresses(_DataJObj, TemplateId, _) ->
     lager:debug("can not find email address for the fax notification, maybe using defaults"),
-    case kapps_config:get_ne_binary_or_ne_binaries(ModConfigCat, <<"default_to">>) of
+    case teletype_util:template_system_value(TemplateId, <<"default_to">>) of
         'undefined' -> 'undefined';
         ?NE_BINARY=Email -> [Email];
         Emails when is_list(Emails) -> Emails
