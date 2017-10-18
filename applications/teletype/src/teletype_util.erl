@@ -14,7 +14,7 @@
         ,system_params/0
         ,account_params/1
         ,user_params/1
-        ,send_update/2, send_update/3
+        ,send_update/2, send_update/3, send_update/4
         ,find_addresses/3
         ,find_account_rep_email/1
         ,find_account_admin_email/1
@@ -27,8 +27,10 @@
 
         ,get_parent_account_id/1
 
-        ,default_from_address/1
-        ,default_reply_to/1
+        ,default_from_address/0
+        ,default_reply_to/0
+
+        ,template_system_value/1, template_system_value/2, template_system_value/3
 
         ,open_doc/3
         ,is_preview/1
@@ -38,7 +40,10 @@
 
         ,public_proplist/2
 
+        ,notification_completed/1
+        ,notification_ignored/1
         ,notification_disabled/2
+        ,notification_failed/2
 
         ,maybe_get_attachments/1
         ,fetch_attachment_from_url/1
@@ -409,26 +414,12 @@ maybe_add_parent_params(AccountId, AccountJObj) ->
             ]
     end.
 
--spec default_from_address(ne_binary()) -> ne_binary().
--spec default_from_address(kz_json:object(), ne_binary()) -> ne_binary().
-default_from_address(ConfigCat) ->
-    default_from_address(kz_json:new(), ConfigCat).
-default_from_address(JObj, ConfigCat) ->
-    ConfigDefault = list_to_binary([<<"no_reply@">>, net_adm:localhost()]),
-    kz_json:get_ne_binary_value(<<"send_from">>
-                               ,JObj
-                               ,kapps_config:get_ne_binary(ConfigCat, <<"default_from">>, ConfigDefault)
-                               ).
+-spec default_from_address() -> ne_binary().
+default_from_address() ->
+    list_to_binary([<<"no_reply@">>, net_adm:localhost()]).
 
--spec default_reply_to(ne_binary()) -> api_ne_binary().
--spec default_reply_to(kz_json:object(), ne_binary()) -> api_ne_binary().
-default_reply_to(ConfigCat) ->
-    default_reply_to(kz_json:new(), ConfigCat).
-default_reply_to(JObj, ConfigCat) ->
-    kz_json:get_ne_binary_value(<<"reply_to">>
-                               ,JObj
-                               ,kapps_config:get_ne_binary(ConfigCat, <<"default_reply_to">>)
-                               ).
+-spec default_reply_to() -> api_ne_binary().
+default_reply_to() -> 'undefined'.
 
 -spec render_subject(ne_binary(), kz_proplist()) -> binary().
 render_subject(Template, Macros) ->
@@ -462,24 +453,31 @@ find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
 find_account_db(_, JObj) -> kapi_notifications:account_db(JObj, 'false').
 
 -spec send_update(kz_json:object(), ne_binary()) -> 'ok'.
--spec send_update(kz_json:object(), ne_binary(), api_binary()) -> 'ok'.
--spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 send_update(DataJObj, Status) ->
     send_update(DataJObj, Status, 'undefined').
+
+-spec send_update(kz_json:object(), ne_binary(), api_binary()) -> 'ok'.
 send_update(DataJObj, Status, Message) ->
+    send_update(DataJObj, Status, Message, 'undefined').
+
+-spec send_update(kz_json:object(), ne_binary(), api_binary(), api_object()) -> 'ok'.
+send_update(DataJObj, Status, Message, Metadata) ->
     send_update(kz_json:get_first_defined([<<"server_id">>, <<"Server-ID">>], DataJObj)
                ,kz_json:get_first_defined([<<"msg_id">>, <<"Msg-ID">>], DataJObj)
                ,Status
                ,Message
+               ,Metadata
                ).
 
-send_update('undefined', _, _, _) ->
+-spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary(), api_object()) -> 'ok'.
+send_update('undefined', _, _, _, _) ->
     lager:debug("no response queue available, not publishing update");
-send_update(RespQ, MsgId, Status, Msg) ->
+send_update(RespQ, MsgId, Status, Msg, Metadata) ->
     Prop = props:filter_undefined(
              [{<<"Status">>, Status}
              ,{<<"Failure-Message">>, Msg}
              ,{<<"Msg-ID">>, MsgId}
+             ,{<<"Metadata">>, Metadata}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
@@ -751,22 +749,45 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
     case find_account_rep_email(kapi_notifications:account_id(DataJObj)) of
         'undefined' ->
             lager:debug("didn't find account rep for '~s'", [Key]),
-            find_default(ConfigCat, Key);
+            admin_emails_from_system_template(ConfigCat, Key);
         Emails -> Emails
     end.
 
--spec find_default(ne_binary(), kz_json:path()) -> api_ne_binaries().
-find_default(ConfigCat, Key) ->
-    case kapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
+-spec admin_emails_from_system_template(ne_binary(), kz_json:path()) -> api_ne_binaries().
+admin_emails_from_system_template(ConfigCat, Key) ->
+    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, ConfigCat) of
+        {'ok', JObj} -> admin_emails_from_system_template(ConfigCat, Key, JObj);
+        {'error', _} -> 'undefined'
+    end.
+
+-spec admin_emails_from_system_template(ne_binary(), kz_json:path(), kz_json:object()) -> api_ne_binaries().
+admin_emails_from_system_template(ConfigCat, Key, JObj) ->
+    case check_address_value(kz_json:get_ne_value([<<"default">>, <<"default_", Key/binary>>], JObj)) of
         'undefined' ->
-            lager:debug("no default in ~s for default_~s", [ConfigCat, Key]),
-            'undefined';
-        <<>> ->
-            lager:debug("empty default in ~s for default_~s", [ConfigCat, Key]),
-            'undefined';
-        <<_/binary>> = Email -> [Email];
+            case check_address_value(kz_json:get_ne_value(Key, JObj)) of
+                'undefined' ->
+                    lager:debug("no default in ~s for default_~s", [ConfigCat, Key]),
+                    'undefined';
+                Emails -> Emails
+            end;
         Emails -> Emails
     end.
+
+-spec template_system_value(ne_binary()) -> kz_json:object().
+template_system_value(TemplateId) ->
+    ConfigCat = teletype_templates:doc_id(TemplateId),
+    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, ConfigCat) of
+        {'ok', JObj} -> JObj;
+        {'error', _} -> kz_json:new()
+    end.
+
+-spec template_system_value(ne_binary(), kz_json:path()) -> any().
+template_system_value(TemplateId, Key) ->
+    template_system_value(TemplateId, Key, 'undefined').
+
+-spec template_system_value(ne_binary(), kz_json:path(), any()) -> any().
+template_system_value(TemplateId, Key, Default) ->
+    kz_json:get_first_defined([Key, lists:flatten([<<"default">>, Key])], template_system_value(TemplateId), Default).
 
 -spec open_doc(ne_binary(), api_binary(), kz_json:object()) ->
                       {'ok', kz_json:object()} |
@@ -912,11 +933,20 @@ public_proplist(Key, JObj) ->
        )
      ).
 
--spec notification_disabled(kz_json:object(), ne_binary()) -> 'ok'.
+-spec notification_completed(ne_binary()) -> template_response().
+notification_completed(TemplateId) -> {'completed', TemplateId}.
+
+-spec notification_ignored(ne_binary()) -> template_response().
+notification_ignored(TemplateId) -> {'ignored', TemplateId}.
+
+-spec notification_failed(ne_binary(), any()) -> template_response().
+notification_failed(TemplateId, Reason) -> {'failed', Reason, TemplateId}.
+
+-spec notification_disabled(ne_binary(), kz_json:object()) -> template_response().
 notification_disabled(DataJObj, TemplateId) ->
     AccountId = kapi_notifications:account_id(DataJObj),
-    lager:debug("notification ~s handling not configured for account ~s", [TemplateId, AccountId]),
-    send_update(DataJObj, <<"completed">>).
+    lager:debug("notification ~s is disabled for account ~s", [TemplateId, AccountId]),
+    {'disabled', TemplateId}.
 
 -spec maybe_get_attachments(kz_json:object() | api_binary()) -> attachments().
 maybe_get_attachments('undefined') -> [];

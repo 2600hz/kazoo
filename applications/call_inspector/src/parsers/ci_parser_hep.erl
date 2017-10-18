@@ -39,8 +39,8 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link([ci_parsers_util:parser_args()]) -> startlink_ret().
-start_link(Args) ->
-    ServerName = ci_parsers_util:make_name(Args),
+start_link([Arg]=Args) ->
+    ServerName = ci_parsers_util:make_name(Arg),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
 
 %%%===================================================================

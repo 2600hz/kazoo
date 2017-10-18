@@ -15,7 +15,6 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"voicemail_full">>).
--define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -35,10 +34,10 @@
 -define(TEMPLATE_NAME, <<"Full Voicemail Box">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
 
 -spec init() -> 'ok'.
 init() ->
@@ -55,14 +54,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"voicemail_full">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:voicemail_full_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -75,7 +74,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(DataJObj, AccountId)
     end.
 
--spec process_req(kz_json:object(), ne_binary()) -> 'ok'.
+-spec process_req(kz_json:object(), ne_binary()) -> template_response().
 process_req(DataJObj, AccountId) ->
     VMBox = get_vm_box(AccountId, DataJObj),
     User = get_vm_box_owner(VMBox, DataJObj),
@@ -116,7 +115,7 @@ get_vm_box_owner(VMBox, JObj) ->
             kz_json:new()
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
     Macros = [{<<"system">>, teletype_util:system_params()}
@@ -138,11 +137,11 @@ process_req(DataJObj) ->
                                           ,Macros
                ),
 
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
+        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().

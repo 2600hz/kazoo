@@ -351,23 +351,23 @@ settings_keys(Assoc, KeyKind, JObj) ->
 
 -spec get_label(binary(), binary()) -> binary().
 get_label(AccountId, DocId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    Doc = kz_datamgr:open_cache_doc(AccountDb, DocId),
+    AccountDb = kz_util:format_account_db(AccountId),
+    {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, DocId),
 
     get_label(Doc).
 
 -spec get_label(kz_json:object()) -> binary().
 get_label(Doc) ->
-    case {kz_json:get_value(<<"first_name">>, Doc), kz_json:get_value(<<"last_name">>, Doc)} of
+    case {kz_json:get_ne_binary_value(<<"first_name">>, Doc)
+         ,kz_json:get_ne_binary_value(<<"last_name">>, Doc)
+         }
+    of
         {'undefined', 'undefined'} ->
             kz_json:get_value(<<"name">>, Doc);
-
         {First, 'undefined'} ->
             First;
-
         {'undefined', Last} ->
             Last;
-
         {First, Last} ->
             <<First/binary, " ", Last/binary>>
     end.

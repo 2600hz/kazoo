@@ -261,17 +261,17 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
     load_message(MessageId, BoxId, Context, 'true');
 validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
-    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(cb_context:account_id(Context)),
+    RetentionTimestamp = kz_time:now_s() - kvm_util:retention_seconds(cb_context:account_id(Context)),
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', Msg} ->
-            case kzd_box_message:utc_seconds(Msg) < RetenTimestamp of
+            case kzd_box_message:utc_seconds(Msg) < RetentionTimestamp of
                 'true' ->
                     ErrMsg = <<"cannot make changes to messages prior to retention duration">>,
                     cb_context:add_validation_error(MessageId
                                                    ,<<"date_range">>
                                                    ,kz_json:from_list(
                                                       [{<<"message">>, ErrMsg}
-                                                      ,{<<"cause">>, RetenTimestamp}
+                                                      ,{<<"cause">>, RetentionTimestamp}
                                                       ])
                                                    ,Context
                                                    );
@@ -531,7 +531,7 @@ filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
        Filter =:= ?VM_FOLDER_SAVED;
        Filter =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
-    QsFiltered = filtered_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
+    QsFiltered = crossbar_filter:by_doc(Mess, Context),
     case QsFiltered
         orelse kzd_box_message:folder(Mess) =:= Filter
     of
@@ -542,7 +542,7 @@ filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
 filter_messages(_, [], _Context, Selected) -> Selected;
 filter_messages([Mess|Messages], Filters, Context, Selected) ->
     Id = kzd_box_message:media_id(Mess),
-    QsFiltered = filtered_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
+    QsFiltered = crossbar_filter:by_doc(Mess, Context),
 
     case QsFiltered
         orelse lists:member(Id, Filters)
@@ -783,28 +783,20 @@ empty_source_id(Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
-    MaxRetenSecond = kvm_util:retention_seconds(cb_context:account_id(Context)),
-    RetenTimestamp = kz_time:now_s() - MaxRetenSecond,
-    case message_summary_view_options(Context, BoxId, MaxRetenSecond) of
-        {'ok', ViewOptions} ->
-            NormlizeFun = fun(J, Acc) ->
-                                  message_summary_normalizer(BoxId, J, Acc, RetenTimestamp)
-                          end,
-            C1 = prefix_qs_filter_keys(cb_context:set_resp_status(Context, 'success')),
-            ViewResults = crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
-                                                ,ViewOptions
-                                                ,C1
-                                                ,NormlizeFun
-                                                ),
-            maybe_fix_envelope(ViewResults);
-        Ctx -> Ctx
-    end.
+    {MaxRange, RetentionSeconds} = get_max_range(Context),
+    RetentionTimestamp = kz_time:now_s() - RetentionSeconds,
+
+    Mapper = fun(JObj, Acc) -> message_summary_normalizer(BoxId, JObj, Acc, RetentionTimestamp) end,
+
+    ViewOptions = [{'mapper', Mapper}
+                  ,{'max_range', MaxRange}
+                  ,{'range_keymap', [BoxId]}
+                  ],
+    crossbar_view:load_modb(prefix_qs_filter_keys(Context), ?MSG_LISTING_BY_MAILBOX, ViewOptions).
 
 -spec prefix_qs_filter_keys(cb_context:context()) -> cb_context:context().
 prefix_qs_filter_keys(Context) ->
-    NewQs = kz_json:map(fun(K, V) ->
-                                prefix_filter_key(K, V)
-                        end
+    NewQs = kz_json:map(fun(K, V) -> prefix_filter_key(K, V) end
                        ,cb_context:query_string(Context)
                        ),
     cb_context:set_query_string(Context, NewQs).
@@ -825,92 +817,36 @@ prefix_filter_key(Key, Value) ->
 
 -spec message_summary_normalizer(api_binary(), kz_json:object(), kz_json:objects(), gregorian_seconds()) ->
                                         kz_json:objects().
-message_summary_normalizer('undefined', JObj, Acc, RetenTimestamp) ->
+message_summary_normalizer('undefined', JObj, Acc, RetentionTimestamp) ->
     [kz_json:from_list(
        [{kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], JObj)
-        ,kvm_util:maybe_set_deleted_by_retention(kz_json:get_value(<<"value">>, JObj), RetenTimestamp)
+        ,kvm_util:enforce_retention(kz_json:get_value(<<"value">>, JObj), RetentionTimestamp)
         }
        ])
      | Acc
     ];
-message_summary_normalizer(_BoxId, JObj, Acc, RetenTimestamp) ->
-    [kvm_util:maybe_set_deleted_by_retention(kz_json:get_value(<<"value">>, JObj), RetenTimestamp)
+message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
+    [kvm_util:enforce_retention(kz_json:get_value(<<"value">>, JObj), RetentionTimestamp)
      | Acc
-    ].
-
--spec message_summary_view_options(cb_context:context(), api_binary(), gregorian_seconds()) ->
-                                          {'ok', crossbar_doc:view_options()} |
-                                          cb_context:context().
-message_summary_view_options(Context, BoxId, MaxRetenSecond) ->
-    AccountId = cb_context:account_id(Context),
-    MaxRange = get_max_range(Context, MaxRetenSecond),
-    case cb_modules_util:range_view_options(Context, MaxRange) of
-        {CreatedFrom, CreatedTo} ->
-            MODBs = lists:reverse(kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)),
-            {'ok', maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs)};
-        Ctx -> Ctx
-    end.
-
--spec maybe_add_start_end_key(api_binary(), gregorian_seconds(), gregorian_seconds(), ne_binaries()) ->
-                                     crossbar_doc:view_options().
-maybe_add_start_end_key('undefined', _CreatedTo, _CreatedFrom, MODBs) ->
-    [{'databases', MODBs}
-    ,'descending'
-    ];
-maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs) ->
-    [{'databases', MODBs}
-    ,{'startkey', [BoxId, CreatedTo]}
-    ,{'endkey', [BoxId, CreatedFrom]}
-    ,'descending'
     ].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% check if create_from is exists or not, if not set max_range to max_retention
-%% to return all messages in retention duration
+%% For Backward compatibility with voicemail box `messages` array, set
+%% `max_range` to retention seconds to get all messages which are in
+%% retention duration range *only* if request doesn't have
+%% `created_from` in the query string.
+%%
+%% If `created_from` is set, use default Crossbar max range.
 %% @end
 %%--------------------------------------------------------------------
--spec get_max_range(cb_context:context(), gregorian_seconds()) -> gregorian_seconds().
-get_max_range(Context, MaxRetenSecond) ->
+-spec get_max_range(cb_context:context()) -> {api_seconds(), gregorian_seconds()}.
+get_max_range(Context) ->
+    RetentionSeconds = kvm_util:retention_seconds(cb_context:account_id(Context)),
     case cb_context:req_value(Context, <<"created_from">>) of
-        'undefined' -> MaxRetenSecond;
-        _ -> ?MAX_RANGE
-    end.
-
--spec maybe_fix_envelope(cb_context:context()) -> cb_context:context().
-maybe_fix_envelope(Context) ->
-    case cb_context:resp_status(Context) of
-        'success' -> fix_envelope(Context);
-        _Status -> Context
-    end.
-
--spec fix_envelope(cb_context:context()) -> cb_context:context().
-fix_envelope(Context) ->
-    UpdatedEnvelope =
-        case {cb_context:doc(Context)
-             ,cb_context:resp_envelope(Context)
-             }
-        of
-            {[], Envelope} ->
-                kz_json:delete_keys([<<"start_key">>, <<"next_start_key">>], Envelope);
-            {_, Envelope} ->
-                fix_keys(Envelope)
-        end,
-    cb_context:set_resp_envelope(Context, UpdatedEnvelope).
-
--spec fix_keys(kz_json:object()) -> kz_json:object().
-fix_keys(Envelope) ->
-    lists:foldl(fun fix_key_fold/2
-               ,Envelope
-               ,[<<"start_key">>, <<"next_start_key">>]
-               ).
-
--spec fix_key_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
-fix_key_fold(Key, Envelope) ->
-    case kz_json:get_value(Key, Envelope) of
-        [_BoxId, Timestamp] -> kz_json:set_value(Key, Timestamp, Envelope);
-        'undefined' -> Envelope
+        'undefined' -> {RetentionSeconds, RetentionSeconds};
+        _ -> {'undefined', RetentionSeconds}
     end.
 
 %%--------------------------------------------------------------------
@@ -1166,11 +1102,6 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
                 end,
     Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
-
--spec filtered_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
-filtered_by_qs(_, 'false', _Context) -> 'false';
-filtered_by_qs(JObj, 'true', Context) ->
-    crossbar_doc:filtered_doc_by_qs(JObj, Context).
 
 %%--------------------------------------------------------------------
 %% @private

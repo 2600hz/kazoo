@@ -11,6 +11,7 @@
         "maximum_bulk": {
             "default": 50,
             "description": "crossbar.cdrs maximum bulk",
+            "minimum": 1,
             "type": "integer"
         },
         "maximum_range": {

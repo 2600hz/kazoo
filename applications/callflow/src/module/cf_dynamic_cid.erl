@@ -58,7 +58,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
--spec handle(kz_json:object(), kapps_call:call(), api_binary(), api_binary()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call(), api_ne_binary(), api_ne_binary()) -> 'ok'.
 handle(Data, Call) ->
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     Action = kz_json:get_ne_binary_value(<<"action">>, Data),
@@ -86,7 +86,7 @@ handle(Data, Call, _Manual, CaptureGroup) ->
 %% Handle manual mode of dynamic cid
 %% @end
 %%--------------------------------------------------------------------
--spec handle_manual(kz_json:object(), kapps_call:call(), api_binary()) -> 'ok'.
+-spec handle_manual(kz_json:object(), kapps_call:call(), api_ne_binary()) -> 'ok'.
 handle_manual(Data, Call, CaptureGroup) ->
     CID = collect_cid_number(Data, Call),
     update_call(Call, CID, CaptureGroup),
@@ -99,7 +99,7 @@ handle_manual(Data, Call, CaptureGroup) ->
 %% Handle static mode of dynamic cid
 %% @end
 %%--------------------------------------------------------------------
--spec handle_static(kz_json:object(), kapps_call:call(), api_binary()) -> 'ok'.
+-spec handle_static(kz_json:object(), kapps_call:call(), api_ne_binary()) -> 'ok'.
 handle_static(Data, Call, CaptureGroup) ->
     {CIDName, CIDNumber} = get_static_cid_entry(Data, Call),
     update_call(Call, CIDNumber, CIDName, CaptureGroup),
@@ -110,7 +110,8 @@ handle_static(Data, Call, CaptureGroup) ->
 %% @doc Read CID info from a list of CID defined in database
 %% @end
 %%--------------------------------------------------------------------
--type list_cid_entry() :: {ne_binary(), ne_binary(), ne_binary()} | {'error', kz_datamgr:data_error()}.
+-type list_cid_entry() :: {ne_binary(), ne_binary(), ne_binary()} |
+                          {'error', kz_datamgr:data_error()}.
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_list(Data, Call) ->
@@ -141,7 +142,7 @@ proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
 %% request, to and callee_number
 %% @end
 %%--------------------------------------------------------------------
--spec update_call(kapps_call:call(), ne_binary(), api_ne_binary()) -> kapps_call:call().
+-spec update_call(kapps_call:call(), ne_binary(), api_ne_binary()) -> 'ok'.
 update_call(Call, CIDNumber, CaptureGroup) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CIDNumber}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
@@ -157,7 +158,7 @@ update_call(Call, CIDNumber, CaptureGroup) ->
 %% @doc Same as update_call/3, but also sets caller id name
 %% @end
 %%--------------------------------------------------------------------
--spec update_call(kapps_call:call(), ne_binary(), ne_binary(), api_ne_binary()) -> kapps_call:call().
+-spec update_call(kapps_call:call(), ne_binary(), ne_binary(), api_ne_binary()) -> 'ok'.
 update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {CIDNumber, CIDName}}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
@@ -178,7 +179,7 @@ update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
 %% @doc If CaptureGroup exists correct request, to and callee_id_number
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_strip_features_code(kapps_call:call(), api_ne_binary()) -> kapps_call:call().
+-spec maybe_strip_features_code(kapps_call:call(), api_ne_binary()) -> 'ok'.
 maybe_strip_features_code(Call, 'undefined') ->
     cf_exe:set_call(Call);
 maybe_strip_features_code(Call, CaptureGroup) ->

@@ -15,7 +15,7 @@
         ,subject/0
         ,category/0
         ,friendly_name/0
-        ,to/1, from/1, cc/1, bcc/1, reply_to/1
+        ,to/0, from/0, cc/0, bcc/0, reply_to/0
         ]).
 -export([handle_req/1]).
 
@@ -49,20 +49,20 @@ category() -> <<"voicemail">>.
 -spec friendly_name() -> ne_binary().
 friendly_name() -> <<"Voicemail To Email">>.
 
--spec to(ne_binary()) -> kz_json:object().
-to(_) -> ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL).
+-spec to() -> kz_json:object().
+to() -> ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL).
 
--spec from(ne_binary()) -> api_ne_binary().
-from(ModConfigCat) -> teletype_util:default_from_address(ModConfigCat).
+-spec from() -> api_ne_binary().
+from() -> teletype_util:default_from_address().
 
--spec cc(ne_binary()) -> kz_json:object().
-cc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+-spec cc() -> kz_json:object().
+cc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec bcc(ne_binary()) -> kz_json:object().
-bcc(_) -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
+-spec bcc() -> kz_json:object().
+bcc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec reply_to(ne_binary()) -> api_ne_binary().
-reply_to(ModConfigCat) -> teletype_util:default_reply_to(ModConfigCat).
+-spec reply_to() -> api_ne_binary().
+reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
 init() ->
@@ -70,14 +70,14 @@ init() ->
     teletype_templates:init(?MODULE),
     teletype_bindings:bind(<<"voicemail_new">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:voicemail_new_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [id()]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(id(), <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [id()]),
 
@@ -90,7 +90,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
     VMBoxJObj = get_vmbox(DataJObj),
     UserJObj = get_owner(VMBoxJObj, DataJObj),
@@ -134,22 +134,22 @@ maybe_add_user_email(BoxEmails, UserEmail, 'false') -> lists:delete(UserEmail, B
 maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
 
 
--spec maybe_process_req(kz_json:object()) -> 'ok'.
+-spec maybe_process_req(kz_json:object()) -> template_response().
 maybe_process_req(DataJObj) ->
     HasEmail = kz_term:is_not_empty(kz_json:get_value(<<"to">>, DataJObj)),
     maybe_process_req(DataJObj, HasEmail).
 
--spec maybe_process_req(kz_json:object(), boolean()) -> 'ok'.
+-spec maybe_process_req(kz_json:object(), boolean()) -> template_response().
 maybe_process_req(DataJObj, false) ->
     Msg = io_lib:format("request or box ~s has no emails or owner doesn't want emails"
                        ,[kz_json:get_value(<<"voicemail_box">>, DataJObj)]
                        ),
     lager:debug(Msg),
-    teletype_util:send_update(DataJObj, <<"completed">>, kz_term:to_binary(Msg));
+    teletype_util:notification_ignored(id());
 maybe_process_req(DataJObj, true) ->
     do_process_req(DataJObj).
 
--spec do_process_req(kz_json:object()) -> 'ok'.
+-spec do_process_req(kz_json:object()) -> template_response().
 do_process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
     Macros0 = macros(DataJObj),
@@ -162,11 +162,11 @@ do_process_req(DataJObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
     Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
     Subject = teletype_util:render_subject(Subject0, Macros),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_CONFIG_CAT(id())),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, id()),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, props:get_value(<<"attachments">>, Macros0)) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> teletype_util:notification_completed(id());
+        {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
     end.
 
 -spec macros(kz_json:object()) -> kz_proplist().
@@ -270,9 +270,17 @@ build_voicemail_data(DataJObj) ->
       ,{<<"vmbox_number">>, kz_json:get_value([<<"vmbox_doc">>, <<"mailbox">>], DataJObj)}
       ,{<<"msg_id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
       ,{<<"name">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)} %% backward compatibility
-      ,{<<"transcription">>, kz_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
+      ,{<<"transcription">>, get_transcription(DataJObj)}
       ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).
+
+-spec get_transcription(kz_json:object()) -> api_ne_binary().
+get_transcription(DataJObj) ->
+    case kz_json:get_value(<<"voicemail_transcription">>, DataJObj) of
+        'undefined' -> 'undefined';
+        ?NE_BINARY=Bin -> Bin;
+        JObj -> kz_json:get_ne_binary_value(<<"text">>, JObj)
+    end.
 
 -spec pretty_print_length(api_object() | pos_integer()) -> ne_binary().
 pretty_print_length('undefined') -> <<"00:00:00">>;

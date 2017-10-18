@@ -19,6 +19,14 @@
 
 -include("crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".call_inspector">>).
+-define(MAX_BULK, kapps_config:get_pos_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
+
+-define(CB_LIST, <<"cdrs/crossbar_listing">>).
+-define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
+
+-define(MATCH_CDR_ID(YYYYMM, CallId), <<YYYYMM:6/binary, "-", CallId/binary>>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -37,49 +45,45 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.to_csv.get.call_inspector">>, ?MODULE, 'to_csv'),
     crossbar_bindings:bind(<<"*.validate.call_inspector">>, ?MODULE, 'validate').
 
--spec to_json(cb_cdrs:payload()) -> cb_cdrs:payload().
--spec to_json(cb_cdrs:payload(), list()) -> cb_cdrs:payload().
-to_json({Req1, Context}) ->
-    to_json({Req1, Context}
-           ,props:get_value(<<"call_inspector">>, cb_context:req_nouns(Context), [])
-           ).
-to_json(Payload, [_|_]) -> Payload;
-to_json({Req1, Context}, []) ->
-    Headers = cowboy_req:get('resp_headers', Req1),
-    {'ok', Req2} = cowboy_req:chunked_reply(200, Headers, Req1),
-    'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
-    {Req3, Context1} = send_chunked_cdrs({Req2, Context}),
-    'ok' = cowboy_req:chunk("]", Req3),
-    %%FIXME: fix page_size, start_key and next_start_key properly
-    _ = cb_cdrs:pagination({Req3, Context1}),
-    'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
-                            ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
-                            ,"}"
-                            ]
-                           ,Req3
-                           ),
-    'ok' = cowboy_req:ensure_response(Req3, 200),
-    {Req3, cb_context:store(Context1, 'is_chunked', 'true')}.
+-spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
+to_json({Req, Context}) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsReseller = kz_services:is_reseller(AuthAccountId),
+    to_json(Req, cb_context:store(Context, 'is_reseller', IsReseller), get_view_options(cb_context:req_nouns(Context))).
 
--spec to_csv(cb_cdrs:payload()) -> cb_cdrs:payload().
--spec to_csv(cb_cdrs:payload(), list()) -> cb_cdrs:payload().
+-spec to_json(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
+to_json(Req, Context, {'undefined', _}) ->
+    lager:debug("invalid URL chain for cdrs request"),
+    {Req, cb_context:add_system_error('faulty_request', Context)};
+to_json(Req, Context, {ViewName, Options0}) ->
+    Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
+              ,{'cowboy_req', Req}
+              ,{'chunked_mapper', fun load_chunked_cdrs/3}
+              ,{'chunk_response_type', 'json'}
+               | Options0
+              ],
+    crossbar_view:load_modb(Context, ViewName, Options).
+
+-spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_csv({Req, Context}) ->
-    to_csv({Req, Context}
-          ,props:get_value(<<"call_inspector">>, cb_context:req_nouns(Context), [])
-          ).
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsReseller = kz_services:is_reseller(AuthAccountId),
+    to_csv(Req, cb_context:store(Context, 'is_reseller', IsReseller), get_view_options(cb_context:req_nouns(Context))).
 
-to_csv(Payload, [_|_]) -> Payload;
-to_csv({Req, Context}, []) ->
-    Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
-                               ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
-                               ]
-                              ,cowboy_req:get('resp_headers', Req)
-                              ),
-    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
-    Context1 = cb_context:store(Context, 'is_csv', 'true'),
-    {Req2, _} = send_chunked_cdrs({Req1, Context1}),
-    'ok' = cowboy_req:ensure_response(Req2, 200),
-    {Req2, cb_context:store(Context1,'is_chunked', 'true')}.
+-spec to_csv(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
+to_csv(Req, Context, {'undefined', _}) ->
+    lager:debug("invalid URL chain for cdrs request"),
+    {Req, cb_context:add_system_error('faulty_request', Context)};
+to_csv(Req, Context, {ViewName, Options0}) ->
+    Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
+              ,{'cowboy_req', Req}
+              ,{'chunked_mapper', fun load_chunked_cdrs/3}
+              ,{'chunk_response_type', 'csv'}
+               | Options0
+              ],
+    crossbar_view:load_modb(cb_context:store(Context, 'is_csv', 'true'), ViewName, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -98,9 +102,9 @@ allowed_methods(_CallId) -> [?HTTP_GET].
 %% @public
 %% @doc
 %% Does the path point to a valid resource
-%% So /skels => []
-%%    /skels/foo => [<<"foo">>]
-%%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
+%% So /call_inspector => []
+%%    /call_inspector/foo => [<<"foo">>]
+%%    /call_inspector/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
@@ -114,14 +118,30 @@ resource_exists(_) -> 'true'.
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /skels mights load a list of skel objects
-%% /skels/123 might load the skel object 123
+%% /call_inspector mights load a list of skel objects
+%% /call_inspector/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    cb_cdrs:validate(Context).
+    validate_path_and_date_range(Context, cb_context:req_nouns(Context)).
+
+-spec validate_path_and_date_range(cb_context:context(), req_nouns()) -> cb_context:context().
+validate_path_and_date_range(Context, [{<<"call_inspector">>, _}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    validate_date_range(Context);
+validate_path_and_date_range(Context, [{<<"call_inspector">>, _}, {<<"users">>, [_]}|_]) ->
+    validate_date_range(Context);
+validate_path_and_date_range(Context, [{<<"call_inspector">>, _}|_]) ->
+    lager:debug("invalid URL chain for call_inspector request"),
+    cb_context:add_system_error('faulty_request', Context).
+
+-spec validate_date_range(cb_context:context()) -> cb_context:context().
+validate_date_range(Context) ->
+    case crossbar_view:time_range(Context) of
+        {_StartTime, _EndTime} -> cb_context:set_resp_status(Context, 'success');
+        Ctx -> Ctx
+    end.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, CallId) ->
@@ -131,6 +151,10 @@ validate(Context, CallId) ->
         'false' ->
             inspect_call_id(CallId, Context)
     end.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 
 -spec inspect_call_id(ne_binary(), cb_context:context()) -> cb_context:context().
 inspect_call_id(CallId, Context) ->
@@ -169,42 +193,60 @@ sanitize(JObjs) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Generate specific view options for the path.
 %% @end
 %%--------------------------------------------------------------------
--spec send_chunked_cdrs(cb_cdrs:payload()) -> cb_cdrs:payload().
-send_chunked_cdrs({Req, Context}) ->
-    Dbs = cb_context:fetch(Context, 'chunked_dbs'),
-    AuthAccountId = cb_context:auth_account_id(Context),
-    IsReseller = kz_services:is_reseller(AuthAccountId),
-    send_chunked_cdrs(Dbs, {Req, cb_context:store(Context, 'is_reseller', IsReseller)}).
+-spec get_view_options(req_nouns()) -> {api_ne_binary(), crossbar_view:options()}.
+get_view_options([{<<"call_inspector">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    {?CB_LIST, []};
+get_view_options([{<<"call_inspector">>, []}, {<<"users">>, [OwnerId]}|_]) ->
+    {?CB_LIST_BY_USER
+    ,[{'range_start_keymap', [OwnerId]}
+     ,{'range_end_keymap', [OwnerId]}
+     ]
+    };
+get_view_options(_) ->
+    {'undefined', []}.
 
-%%FIXME: loop over databases until either page size is exhausted or database
-%%       This code is fetching from all databases the same amount as page_size!
--spec send_chunked_cdrs(ne_binaries(), cb_cdrs:payload()) -> cb_cdrs:payload().
-send_chunked_cdrs([], Payload) -> Payload;
-send_chunked_cdrs([Db | Dbs], {Req, Context}) ->
-    View = cb_context:fetch(Context, 'chunked_view'),
-    ViewOptions = cb_cdrs:fetch_view_options(Context),
-    Context1 = cb_context:store(Context, 'start_key', props:get_value('startkey', ViewOptions)),
-    Context2 = cb_context:store(Context1, 'page_size', 0),
-    Ids = get_cdr_ids(Db, View, ViewOptions),
-    {Context3, CDRIds} = cb_cdrs:maybe_paginate_and_clean(Context2, Ids),
-    send_chunked_cdrs(Dbs, cb_cdrs:load_chunked_cdrs(Db, CDRIds, {Req, Context3})).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Loads CDR docs from database and normalized the them.
+%% @end
+%%--------------------------------------------------------------------
+-spec load_chunked_cdrs(cb_cowboy_payload(), kz_json:objects(), ne_binary()) -> crossbar_view:chunked_mapper_ret().
+load_chunked_cdrs(Payload, JObjs, Db) ->
+    Ids = get_cdr_ids(JObjs),
+    cb_cdrs:load_chunked_cdr_ids(Payload, Ids, Db).
 
--define(MATCH_CDR_ID(YYYYMM, CallId), <<YYYYMM:6/binary, "-", CallId/binary>>).
-
--spec get_cdr_ids(ne_binary(), ne_binary(), crossbar_doc:view_options()) -> kz_proplist().
-get_cdr_ids(Db, View, ViewOptions) ->
-    {ok, Ids} = cb_cdrs:get_cdr_ids(Db, View, ViewOptions),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_cdr_ids(kz_json:objects()) -> ne_binaries().
+get_cdr_ids(JObjs) ->
+    Ids = [kz_doc:id(JObj) || JObj <- JObjs],
     %% Remove leading year, month and dash
-    CallIds = [CallId || {?MATCH_CDR_ID(_,CallId), _CDR} <- Ids],
-    lager:debug("filtering ~p callids", [length(CallIds)]),
+    CallIds = [CallId || {?MATCH_CDR_ID(_, CallId), _CDR} <- Ids],
+
+    lager:debug("filtering ~p call_ids", [length(CallIds)]),
     FilteredCallIds = filter_callids(CallIds),
+
     lager:debug("found ~p dialogues", [length(FilteredCallIds)]),
-    [Id || {?MATCH_CDR_ID(_,CallId), _}=Id <- Ids,
+
+    [Id || ?MATCH_CDR_ID(_, CallId)=Id <- Ids,
            lists:member(CallId, FilteredCallIds)
     ].
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Send a filter request to call_inspector application to filter
+%% which cdr_id is on call_inspector data store
+%% @end
+%%--------------------------------------------------------------------
 -spec filter_callids(ne_binaries()) -> ne_binaries().
 filter_callids([]) -> [];
 filter_callids(CallIds) ->
@@ -213,7 +255,7 @@ filter_callids(CallIds) ->
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_filter_req/1
-                                    ,{call_inspector, true}
+                                    ,{call_inspector, fun kapi_inspector:filter_resp_v/1, true}
                                     )
     of
         {ok, JObjs} ->

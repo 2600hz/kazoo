@@ -89,7 +89,8 @@ validate_allotments(Context, ?HTTP_POST) ->
 
 -spec validate_consumed(cb_context:context(), http_method()) -> cb_context:context().
 validate_consumed(Context, ?HTTP_GET) ->
-    load_consumed(Context).
+    C = load_allotments(Context),
+    load_consumed(C, cb_context:resp_status(C)).
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
@@ -106,16 +107,21 @@ post(Context) ->
 %%--------------------------------------------------------------------
 -spec load_allotments(cb_context:context()) -> cb_context:context().
 load_allotments(Context) ->
-    Context1 = maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))),
-    Allotments = kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1), kz_json:new()),
-    cb_context:set_resp_data(Context1, Allotments).
+    C = crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
+    case cb_context:resp_status(C) =:= 'success'
+        andalso not kz_json:is_empty(kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(C), kz_json:new()))
+    of
+        'false' ->
+            Msg = <<"allotments are not configured for this account yet">>,
+            crossbar_util:response_400(Msg, kz_json:new(), Context);
+        'true' ->
+            cb_context:set_resp_data(C, kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(C)))
+    end.
 
 
--spec load_consumed(cb_context:context()) -> cb_context:context().
-load_consumed(Context) ->
-    Allotments = kz_json:get_json_value(?PVT_ALLOTMENTS
-                                       ,cb_context:doc(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)))
-                                       ,kz_json:new()),
+-spec load_consumed(cb_context:context(), crossbar_status()) -> cb_context:context().
+load_consumed(Context, 'success') ->
+    Allotments = kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context)),
     Mode = get_consumed_mode(Context),
     {ContextResult, _, Result} = kz_json:foldl(fun foldl_consumed/3, {Context, Mode, kz_json:new()}, Allotments),
     case cb_context:resp_status(ContextResult) of
@@ -124,29 +130,33 @@ load_consumed(Context) ->
                                         ,{fun cb_context:set_resp_data/2, Result}
                                         ]);
         _Error -> ContextResult
+    end;
+load_consumed(Context, _) -> Context.
+
+-type mode() :: {ne_binary(), gregorian_seconds(), gregorian_seconds()}.
+
+-spec foldl_consumed(ne_binary(), kz_json:object(), CMA) -> CMA when CMA :: {cb_context:context(), mode(), kz_json:objects()}.
+foldl_consumed(Classification, ValueJObj, {Context, {CycleMode, From0, To0}=Mode, Acc}) ->
+    {Cycle, From, To} = case CycleMode =:= <<"cycle">>
+                            andalso kz_json:get_ne_binary_value(<<"cycle">>, ValueJObj)
+                        of
+                            'false' -> {CycleMode, From0, To0};
+                            Value -> {Value, cycle_start(Value, From0), cycle_end(Value, To0)}
+                        end,
+    Options = [{'range_keymap', [Classification]}
+              ,{'created_from', From}
+              ,{'created_to', To}
+              ,{'group_level', 1}
+              ],
+    C1 = crossbar_view:load_modb(Context, ?LIST_CONSUMED, Options),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            {C1, Mode, normalize_result(Cycle, From, To, Acc, cb_context:doc(C1))};
+        CtxErr -> {CtxErr, Mode, Acc}
     end.
 
--type mode() :: {'cycle', kz_datetime()} |
-                {'manual', api_seconds(), api_seconds()}.
 
--spec foldl_consumed(api_binary(), kz_json:object(), CMA) -> CMA when
-      CMA :: {cb_context:context(), mode(), kz_json:objects()}.
-foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
-    case create_viewoptions(Context, Classification, Value, Mode) of
-        {Cycle, ViewOptions} ->
-            [_, From] = props:get_value('startkey', ViewOptions),
-            [_, To] = props:get_value('endkey', ViewOptions),
-            ContextResult = crossbar_doc:load_view(?LIST_CONSUMED
-                                                  ,props:insert_value({'group_level', 1},ViewOptions)
-                                                  ,Context
-                                                  ),
-            Acc1 = normalize_result(Cycle, From, To, Acc, cb_context:doc(ContextResult)),
-            {ContextResult, Mode, Acc1};
-        ContextErr -> {ContextErr, Mode, Acc}
-    end.
-
-
--spec normalize_result(api_binary(), gregorian_seconds(), gregorian_seconds(), kz_json:object(), kz_json:objects())
+-spec normalize_result(api_ne_binary(), gregorian_seconds(), gregorian_seconds(), kz_json:object(), kz_json:objects())
                       -> kz_json:object().
 normalize_result(_Cycle, _From, _To, Acc, []) -> Acc;
 normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
@@ -167,23 +177,6 @@ normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
            end,
     normalize_result(Cycle, From, To, Acc1, Tail).
 
--spec create_viewoptions(cb_context:context(), api_binary(), kz_json:object(), mode()) -> {api_binary(), kz_proplist()} |
-                                                                                          cb_context:context().
-create_viewoptions(Context, Classification, JObj, {'cycle', DateTime}) ->
-    Cycle = kz_json:get_value(<<"cycle">>, JObj),
-    From = cycle_start(Cycle, DateTime),
-    To = cycle_end(Cycle, DateTime),
-    case cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To) of
-        {'ok', ViewOptions} -> {Cycle, ViewOptions}; %%TODO: reverse databases order and start, end keys
-        ContextErr -> ContextErr
-    end;
-
-create_viewoptions(Context, Classification, _JObj, {'manual', From, To}) ->
-    case cb_modules_util:range_modb_view_options(Context, [Classification], [], From, To) of
-        {'ok', ViewOptions} -> {<<"manual">>, ViewOptions}; %%TODO: reverse databases order and start, end keys
-        ContextErr -> ContextErr
-    end.
-
 -spec get_consumed_mode(cb_context:context()) -> mode().
 get_consumed_mode(Context) ->
     case
@@ -191,25 +184,31 @@ get_consumed_mode(Context) ->
         ,maybe_req_seconds(Context, <<"created_to">>)
         }
     of
-        {'undefined', 'undefined'} -> {'cycle', calendar:universal_time()};
-        {From, 'undefined'} -> {'cycle', calendar:gregorian_seconds_to_datetime(From)};
-        {'undefined', To} -> {'cycle', calendar:gregorian_seconds_to_datetime(To)};
-        {From, To} -> {'manual', From, To}
+        {'undefined', 'undefined'} ->
+            NowDateTime = kz_time:now_s(),
+            {<<"cycle">>, NowDateTime, NowDateTime};
+        {From, 'undefined'} -> {<<"cycle">>, From, From};
+        {'undefined', To} -> {<<"cycle">>, To, To};
+        {From, To} -> {<<"manual">>, From, To}
     end.
 
 -spec maybe_req_seconds(cb_context:context(), api_binary()) -> api_seconds().
 maybe_req_seconds(Context, Key) ->
-    T = cb_context:req_value(Context, Key),
-    case kz_term:is_empty(T) of
-        'true' -> 'undefined';
-        'false' -> kz_term:to_integer(T)
+    Val = cb_context:req_value(Context, Key),
+    case kz_term:safe_cast(Val, 'undefined', fun kz_term:to_integer/1) of
+        'undefined' -> 'undefined';
+        T when T > 0 -> T;
+        _ -> 'undefined'
     end.
 
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
     case is_allowed(Context) of
-        'true' -> maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)));
-        'false' -> crossbar_util:response_400(<<"sub-accounts of non-master resellers must contact the reseller to change their allotments">>, kz_json:new(), Context)
+        'true' ->
+            maybe_create_limits_doc(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)));
+        'false' ->
+            Msg = <<"sub-accounts of non-master resellers must contact the reseller to change their allotments">>,
+            crossbar_util:response_400(Msg, kz_json:new(), Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -245,26 +244,21 @@ is_allowed(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_handle_load_failure(cb_context:context()) -> cb_context:context().
--spec maybe_handle_load_failure(cb_context:context(), pos_integer()) -> cb_context:context().
-maybe_handle_load_failure(Context) ->
-    maybe_handle_load_failure(Context, cb_context:resp_error_code(Context)).
+-spec maybe_create_limits_doc(cb_context:context()) -> cb_context:context().
+-spec maybe_create_limits_doc(cb_context:context(), pos_integer()) -> cb_context:context().
+maybe_create_limits_doc(Context) ->
+    maybe_create_limits_doc(Context, cb_context:resp_error_code(Context)).
 
-maybe_handle_load_failure(Context, 404) ->
+maybe_create_limits_doc(Context, 404) ->
     Data = cb_context:req_data(Context),
-    NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
-                                  ,{<<"_id">>, ?PVT_TYPE}
-                                  ]),
-    JObj = kz_json_schema:add_defaults(kz_json:merge_jobjs(NewLimits, kz_doc:public_fields(Data))
-                                      ,<<"limits">>
-                                      ),
-
+    NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}, {<<"_id">>, ?PVT_TYPE}]),
+    JObj = kz_json_schema:add_defaults(kz_json:merge_jobjs(NewLimits, kz_doc:public_fields(Data)), <<"limits">>),
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
                        ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
                        ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
                        ]);
-maybe_handle_load_failure(Context, _RespCode) -> Context.
+maybe_create_limits_doc(Context, _RespCode) -> Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -280,8 +274,9 @@ update_allotments(Context) ->
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     cb_context:set_resp_data(Context1, Allotments).
 
--spec cycle_start(ne_binary(), kz_datetime() | gregorian_seconds()) -> gregorian_seconds().
-cycle_start(Cycle, Seconds) when is_integer(Seconds) -> cycle_start(Cycle, calendar:gregorian_seconds_to_datetime(Seconds));
+-spec cycle_start(api_ne_binary(), kz_datetime() | gregorian_seconds()) -> gregorian_seconds().
+cycle_start(Cycle, Seconds) when is_integer(Seconds) ->
+    cycle_start(Cycle, calendar:gregorian_seconds_to_datetime(Seconds));
 cycle_start(<<"monthly">>, {{Year, Month, _}, _}) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}});
 cycle_start(<<"weekly">>, {Date, _}) ->
@@ -292,14 +287,18 @@ cycle_start(<<"daily">>,  {{Year, Month, Day}, _}) ->
 cycle_start(<<"hourly">>, {{Year, Month, Day}, {Hour, _, _}}) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, 0, 0}});
 cycle_start(<<"minutely">>, {{Year, Month, Day}, {Hour, Min, _}}) ->
-    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}}).
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}});
+cycle_start(_, {{Year, Month, Day}, {Hour, _, _}}) ->
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, 0, 0}}).
 
--spec cycle_end(ne_binary(), kz_datetime() | gregorian_seconds()) -> gregorian_seconds().
-cycle_end(Cycle, Seconds) when is_integer(Seconds) -> cycle_end(Cycle, calendar:gregorian_seconds_to_datetime(Seconds));
+-spec cycle_end(api_ne_binary(), kz_datetime() | gregorian_seconds()) -> gregorian_seconds().
+cycle_end(Cycle, Seconds) when is_integer(Seconds) ->
+    cycle_end(Cycle, calendar:gregorian_seconds_to_datetime(Seconds));
 cycle_end(<<"monthly">>, {{Year, Month, _}, _}) ->
     LastDay = calendar:last_day_of_the_month(Year, Month),
     calendar:datetime_to_gregorian_seconds({{Year, Month, LastDay}, {23, 59, 59}}) + 1;
-cycle_end(<<"weekly">>, DateTime) ->   cycle_start(<<"weekly">>, DateTime) + ?SECONDS_IN_WEEK;
-cycle_end(<<"daily">>, DateTime) ->    cycle_start(<<"daily">>, DateTime) + ?SECONDS_IN_DAY;
-cycle_end(<<"hourly">>, DateTime) ->   cycle_start(<<"hourly">>, DateTime) + ?SECONDS_IN_HOUR;
-cycle_end(<<"minutely">>, DateTime) -> cycle_start(<<"minutely">>, DateTime) + ?SECONDS_IN_MINUTE.
+cycle_end(<<"weekly">>, DateTime)   -> cycle_start(<<"weekly">>, DateTime)   + ?SECONDS_IN_WEEK;
+cycle_end(<<"daily">>, DateTime)    -> cycle_start(<<"daily">>, DateTime)    + ?SECONDS_IN_DAY;
+cycle_end(<<"hourly">>, DateTime)   -> cycle_start(<<"hourly">>, DateTime)   + ?SECONDS_IN_HOUR;
+cycle_end(<<"minutely">>, DateTime) -> cycle_start(<<"minutely">>, DateTime) + ?SECONDS_IN_MINUTE;
+cycle_end(_, DateTime)              -> cycle_start(<<"hourly">>, DateTime)   + ?SECONDS_IN_HOUR.

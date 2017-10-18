@@ -8,6 +8,8 @@ There are two levels of resources, global (or system-wide), and per-account (bri
 
 When interacting with an account's resources, the URL structure is as one would expect: `/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}`. To modify the global resources, simply omit `/accounts/{ACCOUNT_ID}` from the URL (your auth token must have super-duper admin privileges).
 
+To perform bulk resource operations use the collections endpoints.
+
 There are two deprecated API endpoints, `global_resources` and `local_resources`. These should continue to work as before, but it is recommended to use `resources` instead, using the presence of an account id to toggle whether the resource is global or not.
 
 #### About Adding Bulk Numbers
@@ -561,44 +563,6 @@ curl -v -X PUT \
 }
 ```
 
-#### Change a collection
-
-> POST /v2/accounts/{ACCOUNT_ID}/resources/collection
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d '{"data":{"numbers":["+12223334444", "+23334445555"], "resource_id":"{RESOURCE_ID}"}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
-```
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data":{
-        "errors":{
-            "{RESOURCE_ID}":"{ERROR_MESSAGE}"
-        },
-        "successes":{
-            "{RESOURCE_ID}":{RESOURCE_DOC}
-        }
-    }
-}
-```
-
-#### Create a new collection of resources
-
-> PUT /v2/accounts/{ACCOUNT_ID}/resources/collection
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d '{"data":[{...RESOURCE...}, {...RESOURCE...}]}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
-```
-
 #### Fetch a job's status
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}
@@ -626,5 +590,43 @@ curl -v -X GET \
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"
+}
+```
+
+#### Create a new collection of resources
+
+> PUT /v2/accounts/{ACCOUNT_ID}/resources/collection
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data":[{...RESOURCE...}, {...RESOURCE...}]}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
+```
+
+#### Change a collection
+
+> POST /v2/accounts/{ACCOUNT_ID}/resources/collection
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data":{"numbers":["+12223334444", "+23334445555"], "resource_id":"{RESOURCE_ID}"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data":{
+        "errors":{
+            "{RESOURCE_ID}":"{ERROR_MESSAGE}"
+        },
+        "successes":{
+            "{RESOURCE_ID}":{RESOURCE_DOC}
+        }
+    }
 }
 ```

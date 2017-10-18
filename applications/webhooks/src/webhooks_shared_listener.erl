@@ -188,10 +188,9 @@ remove_account_bindings() ->
 
 add_responder() ->
     gen_listener:add_responder(?SERVER
-                              ,{'webhooks_init', 'maybe_init_account'}
+                              ,fun webhooks_init:maybe_init_account/2
                               ,[{<<"configuration">>, ?DB_CREATED}]
                               ).
-
 
 %%%===================================================================
 %%% gen_server callbacks

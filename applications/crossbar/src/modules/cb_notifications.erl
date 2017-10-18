@@ -245,7 +245,7 @@ validate(Context) ->
     validate_notifications(maybe_update_db(Context), ReqVerb).
 
 validate(Context, ?SMTP_LOG) ->
-    crossbar_modb_view:load(Context, ?CB_LIST_SMTP_LOG, [{mapper, fun normalize_view_result/1}]);
+    crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, [{mapper, crossbar_view:map_value_fun()}]);
 validate(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     DbId = kz_notification:db_id(Id),
@@ -1236,10 +1236,7 @@ summary_account(Context, AccountAvailable) ->
 -spec filter_available(cb_context:context()) -> kz_json:objects().
 filter_available(Context) ->
     [A || A <- cb_context:doc(Context),
-          crossbar_doc:filtered_doc_by_qs(kz_json:from_list([{<<"doc">>, A}])
-                                         ,'true'
-                                         ,Context
-                                         )
+          crossbar_filter:by_doc(kz_json:from_list([{<<"doc">>, A}]), Context, 'true')
     ].
 
 -spec merge_available(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
@@ -1442,10 +1439,6 @@ maybe_update_db(Context) ->
         'undefined' -> cb_context:set_account_db(Context, ?KZ_CONFIG_DB);
         _AccountId -> Context
     end.
-
--spec normalize_view_result(kz_json:object()) -> kz_json:object().
-normalize_view_result(JObj) ->
-    kz_json:get_value(<<"value">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @private

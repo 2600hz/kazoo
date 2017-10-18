@@ -59,6 +59,8 @@
 -type couch_doc_path() :: ne_binaries().
 -type couch_schema() :: [{couch_doc_path(), validator_rules()}].
 
+-type cb_cowboy_payload() :: {cowboy_req:req(), cb_context:context()}.
+
 -define(HTTP_GET, <<"GET">>).
 -define(HTTP_POST, <<"POST">>).
 -define(HTTP_PUT, <<"PUT">>).

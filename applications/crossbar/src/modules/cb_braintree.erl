@@ -577,5 +577,5 @@ add_credit_to_account(BraintreeData, Units, LedgerId, AccountId, OrderId) ->
 -spec sync(cb_context:context()) -> 'ok'.
 sync(Context) ->
     AccountId = cb_context:account_id(Context),
-    _P = kz_util:spawn(fun kz_service_sync:sync/1, [AccountId]),
-    'ok'.
+    _P = kz_util:spawn(fun kz_services:sync/1, [AccountId]),
+    lager:debug("syncing ~s in ~p", [AccountId, _P]).

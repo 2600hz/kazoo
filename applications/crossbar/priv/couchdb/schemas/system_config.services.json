@@ -25,12 +25,6 @@
             "description": "allow resellers configure bookkeeper for children billing",
             "type": "boolean"
         },
-        "scan_rate": {
-            "default": 20000,
-            "description": "services scan rate",
-            "minimum": 0,
-            "type": "integer"
-        },
         "should_save_master_audit_logs": {
             "default": false,
             "description": "services should save master audit logs",
@@ -39,17 +33,6 @@
         "support_billing_id": {
             "default": true,
             "description": "services support billing id",
-            "type": "boolean"
-        },
-        "sync_buffer_period": {
-            "default": 600,
-            "description": "services sync buffer period",
-            "minimum": 0,
-            "type": "integer"
-        },
-        "sync_services": {
-            "default": false,
-            "description": "services sync services",
             "type": "boolean"
         }
     },

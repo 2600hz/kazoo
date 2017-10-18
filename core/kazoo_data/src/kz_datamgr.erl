@@ -379,9 +379,12 @@ db_view_cleanup(DbName) ->
             'false'
     end.
 
--spec db_view_update(ne_binary(), views_listing()) -> boolean().
--spec db_view_update(ne_binary(), views_listing(), boolean()) -> boolean().
-
+-spec db_view_update(ne_binary(), views_listing()) ->
+                            boolean() |
+                            {'error', 'invalid_db_name'}.
+-spec db_view_update(ne_binary(), views_listing(), boolean()) ->
+                            boolean() |
+                            {'error', 'invalid_db_name'}.
 db_view_update(DbName, Views) ->
     db_view_update(DbName, Views, 'false').
 
@@ -477,11 +480,11 @@ db_compact(DbName) ->
 %% Delete a database (takes an 'encoded' DbName)
 %% @end
 %%--------------------------------------------------------------------
--spec db_delete(text()) -> 'ok' | data_error().
+-spec db_delete(text()) -> boolean().
+-spec db_delete(text(), db_delete_options()) -> boolean().
 db_delete(DbName) ->
     db_delete(DbName, []).
 
--spec db_delete(text(), db_delete_options()) -> 'ok' | data_error().
 db_delete(DbName, Options) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_delete(kzs_plan:plan(DbName), DbName, Options);
 db_delete(DbName, Options) ->
@@ -499,7 +502,7 @@ db_delete(DbName, Options) ->
 -spec db_archive(ne_binary()) -> 'ok' | data_error().
 -spec db_archive(ne_binary(), ne_binary()) -> 'ok' | data_error().
 db_archive(DbName) ->
-    Folder = kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
+    Folder = kazoo_data_config:get_ne_binary(<<"default_archive_folder">>, <<"/tmp">>),
     db_archive(DbName, filename:join([<<Folder/binary, "/", DbName/binary, ".json">>])).
 
 db_archive(DbName, Filename) when ?VALID_DBNAME(DbName) ->
@@ -1040,6 +1043,7 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
 -spec put_attachment(text(), docid(), ne_binary(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
+                            {'ok', kz_json:object(), kz_proplist()} |
                             data_error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
@@ -1048,13 +1052,9 @@ put_attachment(DbName, {DocType, DocId}, AName, Contents, Options) ->
     put_attachment(DbName, DocId, AName, Contents, maybe_add_doc_type(DocType, Options));
 put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME(DbName) ->
     case attachment_options(DbName, DocId, Options) of
-        {'ok', NewOptions} -> kzs_attachments:put_attachment(kzs_plan:plan(DbName, NewOptions)
-                                                            ,DbName
-                                                            ,DocId
-                                                            ,AName
-                                                            ,Contents
-                                                            ,props:delete('plan_override', NewOptions)
-                                                            );
+        {'ok', NewOpts} ->
+            NewOptions = props:delete('plan_override', NewOpts),
+            kzs_attachments:put_attachment(kzs_plan:plan(DbName, NewOptions), DbName, DocId, AName, Contents, NewOptions);
         {'error', _} = Error -> Error
     end;
 put_attachment(DbName, DocId, AName, Contents, Options) ->
@@ -1223,7 +1223,7 @@ maybe_create_view(DbName, Plan, DesignDoc, Options) ->
     case props:get_value('view_json', Options) of
         'undefined' -> {'error', 'not_found'};
         ViewJson ->
-            db_view_update(DbName, ViewJson),
+            'true' = db_view_update(DbName, ViewJson),
             kzs_view:get_results(Plan, DbName, DesignDoc, Options)
     end.
 
@@ -1425,7 +1425,7 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
 %%------------------------------------------------------------------------------
 -spec max_bulk_insert() -> pos_integer().
 max_bulk_insert() ->
-    kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_insert">>, 2000).
+    kazoo_data_config:get_pos_integer(<<"max_bulk_insert">>, 2000).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -1435,11 +1435,11 @@ max_bulk_insert() ->
 %%------------------------------------------------------------------------------
 -spec max_bulk_read() -> pos_integer().
 max_bulk_read() ->
-    kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_read">>, 2000).
+    kazoo_data_config:get_pos_integer(<<"max_bulk_read">>, 2000).
 
 -spec max_bulk_read(view_options()) -> pos_integer().
 max_bulk_read(ViewOptions) ->
-    AskedFor = props:get_integer_value(max_bulk_read, ViewOptions, max_bulk_read()),
+    AskedFor = props:get_integer_value('max_bulk_read', ViewOptions, max_bulk_read()),
     UpperBound = min(AskedFor, max_bulk_read()),
     max(UpperBound, 1).
 

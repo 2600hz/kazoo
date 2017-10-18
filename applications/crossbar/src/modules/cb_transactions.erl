@@ -306,7 +306,7 @@ create_debit_tansaction(Context) ->
 -spec validate_transactions(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_transaction(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_transactions(Context, ?HTTP_GET) ->
-    case cb_modules_util:range_view_options(Context) of
+    case crossbar_view:time_range(Context) of
         {CreatedFrom, CreatedTo} ->
             Reason = cb_context:req_value(Context, <<"reason">>),
             fetch_transactions(Context, CreatedFrom, CreatedTo, Reason);
@@ -316,7 +316,7 @@ validate_transactions(Context, ?HTTP_GET) ->
 validate_transaction(Context, ?CURRENT_BALANCE, ?HTTP_GET) ->
     CurrentBalance = case wht_util:current_balance(cb_context:account_id(Context)) of
                          {'ok', Bal} -> Bal;
-                         {'error', _} -> 0
+                         {'error', _} -> 0 %% shouldn't we use crossbar_doc:handle_datamgr_errors/3 here?
                      end,
     Balance = wht_util:units_to_dollars(CurrentBalance),
     JObj = kz_json:from_list([{<<"balance">>, Balance}]),
@@ -325,7 +325,7 @@ validate_transaction(Context, ?CURRENT_BALANCE, ?HTTP_GET) ->
                        ,{fun cb_context:set_resp_data/2, JObj}
                        ]);
 validate_transaction(Context, ?MONTHLY, ?HTTP_GET) ->
-    case cb_modules_util:range_view_options(Context) of
+    case crossbar_view:time_range(Context) of
         {CreatedFrom, CreatedTo} ->
             Reason = cb_context:req_value(Context, <<"reason">>),
             fetch_monthly_recurring(Context, CreatedFrom, CreatedTo, Reason);
@@ -365,21 +365,11 @@ validate_credit(Context) ->
     end.
 
 validate_credit(Context, 'undefined') ->
-    Message = <<"Amount is required">>,
-    cb_context:add_validation_error(
-      <<"amount">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, Message}])
-                                   ,Context
-     );
+    Message = kz_json:from_list([{<<"message">>, <<"Amount is required">>}]),
+    cb_context:add_validation_error(<<"amount">>, <<"required">>, Message, Context);
 validate_credit(Context, Amount) when Amount =< 0 ->
-    Message = <<"Amount must be greater than 0">>,
-    cb_context:add_validation_error(
-      <<"amount">>
-                                   ,<<"minimum">>
-                                   ,kz_json:from_list([{<<"message">>, Message}])
-                                   ,Context
-     );
+    Message = kz_json:from_list([{<<"message">>, <<"Amount must be greater than 0">>}]),
+    cb_context:add_validation_error(<<"amount">>, <<"minimum">>, Message, Context);
 validate_credit(Context, _) ->
     cb_context:set_resp_status(Context, 'success').
 
@@ -398,20 +388,11 @@ validate_debit(Context) ->
     end.
 
 validate_debit(Context, 'undefined') ->
-    Message = <<"Amount is required">>,
-    cb_context:add_validation_error(
-      <<"amount">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, Message}])
-                                   ,Context
-     );
+    Message = kz_json:from_list([{<<"message">>, <<"Amount is required">>}]),
+    cb_context:add_validation_error(<<"amount">>, <<"required">>, Message, Context);
 validate_debit(Context, Amount) when Amount =< 0 ->
-    Message = <<"Amount must be more than 0">>,
-    cb_context:add_validation_error(<<"amount">>
-                                   ,<<"minimum">>
-                                   ,kz_json:from_list([{<<"message">>, Message}])
-                                   ,Context
-                                   );
+    Message = kz_json:from_list([{<<"message">>, <<"Amount must be more than 0">>}]),
+    cb_context:add_validation_error(<<"amount">>, <<"minimum">>, Message, Context);
 validate_debit(Context, Amount) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     AuthAccountId = cb_context:auth_account_id(Context),
@@ -431,14 +412,8 @@ validate_debit(Context, Amount) ->
                     cb_context:set_resp_status(Context, 'success');
                 'true' ->
                     Message = <<"Available credit can not be less than 0">>,
-                    cb_context:add_validation_error(<<"amount">>
-                                                   ,<<"minimum">>
-                                                   ,kz_json:from_list(
-                                                      [{<<"message">>, Message}
-                                                      ,{<<"cause">>, FuturAmount}
-                                                      ])
-                                                   ,Context
-                                                   )
+                    JObj = kz_json:from_list([{<<"message">>, Message},{<<"cause">>, FuturAmount}]),
+                    cb_context:add_validation_error(<<"amount">>, <<"minimum">>, JObj, Context)
             end
     end.
 
@@ -599,8 +574,4 @@ send_resp({'ok', JObj}, Context) ->
                        ,{fun cb_context:set_resp_data/2, JObj}
                        ]);
 send_resp({'error', Details}, Context) ->
-    cb_context:add_system_error(
-      'bad_identifier'
-                               ,kz_json:from_list([{<<"cause">>, Details}])
-                               ,Context
-     ).
+    cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Details}]), Context).

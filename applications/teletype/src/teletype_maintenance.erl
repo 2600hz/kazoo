@@ -18,6 +18,7 @@
 -export([renderer_status/0]).
 -export([start_module/1
         ,stop_module/1
+        ,list_templates_from_db/1
         ]).
 
 -include("teletype.hrl").
@@ -95,8 +96,16 @@ restore_system_template(TemplateId) ->
 
     Mod = kz_term:to_atom(<<"teletype_", ModId/binary>>, 'true'),
     io:format("  re-initializing template ~s~n", [ModId]),
-    catch(Mod:init()),
-    io:format("  finished~n").
+    try Mod:init() of
+        'ok' -> io:format("  finished~n")
+    catch
+        _E:_T ->
+            io:format("  crashed for reason ~p:~p ~n", [_E, _T]),
+            ST = erlang:get_stacktrace(),
+            kz_util:log_stacktrace(ST),
+            io:format("St: ~p~n~n", [ST])
+
+    end.
 
 -spec list_templates_from_db(ne_binary()) -> ne_binaries().
 list_templates_from_db(Db) ->
@@ -227,8 +236,8 @@ module_from_binary(<<"teletype_", _/binary>> = Template) ->
         'false' -> invalid_module(Template);
         Module -> {'ok', Module}
     end;
-module_from_binary(Module) ->
-    invalid_module(Module).
+module_from_binary(?NE_BINARY=Module) ->
+    module_from_binary(<<"teletype_", Module/binary>>).
 
 -spec invalid_module(ne_binary()) -> {'error', 'invalid_mod'}.
 invalid_module(Module) ->

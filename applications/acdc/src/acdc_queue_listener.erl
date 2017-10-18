@@ -68,9 +68,9 @@
                ,member_call_queue :: api_ne_binary()
 
                                      %% While processing a call
-               ,call :: kapps_call:call()
+               ,call :: kapps_call:call() | 'undefined'
                ,agent_id :: api_ne_binary()
-               ,delivery :: gen_listener:basic_deliver()
+               ,delivery :: gen_listener:basic_deliver() | 'undefined'
                }).
 -type state() :: #state{}.
 

@@ -146,7 +146,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
-    crossbar_modb_view:load(Context, ?CB_LIST_ATTEMPT_LOG, [{mapper, fun normalize_attempt_view_result/1}]).
+    crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, [{mapper, crossbar_view:map_value_fun()}]).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS, AttemptId) ->
@@ -435,13 +435,3 @@ failed_multi_factor_validation(AuthModule, ErrMsg, Context) ->
 -spec read_attempt_log(ne_binary(), cb_context:context()) -> cb_context:context().
 read_attempt_log(?MATCH_MODB_PREFIX(Year, Month, _)=AttemptId, Context) ->
     crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?AUTH_ATTEMPT_TYPE)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_attempt_view_result(kz_json:object()) -> kz_json:object().
-normalize_attempt_view_result(JObj) ->
-    kz_json:get_value(<<"value">>, JObj).

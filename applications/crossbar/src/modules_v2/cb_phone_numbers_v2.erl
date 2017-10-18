@@ -583,7 +583,7 @@ maybe_add_port_request_numbers(Context) ->
 maybe_add_port_request_numbers(_Context, 'false') -> kz_json:new();
 maybe_add_port_request_numbers(Context, 'true') ->
     AccountId = cb_context:account_id(Context),
-    HasQs = crossbar_doc:has_qs_filter(Context),
+    HasQs = crossbar_filter:is_defined(Context),
     ViewOptions = [{'startkey', [cb_context:account_id(Context)]}
                   ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
                   ],
@@ -592,17 +592,10 @@ maybe_add_port_request_numbers(Context, 'true') ->
         {'ok', Ports} ->
             PortNumberList = [normalize_port_view_result(P)
                               || P <- Ports,
-                                 maybe_filter_port_number(P, Context, HasQs)
+                                 crossbar_filter:by_doc(kz_json:get_value(<<"value">>, P), Context, HasQs)
                              ],
             lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), PortNumberList)
     end.
-
-%% @private
--spec maybe_filter_port_number(kz_json:object(), cb_context:context(), boolean()) ->
-                                      boolean().
-maybe_filter_port_number(_Port, _Context, 'false') -> 'true';
-maybe_filter_port_number(Port, Context, 'true') ->
-    crossbar_doc:filtered_doc_by_qs(kz_json:get_value(<<"value">>, Port), Context).
 
 %% @private
 -spec rename_qs_filters(cb_context:context()) -> cb_context:context().

@@ -484,19 +484,19 @@ add_optional_headers(Prop, Fields, Headers) ->
                 end, {Headers, Prop}, Fields).
 
 %% Checks Prop against a list of required headers, returns true | false
--spec has_all(kz_proplist() | kz_proplists(), api_headers()) -> boolean().
+-spec has_all(kz_proplist(), api_headers()) -> boolean().
 has_all(Prop, Headers) ->
     lists:all(fun(Header) -> has_all_header(Header, Prop) end, Headers).
 
--spec has_all_header(kz_proplist() | kz_proplists(), api_headers()) -> boolean().
-has_all_header(Header, Prop) when is_list(Header) ->
-    case has_any(Prop, Header) of
+-spec has_all_header(api_headers(), kz_proplist()) -> boolean().
+has_all_header(Headers, Prop) when is_list(Headers) ->
+    case has_any(Prop, Headers) of
         'true' -> 'true';
         'false' ->
-            lager:debug("failed to find one of keys '~p' on API message", [Header]),
+            lager:debug("failed to find one of keys '~p' on API message", [Headers]),
             'false'
     end;
-has_all_header(Header, Prop) ->
+has_all_header(Header, Prop) when is_binary(Header) ->
     case props:is_defined(Header, Prop) of
         'true' -> 'true';
         'false' ->

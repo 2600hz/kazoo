@@ -94,19 +94,30 @@ authorize(Context) ->
     authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec authorize_nouns(cb_context:context(), req_nouns(), req_verb()) -> boolean() | {'halt', cb_context:context()}.
-authorize_nouns(Context, [{<<"user_auth">>, []}, {<<"users">>, _}, {<<"accounts">>, [AccountId]}|_], ?HTTP_PUT) ->
+authorize_nouns(Context
+               ,[{<<"user_auth">>, []}
+                ,{<<"users">>, [UserId]}
+                ,{<<"accounts">>, [AccountId]}
+                ]
+               ,?HTTP_PUT
+               ) ->
     case cb_context:auth_account_id(Context) =/= AccountId
         andalso cb_context:is_superduper_admin(Context)
         andalso cb_context:is_account_admin(Context)
     of
         'true' -> 'true';
         'false' ->
+            lager:error("non-admin user ~s in non super-duper admin account tries to impersonate user ~s in account ~s"
+                       ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context), UserId, AccountId]
+                       ),
             {'halt', cb_context:add_system_error('forbidden', Context)}
     end;
 authorize_nouns(Context, _, ?HTTP_PUT) ->
     case cb_context:req_value(Context, <<"action">>) of
         %% do not allow if no user/account is set
-        ?SWITCH_USER ->  {'halt', cb_context:add_system_error('forbidden', Context)};
+        ?SWITCH_USER ->
+            lager:error("not authorizing user impersonation when invalid user or account are provided"),
+            {'halt', cb_context:add_system_error('forbidden', Context)};
         _ -> 'true'
     end;
 authorize_nouns(_, [{<<"user_auth">>, _}], _) -> 'true';
@@ -145,6 +156,8 @@ validate(Context) ->
     end.
 
 -spec validate_action(cb_context:context(), api_ne_binary()) -> cb_context:context().
+validate_action(Context, 'undefined') ->
+    cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1);
 validate_action(Context, ?SWITCH_USER) ->
     Claims = kz_json:from_list(
                [{<<"account_id">>, cb_context:account_id(Context)}
@@ -162,9 +175,15 @@ validate_action(Context, ?SWITCH_USER) ->
               ,{fun cb_context:set_doc/2, Claims}
               ],
     Context1 = cb_context:setters(Context, Setters),
+    lager:info("user ~s from account ~s is impersonating user ~s from account ~s"
+              ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context)
+               ,cb_context:user_id(Context), cb_context:account_id(Context)
+               ]
+              ),
     maybe_account_is_expired(Context1, cb_context:account_id(Context));
-validate_action(Context, _) ->
-    cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1).
+validate_action(Context, _Action) ->
+    lager:debug("unknown action ~s", [_Action]),
+    cb_context:add_system_error(<<"action required">>, Context).
 
 validate(Context, ?RECOVERY) ->
     case cb_context:req_verb(Context) of

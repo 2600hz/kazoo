@@ -14,7 +14,6 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"fax_outbound_smtp_error_to_email">>).
--define(MOD_CONFIG_CAT, ?TEMPLATE_CONFIG_CAT(?TEMPLATE_ID)).
 
 -define(TEMPLATE_MACROS, kz_json:from_list([])).
 
@@ -22,10 +21,10 @@
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Outbound Fax SMTP Error to Email">>).
 
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
 
 -spec init() -> 'ok'.
 init() ->
@@ -41,14 +40,14 @@ init() ->
                                           ]),
     teletype_bindings:bind(<<"outbound_smtp_fax_error">>, ?MODULE, 'handle_req').
 
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:fax_outbound_smtp_error_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
-handle_req(JObj, 'false') ->
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
     lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
@@ -63,7 +62,7 @@ handle_req(JObj, 'true') ->
             process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
     Macros = build_macros(DataJObj),
 
@@ -82,14 +81,11 @@ process_req(DataJObj) ->
                 kz_json:set_value(<<"to">>, [kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)], DataJObj)
         end,
 
-    Emails = teletype_util:find_addresses(EmailsJObj
-                                         ,TemplateMetaJObj
-                                         ,?MOD_CONFIG_CAT
-                                         ),
+    Emails = teletype_util:find_addresses(EmailsJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
+        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
 -spec build_macros(kz_json:object()) -> kz_proplist().

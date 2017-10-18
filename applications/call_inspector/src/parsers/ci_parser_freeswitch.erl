@@ -42,8 +42,8 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link([ci_parsers_util:parser_args()]) -> startlink_ret().
-start_link(Args) ->
-    ServerName = ci_parsers_util:make_name(Args),
+start_link([Arg]=Args) ->
+    ServerName = ci_parsers_util:make_name(Arg),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
 
 %%%===================================================================
@@ -61,21 +61,25 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init({'parser_args', file:filename_all(), ne_binary(), pos_integer()}) -> {'ok', state()}.
+-spec init({'parser_args', file:filename_all(), ne_binary(), pos_integer()}) -> {'ok', state()} | {'stop', any()}.
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
     _ = kz_util:put_callid(ParserId),
-    NewDev = ci_parsers_util:open_file(LogFile),
-    State = #state{parser_id = ParserId
-                  ,logfile = LogFile
-                  ,iodevice = NewDev
-                  ,logip = LogIP
-                  ,logport = LogPort
-                  ,counter = 1
-                  ,timer = 'undefined'
-                  },
-    self() ! 'start_parsing',
-    {'ok', State}.
+    case ci_parsers_util:open_file_for_read(LogFile) of
+        {'ok', IoDevice} ->
+            State = #state{parser_id = ParserId
+                          ,logfile = LogFile
+                          ,iodevice = IoDevice
+                          ,logip = LogIP
+                          ,logport = LogPort
+                          ,counter = 1
+                          ,timer = 'undefined'
+                          },
+            self() ! 'start_parsing',
+            {'ok', State};
+        {'error', _}=Error ->
+            Error
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

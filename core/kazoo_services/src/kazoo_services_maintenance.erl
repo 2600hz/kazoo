@@ -156,7 +156,7 @@ reconcile(Account) ->
 sync(Account) when not is_binary(Account) ->
     sync(kz_term:to_binary(Account));
 sync(Account) ->
-    kz_service_sync:sync(Account),
+    _ = kz_services:sync(Account),
     'ok'.
 
 -spec sync_descendants(text()) -> 'ok'.

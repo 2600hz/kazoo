@@ -52,6 +52,13 @@
                       {'reply_to', api_binary()}.
 -type init_params() :: [init_param(),...].
 
+-type template_response() :: 'ok' |
+                             {'disabled', ne_binary()} |
+                             {'ignored', ne_binary()} |
+                             {'completed', ne_binary()} |
+                             {'failed', ne_binary(), any()}.
+-type template_responses() :: [template_response()].
+
 -define(TEXT_PLAIN, <<"text/plain">>).
 -define(TEXT_HTML, <<"text/html">>).
 
@@ -127,6 +134,7 @@
         ,?MACRO_VALUE(<<"port_request.customser_contact">>, <<"customser_contact">>, <<"Customser Email">>, <<"Customser Email">>)
         ,?MACRO_VALUE(<<"port_request.bill_name">>, <<"bill_name">>, <<"Bill Name">>, <<"Name on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_address">>, <<"bill_address">>, <<"Bill Address">>, <<"Address on the bill">>)
+        ,?MACRO_VALUE(<<"port_request.street_address">>, <<"street_address">>, <<"Bill Street Address">>, <<"Address on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_locality">>, <<"bill_locality">>, <<"Bill Locality">>, <<"City on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_region">>, <<"bill_region">>, <<"Bill Region">>, <<"Region on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_postal_code">>, <<"bill_postal_code">>, <<"Bill Postal Code">>, <<"Postal Code on the bill">>)

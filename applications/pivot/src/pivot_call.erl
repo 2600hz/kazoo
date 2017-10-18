@@ -459,7 +459,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 
     case kz_http:async_req(self(), Method, Uri, ReqHdrs, ReqBody) of
         {'http_req_id', ReqId} ->
-            lager:debug("response coming in asynchronosly to ~p", [ReqId]),
+            lager:debug("response coming in asynchronously to ~p", [ReqId]),
             {'ok', ReqId, Call};
         {'error', _Reason} ->
             lager:debug("error with req: ~p", [_Reason]),

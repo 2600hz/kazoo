@@ -29,27 +29,15 @@ start_link() ->
 bind(EventName, Module, Fun) ->
     bind(<<"notification">>, EventName, Module, Fun).
 bind(EventCategory, EventName, Module, Fun) ->
-    kazoo_bindings:bind(?ROUTING_KEY(EventCategory, EventName), Module, Fun).
+    Binding = ?ROUTING_KEY(EventCategory, EventName),
+    case kazoo_bindings:bind(Binding, Module, Fun) of
+        'ok' -> lager:debug("~s has been binded", [Binding]);
+        {'error', 'exists'} -> lager:debug("bind for ~s exists", [Binding])
+    end.
 
 -spec flush_mod(module()) -> 'ok'.
 flush_mod(Module) ->
     kazoo_bindings:flush_mod(Module).
-
--spec notification(kz_json:object()) -> 'ok'.
-notification(JObj) ->
-    kz_util:put_callid(JObj),
-    {EventCategory, EventName} = kz_util:get_event_type(JObj),
-    RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
-    lager:debug("dispatching notification ~s", [RoutingKey]),
-    Res = kazoo_bindings:map(RoutingKey, JObj),
-    case kazoo_bindings:succeeded(Res, fun filter_out_failed/1) of
-        [] ->
-            FailureMsg = build_failure_message(Res),
-            lager:debug("notification ~s did not result in successes: ~s", [RoutingKey, FailureMsg]),
-            teletype_util:send_update(JObj, <<"failed">>, FailureMsg);
-        Successes ->
-            lager:debug("notification ~s result in ~b success(es)", [RoutingKey, length(Successes)])
-    end.
 
 -spec start_modules() -> 'ok'.
 start_modules() ->
@@ -62,44 +50,105 @@ start_modules([Module | Remaining]) ->
 start_modules([]) ->
     lager:info("started all teletype modules").
 
--spec filter_out_failed(any()) -> boolean().
-filter_out_failed('ok') -> 'true';
-filter_out_failed(_) -> 'false'.
+-spec notification(kz_json:object()) -> 'ok'.
+notification(JObj) ->
+    kz_util:put_callid(JObj),
+    {EventCategory, EventName} = kz_util:get_event_type(JObj),
+    RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
+    lager:debug("dispatching notification ~s", [RoutingKey]),
+    case kazoo_bindings:map(RoutingKey, JObj) of
+        [] ->
+            FailureMsg = <<"no teletype template modules responded to notification ", RoutingKey/binary>>,
+            lager:debug("~s", [FailureMsg]),
+            teletype_util:send_update(JObj, <<"failed">>, FailureMsg);
+        BindingResult ->
+            {_, Map} = lists:foldl(fun check_result/2, {RoutingKey, maps:new()}, BindingResult),
+            maybe_send_update(JObj, RoutingKey, Map)
+    end.
 
--spec build_failure_message(any()) -> ne_binary().
-build_failure_message([{'EXIT', {'error', 'missing_data',  Missing}}|_]) ->
-    <<"missing_data: ", (kz_term:to_binary(Missing))/binary>>;
+-spec maybe_send_update(kz_json:object(), ne_binary(), map()) -> 'ok'.
+maybe_send_update(JObj, RoutingKey, #{'completed' := _Completed}=Map) ->
+    %% for now we just only care about at least one success
+    print_result(RoutingKey, Map),
+    Metadata = kz_json:from_list(maps:to_list(Map)),
+    teletype_util:send_update(JObj, <<"completed">>, 'undefined', Metadata);
+maybe_send_update(JObj, RoutingKey, #{'failed' := [{_, Reason}|_]}=Map) ->
+    %% for now just send the first error as failure message
+    print_result(RoutingKey, Map),
+    Metadata = kz_json:from_list(maps:to_list(Map)),
+    teletype_util:send_update(JObj, <<"failed">>, Reason, Metadata);
+maybe_send_update(JObj, RoutingKey, Map) ->
+    print_result(RoutingKey, Map),
+    Metadata = kz_json:from_list(maps:to_list(Map)),
+    teletype_util:send_update(JObj, <<"completed">>, 'undefined', Metadata).
 
-build_failure_message([{'EXIT', {'error', 'failed_template',  ModuleName}}|_]) ->
+-spec print_result(ne_binary(), map()) -> 'ok'.
+print_result(RoutingKey, Map) ->
+    Completed = erlang:length(maps:get('completed', Map, [])),
+    Disabled = erlang:length(maps:get('disabled', Map, [])),
+    Ignored = erlang:length(maps:get('ignored', Map, [])),
+    Failed = erlang:length(maps:get('failed', Map, [])),
+    lager:debug("notification ~s resulted in ~b success, ~b failed, ~b ignored, ~b disabled, full result: ~p"
+               ,[RoutingKey, Completed, Failed, Ignored, Disabled, maps:to_list(Map)]
+               ).
+
+-spec check_result(any(), {ne_binary(), map()}) -> {ne_binary(), map()}.
+
+check_result('ok', {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('completed', update_with(RoutingKey), [RoutingKey], Map)};
+
+check_result({'completed', TemplateId}, {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('completed', update_with(TemplateId), [TemplateId], Map)};
+
+check_result({'ignored', TemplateId}, {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('ignored', update_with(TemplateId), [TemplateId], Map)};
+
+check_result({'disabled', TemplateId}, {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('disabled', update_with(TemplateId), [TemplateId], Map)};
+
+check_result({'failed', TemplateId, Reason}, {RoutingKey, Map}) ->
+    {RoutingKey, maps:update_with('failed', update_with({TemplateId, Reason}), [{TemplateId, Reason}], Map)};
+
+check_result({'EXIT', {'error', 'missing_data',  Missing}}, {RoutingKey, Map}) ->
+    Reason = <<"missing_data: ", (kz_term:to_binary(Missing))/binary>>,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
+
+check_result({'EXIT', {'error', 'failed_template',  ModuleName}}, {RoutingKey, Map}) ->
     %% teletype_templates:build_renderer, probably it's only for teletype startup
-    <<"failed_template: ", (kz_term:to_binary(ModuleName))/binary>>;
+    Reason = <<"failed_template: ", (kz_term:to_binary(ModuleName))/binary>>,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
-build_failure_message([{'EXIT',{'error', 'template_error',  Reason}}|_]) ->
-    <<"template_error: ", (kz_term:to_binary(Reason))/binary>>;
+check_result({'EXIT',{'error', 'template_error',  Reason}}, {RoutingKey, Map}) ->
+    Reason = <<"template_error: ", (kz_term:to_binary(Reason))/binary>>,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
-build_failure_message([{'EXIT', {'function_clause', _ST}}|_]) ->
-    <<"template_error: crashed with function_clause">>;
+check_result({'EXIT', {'function_clause', _ST}}, {RoutingKey, Map}) ->
+    Reason = <<"template_error: crashed with function_clause">>,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
-build_failure_message([{'EXIT', {'undef', _ST}}|_]) ->
-    <<"template_error: crashed with undef">>;
+check_result({'EXIT', {'undef', _ST}}, {RoutingKey, Map}) ->
+    Reason = <<"template_error: crashed with undef">>,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
-build_failure_message([{'EXIT', {'error', {'badmatch',  _}}}|_]) ->
+check_result({'EXIT', {'error', {'badmatch',  _}}}, {RoutingKey, Map}) ->
     %% Some templates (like voicemail_new) is matching against successful open_doc
-    %% maybe because the document or attachment is not stored yet.
-    %% Let the publisher save the payload to load later
-    <<"badmatch">>;
+    %% If it failed due to the document or attachment is not stored yet or db timeout
+    %% let the publisher save the payload
+    Reason = <<"badmatch">>,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
-build_failure_message([{'EXIT', {'error', Reason}}|_]) ->
-    try kz_term:to_binary(Reason)
-    catch _:_ -> <<"unknown error throw-ed">>
-    end;
+check_result({'EXIT', {'error', Reason}}, {RoutingKey, Map}) ->
+    ReasonBin = try kz_term:to_binary(Reason)
+                catch _:_ -> <<"unknown error throw-ed">>
+                end,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, ReasonBin}), [{RoutingKey, ReasonBin}], Map)};
 
-build_failure_message([{'EXIT', {_Exp, _ST}}|_]) ->
-    <<"template_error: crashed with exception">>;
+check_result({'EXIT', {_Exp, _ST}}, {RoutingKey, Map}) ->
+    Reason = <<"template_error: crashed with exception">>,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
-build_failure_message([]) ->
-    <<"no teletype template modules responded">>;
+check_result(_Other, {RoutingKey, Map}) ->
+    Reason = <<"unknown_template_error">>,
+    {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)}.
 
-build_failure_message(_Other) ->
-    lager:debug("template failed with unknown reasons: ~p", [_Other]),
-    <<"unknown_template_error">>.
+update_with(Value) -> fun(ResultList) -> [Value | ResultList] end.
