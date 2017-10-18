@@ -78,7 +78,7 @@ maybe_revise_schema(MasterAccountDb) ->
             lager:warning("failed to find webhooks schema: ~p", [_E])
     end.
 
--spec maybe_revise_schema(kz_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_revise_schema(ne_binary(), kz_json:object()) -> 'ok'.
 maybe_revise_schema(MasterDb, SchemaJObj) ->
     case kz_datamgr:get_results(MasterDb, ?AVAILABLE_HOOKS) of
         {'ok', []} ->
