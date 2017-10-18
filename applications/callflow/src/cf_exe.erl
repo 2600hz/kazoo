@@ -691,7 +691,7 @@ terminate(_Reason, #state{cf_module_pid='undefined'
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid='undefined'
                          }) ->
-    hangup_call(kapps_call:clear_control_helper(Call)),
+    hangup_call(kapps_call:clear_control_queue_helper(Call)),
     lager:info("callflow execution has been stopped: ~p", [_Reason]);
 terminate(_Reason, #state{cf_module_pid={Pid, _}
                          ,destroyed='true'
