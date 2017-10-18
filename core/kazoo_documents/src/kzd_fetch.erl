@@ -24,6 +24,17 @@
         ,fetch_winning_pid/1
         ,controller_queue/1, controller_pid/1
         ,node/1
+        
+        ,auth_nonce/1
+        ,auth_response/1
+        ,auth_expires/1
+        ,from_network_ip/1
+        ,from_network_port/1
+        ,auth_from/1
+        ,auth_to/1
+        ,user_agent/1
+        ,cshs/1
+
         ]).
 
 -include("kz_documents.hrl").
@@ -111,3 +122,39 @@ controller_pid(JObj) ->
 -spec node(kz_json:object()) -> api_binary().
 node(JObj) ->
     kz_json:get_atom_value(<<"Node">>, JObj).
+
+-spec from_network_ip(kz_json:object()) -> api_binary().
+from_network_ip(JObj) ->
+    kz_json:get_ne_binary_value(<<"Network-IP">>, JObj).
+
+-spec from_network_port(kz_json:object()) -> api_binary().
+from_network_port(JObj) ->
+    kz_json:get_ne_binary_value(<<"Network-Port">>, JObj).
+
+-spec user_agent(kz_json:object()) -> api_binary().
+user_agent(JObj) ->
+    kz_json:get_ne_binary_value(<<"User-Agent">>, JObj).
+
+-spec auth_expires(kz_json:object()) -> api_binary().
+auth_expires(JObj) ->
+    kz_json:get_ne_binary_value(<<"Expires">>, JObj).
+
+-spec auth_nonce(kz_json:object()) -> api_binary().
+auth_nonce(JObj) ->
+    kz_json:get_ne_binary_value(<<"Auth-Nonce">>, JObj).
+
+-spec auth_response(kz_json:object()) -> api_binary().
+auth_response(JObj) ->
+    kz_json:get_ne_binary_value(<<"Auth-Response">>, JObj).
+
+-spec cshs(kz_json:object()) -> api_binary().
+cshs(JObj) ->
+    kz_json:get_json_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new()).
+
+-spec auth_from(kz_json:object()) -> api_binary().
+auth_from(JObj) ->
+    kz_json:get_ne_binary_value(<<"Auth-From">>, JObj).
+
+-spec auth_to(kz_json:object()) -> api_binary().
+auth_to(JObj) ->
+    kz_json:get_ne_binary_value(<<"Auth-To">>, JObj).
