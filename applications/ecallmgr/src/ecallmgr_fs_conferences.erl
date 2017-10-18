@@ -114,9 +114,9 @@ details(UUID) ->
     MatchSpec = [{#conference{uuid=UUID, _ = '_'}, [], ['$_']}],
     print_details(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
--spec create(kz_term:proplist(), atom()) -> conference().
-create(Props, Node) ->
-    gen_server:call(?SERVER, {'conference_create', Props, Node}).
+-spec create(kz_json:object(), atom()) -> conference().
+create(JObj, Node) ->
+    gen_server:call(?SERVER, {'conference_create', JObj, Node}).
 
 -spec update(kz_term:ne_binary(), kz_term:proplist() | {integer(), any()}) -> 'ok'.
 update(UUID, Update) ->
