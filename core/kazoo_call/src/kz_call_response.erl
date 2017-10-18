@@ -31,7 +31,7 @@ config_doc_id() ->
 send(CallId, CtrlQ, Code) ->
     send(CallId, CtrlQ, Code, 'undefined').
 
--spec send(kz_term:ne_binary() | kapps_call:call(), kz_types:api_control_q(), kz_term:api_binary(), kz_term:api_binary()) ->
+-spec send(kz_term:ne_binary() | kapps_call:call(), kz_types:api_control_q() | kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
                   {'ok', kz_term:ne_binary()} |
                   {'error', 'no_response'}.
 send(<<_/binary>> = CallId, CtrlQ, Code, Cause) ->

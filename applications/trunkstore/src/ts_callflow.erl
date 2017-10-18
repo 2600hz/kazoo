@@ -266,7 +266,6 @@ get_app(JObj) ->
     end.
 
 -spec send_hangup(state()) -> 'ok'.
-send_hangup(#ts_callflow_state{callctl_q = <<>>}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
                               ,aleg_callid=CallID
@@ -287,7 +286,6 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
                               ).
 
 -spec send_hangup(state(), kz_term:api_binary()) -> 'ok'.
-send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
                               ,aleg_callid=CallId

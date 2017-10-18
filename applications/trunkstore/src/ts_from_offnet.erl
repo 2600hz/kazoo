@@ -154,7 +154,7 @@ try_failover(State) ->
          ,ts_callflow:get_failover(State)
          }
     of
-        {<<>>, _} ->
+        {'undefined', _} ->
             lager:info("no callctl for failover");
         {_, 'undefined'} ->
             lager:info("no failover defined");
