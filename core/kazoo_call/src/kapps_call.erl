@@ -218,10 +218,10 @@
 -export_type([call/0]).
 -export_type([kapps_api_std_return/0]).
 
--type control_queue() :: {kz_term:api_binary(), kz_term:api_binary()}.
--export_type([control_queue/0]).
+-type ctrl_queue() :: 'undefined' | {binary(), binary()}.
+-export_type([ctrl_queue/0]).
 
--type kapps_helper_function() :: fun((control_queue(), call()) -> control_queue()).
+-type kapps_helper_function() :: fun((Field, call()) -> Field).
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #kapps_call.caller_id_name}
                       ,{<<"Caller-ID-Number">>, #kapps_call.caller_id_number}
@@ -650,17 +650,26 @@ context(#kapps_call{context=Context}, _Default) -> Context.
 set_context(#kapps_call{}=Call, Context) ->
     Call#kapps_call{context=Context}.
 
--spec set_control_queue(control_queue(), call()) -> call().
-set_control_queue({ControlQ, ControlP}, #kapps_call{}=Call) when is_binary(ControlQ) ->
-    Call#kapps_call{control_q=ControlQ, control_p=ControlP}.
+-spec set_control_queue(ctrl_queue(), call()) -> call().
+set_control_queue({ControlQ, ControlP}, #kapps_call{}=Call)
+  when is_binary(ControlQ)
+  andalso is_binary(ControlP) ->
+    Call#kapps_call{control_q=ControlQ, control_p=ControlP};
+set_control_queue(_, #kapps_call{}=Call) -> Call.
 
--spec control_queue(call()) -> control_queue().
+-spec control_queue(call()) -> ctrl_queue().
 control_queue(#kapps_call{control_q=ControlQ, control_p=ControlP, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun({ControlQ, ControlP}, Call);
 control_queue(#kapps_call{control_q=ControlQ, control_p=ControlP}=Call) ->
     default_helper_function({ControlQ, ControlP}, Call).
 
--spec control_queue_direct(call()) -> control_queue().
+-spec control_queue_direct(call()) -> ctrl_queue().
+control_queue_direct(#kapps_call{control_q='undefined'
+                                }) ->
+    'undefined';
+control_queue_direct(#kapps_call{control_p='undefined'
+                                }) ->
+    'undefined';
 control_queue_direct(#kapps_call{control_q=ControlQ
                                 ,control_p=ControlP
                                 }) ->
@@ -674,11 +683,11 @@ control_queue_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
 clear_control_queue_helper(#kapps_call{}=Call) ->
     Call#kapps_call{control_q_helper=fun default_helper_function/2}.
 
--spec control_q(call() | control_queue()) -> api_binary().
+-spec control_q(call() | ctrl_queue()) -> api_binary().
 control_q(#kapps_call{control_q=ControlQ}) -> ControlQ;
 control_q({ControlQ, _}) -> ControlQ.
 
--spec control_p(call() | control_queue()) -> api_binary().
+-spec control_p(call() | ctrl_queue()) -> api_binary().
 control_p(#kapps_call{control_p=ControlP}) -> ControlP;
 control_p({_, ControlP}) -> ControlP.
 
