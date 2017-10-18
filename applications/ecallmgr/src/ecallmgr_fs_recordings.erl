@@ -45,19 +45,19 @@ maybe_store_recording('true', _, JObj, CallId, Node) ->
                                 ,<<"/">>
                                 ),
 
-            JObj = kz_json:from_list(
-                     [{<<"Call-ID">>, CallId}
-                     ,{<<"Msg-ID">>, CallId}
-                     ,{<<"Media-Name">>, MediaName}
-                     ,{<<"Media-Transfer-Destination">>, Url}
-                     ,{<<"Insert-At">>, <<"now">>}
-                     ,{<<"Media-Transfer-Method">>, media_transfer_method(JObj)}
-                     ,{<<"Application-Name">>, <<"store">>}
-                     ,{<<"Event-Category">>, <<"call">>}
-                     ,{<<"Event-Name">>, <<"command">>}
-                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                     ]),
-            ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined')
+            Cmd = kz_json:from_list(
+                    [{<<"Call-ID">>, CallId}
+                    ,{<<"Msg-ID">>, CallId}
+                    ,{<<"Media-Name">>, MediaName}
+                    ,{<<"Media-Transfer-Destination">>, Url}
+                    ,{<<"Insert-At">>, <<"now">>}
+                    ,{<<"Media-Transfer-Method">>, media_transfer_method(JObj)}
+                    ,{<<"Application-Name">>, <<"store">>}
+                    ,{<<"Event-Category">>, <<"call">>}
+                    ,{<<"Event-Name">>, <<"command">>}
+                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ]),
+            ecallmgr_call_command:exec_cmd(Node, CallId, Cmd, 'undefined')
     end.
 
 -spec media_transfer_method(kz_json:object()) -> kz_term:ne_binary().
