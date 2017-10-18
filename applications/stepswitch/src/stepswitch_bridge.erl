@@ -629,8 +629,8 @@ send_deny_emergency_notification(OffnetReq) ->
         ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_denied_emergency_bridge/1).
 
--spec send_deny_emergency_response(kapi_offnet_resource:req(), kz_term:ne_binary()) ->
-                                          {'ok', kz_term:ne_binary()} |
+-spec send_deny_emergency_response(kapi_offnet_resource:req(), kz_types:api_control_q()) ->
+                                          {'ok', ne_binary()} |
                                           {'error', 'no_response'}.
 send_deny_emergency_response(OffnetReq, ControlQ) ->
     CallId = kapi_offnet_resource:call_id(OffnetReq),
