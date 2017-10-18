@@ -138,10 +138,10 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
-    Options = [{mapper, fun normalize_attempt_view_result/1}
-              ,{key_map, <<"multi_factor">>}
+    Options = [{mapper, crossbar_view:map_value_fun()}
+              ,{'range_keymap', <<"multi_factor">>}
               ],
-    crossbar_modb_view:load(Context, ?CB_LIST_ATTEMPT_LOG, Options);
+    crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, Options);
 validate(Context, ConfigId) ->
     case cb_context:req_nouns(Context) of
         [{<<"multi_factor">>, _}] ->
@@ -281,18 +281,21 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    ViewOptions = [{'startkey', [<<"multi_factor">>]}
-                  ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
-                  ],
+    Options = [{'startkey', [<<"multi_factor">>]}
+              ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
+              ,{'mapper', crossbar_view:map_value_fun()}
+              ],
     add_available_providers(
-      crossbar_doc:load_view(<<"auth/providers_by_type">>, ViewOptions, Context, fun normalize_view_results/2)
+      crossbar_view:load(Context, <<"auth/providers_by_type">>, Options)
      ).
 
 system_summary(Context) ->
-    ViewOptions = [{'startkey', [<<"multi_factor">>]}
-                  ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
-                  ],
-    crossbar_doc:load_view(<<"providers/list_by_type">>, ViewOptions, cb_context:set_account_db(Context, ?KZ_AUTH_DB), fun normalize_view_results/2).
+    Options = [{'startkey', [<<"multi_factor">>]}
+              ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
+              ,{'mapper', crossbar_view:map_value_fun()}
+              ,{'databases', [?KZ_AUTH_DB]}
+              ],
+    crossbar_view:load(Context, <<"providers/list_by_type">>, Options).
 
 -spec add_available_providers(cb_context:context()) -> cb_context:context().
 add_available_providers(Context) ->
@@ -333,17 +336,3 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"provider">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
--spec normalize_attempt_view_result(kz_json:object()) -> kz_json:object().
-normalize_attempt_view_result(JObj) ->
-    kz_json:get_value(<<"value">>, JObj).

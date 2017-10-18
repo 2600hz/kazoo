@@ -39,7 +39,7 @@
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
-to_ref_doc('crossbar_doc'=Module) ->
+to_ref_doc('crossbar_filter'=Module) ->
     Filters = filters_from_module(Module),
     filters_to_ref_doc(Filters);
 to_ref_doc(CBModule) ->

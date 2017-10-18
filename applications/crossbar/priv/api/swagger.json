@@ -25904,6 +25904,12 @@
                     "description": "crossbar ip",
                     "type": "string"
                 },
+                "load_view_chunk_size": {
+                    "default": 50,
+                    "description": "crossbar load_view_chunk_size",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "magic_path_patterns": {
                     "default": [
                         "/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw",
@@ -26085,6 +26091,7 @@
                 "maximum_bulk": {
                     "default": 50,
                     "description": "The maximum number of call stats to load in a request",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "maximum_range": {
@@ -26209,6 +26216,18 @@
             },
             "type": "object"
         },
+        "system_config.crossbar.call_inspector": {
+            "description": "Schema for crossbar.call_inspector system_config",
+            "properties": {
+                "maximum_bulk": {
+                    "default": 50,
+                    "description": "crossbar call_inspector maximum_bulk",
+                    "minimum": 1,
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.crossbar.callflows": {
             "description": "Schema for crossbar.callflows system_config",
             "properties": {
@@ -26231,6 +26250,7 @@
                 "maximum_bulk": {
                     "default": 50,
                     "description": "crossbar.cdrs maximum bulk",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "maximum_range": {

@@ -134,6 +134,7 @@
         ,?MACRO_VALUE(<<"port_request.customser_contact">>, <<"customser_contact">>, <<"Customser Email">>, <<"Customser Email">>)
         ,?MACRO_VALUE(<<"port_request.bill_name">>, <<"bill_name">>, <<"Bill Name">>, <<"Name on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_address">>, <<"bill_address">>, <<"Bill Address">>, <<"Address on the bill">>)
+        ,?MACRO_VALUE(<<"port_request.street_address">>, <<"street_address">>, <<"Bill Street Address">>, <<"Address on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_locality">>, <<"bill_locality">>, <<"Bill Locality">>, <<"City on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_region">>, <<"bill_region">>, <<"Bill Region">>, <<"Region on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_postal_code">>, <<"bill_postal_code">>, <<"Bill Postal Code">>, <<"Postal Code on the bill">>)

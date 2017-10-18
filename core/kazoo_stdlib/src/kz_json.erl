@@ -634,7 +634,7 @@ get_string_value(Key, JObj) ->
 get_string_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_list/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_list/1)
     end.
 
 -spec get_list_value(path(), object() | objects()) -> api_list().
@@ -655,7 +655,7 @@ get_binary_value(Key, JObj) ->
 get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_binary/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_binary/1)
     end.
 
 -spec get_ne_binary_value(path(), object() | objects()) -> api_ne_binary().
@@ -676,7 +676,7 @@ get_lower_binary(Key, JObj) ->
 get_lower_binary(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_lower_binary/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_lower_binary/1)
     end.
 
 %% must be an existing atom
@@ -687,7 +687,7 @@ get_atom_value(Key, JObj) ->
 get_atom_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_atom/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_atom/1)
     end.
 
 -spec get_boolean_value(path(), object() | objects()) -> api_atom().
@@ -697,7 +697,7 @@ get_boolean_value(Key, JObj) ->
 get_boolean_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_boolean/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_boolean/1)
     end.
 
 -spec get_integer_value(path(), object() | objects()) -> api_integer().
@@ -707,15 +707,7 @@ get_integer_value(Key, JObj) ->
 get_integer_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_integer/1)
-    end.
-
--type caster() :: fun((json_term()) -> json_term()).
--spec safe_cast(json_term(), json_term(), caster()) -> json_term().
-safe_cast(Value, Default, CastFun) ->
-    try CastFun(Value)
-    catch
-        _:_ -> Default
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_integer/1)
     end.
 
 -spec get_number_value(path(), object() | objects()) -> api_number().
@@ -725,7 +717,7 @@ get_number_value(Key, JObj) ->
 get_number_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_number/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_number/1)
     end.
 
 -spec get_float_value(path(), object() | objects()) -> api_float().
@@ -735,7 +727,7 @@ get_float_value(Key, JObj) ->
 get_float_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_float/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_float/1)
     end.
 
 -spec is_false(path(), object() | objects()) -> boolean().

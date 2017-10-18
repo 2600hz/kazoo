@@ -426,27 +426,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec jobs_summary(cb_context:context()) -> cb_context:context().
 jobs_summary(Context) ->
-    case cb_modules_util:range_view_options(Context) of
-        {CreatedFrom, CreatedTo} ->
-            crossbar_doc:load_view(?JOBS_LIST
-                                  ,[{'startkey', CreatedFrom}
-                                   ,{'endkey', CreatedTo}
-                                   ,{'limit', cb_context:pagination_page_size(Context)}
-                                   ,{'databases', databases(Context, CreatedFrom, CreatedTo)}
-                                   ]
-                                  ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
-                                  ,fun normalize_view_results/2
-                                  );
-        Context1 -> Context1
-    end.
-
--spec databases(cb_context:context(), pos_integer(), pos_integer()) -> ne_binaries().
-databases(Context, CreatedFrom, CreatedTo) ->
-    FromDb = cb_context:account_modb(Context, CreatedFrom),
-    case cb_context:account_modb(Context, CreatedTo) of
-        FromDb -> [FromDb];
-        ToDb -> [FromDb, ToDb]
-    end.
+    crossbar_view:load_modb(Context, ?JOBS_LIST, [{'mapper', crossbar_view:map_doc_fun()}]).
 
 %%--------------------------------------------------------------------
 %% @private

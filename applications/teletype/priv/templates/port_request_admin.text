@@ -19,7 +19,7 @@ Request "{{port_request.name}}" to port numbers into account '{{account.name}}' 
     Service Provider: {{port_request.service_provider}}
     Customer Contact: {{port_request.customer_contact}}
     Billing Name: {{port_request.billing_name}}
-    Billing Address: {{port_request.address}}
+    Billing Address: {% firstof port_request.bill_address port_request.street_address %}
     Billing City: {{port_request.billing_locality}}
     Billing State: {{port_request.region}}
     Billing Zip Code: {{port_request.postal_code}}

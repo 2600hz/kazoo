@@ -16,7 +16,8 @@ This file will serve as a reference point for upcoming announcements, both of th
 
     The big change (that should be mostly transparent) is that `kz_time:now_s/0` returns Gregorian seconds instead of Unix Epoch seconds. The majority of code either doesn't care or expected Gregorian seconds, so this change should have minimal impact on existing code. If you need a Unix timestamp, `kz_time:current_unix_tstamp/0` is what you want.
 
-3.
+3. System Teletype Templates
+
     Starting with Kazoo 4.2 Teletype templates are using their own Teletype specific Email configuration from system configuration. Previously some properties like `from`, `to`, `cc`, `bcc`, etc... were read from `notify.{TEMPLATE_ID}` documents in `system_config` database to initialize the system templates. This has been changed to read from `notification.{TEMPLATE_ID}` which it's the place actual Teletype templates are saved.
 
     If you directly made configurations to these documents, you need to re-configure them in the Teletype templates documents.
@@ -26,6 +27,14 @@ This file will serve as a reference point for upcoming announcements, both of th
     > **Note:** This only applied to templates from **system**, not account's specific templates
 
     > **Note:** Those parameters are the default values, that means if Teletype can't find the value in the notification payload it receives or account's template then it falls back to these system values (if necessary)
+
+4. Crossbar Load View
+
+    In order to reduce pagination problems, increase maintainability and standardizing Crossbar view operations on multiple databases and handling huge number of documents properly, [`crossbar_doc:load_view/3,4,5,6`](https://github.com/2600hz/kazoo/blob/873dc106c7a7330393201207eddc365837c3dbe6/applications/crossbar/src/crossbar_doc.erl#L15) has been deprecated in favor of new module `crossbar_view`. Please migrate your current Crossbar modules or write your new modules to use this new Corssbar view functionality.
+
+    Starting with Kazoo 4.2, helper functions for creating range view options in [`cb_mdule_utils`](https://github.com/2600hz/kazoo/blob/873dc106c7a7330393201207eddc365837c3dbe6/applications/crossbar/src/modules/cb_modules_util.erl#L23-L26) has been removed. Instead several options has been introduced in `crossbar_view` to generating correct range view options according to query string parameters or module's options and requested sort direction.
+
+    Crossbar View module introduce new functions to simple load view (`load/2,3`), ranged load (`load_range/2,3`) and ranged load from MODBs (`load_modb/2,3`). It has several ways to configure the `startkey` and `endkey` and the time range and a new generic way to return chunked base response.
 
 ### 4.1
 
@@ -102,7 +111,7 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 10. Removing socket.io support from Websockets
 
-    The Blackhole application providing websocket support currently utilizes the socket.io client libraries. Due to the poor support for this server side in Erlang as well as the judgment that this provides little benifit it has been removed. The websockets now provide messaging without the socket.io overhead. More documentation will be available shortly. Please note that we still consider websockets beta functionality.
+    The Blackhole application providing websocket support currently utilizes the socket.io client libraries. Due to the poor support for this server side in Erlang as well as the judgment that this provides little benefit it has been removed. The websockets now provide messaging without the socket.io overhead. More documentation will be available shortly. Please note that we still consider websockets beta functionality.
 
 11. System media has been moved
 

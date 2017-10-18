@@ -237,40 +237,10 @@ maybe_save_services(Context, Services) ->
 
 -spec load_audit_logs(cb_context:context()) -> cb_context:context().
 load_audit_logs(Context) ->
-    case create_view_options(Context) of
-        {'ok', ViewOptions} ->
-            crossbar_doc:load_view(?AUDIT_LOG_LIST
-                                  ,ViewOptions
-                                  ,Context
-                                  ,fun normalize_audit_logs/2
-                                  );
-        Context1 -> Context1
-    end.
-
--spec normalize_audit_logs(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_audit_logs(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj) | Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec create_view_options(cb_context:context()) ->
-                                 {'ok', kz_proplist()} |
-                                 cb_context:context().
-create_view_options(Context) ->
-    AccountId = cb_context:account_id(Context),
-    case cb_modules_util:range_view_options(Context) of
-        {CreatedFrom, CreatedTo} ->
-            {'ok', [{'startkey', CreatedTo}
-                   ,{'endkey', CreatedFrom}
-                   ,{'databases', lists:reverse(kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo))}
-                   ,'descending'
-                   ,'include_docs'
-                   ]};
-        Context1 -> Context1
-    end.
+    Options = [{'mapper', crossbar_view:map_doc_fun()}
+              ,'include_docs'
+              ],
+    crossbar_view:load_modb(Context, ?AUDIT_LOG_LIST, Options).
 
 %%--------------------------------------------------------------------
 %% @private
