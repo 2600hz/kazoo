@@ -24676,6 +24676,9 @@
                     "properties": {
                         "bucket": {
                             "description": "Bucket name to store data to",
+                            "maxLength": 63,
+                            "minLength": 6,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         },
                         "bucket_access_method": {
@@ -24692,11 +24695,16 @@
                             "type": "boolean"
                         },
                         "host": {
-                            "description": "the s3 host",
+                            "description": "the s3 host, leave empty for default",
+                            "minLength": 1,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         },
                         "key": {
                             "description": "AWS Key to use",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         },
                         "port": {
@@ -24705,6 +24713,8 @@
                         },
                         "region": {
                             "description": "the region where the bucket is located",
+                            "minLength": 1,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         },
                         "scheme": {
@@ -24717,6 +24727,9 @@
                         },
                         "secret": {
                             "description": "AWS Secret to use",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         }
                     },
