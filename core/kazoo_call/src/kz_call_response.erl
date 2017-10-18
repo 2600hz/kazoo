@@ -32,7 +32,7 @@ config_doc_id() ->
 -spec send(ne_binary(), api_control_q(), ne_binary()) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary() | kapps_call:call(), api_control_q(), api_binary(), api_binary()) ->
+-spec send(ne_binary() | kapps_call:call(), api_control_q() | ne_binary(), api_binary(), api_binary()) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
 -spec send(ne_binary(), api_control_q(), api_binary(), api_binary(), api_binary()) ->
