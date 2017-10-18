@@ -134,7 +134,7 @@
         ,retrieve/1, retrieve/2
         ]).
 
--export([default_helper_function/2]).
+-export([default_helper_function/2, default_control_queue_helper/2]).
 
 -export([start_recording/1, start_recording/2
         ,mask_recording/1, mask_recording/2
@@ -167,8 +167,7 @@
                     ,context :: kz_term:api_ne_binary()
                     ,control_q :: kz_term:api_binary()                   %% The control queue provided on route win
                     ,control_p :: kz_term:api_pid()                      %% The control pid provided on route win
-                    ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                    ,control_p_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                    ,control_q_helper = fun default_control_queue_helper/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                     ,controller_q :: api_binary()                %%
                     ,caller_id_name :: api_ne_binary()      %% The caller name
                     ,caller_id_number :: api_ne_binary() %% The caller number
@@ -659,17 +658,11 @@ set_control_queue(_, #kapps_call{}=Call) -> Call.
 
 -spec control_queue(call()) -> ctrl_queue().
 control_queue(#kapps_call{control_q=ControlQ, control_p=ControlP, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
-    Fun({ControlQ, ControlP}, Call);
-control_queue(#kapps_call{control_q=ControlQ, control_p=ControlP}=Call) ->
-    default_helper_function({ControlQ, ControlP}, Call).
+    Fun({ControlQ, ControlP}, Call).
 
 -spec control_queue_direct(call()) -> ctrl_queue().
-control_queue_direct(#kapps_call{control_q='undefined'
-                                }) ->
-    'undefined';
-control_queue_direct(#kapps_call{control_p='undefined'
-                                }) ->
-    'undefined';
+control_queue_direct(#kapps_call{control_q='undefined'}) -> 'undefined';
+control_queue_direct(#kapps_call{control_p='undefined'}) -> 'undefined';
 control_queue_direct(#kapps_call{control_q=ControlQ
                                 ,control_p=ControlP
                                 }) ->
@@ -679,9 +672,13 @@ control_queue_direct(#kapps_call{control_q=ControlQ
 control_queue_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
     Call#kapps_call{control_q_helper=Fun}.
 
+-spec default_control_queue_helper(Field, call()) -> Field.
+default_control_queue_helper(_Field, #kapps_call{}=Call) ->
+    control_queue_direct(Call).
+
 -spec clear_control_queue_helper(call()) -> call().
 clear_control_queue_helper(#kapps_call{}=Call) ->
-    Call#kapps_call{control_q_helper=fun default_helper_function/2}.
+    Call#kapps_call{control_q_helper=fun default_control_queue_helper/2}.
 
 -spec control_q(call() | ctrl_queue()) -> api_binary().
 control_q(#kapps_call{control_q=ControlQ}) -> ControlQ;

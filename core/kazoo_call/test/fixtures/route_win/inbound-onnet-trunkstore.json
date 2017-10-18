@@ -2,7 +2,6 @@
     "App-Name": "ecallmgr",
     "App-Version": "4.0.0",
     "Call-ID": "82159ZWEwNTQ2NGY4Yzc2YzRiNDE4YzY1YzdmZmVjNWQ3ZjQ",
-    "Control-Queue": "ecallmgr@apps001.2600hz.local-<0.28561.28>-a4a36185",
     "Custom-Channel-Vars": {
         "Account-ID": "account0000000000000000000000001",
         "Account-Name": "Master Account",
