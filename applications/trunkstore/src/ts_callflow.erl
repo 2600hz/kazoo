@@ -123,8 +123,9 @@ route_won(#ts_callflow_state{amqp_worker=Worker, kapps_call=Call}=State, RouteWi
 
     lager:info("callflow has received a route win, taking control of the call"),
 
-    {'won', State#ts_callflow_state{callctl_q=kapi_route:control_queue(RouteWin)
-                                   ,kapps_call=kapps_call:from_route_win(RouteWin, Call)
+    NewCall = kapps_call=kapps_call:from_route_win(RouteWin, Call),
+    {'won', State#ts_callflow_state{callctl_q=kapps_call:control_queue(NewCall)
+                                   ,kapps_call=NewCall
                                    }
     }.
 
@@ -279,7 +280,7 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
                                        ,?APP_NAME, ?APP_VERSION
                                        )
               ],
-    lager:info("sending hangup to ~s: ~p", [CtlQ, Command]),
+    lager:info("sending hangup to ~p: ~p", [CtlQ, Command]),
     'ok' = kz_amqp_worker:cast(Command
                               ,fun(P)-> kapi_dialplan:publish_command(CtlQ, P) end
                               ,Worker
@@ -327,7 +328,7 @@ set_account_id(State, ID) -> State#ts_callflow_state{acctid=ID}.
 -spec get_account_id(state()) -> kz_term:ne_binary().
 get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 
--spec get_control_queue(state()) -> kz_term:api_binary().
+-spec get_control_queue(state()) -> kz_types:api_control_q().
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
 
 -spec get_worker_queue(state()) -> kz_term:ne_binary().

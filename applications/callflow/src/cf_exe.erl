@@ -272,11 +272,11 @@ queue_name(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     queue_name(Srv).
 
--spec control_queue(kapps_call:call() | pid()) -> kapps_call:ctrl_queue().
+-spec control_queue(kapps_call:call() | pid()) -> kz_types:api_control_q().
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
 control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
 
--spec control_queue(api_binary(), kapps_call:call() | pid()) -> kapps_call:ctrl_queue().
+-spec control_queue(api_binary(), kapps_call:call() | pid()) -> kz_types:api_control_q().
 control_queue(_, Call) -> control_queue(Call).
 
 -spec get_branch_keys(kapps_call:call() | pid()) -> {'branch_keys', kz_json:keys()}.

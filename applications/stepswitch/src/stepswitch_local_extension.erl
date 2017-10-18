@@ -23,7 +23,7 @@
 -record(state, {number_props = [] :: knm_number_options:extra_options()
                ,resource_req :: kapi_offnet_resource:req()
                ,request_handler :: pid()
-               ,control_queue :: kz_term:api_binary()
+               ,control_queue :: kz_types:api_control_q()
                ,response_queue :: kz_term:api_binary()
                ,queue :: kz_term:api_binary()
                ,timeout :: kz_term:api_reference()

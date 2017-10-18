@@ -10,6 +10,7 @@
 -export([req/1, req_v/1]).
 -export([resp/1, resp_v/1]).
 -export([publish_req/1, publish_req/2]).
+-export([publish_ctl_req/2]).
 -export([publish_resp/2, publish_resp/3]).
 -export([bind_q/2]).
 -export([unbind_q/2]).
@@ -21,7 +22,7 @@
         ,body/1, body/2
         ,bypass_e164/1, bypass_e164/2
         ,call_id/1, call_id/2
-        ,control_queue/1, control_queue/2
+        ,control_queue/1
         ,custom_channel_vars/1, custom_channel_vars/2
         ,custom_application_vars/1, custom_application_vars/2
         ,requestor_custom_channel_vars/1, requestor_custom_channel_vars/2
@@ -101,6 +102,7 @@
         ,?KEY_CAVS
         ,?KEY_CCVS
         ,?KEY_CONTROL_QUEUE
+        ,?KEY_CONTROL_PID
         ,?KEY_CSHS
         ,?KEY_ENABLE_T38
         ,?KEY_ENABLE_T38_GATEWAY
@@ -252,6 +254,16 @@ publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun req/1),
     kz_amqp_util:offnet_resource_publish(Payload, ContentType).
 
+-spec publish_ctl_req(kz_types:api_control_q(), api_terms()) -> 'ok'.
+publish_ctl_req({CtrlQ, CtrlP}, Props)
+  when is_list(Props) ->
+    Insert = [{?KEY_CONTROL_QUEUE, CtrlQ}
+             ,{?KEY_CONTROL_PID, CtrlP}
+             ],
+    publish_req(props:insert_values(Insert, Props));
+publish_ctl_req(Ctrl, JObj) ->
+    publish_ctl_req(Ctrl, kz_json:to_proplist(JObj)).
+
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(TargetQ, JObj) ->
     publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
@@ -357,13 +369,16 @@ call_id(Req) ->
 call_id(?REQ_TYPE(JObj), Default) ->
     kz_json:get_ne_value(?KEY_CALL_ID, JObj, Default).
 
--spec control_queue(req()) -> kz_term:api_binary().
-control_queue(Req) ->
-    control_queue(Req, 'undefined').
-
--spec control_queue(req(), Default) -> kz_term:ne_binary() | Default.
-control_queue(?REQ_TYPE(JObj), Default) ->
-    kz_json:get_ne_value(?KEY_CONTROL_QUEUE, JObj, Default).
+-spec control_queue(req()) -> kz_types:api_control_q().
+control_queue(?REQ_TYPE(JObj)) ->
+    case {kz_json:get_ne_value(?KEY_CONTROL_QUEUE, JObj)
+         ,kz_json:get_ne_value(?KEY_CONTROL_PID, JObj)
+         }
+    of
+        {'undefined', _} -> 'undefined';
+        {_, 'undefined'} -> 'undefined';
+        {_, _} = CtrlQ -> CtrlQ
+    end.
 
 -spec flags(req()) -> kz_term:ne_binaries().
 flags(Req) ->

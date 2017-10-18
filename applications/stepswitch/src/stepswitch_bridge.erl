@@ -32,7 +32,7 @@
 -record(state, {endpoints = [] :: stepswitch_resources:endpoints()
                ,resource_req :: kapi_offnet_resource:req()
                ,request_handler :: kz_term:api_pid()
-               ,control_queue :: kz_term:api_binary()
+               ,control_queue :: kz_types:api_control_q()
                ,response_queue :: kz_term:api_binary()
                ,queue :: kz_term:api_binary()
                ,timeout :: kz_term:api_reference()

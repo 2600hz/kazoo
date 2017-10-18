@@ -25,14 +25,13 @@ config_doc_id() ->
 %% played as part of the error.
 %% @end
 %%------------------------------------------------------------------------------
-
--spec send(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
+-spec send(kz_term:ne_binary(), kz_types:api_control_q(), kz_term:ne_binary()) ->
                   {'ok', kz_term:ne_binary()} |
                   {'error', 'no_response'}.
 send(CallId, CtrlQ, Code) ->
     send(CallId, CtrlQ, Code, 'undefined').
 
--spec send(kz_term:ne_binary() | kapps_call:call(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+-spec send(kz_term:ne_binary() | kapps_call:call(), kz_types:api_control_q(), kz_term:api_binary(), kz_term:api_binary()) ->
                   {'ok', kz_term:ne_binary()} |
                   {'error', 'no_response'}.
 send(<<_/binary>> = CallId, CtrlQ, Code, Cause) ->
@@ -42,7 +41,7 @@ send(Call, Code, Cause, Media) ->
     CtrlQ = kapps_call:control_queue(Call),
     send(CallId, CtrlQ, Code, Cause, Media).
 
--spec send(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+-spec send(kz_term:ne_binary(), kz_types:api_control_q(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
                   {'ok', kz_term:ne_binary()} |
                   {'error', 'no_response'}.
 send(_, _, 'undefined', 'undefined', 'undefined') ->
@@ -99,7 +98,7 @@ specific_commands(CallId, NoopId, Code, Cause, Media) ->
                        ])
     ].
 
--spec do_send(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+-spec do_send(kz_term:ne_binary(), kz_types:api_control_q(), kz_json:objects()) -> 'ok'.
 do_send(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
               ,{<<"Call-ID">>, CallId}
@@ -107,12 +106,7 @@ do_send(CallId, CtrlQ, Commands) ->
               ,{<<"Msg-ID">>, kz_binary:rand_hex(6)}
                | kz_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
               ],
-    kz_amqp_worker:cast(Command
-                       ,fun(C) ->
-                                {'ok', Payload} = kapi_dialplan:queue(C),
-                                kapi_dialplan:publish_action(CtrlQ, Payload)
-                        end
-                       ).
+    kz_amqp_worker:cast(Command, fun(P) -> kapi_dialplan:publish_command(CtrlQ, P) end).
 
 %%------------------------------------------------------------------------------
 %% @doc

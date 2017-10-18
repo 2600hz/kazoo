@@ -223,7 +223,6 @@ try_failover_e164(State, ToDID) ->
           ,{<<"Resource-Type">>, <<"audio">>}
           ,{<<"To-DID">>, ToDID}
           ,{<<"Account-ID">>, AccountId}
-          ,{<<"Control-Queue">>, CtlQ}
           ,{<<"Application-Name">>, <<"bridge">>}
           ,{<<"Flags">>, kz_json:get_value(<<"flags">>, Endpoint)}
           ,{<<"Timeout">>, Timeout}
@@ -242,7 +241,7 @@ try_failover_e164(State, ToDID) ->
     lager:info("sending offnet request for DID ~s", [ToDID]),
     ts_callflow:send_command(State
                             ,props:filter_undefined(Req)
-                            ,fun kapi_offnet_resource:publish_req/1
+                            ,fun(P) -> kapi_offnet_resource:publish_ctl_req(CtlQ, P) end
                             ),
     wait_for_bridge(ts_callflow:set_failover(State, kz_json:new()), Timeout).
 

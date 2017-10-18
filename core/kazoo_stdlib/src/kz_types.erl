@@ -125,6 +125,8 @@
 -type kz_node() :: #kz_node{}.
 -type kz_nodes() :: [kz_node()].
 
+-type api_control_q() :: {binary(), binary()} | 'undefined'.
+
 -export_type([mail_message_body/0
              ,dict/2
              ,ip_list/0
@@ -168,4 +170,5 @@
              ,media_servers/0
              ,kz_node/0
              ,kz_nodes/0
+             ,api_control_q/0
              ]).
