@@ -15,10 +15,10 @@
             "properties": {
                 "bucket": {
                     "description": "Bucket name to store data to",
-                    "type": "string",
-                    "pattern": "^[^\\s]*$",
+                    "maxLength": 63,
                     "minLength": 6,
-                    "maxLength": 63
+                    "pattern": "^[^\\s]*$",
+                    "type": "string"
                 },
                 "bucket_access_method": {
                     "description": "how to access the host.",
@@ -35,16 +35,16 @@
                 },
                 "host": {
                     "description": "the s3 host, leave empty for default",
-                    "type": "string",
+                    "minLength": 1,
                     "pattern": "^[^\\s]*$",
-                    "minLength": 1
+                    "type": "string"
                 },
                 "key": {
                     "description": "AWS Key to use",
-                    "type": "string",
-                    "pattern": "^[^\\s]*$",
+                    "maxLength": 128,
                     "minLength": 1,
-                    "maxLength": 128
+                    "pattern": "^[^\\s]*$",
+                    "type": "string"
                 },
                 "port": {
                     "description": "port to use",
@@ -52,9 +52,9 @@
                 },
                 "region": {
                     "description": "the region where the bucket is located",
-                    "type": "string",
+                    "minLength": 1,
                     "pattern": "^[^\\s]*$",
-                    "minLength": 1
+                    "type": "string"
                 },
                 "scheme": {
                     "description": "scheme to use to access host",
@@ -66,10 +66,10 @@
                 },
                 "secret": {
                     "description": "AWS Secret to use",
-                    "type": "string",
-                    "pattern": "^[^\\s]*$",
+                    "maxLength": 128,
                     "minLength": 1,
-                    "maxLength": 128
+                    "pattern": "^[^\\s]*$",
+                    "type": "string"
                 }
             },
             "required": [
