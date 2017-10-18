@@ -670,7 +670,7 @@ set_fax_binary(Context, AttachmentId) ->
 outgoing_summary(Context) ->
     JObj = cb_context:fetch(Context, <<"faxbox">>, kz_json:new()),
     {ViewName, Opts} = get_view_and_filter(Context, {kz_doc:id(JObj), kz_doc:type(JObj)}, 'undefined'),
-    Options = [{'mapper', crossbar_bindings:map_value_fun()}
+    Options = [{'mapper', crossbar_view:map_value_fun()}
               ,{'databases', [?KZ_FAXES_DB]}
               ,'include_docs'
                | Opts
