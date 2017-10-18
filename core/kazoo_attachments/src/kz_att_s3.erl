@@ -37,7 +37,10 @@ aws_config(#{'key' := Key
             }=Map) ->
     BucketAfterHost = kz_term:is_true(maps:get('bucket_after_host', Map, 'false')),
     BucketAccess = kz_term:to_atom(maps:get('bucket_access_method', Map, 'auto'), 'true'),
-    Region = maps:get('region', Map, 'undefined'),
+    Region = case maps:get('region', Map, 'undefined') of
+                 'undefined' -> 'undefined';
+                 Bin -> kz_term:to_list(Bin)
+             end,
 
     Host = maps:get('host', Map,  ?AMAZON_S3_HOST),
     Scheme = fix_scheme(maps:get('scheme', Map,  <<"https://">>)),
