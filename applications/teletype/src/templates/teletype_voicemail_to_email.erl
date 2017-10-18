@@ -270,9 +270,17 @@ build_voicemail_data(DataJObj) ->
       ,{<<"vmbox_number">>, kz_json:get_value([<<"vmbox_doc">>, <<"mailbox">>], DataJObj)}
       ,{<<"msg_id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
       ,{<<"name">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)} %% backward compatibility
-      ,{<<"transcription">>, kz_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
+      ,{<<"transcription">>, get_transcription(DataJObj)}
       ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).
+
+-spec get_transcription(kz_json:object()) -> api_ne_binary().
+get_transcription(DataJObj) ->
+    case kz_json:get_value(<<"voicemail_transcription">>, DataJObj) of
+        'undefined' -> 'undefined';
+        ?NE_BINARY=Bin -> Bin;
+        JObj -> kz_json:get_ne_binary_value(<<"text">>, JObj)
+    end.
 
 -spec pretty_print_length(api_object() | pos_integer()) -> ne_binary().
 pretty_print_length('undefined') -> <<"00:00:00">>;
