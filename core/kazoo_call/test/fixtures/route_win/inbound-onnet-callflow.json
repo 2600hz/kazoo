@@ -2,6 +2,7 @@
     "App-Name": "ecallmgr",
     "App-Version": "4.0.0",
     "Call-ID": "82159NjBmNTI0YjQ5MTE2NmFkNmQ3NmRmYzFiYWRhMGQ0NGI",
+    "Control-PID": "<0.123.0>",
     "Control-Queue": "ecallmgr@apps001.2600hz.local-<0.29590.28>-521b30b6",
     "Custom-Channel-Vars": {
         "Account-ID": "account0000000000000000000000001",
