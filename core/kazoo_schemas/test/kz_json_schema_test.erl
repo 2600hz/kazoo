@@ -152,16 +152,20 @@ get_schema_sms() ->
 default_object_test() ->
     Schema = get_schema(),
     Default = kz_json_schema:default_object(Schema),
-    [?_assertEqual({[{<<"caller_id">>,{[{<<"emergency">>,{[{<<"name">>,<<"emer_default">>}]}}]}}]}, Default)].
+    [?_assertEqual(kz_json:from_list_recursive([{<<"caller_id">>, [{<<"emergency">>,[{<<"name">>,<<"emer_default">>}]}]}])
+                  ,Default
+                  )
+    ].
 
 flatten_sms_schema_test() ->
     SMSSchema = get_schema_sms(),
     Flat = kz_json_schema:flatten(SMSSchema),
 
-    [?_assertEqual(Flat, {[{[<<"outbound">>,<<"options">>,<<"default">>], {[{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}}
-                          ,{[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>}
-                          ,{[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
-                         })].
+    JObj = kz_json:from_list_recursive([{<<"outbound">>, [{<<"options">>, [{<<"default">>, [{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}]}]}
+                                       ,{[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>}
+                                       ,{[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}
+                                       ]),
+    [?_assertEqual(Flat, JObj)].
 
 did_duplication_test() ->
     SrvA = kz_json:from_list([{<<"DIDs">>,kz_json:new()}
