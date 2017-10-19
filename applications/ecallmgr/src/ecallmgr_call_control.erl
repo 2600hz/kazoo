@@ -517,6 +517,7 @@ handle_loopback_destroyed(JObj, State) ->
 handle_channel_destroyed(#state{sanity_check_tref=SCTRef
                                ,current_app=CurrentApp
                                ,current_cmd=CurrentCmd
+                               ,current_cmd_uuid=EventUUID
                                ,call_id=CallId
                                }=State
                         ) ->
@@ -531,7 +532,7 @@ handle_channel_destroyed(#state{sanity_check_tref=SCTRef
     %% have not been executed on freeswitch but were already queued (for example in xferext).
     %% Commonly events like masquerade, noop, etc
     _ = case CurrentApp =:= 'undefined'
-                                                %            orelse is_post_hangup_command(CurrentApp)
+            andalso EventUUID =:= 'undefined'
         of
             'true' -> 'ok';
             'false' ->
@@ -575,6 +576,7 @@ force_queue_advance(#state{call_id=CallId
                     self() ! {'force_queue_advance', CallId},
                     State#state{command_q=CmdQ1
                                ,current_app=AppName
+                               ,current_cmd_uuid = 'undefined'
                                ,current_cmd=Cmd
                                ,keep_alive_ref=get_keep_alive_ref(State)
                                ,msg_id=MsgId
@@ -585,22 +587,26 @@ force_queue_advance(#state{call_id=CallId
                     self() ! {'force_queue_advance', CallId},
                     State#state{command_q=CmdQ1
                                ,current_app=AppName
+                               ,current_cmd_uuid = 'undefined'
                                ,current_cmd=Cmd
                                ,keep_alive_ref=get_keep_alive_ref(State)
                                ,msg_id=MsgId
                                };
                 'ok' ->
+                    lager:debug("command ~s execute complete", [AppName]),
                     State#state{command_q=CmdQ1
                                ,current_app=AppName
+                               ,current_cmd_uuid = 'undefined'
                                ,current_cmd=Cmd
                                ,keep_alive_ref=get_keep_alive_ref(State)
                                ,msg_id=MsgId
                                };
                 {'ok', EventUUID} ->
+                    lager:debug("command ~s queued for completion : ~s", [AppName, EventUUID]),
                     State#state{command_q=CmdQ1
                                ,current_app=AppName
                                ,current_cmd=Cmd
-                               ,current_cmd_uuid = EventUUID
+                               ,current_cmd_uuid=EventUUID
                                ,keep_alive_ref=get_keep_alive_ref(State)
                                ,msg_id=MsgId
                                }
@@ -711,6 +717,7 @@ forward_queue(#state{call_id = CallId
                     self() ! {'force_queue_advance', CallId},
                     State#state{command_q = CmdQ1
                                ,current_app = AppName
+                               ,current_cmd_uuid = 'undefined'
                                ,current_cmd = Cmd
                                ,msg_id = MsgId
                                };
@@ -720,17 +727,21 @@ forward_queue(#state{call_id = CallId
                     self() ! {'force_queue_advance', CallId},
                     State#state{command_q=CmdQ1
                                ,current_app=AppName
+                               ,current_cmd_uuid = 'undefined'
                                ,current_cmd=Cmd
                                ,keep_alive_ref=get_keep_alive_ref(State)
                                ,msg_id=MsgId
                                };
                 'ok' ->
+                    lager:debug("command ~s execute complete", [AppName]),
                     State#state{command_q = CmdQ1
                                ,current_app = AppName
+                               ,current_cmd_uuid = 'undefined'
                                ,current_cmd = Cmd
                                ,msg_id = MsgId
                                };
                 {'ok', EventUUID} ->
+                    lager:debug("command ~s queued for completion : ~s", [AppName, EventUUID]),
                     MsgId = kz_api:msg_id(Cmd, <<>>),
                     State#state{command_q = CmdQ1
                                ,current_app = AppName
@@ -889,7 +900,7 @@ handle_dialplan(JObj, #state{call_id=CallId
                                };
                 'ok' ->
                     self() ! {'force_queue_advance', CallId},
-                    lager:debug("command executed ~s : ~p", [AppName, Cmd]),
+                    lager:debug("command ~s execute complete", [AppName]),
                     State#state{command_q=NewCmdQ1
                                ,current_app=AppName
                                ,current_cmd=Cmd
@@ -897,7 +908,7 @@ handle_dialplan(JObj, #state{call_id=CallId
                                ,msg_id=MsgId
                                };
                 {'ok', EventUUID} ->
-                    lager:debug("command executed with eventid ~s ~s : ~p", [EventUUID, AppName, Cmd]),
+                    lager:debug("command ~s queued for completion : ~s", [AppName, EventUUID]),
                     State#state{command_q=NewCmdQ1
                                ,current_app=AppName
                                ,current_cmd_uuid=EventUUID

@@ -98,11 +98,10 @@
         ,?KEY_BYPASS_E164
         ,?KEY_B_LEG_EVENTS
         ,?KEY_CALL_ID
-        ,?KEY_CALL_ID
         ,?KEY_CAVS
         ,?KEY_CCVS
-        ,?KEY_CONTROL_QUEUE
         ,?KEY_CONTROL_PID
+        ,?KEY_CONTROL_QUEUE
         ,?KEY_CSHS
         ,?KEY_ENABLE_T38
         ,?KEY_ENABLE_T38_GATEWAY
