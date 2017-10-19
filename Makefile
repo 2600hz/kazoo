@@ -294,5 +294,5 @@ circle-dialyze:
 circle-release:
 	@$(MAKE) build-ci-release
 
-circle: circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release
+circle: circle-pre circle-fmt circle-build circle-codechecks circle-docs circle-schemas circle-dialyze circle-release
 	@$(if $(git status --porcelain | wc -l), $(MAKE) circle-unstaged)
