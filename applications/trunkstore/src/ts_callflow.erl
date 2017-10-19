@@ -123,7 +123,7 @@ route_won(#ts_callflow_state{amqp_worker=Worker, kapps_call=Call}=State, RouteWi
 
     lager:info("callflow has received a route win, taking control of the call"),
 
-    NewCall = kapps_call=kapps_call:from_route_win(RouteWin, Call),
+    NewCall = kapps_call:from_route_win(RouteWin, Call),
     {'won', State#ts_callflow_state{callctl_q=kapps_call:control_queue(NewCall)
                                    ,kapps_call=NewCall
                                    }
