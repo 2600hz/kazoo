@@ -266,6 +266,7 @@ create_loopback_endpoint(Props, JObj) ->
              ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
              ,{<<"From-URI">>, <<"sip:", CIDNum/binary, "@", FromRealm/binary>>}
              ,{<<"Resource-Type">>, <<"onnet-termination">>}
+             ,{<<"E164-Destination">>, Number}
 
              ]),
     kz_json:from_list(
