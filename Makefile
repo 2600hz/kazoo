@@ -188,9 +188,8 @@ bump-copyright:
 $(FMT):
 	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' | tar xz -C $(ROOT)/make/
 
-fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
-	@$(FMT) $(TO_FMT)
+	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
@@ -242,7 +241,6 @@ sdks:
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
-
 CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
 TO_FMT := $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
@@ -269,8 +267,7 @@ circle-codechecks:
 	@./scripts/validate-js.sh $(CHANGED)
 
 circle-fmt:
-	@echo $(TO_FMT)
-	@$(if $(TO_FMT), TO_FMT="$(TO_FMT)" $(MAKE) fmt)
+	@$(MAKE) fmt
 	@$(MAKE) elvis
 
 circle-build:

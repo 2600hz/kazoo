@@ -14,7 +14,6 @@ else
     echo "Can't find Kazoo release root directory, is the release built?"
     exit -1
 fi
-echo "Release path: $DEFAULT_ROOT"
 
 while getopts "n:c:" optname
 do
