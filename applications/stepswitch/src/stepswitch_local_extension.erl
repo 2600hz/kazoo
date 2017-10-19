@@ -114,7 +114,7 @@ handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
     Payload = build_local_extension(State),
     'ok' = kapi_dialplan:publish_command(ControlQ, Payload),
-    lager:debug("sent local extension command to ~s", [ControlQ]),
+    lager:debug("sent local extension command to ~p", [ControlQ]),
     {'noreply', State};
 handle_cast({'local_extension_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
