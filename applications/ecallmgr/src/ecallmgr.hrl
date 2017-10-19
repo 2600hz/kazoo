@@ -379,6 +379,7 @@
                               ,{<<"privacy">>, <<"privacy">>}
                               ,{<<"conference">>, <<"page">>}
                               ,{<<"playback">>, <<"play_macro">>}
+                              ,{<<"intercept">>, <<"call_pickup">>}
                               ]).
 
 -define(FAX_EVENTS, ['spandsp::txfaxresult'
