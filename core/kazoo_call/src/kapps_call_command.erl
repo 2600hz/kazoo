@@ -3205,7 +3205,6 @@ wait_for_unparked_call(Call, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"hold">>} ->
                     Ok;
                 _ ->
-                    lager:debug("channel execution error while waiting for unparked call: ~s", [kz_json:encode(JObj)]),
                     wait_for_unparked_call(Call, kz_time:decr_timeout(Timeout, Start))
             end
     end.
