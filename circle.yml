@@ -31,6 +31,7 @@ test:
     - ./scripts/code_checks.bash $($CHANGED)
     - |
       if [[ ! -z "$($CHANGED)" ]]; then
+        echo $($CHANGED)
         TO_FMT="$(echo $($CHANGED))" make fmt
       fi
     - if [[ "$CIRCLE_BRANCH" = 'master' ]]; then make bump-copyright; fi
