@@ -250,9 +250,20 @@ publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_req(Req, ContentType)
+  when is_list(Req) ->
+    Props = case props:get_value(?KEY_CONTROL_QUEUE, Req) of
+                {CtrlQ, CtrlP} ->
+                    [{?KEY_CONTROL_QUEUE, CtrlQ}
+                    ,{?KEY_CONTROL_PID, CtrlP}
+                     | props:delete(?KEY_CONTROL_QUEUE, Req)
+                    ];
+                _ -> Req
+            end,
+    {'ok', Payload} = kz_api:prepare_api_payload(Props, ?OFFNET_RESOURCE_REQ_VALUES, fun req/1),
+    kz_amqp_util:offnet_resource_publish(Payload, ContentType);
 publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun req/1),
-    kz_amqp_util:offnet_resource_publish(Payload, ContentType).
+    publish_req(kz_json:to_proplist(Req), ContentType).
 
 -spec publish_ctl_req(kz_types:api_control_q(), api_terms()) -> 'ok'.
 publish_ctl_req({CtrlQ, CtrlP}, Props)
