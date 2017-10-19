@@ -250,6 +250,8 @@ PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 
 circle-pre:
 ifneq ($(PIP2),)
+## needs root access
+	@echo $(CHANGED)
 	@$(PIP2) install --upgrade pip
 	@$(PIP2) install PyYAML mkdocs pyembed-markdown jsonschema
 else
@@ -267,6 +269,7 @@ circle-codechecks:
 	@./scripts/validate-js.sh $(CHANGED)
 
 circle-fmt:
+	@echo $(TO_FMT)
 	@$(if $(TO_FMT), TO_FMT="$(TO_FMT)" $(MAKE) fmt)
 	@$(MAKE) elvis
 
