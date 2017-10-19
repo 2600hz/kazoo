@@ -266,7 +266,6 @@ get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
     {<<"soft_hold">>, list_to_binary([UnholdKey, " ", AMedia, " ", BMedia])};
 
 get_fs_app(Node, UUID, JObj, <<"page">>) ->
-    lager:debug_unsafe("PAGE : ~s", [kz_json:encode(JObj, ['pretty'])]),
     Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case kapi_dialplan:page_v(JObj) of
         'false' -> {'error', <<"page failed to execute as JObj did not validate">>};
