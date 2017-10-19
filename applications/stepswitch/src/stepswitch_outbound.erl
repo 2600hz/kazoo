@@ -244,6 +244,7 @@ create_loopback_endpoint(Props, OffnetReq) ->
              ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
              ,{<<"From-URI">>, <<"sip:", CIDNum/binary, "@", FromRealm/binary>>}
              ,{<<"Resource-Type">>, <<"onnet-termination">>}
+             ,{<<"E164-Destination">>, Number}
 
              ]),
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetReq),

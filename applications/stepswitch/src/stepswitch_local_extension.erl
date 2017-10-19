@@ -315,6 +315,7 @@ build_local_extension(#state{number_props=Props
                    ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
                    ,{<<"From-URI">>, <<"sip:", CIDNum/binary, "@", FromRealm/binary>>}
                    ,{<<"Resource-Type">>, <<"onnet-termination">>}
+                   ,{<<"E164-Destination">>, Number}
 
                    ]),
 
