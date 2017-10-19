@@ -656,10 +656,13 @@ handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp
                                                         ,current_cmd_uuid=EventUUID
                                                         }=State) ->
     RawAppName = kz_json:get_ne_binary_value(<<"Raw-Application-Name">>, JObj, AppName),
-    CurrentAppName = ecallmgr_util:convert_kazoo_app_name(CurrApp),
-    case lists:member(RawAppName, CurrentAppName) of
+    lager:debug("converting app name ~s for ~s", [CurrApp, RawAppName]),
+    CurrentAppNames = ecallmgr_util:convert_kazoo_app_name(CurrApp),
+    case lists:member(RawAppName, CurrentAppNames) of
         'true' -> handle_execute_complete(CurrApp, EventUUID, JObj, State);
-        'false' -> State
+        'false' ->
+            lager:warning("couldn't translate the app name ~s for ~s", [CurrApp, RawAppName]),
+            State
     end;
 handle_execute_complete(_AppName, _EventUUID, _JObj, State) ->
     State.
@@ -886,6 +889,7 @@ handle_dialplan(JObj, #state{call_id=CallId
                                };
                 'ok' ->
                     self() ! {'force_queue_advance', CallId},
+                    lager:debug("command executed ~s : ~p", [AppName, Cmd]),
                     State#state{command_q=NewCmdQ1
                                ,current_app=AppName
                                ,current_cmd=Cmd
@@ -893,9 +897,10 @@ handle_dialplan(JObj, #state{call_id=CallId
                                ,msg_id=MsgId
                                };
                 {'ok', EventUUID} ->
+                    lager:debug("command executed with eventid ~s ~s : ~p", [EventUUID, AppName, Cmd]),
                     State#state{command_q=NewCmdQ1
                                ,current_app=AppName
-                               ,current_cmd_uuid = EventUUID
+                               ,current_cmd_uuid=EventUUID
                                ,current_cmd=Cmd
                                ,keep_alive_ref=get_keep_alive_ref(State)
                                ,msg_id=MsgId
