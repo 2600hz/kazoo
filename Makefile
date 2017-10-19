@@ -244,12 +244,17 @@ validate-schemas:
 
 
 CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
-TO_FMT := $(git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
+TO_FMT := $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
+PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 
 circle-pre:
-	@pip install --upgrade pip
-	@pip install PyYAML mkdocs pyembed-markdown jsonschema
+ifneq ($(PIP2),)
+	@$(PIP2) install --upgrade pip
+	@$(PIP2) install PyYAML mkdocs pyembed-markdown jsonschema
+else
+	$(error "pip/pip2 is not available, please install python2-pip package")
+endif
 
 circle-docs:
 	@./scripts/state-of-docs.sh || true
