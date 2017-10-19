@@ -47,7 +47,6 @@ call_command(Node, UUID, JObj) ->
                        ,fun handle_ccvs/5
                        ,fun handle_cavs/5
                        ,fun pre_exec/5
-                       ,fun handle_loopback/5
                        ,fun create_command/5
                        ],
             lager:debug("creating bridge dialplan"),
@@ -209,7 +208,7 @@ handle_loopback_key('false', _Key, _JObj) -> [];
 handle_loopback_key('true', Key, JObj) ->
     V = kz_term:to_binary(kz_json:is_false(Key, JObj, 'false')),
     K = ecallmgr_util:get_fs_key(Key),
-    [{"application", <<"export ", K/binary, "=", V/binary>>}].
+    [{K, V}].
 
 -spec handle_loopback_key(kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 handle_loopback_key(Key, JObj) ->
@@ -219,22 +218,22 @@ handle_loopback_key(Key, JObj) ->
 -spec handle_loopback_keys(kz_term:ne_binaries(), kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 handle_loopback_keys([], _JObj, Acc) -> Acc;
 handle_loopback_keys([Key | Keys], JObj, Acc) ->
-    handle_loopback_keys(Keys, JObj, Acc ++ handle_loopback_key(Key, JObj)).
+    handle_loopback_keys(Keys, JObj, handle_loopback_key(Key, JObj) ++ Acc).
 
--spec handle_loopback(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
-handle_loopback(DP, _Node, _UUID, _Channel, JObj) ->
+-spec loopback_exports(kz_json:object()) -> kz_term:proplist().
+loopback_exports(JObj) ->
     Keys = [<<"Simplify-Loopback">>, <<"Loopback-Bowout">>],
-    handle_loopback_keys(Keys, JObj, DP).
+    handle_loopback_keys(Keys, JObj, []).
 
 -spec pre_exec(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
-pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
+pre_exec(DP, _Node, _UUID, _Channel, JObj) ->
     Exports = [{<<"sip_redirect_context">>, <<"context_2">>}
               ,{<<?CHANNEL_VAR_PREFIX, "Inception">>, <<"${", ?CHANNEL_VAR_PREFIX, "Inception}">>}
               ,{<<?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID>>, <<"${", ?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID, "}">>}
               ,{<<"Call-Control-Queue">>, <<"${Call-Control-Queue}">>}
               ,{<<"Call-Control-PID">>, <<"${Call-Control-PID}">>}
               ,{<<"Switch-URI">>, <<"${Switch-URI}">>}
-              ],
+              ] ++ loopback_exports(JObj),
     CmdExport = kz_binary:join([<<K/binary, "=", V/binary>> || {K, V} <- Exports], <<" ">>),
     [{"application", "kz_multiset continue_on_fail=true hangup_after_bridge=true"}
     ,{"application", <<"kz_export ", CmdExport/binary>>}
