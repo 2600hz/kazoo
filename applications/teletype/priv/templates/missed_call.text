@@ -11,7 +11,7 @@ The caller was {{caller_id.name}} ({{caller_id.number}}).
     Caller: {{caller_id.name}} ({{caller_id.number}})
     Callee: {{to.user}} (originally dialed number)
     Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
-    Hangup Cause: {{missed_call.reason|title}}
+    Hangup Cause: {{missed_call.reason}}
 
 
 

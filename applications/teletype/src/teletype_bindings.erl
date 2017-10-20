@@ -70,16 +70,16 @@ notification(JObj) ->
 maybe_send_update(JObj, RoutingKey, #{'completed' := _Completed}=Map) ->
     %% for now we just only care about at least one success
     print_result(RoutingKey, Map),
-    Metadata = kz_json:from_list(maps:to_list(Map)),
+    Metadata = kz_json:from_list_recursive(maps:to_list(Map)),
     teletype_util:send_update(JObj, <<"completed">>, 'undefined', Metadata);
 maybe_send_update(JObj, RoutingKey, #{'failed' := [{_, Reason}|_]}=Map) ->
     %% for now just send the first error as failure message
     print_result(RoutingKey, Map),
-    Metadata = kz_json:from_list(maps:to_list(Map)),
+    Metadata = kz_json:from_list_recursive(maps:to_list(Map)),
     teletype_util:send_update(JObj, <<"failed">>, Reason, Metadata);
 maybe_send_update(JObj, RoutingKey, Map) ->
     print_result(RoutingKey, Map),
-    Metadata = kz_json:from_list(maps:to_list(Map)),
+    Metadata = kz_json:from_list_recursive(maps:to_list(Map)),
     teletype_util:send_update(JObj, <<"completed">>, 'undefined', Metadata).
 
 -spec print_result(ne_binary(), map()) -> 'ok'.
@@ -106,7 +106,7 @@ check_result({'ignored', TemplateId}, {RoutingKey, Map}) ->
 check_result({'disabled', TemplateId}, {RoutingKey, Map}) ->
     {RoutingKey, maps:update_with('disabled', update_with(TemplateId), [TemplateId], Map)};
 
-check_result({'failed', TemplateId, Reason}, {RoutingKey, Map}) ->
+check_result({'failed', Reason, TemplateId}, {RoutingKey, Map}) ->
     {RoutingKey, maps:update_with('failed', update_with({TemplateId, Reason}), [{TemplateId, Reason}], Map)};
 
 check_result({'EXIT', {'error', 'missing_data',  Missing}}, {RoutingKey, Map}) ->

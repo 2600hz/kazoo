@@ -112,4 +112,5 @@ missed_call_reason(DataJObj) ->
 
 -spec missed_call_reason(kz_json:object(), api_ne_binary()) -> ne_binary().
 missed_call_reason(_DataJObj, 'undefined') -> <<"no voicemail message was left">>;
-missed_call_reason(_DataJObj, HangupCause) -> binary:replace(HangupCause, <<"_">>, <<" ">>, [global]).
+missed_call_reason(_DataJObj, HangupCause) ->
+    <<"No voicemail message was left (", HangupCause/binary, ")">>.
