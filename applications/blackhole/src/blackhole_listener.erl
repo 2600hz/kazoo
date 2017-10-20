@@ -164,6 +164,7 @@ send_error_module_resp(EventJObj, Error) ->
            ,{<<"Started">>, 'false'}
            ,{<<"Error">>, Error}
            ,{<<"Msg-ID">>, kz_api:msg_id(EventJObj)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_api:server_id(EventJObj),
     kapi_blackhole:publish_module_resp(ServerId, Resp).
