@@ -75,7 +75,6 @@ maybe_add_call_id(_, OffnetReq) -> OffnetReq.
 
 -spec maybe_force_originate_outbound(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_originate_outbound(Props, OffnetReq) ->
-    lager:debug("MAYBE FORCEOUTBOUND ~p : ~p", [Props, JObj]),
     case knm_number_options:should_force_outbound(Props)
         orelse kz_json:is_true(<<"Force-Outbound">>, OffnetReq, 'false')
         orelse kz_term:is_ne_binary(kapi_offnet_resource:hunt_account_id(OffnetReq))

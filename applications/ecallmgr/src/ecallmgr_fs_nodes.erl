@@ -379,11 +379,7 @@ handle_call({'is_node_up', Node}, _From, #state{nodes=Nodes}=State) ->
            end,
     {'reply', Resp, State};
 handle_call({'is_node', Node}, _From, #state{nodes=Nodes}=State) ->
-    Resp = case dict:find(Node, Nodes) of
-               'error' -> 'false';
-               _ -> 'true'
-           end,
-    {'reply', Resp, State};
+    {'reply', dict:find(Node, Nodes) =/= 'error', State};
 handle_call({'connected_nodes', 'false'}, _From, #state{nodes=Nodes}=State) ->
     Resp = [Node
             || {_, #node{node=Node

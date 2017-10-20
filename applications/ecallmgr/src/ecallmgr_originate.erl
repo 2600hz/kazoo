@@ -311,11 +311,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'event', [_|Props]}, #state{uuid=UUID}=State) ->
-    {'noreply', State#state{uuid=handle_fs_event(Props, UUID)}};
-handle_info({'tcp', _, Data}, State) ->
-    Event = binary_to_term(Data),
-    handle_info(Event, State);
 handle_info({'abandon_originate'}, #state{tref='undefined'}=State) ->
     %% Cancelling a timer does not guarantee that the message has not
     %% already been delivered to the message queue.
@@ -557,20 +552,6 @@ bind_to_call_events(CallId) ->
               ],
     gen_listener:add_binding(self(), 'call', Options).
 
--spec unbind_from_call_events() -> 'ok'.
-unbind_from_call_events() ->
-    lager:debug("unbind from call events"),
-    gen_listener:rm_binding(self(), 'call', []).
-
--spec update_uuid(kz_term:api_binary(), kz_term:ne_binary()) -> 'ok'.
-update_uuid(OldUUID, NewUUID) ->
-    kz_util:put_callid(NewUUID),
-    lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
-    unbind_from_call_events(),
-    bind_to_call_events(NewUUID),
-    'ok'.
-
-
 -spec create_uuid(atom()) -> created_uuid().
 create_uuid(_Node) -> {'fs', kz_binary:rand_hex(18)}.
 
@@ -747,6 +728,9 @@ find_max_endpoint_timeout([EP|EPs], T) ->
 -spec start_control_process(state()) ->
                                    {'ok', state()} |
                                    {'error', any()}.
+start_control_process(#state{controller_q='undefined', uuid={_, _UUID}}) ->
+    lager:debug("controller_q is undefined, not starting control process for uuid ~s", [_UUID]),
+    'false';
 start_control_process(#state{originate_req=JObj
                             ,node=Node
                             ,uuid={_, Id}=UUID
@@ -758,7 +742,6 @@ start_control_process(#state{originate_req=JObj
     case ecallmgr_call_control_sup:start_control_process(Node, Id, FetchId, ControllerQ, 'undefined', kz_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
-            kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
             lager:debug("started control pid ~p for uuid ~s", [CtrlPid, Id]),
             {'ok', State#state{control_pid=CtrlPid}};
         {'error', _E}=E ->
@@ -818,32 +801,3 @@ uuid_matches(_, _) -> 'false'.
 fix_hold_media(Endpoint) ->
     put('hold_media', kz_json:get_value(<<"Hold-Media">>, Endpoint)),
     kz_json:delete_key(<<"Hold-Media">>, Endpoint).
-
--spec should_update_uuid(kz_term:api_binary(), kz_term:proplist()) -> boolean().
-should_update_uuid(OldUUID, Props) ->
-    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
-        <<"loopback::bowout">> ->
-            lager:debug("bowout detected with ~s, old uuid is ~s"
-                       ,[props:get_value(?RESIGNING_UUID, Props), OldUUID]
-                       ),
-            props:get_value(?RESIGNING_UUID, Props) =:= OldUUID;
-        _ -> 'false'
-    end.
-
--spec handle_fs_event(kz_evt_freeswitch:data(), created_uuid()) -> created_uuid().
-handle_fs_event(Props, 'undefined') ->
-    case should_update_uuid('undefined', Props) of
-        'false' -> 'undefined';
-        'true' ->
-            NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
-            _ = update_uuid('undefined', NewUUID),
-            {'api', NewUUID}
-    end;
-handle_fs_event(Props, {_, OldUUID}=UUID) ->
-    case should_update_uuid(OldUUID, Props) of
-        'false' -> UUID;
-        'true' ->
-            NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
-            _ = update_uuid(OldUUID, NewUUID),
-            {'api', NewUUID}
-    end.

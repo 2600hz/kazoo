@@ -2855,7 +2855,6 @@ wait_for_hangup(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     {'ok', 'channel_hungup'};
                 _Evt ->
-                                                %                    lager:debug("ignoring: ~p", [_Evt]),
                     wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
             end;
         _ -> wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
@@ -2971,7 +2970,7 @@ send_command(Command, Call) when is_list(Command) ->
     CtrlQ = kapps_call:control_queue(Call),
     case is_function(CustomPublisher, 2) of
         'true' -> CustomPublisher(Command, Call);
-        'false' when CtrlQ /= 'undefined' ->
+        'false' when CtrlQ =/= 'undefined' ->
             Q = kapps_call:controller_queue(Call),
             CallId = kapps_call:call_id(Call),
             AppName = kapps_call:application_name(Call),

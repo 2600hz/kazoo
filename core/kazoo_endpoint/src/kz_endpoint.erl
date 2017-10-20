@@ -1638,7 +1638,6 @@ maybe_set_owner_id({Endpoint, Call, CallFwd, CCVs}) ->
 
 -spec maybe_set_account_id(ccv_acc()) -> ccv_acc().
 maybe_set_account_id({Endpoint, Call, CallFwd, CCVs}) ->
-                                                %    AccountId = kz_doc:account_id(Endpoint, kapps_call:account_id(Call)),
     AccountId = kz_doc:account_id(Endpoint),
     {Endpoint, Call, CallFwd
     ,kz_json:set_value(<<"Account-ID">>, AccountId, CCVs)
