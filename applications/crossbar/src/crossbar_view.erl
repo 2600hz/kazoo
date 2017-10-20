@@ -768,7 +768,6 @@ check_page_size_and_length(#{context := Context
     lager:debug("page size exhausted: ~b", [PageSize]),
     {'exhausted', LoadMap#{total_queried => TotalQueried + Length
                           ,context => cb_context:set_resp_status(Context, 'success')
-                          ,start_key => LastKey
                           ,last_key => LastKey
                           }
     };
