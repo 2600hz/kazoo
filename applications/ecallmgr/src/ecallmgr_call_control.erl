@@ -143,11 +143,6 @@ queue_name(_) -> 'undefined'.
 other_legs(Srv) ->
     gen_server:call(Srv, 'other_legs', ?MILLISECONDS_IN_SECOND).
 
-%% -spec event_execute_complete(api_pid(), ne_binary(), ne_binary()) -> 'ok'.
-%% event_execute_complete('undefined', _CallId, _App) -> 'ok';
-%% event_execute_complete(Srv, CallId, App) ->
-%%     gen_server:cast(Srv, {'event_execute_complete', CallId, App, kz_json:new()}).
-
 -spec update_node(atom(), ne_binary() | pids()) -> 'ok'.
 update_node(Node, CallId) when is_binary(CallId) ->
     update_node(Node, gproc:lookup_pids({'p', 'l', {'call_control', CallId}}));
@@ -215,14 +210,12 @@ init_control(Pid, #{node := Node
             register(Name, self()),
             gen_server:enter_loop(?MODULE, [], State, {'local', Name});
         _Other ->
-            lager:debug("INIT_CONTROL5")
+            lager:debug("callback doesn't want to proceed")
     catch
         _Ex:_Err ->
-            lager:debug("BINDINGS ~p : ~p", [_Ex, _Err]),
+            lager:debug("error running callback ~p : ~p", [_Ex, _Err]),
             kz_util:log_stacktrace()
-    end,
-    lager:debug("INIT_CONTROL_EXIT"),
-    'ok';
+    end;
 init_control(Pid, #{node := Node
                    ,call_id := CallId
                    ,fetch_id := FetchId
@@ -250,9 +243,7 @@ init_control(Pid, #{node := Node
                   },
     call_control_ready(State),
     register(Name, self()),
-    gen_server:enter_loop(?MODULE, [], State, {'local', Name}),
-    lager:debug("INIT_CONTROL_EXIT"),
-    'ok'.
+    gen_server:enter_loop(?MODULE, [], State, {'local', Name}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1076,10 +1067,6 @@ maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
             end
     end.
 
-%% -spec is_post_hangup_command(ne_binary()) -> boolean().
-%% is_post_hangup_command(AppName) ->
-%%     lists:member(AppName, ?POST_HANGUP_COMMANDS).
-
 -spec get_module(ne_binary(), ne_binary()) -> atom().
 get_module(Category, Name) ->
     ModuleName = <<"ecallmgr_", Category/binary, "_", Name/binary>>,
@@ -1202,22 +1189,14 @@ send_error_resp(CallId, Cmd, Msg) ->
     end.
 
 send_error_resp(CallId, Cmd, Msg, _Channel) ->
-    %%    CCVs = error_ccvs(Channel),
-
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(Cmd)}
            ,{<<"Error-Message">>, Msg}
            ,{<<"Request">>, Cmd}
            ,{<<"Call-ID">>, CallId}
-            %%           ,{<<"Custom-Channel-Vars">>, CCVs}
             | kz_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("sending execution error: ~p", [Resp]),
     kapi_dialplan:publish_error(CallId, Resp).
-
-%% -spec error_ccvs(api_object()) -> api_object().
-%% error_ccvs('undefined') -> 'undefined';
-%% error_ccvs(Channel) ->
-%%     kz_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1274,12 +1253,6 @@ handle_replaced(JObj, #state{fetch_id=FetchId
             ReplacedBy = kz_json:get_ne_binary_value(<<"Replaced-By">>, JObj),
             case ecallmgr_fs_channel:fetch(ReplacedBy) of
                 {'ok', _Channel} ->
-                    %%                     OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
-                    %%                     OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-                    %%                     CDR = kz_json:get_value(<<"interaction_id">>, Channel),
-                    %%                     kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
-                    %%                     ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
-                    %%                     ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
                     {'noreply', handle_sofia_replaced(ReplacedBy, State)};
                 _Else ->
                     lager:debug("channel replaced was not handled : ~p", [_Else]),
@@ -1305,63 +1278,23 @@ handle_transferee(JObj, #state{fetch_id=FetchId
             {'noreply', State}
     end.
 
--spec handle_transferor(kz_json:object(), state()) ->
-                               {'noreply', state()}.
-handle_transferor(_JObj, #state{fetch_id=_FetchId
-                               ,node=_Node
-                               ,call_id=_CallId
-                               }=State) ->
-    {'noreply', State}.
-
--spec handle_intercepted(atom(), api_ne_binary(), kz_json:object()) -> 'ok'.
-handle_intercepted(_Node, _CallId, _JObj) ->
-    %%     _ = case {props:get_value(<<"Core-UUID">>, Props)
-    %%              ,props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props)
-    %%              }
-    %%         of
-    %%             {A, A} -> 'ok';
-    %%             {_, 'undefined'} ->
-    %%                 UUID = props:get_value(<<"intercepted_by">>, Props),
-    %%                 case ecallmgr_fs_channel:fetch(UUID) of
-    %%                     {'ok', Channel} ->
-    %%                         CDR = kz_json:get_value(<<"interaction_id">>, Channel),
-    %%                         kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
-    %%                         ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}]);
-    %%                     _ -> 'ok'
-    %%                 end;
-    %%             _ ->
-    %%                 UUID = props:get_value(<<"intercepted_by">>, Props),
-    %%                 CDR = props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), Props),
-    %%                 ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
-    %%         end,
-    'ok'.
-
 -spec handle_event_info(ne_binary(), kz_evt_freeswitch:data(), state()) ->
                                {'noreply', state()} |
                                {'stop', any(), state()}.
-handle_event_info(CallId, JObj, #state{call_id=CallId
-                                      ,node=Node
-                                      }=State) ->
+handle_event_info(CallId, JObj, #state{call_id=CallId}=State) ->
     Application = kz_call_event:application_name(JObj),
     case kz_call_event:event_name(JObj) of
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             {'noreply', handle_execute_complete(Application, kz_call_event:application_uuid(JObj), JObj, State)};
-        %%         <<"RECORD_STOP">> ->
-        %%             {'noreply', handle_execute_complete(Application, JObj, State)};
         <<"CHANNEL_DESTROY">> ->
             {'noreply', handle_channel_destroyed(JObj, State)};
         <<"CHANNEL_TRANSFEREE">> ->
             handle_transferee(JObj, State);
         <<"CHANNEL_REPLACED">> ->
             handle_replaced(JObj, State);
-        <<"CHANNEL_INTERCEPTED">> ->
-            'ok' = handle_intercepted(Node, CallId, JObj),
-            {'noreply', State};
         <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->
             gen_server:cast(self(), {'channel_redirected', JObj}),
             {'stop', 'normal', State};
-        <<"CHANNEL_TRANSFEROR">> ->
-            handle_transferor(JObj, State);
         _Else ->
             {'noreply', State}
     end.

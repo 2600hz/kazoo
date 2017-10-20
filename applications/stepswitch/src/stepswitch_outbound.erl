@@ -82,7 +82,6 @@ maybe_add_call_id(_, JObj) -> JObj.
 
 -spec maybe_force_originate_outbound(knm_number_options:extra_options(), kz_json:object()) -> any().
 maybe_force_originate_outbound(Props, JObj) ->
-    lager:debug("MAYBE FORCEOUTBOUND ~p : ~p", [Props, JObj]),
     case knm_number_options:should_force_outbound(Props)
         orelse kz_json:is_true(<<"Force-Outbound">>, JObj, 'false')
         orelse kapi_offnet_resource:hunt_account_id(JObj) /= 'undefined'

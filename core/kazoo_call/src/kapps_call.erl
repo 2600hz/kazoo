@@ -616,11 +616,13 @@ clear_control_queue_helper(#kapps_call{}=Call) ->
 
 -spec control_q(call() | api_control_q()) -> api_binary().
 control_q(#kapps_call{control_q=ControlQ}) -> ControlQ;
-control_q({ControlQ, _}) -> ControlQ.
+control_q({ControlQ, _}) -> ControlQ;
+control_q('undefined') -> 'undefined'.
 
 -spec control_p(call() | api_control_q()) -> api_binary().
 control_p(#kapps_call{control_p=ControlP}) -> ControlP;
-control_p({_, ControlP}) -> ControlP.
+control_p({_, ControlP}) -> ControlP;
+control_p('undefined') -> 'undefined'.
 
 -spec set_controller_queue(ne_binary(), call()) -> call().
 set_controller_queue(ControllerQ, #kapps_call{}=Call) when is_binary(ControllerQ) ->

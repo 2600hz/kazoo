@@ -34,13 +34,6 @@
 -spec authorize(kz_json:object(), ne_binary(), atom()) -> authz_reply().
 authorize(Props, CallId, Node) ->
     kz_util:put_callid(CallId),
-    %%     Routines = [fun is_authz_enabled/2
-    %%                ,fun is_mobile_device/2
-    %%                ,fun maybe_authorize_conference_number/2
-    %%                ,fun maybe_channel_recovering/2
-    %%                ,fun is_global_resource/2
-    %%                ,fun is_consuming_resource/2
-    %%                ],
     AuthorizeReply = is_mobile_device(Props, Node),
     lager:info("channel is~s authorized", [authorized_log(AuthorizeReply)]),
     _ = ecallmgr_fs_channel:set_authorized(CallId, was_authorized(AuthorizeReply)),
