@@ -192,3 +192,4 @@ withhold|withold
 writing|writting writeing
 search|seacrh
 useful|usefull
+available|avaliable

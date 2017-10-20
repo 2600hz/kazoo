@@ -535,7 +535,7 @@ force_queue_advance(#state{call_id=CallId
     of
         'false' ->
             %% if the node is down, don't inject the next FS event
-            lager:debug("not continuing until the media node becomes avaliable"),
+            lager:debug("not continuing until the media node becomes available"),
             State#state{current_app='undefined', current_cmd_uuid='undefined'};
         {'empty', _} ->
             lager:debug("no call commands remain queued, hibernating"),
@@ -676,7 +676,7 @@ forward_queue(#state{call_id = CallId
     of
         'false' ->
             %% if the node is down, don't inject the next FS event
-            lager:debug("not continuing until the media node becomes avaliable"),
+            lager:debug("not continuing until the media node becomes available"),
             State#state{current_app='undefined'
                        ,current_cmd_uuid='undefined'
                        ,msg_id='undefined'

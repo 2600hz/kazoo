@@ -24133,7 +24133,7 @@
                     "type": "string"
                 },
                 "gateways": {
-                    "description": "A list of gateways avaliable for this resource",
+                    "description": "A list of gateways available for this resource",
                     "items": {
                         "default": {},
                         "properties": {
