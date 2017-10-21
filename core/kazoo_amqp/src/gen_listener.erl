@@ -1287,7 +1287,7 @@ declare_exchange(Channel, Exchange, Exchanges) ->
 -spec start_initial_bindings(state(), kz_proplist()) -> state().
 start_initial_bindings(State, Params) ->
     lists:foldl(fun({Binding, Props}, StateAcc) ->
-                        handle_add_binding(Binding, Props, StateAcc)
+                        handle_add_binding(kz_term:to_binary(Binding), Props, StateAcc)
                 end
                ,State
                ,props:get_value('bindings', Params, [])
