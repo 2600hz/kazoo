@@ -2752,6 +2752,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
                                       ], JObj, <<"UNSPECIFIED">>),
     Code = kz_json:get_value(<<"Hangup-Code">>, JObj),
     Result = case Disposition =:= <<"SUCCESS">>
+                 orelse Disposition =:= <<"PICKED_OFF">>
                  orelse Cause =:= <<"SUCCESS">>
                  orelse Code =:= <<"sip:200">>
              of
