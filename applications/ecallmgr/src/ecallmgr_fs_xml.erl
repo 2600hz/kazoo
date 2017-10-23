@@ -1213,20 +1213,21 @@ event_filters_el(Filters) ->
 
 -spec route_resp_park_xml(api_terms(), kz_proplist()) -> xml_els().
 route_resp_park_xml(JObj, Props) ->
-    Exten = [route_resp_log_winning_node()
-            ,route_resp_set_winning_node()
-            ,route_resp_bridge_id()
-            ,route_resp_ringback(JObj)
-            ,route_resp_transfer_ringback(JObj)
-            ,route_resp_pre_park_action(JObj)
-            ,maybe_start_dtmf_action(Props)
-            ,route_resp_ccvs(JObj)
-            ,unset_custom_sip_headers()
-            ,route_resp_set_control_info(Props)
-            ,route_resp_fire_route_win(JObj, Props)
-            ,route_resp_park()
-            ],
-    props:filter_undefined(Exten).
+    [El || El <- [route_resp_log_winning_node()
+                 ,route_resp_set_winning_node()
+                 ,route_resp_bridge_id()
+                 ,route_resp_ringback(JObj)
+                 ,route_resp_transfer_ringback(JObj)
+                 ,route_resp_pre_park_action(JObj)
+                 ,maybe_start_dtmf_action(Props)
+                 ,route_resp_ccvs(JObj)
+                 ,unset_custom_sip_headers()
+                 ,route_resp_set_control_info(Props)
+                 ,route_resp_fire_route_win(JObj, Props)
+                 ,route_resp_park()
+                 ],
+           'undefined' =/= El
+    ].
 
 route_resp_set_control_info(Props) ->
     App = <<"kz_multiset">>,
