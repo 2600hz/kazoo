@@ -198,11 +198,11 @@ code_checks:
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
-	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/couchdb/schemas/*.json
+	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/schemas/*.json')
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-api-endpoints.escript
 	@$(ROOT)/scripts/generate-doc-schemas.sh `grep -rl '#### Schema' core/ applications/ | grep -v '.erl'`
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
-	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/*.json
+	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/api/*.json')
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
