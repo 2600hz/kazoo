@@ -16,6 +16,7 @@ function check_spelling {
     bad_sed=${bad// /\\|}
 
     while IFS= read f; do
+        [[ "misspellings.txt" == ${f##*/} ]] && return 0
         echo "  fixing $f with $correct"
         sed -i "s/$bad_sed/$correct/g" $f
     done < <(echo $CHANGED | xargs egrep -lw "$bad_grep" )
