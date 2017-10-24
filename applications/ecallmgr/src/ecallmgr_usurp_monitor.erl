@@ -9,8 +9,12 @@
 -module(ecallmgr_usurp_monitor).
 -behaviour(gen_listener).
 
+-compile({no_auto_import,[register/2]}).
+
 %% API
 -export([start_link/0]).
+
+-export([register/1, register/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -27,6 +31,11 @@
 -define(SERVER, ?MODULE).
 
 -type state() :: map().
+
+-record(cache, {call_id :: ne_binary()
+               ,pid :: pid()
+               }).
+-type cache() :: #cache{}.
 
 -define(BINDINGS, [{'call', [{'restrict_to', [<<"usurp_control">>]}
                             ,'federate'
@@ -68,7 +77,9 @@ start_link() ->
 init([]) ->
     kz_util:put_callid(?SERVER),
     lager:debug("starting usurp monitor"),
-    {'ok', #{}}.
+    {'ok', #{calls => ets:new('calls', ['set', {'keypos', #cache.call_id}])
+            ,pids => ets:new('pids', ['set', {'keypos', #cache.pid}])
+            }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -99,6 +110,8 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+handle_cast({register, CallId, Pid}, State) ->
+    {'noreply', handle_register(#cache{call_id=CallId, pid=Pid}, State)};
 handle_cast(_, State) ->
     {'noreply', State}.
 
@@ -113,6 +126,8 @@ handle_cast(_, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info({'DOWN', _Ref, 'process', Pid, _Reason}, State) ->
+    {'noreply', handle_unregister(Pid, State)};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -126,12 +141,11 @@ handle_info(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, _State) ->
+handle_event(JObj, #{calls := Calls}) ->
     kz_util:put_callid(JObj),
-    CallId = kz_call_event:call_id(JObj),
-    _ = case whereis(?CALL_CTL_NAME(CallId)) of
-            'undefined' -> 'ok';
-            Pid -> Pid ! {'usurp_control', kz_call_event:fetch_id(JObj), JObj}
+    _ = case ets:lookup(Calls, kz_call_event:call_id(JObj)) of
+            [#cache{pid=Pid}] -> Pid ! {'usurp_control', kz_call_event:fetch_id(JObj), JObj};
+            _ -> 'ok'
         end,
     'ignore'.
 
@@ -160,3 +174,31 @@ terminate(_Reason, _State) -> 'ok'.
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
+
+-spec register(ne_binary()) -> 'ok'.
+register(CallId) ->
+    register(CallId, self()).
+
+-spec register(ne_binary(), pid()) -> 'ok'.
+register(CallId, Pid) ->
+    gen_listener:cast(?SERVER, {register, CallId, Pid}).
+
+-spec handle_register(cache(), state()) -> state().
+handle_register(#cache{pid=Pid}=Cache, #{calls := Calls, pids := Pids} = State) ->
+    _ = ets:insert(Calls, Cache),
+    _ = ets:insert(Pids, Cache),    
+    _ = erlang:monitor(process, Pid),
+    State.
+
+-spec handle_unregister(pid(), state()) -> state().
+handle_unregister(Pid, #{pids := Pids} = State) ->
+    case ets:lookup(Pids, Pid) of
+        [#cache{}=Cache] -> unregister(Cache, State);
+        _ -> State
+    end.
+
+-spec unregister(cache(), state()) -> state().
+unregister(#cache{}=Cache, #{calls := Calls, pids := Pids} = State) ->
+    _ = ets:delete(Calls, Cache),
+    _ = ets:delete(Pids, Cache),
+    State.

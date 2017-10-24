@@ -33,7 +33,8 @@ init() ->
     'ok'.
 
 -spec dialplan(map()) -> fs_sendmsg_ret().
-dialplan(#{}=Map) ->
+dialplan(#{fetch_id := FetchId, payload := JObj}=Map) ->
+    lager:debug("start dialplan fetch ~s for ~s", [FetchId, kzd_fetch:call_id(JObj)]),
     Routines = [fun call_id/1
                ,fun timeout/1
                ,{fun add_time_marker/2, start_processing}
@@ -41,7 +42,8 @@ dialplan(#{}=Map) ->
                ],
     ecallmgr_call_control_sup:start_proc(kz_maps:exec(Routines, Map)).
 
-process(#{}=Map) ->
+process(#{payload := JObj}=Map) ->
+    kz_util:put_callid(JObj),
     Routines = [{fun add_time_marker/2, request_ready}
                ,fun request/1
                ,fun control_p/1
@@ -62,7 +64,6 @@ timeout(#{timeout := _Timeout}=Map) -> Map;
 timeout(#{payload := JObj}=Map) ->
     T0 = kz_json:get_integer_value(<<"Fetch-Timestamp-Micro">>, JObj),
     T1 = kz_json:get_integer_value(<<"Fetch-Timeout">>, JObj),
-    lager:debug("TIMEOUT ~p , ~p, ~p, ~p", [T0, T1, kz_time:now_us(), erlang:system_time('micro_seconds')]),
     T3 = erlang:system_time('micro_seconds'), %kz_time:now_us(),
     T4 = T3 - T0,
     T5 = T1 - T4,
