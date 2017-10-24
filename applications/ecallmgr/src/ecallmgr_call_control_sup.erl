@@ -50,13 +50,10 @@ start_control_process(Node, CallId, FetchId, ControllerQ, ControllerP, CCVs) ->
                 }).
 
 control_q(#{control_q := _Queue}= Map) -> Map;
-control_q(#{node := Node}= Map) ->
-    SupPid = whereis(?CALLCTL_SUPERVISOR_NAME(Node)),
-    Listeners = supervisor:which_children(SupPid),
-    Size = length(Listeners),
-    Selected = rand:uniform(Size),
-    {_, ControlP, _, _} = lists:nth(Selected, Listeners),
-    Map#{control_q => gen_listener:queue_name(ControlP)}.
+control_q(#{control_q_callback := Fun}= Map) ->
+    Fun(Map);
+control_q(Map) ->
+    ecallmgr_fs_call_control_sup:control_q(Map).
 
 %%%=============================================================================
 %%% Supervisor callbacks

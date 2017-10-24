@@ -12,6 +12,8 @@
 
 -export([start_link/2]).
 
+-export([control_q/1]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -76,6 +78,10 @@ init([Node, Options]) ->
     {'ok', #{node => Node, options => Options}}.
 
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+handle_call('control_q', _From, #{queue := Q}=State) ->
+    {'reply', {'ok', Q, kz_amqp_channel:consumer_channel()}, State};
+handle_call('control_q', _From, State) ->
+    {'reply', {'error', 'no_queue'}, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -178,3 +184,6 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
+-spec control_q(pid()) -> {'ok', ne_binary(), pid()} | {'error', 'no_queue'}.
+control_q(Pid) ->
+    gen_listener:call(Pid, 'control_q').

@@ -96,6 +96,7 @@
                ,initial_ccvs :: kz_json:object()
                ,node_down_tref :: kz_term:api_reference()
                ,current_cmd_uuid :: kz_term:api_binary()
+               ,channel :: kz_term:api_pid()
                }).
 -type state() :: #state{}.
 
@@ -179,12 +180,14 @@ init_control(Pid, #{node := Node
                    ,call_id := CallId
                    ,callback := Fun
                    ,fetch_id := FetchId
+                   ,control_q := ControlQ
+                   ,channel := Channel
                    }=Payload) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
+    kz_amqp_channel:consumer_channel(Channel),
     try Fun(Payload) of
         {'ok', #{controller_q := ControllerQ
                 ,controller_p := ControllerP
-                ,control_q := ControlQ
                 ,initial_ccvs := CCVs
                 }} ->
             bind(Node, CallId),
@@ -390,15 +393,14 @@ handle_conference_command(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, #state{start_time=StartTime
-                         ,sanity_check_tref=SCTRef
-                         ,keep_alive_ref=KATRef
-                         }) ->
-    catch (erlang:cancel_timer(SCTRef)),
-    catch (erlang:cancel_timer(KATRef)),
+terminate(_Reason, #state{start_time=StartTime, channel='undefined'}=State) ->
+    cancel_timers(State),
     catch(kz_amqp_channel:release()),
-    lager:debug("control queue was up for ~p microseconds", [timer:now_diff(os:timestamp(), StartTime)]),
-    'ok'.
+    lager:debug("control queue was up for ~p microseconds", [timer:now_diff(os:timestamp(), StartTime)]);
+
+terminate(_Reason, #state{start_time=StartTime}=State) ->
+    cancel_timers(State),
+    lager:debug("control queue was up for ~p microseconds", [timer:now_diff(os:timestamp(), StartTime)]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -470,7 +472,16 @@ publish_route_win(#state{call_id=CallId
            | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
-    kapi_route:publish_win(ControllerQ, Win).
+    kapi_route:publish_win(ControllerQ, Win),
+    Usurp = [{<<"Call-ID">>, CallId}
+            ,{<<"Fetch-ID">>, FetchId}
+            ,{<<"Reason">>, <<"Route-Win">>}
+            ,{<<"Media-Node">>, kz_term:to_binary(Node)}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    lager:debug("sending control usurp for ~s", [FetchId]),
+    kapi_call:publish_usurp_control(CallId, Usurp),
+    ecallmgr_usurp_monitor:register(CallId).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1233,3 +1244,10 @@ handle_event_info(CallId, JObj, #state{call_id=CallId}=State) ->
         _Else ->
             {'noreply', State}
     end.
+
+-spec cancel_timers(state()) -> any().
+cancel_timers(#state{sanity_check_tref=SCTRef
+                    ,keep_alive_ref=KATRef
+                    }) ->
+    catch (erlang:cancel_timer(SCTRef)),
+    catch (erlang:cancel_timer(KATRef)).

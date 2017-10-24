@@ -31,6 +31,11 @@
 
 -type state() :: map().
 
+-record(cache, {call_id :: ne_binary()
+               ,pid :: pid()
+               }).
+-type cache() :: #cache{}.
+
 -type usurp_type() :: 'usurp_control' | 'usurp_publisher'.
 -type cache_key() :: {usurp_type(), kz_term:ne_binary()}.
 
