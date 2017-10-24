@@ -10,6 +10,9 @@
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
+-define(DEBUG(_Fmt, _Args), 'ok').
+%%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+
 -define(SOURCE, <<"config_usage_source">>).
 -define(FIELD_DEFAULT, <<"default">>).
 -define(FIELD_PROPERTIES, <<"properties">>).
@@ -33,25 +36,43 @@ to_schema_docs(App) ->
 -spec update_schema({file:filename_all(), kz_json:json_term()}) -> 'ok'.
 -spec update_schema(kz_json:key(), kz_json:json_object(), file:filename_all()) -> 'ok'.
 update_schema({PrivDir, Schemas}) ->
+    ?DEBUG("adding schemas to priv dir ~s~n~p~n", [PrivDir, Schemas]),
+
     kz_json:foreach(fun({Name, AutoGenSchema}) ->
                             update_schema(Name, AutoGenSchema, PrivDir)
                     end
                    ,Schemas
                    ).
 update_schema(Name, AutoGenSchema, PrivDir) ->
+    ?DEBUG("~s detected ~p~n", [Name, AutoGenSchema]),
     AccountSchema = account_properties(AutoGenSchema),
+    ?DEBUG("account schema: ~p~n", [AccountSchema]),
     _ = kz_json:new() =/= AccountSchema
         andalso update_schema(Name, AccountSchema, PrivDir, <<"account_config">>),
-    update_schema(Name, AccountSchema, PrivDir, <<"system_config">>).
+    update_schema(Name, AutoGenSchema, PrivDir, <<"system_config">>).
 
 -spec update_schema(ne_binary(), kz_json:object(), file:filename_all(), ne_binary()) -> 'ok'.
 update_schema(Name, AutoGenSchema, PrivDir, ConfigType) ->
     Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>, PrivDir),
 
+    ?DEBUG("autogen: ~p~n", [AutoGenSchema]),
+
     GeneratedJObj = static_fields(ConfigType, Name, remove_source(AutoGenSchema)),
-    MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
+
+    ?DEBUG("gen: ~p~n", [GeneratedJObj]),
+
+    Existing = existing_schema(Path),
+
+    ?DEBUG("existing: ~p~n", [Existing]),
+
+    MergedJObj = kz_json:merge(fun kz_json:merge_left/2, Existing, GeneratedJObj),
+
+    ?DEBUG("merged: ~p~n", [MergedJObj]),
+
     UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
+    ?DEBUG("  ensuring ~s exists~n", [Path]),
     'ok' = filelib:ensure_dir(Path),
+    ?DEBUG("  writing schema for ~s: ~s~n", [Name, kz_json:encode(UpdatedSchema)]),
     'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
@@ -59,7 +80,7 @@ existing_schema(Name) ->
     case kz_json_schema:fload(Name) of
         {'ok', JObj} -> JObj;
         {'error', _E} ->
-            io:format("failed to find ~s: ~p~n", [Name, _E]),
+            ?DEBUG("failed to find ~s: ~p~n", [Name, _E]),
             kz_json:new()
     end.
 
@@ -70,7 +91,7 @@ account_properties(AutoGenSchema) ->
                   [[P1, P2]
                    || {[P1, P2 | _]=Path, V} <- Flat,
                       ?SOURCE =:= lists:last(Path),
-                      V =:= kapps_account_config
+                      V =:= 'kapps_account_config'
                   ]),
     kz_json:expand(
       kz_json:from_list(
@@ -121,15 +142,16 @@ print_dot(_Module, Acc) ->
 
 -spec new_acc() -> acc().
 new_acc() ->
-    #{schema_dir => 'default'
-     ,app_schemas => kz_json:new() %% SchemaName => SchemaProperties
-     ,project_schemas => kz_json:from_list([{'default', kz_json:new()}]) %% Path => Schemas
+    #{'schema_dir' => 'default'
+     ,'app_schemas' => kz_json:new() %% SchemaName => SchemaProperties
+     ,'project_schemas' => kz_json:from_list([{'default', kz_json:new()}]) %% Path => Schemas
      }.
 
 -spec add_app_config(atom(), acc()) -> acc().
 add_app_config(App, Acc) ->
     case application:get_env(App, 'schemas_to_priv') of
         {'ok', 'true'} ->
+            ?DEBUG("detected schemas will go in ~s/priv~n", [App]),
             Acc#{schema_dir => kz_term:to_binary(code:priv_dir(App))};
         _ -> Acc#{schema_dir => 'default'}
     end.
@@ -139,7 +161,12 @@ add_schemas_to_bucket(_App, #{schema_dir := PrivDir
                              ,project_schemas := ProjectSchemas
                              }=Acc) ->
     ProjectSchema = kz_json:get_json_value(PrivDir, ProjectSchemas, kz_json:new()),
+
+    ?DEBUG("merging dir ~s / app ~p into proj ~p~n", [PrivDir, AppSchemas, ProjectSchema]),
+
     UpdatedSchema = kz_json:merge(ProjectSchema, AppSchemas),
+    ?DEBUG("merged: ~p~n", [UpdatedSchema]),
+
     Acc#{app_schemas => kz_json:new()
         ,project_schemas => kz_json:set_value(PrivDir, UpdatedSchema, ProjectSchemas)
         }.
