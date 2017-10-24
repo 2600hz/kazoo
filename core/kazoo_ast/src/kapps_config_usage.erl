@@ -15,13 +15,19 @@
 -define(FIELD_PROPERTIES, <<"properties">>).
 -define(FIELD_TYPE, <<"type">>).
 -define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
--define(UNKNOWN_DEFAULT, undefined).
+-define(UNKNOWN_DEFAULT, 'undefined').
+
+-type acc() :: #{'schema_dir' := 'default' | file:filename_all()
+                ,'app_schemas' := kz_json:object()
+                ,'project_schemas' := kz_json:object()
+                }.
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
     kz_json:foreach(fun update_schema/1, process_project()).
 
--spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
+-spec update_schema({file:filename_all(), kz_json:json_term()}) -> 'ok'.
+-spec update_schema(kz_json:key(), kz_json:json_object(), file:filename_all()) -> 'ok'.
 update_schema({PrivDir, Schemas}) ->
     kz_json:foreach(fun({Name, AutoGenSchema}) ->
                             update_schema(Name, AutoGenSchema, PrivDir)
@@ -34,7 +40,7 @@ update_schema(Name, AutoGenSchema, PrivDir) ->
         andalso update_schema(Name, AccountSchema, PrivDir, <<"account_config">>),
     update_schema(Name, AccountSchema, PrivDir, <<"system_config">>).
 
--spec update_schema(ne_binary(), kz_json:key(), kz_json:object()) -> ok.
+-spec update_schema(ne_binary(), kz_json:object(), file:filename_all(), ne_binary()) -> 'ok'.
 update_schema(Name, AutoGenSchema, PrivDir, ConfigType) ->
     Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>, PrivDir),
 
@@ -109,10 +115,6 @@ print_dot(_Module, Acc) ->
     io:format("."),
     Acc.
 
--type acc() :: #{schema_dir := 'default' | file:filename_all()
-                ,app_schemas := kz_json:object()
-                ,project_schemas := kz_json:object()
-                }.
 -spec new_acc() -> acc().
 new_acc() ->
     #{schema_dir => 'default'

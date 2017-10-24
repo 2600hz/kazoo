@@ -10,7 +10,7 @@
 
 %% define the callback function for the various options
 
--type accumulator() :: kz_json:object() | tuple().
+-type accumulator() :: any().
 
 -type fun_return() :: accumulator() |
                       {'skip', accumulator()} |
