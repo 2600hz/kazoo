@@ -1,7 +1,7 @@
 -module(kapps_config_usage).
 
 -export([process_project/0, process_app/1
-        ,to_schema_docs/0
+        ,to_schema_docs/0, to_schema_docs/1
 
         ,expression_to_schema/2
         ]).
@@ -15,25 +15,43 @@
 -define(FIELD_PROPERTIES, <<"properties">>).
 -define(FIELD_TYPE, <<"type">>).
 -define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
--define(UNKNOWN_DEFAULT, undefined).
+-define(UNKNOWN_DEFAULT, 'undefined').
+
+-type acc() :: #{'schema_dir' := 'default' | file:filename_all()
+                ,'app_schemas' := kz_json:object()
+                ,'project_schemas' := kz_json:object()
+                }.
 
 -spec to_schema_docs() -> 'ok'.
+-spec to_schema_docs(atom()) -> 'ok'.
 to_schema_docs() ->
     kz_json:foreach(fun update_schema/1, process_project()).
 
--spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
-update_schema({Name, AutoGenSchema}) ->
+to_schema_docs(App) ->
+    kz_json:foreach(fun update_schema/1, process_app(App)).
+
+-spec update_schema({file:filename_all(), kz_json:json_term()}) -> 'ok'.
+-spec update_schema(kz_json:key(), kz_json:json_object(), file:filename_all()) -> 'ok'.
+update_schema({PrivDir, Schemas}) ->
+    kz_json:foreach(fun({Name, AutoGenSchema}) ->
+                            update_schema(Name, AutoGenSchema, PrivDir)
+                    end
+                   ,Schemas
+                   ).
+update_schema(Name, AutoGenSchema, PrivDir) ->
     AccountSchema = account_properties(AutoGenSchema),
     _ = kz_json:new() =/= AccountSchema
-        andalso update_schema(<<"account_config">>, Name, AccountSchema),
-    update_schema(<<"system_config">>, Name, AutoGenSchema).
+        andalso update_schema(Name, AccountSchema, PrivDir, <<"account_config">>),
+    update_schema(Name, AccountSchema, PrivDir, <<"system_config">>).
 
--spec update_schema(ne_binary(), kz_json:key(), kz_json:object()) -> ok.
-update_schema(ConfigType, Name, AutoGenSchema) ->
-    Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>),
+-spec update_schema(ne_binary(), kz_json:object(), file:filename_all(), ne_binary()) -> 'ok'.
+update_schema(Name, AutoGenSchema, PrivDir, ConfigType) ->
+    Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>, PrivDir),
+
     GeneratedJObj = static_fields(ConfigType, Name, remove_source(AutoGenSchema)),
     MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
     UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
+    'ok' = filelib:ensure_dir(Path),
     'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
@@ -80,9 +98,9 @@ process_project() ->
     io:format("processing kapps_config/kapps_account_config/ecallmgr_config usage: "),
     Options = [{'expression', fun expression_to_schema/2}
               ,{'module', fun print_dot/2}
-              ,{'accumulator', kz_json:new()}
+              ,{'accumulator', new_acc()}
               ],
-    Usage = kazoo_ast:walk_project(Options),
+    #{'project_schemas' := Usage} = kazoo_ast:walk_project(Options),
     io:format(" done~n"),
     Usage.
 
@@ -90,13 +108,41 @@ process_project() ->
 process_app(App) ->
     Options = [{'expression', fun expression_to_schema/2}
               ,{'module', fun print_dot/2}
-              ,{'accumulator', kz_json:new()}
+              ,{'accumulator', new_acc()}
+              ,{'application', fun add_app_config/2}
+              ,{'after_application', fun add_schemas_to_bucket/2}
               ],
-    kazoo_ast:walk_app(App, Options).
+    #{'project_schemas' := Usage} = kazoo_ast:walk_app(App, Options),
+    Usage.
 
 print_dot(_Module, Acc) ->
     io:format("."),
     Acc.
+
+-spec new_acc() -> acc().
+new_acc() ->
+    #{schema_dir => 'default'
+     ,app_schemas => kz_json:new() %% SchemaName => SchemaProperties
+     ,project_schemas => kz_json:from_list([{'default', kz_json:new()}]) %% Path => Schemas
+     }.
+
+-spec add_app_config(atom(), acc()) -> acc().
+add_app_config(App, Acc) ->
+    case application:get_env(App, 'schemas_to_priv') of
+        {'ok', 'true'} ->
+            Acc#{schema_dir => kz_term:to_binary(code:priv_dir(App))};
+        _ -> Acc#{schema_dir => 'default'}
+    end.
+
+add_schemas_to_bucket(_App, #{schema_dir := PrivDir
+                             ,app_schemas := AppSchemas
+                             ,project_schemas := ProjectSchemas
+                             }=Acc) ->
+    ProjectSchema = kz_json:get_json_value(PrivDir, ProjectSchemas, kz_json:new()),
+    UpdatedSchema = kz_json:merge(ProjectSchema, AppSchemas),
+    Acc#{app_schemas => kz_json:new()
+        ,project_schemas => kz_json:set_value(PrivDir, UpdatedSchema, ProjectSchemas)
+        }.
 
 -spec expression_to_schema(any(), kz_json:object()) -> kz_json:object().
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set', _), Schemas) ->
@@ -178,11 +224,11 @@ config_to_schema(Source, F, [Cat, K, Default], Schemas) ->
 
 config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
-config_key_to_schema(Source, F, Document, Key, Default, Schemas) ->
+config_key_to_schema(Source, F, Document, Key, Default, #{app_schemas := Schemas}=Acc) ->
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     Path = [Document, ?FIELD_PROPERTIES | Key],
 
-    kz_json:set_value(Path, Properties, Schemas).
+    Acc#{app_schemas => kz_json:set_value(Path, Properties, Schemas)}.
 
 category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->

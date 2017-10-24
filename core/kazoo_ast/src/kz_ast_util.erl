@@ -8,7 +8,7 @@
         ,binary_match_to_binary/1
         ,smash_snake/1
 
-        ,schema_path/1
+        ,schema_path/1, schema_path/2
         ,api_path/1
         ,ensure_file_exists/1
         ,create_schema/1
@@ -125,8 +125,11 @@ format_name_part(Part) ->
     kz_binary:ucfirst(Part).
 
 -spec schema_path(binary()) -> file:filename_all().
+-spec schema_path(binary(), file:filename_all()) -> file:filename_all().
 schema_path(Base) ->
-    case filename:join([code:priv_dir('crossbar')
+    schema_path(Base, code:priv_dir('crossbar')).
+schema_path(Base, PrivDir) ->
+    case filename:join([PrivDir
                        ,<<"couchdb">>
                        ,<<"schemas">>
                        ,Base
