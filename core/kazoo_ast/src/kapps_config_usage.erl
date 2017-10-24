@@ -52,7 +52,6 @@ update_schema(Name, AutoGenSchema, PrivDir, ConfigType) ->
     MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
     UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
     'ok' = filelib:ensure_dir(Path),
-    io:format("writing ~s to ~s~n", [Name, Path]),
     'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
@@ -102,7 +101,7 @@ process_project() ->
               ,{'accumulator', new_acc()}
               ],
     #{'project_schemas' := Usage} = kazoo_ast:walk_project(Options),
-    io:format(" done~n~p~n", [Usage]),
+    io:format(" done~n"),
     Usage.
 
 -spec process_app(atom()) -> kz_json:object().
@@ -131,9 +130,6 @@ new_acc() ->
 add_app_config(App, Acc) ->
     case application:get_env(App, 'schemas_to_priv') of
         {'ok', 'true'} ->
-            io:format("storing app ~s detected schemas in ~p~n"
-                     ,[App, kz_term:to_binary(code:priv_dir(App))]
-                     ),
             Acc#{schema_dir => kz_term:to_binary(code:priv_dir(App))};
         _ -> Acc#{schema_dir => 'default'}
     end.
