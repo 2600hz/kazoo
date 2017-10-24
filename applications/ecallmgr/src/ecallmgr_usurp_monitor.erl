@@ -186,7 +186,7 @@ register(CallId, Pid) ->
 -spec handle_register(cache(), state()) -> state().
 handle_register(#cache{pid=Pid}=Cache, #{calls := Calls, pids := Pids} = State) ->
     _ = ets:insert(Calls, Cache),
-    _ = ets:insert(Pids, Cache),    
+    _ = ets:insert(Pids, Cache),
     _ = erlang:monitor(process, Pid),
     State.
 
