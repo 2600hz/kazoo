@@ -1,7 +1,7 @@
 -module(kapps_config_usage).
 
 -export([process_project/0, process_app/1
-        ,to_schema_docs/0
+        ,to_schema_docs/0, to_schema_docs/1
 
         ,expression_to_schema/2
         ]).
@@ -23,8 +23,12 @@
                 }.
 
 -spec to_schema_docs() -> 'ok'.
+-spec to_schema_docs(atom()) -> 'ok'.
 to_schema_docs() ->
     kz_json:foreach(fun update_schema/1, process_project()).
+
+to_schema_docs(App) ->
+    kz_json:foreach(fun update_schema/1, process_app(App)).
 
 -spec update_schema({file:filename_all(), kz_json:json_term()}) -> 'ok'.
 -spec update_schema(kz_json:key(), kz_json:json_object(), file:filename_all()) -> 'ok'.
@@ -48,6 +52,7 @@ update_schema(Name, AutoGenSchema, PrivDir, ConfigType) ->
     MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
     UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
     'ok' = filelib:ensure_dir(Path),
+    io:format("writing ~s to ~s~n", [Name, Path]),
     'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
@@ -97,7 +102,7 @@ process_project() ->
               ,{'accumulator', new_acc()}
               ],
     #{'project_schemas' := Usage} = kazoo_ast:walk_project(Options),
-    io:format(" done~n"),
+    io:format(" done~n~p~n", [Usage]),
     Usage.
 
 -spec process_app(atom()) -> kz_json:object().
@@ -124,16 +129,20 @@ new_acc() ->
 
 -spec add_app_config(atom(), acc()) -> acc().
 add_app_config(App, Acc) ->
-    case application:get_env(App, 'schema_dir') of
-        'undefined' -> Acc#{schema_dir => 'default'};
-        {'ok', PrivDir} -> Acc#{schema_dir => PrivDir}
+    case application:get_env(App, 'schemas_to_priv') of
+        {'ok', 'true'} ->
+            io:format("storing app ~s detected schemas in ~p~n"
+                     ,[App, kz_term:to_binary(code:priv_dir(App))]
+                     ),
+            Acc#{schema_dir => kz_term:to_binary(code:priv_dir(App))};
+        _ -> Acc#{schema_dir => 'default'}
     end.
 
 add_schemas_to_bucket(_App, #{schema_dir := PrivDir
                              ,app_schemas := AppSchemas
                              ,project_schemas := ProjectSchemas
                              }=Acc) ->
-    ProjectSchema = kz_json:get_json_value(PrivDir, ProjectSchemas),
+    ProjectSchema = kz_json:get_json_value(PrivDir, ProjectSchemas, kz_json:new()),
     UpdatedSchema = kz_json:merge(ProjectSchema, AppSchemas),
     Acc#{app_schemas => kz_json:new()
         ,project_schemas => kz_json:set_value(PrivDir, UpdatedSchema, ProjectSchemas)
