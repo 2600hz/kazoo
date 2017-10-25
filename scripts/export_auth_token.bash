@@ -11,11 +11,12 @@
 
 command -v jq >/dev/null 2>&1 || { echo >&2 "This script requires 'jq' be installed"; exit 1; }
 
-usage() { echo 'Usage: eval $('"$0"' [-c {CREDENTIALS_HASH}] [-a {ACCOUNT_NAME}] [-p {PHONE_NUMBER}] [-r {ACCOUNT_REALM}] [-k {API_KEY})' 1>&2;}
+usage() { echo 'Usage: eval $('"$0"' [-c {CREDENTIALS_HASH}] [-a {ACCOUNT_NAME}] [-p {PHONE_NUMBER}] [-r {ACCOUNT_REALM}] [-k {API_KEY} -s {SERVER})' 1>&2;}
 
 function api_authenticate() {
     local C="$1"
-    AUTH_RESP=$(curl -s -X PUT http://localhost:8000/v2/api_auth -d "{\"data\":{\"api_key\":\"$C\"}}")
+    local HOST="$4"
+    AUTH_RESP=$(curl -s -X PUT http://$HOST:8000/v2/api_auth -d "{\"data\":{\"api_key\":\"$C\"}}")
 
     STATUS=$(echo $AUTH_RESP | jq -r '.status')
 
@@ -31,7 +32,8 @@ function user_authenticate() {
     local C="$1"
     local TYPE="$2"
     local ID="$3"
-    AUTH_RESP=$(curl -s -X PUT http://localhost:8000/v2/user_auth -d "{\"data\":{\"credentials\":\"$C\", \"$TYPE\":\"$ID\"}}")
+    local HOST="$4"
+    AUTH_RESP=$(curl -s -X PUT http://$HOST:8000/v2/user_auth -d "{\"data\":{\"credentials\":\"$C\", \"$TYPE\":\"$ID\"}}")
 
     STATUS=$(echo $AUTH_RESP | jq -r '.status')
 
@@ -43,10 +45,13 @@ function user_authenticate() {
     fi
 }
 
-while getopts ":a:c:p:r:k" opt; do
-    case $opt in
+while getopts ":s:a:c:p:r:k" opt; do
+    case "$opt" in
         c)
             CREDS=${OPTARG}
+            ;;
+        s)
+            SERVER=$OPTARG
             ;;
         p)
             IDENTIFIER_VALUE=${OPTARG}
@@ -77,7 +82,7 @@ fi
 if [[ -z "${ACCOUNT_IDENTIFIER}" ]]; then
     usage
 elif [[ "api_key" == ${ACCOUNT_IDENTIFIER} ]]; then
-    api_authenticate $CREDS
+    api_authenticate $CREDS ${SERVER:-localhost}
 else
-    user_authenticate $CREDS $ACCOUNT_IDENTIFIER $IDENTIFIER_VALUE
+    user_authenticate $CREDS $ACCOUNT_IDENTIFIER $IDENTIFIER_VALUE ${SERVER:-localhost}
 fi
