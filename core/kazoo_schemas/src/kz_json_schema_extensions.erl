@@ -23,7 +23,6 @@ extra_validator(Value, State) ->
         'false' -> State
     end.
 
-
 -spec extra_validation(jesse:json_term(), jesse_state:state()) -> jesse_state:state().
 extra_validation(Value, State) ->
     SchemaId = jesse_state:get_current_schema_id(State),
@@ -42,7 +41,7 @@ extra_validation(<<"metaflow.data">>, Value, State) ->
     validate_module_data(<<"metaflow.", Module/binary>>, Value, State);
 extra_validation(<<"metaflow.module">>, Value, State) ->
     lager:debug("validating metaflow action '~s'", [Value]),
-    Schema = <<"metaflow.", Value/binary>>,
+    Schema = <<"metaflows.", Value/binary>>,
     State1 = jesse_state:resolve_ref(State, Schema),
     State2 = case jesse_state:get_current_schema_id(State1) of
                  Schema -> State1;
