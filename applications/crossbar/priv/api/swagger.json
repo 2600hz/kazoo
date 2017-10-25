@@ -22413,6 +22413,11 @@
                     "type": "string"
                 }
             },
+            "required": [
+                "participant_id",
+                "other_participant",
+                "conference_id"
+            ],
             "type": "object"
         },
         "metaflows.resume": {
