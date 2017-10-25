@@ -233,9 +233,6 @@ maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
 
-
-
-
 -spec validate_action(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec validate_action(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
 validate_action(Context, CallId) ->
