@@ -233,8 +233,14 @@
                                     ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"clear">>]}
                                     ]).
 -define(RELATE_PARTICIPANTS_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                   ,{<<"Participant-ID">> ,fun is_binary/1}
-                                   ,{<<"Other-Participant">>, fun is_binary/1}
+                                   ,{<<"Participant-ID">> ,fun(ID) -> is_integer(ID)
+                                                                       orelse is_binary(ID)
+                                                         end
+                                    }
+                                   ,{<<"Other-Participant">>, fun(ID) -> is_integer(ID)
+                                                                          orelse is_binary(ID)
+                                                            end
+                                    }
                                    ]).
 
 %% Conference Set

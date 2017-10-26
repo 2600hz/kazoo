@@ -25,10 +25,16 @@
             "type": "string"
         },
         "Other-Participant": {
-            "type": "string"
+            "type": [
+                "string",
+                "integer"
+            ]
         },
         "Participant-ID": {
-            "type": "string"
+            "type": [
+                "string",
+                "integer"
+            ]
         },
         "Relationship": {
             "enum": [
