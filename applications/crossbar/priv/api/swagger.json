@@ -22126,11 +22126,17 @@
                 },
                 "other_participant": {
                     "description": "The other participant ID to relate",
-                    "type": "string"
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
                 },
                 "participant_id": {
                     "description": "The participant ID to relate",
-                    "type": "string"
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
                 },
                 "relationship": {
                     "default": "clear",
