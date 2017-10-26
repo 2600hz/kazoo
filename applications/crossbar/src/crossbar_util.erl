@@ -1227,11 +1227,10 @@ update_descendants_count(AccountId, JObj, NewCount) ->
 -spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) ->
                                       cb_context:context().
 maybe_validate_quickcall(Context) ->
-    case
-        kz_buckets:consume_tokens(?APP_NAME
-                                 ,cb_modules_util:bucket_name(Context)
-                                 ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
-                                 )
+    case kz_buckets:consume_tokens(?APP_NAME
+                                  ,cb_modules_util:bucket_name(Context)
+                                  ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
+                                  )
     of
         'false' -> cb_context:add_system_error('too_many_requests', Context);
         'true' -> maybe_validate_quickcall(Context, cb_context:resp_status(Context))
@@ -1247,4 +1246,6 @@ maybe_validate_quickcall(Context, 'success') ->
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
     end;
-maybe_validate_quickcall(Context, _) -> Context.
+maybe_validate_quickcall(Context, _Status) ->
+    lager:info("quickcall failed to validate, status ~p, not proceeding", [_Status]),
+    Context.

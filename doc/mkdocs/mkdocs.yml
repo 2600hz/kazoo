@@ -66,6 +66,7 @@ pages:
     - 'applications/crossbar/doc/menus.md'
     - 'applications/crossbar/doc/metaflows.md'
     - 'applications/crossbar/doc/phone_numbers.md'
+    - 'applications/crossbar/doc/quickcall.md'
     - 'applications/crossbar/doc/recordings.md'
     - 'applications/crossbar/doc/sms.md'
     - 'applications/crossbar/doc/temporal_rules.md'
