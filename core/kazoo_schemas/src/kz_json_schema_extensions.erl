@@ -71,9 +71,9 @@ extra_validation(<<"storage.plan.database.document.connection">>, Value, State) 
     case lists:member(Value, Keys) of
         'true' -> State;
         'false' -> jesse_error:handle_data_invalid('external_error'
-                                                 ,?INVALID_STORAGE_CONNECTION_REFERENCE(Value)
-                                                 ,State
-                                                 )
+                                                  ,?INVALID_STORAGE_CONNECTION_REFERENCE(Value)
+                                                  ,State
+                                                  )
     end;
 extra_validation(<<"storage.plan.database.attachment.handler">>, Value, State) ->
     JObj = jesse_state:get_current_value(State),
@@ -81,9 +81,9 @@ extra_validation(<<"storage.plan.database.attachment.handler">>, Value, State) -
     case lists:member(Value, Keys) of
         'true' -> State;
         'false' -> jesse_error:handle_data_invalid('external_error'
-                                                 ,?INVALID_STORAGE_ATTACHMENT_REFERENCE(Value)
-                                                 ,State
-                                                 )
+                                                  ,?INVALID_STORAGE_ATTACHMENT_REFERENCE(Value)
+                                                  ,State
+                                                  )
     end;
 extra_validation(_Key, _Value, State) ->
     lager:debug("extra validation of ~s not handled for value ~p", [_Key, _Value]),
