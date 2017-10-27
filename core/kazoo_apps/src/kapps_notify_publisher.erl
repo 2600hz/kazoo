@@ -15,7 +15,7 @@
 
 -define(NOTIFY_CAT, <<"notify">>).
 
--define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
+-define(DEFAULT_TIMEOUT, 30 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT, kapps_config:get_pos_integer(?NOTIFY_CAT, <<"notify_publisher_timeout_ms">>, ?DEFAULT_TIMEOUT)).
 
 -define(DEFAULT_PUBLISHER_ENABLED,
@@ -158,7 +158,7 @@ is_completed([JObj|_]) ->
         <<"failed">> ->
             FailureMsg = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj),
             ShouldIgnore = should_ignore_failure(FailureMsg),
-            lager:debug("teletype failed with reason ~s, ignoring: ", [FailureMsg, ShouldIgnore]),
+            lager:debug("teletype failed with reason ~s, ignoring: ~s", [FailureMsg, ShouldIgnore]),
             ShouldIgnore;
         %% FIXME: Is pending enough to consider publish was successful? at least teletype recieved the notification!
         %% <<"pending">> -> 'true';
