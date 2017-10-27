@@ -212,19 +212,31 @@ aleg_cid(Number, Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
--spec ccvs_from_request(api_object()) -> kz_proplist().
-ccvs_from_request('undefined') -> [];
+-spec ccvs_from_context(cb_context:context()) -> kz_proplist().
+ccvs_from_context(Context) ->
+    ReqData = cb_context:req_data(Context),
+    QueryString = cb_context:query_string(Context),
+    ccvs_from_request(ReqData, QueryString).
+
+-spec ccvs_from_request(api_object(), api_object()) -> kz_proplist().
+ccvs_from_request('undefined', 'undefined') -> [];
+ccvs_from_request('undefined', QueryString) ->
+    ccvs_from_request(QueryString);
+ccvs_from_request(ReqData, 'undefined') ->
+    ccvs_from_request(kz_json:get_json_value(<<"custom_channel_vars">>, ReqData));
+ccvs_from_request(ReqData, QueryString) ->
+    CCVs = kz_json:get_json_value(<<"custom_channel_vars">>, ReqData, kz_json:new()),
+    ccvs_from_request(kz_json:merge(CCVs, QueryString)).
+
+-spec ccvs_from_request(kz_json:object()) -> kz_proplist().
 ccvs_from_request(CCVs) ->
-    case kz_json:is_json_object(CCVs) of
-        'false' -> [];
-        'true' ->
-            {ReqCCVs, _} =
-                kz_json:foldl(fun ccv_from_request/3
-                             ,{[], crossbar_config:reserved_ccv_keys()}
-                             ,CCVs
-                             ),
-            ReqCCVs
-    end.
+    lager:debug("extracting CCVs from ~p", [CCVs]),
+    {ReqCCVs, _} =
+        kz_json:foldl(fun ccv_from_request/3
+                     ,{[], crossbar_config:reserved_ccv_keys()}
+                     ,CCVs
+                     ),
+    ReqCCVs.
 
 ccv_from_request(Key, Value, {Acc, Keys}) ->
     case is_private_ccv(Key, Keys) of
@@ -247,7 +259,7 @@ originate_quickcall(Endpoints, Call, Context) ->
            ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
-            | ccvs_from_request(cb_context:req_value(Context, <<"custom_channel_vars">>))
+            | ccvs_from_context(Context)
            ],
     MsgId = case kz_term:is_empty(cb_context:req_id(Context)) of
                 'true' -> kz_binary:rand_hex(16);
