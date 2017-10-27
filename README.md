@@ -117,7 +117,7 @@ No problem! We have many different places where folks can chip in time. These in
 * Contribute scripts to the [community repo](https://github.com/2600Hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
 * Browse the open [issues](https://2600Hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
-* Make a sugestion!
+* Make a suggestion!
 
 ### I know me some Erlang! How can I contribute?
 
