@@ -41,7 +41,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 `children` | Children metaflows | `object()` |   | `false`
-`data` | The data/arguments of the metaflow module | `object()` |   | `false`
+`data` | The data/arguments of the metaflow module | `object()` | `{}` | `false`
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true`
 
 ##### metaflows

@@ -59,11 +59,15 @@ Key | Description | Type | Default | Required
 `outbound_flags` | List of flags (features) this device requires when making outbound calls | `array(string())` |   | `false`
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false`
 `presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false`
+`provision.combo_keys./^[0-9]+$/.type` | Feature key type | `string('line' | 'presence' | 'parking' | 'personal_parking' | 'speed_dial')` |   | `true`
+`provision.combo_keys./^[0-9]+$/.value` | Feature key value | `string() | integer()` |   | `false`
 `provision.combo_keys./^[0-9]+$/` |   | `object() | null()` |   | `false`
 `provision.combo_keys` | Feature Keys | `object()` |   | `false`
 `provision.endpoint_brand` | Brand of the phone | `string()` |   | `false`
 `provision.endpoint_family` | Family name of the phone | `string()` |   | `false`
 `provision.endpoint_model` | Model name of the phone | `string() | integer()` |   | `false`
+`provision.feature_keys./^[0-9]+$/.type` | Feature key type | `string('presence' | 'parking' | 'personal_parking' | 'speed_dial')` |   | `true`
+`provision.feature_keys./^[0-9]+$/.value` | Feature key value | `string() | integer()` |   | `true`
 `provision.feature_keys./^[0-9]+$/` |   | `object() | null()` |   | `false`
 `provision.feature_keys` | Feature Keys | `object()` |   | `false`
 `provision` | Provision data | `object()` |   | `false`
@@ -202,7 +206,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 `children` | Children metaflows | `object()` |   | `false`
-`data` | The data/arguments of the metaflow module | `object()` |   | `false`
+`data` | The data/arguments of the metaflow module | `object()` | `{}` | `false`
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true`
 
 ##### metaflows

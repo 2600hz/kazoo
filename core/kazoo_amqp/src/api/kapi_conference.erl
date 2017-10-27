@@ -221,7 +221,11 @@
 
 
 %% Conference Relate Participants
--define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>, <<"Other-Participant">>]).
+-define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>
+                                     ,<<"Conference-ID">>
+                                     ,<<"Other-Participant">>
+                                     ,<<"Participant-ID">>
+                                     ]).
 -define(OPTIONAL_RELATE_PARTICIPANTS_HEADERS, [<<"Relationship">>]).
 -define(RELATE_PARTICIPANTS_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                     ,{<<"Event-Name">>, <<"command">>}
@@ -229,6 +233,14 @@
                                     ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"clear">>]}
                                     ]).
 -define(RELATE_PARTICIPANTS_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                                   ,{<<"Participant-ID">> ,fun(ID) -> is_integer(ID)
+                                                                          orelse is_binary(ID)
+                                                           end
+                                    }
+                                   ,{<<"Other-Participant">>, fun(ID) -> is_integer(ID)
+                                                                             orelse is_binary(ID)
+                                                              end
+                                    }
                                    ]).
 
 %% Conference Set

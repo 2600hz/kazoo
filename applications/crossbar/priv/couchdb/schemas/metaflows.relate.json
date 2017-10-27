@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.relate",
+    "description": "Relate two participants to each other in a conference",
+    "properties": {
+        "conference_id": {
+            "description": "The ID of the conference",
+            "type": "string"
+        },
+        "other_participant": {
+            "description": "The other participant ID to relate",
+            "type": [
+                "string",
+                "integer"
+            ]
+        },
+        "participant_id": {
+            "description": "The participant ID to relate",
+            "type": [
+                "string",
+                "integer"
+            ]
+        },
+        "relationship": {
+            "default": "clear",
+            "description": "The relationship to establish between the two participants",
+            "enum": [
+                "deaf",
+                "clear",
+                "mute"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "participant_id",
+        "other_participant",
+        "conference_id"
+    ],
+    "type": "object"
+}
