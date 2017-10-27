@@ -110,19 +110,13 @@ No problem! We have many different places where folks can chip in time. These in
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
     * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
-    * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
-    * our [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
     * our [Forum](http://forum.2600Hz.com/)
+    * at [KazooCon!](http://kazoocon.com/)
+* Help find mistakes and write [user guides](https://forums.2600hz.com/forums/kazoo-platform-guides/index/)
 * Contribute scripts to the [community repo](https://github.com/2600Hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
 * Browse the open [Issues](https://2600Hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
 * Make a sugestion!
-
-### Internationalization Help
-
-Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
-
-If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples](https://github.com/2600Hz/kazoo/tree/master/doc/internationalization) for every locality and fix any deficiencies.
 
 ### I know me some Erlang! How can I contribute?
 
@@ -138,11 +132,20 @@ If you have a non-US deployment, please consider sharing your system configurati
 ### Do you know other languages?
 
 * Help us write some automated testing tools
+    * [Make Busy Core](https://github.com/2600hz/make-busy)
+    * [Make Busy Callflow Tests](https://github.com/2600hz/make-busy-callflow)
+    * [Make Busy Example Component](https://github.com/2600hz/make-busy-skel)
+* Help out with the configuration scripts
+    * [Kazoo Core](https://github.com/2600hz/kazoo-configs-core)
+    * [Kamailio](https://github.com/2600hz/kazoo-configs-kamailio)
+    * [FreeSWITCH](https://github.com/2600hz/kazoo-configs-freeswitch)
+    * [RabbitMQ Server](https://github.com/2600hz/kazoo-configs-rabbitmq)
+    * [HAProxy](https://github.com/2600hz/kazoo-configs-haproxy)
+    * [CouchDB/Bigcouch](https://github.com/2600hz/kazoo-configs-bigcouch)
 * Check out our Javascript/HTML/CSS [GUI](https://github.com/2600Hz/monster-ui)
-* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600Hz/kazoo-php-sdk) | [PYTHON](https://github.com/2600hz/kazoo-python-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk)) 
-* Check out our Pivot APIs and help us create SDKs in your favorite languages
-* Check out our AMQP APIs and create a WhApp in your favorite language
-* Help out with the [configuration scripts](https://github.com/2600Hz/kazoo-configs)
+* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600Hz/kazoo-php-sdk) | [PYTHON](https://github.com/2600hz/kazoo-python-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk))
+* Check out our [Pivot APIs](https://docs.2600hz.com/dev/applications/pivot/doc/README/) and help us create SDKs in your favorite languages
+* Check out our AMQP APIs and create a Kazoo application in your favorite language
 
 ## Building Kazoo
 
@@ -152,7 +155,15 @@ See the [installation](./doc/installation.md) page to build.
 
 * Join us at [KazooCon!](http://kazoocon.com/)
 * Visit [the community site](http://2600hz.org)
+* Have a look at our:
+    * [KAZOO developer documentation](https://docs.2600hz.com/dev/)
+    * [UI developer documentation](https://docs.2600hz.com/ui/)
+    * [System adminstrator documentation](https://docs.2600hz.com/sysadmin/)
 * Bugs and feature requests can be found [here](http://tickets.2600hz.org)
-* [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
-* [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
-* [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
+* [Learn you some Erlang!](http://learnyousomeerlang.com/)
+* Check out the [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/FreeSWITCH+Explained)
+* Take a look at the [Kamailio documentation](https://www.kamailio.org/w/documentation/)
+* Learn all about [AMQP basics](https://www.rabbitmq.com/tutorials/amqp-concepts.html)
+* Get introduced to [CouchDB/Bigcouch](http://docs.couchdb.org/)
+* Get some pointers to using [CouchDB/Bigcouch views](http://guide.couchdb.org/draft/cookbook.html)
+* Learn about [GIT branching](https://learngitbranching.js.org/)
