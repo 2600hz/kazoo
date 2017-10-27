@@ -21,7 +21,9 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * Check out the [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/FreeSWITCH+Explained)
 * Take a look at the [Kamailio documentation](https://www.kamailio.org/w/documentation/)
 * Learn all about [AMQP basics](https://www.rabbitmq.com/tutorials/amqp-concepts.html)
-* Get introduced to [CouchDB/Bigcouch](http://guide.couchdb.org/draft/cookbook.html)
+* Get introduced to [CouchDB/Bigcouch](http://docs.couchdb.org/)
+* Get some pointers to using [CouchDB/Bigcouch views](http://guide.couchdb.org/draft/cookbook.html)
+* Learn about [GIT branching](https://learngitbranching.js.org/)
 
 ## Developer
 
