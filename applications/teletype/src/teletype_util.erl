@@ -119,6 +119,7 @@ maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
 log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
     Id = make_smtplog_id(AccountDb),
+    TemplateId = get('template_id'),
     CallId = kz_util:get_callid(),
     Doc = kz_json:from_list(
             [{<<"rendered_templates">>, kz_json:from_list(RenderedTemplates)}
@@ -130,13 +131,13 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
             ,{<<"account_id">>, AccountId}
             ,{<<"account_db">>, AccountDb}
             ,{<<"pvt_created">>, kz_time:now_s()}
-            ,{<<"template_id">>, get('template_id')}
+            ,{<<"template_id">>, TemplateId}
             ,{<<"template_account_id">>, get('template_account_id')}
             ,{<<"payload_callid">>, CallId}
             ,{<<"macros">>, get('macros')}
             ,{<<"_id">>, Id}
             ]),
-    lager:debug("attempting to save notify smtp log id ~p", [Id]),
+    lager:debug("attempting to save notify smtp log for ~s in ~s/~s", [TemplateId, AccountDb, Id]),
     _ = kazoo_modb:save_doc(AccountDb, Doc),
     'ok'.
 
