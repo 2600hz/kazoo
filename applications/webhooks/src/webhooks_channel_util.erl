@@ -95,6 +95,7 @@ base_hook_event(JObj, AccountId, Acc) ->
       ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
       ,{<<"emergency_resource_used">>, kz_term:is_true(ccv(JObj, <<"Emergency-Resource">>))}
       ,{<<"call_forwarded">>, kz_call_event:is_call_forwarded(JObj)}
+      ,{<<"custom_channel_vars">>, kz_call_event:custom_channel_vars(JObj)}
        | Acc
       ]).
 
