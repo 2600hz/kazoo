@@ -636,6 +636,7 @@
     "smtp_client.port": "smtp_client port",
     "smtp_client.relay": "smtp_client relay",
     "smtp_client.retries": "smtp_client retries",
+    "smtp_client.send_timeout_ms": "Timeout in milliseconds waiting for response from SMTP server",
     "smtp_client.tls": "smtp_client tls",
     "smtp_client.use_ssl": "smtp_client use ssl",
     "smtp_client.username": "smtp_client username",
