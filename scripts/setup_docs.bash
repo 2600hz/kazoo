@@ -4,7 +4,7 @@
 pushd $(dirname $0) > /dev/null
 
 cd $(pwd -P)/..
-DOCS_ROOT=`readlink -f ./doc/mkdocs`
+DOCS_ROOT=`cd "$(dirname './doc/mkdocs')" && pwd -P`
 
 if [ -z `command -v cpio` ] ; then
 	echo "cpio command is not available, please install it" && exit 1
