@@ -13,12 +13,12 @@
 -module(cb_devices_v1).
 
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1, allowed_methods/3
-        ,resource_exists/0, resource_exists/1, resource_exists/3
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
         ,billing/1
         ,authenticate/1
         ,authorize/1
-        ,validate/1, validate/2, validate/4
+        ,validate/1, validate/2
         ,put/1
         ,post/2
         ,delete/2
@@ -67,7 +67,6 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
@@ -76,9 +75,6 @@ allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-
-allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
-    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,11 +86,9 @@ allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -170,15 +164,6 @@ validate_device(Context, DeviceId, ?HTTP_POST) ->
     validate_request(DeviceId, Context);
 validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
-
--spec validate(cb_context:context(), ne_binary(), ne_binary(), any()) -> cb_context:context().
-validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
-    Context1 = crossbar_util:maybe_validate_quickcall(load_device(DeviceId, Context)),
-    case cb_context:has_errors(Context1) of
-        'true' -> Context1;
-        'false' ->
-            cb_modules_util:maybe_originate_quickcall(Context1)
-    end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
