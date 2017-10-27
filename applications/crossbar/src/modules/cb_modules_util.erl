@@ -113,14 +113,13 @@ maybe_originate_quickcall(Context) ->
 -spec create_call_from_context(cb_context:context()) -> kapps_call:call().
 create_call_from_context(Context) ->
     Routines =
-        [{F, V} ||
-            {F, V} <-
-                [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
-                ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
-                ,{fun kapps_call:set_resource_type/2, <<"audio">>}
-                ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
-                 | request_specific_extraction_funs(Context)
-                ],
+        [{F, V}
+         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+                      ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_binary_value(<<"owner_id">>, cb_context:doc(Context))}
+                       | request_specific_extraction_funs(Context)
+                      ],
             'undefined' =/= V
         ],
     kapps_call:exec(Routines, kapps_call:new()).
@@ -213,6 +212,32 @@ aleg_cid(Number, Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
+-spec ccvs_from_request(api_object()) -> kz_proplist().
+ccvs_from_request('undefined') -> [];
+ccvs_from_request(CCVs) ->
+    case kz_json:is_json_object(CCVs) of
+        'false' -> [];
+        'true' ->
+            {ReqCCVs, _} =
+                kz_json:foldl(fun ccv_from_request/3
+                             ,{[], crossbar_config:reserved_ccv_keys()}
+                             ,CCVs
+                             ),
+            ReqCCVs
+    end.
+
+ccv_from_request(Key, Value, {Acc, Keys}) ->
+    case is_private_ccv(Key, Keys) of
+        'true' -> {Acc, Keys};
+        'false' ->
+            lager:debug("adding ccv ~s:~p", [Key, Value]),
+            {[{Key, Value} | Acc], Keys}
+    end.
+
+-spec is_private_ccv(ne_binary(), ne_binaries()) -> boolean().
+is_private_ccv(Key, Keys) ->
+    lists:member(Key, Keys).
+
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
@@ -222,6 +247,7 @@ originate_quickcall(Endpoints, Call, Context) ->
            ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+            | ccvs_from_request(cb_context:req_value(Context, <<"custom_channel_vars">>))
            ],
     MsgId = case kz_term:is_empty(cb_context:req_id(Context)) of
                 'true' -> kz_binary:rand_hex(16);

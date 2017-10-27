@@ -142,9 +142,9 @@ print_dot(_Module, Acc) ->
 
 -spec new_acc() -> acc().
 new_acc() ->
-    #{'schema_dir' => 'default'
+    #{'schema_dir' => kz_ast_util:default_schema_priv_dir()
      ,'app_schemas' => kz_json:new() %% SchemaName => SchemaProperties
-     ,'project_schemas' => kz_json:from_list([{'default', kz_json:new()}]) %% Path => Schemas
+     ,'project_schemas' => kz_json:from_list([{kz_ast_util:default_schema_priv_dir(), kz_json:new()}]) %% Path => Schemas
      }.
 
 -spec add_app_config(atom(), acc()) -> acc().
@@ -153,7 +153,7 @@ add_app_config(App, Acc) ->
         {'ok', 'true'} ->
             ?DEBUG("detected schemas will go in ~s/priv~n", [App]),
             Acc#{schema_dir => kz_term:to_binary(code:priv_dir(App))};
-        _ -> Acc#{schema_dir => 'default'}
+        _ -> Acc#{schema_dir => kz_ast_util:default_schema_priv_dir()}
     end.
 
 add_schemas_to_bucket(_App, #{schema_dir := PrivDir
