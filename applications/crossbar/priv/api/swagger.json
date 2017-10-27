@@ -31371,6 +31371,25 @@
             "required": true,
             "type": "string"
         },
+        "ENDPOINT_ID": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "ENDPOINT_ID",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
+        "ENDPOINT_TYPE": {
+            "enum": [
+                "users",
+                "devices"
+            ],
+            "in": "path",
+            "name": "ENDPOINT_TYPE",
+            "required": true,
+            "type": "string"
+        },
         "EXTENSION": {
             "in": "path",
             "name": "EXTENSION",
@@ -31542,6 +31561,13 @@
             "minLength": 32,
             "name": "NOTIFICATION_ID",
             "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
+        "NUMBER": {
+            "in": "path",
+            "name": "NUMBER",
+            "pattern": "^\\+?[0-9]+",
             "required": true,
             "type": "string"
         },
@@ -34394,30 +34420,6 @@
                     },
                     {
                         "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/DEVICE_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{PHONE_NUMBER}": {
-            "get": {
-                "description": "Execute quickcall to {NUMBER}",
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PHONE_NUMBER"
                     },
                     {
                         "$ref": "#/parameters/DEVICE_ID"
@@ -40969,29 +40971,6 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/USER_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/PHONE_NUMBER"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard": {
             "get": {
                 "parameters": [
@@ -41940,6 +41919,56 @@
                     },
                     {
                         "$ref": "#/parameters/WHITELABEL_DOMAIN"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/{ENDPOINT_TYPE}/{ENDPOINT_ID}/quickcall/{NUMBER}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/NUMBER"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_TYPE"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/NUMBER"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_TYPE"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

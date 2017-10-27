@@ -14,14 +14,14 @@
 
 -export([create_user/1]).
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-        ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
-        ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-        ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,content_types_provided/1, content_types_provided/2, content_types_provided/3
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate_resource/1, validate_resource/2, validate_resource/3
         ,authenticate/1
         ,authorize/1
         ,billing/1
-        ,validate/1, validate/2, validate/3, validate/4
+        ,validate/1, validate/2, validate/3
         ,put/1
         ,post/2, post/3
         ,delete/2
@@ -78,7 +78,6 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
@@ -93,16 +92,11 @@ allowed_methods(_, ?PHOTO) ->
 allowed_methods(_, ?VCARD) ->
     [?HTTP_GET].
 
-allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
-    [?HTTP_GET].
-
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) ->
                                     cb_context:context().
 content_types_provided(Context) ->
     Context.
@@ -113,8 +107,7 @@ content_types_provided(Context, _, ?VCARD) ->
                                                                   ,{<<"text">>, <<"directory">>}]}]);
 content_types_provided(Context, _, _) ->
     Context.
-content_types_provided(Context, _, _, _) ->
-    Context.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -126,15 +119,12 @@ content_types_provided(Context, _, _, _) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 resource_exists(_, ?CHANNELS) -> 'true';
 resource_exists(_, ?VCARD) -> 'true'.
-
-resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -148,11 +138,9 @@ resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 -spec validate_resource(cb_context:context()) -> cb_context:context().
 -spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate_resource(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate_resource(Context) -> Context.
 validate_resource(Context, UserId) -> validate_user_id(UserId, Context).
 validate_resource(Context, UserId, _) -> validate_user_id(UserId, Context).
-validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 
 -spec validate_user_id(api_binary(), cb_context:context()) -> cb_context:context().
 -spec validate_user_id(api_binary(), cb_context:context(), kz_json:object()) -> cb_context:context().
@@ -240,7 +228,6 @@ authorize_users(_Nouns, _Verb) -> 'false'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
 validate(Context) ->
     validate_users(Context, cb_context:req_verb(Context)).
@@ -260,14 +247,6 @@ validate(Context, UserId, ?VCARD) ->
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
         'false' -> convert_to_vcard(Context1)
-    end.
-
-validate(Context, UserId, ?QUICKCALL_PATH_TOKEN, _) ->
-    Context1 = crossbar_util:maybe_validate_quickcall(load_user(UserId, Context)),
-    case cb_context:has_errors(Context1) of
-        'true' -> Context1;
-        'false' ->
-            cb_modules_util:maybe_originate_quickcall(Context1)
     end.
 
 -spec validate_users(cb_context:context(), http_method()) -> cb_context:context().
