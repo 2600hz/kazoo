@@ -167,3 +167,5 @@ See the [installation](./doc/installation.md) page to build.
 * Get introduced to [CouchDB/Bigcouch](http://docs.couchdb.org/)
 * Get some pointers to using [CouchDB/Bigcouch views](http://guide.couchdb.org/draft/cookbook.html)
 * Learn about [GIT branching](https://learngitbranching.js.org/)
+* Get familiar with [JSON schemas](http://json-schema.org/)
+* Find out about [JSON web tokens](https://jwt.io/)
