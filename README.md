@@ -112,6 +112,7 @@ No problem! We have many different places where folks can chip in time. These in
     * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
     * our [Forum](http://forum.2600Hz.com/)
     * at [KazooCon!](http://kazoocon.com/)
+    * follow us on [twitter](https://twitter.com/2600hertz)
 * Help find mistakes and write [user guides](https://forums.2600hz.com/forums/kazoo-platform-guides/index/)
 * Contribute scripts to the [community repo](https://github.com/2600Hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
@@ -169,3 +170,4 @@ See the [installation](./doc/installation.md) page to build.
 * Learn about [GIT branching](https://learngitbranching.js.org/)
 * Get familiar with [JSON schemas](http://json-schema.org/)
 * Find out about [JSON web tokens](https://jwt.io/)
+* We cover a lot of topics in our [blog](http://blog.2600hz.com/) as well
