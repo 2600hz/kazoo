@@ -12,10 +12,8 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * Visit [the community site](http://2600hz.org)
 * Bugs and feature requests can be found [here](http://tickets.2600hz.org)
 * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
-* Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev) or the [users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
+* Join our [community](https://forums.2600hz.com/forums/)
 * Read Github's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos and [pull requests](https://help.github.com/articles/using-pull-requests/).
-* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600Hz/monster-ui)
-* Check out some existing SDKs [PHP](https://github.com/2600Hz/kazoo-php-sdk) | [PYTHON](https://github.com/2600hz/kazoo-python-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk)
 * [Learn you some Erlang!](http://learnyousomeerlang.com/)
 * Bookmark this awesome [Erlang reference/docs](http://erldocs.com/) site
 * Check out the [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/FreeSWITCH+Explained)
@@ -24,6 +22,8 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * Get introduced to [CouchDB/Bigcouch](http://docs.couchdb.org/)
 * Get some pointers to using [CouchDB/Bigcouch views](http://guide.couchdb.org/draft/cookbook.html)
 * Learn about [GIT branching](https://learngitbranching.js.org/)
+* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600Hz/monster-ui)
+* Check out some existing SDKs [PHP](https://github.com/2600Hz/kazoo-php-sdk) | [PYTHON](https://github.com/2600hz/kazoo-python-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk)
 
 ## Developer
 
