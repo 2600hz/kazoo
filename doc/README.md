@@ -10,6 +10,7 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 
 * Join us at [KazooCon!](http://kazoocon.com/)
 * Visit [the community site](http://2600hz.org)
+* Have a look at our [kazoo developer documentation](https://docs.2600hz.com/dev/) or our [system adminstrator documentation](https://docs.2600hz.com/sysadmin/) or our [UI developer documentation](https://docs.2600hz.com/ui/)
 * Bugs and feature requests can be found [here](http://tickets.2600hz.org)
 * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
 * Join our [community](https://forums.2600hz.com/forums/)
