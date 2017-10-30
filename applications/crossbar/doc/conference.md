@@ -48,7 +48,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Fetch
+#### Perform an action on a conference
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
@@ -59,7 +59,10 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
 
-CONFERENCE_ACTION: lock, unlock
+ Action | Description
+ ------ | -----------
+ `lock` | Lock the conference; no new participants may join
+ `unlock` | Unlock the conference; new participants may join
 
 #### Perform an action on participants
 
@@ -72,7 +75,13 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
 ```
 
-PARTICIPANTS_ACTION: mute/unmute/deaf/undeaf/kick
+ Action | Description
+ ------ | -----------
+ `mute` | Mute all the participants that are currently unmuted
+ `unmute` | Unmute all the participants that are currently muted
+ `deaf` | Stop sending conference audio to all participants
+ `undeaf` | Start sending conference audio to all participants
+ `kick` | Kick all the participants from the conference
 
 #### Perform an action on participant
 
@@ -85,7 +94,13 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
 ```
 
-PARTICIPANT_ACTION: mute/unmute/deaf/undeaf/kick
+ Action | Description
+ ------ | -----------
+ `mute` | Mute the participant
+ `unmute` | Unmute the participant
+ `deaf` | Stop sending conference audio to the participant
+ `undeaf` | Start sending conference audio to the participant
+ `kick` | Kick the participant from the conference
 
 #### List of conferences example
 
