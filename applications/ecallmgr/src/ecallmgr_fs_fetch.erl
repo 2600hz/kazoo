@@ -170,6 +170,7 @@ handle_fetch_req(Node, JObj) ->
            ,version => kz_term:to_atom(Version, 'true')
            ,core_uuid => kz_term:to_atom(CoreUUID, 'true')
            ,routing => Routing
+           ,call_id => kzd_fetch:call_id(JObj)
            },
     case kazoo_bindings:map(Routing, Map) of
         [] -> not_found(Map);
