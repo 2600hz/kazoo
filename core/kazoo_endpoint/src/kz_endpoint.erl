@@ -2037,7 +2037,7 @@ generate_profile(EndpointId, AccountId, Endpoint) ->
               ,fun set_sip_invite_domain/1
               ,fun maybe_set_webrtc/1
               ,fun set_presence_id/1
-              ,fun set_realm/1                     
+              ,fun set_realm/1
               ],
     Acc0 = {Endpoint, kapps_call:exec(CallFuns, kapps_call:new()), 'undefined', kz_json:new()},
     {_Endpoint, Call, _CallFwd, CCVs} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
