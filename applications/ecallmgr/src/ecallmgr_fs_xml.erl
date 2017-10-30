@@ -322,6 +322,16 @@ route_resp_xml(<<"park">>, _Routes, JObj, Props) ->
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
+route_resp_xml(<<"application">>, _Routes, JObj, Props) ->
+    Exten = [route_resp_log_winning_node()
+            ,route_resp_ccvs(JObj)
+            ],
+    AppExtEl = extension_el(<<"application">>, 'undefined', [condition_el(Exten)]),
+    Context = context(JObj, Props),
+    ContextEl = context_el(Context, [AppExtEl]),
+    SectionEl = section_el(<<"dialplan">>, <<"Application Response">>, ContextEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
 route_resp_xml(<<"error">>, _Routes, JObj, Props) ->
     Section = kz_json:get_value(<<"Fetch-Section">>, JObj, <<"dialplan">>),
     route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj, Props);
