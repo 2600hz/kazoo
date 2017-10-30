@@ -172,7 +172,7 @@ send_cmds(Node, UUID, Cmds) ->
     Commands = [begin
                     AppName = dialplan_application(App),
                     [{<<"call-command">>, <<"execute">>}
-                    ,{<<"execute-app-name">>, kz_term:to_binary(AppName)}
+                    ,{<<"execute-app-name">>, dialplan_application(kz_term:to_binary(AppName))}
                     ,{<<"execute-app-arg">>, kz_term:to_binary(Args)}
                     ]
                 end || {App, Args} <- Cmds],
@@ -182,8 +182,11 @@ send_cmds(Node, UUID, Cmds) ->
                ),
     Result.
 
--spec dialplan_application(string()) -> string().
-dialplan_application("blind_xfer") -> "transfer";
+-spec dialplan_application(ne_binary() | string()) -> ne_binary().
+dialplan_application(App)
+  when is_list(App) ->
+    dialplan_application(kz_term:to_binary(App));
+dialplan_application(<<"blind_xfer">>) -> <<"transfer">>;
 dialplan_application(App) -> App.
 
 -spec get_expires(kz_term:proplist()) -> integer().
