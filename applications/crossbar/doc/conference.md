@@ -82,6 +82,50 @@ curl -v -X PUT \
  `deaf` | Stop sending conference audio to all participants
  `undeaf` | Start sending conference audio to all participants
  `kick` | Kick all the participants from the conference
+ `relate` | Relate two participants
+
+##### Relate participants
+
+ The `relate` action takes a `data` object:
+
+```
+{
+    "data":{
+        "action":"relate"
+        ,"data":{
+            "participant_id":{ID}
+            ,"other_participant":{ID}
+            ,"relationship":"{RELATIONSHIP}"
+        }
+    }
+}
+```
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`other_participant` | The other participant ID to relate | `string() | integer()` |   | `true`
+`participant_id` | The participant ID to relate | `string() | integer()` |   | `true`
+`relationship` | The relationship to establish between the two participants | `string('deaf' | 'clear' | 'mute')` | `clear` | `false`
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: $AUTH_TOKEN" \
+    "http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants" \
+    -d'{"data":{"action":"relate","data":{"participant_id":23, "other_participant":24}}}'
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": "relating participants",
+    "node": "{NODE}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "1-100475067fa624422c9a21bd976c7b84",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.2.2"
+}
+```
 
 #### Perform an action on participant
 
