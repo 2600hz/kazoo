@@ -1102,12 +1102,17 @@ execute_control_request(Cmd, #state{node=Node
     end.
 
 -spec which_call_leg(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binary().
+which_call_leg(CallId, _OtherLegs, CallId) -> CallId;
 which_call_leg(CmdLeg, OtherLegs, CallId) ->
     case lists:member(CmdLeg, OtherLegs) of
         'true' ->
             lager:debug("executing against ~s instead", [CmdLeg]),
             CmdLeg;
-        'false' -> CallId
+        'false' ->
+            case ecallmgr_fs_channel:fetch(CmdLeg, 'record') of
+                {'ok', #channel{other_leg=CallId}} -> CmdLeg;
+                _Else -> CallId
+            end
     end.
 
 -spec maybe_send_error_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
