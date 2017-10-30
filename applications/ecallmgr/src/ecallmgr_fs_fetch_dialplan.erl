@@ -74,15 +74,13 @@ call_id(#{call_id := _CallId}=Map) -> Map;
 call_id(#{payload := JObj}=Map) ->
     Map#{call_id => kzd_fetch:call_id(JObj)}.
 
-add_time_marker(Name, #{timer := Timer}= Map) ->
-    Map#{timer => Timer#{Name => kz_time:now_us()}};
-add_time_marker(Name, #{}= Map) ->
-    add_time_marker(Name, Map#{timer => #{}}).
+add_time_marker(Name, Map) ->
+    add_time_marker(Name, kz_time:now_us(), Map).
 
-%% add_time_marker(Name, Value, #{timer := Timer}= Map) ->
-%%     Map#{timer => Timer#{Name => Value}};
-%% add_time_marker(Name, Value, #{}= Map) ->
-%%     add_time_marker(Name, Value, Map#{timer => #{}}).
+add_time_marker(Name, Value, #{timer := Timer}= Map) ->
+    Map#{timer => Timer#{Name => Value}};
+add_time_marker(Name, Value, #{}= Map) ->
+    add_time_marker(Name, Value, Map#{timer => #{}}).
 
 maybe_authz(#{authz_worker := _Authz}=Map) -> Map;
 maybe_authz(#{}=Map) ->
@@ -183,8 +181,8 @@ activate_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) 
                },
     {'ok', Args}.
 
-%% error_message() ->
-%%     error_message(<<"not enough resources">>).
+error_message() ->
+    error_message(<<"no available handlers">>).
 
 error_message(ErrorMsg) ->
     error_message(<<"604">>, ErrorMsg).
@@ -196,7 +194,7 @@ error_message(ErrorCode, ErrorMsg) ->
                       ]).
 
 timeout_reply(Map) ->
-    Map#{reply => #{payload => error_message(<<"no available handlers">>), props => []}}.
+    Map#{reply => #{payload => error_message(), props => []}}.
 
 
 -spec forbidden_reply(map()) -> map().
