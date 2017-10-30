@@ -15,8 +15,15 @@ Key | Type | Description
 `media` | `string('bypass', 'process')` | Toggle whether to go peer-to-peer([bypass](https://freeswitch.org/confluence/display/FREESWITCH/Bypass+Media+Overview) with the RTP
 `number_filter` | `boolean()`, `regex()` | If true, remove non-alphanumeric characters. If a regex, use the first capture group as the "number" to dial.
 `timeout` | `integer(3..)` | In seconds, how long to ring the device(s) (defaults to 30)
+`custom_channel_vars` | `object()` | Custom data to include on the call (and events related to the call)
 
+##### Custom Channel Vars
 
+CCVs allow you to set custom data that will appear on subsequent call events (found in webhook and websocket payloads) as well as the final CDR.
+
+As query-string parameters: `/quickcall/{NUMBER}?foo=bar`
+
+As POST body: `{"data":{"custom_channel_vars":{"foo":"bar"}}}`
 
 #### Non-blocking Quickcall
 
@@ -134,18 +141,6 @@ curl -v -X GET \
 Ring user's devices; once answered, connect to `{PHONE_NUMBER}`
 
 In this scenario, the user's devices are considered the `callee` while the `{PHONE_NUMBER}` side is considered the caller (helpful to know when debugging a call!).
-
-Query string options:
-
-Key | Type | Description
---- | ---- | -----------
-`auto_answer` | `boolean()` | Tells the SIP phone to auto-answer the call, if supported
-`cid-name` | `string()` | Set the caller ID name (defaults to "Device QuickCall")
-`cid-number` | `string()` | Set the caller ID number (defaults to the `{PHONE_NUMBER}`)
-`ignore-early-media` | `boolean()` | Toggle whether to ignore [early media](https://freeswitch.org/confluence/display/FREESWITCH/Early+Media)
-`media` | `string('bypass', 'process')` | Toggle whether to go peer-to-peer([bypass](https://freeswitch.org/confluence/display/FREESWITCH/Bypass+Media+Overview) with the RTP
-`number_filter` | `boolean()`, `regex()` | If true, remove non-alphanumeric characters. If a regex, use the first capture group as the "number" to dial.
-`timeout` | `integer(3..)` | In seconds, how long to ring the device(s) (defaults to 30)
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}
 

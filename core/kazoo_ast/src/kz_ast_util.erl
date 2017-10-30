@@ -8,6 +8,7 @@
         ,binary_match_to_binary/1
         ,smash_snake/1
 
+        ,default_schema_priv_dir/0
         ,schema_path/1, schema_path/2
         ,api_path/1
         ,ensure_file_exists/1
@@ -124,10 +125,14 @@ format_name_part(<<"auth">>) -> <<"Authentication">>;
 format_name_part(Part) ->
     kz_binary:ucfirst(Part).
 
+-spec default_schema_priv_dir() -> file:filename_all().
+default_schema_priv_dir() ->
+    kz_term:to_binary(code:priv_dir('crossbar')).
+
 -spec schema_path(binary()) -> file:filename_all().
 -spec schema_path(binary(), file:filename_all()) -> file:filename_all().
 schema_path(Base) ->
-    schema_path(Base, code:priv_dir('crossbar')).
+    schema_path(Base, default_schema_priv_dir()).
 schema_path(Base, PrivDir) ->
     case filename:join([PrivDir
                        ,<<"couchdb">>
