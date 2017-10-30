@@ -2753,6 +2753,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
     Code = kz_json:get_value(<<"Hangup-Code">>, JObj),
     Result = case Disposition =:= <<"SUCCESS">>
                  orelse Disposition =:= <<"PICKED_OFF">>
+                 orelse Disposition =:= <<"NORMAL_CLEARING">>
                  orelse Cause =:= <<"SUCCESS">>
                  orelse Code =:= <<"sip:200">>
              of
@@ -2776,11 +2777,11 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             %%    basing the Result on Disposition
             lager:info("bridge channel destroy completed with result ~s/~s => ~s", [Disposition, Cause, Result]),
             {Result, JObj};
-        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-            %% TODO: reduce log level if no issue is found with
-            %%    basing the Result on Disposition
-            lager:info("bridge channel execute completed with result ~s(~s)", [Disposition, Result]),
-            {Result, JObj};
+%%         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
+%%             %% TODO: reduce log level if no issue is found with
+%%             %%    basing the Result on Disposition
+%%             lager:info("bridge channel execute completed with result ~s(~s)", [Disposition, Result]),
+%%             {Result, JObj};
         _E ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
             NewStart = os:timestamp(),
