@@ -200,7 +200,7 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
                       ,{<<"event-string">>, <<"message-summary">>}
                       ,{<<"content-type">>, <<"application/simple-message-summary">>}
                       ,{<<"content-length">>, kz_term:to_binary(length(Body))}
-                      ,{<<"body">>, Body}
+                      ,{<<"body">>, kz_term:to_binary(Body)}
                       ],
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
             lager:debug("sent MWI update to '~s' via ~s: ~p", [Contact, Node, Resp])
