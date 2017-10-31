@@ -41,6 +41,7 @@
         ,config_resp/1, config_resp_v/1
         ]).
 -export([play_macro_req/1, play_macro_req_v/1]).
+-export([callout/1, callout_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
@@ -74,6 +75,7 @@
 -export([publish_targeted_command/2, publish_targeted_command/3]).
 -export([publish_config_req/1, publish_config_req/2
         ,publish_config_resp/2, publish_config_resp/3
+        ,publish_callout/2, publish_callout/3
         ]).
 
 -include_lib("amqp_util.hrl").
@@ -316,8 +318,26 @@
                                        ,{<<"Event-Name">>, <<"command">>}
                                        ,{<<"Application-Name">>, <<"participant_volume_out">>}
                                        ]).
--define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                      ]).
+-define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+
+-define(CALLOUT_HEADERS, [<<"Endpoints">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CALLOUT_HEADERS, [<<"Caller-ID-Name">>
+                                  ,<<"Caller-ID-Number">>
+                                  ,<<"Should-Mute">>
+                                  ,<<"Should-Deaf">>
+                                  ,<<"Should-Beep">>
+                                  ]).
+-define(CALLOUT_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                        ,{<<"Event-Name">>, <<"command">>}
+                        ,{<<"Application-Name">>, <<"callout">>}
+                        ]).
+-define(CALLOUT_TYPES, [{<<"Should-Mute">>, fun kz_term:is_boolean/1}
+                       ,{<<"Should-Deaf">>, fun kz_term:is_boolean/1}
+                       ,{<<"Should-Beep">>, fun kz_term:is_boolean/1}
+                       ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                       ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                       ,{<<"Endpoints">>, fun kz_term:is_ne_list/1}
+                       ]).
 
 %% Conference Participants Event
 -define(PARTICIPANT_EVENT_HEADERS, [<<"Event">>
@@ -340,7 +360,9 @@
                                    ,<<"Custom-Channel-Vars">>
                                    ]).
 -define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, []).
--define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}, {<<"Event-Name">>, <<"participant_event">>}]).
+-define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                  ,{<<"Event-Name">>, <<"participant_event">>}
+                                  ]).
 -define(PARTICIPANT_EVENT_TYPES, []).
 
 %% Conference Event
@@ -405,17 +427,20 @@
                         ,{<<"unmute_participant">>, ?UNMUTE_PARTICIPANT_VALUES, fun unmute_participant/1}
                         ,{<<"participant_volume_in">>, ?PARTICIPANT_VOLUME_IN_VALUES, fun participant_volume_in/1}
                         ,{<<"participant_volume_out">>, ?PARTICIPANT_VOLUME_OUT_VALUES, fun participant_volume_out/1}
+                        ,{<<"callout">>, ?CALLOUT_VALUES, fun callout/1}
                         ,{<<"tones">>, ?CONF_TONES_REQ_VALUES, fun tones/1}
                         ,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun say/1}
                         ,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun tts/1}
                         ,{<<"play_macro">>, ?CONF_PLAY_MACRO_REQ_VALUES, fun play_macro_req/1}
                         ]).
 
--define(CONF_PLAY_MACRO_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Macro">>]).
+-define(CONF_PLAY_MACRO_REQ_HEADERS, [<<"Application-Name">>
+                                     ,<<"Conference-ID">>
+                                     ,<<"Media-Macro">>
+                                     ]).
 -define(OPTIONAL_CONF_PLAY_MACRO_REQ_HEADERS, []).
 -define(CONF_PLAY_MACRO_REQ_VALUES, []).
--define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                   ]).
+-define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 -spec focus_queue_name(atom()) -> ne_binary().
 focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
@@ -429,7 +454,9 @@ focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
                              ,{<<"Application-Name">>, [<<"say">>, <<"tts">>]}
                               | props:delete_keys([<<"Event-Category">>
                                                   ,<<"Application-Name">>
-                                                  ], ?TONES_REQ_VALUES)
+                                                  ]
+                                                 ,?TONES_REQ_VALUES
+                                                 )
                              ]).
 -spec say(api_terms()) -> api_formatter_return() .
 say(Prop) when is_list(Prop) ->
@@ -984,6 +1011,19 @@ config_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONFIG_RESP_HEADERS, ?CONFIG_RESP_VALUES, ?CONFIG_RESP_TYPES);
 config_resp_v(JObj) -> config_resp_v(kz_json:to_proplist(JObj)).
 
+-spec callout(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+callout(Prop) when is_list(Prop) ->
+    case callout_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?CALLOUT_HEADERS, ?OPTIONAL_CALLOUT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for callout"}
+    end;
+callout(JObj) -> callout(kz_json:to_proplist(JObj)).
+
+-spec callout_v(api_terms()) -> boolean().
+callout_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?CALLOUT_HEADERS, ?CALLOUT_VALUES, ?CALLOUT_TYPES);
+callout_v(JObj) -> callout_v(kz_json:to_proplist(JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Bind a queue to the conference exchange
@@ -1487,3 +1527,16 @@ publish_config_resp(Queue, JObj) ->
 publish_config_resp(Queue, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CONFIG_RESP_VALUES, fun config_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_callout(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_callout(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_callout(ConferenceId, JObj) ->
+    publish_callout(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_callout(ConferenceId, Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CALLOUT_VALUES, fun callout/1),
+    amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
