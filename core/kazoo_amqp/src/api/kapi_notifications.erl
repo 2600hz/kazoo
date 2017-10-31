@@ -589,7 +589,7 @@ account_id('undefined') -> 'undefined';
 account_id(Req) when is_list(Req) -> find_account_id(Req, fun props:get_first_defined/2);
 account_id(Req) -> find_account_id(Req, fun kz_json:get_first_defined/2).
 
--spec find_account_id(kz_json:object(), function()) -> api_ne_binary().
+-spec find_account_id(api_terms(), function()) -> api_ne_binary().
 find_account_id(Req, GetFun) ->
     Paths = [<<"account_id">>
             ,[<<"account">>, <<"_id">>]
