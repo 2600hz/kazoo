@@ -226,13 +226,19 @@ dial(Endpoints, Conference) when is_list(Endpoints) ->
 dial(Endpoints, CallerIdNumber, Conference) when is_list(Endpoints) ->
     dial(Endpoints, CallerIdNumber, 'undefined', Conference).
 
-dial(Endpoints, CallerIdNumber, CallerIdName, Conference) when is_list(Endpoints) ->
+dial(Endpoints, CallerIdNumber, CallerIdName, ConferenceId)
+  when is_list(Endpoints),
+       is_binary(ConferenceId) ->
     Command = [{<<"Application-Name">>, <<"dial">>}
               ,{<<"Endpoints">>, Endpoints}
               ,{<<"Caller-ID-Name">>, CallerIdName}
               ,{<<"Caller-ID-Number">>, CallerIdNumber}
+              ,{<<"Conference-ID">>, ConferenceId}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    send_command(Command, Conference).
+    'ok' = kz_amqp_worker:cast(Command, fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end);
+dial(Endpoints, CallerIdNumber, CallerIdName, Conference) ->
+    dial(Endpoints, CallerIdNumber, CallerIdName, kapps_conference:id(Conference)).
 
 -spec send_command(api_terms(), kapps_conference:conference()) -> 'ok'.
 send_command([_|_]=Command, Conference) ->
