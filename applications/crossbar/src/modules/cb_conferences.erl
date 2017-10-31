@@ -40,6 +40,7 @@
 -define(DEAF, <<"deaf">>).
 -define(UNDEAF, <<"undeaf">>).
 -define(KICK, <<"kick">>).
+-define(RELATE, <<"relate">>).
 
 -define(PUT_ACTION, <<"action">>).
 
@@ -282,25 +283,86 @@ handle_participants_action(Context, ConferenceId, Action=?UNDEAF) ->
                                              andalso kz_json:is_false(<<"Hear">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?KICK) ->
-    handle_participants_action(Context, ConferenceId, Action, fun(_) -> 'true' end);
+    handle_participants_action(Context, ConferenceId, Action, fun kz_term:always_true/1);
+handle_participants_action(Context, ConferenceId, ?RELATE) ->
+    OnSuccess = fun(C) -> handle_participants_relate(C, ConferenceId) end,
+    RelateData = cb_context:req_value(Context, <<"data">>, kz_json:new()),
+    WithConference = kz_json:set_value(<<"conference_id">>, ConferenceId, RelateData),
+
+    cb_context:validate_request_data(<<"metaflows.relate">>
+                                    ,cb_context:set_req_data(Context, WithConference)
+                                    ,OnSuccess
+                                    );
 handle_participants_action(Context, _ConferenceId, _Action) ->
     lager:error("unhandled conference id ~p participants action: ~p", [_ConferenceId, _Action]),
     cb_context:add_system_error('faulty_request', Context).
 
 %% action applicable to conference participants selected by selector function
--spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary(), function()) -> cb_context:context().
+-type filter_fun() :: fun((kz_json:object()) -> boolean()).
+-spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary(), filter_fun()) ->
+                                        cb_context:context().
 handle_participants_action(Context, ConferenceId, Action, Selector) ->
     ConfData = request_conference_details(ConferenceId),
     Participants = extract_participants(ConfData),
     Conf = conference(ConferenceId),
     _ = [perform_participant_action(Conf, Action, kz_json:get_value(<<"Participant-ID">>, P))
-         || P <- Participants, filter_participant(P, Selector)
+         || P <- Participants,
+            filter_participant(P, Selector)
         ],
     Context.
 
+-spec filter_participant(kz_json:object(), filter_fun()) -> boolean().
 filter_participant(JObj, Fun) ->
-    ConfVars = kz_json:get_value(<<"Conference-Channel-Vars">>, JObj, kz_json:new()),
+    ConfVars = kz_json:get_json_value(<<"Conference-Channel-Vars">>, JObj, kz_json:new()),
     Fun(ConfVars).
+
+-spec handle_participants_relate(cb_context:context(), path_token()) ->
+                                        cb_context:context().
+handle_participants_relate(Context, ConferenceId) ->
+    ConfData = request_conference_details(ConferenceId),
+    Participants = extract_participants(ConfData),
+
+    ParticipantId = kz_term:to_integer(cb_context:req_value(Context, <<"participant_id">>)),
+    OtherParticipantId = kz_term:to_integer(cb_context:req_value(Context, <<"other_participant">>)),
+
+    case find_participants(Participants, ParticipantId, OtherParticipantId) of
+        [] ->
+            lists:foldl(fun participant_not_found/2
+                       ,Context
+                       ,[ParticipantId, OtherParticipantId]
+                       );
+        [ParticipantId] ->
+            participant_not_found(OtherParticipantId, Context);
+        [OtherParticipantId] ->
+            participant_not_found(ParticipantId, Context);
+        [_, _] ->
+            relate(Context, ConferenceId, ParticipantId, OtherParticipantId)
+    end.
+
+-spec relate(cb_context:context(), path_token(), pos_integer(), pos_integer()) ->
+                    cb_context:context().
+relate(Context, ConferenceId, ParticipantId, OtherParticipantId) ->
+    Conference = conference(ConferenceId),
+    Relationship = cb_context:req_value(Context, <<"relationship">>, <<"clear">>),
+
+    kapps_conference_command:relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference),
+    lager:info("relating ~p to ~p with ~s in conference ~s"
+              ,[ParticipantId, OtherParticipantId, Relationship, ConferenceId]
+              ),
+    crossbar_util:response_202(<<"relating participants">>, Context).
+
+-spec find_participants(kz_json:objects(), pos_integer(), pos_integer()) ->
+                               [pos_integer()].
+find_participants(Participants, ParticipantId, OtherParticipantId) ->
+    [PID || P <- Participants,
+            PID <- [kz_json:get_integer_value(<<"Participant-ID">>, P)],
+            ParticipantId =:= PID
+                orelse OtherParticipantId =:= PID
+    ].
+
+-spec participant_not_found(pos_integer(), cb_context:context()) -> cb_context:context().
+participant_not_found(ParticipantId, Context) ->
+    cb_context:add_validation_error(ParticipantId, 404, <<"participant not found">>, Context).
 
 -spec perform_participant_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
 perform_participant_action(Conference, ?MUTE, ParticipantId) ->
