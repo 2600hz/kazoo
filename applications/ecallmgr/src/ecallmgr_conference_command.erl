@@ -247,12 +247,12 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
             {<<"volume_out">>, Args}
     end;
 
-get_conf_command(<<"callout">>, _Focus, _ConferenceId, JObj) ->
-    'true' = kapi_conference:callout_v(JObj),
+get_conf_command(<<"dial">>, _Focus, _ConferenceId, JObj) ->
+    'true' = kapi_conference:dial_v(JObj),
     case kz_json:get_list_value(<<"Endpoints">>, JObj, []) of
         [] ->
-            lager:error("no endpoints to callout"),
-            {'error', <<"no endpoints to callout">>};
+            lager:error("no endpoints to dial"),
+            {'error', <<"no endpoints to dial">>};
         Endpoints ->
             DialCmd = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj)
                                      ,ecallmgr_fs_bridge:try_create_bridge_string(Endpoints, JObj)
