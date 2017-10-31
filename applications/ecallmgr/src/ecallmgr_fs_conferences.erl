@@ -215,7 +215,8 @@ handle_dial_req(JObj, _Props) ->
 start_conference(JObj, ConferenceId) ->
     [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
     lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, Node]),
-    'ok' = ecallmgr_conference_command:exec_cmd(Node, ConferenceId, JObj).
+    {'ok', Resp} = ecallmgr_conference_command:exec_cmd(Node, ConferenceId, JObj),
+    lager:info("starting dial resulted in ~s", [Resp]).
 
 -spec handle_search_conference(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
 handle_search_conference(JObj, _Props, Name) ->
