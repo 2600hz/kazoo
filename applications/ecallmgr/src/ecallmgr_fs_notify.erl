@@ -142,14 +142,14 @@ send_notify(Node, Username, Realm, JObj, Contact) ->
     Body = kz_json:get_ne_binary_value(<<"Body">>, JObj),
     ContentType = kz_json:get_ne_binary_value(<<"Content-Type">>, JObj),
     Headers = props:filter_undefined(
-                [{"body", Body}
-                ,{"contact-uri", Contact}
-                ,{"content-type", ContentType}
-                ,{"event-string", Event}
-                ,{"extra-headers", SIPHeaders}
-                ,{"from-uri", From}
-                ,{"profile", ?DEFAULT_FS_PROFILE}
-                ,{"to-uri", To}
+                [{<<"body">>, Body}
+                ,{<<"contact-uri">>, Contact}
+                ,{<<"content-type">>, ContentType}
+                ,{<<"event-string">>, Event}
+                ,{<<"extra-headers">>, SIPHeaders}
+                ,{<<"from-uri">>, From}
+                ,{<<"profile">>, <<?DEFAULT_FS_PROFILE>>}
+                ,{<<"to-uri">>, To}
                 ]),
     Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
     lager:info("send NOTIFY with Event '~s' (has body? ~w) to '~s@~s' via ~s: ~p"
@@ -220,27 +220,27 @@ register_overwrite(JObj, Props) ->
                                     ,Realm
                                     ),
     SipUri = kzsip_uri:uri(#uri{user=Username, domain=Realm}),
-    PrevBody = kz_term:to_list(<<"Replaced-By:", (kz_term:to_binary(NewContact))/binary>>),
-    NewBody = kz_term:to_list(<<"Overwrote:", (kz_term:to_binary(PrevContact))/binary>>),
-    PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
-                         ,{"contact", PrevContact}
-                         ,{"contact-uri", PrevContact}
-                         ,{"to-uri", SipUri}
-                         ,{"from-uri", SipUri}
-                         ,{"event-str", "registration-overwrite"}
-                         ,{"content-type", "text/plain"}
-                         ,{"content-length", kz_term:to_list(length(PrevBody))}
-                         ,{"body", PrevBody}
+    PrevBody = <<"Replaced-By:", (kz_term:to_binary(NewContact))/binary>>,
+    NewBody = <<"Overwrote:", (kz_term:to_binary(PrevContact))/binary>>,
+    PrevContactHeaders = [{<<"profile">>, <<?DEFAULT_FS_PROFILE>>}
+                         ,{<<"contact">>, PrevContact}
+                         ,{<<"contact-uri">>, PrevContact}
+                         ,{<<"to-uri">>, SipUri}
+                         ,{<<"from-uri">>, SipUri}
+                         ,{<<"event-str">>, <<"registration-overwrite">>}
+                         ,{<<"content-type">>, <<"text/plain">>}
+                         ,{<<"content-length">>, kz_term:to_binary(length(PrevBody))}
+                         ,{<<"body">>, PrevBody}
                          ],
-    NewContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
-                        ,{"contact", NewContact}
-                        ,{"contact-uri", NewContact}
-                        ,{"to-uri", SipUri}
-                        ,{"from-uri", SipUri}
-                        ,{"event-str", "registration-overwrite"}
-                        ,{"content-type", "text/plain"}
-                        ,{"content-length", kz_term:to_list(length(NewBody))}
-                        ,{"body", NewBody}
+    NewContactHeaders = [{<<"profile">>, <<?DEFAULT_FS_PROFILE>>}
+                        ,{<<"contact">>, NewContact}
+                        ,{<<"contact-uri">>, NewContact}
+                        ,{<<"to-uri">>, SipUri}
+                        ,{<<"from-uri">>, SipUri}
+                        ,{<<"event-str">>, <<"registration-overwrite">>}
+                        ,{<<"content-type">>, <<"text/plain">>}
+                        ,{<<"content-length">>, kz_term:to_binary(length(NewBody))}
+                        ,{<<"body">>, NewBody}
                         ],
     case PrevContact of
         'undefined' ->
