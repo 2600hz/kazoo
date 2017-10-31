@@ -187,14 +187,36 @@ flush_node(Node) -> gen_server:cast(?SERVER, {'flush_node', Node}).
 
 -spec handle_search_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_search_req(JObj, Props) ->
-    case kz_json:get_value(<<"Conference-ID">>, JObj) of
+    handle_search_req(JObj, Props, kz_json:get_ne_binary_value(<<"Application-Name">>, JObj)).
+handle_search_req(JObj, _Props, <<"dial">>) ->
+    handle_dial_req(JObj, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj));
+handle_search_req(JObj, Props, _AppName) ->
+    case kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj) of
         'undefined' -> handle_search_account(JObj, Props);
-        _Conference -> handle_search_conference(JObj, Props)
+        ConferenceId -> handle_search_conference(JObj, Props, ConferenceId)
     end.
 
--spec handle_search_conference(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_search_conference(JObj, _Props) ->
-    Name = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
+-spec handle_dial_req(kapi_conference:doc(), ne_binary()) -> 'ok'.
+handle_dial_req(JObj, ConferenceId) ->
+    'true' = kapi_conference:dial_v(JObj),
+    lager:info("dialing out from conference ~s", [ConferenceId]),
+    case node(ConferenceId) of
+        {'error', 'not_found'} ->
+            lager:info("conference ~s not started, dialing out to start it", [ConferenceId]),
+            start_conference(JObj, ConferenceId);
+        {'ok', ConferenceNode} ->
+            lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
+            'ok' = ecallmgr_conference_command:exec_cmd(ConferenceNode, ConferenceId, JObj)
+    end.
+
+-spec start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
+start_conference(JObj, ConferenceId) ->
+    [Node|_] = lists:shuffle(ecallmgr_fs_nodes:connected()),
+    lager:info("starting conference ~s on ~s and dialing out"),
+    'ok' = ecallmgr_conference_command:exec_cmd(Node, ConferenceId, JObj).
+
+-spec handle_search_conference(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
+handle_search_conference(JObj, _Props, Name) ->
     lager:info("received search request for conference name ~s", [Name]),
     case ets:match_object(?CONFERENCES_TBL, #conference{name=Name, _ = '_'}) of
         %% TODO: this ignores conferences on multiple nodes until big-conferences
