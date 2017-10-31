@@ -325,7 +325,10 @@
                                        ]).
 -define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
--define(DIAL_HEADERS, [<<"Endpoints">>, <<"Conference-ID">>]).
+-define(DIAL_HEADERS, [<<"Endpoints">>
+                      ,<<"Conference-ID">>
+                      ,<<"Application-Name">>
+                      ]).
 -define(OPTIONAL_DIAL_HEADERS, [<<"Caller-ID-Name">>
                                ,<<"Caller-ID-Number">>
                                ]).
