@@ -254,9 +254,113 @@ handle_conference_action(Context, ConferenceId, <<"lock">>) ->
 handle_conference_action(Context, ConferenceId, <<"unlock">>) ->
     kapps_conference_command:unlock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
+handle_conference_action(Context, ConferenceId, <<"dial">>) ->
+    dial(Context, ConferenceId, cb_context:req_value(<<"data">>, Context));
 handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
+
+-spec dial(cb_context:context(), path_token(), api_object()) -> cb_context:context().
+dial(Context, _ConferenceId, 'undefined') ->
+    cb_context:add_validation_error(<<"data">>
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"action 'dial' requires a data object">>}])
+                                   ,Context
+                                   );
+dial(Context, ConferenceId, Data) ->
+    dial_endpoints(Context, ConferenceId, Data, kz_json:get_list_value(<<"endpoints">>, Data, [])).
+
+-spec dial_endpoints(cb_context:context(), path_token(), kz_json:object(), ne_binaries()) ->
+                            cb_context:context().
+dial_endpoints(Context, _ConferenceId, _Data, []) ->
+    cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
+                                   ,<<"minItems">>
+                                   ,kz_json:from_list([{<<"message">>, <<"endpoints must have at least one specified">>}
+                                                      ,{<<"target">>, 1}
+                                                      ])
+                                   ,Context
+                                   );
+dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
+    {ToDial, _} = lists:foldl(fun build_endpoint/2
+                             ,{[], create_call(Context, ConferenceId)}
+                             ,Endpoints
+                             ),
+    kapps_conference:dial(ToDial
+                         ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
+                         ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data)
+                         ,ConferenceId
+                         ),
+    crossbar_util:response_202(<<"dialing endpoints">>, Context).
+
+-spec create_call(cb_context:context(), ne_binary()) -> kapps_call:call().
+create_call(Context, ConferenceId) ->
+    Routines =
+        [{F, V}
+         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+                      ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
+                      ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
+                      ],
+            'undefined' =/= V
+        ],
+    kapps_call:exec(Routines, kapps_call:new()).
+
+-type build_acc() :: {kz_json:objects(), kapps_call:call()}.
+-spec build_endpoint(ne_binary(), build_acc()) -> build_acc().
+build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
+    case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), EndpointId) of
+        {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call});
+        {'error', _E} ->
+            lager:info("failed to build endpoint ~s: ~p", [EndpointId, _E]),
+            {Endpoints, Call}
+    end;
+build_endpoint(Number, {Endpoints, Call}) ->
+    Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
+               ,{<<"Route">>,  Number}
+               ,{<<"To-DID">>, Number}
+               ,{<<"To-Realm">>, kapps_call:account_realm(Call)}
+               ],
+
+    lager:info("adding number ~s endpoint", [Number]),
+    {[kz_json:from_list(Endpoint) | Endpoints], Call}.
+
+-spec build_endpoint_from_doc(kz_json:object(), build_acc()) -> build_acc().
+build_endpoint_from_doc(Endpoint, Acc) ->
+    case kz_doc:is_soft_deleted(Endpoint)
+        orelse kz_doc:is_deleted(Endpoint)
+    of
+        'true' ->
+            lager:info("endpoint ~s is deleted, skipping", [kz_doc:id(Endpoint)]),
+            Acc;
+        'false' ->
+            build_endpoint_from_doc(Endpoint, Acc, kz_doc:type(Endpoint))
+    end.
+
+-spec build_endpoint_from_doc(kz_json:object(), build_acc(), ne_binary()) -> build_acc().
+build_endpoint_from_doc(Endpoint, {Endpoints, Call}, <<"device">>) ->
+    Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
+    case kz_endpoint:build(Endpoint, Properties, Call) of
+        {'ok', Legs} -> {Endpoints ++ Legs, Call};
+        {'error', _E} ->
+            lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Endpoint), _E]),
+            {Endpoints, Call}
+    end;
+build_endpoint_from_doc(Endpoint, {Endpoints, Call}, <<"user">>) ->
+    Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
+    Legs = lists:foldr(fun(EndpointId, Acc) ->
+                               case kz_endpoint:build(EndpointId, Properties, Call) of
+                                   {'ok', Endpoint} -> Endpoint ++ Acc;
+                                   {'error', _E} -> Acc
+                               end
+                       end
+                      ,[]
+                      ,kz_attributes:owned_by(kz_doc:id(Endpoint), <<"device">>, Call)
+                      ),
+    {Endpoints ++ Legs, Call};
+build_endpoint_from_doc(_Endpoint, Acc, _Type) ->
+    lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(_Endpoint)]),
+    Acc.
 
 %%%===================================================================
 %%% Participant Actions
