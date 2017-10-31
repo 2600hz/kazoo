@@ -81,6 +81,9 @@
 -include_lib("amqp_util.hrl").
 -include("kapi_dialplan.hrl").
 
+-type doc() :: kz_json:object().
+-export_type([doc/0]).
+
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [ [<<"Conference-ID">>, <<"Account-ID">>] ]).
 -define(OPTIONAL_SEARCH_REQ_HEADERS, []).
@@ -310,8 +313,10 @@
                                      ]).
 
 %% Conference Set Volume Out
--define(PARTICIPANT_VOLUME_OUT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>
-                                        ,<<"Participant-ID">>, <<"Volume-Out-Level">>
+-define(PARTICIPANT_VOLUME_OUT_HEADERS, [<<"Application-Name">>
+                                        ,<<"Conference-ID">>
+                                        ,<<"Participant-ID">>
+                                        ,<<"Volume-Out-Level">>
                                         ]).
 -define(OPTIONAL_PARTICIPANT_VOLUME_OUT_HEADERS, []).
 -define(PARTICIPANT_VOLUME_OUT_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -1533,4 +1538,4 @@ publish_dial(ConferenceId, JObj) ->
     publish_dial(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_dial(ConferenceId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIAL_VALUES, fun dial/1),
-    amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
+    amqp_util:conference_publish(Payload, 'discovery', ConferenceId, [], ContentType).
