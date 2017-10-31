@@ -194,7 +194,7 @@ handle_search_req(JObj, Props) ->
 
 -spec handle_search_conference(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_search_conference(JObj, _Props) ->
-    Name = kz_json:get_value(<<"Conference-ID">>, JObj),
+    Name = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
     lager:info("received search request for conference name ~s", [Name]),
     case ets:match_object(?CONFERENCES_TBL, #conference{name=Name, _ = '_'}) of
         %% TODO: this ignores conferences on multiple nodes until big-conferences
@@ -258,6 +258,7 @@ handle_search_account(JObj, _Props) ->
             kapi_conference:publish_search_resp(kz_api:server_id(JObj), Resp)
     end.
 
+-spec conference_resp(conference()) -> {ne_binary(), kz_json:object()}.
 conference_resp(#conference{uuid=UUID
                            ,name=Name
                            ,start_time=StartTime
