@@ -255,7 +255,7 @@ handle_conference_action(Context, ConferenceId, <<"unlock">>) ->
     kapps_conference_command:unlock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
 handle_conference_action(Context, ConferenceId, <<"dial">>) ->
-    dial(Context, ConferenceId, cb_context:req_value(<<"data">>, Context));
+    dial(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
@@ -285,11 +285,11 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
                              ,{[], create_call(Context, ConferenceId)}
                              ,Endpoints
                              ),
-    kapps_conference:dial(ToDial
-                         ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
-                         ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data)
-                         ,ConferenceId
-                         ),
+    kapps_conference_command:dial(ToDial
+                                 ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
+                                 ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data)
+                                 ,ConferenceId
+                                 ),
     crossbar_util:response_202(<<"dialing endpoints">>, Context).
 
 -spec create_call(cb_context:context(), ne_binary()) -> kapps_call:call().
@@ -338,15 +338,15 @@ build_endpoint_from_doc(Endpoint, Acc) ->
     end.
 
 -spec build_endpoint_from_doc(kz_json:object(), build_acc(), ne_binary()) -> build_acc().
-build_endpoint_from_doc(Endpoint, {Endpoints, Call}, <<"device">>) ->
+build_endpoint_from_doc(Device, {Endpoints, Call}, <<"device">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
-    case kz_endpoint:build(Endpoint, Properties, Call) of
+    case kz_endpoint:build(Device, Properties, Call) of
         {'ok', Legs} -> {Endpoints ++ Legs, Call};
         {'error', _E} ->
             lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Endpoint), _E]),
             {Endpoints, Call}
     end;
-build_endpoint_from_doc(Endpoint, {Endpoints, Call}, <<"user">>) ->
+build_endpoint_from_doc(User, {Endpoints, Call}, <<"user">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     Legs = lists:foldr(fun(EndpointId, Acc) ->
                                case kz_endpoint:build(EndpointId, Properties, Call) of
@@ -354,10 +354,10 @@ build_endpoint_from_doc(Endpoint, {Endpoints, Call}, <<"user">>) ->
                                    {'error', _E} -> Acc
                                end
                        end
-                      ,[]
-                      ,kz_attributes:owned_by(kz_doc:id(Endpoint), <<"device">>, Call)
+                      ,Endpoints
+                      ,kz_attributes:owned_by(kz_doc:id(User), <<"device">>, Call)
                       ),
-    {Endpoints ++ Legs, Call};
+    {Legs, Call};
 build_endpoint_from_doc(_Endpoint, Acc, _Type) ->
     lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(_Endpoint)]),
     Acc.
