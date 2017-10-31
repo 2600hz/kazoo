@@ -285,12 +285,27 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
                              ,{[], create_call(Context, ConferenceId)}
                              ,Endpoints
                              ),
-    kapps_conference_command:dial(ToDial
-                                 ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
-                                 ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data)
-                                 ,ConferenceId
-                                 ),
-    crossbar_util:response_202(<<"dialing endpoints">>, Context).
+
+
+    case ToDial of
+        [] ->
+            cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
+                                           ,<<"minItems">>
+                                           ,kz_json:from_list([{<<"message">>, <<"endpoints failed to resolve to route-able destinations">>}
+                                                              ,{<<"target">>, 1}
+                                                              ])
+                                           ,Context
+                                           );
+        _ ->
+            {'ok', Conference} = kz_datamgr:open_cache_doc(cb_context:account_db(Context), ConferenceId),
+
+            kapps_conference_command:dial(ToDial
+                                         ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
+                                         ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))
+                                         ,ConferenceId
+                                         ),
+            crossbar_util:response_202(<<"dialing endpoints">>, Context)
+    end.
 
 -spec create_call(cb_context:context(), ne_binary()) -> kapps_call:call().
 create_call(Context, ConferenceId) ->
@@ -343,7 +358,7 @@ build_endpoint_from_doc(Device, {Endpoints, Call}, <<"device">>) ->
     case kz_endpoint:build(Device, Properties, Call) of
         {'ok', Legs} -> {Endpoints ++ Legs, Call};
         {'error', _E} ->
-            lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Endpoint), _E]),
+            lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Device), _E]),
             {Endpoints, Call}
     end;
 build_endpoint_from_doc(User, {Endpoints, Call}, <<"user">>) ->
