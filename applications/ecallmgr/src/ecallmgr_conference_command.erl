@@ -274,6 +274,6 @@ relationship(_) -> <<"clear">>.
 
 -spec caller_id(api_ne_binary(), api_ne_binary()) -> iodata().
 caller_id('undefined', 'undefined') -> "";
-caller_id('undefined', Name) -> [$",$", " ", Name];
-caller_id(Number, 'undefined') -> Number;
-caller_id(Number, Name) -> [Number, " ", $", Name, $"].
+caller_id('undefined', Name) -> [" ", $",$", " ", Name];
+caller_id(Number, 'undefined') -> [" ", Number];
+caller_id(Number, Name) -> [" ", Number, " ", $", Name, $"].
