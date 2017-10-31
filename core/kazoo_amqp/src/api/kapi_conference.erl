@@ -41,7 +41,7 @@
         ,config_resp/1, config_resp_v/1
         ]).
 -export([play_macro_req/1, play_macro_req_v/1]).
--export([callout/1, callout_v/1]).
+-export([dial/1, dial_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
@@ -75,7 +75,7 @@
 -export([publish_targeted_command/2, publish_targeted_command/3]).
 -export([publish_config_req/1, publish_config_req/2
         ,publish_config_resp/2, publish_config_resp/3
-        ,publish_callout/2, publish_callout/3
+        ,publish_dial/2, publish_dial/3
         ]).
 
 -include_lib("amqp_util.hrl").
@@ -320,24 +320,18 @@
                                        ]).
 -define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
--define(CALLOUT_HEADERS, [<<"Endpoints">>, <<"Conference-ID">>]).
--define(OPTIONAL_CALLOUT_HEADERS, [<<"Caller-ID-Name">>
-                                  ,<<"Caller-ID-Number">>
-                                  ,<<"Should-Mute">>
-                                  ,<<"Should-Deaf">>
-                                  ,<<"Should-Beep">>
-                                  ]).
--define(CALLOUT_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                        ,{<<"Event-Name">>, <<"command">>}
-                        ,{<<"Application-Name">>, <<"callout">>}
-                        ]).
--define(CALLOUT_TYPES, [{<<"Should-Mute">>, fun kz_term:is_boolean/1}
-                       ,{<<"Should-Deaf">>, fun kz_term:is_boolean/1}
-                       ,{<<"Should-Beep">>, fun kz_term:is_boolean/1}
-                       ,{<<"Caller-ID-Name">>, fun is_binary/1}
-                       ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                       ,{<<"Endpoints">>, fun kz_term:is_ne_list/1}
-                       ]).
+-define(DIAL_HEADERS, [<<"Endpoints">>, <<"Conference-ID">>]).
+-define(OPTIONAL_DIAL_HEADERS, [<<"Caller-ID-Name">>
+                               ,<<"Caller-ID-Number">>
+                               ]).
+-define(DIAL_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                     ,{<<"Event-Name">>, <<"command">>}
+                     ,{<<"Application-Name">>, <<"dial">>}
+                     ]).
+-define(DIAL_TYPES, [{<<"Caller-ID-Name">>, fun is_binary/1}
+                    ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                    ,{<<"Endpoints">>, fun kz_term:is_ne_list/1}
+                    ]).
 
 %% Conference Participants Event
 -define(PARTICIPANT_EVENT_HEADERS, [<<"Event">>
@@ -427,7 +421,7 @@
                         ,{<<"unmute_participant">>, ?UNMUTE_PARTICIPANT_VALUES, fun unmute_participant/1}
                         ,{<<"participant_volume_in">>, ?PARTICIPANT_VOLUME_IN_VALUES, fun participant_volume_in/1}
                         ,{<<"participant_volume_out">>, ?PARTICIPANT_VOLUME_OUT_VALUES, fun participant_volume_out/1}
-                        ,{<<"callout">>, ?CALLOUT_VALUES, fun callout/1}
+                        ,{<<"dial">>, ?DIAL_VALUES, fun dial/1}
                         ,{<<"tones">>, ?CONF_TONES_REQ_VALUES, fun tones/1}
                         ,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun say/1}
                         ,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun tts/1}
@@ -1011,18 +1005,18 @@ config_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONFIG_RESP_HEADERS, ?CONFIG_RESP_VALUES, ?CONFIG_RESP_TYPES);
 config_resp_v(JObj) -> config_resp_v(kz_json:to_proplist(JObj)).
 
--spec callout(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-callout(Prop) when is_list(Prop) ->
-    case callout_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?CALLOUT_HEADERS, ?OPTIONAL_CALLOUT_HEADERS);
-        'false' -> {'error', "Proplist failed validation for callout"}
+-spec dial(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+dial(Prop) when is_list(Prop) ->
+    case dial_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?DIAL_HEADERS, ?OPTIONAL_DIAL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for dial"}
     end;
-callout(JObj) -> callout(kz_json:to_proplist(JObj)).
+dial(JObj) -> dial(kz_json:to_proplist(JObj)).
 
--spec callout_v(api_terms()) -> boolean().
-callout_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?CALLOUT_HEADERS, ?CALLOUT_VALUES, ?CALLOUT_TYPES);
-callout_v(JObj) -> callout_v(kz_json:to_proplist(JObj)).
+-spec dial_v(api_terms()) -> boolean().
+dial_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?DIAL_HEADERS, ?DIAL_VALUES, ?DIAL_TYPES);
+dial_v(JObj) -> dial_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1533,10 +1527,10 @@ publish_config_resp(Queue, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_callout(ne_binary(), api_terms()) -> 'ok'.
--spec publish_callout(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_callout(ConferenceId, JObj) ->
-    publish_callout(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_callout(ConferenceId, Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CALLOUT_VALUES, fun callout/1),
+-spec publish_dial(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_dial(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_dial(ConferenceId, JObj) ->
+    publish_dial(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_dial(ConferenceId, Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIAL_VALUES, fun dial/1),
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
