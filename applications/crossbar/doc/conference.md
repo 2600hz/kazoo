@@ -82,6 +82,24 @@ Sometimes you want to dial out from a conference to an endpoint (versus waiting 
 }
 ```
 
+A full example:
+
+```shell
+curl -v -X PUT -H "X-Auth-Token: $AUTH_TOKEN" "http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}" -d'{"data":{"action":"dial","data":{"endpoints":["{DEVICE_ID}"]}}}'
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": "dialing endpoints",
+    "node": "{NODE}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.2.2"
+}
+```
 
 #### Perform an action on participants
 
