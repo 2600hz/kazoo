@@ -972,7 +972,6 @@ bind_q_to_tasks(Queue, Routing) ->
 bind_q_to_tasks(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TASKS, Options).
 
-
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
 bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
