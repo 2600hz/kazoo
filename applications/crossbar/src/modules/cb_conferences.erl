@@ -331,10 +331,19 @@ build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
             {Endpoints, Call}
     end;
 build_endpoint(Number, {Endpoints, Call}) ->
+    AccountRealm = kapps_call:account_realm(Call),
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  Number}
                ,{<<"To-DID">>, Number}
-               ,{<<"To-Realm">>, kapps_call:account_realm(Call)}
+               ,{<<"To-Realm">>, AccountRealm}
+               ,{<<"Custom-Channel-Vars">>
+                ,kz_json:from_list([{<<"Account-ID">>, kapps_call:account_id(Call)}
+                                   ,{<<"Authorizing-Type">>, <<"conference">>}
+                                   ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+                                   ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
+                                   ,{<<"Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
+                                   ])
+                }
                ],
 
     lager:info("adding number ~s endpoint", [Number]),
