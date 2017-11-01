@@ -451,12 +451,13 @@ build_originate_req(Contact, Context) ->
     CCVs = [{<<"Account-ID">>, AccountId}
            ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
            ,{<<"Authorizing-ID">>, kz_doc:id(JObj)}
-           ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, <<"clicktocall">>}
            ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ,{<<"From-URI">>, <<CalleeNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+           ,{<<"Inherit-Codec">>, 'false'}
            ,{<<"Retain-CID">>, 'true'}
+            | cb_modules_util:ccvs_from_context(Context)
            ],
 
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}

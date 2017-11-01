@@ -30,6 +30,7 @@
 -define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
 
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
+-define(ENDPOINTS_PREFIX, "{ENDPOINT_TYPE}/{ENDPOINT_ID}").
 
 -define(X_AUTH_TOKEN, "auth_token_header").
 -define(X_AUTH_TOKEN_NOT_REQUIRED, "auth_token_header_or_none").
@@ -501,6 +502,7 @@ path_name(Module) ->
         {'match', [<<"token_auth">>=Name]} -> Name;
         {'match', [<<"ubiquiti_auth">>=Name]} -> Name;
         {'match', [<<"user_auth">>=Name]} -> Name;
+        {'match', [<<"quickcall">>=Name]} -> <<?ACCOUNTS_PREFIX"/"?ENDPOINTS_PREFIX"/", Name/binary>>;
         {'match', [Name]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
         {'match', [Name, ?CURRENT_VERSION]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
         {'match', _M} -> 'undefined'
@@ -965,10 +967,26 @@ def_path_param(<<"{TASK_ID}">>=P) ->
      | base_path_param(P)
     ];
 
+def_path_param(<<"{ENDPOINT_ID}">>=P) ->
+    [{<<"minLength">>, 32}
+    ,{<<"maxLength">>, 32}
+    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+     | base_path_param(P)
+    ];
+def_path_param(<<"{ENDPOINT_TYPE}">>=P) ->
+    [{<<"enum">>, [<<"users">>, <<"devices">>]}
+     | base_path_param(P)
+    ];
+
 def_path_param(<<"{UUID}">>=P) ->
     [{<<"pattern">>, <<"^[a-f0-9-]+\$">>}
      | base_path_param(P)
     ];
+def_path_param(<<"{NUMBER}">> = P) ->
+    [{<<"pattern">>, <<"^\\+?[0-9]+">>}
+     | base_path_param(P)
+    ];
+
 def_path_param(_Param) ->
     io:format(standard_error, "No Swagger definition of path parameter '~s'.\n", [_Param]),
     halt(1).

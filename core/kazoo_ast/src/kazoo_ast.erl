@@ -10,7 +10,7 @@
 
 %% define the callback function for the various options
 
--type accumulator() :: kz_json:object() | tuple().
+-type accumulator() :: any().
 
 -type fun_return() :: accumulator() |
                       {'skip', accumulator()} |
@@ -21,6 +21,7 @@
                         fun((function(), arity(), accumulator()) -> fun_return()).
 -type clause_fun() :: fun(([erl_parse:abstract_expr()], [erl_parse:abstract_expr()], accumulator()) -> accumulator()).
 -type module_fun() :: fun((atom(), accumulator()) -> fun_return()).
+-type app_fun() :: fun((atom(), accumulator()) -> fun_return()).
 -type record_fun() :: fun((any(), accumulator()) -> fun_return()).
 
 -type option() :: {'expression', expression_fun()} |
@@ -28,6 +29,8 @@
                   {'clause', clause_fun()} |
                   {'module', module_fun()} |
                   {'after_module', module_fun()} |
+                  {'application', app_fun()} |
+                  {'after_application', app_fun()} |
                   {'record', record_fun()} |
                   {'accumulator', accumulator()}.
 -type options() :: [option()].
@@ -71,7 +74,13 @@ option_to_config({K, V}, Config) ->
     maps:put(K, V, Config).
 
 -spec process_app(atom(), config()) -> config().
-process_app(App, Config) ->
+-spec process_app_modules(atom(), config()) -> config().
+process_app(App, Config0) ->
+    Config2 = process_app_modules(App, callback_application(App, Config0)),
+    callback_after_application(App, Config2).
+
+process_app_modules(_App, {'skip', Config}) -> Config;
+process_app_modules(App, Config) ->
     try process_modules(kz_ast_util:app_modules(App), Config)
     catch 'throw':{'stop', Acc} -> Acc
     end.
@@ -313,6 +322,34 @@ callback_after_module(Module
             Config0#{'accumulator' => Acc}
     end;
 callback_after_module(_Module, Config) -> Config.
+
+callback_application(App, #{'application' := Fun
+                           ,'accumulator' := Acc0
+                           }=Config0
+                    ) ->
+    case Fun(App, Acc0) of
+        {'skip', Acc} ->
+            {'skip', Config0#{'accumulator' => Acc}};
+        {'stop', Acc} ->
+            throw({'stop', Acc});
+        Acc ->
+            Config0#{'accumulator' => Acc}
+    end;
+callback_application(_App, Config) -> Config.
+
+callback_after_application(App, #{'after_application' := Fun
+                                 ,'accumulator' := Acc0
+                                 }=Config0
+                          ) ->
+    case Fun(App, Acc0) of
+        {'skip', Acc} ->
+            {'skip', Config0#{'accumulator' => Acc}};
+        {'stop', Acc} ->
+            throw({'stop', Acc});
+        Acc ->
+            Config0#{'accumulator' => Acc}
+    end;
+callback_after_application(_App, Config) -> Config.
 
 callback_clause(Args, Guards, #{'accumulator' := Acc
                                 ,'clause' := ClauseFun

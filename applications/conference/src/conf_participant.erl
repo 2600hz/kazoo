@@ -264,7 +264,7 @@ handle_cast({'set_conference', Conference}, Participant=#participant{call=Call})
     ConferenceId = kapps_conference:id(Conference),
     CallId = kapps_call:call_id(Call),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
-    gen_listener:add_binding(self(), 'conference', [{ 'restrict_to', [{'event', {ConferenceId,CallId}}] }]),
+    gen_listener:add_binding(self(), 'conference', [{'restrict_to', [{'event', {ConferenceId,CallId}}] }]),
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};

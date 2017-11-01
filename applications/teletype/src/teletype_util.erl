@@ -118,6 +118,9 @@ maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
 -spec log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), ne_binary()) -> 'ok'.
 log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
+    Id = make_smtplog_id(AccountDb),
+    TemplateId = get('template_id'),
+    CallId = kz_util:get_callid(),
     Doc = kz_json:from_list(
             [{<<"rendered_templates">>, kz_json:from_list(RenderedTemplates)}
             ,{<<"subject">>, Subject}
@@ -128,12 +131,13 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
             ,{<<"account_id">>, AccountId}
             ,{<<"account_db">>, AccountDb}
             ,{<<"pvt_created">>, kz_time:now_s()}
-            ,{<<"template_id">>, get('template_id')}
+            ,{<<"template_id">>, TemplateId}
             ,{<<"template_account_id">>, get('template_account_id')}
+            ,{<<"payload_callid">>, CallId}
             ,{<<"macros">>, get('macros')}
-            ,{<<"_id">>, make_smtplog_id(AccountDb)}
+            ,{<<"_id">>, Id}
             ]),
-    lager:debug("attempting to save notify smtp log"),
+    lager:debug("attempting to save notify smtp log for ~s in ~s/~s", [TemplateId, AccountDb, Id]),
     _ = kazoo_modb:save_doc(AccountDb, Doc),
     'ok'.
 
@@ -210,6 +214,7 @@ relay_encoded_email([], _From, _Encoded) ->
     {'error', 'no_to_addresses'};
 relay_encoded_email(To, From, Encoded) ->
     Self = self(),
+    Timeout = kapps_config:get_pos_integer(<<"smtp_client">>, <<"send_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
 
     lager:debug("relaying from ~s to ~p", [From, To]),
     gen_smtp_client:send({From, To, Encoded}
@@ -238,7 +243,7 @@ relay_encoded_email(To, From, Encoded) ->
             lager:debug("failed to send email:"),
             log_email_send_error(Reason),
             {'error', Reason}
-    after 10 * ?MILLISECONDS_IN_SECOND ->
+    after Timeout ->
             lager:debug("timed out waiting for relay response"),
             {'error', 'timeout'}
     end.

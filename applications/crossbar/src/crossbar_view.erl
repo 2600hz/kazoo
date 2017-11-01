@@ -7,6 +7,7 @@
 %%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(crossbar_view).
+
 -export([load/2, load/3
         ,load_range/2, load_range/3
         ,load_modb/2, load_modb/3
@@ -24,18 +25,17 @@
 
         ,suffix_key_fun/1
 
-        ,init_chunk_stream/1, chunk_send_jsons/2, chunk_send_jsons/3
+        ,init_chunk_stream/1
+        ,chunk_send_jsons/2, chunk_send_jsons/3
 
         ,map_doc_fun/0
         ,map_value_fun/0
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(CB_SPECIFIC_VIEW_OPTIONS,
-        ['ascending', 'databases'
-        ,'descending', 'mapper'
+        ['ascending', 'databases', 'mapper'
 
          %% non-range query
         ,'end_keymap', 'keymap', 'start_keymap'
@@ -53,7 +53,7 @@
 
 -type time_range() :: {gregorian_seconds(), gregorian_seconds()}.
 
--type api_range_key() :: 'undefined' | kazoo_data:range_key().
+-type api_range_key() :: 'undefined' | ['undefined'] | kazoo_data:range_key().
 -type range_keys() :: {api_range_key(), api_range_key()}.
 
 -type keymap_fun() :: fun((cb_context:context()) -> api_range_key()) |
@@ -73,6 +73,7 @@
 -type chunked_mapper_fun() :: 'undefined' |
                               fun((cb_cowboy_payload(), kz_json:objects()) -> chunked_mapper_ret()) |
                               fun((cb_cowboy_payload(), kz_json:objects(), ne_binary()) -> chunked_mapper_ret()).
+-type chunk_resp_type() :: 'json' | 'csv'.
 
 -type mapper_fun() :: 'undefined' |
                       fun((kz_json:objects()) -> kz_json:objects()) |
@@ -90,7 +91,7 @@
 
                     %% for chunked query
                     {'chunked_mapper', chunked_mapper_fun()} |
-                    {'chunk_response_type', 'json' | 'csv'} |
+                    {'chunk_response_type', chunk_resp_type()} |
                     {'chunk_size', pos_integer()} |
                     {'cowboy_req', cowboy_req:req()} |
                     {'is_chunked', boolean()} |
@@ -105,7 +106,7 @@
                    ].
 
 -type load_params() :: #{chunked_mapper => chunked_mapper_fun()
-                        ,chunk_response_type => 'json' | 'csv'
+                        ,chunk_response_type => chunk_resp_type()
                         ,chunk_size => pos_integer()
                         ,context => cb_context:context()
                         ,cowboy_req => cowboy_req:req()
@@ -305,7 +306,7 @@ build_load_modb_params(Context, View, Options) ->
                               kazoo_data:view_options().
 build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter) ->
     DeleteKeys = ['startkey', 'endkey'
-                 ,'ascending', 'limit'
+                 ,'descending', 'limit'
                   | ?CB_SPECIFIC_VIEW_OPTIONS
                  ],
     DefaultOptions =
@@ -421,6 +422,7 @@ ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
 -spec suffix_key_fun(range_keymap()) -> range_keymap_fun().
 suffix_key_fun('nil') -> fun(_) -> 'undefined' end;
 suffix_key_fun('undefined') -> fun kz_term:identity/1;
+suffix_key_fun(['undefined']) -> fun kz_term:identity/1;
 suffix_key_fun(K) when is_binary(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_integer(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_list(K) -> fun(Ts) -> [Ts | K] end;
@@ -492,7 +494,7 @@ time_range(Context, Options, Key) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Checks whether or not start time is prior to end time. Returns a ranged
+%% Checks whether or not end time is prior to start time. Returns a ranged
 %% tuple `{start_time, end_time}` or `context` with validation error.
 %% @end
 %%--------------------------------------------------------------------
@@ -502,12 +504,12 @@ time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
     Path = <<Key/binary, "_from">>,
     case RangeTo - RangeFrom of
         N when N < 0 ->
-            Msg = kz_term:to_binary(io_lib:format("~s ~b is prior to ~s ~b", [Path, RangeFrom, <<Key/binary, "_to">>, RangeTo])),
+            Msg = kz_term:to_binary(io_lib:format("~s_to ~b is prior to ~s ~b", [Key, RangeTo, Path, RangeFrom])),
             JObj = kz_json:from_list([{<<"message">>, Msg}, {<<"cause">>, RangeFrom}]),
             lager:debug("~s", [Msg]),
             cb_context:add_validation_error(Path, <<"date_range">>, JObj, Context);
         N when N > MaxRange ->
-            Msg = kz_term:to_binary(io_lib:format("~s ~b is more than ~b seconds from ~s ~b", [<<Key/binary, "_to">>, RangeTo, MaxRange, Path, RangeFrom])),
+            Msg = kz_term:to_binary(io_lib:format("~s_to ~b is more than ~b seconds from ~s ~b", [Key, RangeTo, MaxRange, Path, RangeFrom])),
             JObj = kz_json:from_list([{<<"message">>, Msg}, {<<"cause">>, RangeTo}]),
             lager:debug("~s", [Msg]),
             cb_context:add_validation_error(Path, <<"date_range">>, JObj, Context);
@@ -524,8 +526,8 @@ map_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Encode the JObj and send it in chunked. Start chunk response if
-%% chunk response is not started yet.
+%% Encode the JObj and send it as a chunk. Start chunk response if is
+%% not started yet.
 %% @end
 %%--------------------------------------------------------------------
 -spec chunk_send_jsons(cb_cowboy_payload(), kz_json:objects()) ->
@@ -555,17 +557,19 @@ chunk_send_jsons({Req, _}=Payload, JObjs, StartedChunk) ->
             Payload
     end.
 
-%% private
+%% @private
 -spec do_encode_to_json(kz_json:objects()) -> binary().
 do_encode_to_json(JObjs) ->
     Encoded = kz_json:encode(JObjs),
+    %% remove first "[" and last "]" from json
     binary:part(Encoded, 1, size(Encoded) - 2).
 
+%% @public
 -spec init_chunk_stream(cb_cowboy_payload()) -> cb_cowboy_payload().
 init_chunk_stream({_, Context}=Payload) ->
-    init_chunk_stream(Payload, cb_context:fetch(Context, 'started_chunk')).
+    init_chunk_stream(Payload, cb_context:fetch(Context, 'chunk_response_type')).
 
--spec init_chunk_stream(cb_cowboy_payload(), 'json' | 'csv') -> cb_cowboy_payload().
+-spec init_chunk_stream(cb_cowboy_payload(), chunk_resp_type()) -> cb_cowboy_payload().
 init_chunk_stream({Req, Context}, 'json') ->
     Headers = cowboy_req:get('resp_headers', Req),
     {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
@@ -587,7 +591,9 @@ init_chunk_stream({Req, Context}, 'csv') ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load view results based on options.
+%% Load view results based on options. If the request is chunked
+%% finish the chunk if it's started and set is_chunked or return
+%% the cb_cowboy_payload() back to api_resource and api_util.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_view(load_params() | cb_context:context(), options()) -> cb_context:context() | cb_cowboy_payload().
@@ -600,7 +606,8 @@ load_view(#{is_chunked := 'true', chunk_response_type := 'csv', cowboy_req := Re
      ,started_chunk := StartedChunk
      } = get_results(LoadMap#{cowboy_req => Req}),
     case cb_context:resp_status(Context) of
-        'success' when StartedChunk ->
+        _ when StartedChunk ->
+            %% covers both success and failed result (in the middle of a chunked resp)
             {Req1, cb_context:store(Context, 'is_chunked', 'true')};
         _ -> {Req1, Context}
     end;
@@ -632,13 +639,29 @@ get_results(#{databases := Dbs}=LoadMap) ->
 %% Fold over databases and fetch result from each and count total result.
 %% If pagination is requested keeps track of last key.
 %% If `page_size` is not in the options, make unlimited get_results.
+%%
+%% Based on chunked, limited or unlimited query, get the correct
+%% Limit for this loop (if it's limited query) and do the query.
+%%
+%% We use limit (limit + 1) to get an extra object (if available) to
+%% get last object's key as the `next_start_key`. If the page size
+%% has been satisfied and the last key has been found, return the result,
+%% if the last key is not defined, query next DBs until DBs exhausted.
+%%
+%% If `chunked_size` is lower than sum of the `total_queried` and
+%% `current_db_length`, we set the chunk_size as the limit. In this
+%% case the db may return up to the limit size result, if the last_key
+%% is defined it means the db has more results to give, so we query
+%% the same db again, until the page size satisfied or no last_key is
+%% defined. In that case if pages size is not exhausted yet we query
+%% the next db.
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fold_query(ne_binaries(), load_params()) -> load_params().
 fold_query([], #{context := Context}=LoadMap) ->
     lager:debug("databases exhausted"),
     LoadMap#{context := cb_context:set_resp_status(Context, 'success')};
-%% query is limited by page_size
 fold_query([Db|RestDbs]=Dbs, #{view := View
                               ,view_options := ViewOpts
                               ,direction := Direction
@@ -671,9 +694,10 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             LoadMap#{context => crossbar_util:response_missing_view(Context)};
         {'error', 'not_found'} ->
-            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
+            lager:debug("either the db ~s or view ~s was not found, querying next db...", [Db, View]),
             fold_query(RestDbs, LoadMap);
         {'error', Error} ->
+            lager:debug("failed to query view ~s from db ~s: ~p", [View, Db, Error]),
             LoadMap#{context => crossbar_doc:handle_datamgr_errors(Error, View, Context)};
         {'ok', JObjs} ->
             %% catching crashes when applying users map functions (filter map and chunk map)
@@ -691,10 +715,10 @@ fold_query([Db|RestDbs]=Dbs, #{view := View
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Apply filter to result, find last key and if chunk is requested
+%% Apply filter to result, find last key and if it's chunked query
 %% apply chunked mapper function.
-%% Then check page_size, limit,  result length and chunk size to see
-%% we're done or shall continue.
+%% Then based on page_size, limit, result length and last key see
+%% we're done or shall we continue.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_query_result(load_params(), ne_binaries(), kz_json:objects(), api_pos_integer()) ->
@@ -731,6 +755,8 @@ handle_query_result(LoadMap, [Db|RestDbs]=Dbs, Results, Limit) ->
 -spec check_page_size_and_length(load_params(), non_neg_integer(), non_neg_integer() | 'undefined', last_key()) ->
                                         {'exhausted' | 'next_db' | 'same_db', load_params()}.
 %% page_size is exhausted when query is limited by page_size
+%% Condition: page_size = total_queried + current_db_results
+%%            and the last key has been found.
 check_page_size_and_length(#{context := Context
                             ,page_size := PageSize
                             ,total_queried := TotalQueried
@@ -742,11 +768,11 @@ check_page_size_and_length(#{context := Context
     lager:debug("page size exhausted: ~b", [PageSize]),
     {'exhausted', LoadMap#{total_queried => TotalQueried + Length
                           ,context => cb_context:set_resp_status(Context, 'success')
-                          ,start_key => LastKey
                           ,last_key => LastKey
                           }
     };
 %% query next chunk from same db when query is chunked
+%% Condition: the current last_key has been found and it's not equal to the previous lasy_key
 check_page_size_and_length(#{total_queried := TotalQueried, last_key := OldLastKey}=LoadMap, Length, _Limit, LastKey)
   when OldLastKey =/= LastKey,
        LastKey =/= 'undefined' ->
@@ -771,7 +797,7 @@ check_page_size_and_length(#{total_queried := TotalQueried}=LoadMap, Length, _Li
 %%--------------------------------------------------------------------
 -spec limit_with_last_key(boolean(), api_pos_integer(), pos_integer(), non_neg_integer()) ->
                                  api_pos_integer().
-%% non-chunked unlimited request
+%% non-chunked unlimited request => no limit
 limit_with_last_key('false', 'undefined', _, _) ->
     'undefined';
 %% non-chunked limited request
@@ -996,7 +1022,7 @@ finish_chunked_json_response(#{total_queried := TotalQueried
                               ,context := Context
                               }=LoadMap) ->
     %% Because chunk is already started closing envelope,
-    %% no matter what Context resp_status is success or not.
+    %% it doesn't matter Context resp_status is success or not.
     NextStartKey = maps:get(last_key, LoadMap, 'undefined'),
     StartKey = maps:get(start_key, LoadMap, 'undefined'),
     EnvJObj = add_paging(StartKey, TotalQueried, NextStartKey, cb_context:resp_envelope(Context)),

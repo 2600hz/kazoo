@@ -183,7 +183,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 `children` | Children metaflows | `object()` |   | `false`
-`data` | The data/arguments of the metaflow module | `object()` |   | `false`
+`data` | The data/arguments of the metaflow module | `object()` | `{}` | `false`
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true`
 
 ##### metaflows
@@ -616,92 +616,6 @@ curl -v -X POST \
 }
 ```
 
-#### Execute a quick call
+#### Quickcalls
 
-Ring user's devices; once answered, connect to `{PHONE_NUMBER}`
-
-In this scenario, the user's devices are considered the `callee` while the `{PHONE_NUMBER}` side is considered the caller (helpful to know when debugging a call!).
-
-Query string options:
-
-Key | Type | Description
---- | ---- | -----------
-`auto_answer` | `boolean()` | Tells the SIP phone to auto-answer the call, if supported
-`cid-name` | `string()` | Set the caller ID name (defaults to "Device QuickCall")
-`cid-number` | `string()` | Set the caller ID number (defaults to the `{PHONE_NUMBER}`)
-`ignore-early-media` | `boolean()` | Toggle whether to ignore [early media](https://freeswitch.org/confluence/display/FREESWITCH/Early+Media)
-`media` | `string('bypass', 'process')` | Toggle whether to go peer-to-peer([bypass](https://freeswitch.org/confluence/display/FREESWITCH/Bypass+Media+Overview) with the RTP
-`number_filter` | `boolean()`, `regex()` | If true, remove non-alphanumeric characters. If a regex, use the first capture group as the "number" to dial.
-`timeout` | `integer(3..)` | In seconds, how long to ring the device(s) (defaults to 30)
-
-> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}
-```
-
-```json
-{
-  "auth_token": "{AUTH_TOKEN}",
-  "data": {
-    "export_custom_channel_vars": [
-      "Account-ID",
-      "Retain-CID",
-      "Authorizing-ID",
-      "Authorizing-Type"
-    ],
-    "custom_channel_vars": {
-      "authorizing_id": "{USER_ID}",
-      "authorizing_type": "user",
-      "inherit_codec": "false",
-      "retain_cid": "true",
-      "account_id": "{ACCOUNT_ID}"
-    },
-    "continue_on_fail": false,
-    "dial_endpoint_method": "simultaneous",
-    "outbound_callee_id_number": "{DEVICE_CALLER_ID_NUMBER}",
-    "outbound_callee_id_name": "{DEVICE_CALLER_ID_NAME}",
-    "outbound_caller_id_number": "{E164_NUMBER}",
-    "outbound_caller_id_name": "Device QuickCall",
-    "media": "process",
-    "ignore_early_media": true,
-    "timeout": 30,
-    "endpoints": [
-      {
-        "outbound_call_id": "{CALL_ID}-quickcall",
-        "custom_channel_vars": {
-          "auto_answer": true,
-          "authorizing_id": "{USER_ID}",
-          "owner_id": "{USER_ID}",
-          "account_id": "{ACCOUNT_ID}",
-          "media_encryption_enforce_security": false,
-          "sip_invite_domain": "{ACCOUNT_REALM}"
-        },
-        "custom_sip_headers": {
-          "x_kazoo_aor": "sip:{DEVICE_SIP_USER}@{ACCOUNT_REALM}"
-        },
-        "presence_id": "{PRESENCE_ID}",
-        "codecs": [
-          "PCMU",
-          "PCMA"
-        ],
-        "endpoint_id": "{DEVICE_ID}",
-        "to_did": "{E164_NUMBER}",
-        "to_realm": "{ACCOUNT_REALM}",
-        "to_username": "{DEVICE_SIP_USER}",
-        "to_user": "{DEVICE_SIP_USER}",
-        "invite_format": "username"
-      }
-    ],
-    "application_data": {
-      "route": "{PHONE_NUMBER}"
-    },
-    "application_name": "transfer"
-  },
-  "status": "success",
-  "request_id": "{REQUEST_ID}",
-  "revision": "{REVISION}"
-}
-```
+See [the quickcall](./quickcall.md) docs for how to perform this action.

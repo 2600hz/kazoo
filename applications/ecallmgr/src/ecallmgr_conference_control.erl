@@ -30,8 +30,7 @@
                      }
                     ]).
 
--define(BINDINGS(Id), [{'conference', [{'restrict_to', [{'command', Id}
-                                                       ]}
+-define(BINDINGS(Id), [{'conference', [{'restrict_to', [{'command', Id}]}
                                       ,'federate'
                                       ]}
                       ]).
@@ -58,7 +57,9 @@
 %%--------------------------------------------------------------------
 -spec start_link(atom(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Node, ConferenceId, InstanceId) ->
-    lager:debug("starting conference ~s control instance ~s for node ~s in ~s", [ConferenceId, InstanceId, Node, node()]),
+    lager:debug("starting conference ~s control instance ~s for node ~s in ~s"
+               ,[ConferenceId, InstanceId, Node, node()]
+               ),
     gen_listener:start_link(?SERVER
                            ,[{'responders', ?RESPONDERS}
                             ,{'bindings', ?BINDINGS(ConferenceId)}

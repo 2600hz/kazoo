@@ -105,8 +105,7 @@ is_actionable_resp(Prop) when is_list(Prop) ->
         <<"sms">> -> 'true';
         <<"plan">> -> 'true';
         <<"application">> -> 'true';
-        <<"error">> ->
-            kz_term:is_true(props:get_value(<<"Defer-Response">>, Prop));
+        <<"error">> -> 'true';
         _ -> 'false'
     end;
 is_actionable_resp(JObj) ->

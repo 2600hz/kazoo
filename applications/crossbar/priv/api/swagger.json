@@ -8126,6 +8126,52 @@
             ],
             "type": "object"
         },
+        "kapi.conference.dial": {
+            "description": "AMQP API for conference.dial",
+            "properties": {
+                "Application-Name": {
+                    "enum": [
+                        "dial"
+                    ],
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Conference-ID": {
+                    "type": "string"
+                },
+                "Endpoints": {
+                    "items": {
+                        "$ref": "#/definitions/kapi.dialplan.bridge_endpoint",
+                        "type": "object"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "conference"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Application-Name",
+                "Conference-ID",
+                "Endpoints"
+            ],
+            "type": "object"
+        },
         "kapi.conference.discovery_req": {
             "description": "AMQP API for conference.discovery_req",
             "properties": {
@@ -8780,10 +8826,16 @@
                     "type": "string"
                 },
                 "Other-Participant": {
-                    "type": "string"
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
                 },
                 "Participant-ID": {
-                    "type": "string"
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
                 },
                 "Relationship": {
                     "enum": [
@@ -17941,7 +17993,13 @@
                 "From": {
                     "type": "string"
                 },
+                "From-Realm": {
+                    "type": "string"
+                },
                 "From-Tag": {
+                    "type": "string"
+                },
+                "From-User": {
                     "type": "string"
                 },
                 "Presence-ID": {
@@ -17967,7 +18025,13 @@
                 "To": {
                     "type": "string"
                 },
+                "To-Realm": {
+                    "type": "string"
+                },
                 "To-Tag": {
+                    "type": "string"
+                },
+                "To-User": {
                     "type": "string"
                 }
             },
@@ -21807,6 +21871,7 @@
                     "type": "object"
                 },
                 "data": {
+                    "default": {},
                     "description": "The data/arguments of the metaflow module",
                     "type": "object"
                 },
@@ -21819,283 +21884,6 @@
             },
             "required": [
                 "module"
-            ],
-            "type": "object"
-        },
-        "metaflow.audio_level": {
-            "description": "audio_level metaflow schema",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "mode": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "action"
-            ],
-            "type": "object"
-        },
-        "metaflow.break": {
-            "description": "break metaflow schema",
-            "properties": {},
-            "type": "object"
-        },
-        "metaflow.callflow": {
-            "description": "callflow metaflow schema",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.hangup": {
-            "description": "hangup metaflow schema",
-            "properties": {},
-            "type": "object"
-        },
-        "metaflow.hold": {
-            "description": "hold metaflow schema",
-            "properties": {
-                "moh_aleg": {
-                    "type": "string"
-                },
-                "moh_bleg": {
-                    "type": "string"
-                },
-                "unhold_key": {
-                    "default": "1",
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.hold_control": {
-            "description": "hold_control metaflow schema",
-            "properties": {
-                "action": {
-                    "default": "toggle",
-                    "enum": [
-                        "hold",
-                        "unhold",
-                        "toggle"
-                    ]
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.intercept": {
-            "description": "intercept metaflow schema",
-            "properties": {
-                "auto_answer": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "target_id": {
-                    "type": "string"
-                },
-                "target_type": {
-                    "enum": [
-                        "device",
-                        "user",
-                        "number"
-                    ]
-                },
-                "unbridged_only": {
-                    "default": true,
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "target_type",
-                "target_id"
-            ],
-            "type": "object"
-        },
-        "metaflow.move": {
-            "description": "move metaflow schema",
-            "properties": {
-                "auto_answer": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "dial_strategy": {
-                    "enum": [
-                        "single",
-                        "simultaneous"
-                    ],
-                    "type": "string"
-                },
-                "owner_id": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.play": {
-            "description": "play metaflow schema",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "leg": {
-                    "default": "both",
-                    "enum": [
-                        "both",
-                        "self",
-                        "peer"
-                    ]
-                }
-            },
-            "required": [
-                "id"
-            ],
-            "type": "object"
-        },
-        "metaflow.record_call": {
-            "description": "record_call metaflow schema",
-            "properties": {
-                "action": {
-                    "default": "toggle",
-                    "enum": [
-                        "start",
-                        "stop",
-                        "toggle"
-                    ]
-                },
-                "format": {
-                    "type": "string"
-                },
-                "media_name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "action"
-            ],
-            "type": "object"
-        },
-        "metaflow.resume": {
-            "description": "resume metaflow schema",
-            "properties": {},
-            "type": "object"
-        },
-        "metaflow.say": {
-            "description": "say metaflow schema",
-            "properties": {
-                "language": {
-                    "type": "string"
-                },
-                "method": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "text"
-            ],
-            "type": "object"
-        },
-        "metaflow.sound_touch": {
-            "description": "sound_touch metaflow schema",
-            "properties": {
-                "action": {
-                    "enum": [
-                        "start",
-                        "stop"
-                    ]
-                },
-                "adjust_in_octaves": {
-                    "type": "integer"
-                },
-                "adjust_in_semitones": {
-                    "type": "integer"
-                },
-                "hook_dtmf": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "pitch": {
-                    "type": "integer"
-                },
-                "rate": {
-                    "type": "integer"
-                },
-                "sending_leg": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "tempo": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "action"
-            ],
-            "type": "object"
-        },
-        "metaflow.transfer": {
-            "description": "transfer metaflow schema",
-            "properties": {
-                "Transfer-Type": {
-                    "default": "attended",
-                    "enum": [
-                        "attended",
-                        "blind"
-                    ]
-                },
-                "captures": {
-                    "type": "string"
-                },
-                "target": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.tts": {
-            "description": "tts metaflow schema",
-            "properties": {
-                "engine": {
-                    "default": "flite",
-                    "type": "string"
-                },
-                "language": {
-                    "type": "string"
-                },
-                "leg": {
-                    "default": "self",
-                    "enum": [
-                        "self",
-                        "peer"
-                    ]
-                },
-                "terminators": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                },
-                "voice": {
-                    "default": "female",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "text"
             ],
             "type": "object"
         },
@@ -22385,6 +22173,45 @@
                     "type": "string"
                 }
             },
+            "type": "object"
+        },
+        "metaflows.relate": {
+            "description": "Relate two participants to each other in a conference",
+            "properties": {
+                "conference_id": {
+                    "description": "The ID of the conference",
+                    "type": "string"
+                },
+                "other_participant": {
+                    "description": "The other participant ID to relate",
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
+                },
+                "participant_id": {
+                    "description": "The participant ID to relate",
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
+                },
+                "relationship": {
+                    "default": "clear",
+                    "description": "The relationship to establish between the two participants",
+                    "enum": [
+                        "deaf",
+                        "clear",
+                        "mute"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "participant_id",
+                "other_participant",
+                "conference_id"
+            ],
             "type": "object"
         },
         "metaflows.resume": {
@@ -25343,6 +25170,39 @@
                     "default": 5000,
                     "description": "call_command message timeout",
                     "type": "integer"
+                },
+                "reserved_ccv_keys": {
+                    "default": [
+                        "Account-ID",
+                        "Account-Name",
+                        "Account-Realm",
+                        "Authorizing-ID",
+                        "Authorizing-Type",
+                        "Auto-Answer",
+                        "Call-Forward",
+                        "Call-Waiting-Disabled",
+                        "Confirm-Cancel-Timeout",
+                        "Confirm-File",
+                        "Confirm-Key",
+                        "Fax-Enabled",
+                        "Loopback-Bowout",
+                        "Media-Encryption-Enforce-Security",
+                        "Media-Webrtc",
+                        "Owner-ID",
+                        "Presence-ID",
+                        "RTCP-MUX",
+                        "Realm",
+                        "Require-Ignore-Early-Media",
+                        "Retain-CID",
+                        "SIP-Invite-Domain",
+                        "Simplify-Loopback",
+                        "Username"
+                    ],
+                    "description": "call_command reserved_ccv_keys",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 }
             },
             "type": "object"
@@ -29468,6 +29328,12 @@
                     "description": "smtp_client retries",
                     "type": "integer"
                 },
+                "send_timeout_ms": {
+                    "default": 10000,
+                    "description": "Timeout in milliseconds waiting for response from SMTP server",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "tls": {
                     "description": "smtp_client tls",
                     "type": "string"
@@ -31602,6 +31468,25 @@
             "required": true,
             "type": "string"
         },
+        "ENDPOINT_ID": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "ENDPOINT_ID",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
+        "ENDPOINT_TYPE": {
+            "enum": [
+                "users",
+                "devices"
+            ],
+            "in": "path",
+            "name": "ENDPOINT_TYPE",
+            "required": true,
+            "type": "string"
+        },
         "EXTENSION": {
             "in": "path",
             "name": "EXTENSION",
@@ -31773,6 +31658,13 @@
             "minLength": 32,
             "name": "NOTIFICATION_ID",
             "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
+        "NUMBER": {
+            "in": "path",
+            "name": "NUMBER",
+            "pattern": "^\\+?[0-9]+",
             "required": true,
             "type": "string"
         },
@@ -34625,30 +34517,6 @@
                     },
                     {
                         "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/DEVICE_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{PHONE_NUMBER}": {
-            "get": {
-                "description": "Execute quickcall to {NUMBER}",
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PHONE_NUMBER"
                     },
                     {
                         "$ref": "#/parameters/DEVICE_ID"
@@ -41200,29 +41068,6 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/USER_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/PHONE_NUMBER"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard": {
             "get": {
                 "parameters": [
@@ -42171,6 +42016,56 @@
                     },
                     {
                         "$ref": "#/parameters/WHITELABEL_DOMAIN"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/{ENDPOINT_TYPE}/{ENDPOINT_ID}/quickcall/{NUMBER}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/NUMBER"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_TYPE"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/NUMBER"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_TYPE"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

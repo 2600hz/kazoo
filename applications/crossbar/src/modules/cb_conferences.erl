@@ -40,6 +40,7 @@
 -define(DEAF, <<"deaf">>).
 -define(UNDEAF, <<"undeaf">>).
 -define(KICK, <<"kick">>).
+-define(RELATE, <<"relate">>).
 
 -define(PUT_ACTION, <<"action">>).
 
@@ -253,9 +254,137 @@ handle_conference_action(Context, ConferenceId, <<"lock">>) ->
 handle_conference_action(Context, ConferenceId, <<"unlock">>) ->
     kapps_conference_command:unlock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
+handle_conference_action(Context, ConferenceId, <<"dial">>) ->
+    dial(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
+
+-spec dial(cb_context:context(), path_token(), api_object()) -> cb_context:context().
+dial(Context, _ConferenceId, 'undefined') ->
+    cb_context:add_validation_error(<<"data">>
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"action 'dial' requires a data object">>}])
+                                   ,Context
+                                   );
+dial(Context, ConferenceId, Data) ->
+    dial_endpoints(Context, ConferenceId, Data, kz_json:get_list_value(<<"endpoints">>, Data, [])).
+
+-spec dial_endpoints(cb_context:context(), path_token(), kz_json:object(), ne_binaries()) ->
+                            cb_context:context().
+dial_endpoints(Context, _ConferenceId, _Data, []) ->
+    cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
+                                   ,<<"minItems">>
+                                   ,kz_json:from_list([{<<"message">>, <<"endpoints must have at least one specified">>}
+                                                      ,{<<"target">>, 1}
+                                                      ])
+                                   ,Context
+                                   );
+dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
+    {ToDial, _} = lists:foldl(fun build_endpoint/2
+                             ,{[], create_call(Context, ConferenceId)}
+                             ,Endpoints
+                             ),
+
+
+    case ToDial of
+        [] ->
+            cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
+                                           ,<<"minItems">>
+                                           ,kz_json:from_list([{<<"message">>, <<"endpoints failed to resolve to route-able destinations">>}
+                                                              ,{<<"target">>, 1}
+                                                              ])
+                                           ,Context
+                                           );
+        _ ->
+            {'ok', Conference} = kz_datamgr:open_cache_doc(cb_context:account_db(Context), ConferenceId),
+
+            kapps_conference_command:dial(ToDial
+                                         ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
+                                         ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))
+                                         ,ConferenceId
+                                         ),
+            crossbar_util:response_202(<<"dialing endpoints">>, Context)
+    end.
+
+-spec create_call(cb_context:context(), ne_binary()) -> kapps_call:call().
+create_call(Context, ConferenceId) ->
+    Routines =
+        [{F, V}
+         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+                      ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
+                      ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
+                      ],
+            'undefined' =/= V
+        ],
+    kapps_call:exec(Routines, kapps_call:new()).
+
+-type build_acc() :: {kz_json:objects(), kapps_call:call()}.
+-spec build_endpoint(ne_binary(), build_acc()) -> build_acc().
+build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
+    case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), EndpointId) of
+        {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call});
+        {'error', _E} ->
+            lager:info("failed to build endpoint ~s: ~p", [EndpointId, _E]),
+            {Endpoints, Call}
+    end;
+build_endpoint(Number, {Endpoints, Call}) ->
+    AccountRealm = kapps_call:account_realm(Call),
+    Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
+               ,{<<"Route">>,  Number}
+               ,{<<"To-DID">>, Number}
+               ,{<<"To-Realm">>, AccountRealm}
+               ,{<<"Custom-Channel-Vars">>
+                ,kz_json:from_list([{<<"Account-ID">>, kapps_call:account_id(Call)}
+                                   ,{<<"Authorizing-Type">>, <<"conference">>}
+                                   ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+                                   ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
+                                   ,{<<"Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
+                                   ])
+                }
+               ],
+
+    lager:info("adding number ~s endpoint", [Number]),
+    {[kz_json:from_list(Endpoint) | Endpoints], Call}.
+
+-spec build_endpoint_from_doc(kz_json:object(), build_acc()) -> build_acc().
+build_endpoint_from_doc(Endpoint, Acc) ->
+    case kz_doc:is_soft_deleted(Endpoint)
+        orelse kz_doc:is_deleted(Endpoint)
+    of
+        'true' ->
+            lager:info("endpoint ~s is deleted, skipping", [kz_doc:id(Endpoint)]),
+            Acc;
+        'false' ->
+            build_endpoint_from_doc(Endpoint, Acc, kz_doc:type(Endpoint))
+    end.
+
+-spec build_endpoint_from_doc(kz_json:object(), build_acc(), ne_binary()) -> build_acc().
+build_endpoint_from_doc(Device, {Endpoints, Call}, <<"device">>) ->
+    Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
+    case kz_endpoint:build(Device, Properties, Call) of
+        {'ok', Legs} -> {Endpoints ++ Legs, Call};
+        {'error', _E} ->
+            lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Device), _E]),
+            {Endpoints, Call}
+    end;
+build_endpoint_from_doc(User, {Endpoints, Call}, <<"user">>) ->
+    Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
+    Legs = lists:foldr(fun(EndpointId, Acc) ->
+                               case kz_endpoint:build(EndpointId, Properties, Call) of
+                                   {'ok', Endpoint} -> Endpoint ++ Acc;
+                                   {'error', _E} -> Acc
+                               end
+                       end
+                      ,Endpoints
+                      ,kz_attributes:owned_by(kz_doc:id(User), <<"device">>, Call)
+                      ),
+    {Legs, Call};
+build_endpoint_from_doc(_Endpoint, Acc, _Type) ->
+    lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(_Endpoint)]),
+    Acc.
 
 %%%===================================================================
 %%% Participant Actions
@@ -282,25 +411,86 @@ handle_participants_action(Context, ConferenceId, Action=?UNDEAF) ->
                                              andalso kz_json:is_false(<<"Hear">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?KICK) ->
-    handle_participants_action(Context, ConferenceId, Action, fun(_) -> 'true' end);
+    handle_participants_action(Context, ConferenceId, Action, fun kz_term:always_true/1);
+handle_participants_action(Context, ConferenceId, ?RELATE) ->
+    OnSuccess = fun(C) -> handle_participants_relate(C, ConferenceId) end,
+    RelateData = cb_context:req_value(Context, <<"data">>, kz_json:new()),
+    WithConference = kz_json:set_value(<<"conference_id">>, ConferenceId, RelateData),
+
+    cb_context:validate_request_data(<<"metaflows.relate">>
+                                    ,cb_context:set_req_data(Context, WithConference)
+                                    ,OnSuccess
+                                    );
 handle_participants_action(Context, _ConferenceId, _Action) ->
     lager:error("unhandled conference id ~p participants action: ~p", [_ConferenceId, _Action]),
     cb_context:add_system_error('faulty_request', Context).
 
 %% action applicable to conference participants selected by selector function
--spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary(), function()) -> cb_context:context().
+-type filter_fun() :: fun((kz_json:object()) -> boolean()).
+-spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary(), filter_fun()) ->
+                                        cb_context:context().
 handle_participants_action(Context, ConferenceId, Action, Selector) ->
     ConfData = request_conference_details(ConferenceId),
     Participants = extract_participants(ConfData),
     Conf = conference(ConferenceId),
     _ = [perform_participant_action(Conf, Action, kz_json:get_value(<<"Participant-ID">>, P))
-         || P <- Participants, filter_participant(P, Selector)
+         || P <- Participants,
+            filter_participant(P, Selector)
         ],
     Context.
 
+-spec filter_participant(kz_json:object(), filter_fun()) -> boolean().
 filter_participant(JObj, Fun) ->
-    ConfVars = kz_json:get_value(<<"Conference-Channel-Vars">>, JObj, kz_json:new()),
+    ConfVars = kz_json:get_json_value(<<"Conference-Channel-Vars">>, JObj, kz_json:new()),
     Fun(ConfVars).
+
+-spec handle_participants_relate(cb_context:context(), path_token()) ->
+                                        cb_context:context().
+handle_participants_relate(Context, ConferenceId) ->
+    ConfData = request_conference_details(ConferenceId),
+    Participants = extract_participants(ConfData),
+
+    ParticipantId = kz_term:to_integer(cb_context:req_value(Context, <<"participant_id">>)),
+    OtherParticipantId = kz_term:to_integer(cb_context:req_value(Context, <<"other_participant">>)),
+
+    case find_participants(Participants, ParticipantId, OtherParticipantId) of
+        [] ->
+            lists:foldl(fun participant_not_found/2
+                       ,Context
+                       ,[ParticipantId, OtherParticipantId]
+                       );
+        [ParticipantId] ->
+            participant_not_found(OtherParticipantId, Context);
+        [OtherParticipantId] ->
+            participant_not_found(ParticipantId, Context);
+        [_, _] ->
+            relate(Context, ConferenceId, ParticipantId, OtherParticipantId)
+    end.
+
+-spec relate(cb_context:context(), path_token(), pos_integer(), pos_integer()) ->
+                    cb_context:context().
+relate(Context, ConferenceId, ParticipantId, OtherParticipantId) ->
+    Conference = conference(ConferenceId),
+    Relationship = cb_context:req_value(Context, <<"relationship">>, <<"clear">>),
+
+    kapps_conference_command:relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference),
+    lager:info("relating ~p to ~p with ~s in conference ~s"
+              ,[ParticipantId, OtherParticipantId, Relationship, ConferenceId]
+              ),
+    crossbar_util:response_202(<<"relating participants">>, Context).
+
+-spec find_participants(kz_json:objects(), pos_integer(), pos_integer()) ->
+                               [pos_integer()].
+find_participants(Participants, ParticipantId, OtherParticipantId) ->
+    [PID || P <- Participants,
+            PID <- [kz_json:get_integer_value(<<"Participant-ID">>, P)],
+            ParticipantId =:= PID
+                orelse OtherParticipantId =:= PID
+    ].
+
+-spec participant_not_found(pos_integer(), cb_context:context()) -> cb_context:context().
+participant_not_found(ParticipantId, Context) ->
+    cb_context:add_validation_error(ParticipantId, 404, <<"participant not found">>, Context).
 
 -spec perform_participant_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
 perform_participant_action(Conference, ?MUTE, ParticipantId) ->

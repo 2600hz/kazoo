@@ -357,12 +357,12 @@ get_ne_binary(Category, Key, Default, Node) ->
         'false' -> kz_term:to_binary(Value)
     end.
 
--spec get_ne_binaries(config_category(), config_key()) -> ne_binaries().
+-spec get_ne_binaries(config_category(), config_key()) -> api_ne_binaries().
 -spec get_ne_binaries(config_category(), config_key(), Default) -> ne_binaries() | Default.
 -spec get_ne_binaries(config_category(), config_key(), Default, ne_binary()) -> ne_binaries() | Default.
 
 get_ne_binaries(Category, Key) ->
-    get_ne_binaries(Category, Key, undefined).
+    get_ne_binaries(Category, Key, 'undefined').
 get_ne_binaries(Category, Key, Default) ->
     get_ne_binaries(Category, Key, Default, kz_term:to_binary(node())).
 get_ne_binaries(Category, Key, Default, Node) ->

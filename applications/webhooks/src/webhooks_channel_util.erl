@@ -74,27 +74,28 @@ base_hook_event(JObj, AccountId, Acc) ->
     WasGlobal = kz_term:is_true(ccv(JObj, <<"Global-Resource">>)),
 
     kz_json:from_list(
-      [{<<"call_direction">>, kz_json:get_value(<<"Call-Direction">>, JObj)}
-      ,{<<"timestamp">>, kz_call_event:timestamp(JObj)}
-      ,{<<"account_id">>, ccv(JObj, <<"Account-ID">>, AccountId)}
-      ,{<<"request">>, kz_json:get_value(<<"Request">>, JObj)}
-      ,{<<"to">>, kz_json:get_value(<<"To">>, JObj)}
-      ,{<<"from">>, kz_json:get_value(<<"From">>, JObj)}
-      ,{<<"inception">>, kz_json:get_value(<<"Inception">>, JObj)}
-      ,{<<"call_id">>, kz_call_event:call_id(JObj)}
-      ,{<<"other_leg_call_id">>, kz_call_event:other_leg_call_id(JObj)}
-      ,{<<"caller_id_name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
-      ,{<<"caller_id_number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
-      ,{<<"callee_id_name">>, kz_json:get_value(<<"Callee-ID-Name">>, JObj)}
-      ,{<<"callee_id_number">>, kz_json:get_value(<<"Callee-ID-Number">>, JObj)}
-      ,{<<"owner_id">>, kz_call_event:owner_id(JObj)}
-      ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+      [{<<"account_id">>, ccv(JObj, <<"Account-ID">>, AccountId)}
       ,{<<"authorizing_id">>, kz_call_event:authorizing_id(JObj)}
       ,{<<"authorizing_type">>, kz_call_event:authorizing_type(JObj)}
-      ,{<<"local_resource_used">>, (not WasGlobal)}
-      ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
-      ,{<<"emergency_resource_used">>, kz_term:is_true(ccv(JObj, <<"Emergency-Resource">>))}
+      ,{<<"call_direction">>, kz_json:get_value(<<"Call-Direction">>, JObj)}
       ,{<<"call_forwarded">>, kz_call_event:is_call_forwarded(JObj)}
+      ,{<<"call_id">>, kz_call_event:call_id(JObj)}
+      ,{<<"callee_id_name">>, kz_json:get_value(<<"Callee-ID-Name">>, JObj)}
+      ,{<<"callee_id_number">>, kz_json:get_value(<<"Callee-ID-Number">>, JObj)}
+      ,{<<"caller_id_name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
+      ,{<<"caller_id_number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
+      ,{<<"custom_channel_vars">>, non_reserved_ccvs(JObj)}
+      ,{<<"emergency_resource_used">>, kz_term:is_true(ccv(JObj, <<"Emergency-Resource">>))}
+      ,{<<"from">>, kz_json:get_value(<<"From">>, JObj)}
+      ,{<<"inception">>, kz_json:get_value(<<"Inception">>, JObj)}
+      ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
+      ,{<<"local_resource_used">>, (not WasGlobal)}
+      ,{<<"other_leg_call_id">>, kz_call_event:other_leg_call_id(JObj)}
+      ,{<<"owner_id">>, kz_call_event:owner_id(JObj)}
+      ,{<<"request">>, kz_json:get_value(<<"Request">>, JObj)}
+      ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+      ,{<<"timestamp">>, kz_call_event:timestamp(JObj)}
+      ,{<<"to">>, kz_json:get_value(<<"To">>, JObj)}
        | Acc
       ]).
 
@@ -110,3 +111,13 @@ ccv(JObj, Key) ->
     ccv(JObj, Key, 'undefined').
 ccv(JObj, Key, Default) ->
     kz_call_event:custom_channel_var(JObj, Key, Default).
+
+-spec non_reserved_ccvs(kz_call_event:doc()) -> api_object().
+-spec non_reserved_ccvs(kz_json:object(), api_ne_binaries()) -> api_object().
+non_reserved_ccvs(JObj) ->
+    CCVs = kz_call_event:custom_channel_vars(JObj, kz_json:new()),
+    non_reserved_ccvs(CCVs, kapps_config:get_ne_binaries(<<"call_command">>, <<"reserved_ccv_keys">>)).
+
+non_reserved_ccvs(_CCVs, 'undefined') -> 'undefined';
+non_reserved_ccvs(CCVs, Keys) ->
+    kz_json:filter(fun({K, _}) -> not lists:member(K, Keys) end, CCVs).

@@ -32,6 +32,39 @@
             "default": 5000,
             "description": "call_command message timeout",
             "type": "integer"
+        },
+        "reserved_ccv_keys": {
+            "default": [
+                "Account-ID",
+                "Account-Name",
+                "Account-Realm",
+                "Authorizing-ID",
+                "Authorizing-Type",
+                "Auto-Answer",
+                "Call-Forward",
+                "Call-Waiting-Disabled",
+                "Confirm-Cancel-Timeout",
+                "Confirm-File",
+                "Confirm-Key",
+                "Fax-Enabled",
+                "Loopback-Bowout",
+                "Media-Encryption-Enforce-Security",
+                "Media-Webrtc",
+                "Owner-ID",
+                "Presence-ID",
+                "RTCP-MUX",
+                "Realm",
+                "Require-Ignore-Early-Media",
+                "Retain-CID",
+                "SIP-Invite-Domain",
+                "Simplify-Loopback",
+                "Username"
+            ],
+            "description": "call_command reserved_ccv_keys",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
         }
     },
     "type": "object"

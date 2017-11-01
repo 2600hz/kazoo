@@ -12,6 +12,7 @@
         ,update_mwi/2
         ,get_devices_owned_by/2
         ,maybe_originate_quickcall/1
+        ,ccvs_from_context/1
 
         ,attachment_name/2
         ,parse_media_type/1
@@ -104,6 +105,7 @@ maybe_originate_quickcall(Context) ->
     Call = create_call_from_context(Context),
     case get_endpoints(Call, Context) of
         [] ->
+            lager:info("no endpoints found"),
             cb_context:add_system_error('unspecified_fault', Context);
         Endpoints ->
             originate_quickcall(Endpoints, Call, Context)
@@ -112,14 +114,13 @@ maybe_originate_quickcall(Context) ->
 -spec create_call_from_context(cb_context:context()) -> kapps_call:call().
 create_call_from_context(Context) ->
     Routines =
-        [{F, V} ||
-            {F, V} <-
-                [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
-                ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
-                ,{fun kapps_call:set_resource_type/2, <<"audio">>}
-                ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
-                 | request_specific_extraction_funs(Context)
-                ],
+        [{F, V}
+         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+                      ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_binary_value(<<"owner_id">>, cb_context:doc(Context))}
+                       | request_specific_extraction_funs(Context)
+                      ],
             'undefined' =/= V
         ],
     kapps_call:exec(Routines, kapps_call:new()).
@@ -212,6 +213,44 @@ aleg_cid(Number, Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
+-spec ccvs_from_context(cb_context:context()) -> kz_proplist().
+ccvs_from_context(Context) ->
+    ReqData = cb_context:req_data(Context),
+    QueryString = cb_context:query_string(Context),
+    ccvs_from_request(ReqData, QueryString).
+
+-spec ccvs_from_request(api_object(), api_object()) -> kz_proplist().
+ccvs_from_request('undefined', 'undefined') -> [];
+ccvs_from_request('undefined', QueryString) ->
+    ccvs_from_request(QueryString);
+ccvs_from_request(ReqData, 'undefined') ->
+    ccvs_from_request(kz_json:get_json_value(<<"custom_channel_vars">>, ReqData));
+ccvs_from_request(ReqData, QueryString) ->
+    CCVs = kz_json:get_json_value(<<"custom_channel_vars">>, ReqData, kz_json:new()),
+    ccvs_from_request(kz_json:merge(CCVs, QueryString)).
+
+-spec ccvs_from_request(kz_json:object()) -> kz_proplist().
+ccvs_from_request(CCVs) ->
+    lager:debug("extracting CCVs from ~p", [CCVs]),
+    {ReqCCVs, _} =
+        kz_json:foldl(fun ccv_from_request/3
+                     ,{[], crossbar_config:reserved_ccv_keys()}
+                     ,CCVs
+                     ),
+    ReqCCVs.
+
+ccv_from_request(Key, Value, {Acc, Keys}) ->
+    case is_private_ccv(Key, Keys) of
+        'true' -> {Acc, Keys};
+        'false' ->
+            lager:debug("adding ccv ~s:~p", [Key, Value]),
+            {[{Key, Value} | Acc], Keys}
+    end.
+
+-spec is_private_ccv(ne_binary(), ne_binaries()) -> boolean().
+is_private_ccv(Key, Keys) ->
+    lists:member(Key, Keys).
+
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
@@ -221,6 +260,7 @@ originate_quickcall(Endpoints, Call, Context) ->
            ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+            | ccvs_from_context(Context)
            ],
     MsgId = case kz_term:is_empty(cb_context:req_id(Context)) of
                 'true' -> kz_binary:rand_hex(16);
@@ -236,13 +276,15 @@ originate_quickcall(Endpoints, Call, Context) ->
     {DefaultCIDNumber, DefaultCIDName} = kz_attributes:caller_id(CIDType, Call),
     lager:debug("quickcall default cid ~s : ~s : ~s", [CIDType, DefaultCIDNumber, DefaultCIDName]),
 
+    CallTimeoutS = get_timeout(Context),
+
     Request =
         kz_json:from_list(
           [{<<"Application-Name">>, <<"transfer">>}
           ,{<<"Application-Data">>, get_application_data(Context)}
           ,{<<"Msg-ID">>, MsgId}
           ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
-          ,{<<"Timeout">>, get_timeout(Context)}
+          ,{<<"Timeout">>, CallTimeoutS}
           ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
           ,{<<"Media">>, get_media(Context)}
           ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
@@ -252,8 +294,7 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
           ,{<<"Continue-On-Fail">>, 'false'}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-          ,{<<"Export-Custom-Channel-Vars">>, [
-                                               <<"Account-ID">>
+          ,{<<"Export-Custom-Channel-Vars">>, [ <<"Account-ID">>
                                               , <<"Retain-CID">>
                                               , <<"Authorizing-ID">>
                                               , <<"Authorizing-Type">>
@@ -262,9 +303,62 @@ originate_quickcall(Endpoints, Call, Context) ->
                                               ]}
            | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
           ]),
+
+    originate(Request, Context, cb_context:req_verb(Context), CallTimeoutS).
+
+originate(Request, Context, ?HTTP_GET, _CallTimeoutS) ->
     kz_amqp_worker:cast(Request, fun kapi_resource:publish_originate_req/1),
     JObj = kz_json:normalize(kz_api:remove_defaults(Request)),
-    crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
+    crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request));
+originate(Request, Context, ?HTTP_POST, CallTimeoutS) ->
+    case kz_amqp_worker:call_collect(Request
+                                    ,fun kapi_resource:publish_originate_req/1
+                                    ,fun([Resp | _Resps]) ->
+                                             kapi_resource:originate_resp_v(Resp)
+                                                 orelse kz_api:error_resp_v(Resp)
+                                     end
+                                    ,CallTimeoutS * ?MILLISECONDS_IN_SECOND
+                                    )
+    of
+        {'ok', JObjs} ->
+            handle_originate_resp(Request, Context, JObjs);
+        {'error', E} ->
+            lager:info("error starting quickcall: ~p", [E]),
+            cb_context:add_system_error(E, Context)
+    end.
+
+-spec handle_originate_resp(kz_json:object(), cb_context:context(), kz_json:objects()) ->
+                                   cb_context:context().
+handle_originate_resp(Request, Context, JObjs) ->
+    case lists:filter(fun kapi_resource:originate_resp_v/1, JObjs) of
+        [Resp] -> send_originate_resp(Request, Context, Resp);
+        [] -> send_error_resp(Context, lists:filter(fun kz_api:error_resp_v/1, JObjs))
+    end.
+
+-spec send_originate_resp(kz_json:object(), cb_context:context(), kz_json:object()) ->
+                                 cb_context:context().
+send_originate_resp(Request, Context, Response) ->
+    RequestJObj = kz_json:normalize(kz_api:remove_defaults(Request)),
+    ResponseJObj = kz_json:normalize(kz_api:remove_defaults(Response)),
+    APIResponse = kz_json:merge(RequestJObj, ResponseJObj),
+    crossbar_util:response_202(<<"quickcall initiated">>, APIResponse, cb_context:set_resp_data(Context, APIResponse)).
+
+-spec send_error_resp(cb_context:context(), kz_json:objects()) ->
+                             cb_context:context().
+send_error_resp(Context, []) ->
+    crossbar_util:response('error'
+                          ,<<"quickcall initiation failed">>
+                          ,500
+                          ,Context
+                          );
+send_error_resp(Context, [Error]) ->
+    ErrorJObj = kz_json:normalize(kz_api:remove_defaults(Error)),
+    crossbar_util:response('error'
+                          ,<<"quickcall initiation failed">>
+                          ,500
+                          ,ErrorJObj
+                          ,cb_context:set_resp_data(Context, ErrorJObj)
+                          ).
 
 -spec update_quickcall_endpoints(boolean(), kz_json:objects()) -> kz_json:objects().
 update_quickcall_endpoints(AutoAnswer, [Endpoint]) ->

@@ -29,7 +29,9 @@
 -export([participant_get/1]).
 -export([sync_node/1]).
 -export([flush_node/1]).
--export([handle_search_req/2]).
+-export([handle_search_req/2
+        ,handle_dial_req/2
+        ]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -59,6 +61,9 @@
 
 -define(RESPONDERS, [{{?MODULE, 'handle_search_req'}
                      ,[{<<"conference">>, <<"search_req">>}]
+                     }
+                    ,{{?MODULE, 'handle_dial_req'}
+                     ,[{<<"conference">>, <<"command">>}]
                      }
                     ]).
 -define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}
@@ -187,14 +192,35 @@ flush_node(Node) -> gen_server:cast(?SERVER, {'flush_node', Node}).
 
 -spec handle_search_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_search_req(JObj, Props) ->
-    case kz_json:get_value(<<"Conference-ID">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj) of
         'undefined' -> handle_search_account(JObj, Props);
-        _Conference -> handle_search_conference(JObj, Props)
+        ConferenceId -> handle_search_conference(JObj, Props, ConferenceId)
     end.
 
--spec handle_search_conference(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_search_conference(JObj, _Props) ->
-    Name = kz_json:get_value(<<"Conference-ID">>, JObj),
+-spec handle_dial_req(kapi_conference:doc(), kz_proplist()) -> 'ok'.
+handle_dial_req(JObj, _Props) ->
+    'true' = kapi_conference:dial_v(JObj),
+    ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
+    lager:info("dialing out from conference ~s", [ConferenceId]),
+    case node(ConferenceId) of
+        {'error', 'not_found'} ->
+            lager:info("conference ~s not started, dialing out to start it", [ConferenceId]),
+            start_conference(JObj, ConferenceId);
+        {'ok', ConferenceNode} ->
+            lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
+            {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(ConferenceNode, ConferenceId, JObj),
+            lager:info("starting dial resulted in ~s", [_Resp])
+    end.
+
+-spec start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
+start_conference(JObj, ConferenceId) ->
+    [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
+    lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, Node]),
+    {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(Node, ConferenceId, JObj),
+    lager:info("starting dial resulted in ~s", [_Resp]).
+
+-spec handle_search_conference(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
+handle_search_conference(JObj, _Props, Name) ->
     lager:info("received search request for conference name ~s", [Name]),
     case ets:match_object(?CONFERENCES_TBL, #conference{name=Name, _ = '_'}) of
         %% TODO: this ignores conferences on multiple nodes until big-conferences
@@ -258,6 +284,7 @@ handle_search_account(JObj, _Props) ->
             kapi_conference:publish_search_resp(kz_api:server_id(JObj), Resp)
     end.
 
+-spec conference_resp(conference()) -> {ne_binary(), kz_json:object()}.
 conference_resp(#conference{uuid=UUID
                            ,name=Name
                            ,start_time=StartTime

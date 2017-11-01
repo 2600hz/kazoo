@@ -12,6 +12,7 @@
 -export([call_command/3
         ,unbridge/2
         ,maybe_b_leg_events/3
+        ,try_create_bridge_string/2
         ]).
 
 -include("ecallmgr.hrl").
