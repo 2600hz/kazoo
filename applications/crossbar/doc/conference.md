@@ -63,6 +63,43 @@ curl -v -X PUT \
  ------ | -----------
  `lock` | Lock the conference; no new participants may join
  `unlock` | Unlock the conference; new participants may join
+ `dial` | Dial an endpoint (user/device/DID)
+
+##### Dialing an endpoint
+
+Sometimes you want to dial out from a conference to an endpoint (versus waiting for the caller to dial into the conference). Similar to how the `group` callflow works, you can include device and user IDs; unlike groups, you can include DIDs as well (similar to quickcall/click2call).
+
+```json
+{
+    "data":{
+        "action":"dial"
+        "data":{
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "caller_id_name":"Conference XYZ",
+            "caller_id_number":"5551212"
+        }
+    }
+}
+```
+
+A full example:
+
+```shell
+curl -v -X PUT -H "X-Auth-Token: $AUTH_TOKEN" "http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}" -d'{"data":{"action":"dial","data":{"endpoints":["{DEVICE_ID}"]}}}'
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": "dialing endpoints",
+    "node": "{NODE}",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "4.2.2"
+}
+```
 
 #### Perform an action on participants
 

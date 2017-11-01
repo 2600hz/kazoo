@@ -26,9 +26,11 @@ exec_cmd(Node, ConferenceId, JObj, ConferenceId) ->
         {_, _}=Cmd -> api(Node, ConferenceId, Cmd)
     end;
 exec_cmd(_Node, _ConferenceId, JObj, _DestId) ->
-    lager:debug("command ~s not meant for us (~s) but for ~s", [kz_json:get_value(<<"Application-Name">>, JObj)
-                                                               ,_ConferenceId
-                                                               ,_DestId]).
+    lager:debug("command ~s not meant for us (~s) but for ~s"
+               ,[kz_json:get_value(<<"Application-Name">>, JObj)
+                ,_ConferenceId
+                ,_DestId
+                ]).
 
 api(Node, ConferenceId, {AppName, AppData}) ->
     Command = kz_term:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
@@ -245,6 +247,22 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
             {<<"volume_out">>, Args}
     end;
 
+get_conf_command(<<"dial">>, _Focus, _ConferenceId, JObj) ->
+    'true' = kapi_conference:dial_v(JObj),
+    case kz_json:get_list_value(<<"Endpoints">>, JObj, []) of
+        [] ->
+            lager:error("no endpoints to dial"),
+            {'error', <<"no endpoints to dial">>};
+        Endpoints ->
+            DialCmd = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj)
+                                     ,ecallmgr_fs_bridge:try_create_bridge_string(Endpoints, JObj)
+                                     ,caller_id(kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)
+                                               ,kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)
+                                               )
+                                     ]),
+            {<<"bgdial">>, DialCmd}
+    end;
+
 get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
     lager:debug("unknown conference command ~s", [Cmd]),
     {'error', list_to_binary([<<"unknown conference command: ">>, Cmd])}.
@@ -253,3 +271,9 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
 relationship(<<"mute">>) -> <<"nospeak">>;
 relationship(<<"deaf">>) -> <<"nohear">>;
 relationship(_) -> <<"clear">>.
+
+-spec caller_id(api_ne_binary(), api_ne_binary()) -> iodata().
+caller_id('undefined', 'undefined') -> "";
+caller_id('undefined', Name) -> [" ", $",$", " ", Name];
+caller_id(Number, 'undefined') -> [" ", Number];
+caller_id(Number, Name) -> [" ", Number, " ", $", Name, $"].

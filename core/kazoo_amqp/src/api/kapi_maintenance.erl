@@ -189,19 +189,19 @@ unbind_q(Queue, Props) ->
 unbind_from_q(Queue, 'undefined', Props) ->
     unbind_from_q(Queue, [?REFRESH_DB_TYPE(<<"*">>)], Props);
 unbind_from_q(Queue, [?REFRESH_DB_DB(Db)|Rest], Props) ->
-    amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_DB, Db)),
+    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_DB, Db)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?REFRESH_DB_TYPE(Classification)|Rest], Props) ->
-    amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_DB, Classification)),
+    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_DB, Classification)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?REFRESH_VIEWS_DB(Db)|Rest], Props) ->
-    amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_VIEWS, Db)),
+    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_db(?REFRESH_VIEWS, Db)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?REFRESH_VIEWS_TYPE(Classification)|Rest], Props) ->
-    amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
+    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_classification(?REFRESH_VIEWS, Classification)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(Queue, [?CLEAN_SERVICES_ID(AccountId)|Rest], Props) ->
-    amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_clean_services(AccountId)),
+    'ok' = amqp_util:unbind_q_from_sysconf(Queue, refresh_routing_clean_services(AccountId)),
     unbind_from_q(Queue, Rest, Props);
 unbind_from_q(_Queue, [], _Props) -> 'ok'.
 
@@ -276,7 +276,7 @@ refresh_database(Database, Worker, Classification) ->
           ,{?KEY_MSG_ID, MsgId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
+    'ok' = kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
 
     Resp = wait_for_response(MsgId, 10 * ?MILLISECONDS_IN_SECOND),
     kz_util:put_callid(OldCallId),
@@ -320,7 +320,7 @@ refresh_views(Database, Worker, Classification) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
+    'ok' = kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
 
     Resp = wait_for_response(MsgId, 30 * ?MILLISECONDS_IN_SECOND),
     kz_util:put_callid(OldCallId),
@@ -346,7 +346,7 @@ clean_services(AccountId, Worker) ->
           ,{?KEY_MSG_ID, MsgId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
+    _ = kz_amqp_worker:cast(Req, fun ?MODULE:publish_req/1, Worker),
 
     Resp = wait_for_response(MsgId, 30 * ?MILLISECONDS_IN_SECOND),
     kz_util:put_callid(OldCallId),

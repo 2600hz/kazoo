@@ -830,7 +830,7 @@ client_handle_event(JObj, 'undefined', ConsumerKey, Callback, CallbackData, Deli
     client_handle_event(JObj, Callback, CallbackData, Deliver);
 client_handle_event(JObj, Channel, ConsumerKey, Callback, CallbackData, Deliver) ->
     _ = kz_util:put_callid(JObj),
-    kz_amqp_channel:consumer_pid(ConsumerKey),
+    _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     _ = is_process_alive(Channel)
         andalso kz_amqp_channel:consumer_channel(Channel),
     client_handle_event(JObj, Callback, CallbackData, Deliver).
@@ -1316,7 +1316,7 @@ maybe_add_broker_connection(Broker) ->
     maybe_add_broker_connection(Broker, Count).
 
 maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
-    kz_amqp_connections:add(Broker, kz_binary:rand_hex(6), [<<"hidden">>]),
+    _Connection = kz_amqp_connections:add(Broker, kz_binary:rand_hex(6), [<<"hidden">>]),
     kz_amqp_channel:requisition(self(), Broker);
 maybe_add_broker_connection(Broker, _Count) ->
     kz_amqp_channel:requisition(self(), Broker).

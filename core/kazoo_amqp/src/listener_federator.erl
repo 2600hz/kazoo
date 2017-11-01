@@ -72,7 +72,7 @@ stop(Pid) ->
 -spec init([pid() | ne_binary()]) -> {'ok', state()}.
 init([Parent, Broker]=L) ->
     lager:debug("federating listener ~p on broker ~s", L),
-    kz_amqp_channel:consumer_broker(Broker),
+    _ = kz_amqp_channel:consumer_broker(Broker),
     Zone = kz_term:to_binary(kz_amqp_connections:broker_zone(Broker)),
     {'ok', #state{parent=Parent
                  ,broker=Broker

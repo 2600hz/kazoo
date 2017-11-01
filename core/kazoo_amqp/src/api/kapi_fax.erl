@@ -202,20 +202,20 @@ unbind_q(Queue, Props) ->
 
 -spec unbind_q(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Queue, AccountId, FaxId, StartId, 'undefined') ->
-    amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
-    amqp_util:unbind_q_from_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
+    'ok' = amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
+    'ok' = amqp_util:unbind_q_from_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
     amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
 unbind_q(Queue, AccountId,  FaxId, StartId, ['status'|Restrict]) ->
-    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
+    'ok' = amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
     unbind_q(Queue, AccountId, FaxId, StartId, Restrict);
 unbind_q(Queue, AccountId, FaxId, StartId, ['query_status'|Restrict]) ->
-    amqp_util:unbind_q_from_targeted(Queue),
+    'ok' = amqp_util:unbind_q_from_targeted(Queue),
     unbind_q(Queue, AccountId, FaxId, StartId, Restrict);
 unbind_q(Queue, AccountId, FaxId, StartId, ['req'|Restrict]) ->
-    amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
+    'ok' = amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
     unbind_q(Queue, AccountId, FaxId, StartId, Restrict);
 unbind_q(Queue, AccountId, FaxId, StartId, ['start'|Restrict]) ->
-    amqp_util:unbind_q_from_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
+    'ok' = amqp_util:unbind_q_from_exchange(Queue, fax_start_key(StartId), ?FAX_EXCHANGE),
     unbind_q(Queue, AccountId, FaxId, StartId, Restrict);
 unbind_q(_, _, _, _, []) -> 'ok'.
 

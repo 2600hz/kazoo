@@ -218,17 +218,16 @@ resolve_endpoint_id(Member, EndpointIds, Data, Call) ->
 -spec get_user_endpoint_ids(kz_json:object(), endpoint_intermediates(), ne_binary(), group_weight(), kapps_call:call()) ->
                                    endpoint_intermediates().
 get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
-    lists:foldr(
-      fun(EndpointId, Acc) ->
-              case lists:keymember(EndpointId, 2, Acc) of
-                  'true' -> Acc;
-                  'false' ->
-                      [{<<"device">>, EndpointId, GroupWeight, Member} | Acc]
-              end
-      end
+    lists:foldr(fun(EndpointId, Acc) ->
+                        case lists:keymember(EndpointId, 2, Acc) of
+                            'true' -> Acc;
+                            'false' ->
+                                [{<<"device">>, EndpointId, GroupWeight, Member} | Acc]
+                        end
+                end
                ,[{<<"user">>, Id, 'undefined'} | EndpointIds]
                ,kz_attributes:owned_by(Id, <<"device">>, Call)
-     ).
+               ).
 
 -spec get_group_members(kz_json:object(), ne_binary(), group_weight(), kz_json:object(), kapps_call:call()) -> kz_json:objects().
 get_group_members(Member, Id, GroupWeight, Data, Call) ->

@@ -163,6 +163,7 @@ callflow_should_respond(Call) ->
         <<"callforward">> -> 'true';
         <<"clicktocall">> -> 'true';
         <<"click2call">> -> 'true';
+        <<"conference">> -> 'true';
         <<"resource">> -> 'true';
         <<"sys_info">> ->
             timer:sleep(500),
