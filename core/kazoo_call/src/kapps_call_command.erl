@@ -292,19 +292,40 @@ presence(State, PresenceId, Call) ->
 presence(State, PresenceId, CallId, Call) ->
     presence(State, PresenceId, CallId, 'undefined', Call).
 
+presence(State, PresenceId, CallId, 'undefined', 'undefined') ->
+    [User, Realm] = binary:split(PresenceId, <<"@">>),
+    Command = props:filter_undefined(
+                [{<<"Presence-ID">>, PresenceId}
+                ,{<<"From">>, <<"sip:", PresenceId/binary>>}
+                ,{<<"From-User">>, User}
+                ,{<<"From-Realm">>, Realm}
+                ,{<<"To">>, <<"sip:", PresenceId/binary>>}
+                ,{<<"State">>, State}
+                ,{<<"Call-ID">>, CallId}
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    kapi_presence:publish_update(Command);
 presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
+    [User, Realm] = binary:split(PresenceId, <<"@">>),
     Command = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}
                 ,{<<"From">>, TargetURI}
+                ,{<<"From-User">>, User}
+                ,{<<"From-Realm">>, Realm}
+                ,{<<"To">>, TargetURI}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_presence:publish_update(Command);
 presence(State, PresenceId, CallId, TargetURI, Call) ->
+    [User, Realm] = binary:split(PresenceId, <<"@">>),
     Command = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}
                 ,{<<"From">>, TargetURI}
+                ,{<<"From-User">>, User}
+                ,{<<"From-Realm">>, Realm}
+                ,{<<"To">>, TargetURI}
                 ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
                 ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
                 ,{<<"State">>, State}
