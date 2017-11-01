@@ -6,6 +6,7 @@ Pivot supports a subset of TwiML to help ease you into Pivot with an existing Tw
 #### Core Supported
 
 Default Request Data included:
+
 | Request Parameter | Kazoo Name     | Description                                                                      |
 | ----------------- | -------------- | -------------------------------------------------------------------------------- |
 | CallerName        | Caller-ID-Name | Name of the caller, if any                                                       |
@@ -18,6 +19,7 @@ Default Request Data included:
 | CallSid           | Call-ID        | Unique identifier of the call leg                                                |
 
 Optional/Conditional Request Data included:
+
 | Request Parameter | Kazoo Name          | Description                                           |
 | ----------------- | ------------------- | ----------------------------------------------------- |
 | RecordingUrl      | Recording-URL       | Where a recording will be sent (via HTTP PUT request) |
@@ -31,6 +33,7 @@ Optional/Conditional Request Data included:
 Other optional data includes user-defined key/value pairs stored using the <Set> verb below.
 
 TwiML Verbs
+
 | Verb     | Description                                              | Nestable Verbs and Nouns                                          |
 | -------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
 | <Dial>   | Connect the caller to other endpoints                    | plain text DID, <Conference>, <Queue>, <Number>, <User>, <Device> |
@@ -44,11 +47,13 @@ TwiML Verbs
 | Reject   | Reject (and don't answer - won't start billing) the call |                                                                   |
 
 Custom Verbs
+
 | Verb  | Description | Nestable Nouns |
 | ----  | ----------- | -------------- |
 | <Set> | Key value pair(s) to store along-side the call||
 
 Core TwiML Nouns
+
 | Noun         | Description                                                        |
 | ------------ | ------------------------------------------------------------------ |
 | <Conference> | Conference room endpoint for <Dial>                                |
@@ -59,6 +64,7 @@ Core TwiML Nouns
 | <Sip>        | SIP URI to dial                                                    |
 
 Custom Nouns
+
 | Noun       | Description                                                                   |
 | ---------- | ----------------------------------------------------------------------------- |
 | <Variable> | Includes 'key' and 'value' attributes; values will be put subsequent requests |
