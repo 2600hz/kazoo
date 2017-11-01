@@ -15,7 +15,7 @@
 
 -define(NOTIFY_CAT, <<"notify">>).
 
--define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
+-define(DEFAULT_TIMEOUT, 30 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT, kapps_config:get_pos_integer(?NOTIFY_CAT, <<"notify_publisher_timeout_ms">>, ?DEFAULT_TIMEOUT)).
 
 -define(DEFAULT_PUBLISHER_ENABLED,
