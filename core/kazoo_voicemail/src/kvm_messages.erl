@@ -146,33 +146,46 @@ update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
 
 update(AccountId, BoxId, [?NE_BINARY = _Msg | _] = MsgIds, Funs) ->
-    FetchResult = fetch(AccountId, MsgIds, BoxId),
-    SucceededJObjs = kz_json:get_value(<<"succeeded">>, FetchResult, []),
-    FailedJObjs = kz_json:get_value(<<"failed">>, FetchResult, []),
-    Results = do_update(AccountId, SucceededJObjs, Funs, FailedJObjs),
-    kz_json:from_list(dict:to_list(Results));
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    FetchMap = fetch(AccountId, MsgIds, BoxId, RetenTimestamp),
+    do_update(AccountId, FetchMap, Funs, RetenTimestamp);
 update(AccountId, _BoxId, JObjs, Funs) ->
-    Results = do_update(AccountId, JObjs, Funs, []),
-    kz_json:from_list(dict:to_list(Results)).
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    do_update(AccountId, #{<<"succeeded">> => JObjs}, Funs, RetenTimestamp).
 
--spec do_update(ne_binary(), kz_json:objects(), update_funs(), kz_json:objects()) -> dict:dict().
-do_update(AccountId, SucceededJObjs, Funs, FailedJObjs) ->
-    ToUpdateDict = apply_fun_and_map_msgs_to_modb(AccountId, SucceededJObjs, Funs, dict:new()),
-    ResultsDict = dict:from_list([{<<"failed">>, FailedJObjs}]),
-    dict:fold(fun update_fun/3, ResultsDict, ToUpdateDict).
+-spec do_update(ne_binary(), map(), update_funs(), gregorian_seconds()) -> maps:maps().
+do_update(AccountId, FetchMap, Funs, RetenTimestamp) ->
+    #{<<"to_update_map">> := ToUpdateMap
+     ,<<"failed">> := Failed
+     ,<<"enforce_set">> := EnforceSet
+     } = split_to_modbs_and_apply_funs(FetchMap, AccountId, Funs, RetenTimestamp),
+    bulk_result(
+      maps:fold(fun update_fun/3
+               ,#{<<"succeeded">> => []
+                 ,<<"failed">> => Failed
+                 ,<<"enforce_set">> => EnforceSet
+                 }
+               ,ToUpdateMap
+               )
+     ).
 
--spec update_fun(ne_binary(), kz_json:objects(), dict:dict()) -> dict:dict().
-update_fun(Db, JObj, ResDict) ->
-    case kz_datamgr:save_docs(Db, JObj) of
+bulk_result(Map) ->
+    kz_json:from_list_recursive(
+      props:filter_empty(
+        [{<<"succeeded">>, maps:get(<<"succeeded">>, Map, [])}
+        ,{<<"failed">>, maps:get(<<"failed">>, Map, [])}
+        ])
+     ).
+
+-spec update_fun(ne_binary(), kz_json:objects(), map()) -> map().
+update_fun(Db, JObjs, #{<<"failed">> := Failed}=ResultMap) ->
+    case kz_datamgr:save_docs(Db, JObjs) of
         {'ok', Saved} ->
-            normalize_bulk_results(<<"update">>, 'undefined', 'undefined', Saved, ResDict);
+            normalize_bulk_results(ResultMap, Saved, <<"update">>, 'undefined', 'undefined');
         {'error', R} ->
-            lager:warning("failed to bulk update voicemail messages for db ~s: ~p"
-                         ,[Db, R]),
-            Failed = kz_json:from_list([{kz_doc:id(D), kz_term:to_binary(R)}
-                                        || D <- JObj
-                                       ]),
-            dict:append(<<"failed">>, Failed, ResDict)
+            lager:warning("failed to bulk update voicemail messages for db ~s: ~p", [Db, R]),
+            IdReasons = [{kz_doc:id(D), kz_term:to_binary(R)} || D <- JObjs],
+            ResultMap#{<<"failed">> => Failed ++ IdReasons}
     end.
 
 %%--------------------------------------------------------------------
@@ -181,42 +194,40 @@ update_fun(Db, JObj, ResDict) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), ne_binaries()) -> kz_json:object().
--spec fetch(ne_binary(), ne_binaries(), api_ne_binary()) -> kz_json:object().
 fetch(AccountId, MsgIds) ->
     fetch(AccountId, MsgIds, 'undefined').
 
+-spec fetch(ne_binary(), ne_binaries(), api_ne_binary()) -> kz_json:object().
 fetch(AccountId, MsgIds, BoxId) ->
-    DbsRange = kvm_util:create_range_dbs(AccountId, MsgIds),
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
-    Fun = fun(Db, Ids, ResDict) ->
-                  fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp)
-          end,
-    kz_json:from_list(
-      dict:to_list(
-        dict:fold(Fun, dict:new(), DbsRange)
-       )
-     ).
+    bulk_result(maps:to_list(fetch(AccountId, MsgIds, BoxId, RetenTimestamp))).
 
--spec fetch_fun(ne_binary(), ne_binary(), ne_binaries(), dict:dict(), gregorian_seconds()) -> dict:dict().
-fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp) ->
+-spec fetch(ne_binary(), ne_binaries(), api_ne_binary(), gregorian_seconds()) -> map().
+fetch(AccountId, MsgIds, BoxId, RetenTimestamp) ->
+    DbsRange = kvm_util:split_to_modbs(AccountId, MsgIds),
+    Fun = fun(Db, Ids, ResultMap) ->
+                  fetch_fun(Db, BoxId, Ids, ResultMap, RetenTimestamp)
+          end,
+    maps:fold(Fun, #{<<"succeeded">> => [], <<"failed">> => []}, DbsRange).
+
+-spec fetch_fun(ne_binary(), ne_binary(), ne_binaries(), map(), gregorian_seconds()) -> map().
+fetch_fun(Db, BoxId, Ids, ResultMap, RetenTimestamp) ->
     case kz_datamgr:db_exists(Db)
-        andalso kz_datamgr:open_cache_docs(Db, Ids)
+        andalso kz_datamgr:open_docs(Db, Ids)
     of
         'false' ->
-            fetch_faild_with_reason("not_found", Db, Ids, ResDict);
+            fetch_faild_with_reason("not_found", Db, Ids, ResultMap);
         {'ok', JObjs} ->
-            normalize_bulk_results(<<"fetch">>, BoxId, RetenTimestamp, JObjs, ResDict);
+            normalize_bulk_results(ResultMap, JObjs, <<"fetch">>, BoxId, RetenTimestamp);
         {'error', R} ->
-            fetch_faild_with_reason(R, Db, Ids, ResDict)
+            fetch_faild_with_reason(R, Db, Ids, ResultMap)
     end.
 
--spec fetch_faild_with_reason(any(), ne_binary(), ne_binaries(), dict:dict()) -> dict:dict().
-fetch_faild_with_reason(Reason, Db, Ids, ResDict) ->
+-spec fetch_faild_with_reason(any(), ne_binary(), ne_binaries(), map()) -> map().
+fetch_faild_with_reason(Reason, Db, Ids, #{<<"failed">> := Failed}=ResultMap) ->
     lager:warning("failed to bulk fetch voicemail messages from db ~s: ~p", [Db, Reason]),
-    Failed = kz_json:from_list([{Id, kz_term:to_binary(Reason)}
-                                || Id <- Ids
-                               ]),
-    dict:append(<<"failed">>, Failed, ResDict).
+    IdReasons = [{Id, kz_term:to_binary(Reason)} || Id <- Ids],
+    ResultMap#{<<"failed">> => IdReasons ++ Failed}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -251,24 +262,25 @@ move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId) ->
 move_to_vmbox(AccountId, [?NE_BINARY = _Msg | _] = MsgIds, OldBoxId, NewBoxId, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-    Results = do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, dict:new(), Funs),
-    kz_json:from_list(dict:to_list(Results));
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    Results = do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, #{}, Funs, RetenTimestamp),
+    bulk_result(maps:to_list(Results));
 move_to_vmbox(AccountId, MsgJObjs, OldBoxId, NewBoxId, Funs) ->
     MsgIds = [kzd_box_message:get_msg_id(J) || J <- MsgJObjs],
     move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId, Funs).
 
--spec do_move(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_json:object(), dict:dict(), update_funs()) -> dict:dict().
-do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResDict, _) ->
-    ResDict;
-do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResDict, Funs) ->
-    case kvm_message:do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ, Funs) of
+-spec do_move(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_json:object(), map(), update_funs(), gregorian_seconds()) -> map().
+do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResultMap, _, _) ->
+    ResultMap;
+do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResultMap, Funs, RetenTimestamp) ->
+    case kvm_message:do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ, Funs, RetenTimestamp) of
         {'ok', Moved} ->
-            Res = dict:append(<<"succeeded">>, kz_doc:id(Moved), ResDict),
-            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res, Funs);
+            NewMap = maps:update_with(<<"succeeded">>, fun(List) -> [kz_doc:id(Moved)|List] end, [kz_doc:id(Moved)], ResultMap),
+            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, NewMap, Funs, RetenTimestamp);
         {'error', Reason} ->
-            Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
-            Res = dict:append(<<"failed">>, Failed, ResDict),
-            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res, Funs)
+            IdReason = {FromId, kz_term:to_binary(Reason)},
+            NewMap = maps:update_with(<<"failed">>, fun(List) -> [IdReason|List] end, [IdReason], ResultMap),
+            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, NewMap, Funs, RetenTimestamp)
     end.
 
 %%--------------------------------------------------------------------
@@ -286,12 +298,13 @@ copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId], Funs);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Funs) ->
-    kz_json:from_list(
-      dict:to_list(
-        lists:foldl(fun(Id, AccDict) ->
-                            kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccDict, Funs)
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    bulk_result(
+      maps:to_list(
+        lists:foldl(fun(Id, AccMap) ->
+                            kvm_message:maybe_copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccMap, Funs, RetenTimestamp)
                     end
-                   ,dict:new()
+                   ,#{}
                    ,Ids
                    )
        )
@@ -345,53 +358,55 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Normalize fetch/update bulk result
-%% Note: Optional checks message belonging to the BoxId
-%% Note: It always returns a dict which contains succeeded and failed
-%%       messages operation
+%% Note: Optional checks message belonging to the BoxId and message
+%%       retention
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_bulk_results(ne_binary(), api_ne_binary(), api_seconds(), kz_json:objects(), dict:dict()) ->
-                                    dict:dict().
-normalize_bulk_results(Method, BoxId, RetenTimestamp, JObjs, Dict) ->
-    DefaultDict = dict:from_list([{<<"succeeded">>, []}
-                                 ,{<<"failed">>, []}
-                                 ]),
-    MergeFun = fun(_K, _V1, V2) -> V2 end,
-    normalize_bulk_results1(Method, BoxId, RetenTimestamp, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
-
-normalize_bulk_results1(_Method, _BoxId, _, [], Dict) ->
+-spec normalize_bulk_results(map(), kz_json:objects(), ne_binary(), api_ne_binary(), api_seconds()) -> map().
+normalize_bulk_results(ResultMap, [], _Method, _BoxId, _) ->
     lager:debug("voicemail ~s bulk for mailbox ~s resulted in ~b succeeded and ~b failed docs"
                ,[_Method
                 ,_BoxId
-                ,length(dict:fetch(<<"succeeded">>, Dict))
-                ,length(dict:fetch(<<"failed">>, Dict))
+                ,erlang:length(maps:get(<<"succeeded">>, ResultMap, []))
+                ,erlang:length(maps:get(<<"failed">>, ResultMap, []))
                 ]),
-    Dict;
-normalize_bulk_results1(Method, BoxId, RetenTimestamp, [JObj | JObjs], Dict) ->
+    ResultMap;
+normalize_bulk_results(#{<<"succeeded">> := Succeeded
+                        ,<<"failed">> := Failed
+                        }=ResultMap, [JObj | JObjs], Method, BoxId, RetenTimestamp) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
-    IsPrior = is_prior_to_retention(kzd_box_message:utc_seconds(kz_json:get_value(<<"doc">>, JObj)), RetenTimestamp),
-    NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
-                  andalso kz_json:get_value(<<"error">>, JObj)
-              of
-                  'false' ->
-                      Failed = kz_json:from_list([{Id, <<"not_found">>}]),
-                      dict:append(<<"failed">>, Failed, Dict);
-                  'undefined' when not IsPrior ->
-                      dict:append(<<"succeeded">>, kz_json:get_value(<<"doc">>, JObj, Id), Dict);
-                  'undefined' ->
-                      Failed = kz_json:from_list([{Id, <<"prior_to_retention_duration">>}]),
-                      dict:append(<<"failed">>, Failed, Dict);
-                  Error ->
-                      Failed = kz_json:from_list([{Id, kz_term:to_binary(Error)}]),
-                      dict:append(<<"failed">>, Failed, Dict)
-              end,
-    normalize_bulk_results1(Method, BoxId, RetenTimestamp, JObjs, NewDict).
 
--spec is_prior_to_retention(non_neg_integer(), api_seconds()) -> boolean().
-is_prior_to_retention(0, _RetenTimestamp) -> 'false';
-is_prior_to_retention(_UtcSeconds, 'undefined') -> 'false';
-is_prior_to_retention(UtcSeconds, RetenTimestamp) when UtcSeconds > RetenTimestamp -> 'false';
-is_prior_to_retention(_UtcSeconds, _RetenTimestamp) -> 'true'.
+    IsPrior = is_prior_to_retention(JObj, RetenTimestamp, ResultMap),
+
+    NewMap = case kvm_util:check_msg_belonging(BoxId, JObj)
+                 andalso kz_json:get_value(<<"error">>, JObj)
+             of
+                 'false' ->
+                     ResultMap#{<<"failed">> => [{Id, <<"not_found">>}|Failed]};
+                 'undefined' when not IsPrior ->
+                     ResultMap#{<<"succeeded">> => [kz_json:get_value(<<"doc">>, JObj, Id)|Succeeded]};
+                 'undefined' ->
+                     case Method of
+                         <<"fetch">> ->
+                             ResultMap#{<<"succeeded">> => [kvm_util:enforce_retention(kz_json:get_value(<<"doc">>, JObj), 'true')
+                                                            |Succeeded
+                                                           ]
+                                       };
+                         <<"update">> ->
+                             ResultMap#{<<"failed">> => [{Id, <<"prior_to_retention_duration">>}|Failed]}
+                     end;
+                 Error ->
+                     ResultMap#{<<"failed">> => [{Id, kz_term:to_binary(Error)}|Failed]}
+             end,
+    normalize_bulk_results(NewMap, JObjs, Method, BoxId, RetenTimestamp).
+
+%% check message retention, also if the operation is update, checks if the message is in retention enforce set
+%% so the message won't be added to succeeded list
+-spec is_prior_to_retention(kz_json:object(), api_seconds(), map()) -> boolean().
+is_prior_to_retention(JObj, _, #{<<"enforce_set">> := EnforceSet}) ->
+    sets:is_element(kz_doc:id(JObj), EnforceSet);
+is_prior_to_retention(JObj, RetenTimestamp, _) ->
+    kvm_util:is_prior_to_retention(kz_json:get_value(<<"doc">>, JObj), RetenTimestamp).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -431,14 +446,43 @@ normalize_count_none_deleted(BoxId, ViewRes) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Apply update functions and map all messages to their MODBs
+%% @doc
+%% Apply update functions and map all messages to their MODBs
+%%
+%% If message is prior to retention, do not apply functions, just
+%% set the folder to 'deleted' and set it to_update_map to update the
+%% document in database then add it to enforce_set to return it to caller
+%% as an error.
 %% @end
 %%--------------------------------------------------------------------
--spec apply_fun_and_map_msgs_to_modb(ne_binary(), kz_json:objects(), update_funs(), dict:dict()) ->
-                                            dict:dict().
-apply_fun_and_map_msgs_to_modb(_AccountId, [], _Funs, Dict) -> Dict;
-apply_fun_and_map_msgs_to_modb(AccountId, [JObj | JObjs], Funs, Dict) ->
-    NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
-    Db = kz_doc:account_db(JObj, kvm_util:get_db(AccountId, kz_doc:id(NewJObj))),
-    NewDict = dict:append(Db, NewJObj, Dict),
-    apply_fun_and_map_msgs_to_modb(AccountId, JObjs, Funs, NewDict).
+-spec split_to_modbs_and_apply_funs(map(), ne_binary(), update_funs(), gregorian_seconds()) -> map().
+split_to_modbs_and_apply_funs(FetchMap, AccountId, Funs, RetenTimestamp) ->
+    Succeeded = maps:get(<<"succeeded">>, FetchMap, []),
+    Failed = maps:get(<<"failed">>, FetchMap, []),
+    Map = #{<<"to_update_map">> => #{}
+           ,<<"failed">> => Failed
+           ,<<"enforce_set">> => sets:new()
+           },
+    split_to_modbs_and_apply_funs(Map, AccountId, Succeeded, Funs, RetenTimestamp).
+
+-spec split_to_modbs_and_apply_funs(map(), ne_binary(), kz_json:objects(), update_funs(), gregorian_seconds()) -> map().
+split_to_modbs_and_apply_funs(SplitMap, _AccountId, [], _Funs, _RetenTimestamp) ->
+    SplitMap;
+split_to_modbs_and_apply_funs(#{<<"to_update_map">> := ToUpdateMap
+                               ,<<"enforce_set">> := EnforceSet
+                               }=SplitMap, AccountId, [JObj | JObjs], Funs, RetenTimestamp) ->
+    case kvm_util:is_prior_to_retention(JObj, RetenTimestamp) of
+        'true' ->
+            Id = kz_doc:id(JObj),
+            Db = kvm_util:get_db(AccountId, JObj),
+            NewJObj = kvm_util:enforce_retention(JObj, 'true'),
+            NewMap = SplitMap#{<<"to_update_map">> => maps:update_with(Db, fun(List) -> [NewJObj|List] end, [NewJObj], ToUpdateMap)
+                              ,<<"enforce_set">> => sets:add_element(Id, EnforceSet)
+                              },
+            split_to_modbs_and_apply_funs(NewMap, AccountId, JObjs, Funs, RetenTimestamp);
+        'false' ->
+            NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
+            Db = kvm_util:get_db(AccountId, NewJObj),
+            NewToUpdateMap = maps:update_with(Db, fun(List) -> [NewJObj|List] end, [NewJObj], ToUpdateMap),
+            split_to_modbs_and_apply_funs(SplitMap#{<<"to_update_map">> => NewToUpdateMap}, AccountId, JObjs, Funs, RetenTimestamp)
+    end.

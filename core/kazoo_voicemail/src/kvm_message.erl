@@ -13,8 +13,8 @@
         ,set_folder/3, change_folder/4, change_folder/5
 
         ,update/3, update/4
-        ,move_to_vmbox/4, move_to_vmbox/5, do_move/6
-        ,copy_to_vmboxes/4, copy_to_vmboxes/5, copy_to_vmboxes/6
+        ,move_to_vmbox/4, move_to_vmbox/5, maybe_do_move/7
+        ,copy_to_vmboxes/4, copy_to_vmboxes/5, maybe_copy_to_vmboxes/7
 
         ,media_url/2
         ]).
@@ -83,7 +83,7 @@ forward_message(Call, Metadata, SrcBoxId, Props) ->
             %% user chose to forward without prepending
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props);
         _AttachmentName ->
-            %% user chose to forward and prepend a messge
+            %% user chose to forward and prepend a message
             new_forward_message(Call, Metadata, SrcBoxId, Props)
     end.
 
@@ -127,22 +127,27 @@ new_forward_message(Call, Metadata, SrcBoxId, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), ne_binary()) -> db_ret().
--spec fetch(ne_binary(), ne_binary(), api_ne_binary()) -> db_ret().
 fetch(AccountId, MessageId) ->
     fetch(AccountId, MessageId, 'undefined').
 
+-spec fetch(ne_binary(), ne_binary(), api_ne_binary()) -> db_ret().
 fetch(AccountId, MessageId, BoxId) ->
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    {_, DbRet} = do_fetch(AccountId, MessageId, BoxId, RetenTimestamp),
+    DbRet.
+
+-spec do_fetch(ne_binary(), ne_binary(), api_ne_binary(), gregorian_seconds()) -> {boolean(), db_ret()}.
+do_fetch(AccountId, MessageId, BoxId, RetenTimestamp) ->
     case kvm_util:open_modb_doc(AccountId, MessageId, kzd_box_message:type()) of
         {'ok', JObj} ->
             case kvm_util:check_msg_belonging(BoxId, JObj) of
-                'false' -> {'error', 'not_found'};
+                'false' -> {'false', {'error', 'not_found'}};
                 'true' ->
-                    RetentionSeconds = kvm_util:retention_seconds(AccountId),
-                    {'ok', kvm_util:enforce_retention(JObj, RetentionSeconds)}
+                    {'true', {'ok', kvm_util:enforce_retention(JObj, RetenTimestamp)}}
             end;
         {'error', _E} = Error ->
             lager:debug("failed to open message ~s:~p", [MessageId, _E]),
-            Error
+            {'false', Error}
     end.
 
 %%--------------------------------------------------------------------
@@ -225,13 +230,30 @@ update(AccountId, BoxId, Message) ->
     update(AccountId, BoxId, Message, []).
 
 update(AccountId, BoxId, ?NE_BINARY = MsgId, Funs) ->
-    case fetch(AccountId, MsgId, BoxId) of
-        {'ok', JObj} ->
-            update(AccountId, BoxId, JObj, Funs);
-        Error ->
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    case do_fetch(AccountId, MsgId, BoxId, RetenTimestamp) of
+        {'true', {'ok', JObj}} ->
+            _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
+            {'error', <<"prior_to_retention_duration">>};
+        {'false', {'ok', JObj}} ->
+            do_update(JObj, Funs);
+        {_, {'error', _}=Error} ->
             Error
     end;
-update(_AccountId, _BoxId, JObj, Funs) ->
+update(AccountId, BoxId, JObj, Funs) ->
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    case kvm_util:check_msg_belonging(BoxId, JObj)
+        andalso kvm_util:is_prior_to_retention(JObj, RetenTimestamp)
+    of
+        'true' ->
+            _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
+            {'error', <<"prior_to_retention_duration">>};
+        'false' ->
+            do_update(JObj, Funs)
+    end.
+
+-spec do_update(kz_json:object(), update_funs()) -> db_ret().
+do_update(JObj, Funs) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
     case try_save_document('undefined', NewJObj, 3) of
         {'ok', _}=OK -> OK;
@@ -251,16 +273,29 @@ move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId) ->
 
 -spec move_to_vmbox(ne_binary(), message(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
 move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId, Funs) ->
-    %% FIXME: maybe fetch message to make sure it's exists
     AccountDb = kvm_util:get_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, NewBoxId) of
-        {'ok', NBoxJ} -> do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs);
+        {'ok', NBoxJ} ->
+            RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+            maybe_do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs, RetenTimestamp);
         {'error', _Reason} = Error ->
-            lager:debug("failed to open destination vmbox ~s", NewBoxId),
+            lager:debug("failed to open destination vmbox ~s: ~p", [NewBoxId, _Reason]),
             Error
     end;
 move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId, Funs) ->
     move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId, Funs).
+
+-spec maybe_do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs(), gregorian_seconds()) -> db_ret().
+maybe_do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs, RetenTimestamp) ->
+    case do_fetch(AccountId, FromId, OldBoxId, RetenTimestamp) of
+        {'true', {'ok', JObj}} ->
+            _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
+            {'error', <<"prior_to_retention_duration">>};
+        {'false', {'ok', _}} ->
+            do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs);
+        {_, {'error', _}=Error} ->
+            Error
+    end.
 
 -spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs()) -> db_ret().
 do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs) ->
@@ -306,40 +341,55 @@ copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
     copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId], Funs);
 copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds, Funs) ->
     %% FIXME: maybe fetch message to make sure it's exists
-    kz_json:from_list(
-      dict:to_list(
-        copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, dict:new(), Funs)
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    kz_json:from_list_recursive(
+      maps:to_list(
+        maybe_copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, #{}, Funs, RetenTimestamp)
        )
      );
 copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds, Funs) ->
     copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds, Funs).
 
--spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), dict:dict(), update_funs()) -> dict:dict().
-copy_to_vmboxes(_, _, _, [], CopiedDict, _) ->
-    CopiedDict;
-copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopiedDict, Funs) ->
-    NewCopiedDict = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict, Funs),
-    copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopiedDict, Funs).
+-spec maybe_copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), map(), update_funs(), gregorian_seconds()) -> map().
+maybe_copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs, RetenTimestamp) ->
+    case do_fetch(AccountId, FromId, OldBoxId, RetenTimestamp) of
+        {'true', {'ok', JObj}} ->
+            _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
+            IdReason = {FromId, <<"prior_to_retention_duration">>},
+            maps:update_with(<<"failed">>, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
+        {'false', {'ok', _}} ->
+            copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs);
+        {_, {'error', Reason}} ->
+            IdReason = {FromId, kz_term:to_binary(Reason)},
+            maps:update_with(<<"failed">>, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
+    end.
 
--spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict(), update_funs()) -> dict:dict().
-copy_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict, Funs) ->
+-spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), map(), update_funs()) -> map().
+copy_to_vmboxes(_, _, _, [], CopyMap, _) ->
+    CopyMap;
+copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopyMap, Funs) ->
+    NewCopyMap = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap, Funs),
+    copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopyMap, Funs).
+
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), map(), update_funs()) -> map().
+copy_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, ?NE_BINARY = NBId, CopyMap, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
     %% FIXME: maybe bulk read vmbox in above function clause to avoid lots of cache query
-    copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
+    copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
                  ,kz_datamgr:open_cache_doc(AccountDb, NBId)
                  ,Funs
                  ).
 
--spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict(), kz_datamgr:data_error() | {'ok', kz_json:object()}, update_funs()) ->
-                           dict:dict().
-copy_to_vmbox(_AccountId, FromId, _OldBoxId, NBId, CopiedDict
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), map(), kz_datamgr:data_error() | {'ok', kz_json:object()}, update_funs()) ->
+                           map().
+copy_to_vmbox(_AccountId, FromId, _OldBoxId, NBId, CopyMap
              ,{'error', Reason}
              ,_
              ) ->
     lager:warning("could not open destination vmbox ~s", [NBId]),
     Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
-    dict:append(<<"failed">>, Failed, CopiedDict);
-copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
+    dict:append(<<"failed">>, Failed, CopyMap);
+copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
              ,{'ok', NBox}
              ,Funs
              ) ->
@@ -348,10 +398,10 @@ copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
     case do_copy(AccountId, FromId, ToId, TransformFuns ++ Funs) of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
-            dict:append(<<"succeeded">>, CopiedId, CopiedDict);
+            maps:update_with(<<"succeeded">>, fun(List) -> [CopiedId|List] end, [CopiedId], CopyMap);
         {'error', R} ->
-            Failed = kz_json:from_list([{FromId, kz_term:to_binary(R)}]),
-            dict:append(<<"failed">>, Failed, CopiedDict)
+            IdReason = {FromId, kz_term:to_binary(R)},
+            maps:update_with(<<"failed">>, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
     end.
 
 -spec do_copy(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
@@ -765,8 +815,8 @@ update_metadata(Call, BoxId, MessageId, UpdateFuns) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Double check document to make sure it's not exists in db
-%% Using `kz_datamgr:ensure_save` is more effient here, but
-%% we're doing this fetch/retry for proof of conecpt whether document's id
+%% Using `kz_datamgr:ensure_save` is more efficient here, but
+%% we're doing this fetch/retry for proof of concept whether document's id
 %% had collision or not.
 %% @end
 %%--------------------------------------------------------------------
