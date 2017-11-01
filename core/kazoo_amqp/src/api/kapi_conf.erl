@@ -176,9 +176,9 @@ bind_for_doc_changes(Q, Props) ->
         'undefined' ->
             amqp_util:bind_q_to_configuration(Q, get_routing_key(Props));
         List ->
-            [amqp_util:bind_q_to_configuration(Q, get_routing_key(KeyProps))
-             || KeyProps <- List
-            ],
+            _ = [amqp_util:bind_q_to_configuration(Q, get_routing_key(KeyProps))
+                 || KeyProps <- List
+                ],
             'ok'
     end.
 
