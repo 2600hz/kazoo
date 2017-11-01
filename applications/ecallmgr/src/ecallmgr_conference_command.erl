@@ -260,7 +260,7 @@ get_conf_command(<<"dial">>, _Focus, _ConferenceId, JObj) ->
                                                ,kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)
                                                )
                                      ]),
-            {<<"dial">>, DialCmd}
+            {<<"bgdial">>, DialCmd}
     end;
 
 get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
