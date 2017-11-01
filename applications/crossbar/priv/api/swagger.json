@@ -17762,7 +17762,13 @@
                 "From": {
                     "type": "string"
                 },
+                "From-Realm": {
+                    "type": "string"
+                },
                 "From-Tag": {
+                    "type": "string"
+                },
+                "From-User": {
                     "type": "string"
                 },
                 "Presence-ID": {
@@ -17788,7 +17794,13 @@
                 "To": {
                     "type": "string"
                 },
+                "To-Realm": {
+                    "type": "string"
+                },
                 "To-Tag": {
+                    "type": "string"
+                },
+                "To-User": {
                     "type": "string"
                 }
             },
