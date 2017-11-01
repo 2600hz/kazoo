@@ -33,6 +33,12 @@
             "description": "smtp_client retries",
             "type": "integer"
         },
+        "send_timeout_ms": {
+            "default": 10000,
+            "description": "Timeout in milliseconds waiting for response from SMTP server",
+            "minimum": 1,
+            "type": "integer"
+        },
         "tls": {
             "description": "smtp_client tls",
             "type": "string"
