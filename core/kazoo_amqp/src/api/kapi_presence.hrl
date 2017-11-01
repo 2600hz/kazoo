@@ -52,6 +52,8 @@
                                  ,<<"Call-Direction">>, <<"Call-ID">>
                                  ,<<"Target-Call-ID">>, <<"Switch-URI">>
                                  ,<<"Presence-ID">>, <<"Event-Package">>
+                                 ,<<"From-User">>, <<"From-Realm">>
+                                 ,<<"To-User">>, <<"To-Realm">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"update">>}
