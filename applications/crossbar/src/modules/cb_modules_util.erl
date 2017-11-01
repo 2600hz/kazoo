@@ -12,6 +12,7 @@
         ,update_mwi/2
         ,get_devices_owned_by/2
         ,maybe_originate_quickcall/1
+        ,ccvs_from_context/1
 
         ,attachment_name/2
         ,parse_media_type/1
