@@ -370,6 +370,16 @@ process_mfa(#usage{}=Acc
            ,'kz_json', _F, [{'call', _, _, _}=_Key|_]
            ) ->
     Acc;
+process_mfa(#usage{data_var_name=DataName}=Acc
+           ,'kz_json'=M, 'get_first_defined', [Keys, ?VAR(DataName)]
+           ) ->
+    lists:foldl(fun(Key, #usage{usages=Usages}=Acc0) ->
+                        Acc0#usage{usages=maybe_add_usage(Usages
+                                                         ,{M, 'get_value', arg_to_key(Key), DataName, 'undefined'})}
+                end
+               ,Acc
+               ,kz_ast_util:ast_to_list_of_binaries(Keys)
+               );
 process_mfa(#usage{data_var_name=DataName
                   ,usages=Usages
                   }=Acc
@@ -497,6 +507,7 @@ arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
     ?DEBUG("  ignoring arg ~p~n", [_H]),
     arg_list_has_data_var(DataName, Aliases, T).
 
+arg_to_key(?NE_BINARY=Arg) -> Arg;
 arg_to_key(?BINARY_MATCH(Arg)) ->
     try kz_ast_util:binary_match_to_binary(Arg)
     catch 'error':'function_clause' -> 'undefined'

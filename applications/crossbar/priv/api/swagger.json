@@ -21992,6 +21992,19 @@
         "metaflows.callflow": {
             "description": "Run a callflow on an active call",
             "properties": {
+                "captures": {
+                    "description": "Callflow extension",
+                    "type": "string"
+                },
+                "collected": {
+                    "description": "Callflow extension",
+                    "type": "string"
+                },
+                "flow": {
+                    "$ref": "#/definitions/callflows.action",
+                    "description": "include the flow you'd like to run (Pivot without the HTTP interaction)",
+                    "type": "object"
+                },
                 "id": {
                     "description": "The callflow ID to run",
                     "type": "string"
