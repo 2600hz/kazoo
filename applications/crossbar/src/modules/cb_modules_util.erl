@@ -222,34 +222,12 @@ ccvs_from_context(Context) ->
 -spec ccvs_from_request(api_object(), api_object()) -> kz_proplist().
 ccvs_from_request('undefined', 'undefined') -> [];
 ccvs_from_request('undefined', QueryString) ->
-    ccvs_from_request(QueryString);
+    kapps_call_util:filter_ccvs(QueryString);
 ccvs_from_request(ReqData, 'undefined') ->
-    ccvs_from_request(kz_json:get_json_value(<<"custom_channel_vars">>, ReqData));
+    kapps_call_util:filter_ccvs(kz_json:get_json_value(<<"custom_channel_vars">>, ReqData));
 ccvs_from_request(ReqData, QueryString) ->
     CCVs = kz_json:get_json_value(<<"custom_channel_vars">>, ReqData, kz_json:new()),
-    ccvs_from_request(kz_json:merge(CCVs, QueryString)).
-
--spec ccvs_from_request(kz_json:object()) -> kz_proplist().
-ccvs_from_request(CCVs) ->
-    lager:debug("extracting CCVs from ~p", [CCVs]),
-    {ReqCCVs, _} =
-        kz_json:foldl(fun ccv_from_request/3
-                     ,{[], crossbar_config:reserved_ccv_keys()}
-                     ,CCVs
-                     ),
-    ReqCCVs.
-
-ccv_from_request(Key, Value, {Acc, Keys}) ->
-    case is_private_ccv(Key, Keys) of
-        'true' -> {Acc, Keys};
-        'false' ->
-            lager:debug("adding ccv ~s:~p", [Key, Value]),
-            {[{Key, Value} | Acc], Keys}
-    end.
-
--spec is_private_ccv(ne_binary(), ne_binaries()) -> boolean().
-is_private_ccv(Key, Keys) ->
-    lists:member(Key, Keys).
+    kapps_call_util:filter_ccvs(kz_json:merge(CCVs, QueryString)).
 
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
                                  cb_context:context().

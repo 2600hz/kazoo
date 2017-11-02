@@ -2790,6 +2790,24 @@
             },
             "type": "object"
         },
+        "callflows.set_variables": {
+            "description": "Validator for the set_variables callflow's data object",
+            "properties": {
+                "custom_channel_vars": {
+                    "default": {},
+                    "description": "Key-value pairs to set as custom_channel_vars on the channel",
+                    "type": "object"
+                },
+                "export": {
+                    "description": "When true the provided custom_channel_vars are set on the channel and any channel bridged to it later",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "custom_channel_vars"
+            ],
+            "type": "object"
+        },
         "callflows.skel": {
             "description": "Validator for the skel callflow's data object",
             "properties": {},

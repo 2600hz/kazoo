@@ -18,5 +18,35 @@
                                    {'fail', kz_json:object()} |
                                    {'ok', kz_json:object()}.
 
+-define(DEFAULT_CCV_KEYS
+       ,[<<"Account-ID">>
+        ,<<"Account-Name">>
+        ,<<"Account-Realm">>
+        ,<<"Authorizing-ID">>
+        ,<<"Authorizing-Type">>
+        ,<<"Auto-Answer">>
+        ,<<"Call-Forward">>
+        ,<<"Call-Interaction-ID">>
+        ,<<"Ecallmgr-Node">>
+        ,<<"Call-Waiting-Disabled">>
+        ,<<"Confirm-Cancel-Timeout">>
+        ,<<"Confirm-File">>
+        ,<<"Confirm-Key">>
+        ,<<"Fax-Enabled">>
+        ,<<"Fetch-ID">>
+        ,<<"Loopback-Bowout">>
+        ,<<"Media-Encryption-Enforce-Security">>
+        ,<<"Media-Webrtc">>
+        ,<<"Owner-ID">>
+        ,<<"Presence-ID">>
+        ,<<"RTCP-MUX">>
+        ,<<"Realm">>
+        ,<<"Require-Ignore-Early-Media">>
+        ,<<"Retain-CID">>
+        ,<<"SIP-Invite-Domain">>
+        ,<<"Simplify-Loopback">>
+        ,<<"Username">>
+        ]).
+
 -define(KAPPS_CALL_COMMAND_TYPES_HRL, 'true').
 -endif.
