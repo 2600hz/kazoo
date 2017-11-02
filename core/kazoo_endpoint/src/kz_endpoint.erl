@@ -1517,7 +1517,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
               ,fun maybe_auto_answer/1
               ,fun maybe_set_webrtc/1
               ],
-    Acc0 = {Endpoint, Call, CallFwd, kz_json:new()},
+    Acc0 = {Endpoint, Call, CallFwd, kapps_call:custom_channel_vars()},
     {_Endpoint, _Call, _CallFwd, CCVs} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
     CCVs.
 
