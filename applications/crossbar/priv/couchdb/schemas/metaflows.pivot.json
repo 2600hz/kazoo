@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.pivot",
+    "description": "Validator for the Pivot metaflow element",
+    "properties": {
+        "cdr_url": {
+            "description": "Optional URL to send the CDR to at the end of the call",
+            "pattern": "^https?://",
+            "type": "string"
+        },
+        "debug": {
+            "default": false,
+            "description": "Store debug logs related to processing this Pivot call",
+            "type": "boolean"
+        },
+        "method": {
+            "default": "get",
+            "description": "What HTTP verb to send the request(s) with",
+            "enum": [
+                "get",
+                "post",
+                "GET",
+                "POST"
+            ],
+            "type": "string"
+        },
+        "req_format": {
+            "default": "kazoo",
+            "description": "What format of Pivot will the your server respond with",
+            "enum": [
+                "kazoo",
+                "twiml"
+            ],
+            "type": "string"
+        },
+        "voice_url": {
+            "description": "What URL to request the initial Pivot callflow",
+            "pattern": "^https?://",
+            "type": "string"
+        }
+    },
+    "required": [
+        "voice_url"
+    ],
+    "type": "object"
+}
