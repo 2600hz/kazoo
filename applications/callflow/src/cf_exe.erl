@@ -897,9 +897,20 @@ handle_channel_pivoted(Self, PidRef, JObj, Call) ->
         FlowBin ->
             lager:debug("pivoting to ~s", [FlowBin]),
             maybe_stop_action(PidRef),
-            kapps_call_command:b_flush(Call),
+            flush(Call),
             branch(kz_json:decode(FlowBin), Self)
     end.
+
+-spec flush(kapps_call:call()) -> 'ok'.
+flush(Call) ->
+    NoopId = kz_datamgr:get_uuid(),
+    Command = [{<<"Application-Name">>, <<"noop">>}
+              ,{<<"Msg-ID">>, NoopId}
+              ,{<<"Insert-At">>, <<"flush">>}
+              ],
+    send_command(Command, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)),
+    _ = kapps_call_command:wait_for_noop(Call, NoopId),
+    'ok'.
 
 -spec maybe_stop_action(api_pid_ref()) -> 'ok'.
 maybe_stop_action({Pid, _Ref}) ->
