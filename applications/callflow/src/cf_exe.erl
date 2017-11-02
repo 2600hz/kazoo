@@ -612,7 +612,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
         {{<<"call_event">>, <<"CHANNEL_BRIDGE">>}, _} ->
             handle_channel_bridged(Self, Notify, JObj, Call);
         {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
-            handle_channel_pivoted(Self, PidRef, JObj);
+            handle_channel_pivoted(Self, PidRef, JObj, Call);
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             handle_usurp(Self, Call, JObj);
         {{<<"error">>, _}, _} ->
@@ -890,13 +890,14 @@ hangup_call(Call) ->
           ],
     send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
 
--spec handle_channel_pivoted(server_ref(), api_pid_ref(), kz_call_event:doc()) -> 'ok'.
-handle_channel_pivoted(Self, PidRef, JObj) ->
+-spec handle_channel_pivoted(server_ref(), api_pid_ref(), kz_call_event:doc(), kapps_call:call()) -> 'ok'.
+handle_channel_pivoted(Self, PidRef, JObj, Call) ->
     case kz_json:get_ne_binary_value(<<"Application-Data">>, JObj) of
         'undefined' -> lager:info("no app data to pivot");
         FlowBin ->
             lager:debug("pivoting to ~s", [FlowBin]),
             maybe_stop_action(PidRef),
+            kapps_call_command:b_flush(Call),
             branch(kz_json:decode(FlowBin), Self)
     end.
 
