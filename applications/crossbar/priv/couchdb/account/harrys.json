@@ -1,0 +1,22 @@
+{
+    "_id": "_design/harrys",
+    "filters": {
+        "export": "function(doc, req) { return ( doc.pvt_type == 'harry' ); }"
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'harry' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "      'id': doc._id,",
+                "      'first_name': doc.first_name,",
+                "      'last_name': doc.last_name,",
+                "      'email': doc.email",
+                "  });",
+                "}"
+            ]
+        }
+    }
+}

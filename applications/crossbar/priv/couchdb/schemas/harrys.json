@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "harrys",
+    "description": "Schema for a Harry object",
+    "properties": {
+        "email": {
+            "description": "The email of the Harry",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 1,
+            "type": "string"
+        },
+        "first_name": {
+            "description": "The first name of the Harry",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+        },
+        "last_name": {
+            "description": "The last name of the Harry",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
