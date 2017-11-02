@@ -787,7 +787,7 @@ send_command(Command, ControlQ, CallId) ->
     Props = Command ++ [{<<"Call-ID">>, CallId}
                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                        ],
-    kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
+    kz_amqp_worker:cast(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
 -spec add_server_id(ne_binary(), api_terms()) -> api_terms().
 add_server_id(Q, API) when is_list(API) ->
@@ -895,22 +895,26 @@ handle_channel_pivoted(Self, PidRef, JObj, Call) ->
     case kz_json:get_ne_binary_value(<<"Application-Data">>, JObj) of
         'undefined' -> lager:info("no app data to pivot");
         FlowBin ->
+            _ = maybe_stop_action(PidRef),
             lager:debug("pivoting to ~s", [FlowBin]),
-            maybe_stop_action(PidRef),
             flush(Call),
             branch(kz_json:decode(FlowBin), Self)
     end.
 
 -spec flush(kapps_call:call()) -> 'ok'.
 flush(Call) ->
+    ControlQueue = kapps_call:control_queue_direct(Call),
+    CallId = kapps_call:call_id_direct(Call),
+
     NoopId = kz_datamgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
               ,{<<"Msg-ID">>, NoopId}
               ,{<<"Insert-At">>, <<"flush">>}
+              ,{<<"Call-ID">>, CallId}
+               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    send_command(Command, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)),
-    _ = kapps_call_command:wait_for_noop(Call, NoopId),
-    'ok'.
+    lager:debug("flushing with ~p", [Command]),
+    kz_amqp_worker:cast(Command, fun(C) -> kapi_dialplan:publish_command(ControlQueue, C) end).
 
 -spec maybe_stop_action(api_pid_ref()) -> 'ok'.
 maybe_stop_action({Pid, _Ref}) ->
