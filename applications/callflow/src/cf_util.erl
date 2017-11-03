@@ -788,8 +788,14 @@ process_event(Call, NoopId, JObj) ->
             lager:debug("noop ~s received", [NoopId]),
             {'ok', Call};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
-            lager:debug("ignoring noop ~s (waiting for ~s)", [MsgId, NoopId]),
-            wait_for_noop(Call, NoopId);
+            case kz_json:get_value(<<"Application-Response">>, JObj) of
+                NoopId ->
+                    lager:debug("noop ~s received", [NoopId]),
+                    {'ok', Call};
+                _Resp ->
+                    lager:debug("ignoring noop ~s(~s) (waiting for ~s)", [MsgId, _Resp, NoopId]),
+                    wait_for_noop(Call, NoopId)
+            end;
         {<<"call_event">>, <<"DTMF">>, _} ->
             DTMF = kz_json:get_value(<<"DTMF-Digit">>, JObj),
             lager:debug("recv DTMF ~s, adding to default", [DTMF]),
