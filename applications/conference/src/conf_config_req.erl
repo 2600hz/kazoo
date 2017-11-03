@@ -13,23 +13,72 @@
 handle_req(JObj, Props) ->
     'true' = kapi_conference:config_req_v(JObj),
     Request = kz_json:get_ne_value(<<"Request">>, JObj),
+    io:format("handle req: ~p~n", [JObj]),
     lager:debug("~s profile request received", [Request]),
-    handle_request(Request, JObj, Props).
+    case props:get_value('server', Props) of
+        'undefined' ->
+            Conference = kapps_conference:new(),
+            handle_request(Request, JObj, Conference);
+        Server ->
+            {'ok', Conference} = conf_participant:conference(Server),
+            handle_request(Request, JObj, Conference)
+    end.
 
--spec handle_request(kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_request(<<"Conference">>, JObj, Props) ->
-    case requested_profile_name(JObj) of
-        ?PAGE_PROFILE_NAME -> send_profile(JObj, page_profile());
-        ?DEFAULT_PROFILE_NAME -> send_profile(JObj, default_profile());
-        ProfileName -> lookup_and_send_profile(JObj, Props, ProfileName)
-    end;
-handle_request(<<"Controls">>, JObj, Props) ->
-    io:format("controls: ~p~n", [JObj]),
+-spec handle_request(ne_binary(), kz_json:object(), kapps_conference:conference()) -> 'ok'.
+handle_request(<<"Conference">>, JObj, Conference) ->
+    ProfileName = requested_profile_name(JObj),
+    Profile = kapps_conference:profile(Profile),
+    lager:debug("returning conference profile ~s", [ProfileName]),
+    ServerId = kz_api:server_id(JObj),
+    Resp = [{<<"Profiles">>, profiles(ProfileName, Profile)}
+           ,{<<"Advertise">>, advertise(ProfileName)}
+           ,{<<"Chat-Permissions">>, chat_permissions(ProfileName)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    io:format("profile: ~p~n", [Resp]),
+    kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
+handle_request(<<"Controls">>, JObj, Conference) ->
+    ProfileName = requested_profile_name(JObj),
+
     case requested_profile_name(JObj) of
         ?PAGE_PROFILE_NAME -> send_controls(JObj);
         ?DEFAULT_PROFILE_NAME -> send_controls(JObj);
         ProfileName -> lookup_and_send_controls(JObj, Props, ProfileName)
     end.
+
+-spec profiles(ne_binary(), kz_json:object()) -> kz_json:object().
+profiles(ProfileName, Profile) ->
+    kz_json:from_list([{ProfileName, Profile}]).
+
+-spec advertise(ne_binary()) -> api_object().
+-spec advertise(ne_binary(), api_object()) -> api_object().
+advertise(?DEFAULT_PROFILE_NAME = ProfileName) ->
+    advertise(ProfileName, ?ADVERTISE(ProfileName, ?DEFAULT_ADVERTISE_CONFIG));
+advertise(?PAGE_PROFILE_NAME = ProfileName) ->
+    advertise(ProfileName, ?ADVERTISE(ProfileName, ?PAGE_ADVERTISE_CONFIG));
+advertise(ProfileName) ->
+    advertise(ProfileName, ?ADVERTISE(ProfileName)).
+
+advertise(_ProfileName, 'undefined') -> 'undefined';
+advertise(ProfileName, Advertise) -> kz_json:from_list([{ProfileName, Advertise}]).
+
+-spec chat_permissions(ne_binary()) -> api_object().
+-spec chat_permissions(ne_binary(), api_object()) -> api_object().
+chat_permissions(?DEFAULT_PROFILE_NAME = ProfileName) ->
+    chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName, ?DEFAULT_CHAT_CONFIG));
+chat_permissions(?PAGE_PROFILE_NAME= ProfileName) ->
+    chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName, ?PAGE_CHAT_CONFIG));
+chat_permissions(ProfileName) ->
+    chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName)).
+
+chat_permissions(_ProfileName, 'undefined') -> 'undefined';
+chat_permissions(ProfileName, Chat) -> kz_json:from_list([{ProfileName, Chat}]).
+
+
+
+
+
 
 -spec send_profile(kz_json:object(), kz_json:object()) -> 'ok'.
 send_profile(JObj, Profile) ->
@@ -42,12 +91,11 @@ send_profile(JObj, Profile) ->
            ],
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
 
--spec lookup_and_send_profile(kz_json:object(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
-lookup_and_send_profile(JObj, Props, ProfileName) ->
-    Server = props:get_value('server', Props),
-    {'ok', Conference} = conf_participant:conference(Server),
-    Name = kapps_conference:profile(Conference),
-    Profile = fix_profile(Conference, get_conference_profile(Name, ProfileName)),
+-spec lookup_and_send_profile(kz_json:object(), kapps_conference:conference(), kz_term:ne_binary()) -> 'ok'.
+lookup_and_send_profile(JObj, Conference, ProfileName) ->
+    Language = kapps_conference:language(Conference),
+    Name = kapps_conference:profile(Conference, requested_profile_name(JObj)),
+    Profile = fix_profile(Conference, Language, get_conference_profile(Name, ProfileName)),
     Profiles = kz_json:from_list([{ProfileName, Profile}]),
     lager:debug("returning conference profile ~s", [ProfileName]),
     ServerId = kz_api:server_id(JObj),
@@ -57,6 +105,7 @@ lookup_and_send_profile(JObj, Props, ProfileName) ->
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
+    io:format("profile: ~p~n", [Resp]),
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
 
 -spec get_conference_profile(kz_json:object() | kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -68,24 +117,35 @@ get_conference_profile(Name, ProfileName) when is_binary(Name) ->
     end;
 get_conference_profile(Profile, _) -> Profile.
 
--spec default_profile() -> kz_json:object().
-default_profile() ->
-    kapps_config:get_json(?CONFIG_CAT
-                         ,[<<"profiles">>, ?DEFAULT_PROFILE_NAME]
-                         ,kz_json:from_list(?DEFAULT_PROFILE_CONFIG)
-                         ).
 
--spec page_profile() -> kz_json:object().
-page_profile() ->
-    kapps_config:get_json(?CONFIG_CAT
-                         ,[<<"profiles">>, ?PAGE_PROFILE_NAME]
-                         ,kz_json:from_list(?PAGE_PROFILE_CONFIG)
-                         ).
 
--spec fix_profile(kapps_conference:conference(), kz_term:api_object()) -> kz_json:object().
-fix_profile(Conference, 'undefined') ->
-    fix_profile(Conference, default_profile());
-fix_profile(Conference, Profile) ->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-spec fix_profile(kapps_conference:conference(), kz_term:ne_binary(), kz_term:api_object()) -> kz_json:object().
+fix_profile(Conference, Language, 'undefined') ->
+    fix_profile(Conference, Language, default_profile(Language));
+fix_profile(Conference, _, Profile) ->
     Routines = [fun add_conference_params/2
                ,fun fix_entry_tones/2
                ,fun fix_exit_tones/2
@@ -98,6 +158,7 @@ add_conference_params(Conference, Profile) ->
               [{<<"max-members">>, max_participants(Conference)}
               ,{<<"max-members-sound">>, max_members_sound(Conference)}
               ]),
+    io:format("props: ~p~n", [Props]),
     kz_json:set_values(Props, Profile).
 
 -spec fix_entry_tones(kapps_conference:conference(), kz_json:object()) -> kz_json:object().
@@ -121,7 +182,7 @@ ensure_tone(Key, Profile) ->
     case kz_json:get_ne_value(Key, Profile) of
         'undefined' ->
             lager:debug("ensure tone adding ~s", [Key]),
-            EnterSound = kz_json:get_ne_value(Key, default_profile()),
+            EnterSound = kz_json:get_ne_value(Key, default_profile(<<"en-us">>)),
             kz_json:set_value(Key, EnterSound, Profile);
         _Else ->
             lager:debug("ensure tone already has ~s", [Key]),
@@ -173,7 +234,8 @@ lookup_and_send_controls(JObj, Props, ProfileName) ->
                ,[ControlsName, ControlsType, ProfileName]
                ),
     Config = get_control_profile(ControlsName, ProfileName),
-    CallerControls = kz_json:from_list([{ControlsType, Config}]),
+    CallerControls = kz_json:from_list([{ControlsType, fix_controls(ControlsName, Config)}]),
+    io:format("controls name: ~s~nprofile name: ~s~ncontrols type: ~s~nconfig: ~p~n", [ControlsName, ProfileName, ControlsType, Config]),
     Resp = [{<<"Caller-Controls">>, CallerControls}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -198,29 +260,9 @@ get_control_profile(Name, ProfileName) when is_binary(Name) ->
     end;
 get_control_profile(Profile, _) -> Profile.
 
--spec advertise(kz_term:ne_binary()) -> kz_term:api_object().
-advertise(?DEFAULT_PROFILE_NAME = ProfileName) ->
-    advertise(ProfileName, ?ADVERTISE(ProfileName, ?DEFAULT_ADVERTISE_CONFIG));
-advertise(?PAGE_PROFILE_NAME = ProfileName) ->
-    advertise(ProfileName, ?ADVERTISE(ProfileName, ?PAGE_ADVERTISE_CONFIG));
-advertise(ProfileName) ->
-    advertise(ProfileName, ?ADVERTISE(ProfileName)).
-
--spec advertise(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_object().
-advertise(_ProfileName, 'undefined') -> 'undefined';
-advertise(ProfileName, Advertise) -> kz_json:from_list([{ProfileName, Advertise}]).
-
--spec chat_permissions(kz_term:ne_binary()) -> kz_term:api_object().
-chat_permissions(?DEFAULT_PROFILE_NAME = ProfileName) ->
-    chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName, ?DEFAULT_CHAT_CONFIG));
-chat_permissions(?PAGE_PROFILE_NAME= ProfileName) ->
-    chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName, ?PAGE_CHAT_CONFIG));
-chat_permissions(ProfileName) ->
-    chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName)).
-
--spec chat_permissions(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_object().
-chat_permissions(_ProfileName, 'undefined') -> 'undefined';
-chat_permissions(ProfileName, Chat) -> kz_json:from_list([{ProfileName, Chat}]).
+fix_controls(<<"default">>, 'undefined') -> ?DEFAULT_CONTROLS;
+fix_controls(_, 'undefined') -> kz_json:new();
+fix_controls(_, Controls) -> Controls.
 
 -spec requested_profile_name(kz_json:object()) -> kz_term:ne_binary().
 requested_profile_name(JObj) ->

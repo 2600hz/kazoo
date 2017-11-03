@@ -21,17 +21,27 @@
 
 -define(SUPPORT_NAME_ANNOUNCEMENT(AccountId), kz_term:is_true(kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"support_name_announcement">>, 'true'))).
 
--define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
+-define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 16000}
                                 ,{<<"caller-controls">>, <<"default">>}
+                                ,{<<"moderator-controls">>, <<"default">>}
                                 ,{<<"interval">>, 20}
                                 ,{<<"energy-level">>, 20}
                                 ,{<<"comfort-noise">>, 1000}
                                 ,{<<"moh-sound">>, <<"$${hold_music}">>}
                                 ,{<<"enter-sound">>, ?DEFAULT_ENTRY_TONE}
+                                ,{<<"exit-sound">>, ?DEFAULT_EXIT_TONE}
+                                ,{<<"max-members-sound">>, <<"prompt://system_media/conf-max_participants/en-us">>}
+                                ,{<<"locked-sound">>, <<"prompt://system_media/conf-max_participants/en-us">>}
+                                ,{<<"muted-sound">>, <<"prompt://system_media/conf-muted/en-us">>}
+                                ,{<<"unmuted-sound">>, <<"prompt://system_media/conf-unmuted/en-us">>}
+                                ,{<<"deaf-sound">>, <<"prompt://system_media/conf-deaf/en-us">>}
+                                ,{<<"undeaf-sound">>, <<"prompt://system_media/conf-undeaf/en-us">>}
+                                ,{<<"member-enter-sound">>, <<"prompt://system_media/conf-joining_conference/en-us">>}
+                                ,{<<"alone-sound">>, <<"prompt://system_media/conf-alone/en-us">>}
                                 ]).
 
 -define(PAGE_PROFILE_CONFIG, [{<<"rate">>, 8000}
-                             ,{<<"caller-controls">>, <<"default">>}
+                             ,{<<"caller-controls">>, <<"paging">>}
                              ,{<<"interval">>, 20}
                              ,{<<"energy-level">>, 20}
                              ,{<<"comfort-noise">>, 1000}
