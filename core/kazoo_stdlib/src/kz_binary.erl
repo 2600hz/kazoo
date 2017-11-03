@@ -32,6 +32,8 @@
         ]).
 -export([pos/2, closests/2]).
 
+-export([to_lower/1, to_upper/1]).
+
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %%------------------------------------------------------------------------------
@@ -226,3 +228,22 @@ reverse(Binary) ->
     Size = erlang:size(Binary)*8,
     <<X:Size/integer-little>> = Binary,
     <<X:Size/integer-big>>.
+
+-spec to_upper_char(char()) -> char().
+to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
+to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
+to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
+to_upper_char(C) -> C.
+
+-spec to_lower_char(char()) -> char().
+to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
+%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
+to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
+to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
+to_lower_char(C) -> C.
+
+-spec to_lower(binary()) -> binary().
+to_lower(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>.
+
+-spec to_upper(binary()) -> binary().
+to_upper(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>.
