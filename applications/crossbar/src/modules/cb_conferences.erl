@@ -392,11 +392,7 @@ media_id_required(Context) ->
 
 -spec dial(cb_context:context(), path_token(), api_object()) -> cb_context:context().
 dial(Context, _ConferenceId, 'undefined') ->
-    cb_context:add_validation_error(<<"data">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"action 'dial' requires a data object">>}])
-                                   ,Context
-                                   );
+    data_required(Context, <<"dial">>);
 dial(Context, ConferenceId, Data) ->
     dial_endpoints(Context, ConferenceId, Data, kz_json:get_list_value(<<"endpoints">>, Data, [])).
 
