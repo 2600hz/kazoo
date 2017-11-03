@@ -899,7 +899,7 @@ handle_channel_pivoted(Self, PidRef, JObj, Call) ->
             _ = maybe_stop_action(PidRef),
             lager:debug("pivoting to ~s", [FlowBin]),
             flush(Call),
-            branch(kz_json:decode(FlowBin), Self)
+            continue_with_flow(kz_json:decode(FlowBin), Self)
     end.
 
 -spec flush(kapps_call:call()) -> 'ok'.
