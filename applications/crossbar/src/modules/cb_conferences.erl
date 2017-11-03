@@ -168,6 +168,12 @@ put(Context, ConferenceId, ?PARTICIPANTS) ->
 
 put(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
     Action = cb_context:req_value(Context, ?PUT_ACTION),
+    participant_action(Context, ConferenceId, ParticipantId, Action).
+
+participant_action(Context, ConferenceId, ParticipantId, ?PLAY) ->
+    play(Context, ConferenceId, ParticipantId, cb_context:req_value(Context, <<"data">>));
+
+participant_action(Context, ConferenceId, ParticipantId, Action) ->
     perform_participant_action(conference(ConferenceId), Action, kz_term:to_integer(ParticipantId)),
     crossbar_util:response_202(<<"ok">>, Context).
 
@@ -322,26 +328,51 @@ handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
 
--spec play(cb_context:context(), path_token(), api_object()) -> cb_context:context().
+-spec play(cb_context:context(), path_token(), api_object()) ->
+                  cb_context:context().
+-spec play(cb_context:context(), path_token(), pos_integer(), api_object()) ->
+                  cb_context:context().
 play(Context, _ConferenceId, 'undefined') ->
-    cb_context:add_validation_error(<<"data">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"action 'play' requires a data object">>}])
-                                   ,Context
-                                   );
+    data_required(Context, <<"play">>);
 play(Context, ConferenceId, Data) ->
     play_media(Context, ConferenceId, kz_json:get_ne_binary_value(<<"media_id">>, Data)).
 
--spec play_media(cb_context:context(), path_token(), api_ne_binary()) -> cb_context:context().
+play(Context, _ConferenceId, _ParticipantId, 'undefined') ->
+    data_required(Context, <<"play">>);
+play(Context, ConferenceId, ParticipantId, Data) ->
+    play_media(Context, ConferenceId, ParticipantId, kz_json:get_ne_binary_value(<<"media_id">>, Data)).
+
+-spec data_required(cb_context:context(), ne_binary()) -> cb_context:context().
+data_required(Context, Action) ->
+    cb_context:add_validation_error(<<"data">>
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"action '", Action/binary, "' requires a data object">>}])
+                                   ,Context
+                                   ).
+
+-spec play_media(cb_context:context(), path_token(), api_ne_binary()) ->
+                        cb_context:context().
+-spec play_media(cb_context:context(), path_token(), pos_integer(), api_ne_binary()) ->
+                        cb_context:context().
 play_media(Context, _ConferenceId, 'undefined') ->
+    media_id_required(Context);
+play_media(Context, ConferenceId, MediaId) ->
+    kapps_conference_command:play(MediaId, conference(ConferenceId)),
+    crossbar_util:response_202(<<"ok">>, Context).
+
+play_media(Context, _ConferenceId, _ParticipantId, 'undefined') ->
+    media_id_required(Context);
+play_media(Context, ConferenceId, ParticipantId, MediaId) ->
+    kapps_conference_command:play(MediaId, ParticipantId, conference(ConferenceId)),
+    crossbar_util:response_202(<<"ok">>, Context).
+
+-spec media_id_required(cb_context:context()) -> cb_context:context().
+media_id_required(Context) ->
     cb_context:add_validation_error([<<"data">>, <<"media_id">>]
                                    ,<<"required">>
                                    ,kz_json:from_list([{<<"message">>, <<"action 'play' requires a media ID or URL">>}])
                                    ,Context
-                                   );
-play_media(Context, ConferenceId, MediaId) ->
-    kapps_conference_command:play(MediaId, conference(ConferenceId)),
-    crossbar_util:response_202(<<"ok">>, Context).
+                                   ).
 
 -spec dial(cb_context:context(), path_token(), api_object()) -> cb_context:context().
 dial(Context, _ConferenceId, 'undefined') ->
@@ -497,7 +528,7 @@ handle_participants_action(Context, ConferenceId, Action=?UNDEAF) ->
 handle_participants_action(Context, ConferenceId, Action=?KICK) ->
     handle_participants_action(Context, ConferenceId, Action, fun kz_term:always_true/1);
 handle_participants_action(Context, ConferenceId, Action=?PLAY) ->
-    handle_participants_action(Context, ConferenceId, Action, fun kz_term:always_true/1);
+    handle_conference_action(Context, ConferenceId, Action);
 handle_participants_action(Context, ConferenceId, ?RELATE) ->
     OnSuccess = fun(C) -> handle_participants_relate(C, ConferenceId) end,
     RelateData = cb_context:req_value(Context, <<"data">>, kz_json:new()),
@@ -519,7 +550,7 @@ handle_participants_action(Context, ConferenceId, Action, Selector) ->
     ConfData = request_conference_details(ConferenceId),
     Participants = extract_participants(ConfData),
     Conf = conference(ConferenceId),
-    _ = [perform_participant_action(Conf, Action, kz_json:get_value(<<"Participant-ID">>, P))
+    _ = [perform_participant_action(Conf, Action, kz_json:get_ne_binary_value(<<"Participant-ID">>, P))
          || P <- Participants,
             filter_participant(P, Selector)
         ],
@@ -588,10 +619,7 @@ perform_participant_action(Conference, ?DEAF, ParticipantId) ->
 perform_participant_action(Conference, ?UNDEAF, ParticipantId) ->
     kapps_conference_command:undeaf_participant(ParticipantId, Conference);
 perform_participant_action(Conference, ?KICK, ParticipantId) ->
-    kapps_conference_command:kick(ParticipantId, Conference);
-perform_participant_action(Conference, ?PLAY, ParticipantId) ->
-    kapps_conference_command:play(ParticipantId, Conference).
-
+    kapps_conference_command:kick(ParticipantId, Conference).
 
 %% add real-time call-info to participants
 -spec enrich_participant(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().

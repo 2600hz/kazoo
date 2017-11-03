@@ -222,6 +222,21 @@ curl -v -X PUT \
  `deaf` | Stop sending conference audio to the participant
  `undeaf` | Start sending conference audio to the participant
  `kick` | Kick the participant from the conference
+ `play` | Play media to a single participant
+
+##### Playing media to a conference
+
+Playing a media file to everyone in a conference:
+
+```json
+{"data"{
+    "action":"play",
+    "data":{"media_id":"{MEDIA_ID}"}
+ }
+}
+```
+
+`{MEDIA_ID}` can be a pre-uploaded media ID or a URL to fetch media from.
 
 #### List of conferences example
 
