@@ -398,12 +398,11 @@ fix_conference_profile(Resp) ->
 
 -spec fix_conference_profile(kz_json:path(), kz_json:object()) -> {kz_json:path(), kz_json:object()}.
 fix_conference_profile(Name, Profile) ->
-    [AccountId | _] = binary:split(Name, <<"_">>),
     Routines = [fun maybe_fix_profile_tts/1
                ,fun conference_sounds/1
                ,fun set_verbose_events/1
-               ,{fun kz_json:set_value/3, <<"caller-controls">>, <<AccountId/binary, "_caller-controls">>}
-               ,{fun kz_json:set_value/3, <<"moderator-controls">>, <<AccountId/binary, "_moderator-controls">>}
+               ,{fun kz_json:set_value/3, <<"caller-controls">>, <<"caller-controls?profile=", Name/binary>>}
+               ,{fun kz_json:set_value/3, <<"moderator-controls">>, <<"moderator-controls?profile=", Name/binary>>}
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
@@ -446,23 +445,39 @@ fetch_conference_config(Node, Id, <<"REQUEST_PARAMS">>, Data) ->
     lager:debug("request conference:~p params:~p", [ConfName, Action]),
     fetch_conference_params(Node, Id, Action, ConfName, Data).
 
-fetch_conference_params(Node, Id, <<"request-controls">>, ConfName, Data) ->
-    Controls = props:get_value(<<"Controls">>, Data),
-    lager:debug("request controls:~p for conference:~p", [Controls, ConfName]),
+fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, Data) ->
+    FSName = props:get_value(<<"Controls">>, Data),
+    [KZName, Profile] = binary:split(FSName, <<"?profile=">>),
+    lager:debug("request controls:~p for profile: ~p", [KZName, Profile]),
     Cmd = [{<<"Request">>, <<"Controls">>}
-          ,{<<"Profile">>, ConfName}
-          ,{<<"Controls">>, Controls} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
+          ,{<<"Profile">>, Profile}
+          ,{<<"Controls">>, KZName}
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
     Resp = kz_amqp_worker:call(Cmd
                               ,fun kapi_conference:publish_config_req/1
                               ,fun kapi_conference:config_resp_v/1
                               ,ecallmgr_fs_node:fetch_timeout(Node)
                               ),
-    {'ok', Xml} = handle_conference_params_response(Resp),
+    FixedResp = maybe_fix_conference_controls(Resp, KZName, FSName),
+    {'ok', Xml} = handle_conference_params_response(FixedResp),
     send_conference_profile_xml(Node, Id, Xml);
 fetch_conference_params(Node, Id, Action, ConfName, _Data) ->
     lager:debug("undefined request_params action:~p conference:~p", [Action, ConfName]),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
     send_conference_profile_xml(Node, Id, XmlResp).
+
+maybe_fix_conference_controls({'ok', JObj}, KZName, FSName) ->
+    {'ok', fix_conference_controls(JObj, KZName, FSName)};
+maybe_fix_conference_controls(Resp, _, _) -> Resp.
+
+-spec fix_conference_controls(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
+fix_conference_controls(JObj, KZName, FSName) ->
+    case kz_json:get_value([<<"Caller-Controls">>, KZName], JObj) of
+        'undefined' -> JObj;
+        Controls ->
+            kz_json:set_value([<<"Caller-Controls">>, FSName], Controls, JObj)
+    end.
 
 handle_conference_params_response({'ok', Resp}) ->
     lager:debug("replying with xml response for conference params request"),
