@@ -21,8 +21,8 @@
 -export([account_id/1, set_account_id/2]).
 -export([moderator_controls/1, set_moderator_controls/2]).
 -export([caller_controls/1, set_caller_controls/2]).
--export([controls/1, set_controls/2]).
--export([profile_name/1, profile_name/2, set_profile_name/2]).
+-export([controls/2, set_controls/2]).
+-export([profile_name/1, set_profile_name/2]).
 -export([profile/1, set_profile/2]).
 -export([focus/1, set_focus/2]).
 -export([language/1, set_language/2]).
@@ -198,7 +198,7 @@ do_from_json(JObj, Conference) ->
                                ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Conference#kapps_conference.kvs, KVS)
                                ,call = load_call(JObj, call(Conference))
                                ,account_id = kz_json:get_value(<<"Account-ID">>, JObj, account_id(Conference))
-                               ,controls = kz_json:get_ne_value(<<"Controls">>, JObj, controls(Conference))
+                               ,controls = kz_json:get_ne_value(<<"Controls">>, JObj, raw_controls(Conference))
                                ,moderator_controls = kz_json:get_ne_binary_value(<<"Moderator-Controls">>, JObj, moderator_controls(Conference))
                                ,caller_controls = kz_json:get_ne_binary_value(<<"Caller-Controls">>, JObj, caller_controls(Conference))
                                }.
@@ -258,7 +258,7 @@ to_proplist(#kapps_conference{}=Conference) ->
     ,{<<"Key-Value-Store">>, kvs_to_proplist(Conference)}
     ,{<<"Call">>, kapps_call:to_json(call(Conference))}
     ,{<<"Account-ID">>, account_id(Conference)}
-    ,{<<"Controls">>, controls(Conference)}
+    ,{<<"Controls">>, raw_controls(Conference)}
     ,{<<"Moderator-Controls">>, moderator_controls(Conference)}
     ,{<<"Caller-Controls">>, caller_controls(Conference)}
     ].
@@ -301,10 +301,10 @@ from_conference_doc(JObj, Conference) ->
                                ,max_members_media = kz_json:get_ne_binary_value(<<"max_members_media">>, JObj, max_members_media(Conference))
                                ,require_moderator = kz_json:is_true(<<"require_moderator">>, JObj, require_moderator(Conference))
                                ,wait_for_moderator = kz_json:is_true(<<"wait_for_moderator">>, JObj, wait_for_moderator(Conference))
-                               ,conference_doc = JObj
-                               ,controls = kz_json:get_ne_value(<<"controls">>, JObj, controls(Conference))
+                               ,controls = kz_json:get_ne_value(<<"controls">>, JObj, raw_controls(Conference))
                                ,moderator_controls = kz_json:get_ne_binary_value(<<"moderator_controls">>, JObj, moderator_controls(Conference))
                                ,caller_controls = kz_json:get_ne_binary_value(<<"caller_controls">>, JObj, caller_controls(Conference))
+                               ,conference_doc = JObj
                                }.
 
 -type updater_1() :: fun((conference()) -> conference()).
@@ -344,8 +344,32 @@ set_account_id(AccountId, Conference) when is_binary(AccountId) ->
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
--spec controls(conference()) -> kz_term:api_object().
-controls(#kapps_conference{controls=Controls}) -> Controls.
+-spec controls(conference(), ne_binary()) -> {ne_binary(), kz_json:object()}.
+controls(#kapps_conference{controls=Controls}, _) when Controls /= 'undefined' -> Controls;
+controls(#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME) ->
+    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME], ?DEFAULT_CONTROLS);
+controls(#kapps_conference{account_id=AccountId}=Conference, ?DEFAULT_PROFILE_NAME) ->
+    case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME]) of
+        'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME);
+        Controls -> Controls
+    end;
+controls(#kapps_conference{account_id='undefined'}, ?PAGE_PROFILE_NAME) ->
+    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?PAGE_PROFILE_NAME]);
+controls(#kapps_conference{account_id=AccountId}=Conference, ?PAGE_PROFILE_NAME) ->
+    case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?PAGE_PROFILE_NAME]) of
+        'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ?PAGE_PROFILE_NAME);
+        Controls -> Controls
+    end;
+controls(#kapps_conference{account_id='undefined'}, ControlsName) ->
+    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ControlsName]);
+controls(#kapps_conference{account_id=AccountId}=Conference, ControlsName) ->
+    case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"controls">>, ControlsName]) of
+        'undefined' -> controls(Conference#kapps_conference{account_id='undefined'}, ControlsName);
+        Controls -> Controls
+    end.
+
+-spec raw_controls(conference()) -> api_object().
+raw_controls(#kapps_conference{controls=Controls}) -> Controls.
 
 -spec set_controls(kz_term:api_object(), conference()) -> conference().
 set_controls(Controls, Conference) ->
@@ -367,40 +391,38 @@ set_caller_controls(CallerCtrls, Conference) when is_binary(CallerCtrls) ->
 caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
--spec profile_name(conference()) -> kz_term:api_binary().
-profile_name(#kapps_conference{profile_name=P}) -> P.
-
--spec profile_name(conference(), kz_term:api_binary()) -> kz_term:api_binary().
-profile_name(#kapps_conference{profile_name='undefined'}=Conference, 'undefined') ->
-    id(Conference);
-profile_name(#kapps_conference{profile_name='undefined'}, Default) ->
-    Default;
-profile_name(#kapps_conference{profile_name=Profile}, _) ->
-    Profile.
+-spec profile_name(conference()) -> api_binary().
+profile_name(#kapps_conference{profile_name=Profile}) -> Profile.
 
 -spec set_profile_name(kz_term:api_binary(), conference()) -> conference().
 set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
     Conference#kapps_conference{profile_name=P}.
 
--spec profile(conference()) -> kz_term:api_object().
-profile(#kapps_conference{profile=Profile}) when Profile /= 'undefined' -> Profile;
+-spec profile(conference()) -> {ne_binary(), kz_json:object()}.
+profile(#kapps_conference{profile=Profile}=Conference) when Profile /= 'undefined' ->
+    case profile_name(Conference) of
+        'undefined' -> {id(Conference), Profile};
+        Name -> {Name, Profile}
+    end;
 profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME, account_id='undefined'}=Conference) ->
     Language = language(Conference),
-    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME], default_profile(Language));
+    Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME], default_profile(Language)),
+    {?DEFAULT_PROFILE_NAME, Profile};
 profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME, account_id=AccountId}=Conference) ->
     Language = language(Conference),
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME]) of
         'undefined' -> profile(Conference#kapps_conference{account_id='undefined'});
-        Profile -> Profile
+        Profile -> {?DEFAULT_PROFILE_NAME, Profile}
     end;
 profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id='undefined'}=Conference) ->
     Language = language(Conference),
-    kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME], page_profile(Language));
+    Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME], page_profile(Language)),
+    [{?PAGE_PROFILE_NAME, Profile}];
 profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id=AccountId}=Conference) ->
     Language = language(Conference),
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME]) of
         'undefined' -> profile(Conference#kapps_conference{account_id='undefined'});
-        Profile -> Profile
+        Profile -> {?PAGE_PROFILE_NAME, Profile}
     end;
 profile(#kapps_conference{profile_name='undefined'}=Conference) ->
     profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
@@ -408,13 +430,13 @@ profile(#kapps_conference{profile_name=ProfileName, account_id='undefined'}=Conf
     Language = language(Conference),
     case kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]) of
         'undefined' -> profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
-        Profile -> Profile
+        Profile -> {ProfileName, Profile}
     end;
 profile(#kapps_conference{profile_name=ProfileName, account_id=AccountId}=Conference) ->
     Language = language(Conference),
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]) of
         'undefined' -> profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
-        Profile -> Profile
+        Profile -> {ProfileName, Profile}
     end.
 
 -spec raw_profile(conference()) -> kz_term:api_object().
