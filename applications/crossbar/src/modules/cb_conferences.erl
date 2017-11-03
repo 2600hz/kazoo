@@ -394,6 +394,7 @@ build_endpoint(Number, {Endpoints, Call}) ->
                ,{<<"Route">>,  Number}
                ,{<<"To-DID">>, Number}
                ,{<<"To-Realm">>, AccountRealm}
+               ,{<<"Simplify-Loopback">>, 'true'}
                ,{<<"Custom-Channel-Vars">>
                 ,kz_json:from_list([{<<"Account-ID">>, kapps_call:account_id(Call)}
                                    ,{<<"Authorizing-Type">>, <<"conference">>}
