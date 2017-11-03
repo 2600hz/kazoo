@@ -321,7 +321,7 @@ handle_conference_action(Context, ConferenceId, <<"unlock">>) ->
     kapps_conference_command:unlock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
 handle_conference_action(Context, ConferenceId, ?PLAY) ->
-    play(Context, ConferenceId, cb_context:req_data(Context, <<"data">>));
+    play(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, <<"dial">>) ->
     dial(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, Action) ->
@@ -357,14 +357,30 @@ data_required(Context, Action) ->
 play_media(Context, _ConferenceId, 'undefined') ->
     media_id_required(Context);
 play_media(Context, ConferenceId, MediaId) ->
-    kapps_conference_command:play(MediaId, conference(ConferenceId)),
-    crossbar_util:response_202(<<"ok">>, Context).
+    case kz_media_util:media_path(MediaId, cb_context:account_id(Context)) of
+        'undefined' ->
+            media_id_invalid(Context, MediaId);
+        Media ->
+            lager:info("playing ~s to conference ~s", [Media, ConferenceId]),
+            kapps_conference_command:play(Media, conference(ConferenceId)),
+            crossbar_util:response_202(<<"ok">>, Context)
+    end.
 
 play_media(Context, _ConferenceId, _ParticipantId, 'undefined') ->
     media_id_required(Context);
 play_media(Context, ConferenceId, ParticipantId, MediaId) ->
-    kapps_conference_command:play(MediaId, ParticipantId, conference(ConferenceId)),
-    crossbar_util:response_202(<<"ok">>, Context).
+    case kz_media_util:media_path(MediaId, cb_context:account_id(Context)) of
+        'undefined' ->
+            media_id_invalid(Context, MediaId);
+        Media ->
+            lager:info("playing ~s to conference ~s participant ~p", [Media, ConferenceId, ParticipantId]),
+            kapps_conference_command:play(Media, ParticipantId, conference(ConferenceId)),
+            crossbar_util:response_202(<<"ok">>, Context)
+    end.
+
+-spec media_id_invalid(cb_context:context(), ne_binary()) -> cb_context:context().
+media_id_invalid(Context, MediaId) ->
+    crossbar_util:response_bad_identifier(MediaId, Context).
 
 -spec media_id_required(cb_context:context()) -> cb_context:context().
 media_id_required(Context) ->
