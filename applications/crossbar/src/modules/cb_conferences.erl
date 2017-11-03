@@ -99,8 +99,14 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%%===================================================================
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    Ctx1 = search_conferences(Context),
-    crossbar_doc:load_view(?CB_LIST, [], Ctx1, fun(J, A) -> normalize_view_results(Ctx1, J, A) end);
+    Context1 = search_conferences(Context),
+    RunningConferences = cb_context:fetch(Context1, 'conferences', kz_json:new()),
+    LoadedContext = crossbar_doc:load_view(?CB_LIST
+                                          ,[]
+                                          ,Context1
+                                          ,fun normalize_view_results/2
+                                          ),
+    add_realtime(LoadedContext, RunningConferences);
 validate_conferences(?HTTP_PUT, Context) ->
     create_conference(Context).
 
@@ -219,11 +225,9 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(ConferenceId, Context) ->
     crossbar_doc:load_merge(ConferenceId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
 
--spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(Context, JObj, Acc) ->
-    Conferences = cb_context:fetch(Context, 'conferences', kz_json:new()),
-    Realtime = kz_json:get_value(kz_doc:id(JObj), Conferences, empty_realtime_data()),
-    [kz_json:merge_jobjs(kz_json:normalize(Realtime), kz_json:get_value(<<"value">>, JObj)) | Acc].
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(ViewResult, Acc) ->
+    [kz_json:get_json_value(<<"value">>, ViewResult) | Acc].
 
 empty_realtime_data() ->
     kz_json:from_list(
@@ -232,6 +236,48 @@ empty_realtime_data() ->
       ,{<<"duration">>, 0}
       ,{<<"is_locked">>, 'false'}
       ]).
+
+-spec add_realtime(cb_context:context(), kz_json:object()) -> cb_context:context().
+add_realtime(Context, RunningConferences) ->
+    lager:debug("run: ~p", [RunningConferences]),
+
+    ReadOnly = kz_json:map(fun(Id, Realtime) ->
+                                   {Id, kz_json:from_list([{<<"id">>, Id}
+                                                          ,{<<"_read_only">>, kz_json:normalize(Realtime)}
+                                                          ])
+                                   }
+                           end
+                          ,RunningConferences
+                          ),
+    lager:debug("read: ~p", [ReadOnly]),
+
+    Conferences = lists:foldl(fun add_realtime_fold/2
+                             ,ReadOnly
+                             ,cb_context:doc(Context)
+                             ),
+
+    lager:debug("amend: ~p", [Conferences]),
+
+    Listing = kz_json:foldl(fun(_Id, Data, Acc) -> [Data | Acc] end
+                           ,[]
+                           ,Conferences
+                           ),
+    lager:debug("list: ~p", [Listing]),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_doc/2, Listing}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, Listing}
+                       ,{fun cb_context:set_resp_envelope/2
+                        ,kz_json:set_value(<<"page_size">>, length(Listing), cb_context:resp_envelope(Context))
+                        }
+                       ]).
+
+-spec add_realtime_fold(kzd_conference:doc(), kz_json:object()) -> kz_json:object().
+add_realtime_fold(Conference, RunningConferences) ->
+    Realtime = kz_json:get_value(kz_doc:id(Conference), RunningConferences, empty_realtime_data()),
+    Amended = kz_json:merge(Conference, Realtime),
+    kz_json:set_value(kz_doc:id(Conference), Amended, RunningConferences).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -645,5 +691,5 @@ search_conferences(Context) ->
 -spec search_conferences_fold(kz_json:object(), kz_json:object()) ->
                                      kz_json:object().
 search_conferences_fold(JObj, Acc) ->
-    V = kz_json:get_value(<<"Conferences">>, JObj, kz_json:new()),
+    V = kz_json:get_json_value(<<"Conferences">>, JObj, kz_json:new()),
     kz_json:merge_jobjs(V, Acc).
