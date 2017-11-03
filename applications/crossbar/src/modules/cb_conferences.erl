@@ -112,7 +112,7 @@ validate_conferences(?HTTP_PUT, Context) ->
 
 -spec validate_conference(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
 validate_conference(?HTTP_GET, Context0, ConferenceId) ->
-    Context1 = load_conference(ConferenceId, Context0),
+    Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
         'success' -> enrich_conference(ConferenceId, Context1);
         _Else -> Context1
