@@ -48,7 +48,7 @@
 %%% API
 %%%===================================================================
 
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.conferences">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.conferences">>, ?MODULE, 'resource_exists'),
@@ -114,7 +114,7 @@ validate_conference(?HTTP_GET, Context0, ConferenceId) ->
 validate_conference(?HTTP_POST, Context, ConferenceId) ->
     update_conference(ConferenceId, Context);
 validate_conference(?HTTP_PUT, Context, ConferenceId) ->
-    load_conference(ConferenceId, Context);
+    maybe_load_conference(ConferenceId, Context);
 validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
     patch_conference(ConferenceId, Context);
 validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
@@ -175,9 +175,29 @@ delete(Context, _) ->
 %%%===================================================================
 %%% Conference validation helpers
 %%%===================================================================
+
+-spec maybe_load_conference(path_token(), cb_context:context()) -> cb_context:context().
+maybe_load_conference(ConferenceId, Context) ->
+    maybe_build_conference(ConferenceId, load_conference(ConferenceId, Context)).
+
+-spec maybe_build_conference(path_token(), cb_context:context()) -> cb_context:context().
+maybe_build_conference(ConferenceId, Context) ->
+    case cb_context:resp_status(Context) of
+        'success' -> Context; % loaded an existing conference
+        _ ->
+            lager:info("building an ad-hoc conference for ~s", [ConferenceId]),
+            build_conference(ConferenceId, Context)
+    end.
+
+-spec build_conference(path_token(), cb_context:context()) -> cb_context:context().
+build_conference(ConferenceId, Context) ->
+    Conference = kz_doc:set_id(ConferenceId, kzd_conference:new()),
+    Merged = kz_json:merge(Conference, cb_context:req_data(Context)),
+    crossbar_doc:handle_datamgr_success(Merged, Context).
+
 -spec load_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 load_conference(ConferenceId, Context) ->
-    crossbar_doc:load(ConferenceId, Context).
+    crossbar_doc:load(ConferenceId, Context, ?TYPE_CHECK_OPTION(kzd_conference:type())).
 
 -spec create_conference(cb_context:context()) -> cb_context:context().
 create_conference(Context) ->
