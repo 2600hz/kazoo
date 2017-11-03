@@ -1054,7 +1054,7 @@ put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME(DbNam
     case attachment_options(DbName, DocId, Options) of
         {'ok', NewOpts} ->
             NewOptions = props:delete('plan_override', NewOpts),
-            kzs_attachments:put_attachment(kzs_plan:plan(DbName, NewOptions), DbName, DocId, AName, Contents, NewOptions);
+            kzs_attachments:put_attachment(kzs_plan:plan(DbName, NewOpts), DbName, DocId, AName, Contents, NewOptions);
         {'error', _} = Error -> Error
     end;
 put_attachment(DbName, DocId, AName, Contents, Options) ->
