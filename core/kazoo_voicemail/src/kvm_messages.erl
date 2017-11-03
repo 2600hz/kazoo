@@ -25,31 +25,35 @@
 
 -include("kz_voicemail.hrl").
 
--define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
--define(MSG_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
+-define(COUNT_ALL, [<<"new">>, <<"saved">>, <<"deleted">>]).
+-define(COUNT_NON_DELETED, [<<"new">>, <<"saved">>]).
 
--define(BOX_ID_KEY_INDEX, 1).
--define(FOLDER_KEY_INDEX, 2).
+-define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
+-define(MSG_LISTING_BY_TIMESTAMP, <<"mailbox_messages/listing_by_timestamp">>).
+-define(MSG_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
+-define(MSG_COUNT_PER_BOX_FOLDER, <<"mailbox_messages/count_per_box_folder">>).
 
 -type norm_fun() :: 'undefined' |
                     fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc fetch all messages for a voicemail box or on an account
+%% @doc fetch all messages for a voicemail box or on an account (per vmbox)
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) -> kz_json:objects().
+-spec get(ne_binary()) -> map().
 -spec get(ne_binary(), message() | kz_proplist()) -> kz_json:objects().
 get(AccountId) ->
-    get(AccountId, []).
+    ViewOpts = [{'startkey', []}
+               ,{'endkey', []}
+               ],
+    normalize_account_listing(get_view_results(AccountId, ?MSG_LISTING_BY_TIMESTAMP, ViewOpts, 'undefined')).
 
-get(AccountId, ?NE_BINARY = BoxId) ->
-    get(AccountId, [{'startkey', [BoxId]}
-                   ,{'endkey', [BoxId, kz_json:new()]}
-                   ]);
-get(AccountId, ViewOpts) when is_list(ViewOpts) ->
-    NormFun = fun normalize_view_results/2,
+get(AccountId, ?NE_BINARY=BoxId) ->
+    ViewOpts = [{'startkey', [BoxId]}
+               ,{'endkey', [BoxId]}
+               ],
+    NormFun = fun normalize_listing_by_mailbox/2,
     get_view_results(AccountId, ?MSG_LISTING_BY_MAILBOX, ViewOpts, NormFun);
 get(AccountId, Box) ->
     get(AccountId, kz_doc:id(Box)).
@@ -59,22 +63,25 @@ get(AccountId, Box) ->
 %% @doc Sum of non-deleted messages
 %% @end
 %%--------------------------------------------------------------------
--spec count(ne_binary()) -> kz_json:object().
--spec count(ne_binary(), ne_binary()) -> non_neg_integer().
--spec count_none_deleted(ne_binary(), ne_binary()) -> count_result().
 %% Note: returns counts per folders in JObj
+-spec count(ne_binary()) -> map().
 count(AccountId) ->
     count_per_folder(AccountId).
 
 %% Note: returns total non-deleted count
+-spec count(ne_binary(), ne_binary()) -> non_neg_integer().
 count(AccountId, BoxId) ->
     {New, Saved} = count_none_deleted(AccountId, BoxId),
     New + Saved.
 
 %% Note: returns counts in {new, saved} format
+-spec count_none_deleted(ne_binary(), ne_binary()) -> count_result().
 count_none_deleted(AccountId, BoxId) ->
-    FoldersCounts = count_per_folder(AccountId, BoxId),
-    normalize_count_none_deleted(BoxId, FoldersCounts).
+    CountMap = count_per_folder(AccountId, [BoxId], ?MSG_COUNT_PER_BOX_FOLDER, ?COUNT_NON_DELETED),
+    VMBoxCount = maps:get(BoxId, CountMap, maps:new()),
+    {maps:get(<<"new">>, VMBoxCount, 0)
+    ,maps:get(<<"saved">>, VMBoxCount, 0)
+    }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -92,47 +99,50 @@ count_by_owner(AccountId, OwnerId) ->
             lager:info("no voicemail boxes belonging to user ~s found", [OwnerId]),
             {0, 0};
         {'ok', Boxes} ->
-            FolderQuantities = count_per_folder(AccountId),
             BoxIds = [kz_json:get_value(<<"value">>, Box) || Box <- Boxes],
             lager:debug("found ~p vociemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
-            sum_owner_mailboxes(FolderQuantities, BoxIds, {0, 0});
+            sum_owner_mailboxes(AccountId, BoxIds, {0, 0});
         {'error', _R} ->
             lager:info("unable to lookup vm counts by owner: ~p", [_R]),
             {0, 0}
     end.
 
--spec sum_owner_mailboxes(kz_json:object(), ne_binaries(), count_result()) -> count_result().
+-spec sum_owner_mailboxes(ne_binary(), ne_binaries(), count_result()) -> count_result().
 sum_owner_mailboxes(_, [], Results) -> Results;
-sum_owner_mailboxes(FolderQuantities, [BoxId|BoxIds], {New, Saved}) ->
-    {BoxNew, BoxSaved} = normalize_count_none_deleted(BoxId, FolderQuantities),
+sum_owner_mailboxes(AccountId, [BoxId|BoxIds], {New, Saved}) ->
+    {BoxNew, BoxSaved} = count_none_deleted(AccountId, BoxId),
     lager:debug("adding mailbox ~s with ~p new and ~p saved messages to user's quantities"
                ,[BoxId, BoxNew, BoxSaved]),
-    sum_owner_mailboxes(FolderQuantities, BoxIds, {New + BoxNew, Saved + BoxSaved}).
+    sum_owner_mailboxes(AccountId,  BoxIds, {New + BoxNew, Saved + BoxSaved}).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec count_per_folder(ne_binary()) -> kz_json:object().
--spec count_per_folder(ne_binary(), ne_binary() | kz_proplist()) -> kz_json:object().
-count_per_folder(AccountId) ->
-    count_per_folder(AccountId, []).
 
-count_per_folder(AccountId, ?NE_BINARY = BoxId) ->
-    ViewOpts = [{'startkey', [BoxId]}
-               ,{'endkey', [BoxId, kz_json:new()]}
+-spec count_per_folder(ne_binary()) -> map().
+count_per_folder(AccountId) ->
+    count_per_folder(AccountId, [], ?MSG_COUNT_VIEW, ?COUNT_ALL).
+
+-spec count_per_folder(ne_binary(), ne_binary()) -> map().
+count_per_folder(AccountId, BoxId) ->
+    count_per_folder(AccountId, [BoxId], ?MSG_COUNT_PER_BOX_FOLDER, ?COUNT_ALL).
+
+count_per_folder(AccountId, Keys, View, Folders) ->
+    lists:foldl(fun(Folder, ResultMap) -> count_per_folder(AccountId, Keys, View, Folder, ResultMap) end
+               ,#{}
+               ,Folders
+               ).
+
+count_per_folder(AccountId, Keys, View, Folder, ResultMap) ->
+    ViewOpts = [{'startkey', Keys ++ [Folder]}
+               ,{'endkey', Keys ++ [Folder]}
                ],
-    count_per_folder(AccountId, ViewOpts);
-count_per_folder(AccountId, ViewOpts0) ->
-    ViewOpts = ['reduce'
-               ,'group'
-               ,{'group_level', 2}
-                | ViewOpts0
-               ],
-    case get_view_results(AccountId, ?MSG_COUNT_VIEW, ViewOpts, 'undefined') of
-        [] -> kz_json:new();
-        Results -> normalize_count(Results)
+    case get_view_results(AccountId, View, ViewOpts, 'undefined') of
+        0 -> ResultMap;
+        [] -> ResultMap;
+        Results -> normalize_count(View, Keys, Folder, Results, ResultMap)
     end.
 
 %%--------------------------------------------------------------------
@@ -319,14 +329,12 @@ copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Funs) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) ->
-                              kz_json:objects().
--spec get_view_results(ne_binaries(), ne_binary(), kz_proplist(), norm_fun(), kz_json:objects()) ->
-                              kz_json:objects().
+-spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) -> kz_json:objects().
 get_view_results(?NE_BINARY = AccountId, View, ViewOpts, NormFun) ->
-    Dbs = kvm_util:get_range_db(AccountId),
-    get_view_results(Dbs, View, ViewOpts, NormFun, []).
+    {From, To, Dbs} = kvm_util:get_range_db(AccountId),
+    get_view_results(Dbs, View, maybe_add_range_to_keys(From, To, ViewOpts), NormFun, []).
 
+-spec get_view_results(ne_binaries(), ne_binary(), kz_proplist(), norm_fun(), kz_json:objects()) -> kz_json:objects().
 get_view_results([], _View, _ViewOpts, 'undefined', ViewResults) ->
     ViewResults;
 get_view_results([], _View, _ViewOpts, NormFun, ViewResults) ->
@@ -345,15 +353,42 @@ get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
             get_view_results(Dbs, View, ViewOpts, NormFun, Acc)
     end.
 
+maybe_add_range_to_keys(From, To, ViewOpts) ->
+    [{'startkey', add_timestamp_if_defined('startkey', To, ViewOpts)}
+    ,{'endkey', add_timestamp_if_defined('startkey', From, ViewOpts)}
+    ,'descending'
+     | props:delete_keys(['startkey', 'endkey'], ViewOpts)
+    ].
+
+add_timestamp_if_defined(Key, Timestamp, ViewOpts) ->
+    case props:get_value(Key, ViewOpts) of
+        [] -> [Timestamp];
+        [Thing] -> [Thing, Timestamp];
+        [Thing1, Thing2] -> [Thing1, Thing2, Timestamp]
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Normalize listing view results
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
-normalize_view_results(JObj, Acc) ->
+-spec normalize_listing_by_mailbox(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_listing_by_mailbox(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
+
+-define(LISTING_BY_TIMESTAMP_BOX_ID_KEY_INDEX, 2).
+
+-spec normalize_account_listing(kz_json:objects()) -> map().
+normalize_account_listing(JObjs) ->
+    lists:foldl(fun normalize_account_listing/2, #{}, JObjs).
+
+normalize_account_listing(JObj, Map) ->
+    Value = kz_json:get_value(<<"value">>, JObj),
+    case kz_json:get_value([<<"key">>, ?LISTING_BY_TIMESTAMP_BOX_ID_KEY_INDEX], JObj) of
+        'undefined' -> Map;
+        BoxId ->
+            maps:update_with(BoxId, fun(List) -> List ++ [Value] end, [Value], Map)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -413,36 +448,49 @@ is_prior_to_retention(JObj, RetenTimestamp, _) ->
 %% @doc Normalize count view results
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_count(kz_json:objects()) -> kz_json:object().
-normalize_count(ViewRes) ->
-    lists:foldl(fun normalize_count_fold/2, kz_json:new(), ViewRes).
+-spec normalize_count(ne_binary(), any(), ne_binary(), kz_json:objects() | non_neg_integer(), map()) -> map().
+normalize_count(?MSG_COUNT_PER_BOX_FOLDER, [VMBoxId], Folder, CurrentCount, ResultMap) ->
+    io:format("~n yello ~n"),
+    VMBoxCount = maps:get(VMBoxId, ResultMap, maps:new()),
 
--spec normalize_count_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
-normalize_count_fold(M, Acc) ->
-    VMBoxId = kz_json:get_binary_value([<<"key">>, ?BOX_ID_KEY_INDEX], M),
-    Folder = kz_json:get_binary_value([<<"key">>, ?FOLDER_KEY_INDEX], M),
-    Value = kz_json:get_integer_value(<<"value">>, M),
+    OldNonDeleted = maps:get(<<"non_deleted">>, VMBoxCount, 0),
 
-    Total = kz_json:get_integer_value([VMBoxId, <<"total">>], Acc, 0),
-    PreviousNonDeleted = kz_json:get_integer_value([VMBoxId, <<"non_deleted">>], Acc, 0),
     NonDeleted = case Folder of
-                     ?VM_FOLDER_NEW -> PreviousNonDeleted + Value;
-                     ?VM_FOLDER_SAVED -> PreviousNonDeleted + Value;
-                     _ -> PreviousNonDeleted
+                     ?VM_FOLDER_NEW -> OldNonDeleted + CurrentCount;
+                     ?VM_FOLDER_SAVED -> OldNonDeleted + CurrentCount;
+                     _ -> OldNonDeleted
                  end,
-    PreviousValue = kz_json:get_integer_value([VMBoxId, Folder], Acc, 0),
-    kz_json:set_values([{[VMBoxId, Folder], PreviousValue + Value}
-                       ,{[VMBoxId, <<"non_deleted">>], NonDeleted}
-                       ,{[VMBoxId, <<"total">>], Total + Value}
-                       ]
-                      ,Acc
-                      ).
+    OldFolderCount = maps:get(Folder, VMBoxCount, 0),
+    ResultMap#{VMBoxId => VMBoxCount#{Folder => OldFolderCount + CurrentCount
+                                     ,<<"non_deleted">> => NonDeleted
+                                     ,<<"total">> => maps:get(<<"total">>, VMBoxCount, 0) + CurrentCount
+                                     }
+              };
+normalize_count(?MSG_COUNT_VIEW, _, _, ViewResults, ResultMap) ->
+    io:format("~n wtf ~n"),
+    lists:foldl(fun sum_per_box_folder/2, ResultMap, ViewResults).
 
--spec normalize_count_none_deleted(ne_binary(), kz_json:object()) -> count_result().
-normalize_count_none_deleted(BoxId, ViewRes) ->
-    {kz_json:get_integer_value([BoxId, ?VM_FOLDER_NEW], ViewRes, 0)
-    ,kz_json:get_integer_value([BoxId, ?VM_FOLDER_SAVED], ViewRes, 0)
-    }.
+-define(PER_BOX_FOLDER_FOLDER_KEY_INDEX, 1).
+-define(PER_BOX_FOLDER_BOX_ID_KEY_INDEX, 3).
+
+-spec sum_per_box_folder(kz_json:object(), map()) -> map().
+sum_per_box_folder(M, ResultMap) ->
+    Folder = kz_json:get_binary_value([<<"key">>, ?PER_BOX_FOLDER_FOLDER_KEY_INDEX], M),
+    VMBoxId = kz_json:get_binary_value([<<"key">>, ?PER_BOX_FOLDER_BOX_ID_KEY_INDEX], M),
+
+    VMBoxCount = maps:get(VMBoxId, ResultMap, maps:new()),
+    OldNonDeleted = maps:get(<<"non_deleted">>, VMBoxCount, 0),
+    NonDeleted = case Folder of
+                     ?VM_FOLDER_NEW -> OldNonDeleted + 1;
+                     ?VM_FOLDER_SAVED -> OldNonDeleted + 1;
+                     _ -> OldNonDeleted
+                 end,
+    OldFolderCount = maps:get(Folder, VMBoxCount, 0),
+    ResultMap#{VMBoxId => VMBoxCount#{Folder => OldFolderCount + 1
+                                     ,<<"non_deleted">> => NonDeleted
+                                     ,<<"total">> => maps:get(<<"total">>, VMBoxCount, 0) + 1
+                                     }
+              }.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -55,15 +55,15 @@ get_db(AccountId, Year, Month) ->
 %% @doc Generate a range of database names
 %% @end
 %%--------------------------------------------------------------------
--spec get_range_db(ne_binary()) -> ne_binaries().
--spec get_range_db(ne_binary(), pos_integer()) -> ne_binaries().
+-spec get_range_db(ne_binary()) -> {gregorian_seconds(), gregorian_seconds(), ne_binaries()}.
+-spec get_range_db(ne_binary(), pos_integer()) -> {gregorian_seconds(), gregorian_seconds(), ne_binaries()}.
 get_range_db(AccountId) ->
     get_range_db(AccountId, retention_days(AccountId)).
 
 get_range_db(AccountId, Days) ->
     To = kz_time:now_s(),
     From = To - retention_seconds(Days),
-    lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)]).
+    {From, To, lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)])}.
 
 -spec split_to_modbs(ne_binary(), ne_binaries()) -> map().
 split_to_modbs(AccountId, MsgIds) ->
