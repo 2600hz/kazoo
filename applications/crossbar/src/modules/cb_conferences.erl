@@ -237,32 +237,25 @@ empty_realtime_data() ->
       ,{<<"is_locked">>, 'false'}
       ]).
 
+-spec move_to_read_only(kz_json:key(), kz_json:object()) ->
+                               {kz_json:key(), kz_json:object()}.
+move_to_read_only(Id, Realtime) ->
+    {Id, kz_json:from_list([{<<"id">>, Id}
+                           ,{<<"_read_only">>, kz_json:normalize(Realtime)}
+                           ])
+    }.
+
 -spec add_realtime(cb_context:context(), kz_json:object()) -> cb_context:context().
 add_realtime(Context, RunningConferences) ->
-    lager:debug("run: ~p", [RunningConferences]),
-
-    ReadOnly = kz_json:map(fun(Id, Realtime) ->
-                                   {Id, kz_json:from_list([{<<"id">>, Id}
-                                                          ,{<<"_read_only">>, kz_json:normalize(Realtime)}
-                                                          ])
-                                   }
-                           end
-                          ,RunningConferences
-                          ),
-    lager:debug("read: ~p", [ReadOnly]),
+    ReadOnly = kz_json:map(fun move_to_read_only/2, RunningConferences),
 
     Conferences = lists:foldl(fun add_realtime_fold/2
                              ,ReadOnly
                              ,cb_context:doc(Context)
                              ),
 
-    lager:debug("amend: ~p", [Conferences]),
+    Listing = kz_json:values(Conferences),
 
-    Listing = kz_json:foldl(fun(_Id, Data, Acc) -> [Data | Acc] end
-                           ,[]
-                           ,Conferences
-                           ),
-    lager:debug("list: ~p", [Listing]),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, Listing}
                        ,{fun cb_context:set_resp_status/2, 'success'}
