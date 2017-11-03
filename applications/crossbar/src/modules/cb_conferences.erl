@@ -191,7 +191,7 @@ maybe_build_conference(ConferenceId, Context) ->
 
 -spec build_conference(path_token(), cb_context:context()) -> cb_context:context().
 build_conference(ConferenceId, Context) ->
-    Conference = kz_doc:set_id(ConferenceId, kzd_conference:new()),
+    Conference = kz_doc:set_id(kzd_conference:new(), ConferenceId),
     Merged = kz_json:merge(Conference, cb_context:req_data(Context)),
     crossbar_doc:handle_datamgr_success(Merged, Context).
 
@@ -316,8 +316,7 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
                                            ,Context
                                            );
         _ ->
-            {'ok', Conference} = kz_datamgr:open_cache_doc(cb_context:account_db(Context), ConferenceId),
-
+            Conference = cb_context:doc(Context),
             kapps_conference_command:dial(ToDial
                                          ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
                                          ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))
