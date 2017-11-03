@@ -64,6 +64,7 @@ curl -v -X PUT \
  `lock` | Lock the conference; no new participants may join
  `unlock` | Unlock the conference; new participants may join
  `dial` | Dial an endpoint (user/device/DID)
+ `play` | Play media to the conference (all participants)
 
 ##### Dialing an endpoint
 
@@ -125,6 +126,20 @@ Sometimes you want to create ad-hoc conferences and put a participant in there. 
 ```
 
 These properties will be merged into a "default" conference document and then executed the same as if the conference was preconfigured.
+
+##### Playing media to a conference
+
+Playing a media file to everyone in a conference:
+
+```json
+{"data"{
+    "action":"play",
+    "data":{"media_id":"{MEDIA_ID}"}
+ }
+}
+```
+
+`{MEDIA_ID}` can be a pre-uploaded media ID or a URL to fetch media from.
 
 #### Perform an action on participants
 
