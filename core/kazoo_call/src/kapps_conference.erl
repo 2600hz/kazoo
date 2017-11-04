@@ -49,7 +49,10 @@
 -export([play_entry_tone/1, set_play_entry_tone/2]).
 -export([play_welcome/1, set_play_welcome/2]).
 -export([conference_doc/1, set_conference_doc/2]).
+-export([discovery_request/1, set_discovery_request/2]).
 -export([call/1, set_call/2]).
+-export([entry_tone/1, moderator_entry_tone/1]).
+-export([exit_tone/1, moderator_exit_tone/1]).
 
 -export([kvs_append/3
         ,kvs_append_list/3
@@ -145,6 +148,7 @@
                           ,moderator_controls = <<"default">> :: kz_term:ne_binary()
                           ,caller_controls = <<"default">> :: kz_term:ne_binary()
                           ,controls :: kz_term:api_object()
+                          ,discovery_request :: kz_term:api_object()
                           }).
 
 -type tone() :: boolean() | kz_term:ne_binary().
@@ -154,7 +158,9 @@
 -export_type([conference/0]).
 
 -spec new() -> conference().
-new() -> #kapps_conference{}.
+new() ->
+    io:format("new conference!!~n", []),
+    #kapps_conference{}.
 
 -spec from_json(kz_json:object()) -> conference().
 from_json(JObj) -> from_json(JObj, #kapps_conference{}).
@@ -201,6 +207,7 @@ do_from_json(JObj, Conference) ->
                                ,controls = kz_json:get_ne_value(<<"Controls">>, JObj, raw_controls(Conference))
                                ,moderator_controls = kz_json:get_ne_binary_value(<<"Moderator-Controls">>, JObj, moderator_controls(Conference))
                                ,caller_controls = kz_json:get_ne_binary_value(<<"Caller-Controls">>, JObj, caller_controls(Conference))
+                               ,discovery_request = JObj
                                }.
 
 -spec load_call(kz_json:object(), kapps_call:call() | 'undefined') -> kapps_call:call() | 'undefined'.
@@ -255,6 +262,7 @@ to_proplist(#kapps_conference{}=Conference) ->
     ,{<<"Play-Entry-Tone">>, play_entry_tone(Conference)}
     ,{<<"Play-Welcome">>, play_welcome(Conference)}
     ,{<<"Conference-Doc">>, conference_doc(Conference)}
+    ,{<<"Discovery-Request">>, discovery_request(Conference)}
     ,{<<"Key-Value-Store">>, kvs_to_proplist(Conference)}
     ,{<<"Call">>, kapps_call:to_json(call(Conference))}
     ,{<<"Account-ID">>, account_id(Conference)}
@@ -274,9 +282,10 @@ from_conference_doc(JObj) ->
 
 -spec from_conference_doc(kz_json:object(), conference()) -> conference().
 from_conference_doc(JObj, Conference) ->
+    io:format("from conference doc ~p~n", [Conference]),
     Member = kz_json:get_json_value(<<"member">>, JObj),
     Moderator = kz_json:get_json_value(<<"moderator">>, JObj),
-    Conference#kapps_conference{id = kz_doc:id(JObj, id(Conference))
+    Conference#kapps_conference{id = kz_doc:id(JObj, kz_binary:rand_hex(8))
                                ,name = kz_json:get_ne_binary_value(<<"name">>, JObj, name(Conference))
                                ,account_id = kz_json:get_ne_binary_value(<<"pvt_account_id">>, JObj, account_id(Conference))
                                ,profile_name = kz_json:get_ne_binary_value(<<"profile_name">>, JObj, profile_name(Conference))
@@ -677,6 +686,13 @@ conference_doc(#kapps_conference{conference_doc=JObj}) -> JObj.
 set_conference_doc(JObj, Conference) ->
     Conference#kapps_conference{conference_doc=JObj}.
 
+-spec discovery_request(conference()) -> api_object().
+discovery_request(#kapps_conference{discovery_request=JObj}) -> JObj.
+
+-spec set_discovery_request(kz_json:object(), conference()) -> conference().
+set_discovery_request(JObj, Conference) ->
+    Conference#kapps_conference{discovery_request=JObj}.
+
 -spec kvs_append(any(), any(), conference()) -> conference().
 kvs_append(Key, Value, #kapps_conference{kvs=Dict}=Conference) ->
     Conference#kapps_conference{kvs=orddict:append(kz_term:to_binary(Key), Value, Dict)}.
@@ -776,6 +792,24 @@ call(#kapps_conference{call=Call}) -> Call.
 set_call(Call, Conference) ->
     Conference#kapps_conference{call=Call}.
 
+-spec entry_tone(conference()) -> ne_binary().
+entry_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_ENTRY_TONE;
+entry_tone(#kapps_conference{account_id=AccountId}) -> ?ENTRY_TONE(AccountId).
+
+-spec moderator_entry_tone(conference()) -> ne_binary().
+moderator_entry_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_ENTRY_TONE;
+moderator_entry_tone(#kapps_conference{account_id=AccountId}) -> ?MOD_ENTRY_TONE(AccountId).
+
+-spec exit_tone(conference()) -> ne_binary().
+exit_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_EXIT_TONE;
+exit_tone(#kapps_conference{account_id=AccountId}) -> ?EXIT_TONE(AccountId).
+
+-spec moderator_exit_tone(conference()) -> ne_binary().
+moderator_exit_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_EXIT_TONE;
+moderator_exit_tone(#kapps_conference{account_id=AccountId}) -> ?MOD_EXIT_TONE(AccountId).
+
+
+%% @private
 -spec get_tone(any()) -> tone().
 get_tone(Thing) ->
     case kz_term:is_boolean(Thing) of
