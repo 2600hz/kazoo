@@ -13,6 +13,7 @@
 
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Options) ->
+    io:format("discovery req: ~p~n", [JObj]),
     'true' = kapi_conference:discovery_req_v(JObj),
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
     _ = kapps_call_command:set(kz_json:from_list([{<<"Is-Conference">>, <<"true">>}]), 'undefined', Call),
@@ -22,49 +23,131 @@ handle_req(JObj, _Options) ->
             conf_participant:set_discovery_event(JObj, Srv),
             conf_participant:consume_call_events(Srv),
             kapps_call_command:answer(Call),
-            maybe_welcome_to_conference(Call, Srv, JObj);
+            maybe_welcome_to_conference(Srv, create_conference(JObj, Call));
         _Else -> discovery_failed(Call, 'undefined')
     end.
 
--spec maybe_welcome_to_conference(kapps_call:call(), pid(), kz_json:object()) -> 'ok'.
-maybe_welcome_to_conference(Call, Srv, DiscoveryJObj) ->
-    case kz_json:is_true(<<"Play-Welcome">>, DiscoveryJObj, 'true') of
-        'false' -> maybe_collect_conference_id(Call, Srv, DiscoveryJObj);
-        'true' -> welcome_to_conference(Call, Srv, DiscoveryJObj)
+-spec create_conference(kz_json:object(), kapps_call:call()) -> kapps_conference:conference().
+create_conference(JObj, Call) ->
+    ConferenceId = kz_json:get_value(<<"Conference-ID">>, JObj),
+    create_conference(ConferenceId, JObj, Call).
+
+-spec create_conference(api_binary(), kz_json:object(), kapps_call:call()) -> kapps_conference:conference().
+create_conference('undefined', JObj, Call) ->
+    kapps_conference:set_call(Call, kapps_conference:from_json(JObj));
+create_conference(ConferenceId, JObj, Call) ->
+    AccountDb = kapps_call:account_db(Call),
+    case kz_datamgr:open_doc(AccountDb, ConferenceId) of
+        {'ok', Doc} ->
+            lager:debug("discovery request contained a valid conference id, building object"),
+            J = kz_json:set_value(<<"Conference-Doc">>, Doc, JObj),
+            kapps_conference:set_call(Call, kapps_conference:from_json(J));
+        _Else ->
+            lager:debug("could not find specified conference id ~s: ~p", [ConferenceId, _Else]),
+            kapps_conference:set_call(Call, kapps_conference:from_json(JObj))
     end.
 
--spec welcome_to_conference(kapps_call:call(), pid(), kz_json:object()) -> 'ok'.
-welcome_to_conference(Call, Srv, DiscoveryJObj) ->
+-spec maybe_welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
+maybe_welcome_to_conference(Srv, Conference) ->
+    case kapps_conference:play_welcome(Conference) of
+        'false' -> maybe_collect_conference_id(Srv, Conference);
+        'true' -> welcome_to_conference(Srv, Conference)
+    end.
+
+-spec welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
+welcome_to_conference(Srv, Conference) ->
+    Call = kapps_conference:call(Conference),
+    %%case kapps_conference:welcome_media(Conference) of
+    DiscoveryJObj = kapps_conference:disovery_request(Conference),
     case kz_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
         'undefined' -> kapps_call_command:prompt(<<"conf-welcome">>, Call);
         Media -> kapps_call_command:play(kz_media_util:media_path(Media, kapps_call:account_id(Call))
                                         ,Call
                                         )
     end,
-    maybe_collect_conference_id(Call, Srv, DiscoveryJObj).
+    maybe_collect_conference_id(Srv, Conference).
 
--spec maybe_collect_conference_id(kapps_call:call(), pid(), kz_json:object()) -> 'ok'.
-maybe_collect_conference_id(Call, Srv, DiscoveryJObj) ->
-    case kz_json:get_value(<<"Conference-Doc">>, DiscoveryJObj) of
-        'undefined' -> collect_conference_id(Call, Srv, DiscoveryJObj);
-        Doc ->
-            N = kz_json:get_value(<<"name">>, Doc, kz_binary:rand_hex(8)),
-            lager:debug("conf doc (~s) set instead of conf id", [N]),
-            Conference0 = kapps_conference:set_id(N, create_conference(Doc, <<"none">>, Call)),
-            Conference = maybe_set_conference_tones(Conference0, DiscoveryJObj),  %% MAY remove this line
-            maybe_collect_conference_pin(Conference, Call, Srv)
+-spec maybe_collect_conference_id(pid(), kapps_conference:conference()) -> 'ok'.
+maybe_collect_conference_id(Srv, Conference) ->
+    case kapps_conference:id(Conference) of
+        'undefined' -> collect_conference_id(Srv, Conference);
+        _Else -> valid_conference_id(Srv, Conference, <<"none">>)
+
     end.
 
--spec collect_conference_id(kapps_call:call(), pid(), kz_json:object()) -> 'ok'.
-collect_conference_id(Call, Srv, DiscoveryJObj) ->
-    {'ok', JObj} = conf_participant:discovery_event(Srv),
-    ConferenceId = kz_json:get_value(<<"Conference-ID">>, JObj),
-    case validate_conference_id(ConferenceId, Call) of
-        {'ok', Conference0} ->
-            Conference = maybe_set_conference_tones(Conference0, DiscoveryJObj),
-            maybe_collect_conference_pin(Conference, Call, Srv);
-        {'error', _} ->
-            discovery_failed(Call, Srv)
+-spec collect_conference_id(pid(), kapps_conference:conference()) ->
+                                   {'ok', kapps_conference:conference()} | 'ok'.
+collect_conference_id(Srv, Conference) ->
+    collect_conference_id(Srv, Conference, 1).
+
+-spec collect_conference_id(pid(), kapps_conference:conference(), pos_integer()) ->
+                                   {'ok', kapps_conference:conference()} | 'ok'.
+collect_conference_id(Srv, Conference, Loop) when Loop > 3 ->
+    lager:debug("caller has failed to provide a valid conference number to many times"),
+    Call = kapps_conference:call(Conference),
+    _ = kapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
+    discovery_failed(Call, Srv);
+collect_conference_id(Srv, Conference, Loop) ->
+    lager:debug("requesting conference id from caller"),
+    Call = kapps_conference:call(Conference),
+    Timeout = get_number_timeout(Call),
+    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_number">>, 1, Timeout, Call) of
+        {'error', _}=E -> discovery_failed(Call, Srv);
+        {'ok', Digits} ->
+            validate_collected_conference_id(Srv, Conference, Loop, Digits)
+    end.
+
+-spec validate_collected_conference_id(pid(), kapps_conference:conference(), pos_integer(), binary()) ->
+                                              {'ok', kapps_conference:conference()} | 'ok'.
+validate_collected_conference_id(Srv, Conference, Loop, <<>>) ->
+    Call = kapps_conference:call(Conference),
+    _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
+    collect_conference_id(Srv, Conference, Loop + 1);
+validate_collected_conference_id(Srv, Conference, Loop, Digits) ->
+    Call = kapps_conference:call(Conference),
+    AccountDb = kapps_call:account_db(Call),
+    ViewOptions = [{'key', Digits}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
+        {'ok', [JObj]} ->
+            lager:debug("caller has entered a valid conference id, building object"),
+            {'ok', valid_conference_id(Srv, from_conference_doc(JObj, Conference), Digits)};
+        _Else ->
+            lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
+            _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
+            collect_conference_id(Srv, Conference, Loop + 1)
+    end.
+
+-spec valid_conference_id(pid(), kapps_conference:conference(), binary()) ->
+                                 {'ok', kapps_conference:conference()} |
+                                 {'error', any()}.
+valid_conference_id(Srv, Conference, Digits) ->
+    JObj = kapps_conference:discovery_request(Conference),
+    ModeratorNumbers = kz_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
+    MemberNumbers = kz_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
+    case {lists:member(Digits, MemberNumbers)
+         ,lists:member(Digits, ModeratorNumbers)
+         }
+    of
+        {'true', 'false'} ->
+            lager:debug("the digits used to find the conference were unambiguously a member"),
+            Conference1 = kapps_conference:set_moderator('false', Conference);
+        Conference2 = maybe_set_conference_tones(Conference1, JObj),
+        Call = kapps_conference:call(Conference2),
+        maybe_collect_conference_pin(Conference2, Call, Srv);
+        {'false', 'true'} ->
+            lager:debug("the digits used to find the conference were unambiguously a moderator"),
+            Conference1 = kapps_conference:set_moderator('true', Conference);
+        Conference2 = maybe_set_conference_tones(Conference1, JObj),
+        Call = kapps_conference:call(Conference2),
+        maybe_collect_conference_pin(Conference2, Call, Srv);
+        %% the conference number is ambiguous regarding member: either both have the same number
+        %%   or they joined by the discovery event having the conference id
+        _Else ->
+            Conference1 maybe_set_conference_tones(Conference, JObj),
+            Call = kapps_conference:call(Conference1),
+            maybe_collect_conference_pin(Conference1, Call, Srv)
     end.
 
 -spec maybe_set_conference_tones(kapps_conference:conference(), kz_json:object()) ->
@@ -261,60 +344,7 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
 -spec discovery_failed(kapps_call:call(), pid() | 'undefined') -> 'ok'.
 discovery_failed(Call, _) -> kapps_call_command:hangup(Call).
 
--spec validate_conference_id(kz_term:api_ne_binary(), kapps_call:call()) ->
-                                    {'ok', kapps_conference:conference()} |
-                                    {'error', any()}.
-validate_conference_id(ConferenceId, Call) ->
-    validate_conference_id(ConferenceId, Call, 1).
-
--spec validate_conference_id(kz_term:api_ne_binary(), kapps_call:call(), pos_integer()) ->
-                                    {'ok', kapps_conference:conference()} |
-                                    {'error', any()}.
-validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
-    lager:debug("caller has failed to provide a valid conference number to many times"),
-    _ = kapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
-    {'error', 'too_many_attempts'};
-validate_conference_id('undefined', Call, Loop) ->
-    lager:debug("requesting conference id from caller"),
-    Timeout = get_number_timeout(Call),
-    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_number">>, 1, Timeout, Call) of
-        {'error', _}=E -> E;
-        {'ok', Digits} ->
-            validate_collected_conference_id(Call, Loop, Digits)
-    end;
-validate_conference_id(ConferenceId, Call, Loop) ->
-    AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:open_doc(AccountDb, ConferenceId) of
-        {'ok', JObj} ->
-            lager:debug("discovery request contained a valid conference id, building object"),
-            {'ok', create_conference(JObj, <<"none">>, Call)};
-        _Else ->
-            lager:debug("could not find conference ~s: ~p", [ConferenceId, _Else]),
-            validate_conference_id('undefined', Call, Loop)
-    end.
-
--spec validate_collected_conference_id(kapps_call:call(), pos_integer(), binary()) ->
-                                              {'ok', kapps_conference:conference()} |
-                                              {'error', any()}.
-validate_collected_conference_id(Call, Loop, <<>>) ->
-    _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
-    validate_conference_id('undefined', Call, Loop + 1);
-validate_collected_conference_id(Call, Loop, Digits) ->
-    AccountDb = kapps_call:account_db(Call),
-    ViewOptions = [{'key', Digits}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
-        {'ok', [JObj]} ->
-            lager:debug("caller has entered a valid conference id, building object"),
-            {'ok', create_conference(kz_json:get_json_value(<<"doc">>, JObj), Digits, Call)};
-        _Else ->
-            lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
-            _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
-            validate_conference_id('undefined', Call, Loop + 1)
-    end.
-
--spec validate_conference_pin(kz_term:api_boolean(), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_pin(api_boolean(), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
                                      {'ok', kapps_conference:conference()} |
                                      {'error', any()}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
@@ -408,28 +438,6 @@ validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
             lager:debug("caller entered an invalid pin"),
             _ = kapps_call_command:prompt(<<"conf-bad_pin">>, Call),
             validate_conference_pin('true', Conference, Call, Loop + 1)
-    end.
-
--spec create_conference(kz_json:object(), binary(), kapps_call:call()) ->
-                               kapps_conference:conference().
-create_conference(JObj, Digits, Call) ->
-    Doc = kapps_conference:from_conference_doc(JObj),
-    Conference = kapps_conference:set_call(Call, Doc),
-    ModeratorNumbers = kz_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
-    MemberNumbers = kz_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
-    case {lists:member(Digits, MemberNumbers)
-         ,lists:member(Digits, ModeratorNumbers)
-         }
-    of
-        {'true', 'false'} ->
-            lager:debug("the digits used to find the conference were unambiguously a member"),
-            kapps_conference:set_moderator('false', Conference);
-        {'false', 'true'} ->
-            lager:debug("the digits used to find the conference were unambiguously a moderator"),
-            kapps_conference:set_moderator('true', Conference);
-        %% the conference number is ambiguous regarding member: either both have the same number
-        %%   or they joined by the discovery event having the conference id
-        _Else -> Conference
     end.
 
 -spec get_pin_timeout(kapps_conference:conference()) -> pos_integer().
