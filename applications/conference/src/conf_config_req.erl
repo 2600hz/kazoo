@@ -15,7 +15,6 @@
 handle_req(JObj, Props) ->
     'true' = kapi_conference:config_req_v(JObj),
     Request = kz_json:get_ne_value(<<"Request">>, JObj),
-    io:format("config req: ~p~n", [JObj]),
     lager:debug("~s profile request received", [Request]),
     case props:get_value('server', Props) of
         'undefined' ->
@@ -57,7 +56,6 @@ handle_profile_request(JObj, Conference) ->
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    io:format("profile: ~p~n", [Resp]),
     lager:debug("returning conference profile ~s", [ProfileName]),
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
 
@@ -107,7 +105,6 @@ add_conference_params(Conference, Profile) ->
               [{<<"max-members">>, max_participants(Conference)}
               ,{<<"max-members-sound">>, max_members_sound(Conference)}
               ]),
-    io:format("props: ~p~n", [Props]),
     kz_json:set_values(Props, Profile).
 
 -spec fix_entry_tones(kapps_conference:conference(), kz_json:object()) -> kz_json:object().
@@ -174,7 +171,6 @@ handle_controls_request(JObj, Conference) ->
     lager:debug("returning ~s (~s) controls profile for ~s"
                ,[ControlsName, ControlsType, ProfileName]
                ),
-    io:format("controls: ~p~n", [Resp]),
     kapi_conference:publish_config_resp(ServerId, Resp).
 
 -spec requested_controls_name(kz_json:object()) -> ne_binary().

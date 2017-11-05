@@ -160,9 +160,7 @@
 -export_type([conference/0]).
 
 -spec new() -> conference().
-new() ->
-    io:format("new conference!!~n", []),
-    #kapps_conference{}.
+new() -> #kapps_conference{}.
 
 -spec from_json(kz_json:object()) -> conference().
 from_json(JObj) -> from_json(JObj, #kapps_conference{}).
@@ -284,7 +282,6 @@ from_conference_doc(JObj) ->
 
 -spec from_conference_doc(kz_json:object(), conference()) -> conference().
 from_conference_doc(JObj, Conference) ->
-    io:format("from conference doc ~p~n", [Conference]),
     Member = kz_json:get_json_value(<<"member">>, JObj),
     Moderator = kz_json:get_json_value(<<"moderator">>, JObj),
     Conference#kapps_conference{id = kz_doc:id(JObj, kz_binary:rand_hex(8))
