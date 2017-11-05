@@ -300,6 +300,8 @@ presence(State, PresenceId, CallId, 'undefined', 'undefined') ->
                 ,{<<"From-User">>, User}
                 ,{<<"From-Realm">>, Realm}
                 ,{<<"To">>, <<"sip:", PresenceId/binary>>}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -313,6 +315,8 @@ presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
                 ,{<<"From-User">>, User}
                 ,{<<"From-Realm">>, Realm}
                 ,{<<"To">>, TargetURI}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -326,6 +330,8 @@ presence(State, PresenceId, CallId, TargetURI, Call) ->
                 ,{<<"From-User">>, User}
                 ,{<<"From-Realm">>, Realm}
                 ,{<<"To">>, TargetURI}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
                 ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
                 ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
                 ,{<<"State">>, State}
