@@ -11,7 +11,6 @@
 
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Options) ->
-    io:format("discovery req: ~p~n", [JObj]),
     'true' = kapi_conference:discovery_req_v(JObj),
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
     _ = kapps_call_command:set(kz_json:from_list([{<<"Is-Conference">>, <<"true">>}]), 'undefined', Call),
@@ -56,7 +55,7 @@ maybe_welcome_to_conference(Srv, Conference) ->
 welcome_to_conference(Srv, Conference) ->
     Call = kapps_conference:call(Conference),
     %%case kapps_conference:welcome_media(Conference) of
-    DiscoveryJObj = kapps_conference:disovery_request(Conference),
+    DiscoveryJObj = kapps_conference:discovery_request(Conference),
     case kz_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
         'undefined' -> kapps_call_command:prompt(<<"conf-welcome">>, Call);
         Media -> kapps_call_command:play(kz_media_util:media_path(Media, kapps_call:account_id(Call))
@@ -90,7 +89,7 @@ collect_conference_id(Srv, Conference, Loop) ->
     Call = kapps_conference:call(Conference),
     Timeout = get_number_timeout(Call),
     case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_number">>, 1, Timeout, Call) of
-        {'error', _}=E -> discovery_failed(Call, Srv);
+        {'error', _} -> discovery_failed(Call, Srv);
         {'ok', Digits} ->
             validate_collected_conference_id(Srv, Conference, Loop, Digits)
     end.
@@ -110,7 +109,8 @@ validate_collected_conference_id(Srv, Conference, Loop, Digits) ->
     case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:debug("caller has entered a valid conference id, building object"),
-            {'ok', valid_conference_id(Srv, from_conference_doc(JObj, Conference), Digits)};
+            Doc = kz_json:get_value(<<"doc">>, JObj),
+            {'ok', valid_conference_id(Srv, kapps_conference:from_conference_doc(Doc, Conference), Digits)};
         _Else ->
             lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
             _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
@@ -130,20 +130,20 @@ valid_conference_id(Srv, Conference, Digits) ->
     of
         {'true', 'false'} ->
             lager:debug("the digits used to find the conference were unambiguously a member"),
-            Conference1 = kapps_conference:set_moderator('false', Conference);
-        Conference2 = maybe_set_conference_tones(Conference1, JObj),
-        Call = kapps_conference:call(Conference2),
-        maybe_collect_conference_pin(Conference2, Call, Srv);
+            Conference1 = kapps_conference:set_moderator('false', Conference),
+            Conference2 = maybe_set_conference_tones(Conference1, JObj),
+            Call = kapps_conference:call(Conference2),
+            maybe_collect_conference_pin(Conference2, Call, Srv);
         {'false', 'true'} ->
             lager:debug("the digits used to find the conference were unambiguously a moderator"),
-            Conference1 = kapps_conference:set_moderator('true', Conference);
-        Conference2 = maybe_set_conference_tones(Conference1, JObj),
-        Call = kapps_conference:call(Conference2),
-        maybe_collect_conference_pin(Conference2, Call, Srv);
+            Conference1 = kapps_conference:set_moderator('true', Conference),
+            Conference2 = maybe_set_conference_tones(Conference1, JObj),
+            Call = kapps_conference:call(Conference2),
+            maybe_collect_conference_pin(Conference2, Call, Srv);
         %% the conference number is ambiguous regarding member: either both have the same number
         %%   or they joined by the discovery event having the conference id
         _Else ->
-            Conference1 maybe_set_conference_tones(Conference, JObj),
+            Conference1 = maybe_set_conference_tones(Conference, JObj),
             Call = kapps_conference:call(Conference1),
             maybe_collect_conference_pin(Conference1, Call, Srv)
     end.
