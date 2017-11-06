@@ -619,7 +619,10 @@ find_participants(Participants, ParticipantId, OtherParticipantId) ->
 
 -spec participant_not_found(pos_integer(), cb_context:context()) -> cb_context:context().
 participant_not_found(ParticipantId, Context) ->
-    cb_context:add_validation_error(ParticipantId, 404, <<"participant not found">>, Context).
+    cb_context:add_system_error('bad_identifier'
+                               ,kz_json:from_list([{<<"id">>, ParticipantId}])
+                               ,Context
+                               ).
 
 -spec perform_participant_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
 perform_participant_action(Conference, ?MUTE, ParticipantId) ->
