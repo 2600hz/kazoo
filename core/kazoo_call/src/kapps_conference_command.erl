@@ -27,7 +27,7 @@
 -export([unmute_participant/2]).
 -export([participant_volume_in/3]).
 -export([participant_volume_out/3]).
--export([dial/2, dial/3, dial/4]).
+-export([dial/2, dial/3, dial/4, dial/5]).
 
 -export([send_command/2]).
 -export([play_macro/2]).
@@ -220,6 +220,7 @@ participant_volume_out(ParticipantId, VolumeOut,Conference) ->
 -spec dial(kz_json:objects(), kapps_conference:conference()) -> 'ok'.
 -spec dial(kz_json:objects(), api_ne_binary(), kapps_conference:conference()) -> 'ok'.
 -spec dial(kz_json:objects(), api_ne_binary(), api_ne_binary(), kapps_conference:conference()) -> 'ok'.
+-spec dial(kz_json:objects(), api_ne_binary(), api_ne_binary(), api_object(), kapps_conference:conference()) -> 'ok'.
 dial(Endpoints, Conference) when is_list(Endpoints) ->
     dial(Endpoints, 'undefined', 'undefined', Conference).
 
