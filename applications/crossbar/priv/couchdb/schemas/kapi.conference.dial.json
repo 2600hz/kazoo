@@ -18,6 +18,9 @@
         "Conference-ID": {
             "type": "string"
         },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
         "Endpoints": {
             "items": {
                 "$ref": "kapi.dialplan.bridge_endpoint",
