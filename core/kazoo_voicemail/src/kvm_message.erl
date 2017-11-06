@@ -350,45 +350,44 @@ copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds, Funs) ->
 copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds, Funs) ->
     copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds, Funs).
 
--spec maybe_copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), map(), update_funs(), gregorian_seconds()) -> map().
+-spec maybe_copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), bulk_map(), update_funs(), gregorian_seconds()) -> bulk_map().
 maybe_copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs, RetenTimestamp) ->
     case do_fetch(AccountId, FromId, OldBoxId, RetenTimestamp) of
         {'true', {'ok', JObj}} ->
             _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
             IdReason = {FromId, <<"prior_to_retention_duration">>},
-            maps:update_with(<<"failed">>, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
+            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
         {'false', {'ok', _}} ->
             copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs);
         {_, {'error', Reason}} ->
             IdReason = {FromId, kz_term:to_binary(Reason)},
-            maps:update_with(<<"failed">>, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
+            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
     end.
 
--spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), map(), update_funs()) -> map().
+-spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), bulk_map(), update_funs()) -> bulk_map().
 copy_to_vmboxes(_, _, _, [], CopyMap, _) ->
     CopyMap;
 copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopyMap, Funs) ->
     NewCopyMap = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap, Funs),
     copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopyMap, Funs).
 
--spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), map(), update_funs()) -> map().
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), bulk_map(), update_funs()) -> bulk_map().
 copy_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, ?NE_BINARY = NBId, CopyMap, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
-    %% FIXME: maybe bulk read vmbox in above function clause to avoid lots of cache query
     copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
                  ,kz_datamgr:open_cache_doc(AccountDb, NBId)
                  ,Funs
                  ).
 
--spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), map(), kz_datamgr:data_error() | {'ok', kz_json:object()}, update_funs()) ->
-                           map().
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), bulk_map(), kz_datamgr:data_error() | {'ok', kz_json:object()}, update_funs()) ->
+                           bulk_map().
 copy_to_vmbox(_AccountId, FromId, _OldBoxId, NBId, CopyMap
              ,{'error', Reason}
              ,_
              ) ->
     lager:warning("could not open destination vmbox ~s", [NBId]),
-    Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
-    dict:append(<<"failed">>, Failed, CopyMap);
+    IdReason = {FromId, kz_term:to_binary(Reason)},
+    maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
 copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
              ,{'ok', NBox}
              ,Funs
@@ -398,10 +397,10 @@ copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
     case do_copy(AccountId, FromId, ToId, TransformFuns ++ Funs) of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
-            maps:update_with(<<"succeeded">>, fun(List) -> [CopiedId|List] end, [CopiedId], CopyMap);
+            maps:update_with(succeeded, fun(List) -> [CopiedId|List] end, [CopiedId], CopyMap);
         {'error', R} ->
             IdReason = {FromId, kz_term:to_binary(R)},
-            maps:update_with(<<"failed">>, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
+            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
     end.
 
 -spec do_copy(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
@@ -516,7 +515,7 @@ create_forward_message_doc(Call, Metadata, SrcBoxId, Props) ->
                                                            ,SrcBoxId
                                                            ,kz_doc:id(JObj)
                                                            ),
-    Updates = [fun(M) -> kz_json:set_value(<<"lenght">>, props:get_value(<<"Length">>, Props), M) end
+    Updates = [fun(M) -> kz_json:set_value(<<"length">>, props:get_value(<<"Length">>, Props), M) end
                | VMChangeFuns
               ],
     MsgJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Updates),
@@ -609,13 +608,16 @@ forward_to_vmbox(Call, Metadata, SrcBoxId, Props) ->
     MediaId = kzd_box_message:media_id(Metadata),
     DestBoxId = props:get_value(<<"Box-Id">>, Props),
     Length = props:get_value(<<"Length">>, Props),
-    Result = copy_to_vmboxes(AccountId, MediaId, SrcBoxId, DestBoxId),
-    Failed = kz_json:get_value(<<"failed">>, Result, []),
-    Succeeded = kz_json:get_value(<<"succeeded">>, Result, []),
+    ResultMap = copy_to_vmbox(AccountId, MediaId, SrcBoxId, DestBoxId, #{}
+                             ,kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DestBoxId)
+                             ,[]
+                             ),
+    Failed = msp:get(failed, ResultMap, []),
+    Succeeded = maps:get(succeeded, ResultMap, []),
     case {Failed, Succeeded} of
         {[], []} -> {'error', Call, 'internal_error'};
         {[], [ForwardId]} ->
-            %%TODO: update lenght and caller_id
+            %%TODO: update length and caller_id
             notify_and_update_meta(Call, ForwardId, Length, Props);
         {[{_Id, Reason}], _} -> {'error', Call, Reason}
     end.
@@ -630,7 +632,7 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
     Length = props:get_value(<<"Length">>, Props),
     try prepend_forward_message(Call, ForwardId, Metadata, SrcBoxId, Props) of
         {'ok', _} ->
-            %%TODO: update lenght and caller_id
+            %%TODO: update length and caller_id
             notify_and_update_meta(Call, ForwardId, Length, Props);
         {'error', _R} ->
             %% prepend failed, so at least try to forward without a prepend message
