@@ -261,6 +261,7 @@ category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->
     kz_ast_util:binary_match_to_binary(Cat).
 
+key_to_key_path('undefined') -> 'undefined';
 key_to_key_path(?ATOM(A)) -> [kz_term:to_binary(A)];
 key_to_key_path(?VAR(_)) -> 'undefined';
 key_to_key_path(?EMPTY_LIST) -> [];
