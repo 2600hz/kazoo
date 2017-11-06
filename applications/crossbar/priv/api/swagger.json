@@ -4805,177 +4805,222 @@
             }
         },
         "kapi.acdc_agent.login": {
-            "Account-ID": {},
-            "Agent-ID": {},
-            "Event-Category": {
-                "enum": [
-                    "agent"
-                ],
-                "type": "string"
-            },
-            "Event-Name": {
-                "enum": [
-                    "login"
-                ],
-                "type": "string"
-            },
-            "Presence-ID": {},
-            "Presence-State": {
-                "enum": [
-                    "trying",
-                    "online",
-                    "offline",
-                    "early",
-                    "confirmed",
-                    "terminated"
-                ],
-                "type": "string"
-            },
-            "Queue-ID": {},
-            "Time-Limit": {},
             "description": "AMQP API for acdc_agent.login",
-            "properties": {},
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "login"
+                    ],
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Presence-State": {
+                    "enum": [
+                        "trying",
+                        "online",
+                        "offline",
+                        "early",
+                        "confirmed",
+                        "terminated"
+                    ],
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "type": "string"
+                },
+                "Time-Limit": {
+                    "type": "integer"
+                }
+            },
             "required": [
-                "Agent-ID",
-                "Account-ID"
+                "Account-ID",
+                "Agent-ID"
             ],
             "type": "object"
         },
         "kapi.acdc_agent.login_queue": {
-            "Account-ID": {},
-            "Agent-ID": {},
-            "Event-Category": {
-                "enum": [
-                    "agent"
-                ],
-                "type": "string"
-            },
-            "Event-Name": {
-                "enum": [
-                    "login_queue"
-                ],
-                "type": "string"
-            },
-            "Presence-ID": {},
-            "Presence-State": {
-                "enum": [
-                    "trying",
-                    "online",
-                    "offline",
-                    "early",
-                    "confirmed",
-                    "terminated"
-                ],
-                "type": "string"
-            },
-            "Queue-ID": {},
-            "Time-Limit": {},
             "description": "AMQP API for acdc_agent.login_queue",
-            "properties": {},
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "login_queue"
+                    ],
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Presence-State": {
+                    "enum": [
+                        "trying",
+                        "online",
+                        "offline",
+                        "early",
+                        "confirmed",
+                        "terminated"
+                    ],
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "type": "string"
+                },
+                "Time-Limit": {
+                    "type": "integer"
+                }
+            },
             "required": [
-                "Agent-ID",
-                "Account-ID"
+                "Account-ID",
+                "Agent-ID"
             ],
             "type": "object"
         },
         "kapi.acdc_agent.login_resp": {
-            "Event-Category": {
-                "enum": [
-                    "agent"
-                ],
-                "type": "string"
-            },
-            "Event-Name": {
-                "enum": [
-                    "login_resp"
-                ],
-                "type": "string"
-            },
-            "Status": {
-                "enum": [
-                    "success",
-                    "failed"
-                ],
-                "type": "string"
-            },
             "description": "AMQP API for acdc_agent.login_resp",
-            "properties": {},
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "login_resp"
+                    ],
+                    "type": "string"
+                },
+                "Status": {
+                    "enum": [
+                        "success",
+                        "failed"
+                    ],
+                    "type": "string"
+                }
+            },
             "required": [
                 "Status"
             ],
             "type": "object"
         },
         "kapi.acdc_agent.logout": {
-            "Account-ID": {},
-            "Agent-ID": {},
-            "Event-Category": {
-                "enum": [
-                    "agent"
-                ],
-                "type": "string"
-            },
-            "Event-Name": {
-                "enum": [
-                    "logout"
-                ],
-                "type": "string"
-            },
-            "Presence-ID": {},
-            "Presence-State": {
-                "enum": [
-                    "trying",
-                    "online",
-                    "offline",
-                    "early",
-                    "confirmed",
-                    "terminated"
-                ],
-                "type": "string"
-            },
-            "Queue-ID": {},
-            "Time-Limit": {},
             "description": "AMQP API for acdc_agent.logout",
-            "properties": {},
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "logout"
+                    ],
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Presence-State": {
+                    "enum": [
+                        "trying",
+                        "online",
+                        "offline",
+                        "early",
+                        "confirmed",
+                        "terminated"
+                    ],
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "type": "string"
+                },
+                "Time-Limit": {
+                    "type": "integer"
+                }
+            },
             "required": [
-                "Agent-ID",
-                "Account-ID"
+                "Account-ID",
+                "Agent-ID"
             ],
             "type": "object"
         },
         "kapi.acdc_agent.logout_queue": {
-            "Account-ID": {},
-            "Agent-ID": {},
-            "Event-Category": {
-                "enum": [
-                    "agent"
-                ],
-                "type": "string"
-            },
-            "Event-Name": {
-                "enum": [
-                    "logout_queue"
-                ],
-                "type": "string"
-            },
-            "Presence-ID": {},
-            "Presence-State": {
-                "enum": [
-                    "trying",
-                    "online",
-                    "offline",
-                    "early",
-                    "confirmed",
-                    "terminated"
-                ],
-                "type": "string"
-            },
-            "Queue-ID": {},
-            "Time-Limit": {},
             "description": "AMQP API for acdc_agent.logout_queue",
-            "properties": {},
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "logout_queue"
+                    ],
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Presence-State": {
+                    "enum": [
+                        "trying",
+                        "online",
+                        "offline",
+                        "early",
+                        "confirmed",
+                        "terminated"
+                    ],
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "type": "string"
+                },
+                "Time-Limit": {
+                    "type": "integer"
+                }
+            },
             "required": [
-                "Agent-ID",
-                "Account-ID"
+                "Account-ID",
+                "Agent-ID"
             ],
             "type": "object"
         },
