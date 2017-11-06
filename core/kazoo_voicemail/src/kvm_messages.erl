@@ -204,7 +204,7 @@ count_per_folder(AccountId, BoxId) ->
 %% previous result.
 %% @end
 %%--------------------------------------------------------------------
--spec count_per_folder(ne_binary(), ne_binaries(), ne_binary(), ne_binary()) -> count_map().
+-spec count_per_folder(ne_binary(), ne_binaries(), ne_binary(), ne_binaries()) -> count_map().
 count_per_folder(AccountId, Keys, View, Folders) ->
     lists:foldl(fun(Folder, ResultMap) ->
                         count_per_folder(AccountId, Keys, View, Folder, ResultMap)
@@ -290,7 +290,7 @@ fetch(AccountId, MsgIds) ->
 -spec fetch(ne_binary(), ne_binaries(), api_ne_binary()) -> kz_json:object().
 fetch(AccountId, MsgIds, BoxId) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
-    bulk_result(maps:to_list(fetch(AccountId, MsgIds, BoxId, RetenTimestamp))).
+    bulk_result(fetch(AccountId, MsgIds, BoxId, RetenTimestamp)).
 
 -spec fetch(ne_binary(), ne_binaries(), api_ne_binary(), gregorian_seconds()) -> bulk_map().
 fetch(AccountId, MsgIds, BoxId, RetenTimestamp) ->
@@ -353,8 +353,7 @@ move_to_vmbox(AccountId, [?NE_BINARY = _Msg | _] = MsgIds, OldBoxId, NewBoxId, F
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
-    Results = do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, #{}, Funs, RetenTimestamp),
-    bulk_result(maps:to_list(Results));
+    bulk_result(do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, #{}, Funs, RetenTimestamp));
 move_to_vmbox(AccountId, MsgJObjs, OldBoxId, NewBoxId, Funs) ->
     MsgIds = [kzd_box_message:get_msg_id(J) || J <- MsgJObjs],
     move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId, Funs).
@@ -363,7 +362,7 @@ move_to_vmbox(AccountId, MsgJObjs, OldBoxId, NewBoxId, Funs) ->
 do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResultMap, _, _) ->
     ResultMap;
 do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResultMap, Funs, RetenTimestamp) ->
-    case kvm_message:do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ, Funs, RetenTimestamp) of
+    case kvm_message:maybe_do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ, Funs, RetenTimestamp) of
         {'ok', Moved} ->
             NewMap = maps:update_with(succeeded, fun(List) -> [kz_doc:id(Moved)|List] end, [kz_doc:id(Moved)], ResultMap),
             do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, NewMap, Funs, RetenTimestamp);
@@ -390,14 +389,12 @@ copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Funs) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     bulk_result(
-      maps:to_list(
-        lists:foldl(fun(Id, AccMap) ->
-                            kvm_message:maybe_copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccMap, Funs, RetenTimestamp)
-                    end
-                   ,#{}
-                   ,Ids
-                   )
-       )
+      lists:foldl(fun(Id, AccMap) ->
+                          kvm_message:maybe_copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccMap, Funs, RetenTimestamp)
+                  end
+                 ,#{}
+                 ,Ids
+                 )
      ).
 
 %%%===================================================================
@@ -457,11 +454,11 @@ add_timestamp_if_defined(Key, Timestamp, ViewOpts) ->
 %%--------------------------------------------------------------------
 -define(LISTING_BY_TIMESTAMP_BOX_ID_KEY_INDEX, 2).
 
--spec normalize_account_listing(kz_json:objects()) -> bulk_map().
+-spec normalize_account_listing(kz_json:objects()) -> get_map().
 normalize_account_listing(JObjs) ->
     lists:foldl(fun normalize_account_listing/2, #{}, JObjs).
 
--spec normalize_account_listing(kz_json:object(), bulk_map()) -> bulk_map().
+-spec normalize_account_listing(kz_json:object(), get_map()) -> get_map().
 normalize_account_listing(JObj, Map) ->
     Value = kz_json:get_value(<<"value">>, JObj),
     case kz_json:get_value([<<"key">>, ?LISTING_BY_TIMESTAMP_BOX_ID_KEY_INDEX], JObj) of
@@ -504,8 +501,8 @@ normalize_bulk_results(#{succeeded := Succeeded
                      case Method of
                          <<"fetch">> ->
                              ResultMap#{succeeded => [kvm_util:enforce_retention(kz_json:get_value(<<"doc">>, JObj), 'true')
-                                                            |Succeeded
-                                                           ]
+                                                      | Succeeded
+                                                     ]
                                        };
                          <<"update">> ->
                              ResultMap#{failed => [{Id, <<"prior_to_retention_duration">>}|Failed]}

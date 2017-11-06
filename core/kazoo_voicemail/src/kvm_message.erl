@@ -140,10 +140,13 @@ fetch(AccountId, MessageId, BoxId) ->
 do_fetch(AccountId, MessageId, BoxId, RetenTimestamp) ->
     case kvm_util:open_modb_doc(AccountId, MessageId, kzd_box_message:type()) of
         {'ok', JObj} ->
+            IsPrior = kvm_util:is_prior_to_retention(JObj, RetenTimestamp),
             case kvm_util:check_msg_belonging(BoxId, JObj) of
                 'false' -> {'false', {'error', 'not_found'}};
+                'true' when IsPrior ->
+                    {'true', {'ok', kvm_util:enforce_retention(JObj, 'true')}};
                 'true' ->
-                    {'true', {'ok', kvm_util:enforce_retention(JObj, RetenTimestamp)}}
+                    {'false', {'ok', JObj}}
             end;
         {'error', _E} = Error ->
             lager:debug("failed to open message ~s:~p", [MessageId, _E]),
@@ -240,11 +243,9 @@ update(AccountId, BoxId, ?NE_BINARY = MsgId, Funs) ->
         {_, {'error', _}=Error} ->
             Error
     end;
-update(AccountId, BoxId, JObj, Funs) ->
+update(AccountId, _BoxId, JObj, Funs) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
-    case kvm_util:check_msg_belonging(BoxId, JObj)
-        andalso kvm_util:is_prior_to_retention(JObj, RetenTimestamp)
-    of
+    case kvm_util:is_prior_to_retention(JObj, RetenTimestamp) of
         'true' ->
             _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
             {'error', <<"prior_to_retention_duration">>};
