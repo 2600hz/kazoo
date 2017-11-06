@@ -301,6 +301,7 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
             kapps_conference_command:dial(ToDial
                                          ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
                                          ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))
+                                         ,cb_modules_util:ccvs_from_context(Context)
                                          ,ConferenceId
                                          ),
             crossbar_util:response_202(<<"dialing endpoints">>, Context)
@@ -315,7 +316,6 @@ create_call(Context, ConferenceId) ->
                       ,{fun kapps_call:set_resource_type/2, <<"audio">>}
                       ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
                       ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
-                      ,{fun kapps_call:set_custom_channel_vars/2, cb_modules_util:ccvs_from_context(Context)}
                       ],
             'undefined' =/= V
         ],
@@ -337,14 +337,13 @@ build_endpoint(Number, {Endpoints, Call}) ->
                ,{<<"To-DID">>, Number}
                ,{<<"To-Realm">>, AccountRealm}
                ,{<<"Custom-Channel-Vars">>
-                ,kz_json:merge(kz_json:from_list([{<<"Account-ID">>, kapps_call:account_id(Call)}
-                                                 ,{<<"Authorizing-Type">>, <<"conference">>}
-                                                 ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
-                                                 ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
-                                                 ,{<<"Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
-                                                 ])
-                              ,kapps_call:custom_channel_vars(Call)
-                              )
+                ,kz_json:from_list([{<<"Account-ID">>, kapps_call:account_id(Call)}
+                                   ,{<<"Authorizing-Type">>, <<"conference">>}
+                                   ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+                                   ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
+                                   ,{<<"Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
+                                   ])
+
                 }
                ],
 
