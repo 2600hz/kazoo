@@ -219,7 +219,6 @@ count_per_folder(AccountId, Keys, View, Folder, ResultMap) ->
                ,{'endkey', Keys ++ [Folder]}
                ],
     case get_view_results(AccountId, View, ViewOpts, 'undefined') of
-        0 -> ResultMap;
         [] -> ResultMap;
         Results -> normalize_count(View, Results, ResultMap)
     end.

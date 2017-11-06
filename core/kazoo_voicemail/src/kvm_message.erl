@@ -613,7 +613,7 @@ forward_to_vmbox(Call, Metadata, SrcBoxId, Props) ->
                              ,kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DestBoxId)
                              ,[]
                              ),
-    Failed = msp:get(failed, ResultMap, []),
+    Failed = maps:get(failed, ResultMap, []),
     Succeeded = maps:get(succeeded, ResultMap, []),
     case {Failed, Succeeded} of
         {[], []} -> {'error', Call, 'internal_error'};
