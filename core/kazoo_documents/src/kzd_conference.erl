@@ -10,6 +10,7 @@
 -export_type([doc/0]).
 
 -define(PVT_TYPE, <<"conference">>).
+-define(SCHEMA, <<"conferences">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -19,7 +20,7 @@
 %%--------------------------------------------------------------------
 -spec new() -> doc().
 new() ->
-    kz_json:set_value(<<"pvt_type">>, type(), kz_json_schema:default_object(<<"conferences">>)).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 %%--------------------------------------------------------------------
 %% @public

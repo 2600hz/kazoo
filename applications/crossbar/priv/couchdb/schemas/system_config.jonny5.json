@@ -20,6 +20,11 @@
             "default": "^\\+1\\d{10}$",
             "description": "jonny5 flat rate whitelist",
             "type": "string"
+        },
+        "resource_flat_rate_lookup": {
+            "default": false,
+            "description": "lookup flat rate regexes per resource",
+            "type": "boolean"
         }
     },
     "type": "object"

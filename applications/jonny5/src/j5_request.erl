@@ -68,6 +68,7 @@
         ,callee_id_name/1
         ]).
 -export([resource_type/1]).
+-export([resource_id/1]).
 -export([account_trunk_usage/1]).
 -export([reseller_trunk_usage/1]).
 
@@ -569,6 +570,10 @@ callee_id_name(#request{request_jobj=JObj}) ->
 -spec resource_type(request()) -> api_binary().
 resource_type(#request{request_ccvs=CCVs}) ->
     kz_json:get_value(<<"Resource-Type">>, CCVs).
+
+-spec resource_id(request()) -> api_ne_binary().
+resource_id(#request{request_ccvs=CCVs}) ->
+    kz_json:get_ne_binary_value(<<"Resource-ID">>, CCVs).
 
 -spec account_trunk_usage(request()) -> api_binary().
 account_trunk_usage(#request{request_ccvs=CCVs}) ->
