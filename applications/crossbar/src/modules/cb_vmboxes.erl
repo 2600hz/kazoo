@@ -261,17 +261,17 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
     load_message(MessageId, BoxId, Context, 'true');
 validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
-    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(cb_context:account_id(Context)),
+    RetentionTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(cb_context:account_id(Context)),
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', Msg} ->
-            case kzd_box_message:utc_seconds(Msg) < RetenTimestamp of
+            case kzd_box_message:utc_seconds(Msg) < RetentionTimestamp of
                 'true' ->
                     ErrMsg = <<"cannot make changes to messages prior to retention duration">>,
                     cb_context:add_validation_error(MessageId
                                                    ,<<"date_range">>
                                                    ,kz_json:from_list(
                                                       [{<<"message">>, ErrMsg}
-                                                      ,{<<"cause">>, RetenTimestamp}
+                                                      ,{<<"cause">>, RetentionTimestamp}
                                                       ])
                                                    ,Context
                                                    );
@@ -779,13 +779,11 @@ empty_source_id(Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
-    MaxRetenSecond = kvm_util:retention_seconds(cb_context:account_id(Context)),
-    RetenTimestamp = kz_time:current_tstamp() - MaxRetenSecond,
-    case message_summary_view_options(Context, BoxId, MaxRetenSecond) of
+    {MaxRange, RetentionSeconds} = get_max_range(Context),
+    RetentionTimestamp = kz_time:current_tstamp() - RetentionSeconds,
+    NormlizeFun = fun(J, Acc) -> message_summary_normalizer(BoxId, J, Acc, RetentionTimestamp) end,
+    case message_summary_view_options(Context, BoxId, MaxRange) of
         {'ok', ViewOptions} ->
-            NormlizeFun = fun(J, Acc) ->
-                                  message_summary_normalizer(BoxId, J, Acc, RetenTimestamp)
-                          end,
             C1 = prefix_qs_filter_keys(cb_context:set_resp_status(Context, 'success')),
             ViewResults = crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
                                                 ,ViewOptions
@@ -798,9 +796,7 @@ load_message_summary(BoxId, Context) ->
 
 -spec prefix_qs_filter_keys(cb_context:context()) -> cb_context:context().
 prefix_qs_filter_keys(Context) ->
-    NewQs = kz_json:map(fun(K, V) ->
-                                prefix_filter_key(K, V)
-                        end
+    NewQs = kz_json:map(fun(K, V) -> prefix_filter_key(K, V) end
                        ,cb_context:query_string(Context)
                        ),
     cb_context:set_query_string(Context, NewQs).
@@ -821,25 +817,24 @@ prefix_filter_key(Key, Value) ->
 
 -spec message_summary_normalizer(api_binary(), kz_json:object(), kz_json:objects(), gregorian_seconds()) ->
                                         kz_json:objects().
-message_summary_normalizer('undefined', JObj, Acc, RetenTimestamp) ->
+message_summary_normalizer('undefined', JObj, Acc, RetentionTimestamp) ->
     [kz_json:from_list(
        [{kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], JObj)
-        ,kvm_util:maybe_set_deleted_by_retention(kz_json:get_value(<<"value">>, JObj), RetenTimestamp)
+        ,kvm_util:enforce_retention(kz_json:get_value(<<"value">>, JObj), RetentionTimestamp)
         }
        ])
      | Acc
     ];
-message_summary_normalizer(_BoxId, JObj, Acc, RetenTimestamp) ->
-    [kvm_util:maybe_set_deleted_by_retention(kz_json:get_value(<<"value">>, JObj), RetenTimestamp)
+message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
+    [kvm_util:enforce_retention(kz_json:get_value(<<"value">>, JObj), RetentionTimestamp)
      | Acc
     ].
 
--spec message_summary_view_options(cb_context:context(), api_binary(), gregorian_seconds()) ->
+-spec message_summary_view_options(cb_context:context(), api_binary(), pos_integer()) ->
                                           {'ok', crossbar_doc:view_options()} |
                                           cb_context:context().
-message_summary_view_options(Context, BoxId, MaxRetenSecond) ->
+message_summary_view_options(Context, BoxId, MaxRange) ->
     AccountId = cb_context:account_id(Context),
-    MaxRange = get_max_range(Context, MaxRetenSecond),
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
             MODBs = lists:reverse(kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)),
@@ -863,15 +858,20 @@ maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% check if create_from is exists or not, if not set max_range to max_retention
-%% to return all messages in retention duration
+%% For Backward compatibility with voicemail box `messages` array, set
+%% `max_range` to retention seconds to get all messages which are in
+%% retention duration range *only* if request doesn't have
+%% `created_from` in the query string.
+%%
+%% If `created_from` is set, use default Crossbar max range.
 %% @end
 %%--------------------------------------------------------------------
--spec get_max_range(cb_context:context(), gregorian_seconds()) -> gregorian_seconds().
-get_max_range(Context, MaxRetenSecond) ->
+-spec get_max_range(cb_context:context()) -> {pos_integer(), gregorian_seconds()}.
+get_max_range(Context) ->
+    RetentionSeconds = kvm_util:retention_seconds(cb_context:account_id(Context)),
     case cb_context:req_value(Context, <<"created_from">>) of
-        'undefined' -> MaxRetenSecond;
-        _ -> ?MAX_RANGE
+        'undefined' -> {RetentionSeconds, RetentionSeconds};
+        _ -> {?MAX_RANGE, RetentionSeconds}
     end.
 
 -spec maybe_fix_envelope(cb_context:context()) -> cb_context:context().
