@@ -600,22 +600,21 @@ get_fs_app(Node, UUID, JObj, <<"media_macro">>) ->
     case kapi_dialplan:media_macro_v(JObj) of
         'false' -> {'error', <<"media macro failed to execute as JObj did not validate">>};
         'true' ->
-            KVs = kz_json:foldr(
-                    fun(K, Macro, Acc) ->
-                            Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
-                            Result = list_to_binary(["file_string://", kz_binary:join(Paths, <<"!">>)]),
-                            [{K, Result} | Acc]
-                    end,[], kz_json:get_value(<<"Media-Macros">>, JObj)),
+            KVs = kz_json:foldr(fun(K, Macro, Acc) ->
+                                        [{K, media_macro_to_file_string(Macro)} | Acc]
+                                end
+                               ,[]
+                               ,kz_json:get_list_value(<<"Media-Macros">>, JObj)
+                               ),
             {<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, KVs, <<"|">>)}
     end;
 
-get_fs_app(Node, UUID, JObj, <<"play_macro">>) ->
+get_fs_app(_Node, _UUID, JObj, <<"play_macro">>) ->
     case kapi_dialplan:play_macro_v(JObj) of
         'false' -> {'error', <<"play macro failed to execute as JObj did not validate">>};
         'true' ->
-            Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
-            Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
-            Result = list_to_binary(["file_string://", kz_binary:join(Paths, <<"!">>)]),
+            Macro = kz_json:get_list_value(<<"Media-Macro">>, JObj, []),
+            Result = media_macro_to_file_string(Macro),
             {<<"playback">>, Result}
     end;
 
@@ -628,6 +627,11 @@ get_fs_app(_Node, UUID, JObj, <<"sound_touch">>) ->
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
+
+-spec media_macro_to_file_string(ne_binaries()) -> ne_binary().
+media_macro_to_file_string(Macro) ->
+    Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
+    list_to_binary(["file_string://", kz_binary:join(Paths, <<"!">>)]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1402,8 +1406,15 @@ play_app(UUID, JObj) ->
     F = ecallmgr_util:media_path(MediaName, 'new', UUID, JObj),
     %% if Leg is set, use uuid_broadcast; otherwise use playback
     case ecallmgr_fs_channel:is_bridged(UUID) of
-        'false' -> {<<"playback">>, F};
+        'false' -> {playback_app(JObj), F};
         'true' -> play_bridged(UUID, JObj, F)
+    end.
+
+-spec playback_app(kz_json:object()) -> ne_binary().
+playback_app(JObj) ->
+    case kz_json:is_true(<<"Endless-Playback">>, JObj, 'false') of
+        'true' -> <<"endless_playback">>;
+        'false' -> <<"playback">>
     end.
 
 -spec play_bridged(ne_binary(), kz_json:object(), ne_binary()) -> fs_app().

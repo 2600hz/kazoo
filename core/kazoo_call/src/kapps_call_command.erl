@@ -1373,18 +1373,24 @@ b_prompt(Prompt, Lang, Call) ->
 
 play_command(Media, Call) ->
     play_command(Media, ?ANY_DIGIT, Call).
+
 play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
-play_command(Media, Terminators, Leg, CallId=?NE_BINARY) ->
+
+play_command(Media, Terminators, Leg, Call) ->
+    play_command(Media, Terminators, Leg, 'false', Call).
+
+play_command(Media, Terminators, Leg, Endless, CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"play">>}
       ,{<<"Media-Name">>, Media}
       ,{<<"Terminators">>, play_terminators(Terminators)}
       ,{<<"Leg">>, play_leg(Leg)}
       ,{<<"Call-ID">>, CallId}
+      ,{<<"Endless-Playback">>, Endless}
       ]);
-play_command(Media, Terminators, Leg, Call) ->
-    play_command(Media, Terminators, Leg, kapps_call:call_id(Call)).
+play_command(Media, Terminators, Leg, Endless, Call) ->
+    play_command(Media, Terminators, Leg, Endless, kapps_call:call_id(Call)).
 
 -spec play_terminators(api_binaries()) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
