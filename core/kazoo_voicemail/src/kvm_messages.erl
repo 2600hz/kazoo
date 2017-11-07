@@ -18,9 +18,9 @@
         ,count/2, count_by_owner/2, count_none_deleted/2
         ]).
 
--export([update/3, update/4, change_folder/4
-        ,move_to_vmbox/4
-        ,copy_to_vmboxes/4
+-export([update/3, update/4, change_folder/4, change_folder/5
+        ,move_to_vmbox/4, move_to_vmbox/5
+        ,copy_to_vmboxes/4, copy_to_vmboxes/5
         ]).
 
 -include("kz_voicemail.hrl").
@@ -146,9 +146,9 @@ update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
 
 update(AccountId, BoxId, [?NE_BINARY = _Msg | _] = MsgIds, Funs) ->
-    JObjs = fetch(AccountId, MsgIds, BoxId),
-    SucceededJObjs = kz_json:get_value(<<"succeeded">>, JObjs, []),
-    FailedJObjs = kz_json:get_value(<<"failed">>, JObjs, []),
+    FetchResult = fetch(AccountId, MsgIds, BoxId),
+    SucceededJObjs = kz_json:get_value(<<"succeeded">>, FetchResult, []),
+    FailedJObjs = kz_json:get_value(<<"failed">>, FetchResult, []),
     Results = do_update(AccountId, SucceededJObjs, Funs, FailedJObjs),
     kz_json:from_list(dict:to_list(Results));
 update(AccountId, _BoxId, JObjs, Funs) ->
@@ -226,7 +226,13 @@ fetch_faild_with_reason(Reason, Db, Ids, ResDict) ->
 -spec change_folder(kvm_message:vm_folder(), messages(), ne_binary(), ne_binary()) ->
                            kz_json:object().
 change_folder(Folder, Msgs, AccountId, BoxId) ->
+    change_folder(Folder, Msgs, AccountId, BoxId, []).
+
+-spec change_folder(kvm_message:vm_folder(), messages(), ne_binary(), ne_binary(), update_funs()) ->
+                           kz_json:object().
+change_folder(Folder, Msgs, AccountId, BoxId, Funs) ->
     Fun = [fun(JObj) -> kzd_box_message:apply_folder(Folder, JObj) end
+           | Funs
           ],
     update(AccountId, BoxId, Msgs, Fun).
 
@@ -237,27 +243,32 @@ change_folder(Folder, Msgs, AccountId, BoxId) ->
 %%--------------------------------------------------------------------
 -spec move_to_vmbox(ne_binary(), messages(), ne_binary(), ne_binary()) ->
                            kz_json:object().
-move_to_vmbox(AccountId, [?NE_BINARY = _Msg | _] = MsgIds, OldBoxId, NewBoxId) ->
+move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId) ->
+    move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId, []).
+
+-spec move_to_vmbox(ne_binary(), messages(), ne_binary(), ne_binary(), update_funs()) ->
+                           kz_json:object().
+move_to_vmbox(AccountId, [?NE_BINARY = _Msg | _] = MsgIds, OldBoxId, NewBoxId, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-    Results = do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, dict:new()),
+    Results = do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, dict:new(), Funs),
     kz_json:from_list(dict:to_list(Results));
-move_to_vmbox(AccountId, MsgJObjs, OldBoxId, NewBoxId) ->
+move_to_vmbox(AccountId, MsgJObjs, OldBoxId, NewBoxId, Funs) ->
     MsgIds = [kzd_box_message:get_msg_id(J) || J <- MsgJObjs],
-    move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId).
+    move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId, Funs).
 
--spec do_move(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_json:object(), dict:dict()) -> dict:dict().
-do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResDict) ->
+-spec do_move(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_json:object(), dict:dict(), update_funs()) -> dict:dict().
+do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResDict, _) ->
     ResDict;
-do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResDict) ->
-    case kvm_message:do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ) of
+do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResDict, Funs) ->
+    case kvm_message:do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ, Funs) of
         {'ok', Moved} ->
             Res = dict:append(<<"succeeded">>, kz_doc:id(Moved), ResDict),
-            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res);
+            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res, Funs);
         {'error', Reason} ->
             Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
             Res = dict:append(<<"failed">>, Failed, ResDict),
-            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res)
+            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res, Funs)
     end.
 
 %%--------------------------------------------------------------------
@@ -267,24 +278,24 @@ do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResDict) ->
 %%--------------------------------------------------------------------
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries()) ->
                              kz_json:object().
--spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             dict:dict().
-copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
-    copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
+    copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, []).
+
+-spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries(), update_funs()) ->
+                             kz_json:object().
+copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
+    copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId], Funs);
+copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Funs) ->
     kz_json:from_list(
       dict:to_list(
-        copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, dict:new())
+        lists:foldl(fun(Id, AccDict) ->
+                            kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccDict, Funs)
+                    end
+                   ,dict:new()
+                   ,Ids
+                   )
        )
      ).
-
-copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, CopiedDict) ->
-    lists:foldl(fun(Id, AccDict) ->
-                        kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccDict)
-                end
-               ,CopiedDict
-               ,Ids
-               ).
 
 %%%===================================================================
 %%% Internal functions

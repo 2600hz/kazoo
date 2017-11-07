@@ -10,11 +10,11 @@
 
 -export([new/2, forward_message/4
         ,fetch/2, fetch/3, message/2, message/3
-        ,set_folder/3, change_folder/3, change_folder/4
+        ,set_folder/3, change_folder/4, change_folder/5
 
         ,update/3, update/4
-        ,move_to_vmbox/4, do_move/5
-        ,copy_to_vmboxes/4, copy_to_vmboxes/5
+        ,move_to_vmbox/4, move_to_vmbox/5, do_move/6
+        ,copy_to_vmboxes/4, copy_to_vmboxes/5, copy_to_vmboxes/6
 
         ,media_url/2
         ]).
@@ -183,11 +183,11 @@ set_folder(Folder, Message, AccountId) ->
 -spec maybe_set_folder(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
 maybe_set_folder(_, ?VM_FOLDER_DELETED = ToFolder, MessageId, AccountId, _Msg) ->
     %% ensuring that message is really deleted
-    change_folder(ToFolder, MessageId, AccountId);
+    change_folder(ToFolder, MessageId, AccountId, 'undefined');
 maybe_set_folder(FromFolder, FromFolder, _MessageId, _AccountId, Msg) ->
     {'ok', Msg};
 maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
-    change_folder(ToFolder, MessageId, AccountId).
+    change_folder(ToFolder, MessageId, AccountId, 'undefined').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -197,15 +197,16 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
 %%      folder(for recovering later by user)
 %% @end
 %%--------------------------------------------------------------------
--spec change_folder(vm_folder(), message(), ne_binary()) -> db_ret().
 -spec change_folder(vm_folder(), message(), ne_binary(), api_binary()) -> db_ret().
-change_folder(Folder, Message, AccountId) ->
-    change_folder(Folder, Message, AccountId, 'undefined').
-
 change_folder(Folder, Message, AccountId, BoxId) ->
-    Fun = [fun(J) -> kzd_box_message:apply_folder(Folder, J) end
-          ],
-    case update(AccountId, BoxId, Message, Fun) of
+    change_folder(Folder, Message, AccountId, BoxId, []).
+
+-spec change_folder(vm_folder(), message(), ne_binary(), api_binary(), update_funs()) -> db_ret().
+change_folder(Folder, Message, AccountId, BoxId, Funs0) ->
+    Funs = [fun(J) -> kzd_box_message:apply_folder(Folder, J) end
+            | Funs0
+           ],
+    case update(AccountId, BoxId, Message, Funs) of
         {'ok', JObj} ->
             {'ok', kzd_box_message:metadata(JObj)};
         {'error', _R} = Error ->
@@ -244,22 +245,25 @@ update(_AccountId, _BoxId, JObj, Funs) ->
 %% @doc Move a message to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec move_to_vmbox(ne_binary(), message(), ne_binary(), ne_binary()) ->
-                           db_ret().
-move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId) ->
+-spec move_to_vmbox(ne_binary(), message(), ne_binary(), ne_binary()) -> db_ret().
+move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId) ->
+    move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId, []).
+
+-spec move_to_vmbox(ne_binary(), message(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
+move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId, Funs) ->
     %% FIXME: maybe fetch message to make sure it's exists
     AccountDb = kvm_util:get_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, NewBoxId) of
-        {'ok', NBoxJ} -> do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ);
+        {'ok', NBoxJ} -> do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs);
         {'error', _Reason} = Error ->
             lager:debug("failed to open destination vmbox ~s", NewBoxId),
             Error
     end;
-move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId) ->
-    move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId).
+move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId, Funs) ->
+    move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId, Funs).
 
--spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
-do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
+-spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs()) -> db_ret().
+do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs) ->
     {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId),
 
     FromDb = kvm_util:get_db(AccountId, FromId),
@@ -269,7 +273,7 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
                ,[FromDb, FromId, OldBoxId, ToDb, ToId, NewBoxId]
                ),
 
-    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}
+    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns ++ Funs) end}
            ,{max_retries, 3}
            ],
     case kazoo_modb:move_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
@@ -293,51 +297,55 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
 %% @doc copy a message to other vmbox(es)
 %% @end
 %%--------------------------------------------------------------------
--spec copy_to_vmboxes(ne_binary(), ne_binary() | kz_json:object(), ne_binary(), ne_binary() | ne_binaries()) ->
-                             kz_json:object().
-copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId) ->
-    copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId]);
-copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds) ->
+-spec copy_to_vmboxes(ne_binary(), ne_binary()|kz_json:object(), ne_binary(), ne_binary()|ne_binaries()) -> kz_json:object().
+copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds) ->
+    copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds, []).
+
+-spec copy_to_vmboxes(ne_binary(), ne_binary()|kz_json:object(), ne_binary(), ne_binary()|ne_binaries(), update_funs()) -> kz_json:object().
+copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
+    copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId], Funs);
+copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds, Funs) ->
     %% FIXME: maybe fetch message to make sure it's exists
     kz_json:from_list(
       dict:to_list(
-        copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, dict:new())
+        copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, dict:new(), Funs)
        )
      );
-copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds) ->
-    copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds).
+copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds, Funs) ->
+    copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds, Funs).
 
--spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             dict:dict().
-copy_to_vmboxes(_, _, _, [], CopiedDict) ->
+-spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), dict:dict(), update_funs()) -> dict:dict().
+copy_to_vmboxes(_, _, _, [], CopiedDict, _) ->
     CopiedDict;
-copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopiedDict) ->
-    NewCopiedDict = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict),
-    copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopiedDict).
+copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopiedDict, Funs) ->
+    NewCopiedDict = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict, Funs),
+    copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopiedDict, Funs).
 
--spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict()) ->
-                           dict:dict().
-copy_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict(), update_funs()) -> dict:dict().
+copy_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
     %% FIXME: maybe bulk read vmbox in above function clause to avoid lots of cache query
     copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
                  ,kz_datamgr:open_cache_doc(AccountDb, NBId)
+                 ,Funs
                  ).
 
--spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict(), kz_datamgr:data_error() | {'ok', kz_json:object()}) ->
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict(), kz_datamgr:data_error() | {'ok', kz_json:object()}, update_funs()) ->
                            dict:dict().
 copy_to_vmbox(_AccountId, FromId, _OldBoxId, NBId, CopiedDict
              ,{'error', Reason}
+             ,_
              ) ->
     lager:warning("could not open destination vmbox ~s", [NBId]),
     Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
     dict:append(<<"failed">>, Failed, CopiedDict);
 copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
              ,{'ok', NBox}
+             ,Funs
              ) ->
     {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBox, OldBoxId),
 
-    case do_copy(AccountId, FromId, ToId, TransformFuns) of
+    case do_copy(AccountId, FromId, ToId, TransformFuns ++ Funs) of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
             dict:append(<<"succeeded">>, CopiedId, CopiedDict);
