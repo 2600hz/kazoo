@@ -255,7 +255,6 @@ get_extension(MediaJObj) ->
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
     Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"vmbox_doc">>, DataJObj)),
-    io:format("~n UserJObj ~p~n user_params ~p~n", [kz_json:get_value(<<"user">>, DataJObj), teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))]),
     [{<<"voicemail">>, build_voicemail_data(DataJObj)}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
