@@ -426,7 +426,7 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
             kapps_conference_command:dial(ToDial
                                          ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
                                          ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))
-                                         ,cb_modules_util:ccvs_from_context(Context)
+                                         ,kz_json:from_list(cb_modules_util:ccvs_from_context(Context))
                                          ,ConferenceId
                                          ),
             crossbar_util:response_202(<<"dialing endpoints">>, Context)
