@@ -74,6 +74,24 @@ Sometimes you want to dial out from a conference to an endpoint (versus waiting 
 {
     "data":{
         "action":"dial"
+        ,"data":{
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "caller_id_name":"Conference XYZ",
+            "caller_id_number":"5551212"
+        }
+    }
+}
+```
+
+As in [./quickcall.md](quickcalls), you can include `custom_channel_vars`:
+
+```json
+{
+    "data":{
+        "action":"dial"
+        ,"custom_channel_vars":{
+            "foo":"bar"
+        }
         "data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
             "caller_id_name":"Conference XYZ",
