@@ -41,6 +41,7 @@
 -define(UNDEAF, <<"undeaf">>).
 -define(KICK, <<"kick">>).
 -define(RELATE, <<"relate">>).
+-define(PLAY, <<"play">>).
 
 -define(PUT_ACTION, <<"action">>).
 
@@ -48,7 +49,7 @@
 %%% API
 %%%===================================================================
 
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.conferences">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.conferences">>, ?MODULE, 'resource_exists'),
@@ -99,14 +100,20 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%%===================================================================
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    Ctx1 = search_conferences(Context),
-    crossbar_doc:load_view(?CB_LIST, [], Ctx1, fun(J, A) -> normalize_view_results(Ctx1, J, A) end);
+    Context1 = search_conferences(Context),
+    RunningConferences = cb_context:fetch(Context1, 'conferences', kz_json:new()),
+    LoadedContext = crossbar_doc:load_view(?CB_LIST
+                                          ,[]
+                                          ,Context1
+                                          ,fun normalize_view_results/2
+                                          ),
+    add_realtime(LoadedContext, RunningConferences);
 validate_conferences(?HTTP_PUT, Context) ->
     create_conference(Context).
 
 -spec validate_conference(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
 validate_conference(?HTTP_GET, Context0, ConferenceId) ->
-    Context1 = load_conference(ConferenceId, Context0),
+    Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
         'success' -> enrich_conference(ConferenceId, Context1);
         _Else -> Context1
@@ -114,7 +121,7 @@ validate_conference(?HTTP_GET, Context0, ConferenceId) ->
 validate_conference(?HTTP_POST, Context, ConferenceId) ->
     update_conference(ConferenceId, Context);
 validate_conference(?HTTP_PUT, Context, ConferenceId) ->
-    load_conference(ConferenceId, Context);
+    maybe_load_conference(ConferenceId, Context);
 validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
     patch_conference(ConferenceId, Context);
 validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
@@ -161,6 +168,12 @@ put(Context, ConferenceId, ?PARTICIPANTS) ->
 
 put(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
     Action = cb_context:req_value(Context, ?PUT_ACTION),
+    participant_action(Context, ConferenceId, ParticipantId, Action).
+
+participant_action(Context, ConferenceId, ParticipantId, ?PLAY) ->
+    play(Context, ConferenceId, ParticipantId, cb_context:req_value(Context, <<"data">>));
+
+participant_action(Context, ConferenceId, ParticipantId, Action) ->
     perform_participant_action(conference(ConferenceId), Action, kz_term:to_integer(ParticipantId)),
     crossbar_util:response_202(<<"ok">>, Context).
 
@@ -175,9 +188,29 @@ delete(Context, _) ->
 %%%===================================================================
 %%% Conference validation helpers
 %%%===================================================================
+
+-spec maybe_load_conference(path_token(), cb_context:context()) -> cb_context:context().
+maybe_load_conference(ConferenceId, Context) ->
+    maybe_build_conference(ConferenceId, load_conference(ConferenceId, Context)).
+
+-spec maybe_build_conference(path_token(), cb_context:context()) -> cb_context:context().
+maybe_build_conference(ConferenceId, Context) ->
+    case cb_context:resp_status(Context) of
+        'success' -> Context; % loaded an existing conference
+        _ ->
+            lager:info("building an ad-hoc conference for ~s", [ConferenceId]),
+            build_conference(ConferenceId, Context)
+    end.
+
+-spec build_conference(path_token(), cb_context:context()) -> cb_context:context().
+build_conference(ConferenceId, Context) ->
+    Conference = kz_doc:set_id(kzd_conference:new(), ConferenceId),
+    Merged = kz_json:merge(Conference, cb_context:req_data(Context)),
+    crossbar_doc:handle_datamgr_success(Merged, Context).
+
 -spec load_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 load_conference(ConferenceId, Context) ->
-    crossbar_doc:load(ConferenceId, Context).
+    crossbar_doc:load(ConferenceId, Context, ?TYPE_CHECK_OPTION(kzd_conference:type())).
 
 -spec create_conference(cb_context:context()) -> cb_context:context().
 create_conference(Context) ->
@@ -199,11 +232,9 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(ConferenceId, Context) ->
     crossbar_doc:load_merge(ConferenceId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
 
--spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(Context, JObj, Acc) ->
-    Conferences = cb_context:fetch(Context, 'conferences', kz_json:new()),
-    Realtime = kz_json:get_value(kz_doc:id(JObj), Conferences, empty_realtime_data()),
-    [kz_json:merge_jobjs(kz_json:normalize(Realtime), kz_json:get_value(<<"value">>, JObj)) | Acc].
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(ViewResult, Acc) ->
+    [kz_json:get_json_value(<<"value">>, ViewResult) | Acc].
 
 empty_realtime_data() ->
     kz_json:from_list(
@@ -212,6 +243,41 @@ empty_realtime_data() ->
       ,{<<"duration">>, 0}
       ,{<<"is_locked">>, 'false'}
       ]).
+
+-spec move_to_read_only(kz_json:key(), kz_json:object()) ->
+                               {kz_json:key(), kz_json:object()}.
+move_to_read_only(Id, Realtime) ->
+    {Id, kz_json:from_list([{<<"id">>, Id}
+                           ,{<<"_read_only">>, kz_json:normalize(Realtime)}
+                           ])
+    }.
+
+-spec add_realtime(cb_context:context(), kz_json:object()) -> cb_context:context().
+add_realtime(Context, RunningConferences) ->
+    ReadOnly = kz_json:map(fun move_to_read_only/2, RunningConferences),
+
+    Conferences = lists:foldl(fun add_realtime_fold/2
+                             ,ReadOnly
+                             ,cb_context:doc(Context)
+                             ),
+
+    Listing = kz_json:values(Conferences),
+
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_doc/2, Listing}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, Listing}
+                       ,{fun cb_context:set_resp_envelope/2
+                        ,kz_json:set_value(<<"page_size">>, length(Listing), cb_context:resp_envelope(Context))
+                        }
+                       ]).
+
+-spec add_realtime_fold(kzd_conference:doc(), kz_json:object()) -> kz_json:object().
+add_realtime_fold(Conference, RunningConferences) ->
+    Realtime = kz_json:get_value(kz_doc:id(Conference), RunningConferences, empty_realtime_data()),
+    Amended = kz_json:merge(Conference, Realtime),
+    kz_json:set_value(kz_doc:id(Conference), Amended, RunningConferences).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -254,19 +320,79 @@ handle_conference_action(Context, ConferenceId, <<"lock">>) ->
 handle_conference_action(Context, ConferenceId, <<"unlock">>) ->
     kapps_conference_command:unlock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
+handle_conference_action(Context, ConferenceId, ?PLAY) ->
+    play(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, <<"dial">>) ->
     dial(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
 
--spec dial(cb_context:context(), path_token(), api_object()) -> cb_context:context().
-dial(Context, _ConferenceId, 'undefined') ->
+-spec play(cb_context:context(), path_token(), api_object()) ->
+                  cb_context:context().
+-spec play(cb_context:context(), path_token(), pos_integer(), api_object()) ->
+                  cb_context:context().
+play(Context, _ConferenceId, 'undefined') ->
+    data_required(Context, <<"play">>);
+play(Context, ConferenceId, Data) ->
+    play_media(Context, ConferenceId, kz_json:get_ne_binary_value(<<"media_id">>, Data)).
+
+play(Context, _ConferenceId, _ParticipantId, 'undefined') ->
+    data_required(Context, <<"play">>);
+play(Context, ConferenceId, ParticipantId, Data) ->
+    play_media(Context, ConferenceId, ParticipantId, kz_json:get_ne_binary_value(<<"media_id">>, Data)).
+
+-spec data_required(cb_context:context(), ne_binary()) -> cb_context:context().
+data_required(Context, Action) ->
     cb_context:add_validation_error(<<"data">>
                                    ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"action 'dial' requires a data object">>}])
+                                   ,kz_json:from_list([{<<"message">>, <<"action '", Action/binary, "' requires a data object">>}])
                                    ,Context
-                                   );
+                                   ).
+
+-spec play_media(cb_context:context(), path_token(), api_ne_binary()) ->
+                        cb_context:context().
+-spec play_media(cb_context:context(), path_token(), pos_integer(), api_ne_binary()) ->
+                        cb_context:context().
+play_media(Context, _ConferenceId, 'undefined') ->
+    media_id_required(Context);
+play_media(Context, ConferenceId, MediaId) ->
+    case kz_media_util:media_path(MediaId, cb_context:account_id(Context)) of
+        'undefined' ->
+            media_id_invalid(Context, MediaId);
+        Media ->
+            lager:info("playing ~s to conference ~s", [Media, ConferenceId]),
+            kapps_conference_command:play(Media, conference(ConferenceId)),
+            crossbar_util:response_202(<<"ok">>, Context)
+    end.
+
+play_media(Context, _ConferenceId, _ParticipantId, 'undefined') ->
+    media_id_required(Context);
+play_media(Context, ConferenceId, ParticipantId, MediaId) ->
+    case kz_media_util:media_path(MediaId, cb_context:account_id(Context)) of
+        'undefined' ->
+            media_id_invalid(Context, MediaId);
+        Media ->
+            lager:info("playing ~s to conference ~s participant ~p", [Media, ConferenceId, ParticipantId]),
+            kapps_conference_command:play(Media, ParticipantId, conference(ConferenceId)),
+            crossbar_util:response_202(<<"ok">>, Context)
+    end.
+
+-spec media_id_invalid(cb_context:context(), ne_binary()) -> cb_context:context().
+media_id_invalid(Context, MediaId) ->
+    crossbar_util:response_bad_identifier(MediaId, Context).
+
+-spec media_id_required(cb_context:context()) -> cb_context:context().
+media_id_required(Context) ->
+    cb_context:add_validation_error([<<"data">>, <<"media_id">>]
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"action 'play' requires a media ID or URL">>}])
+                                   ,Context
+                                   ).
+
+-spec dial(cb_context:context(), path_token(), api_object()) -> cb_context:context().
+dial(Context, _ConferenceId, 'undefined') ->
+    data_required(Context, <<"dial">>);
 dial(Context, ConferenceId, Data) ->
     dial_endpoints(Context, ConferenceId, Data, kz_json:get_list_value(<<"endpoints">>, Data, [])).
 
@@ -286,7 +412,6 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
                              ,Endpoints
                              ),
 
-
     case ToDial of
         [] ->
             cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
@@ -297,11 +422,11 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
                                            ,Context
                                            );
         _ ->
-            {'ok', Conference} = kz_datamgr:open_cache_doc(cb_context:account_db(Context), ConferenceId),
-
+            Conference = cb_context:doc(Context),
             kapps_conference_command:dial(ToDial
                                          ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
                                          ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))
+                                         ,kz_json:from_list(cb_modules_util:ccvs_from_context(Context))
                                          ,ConferenceId
                                          ),
             crossbar_util:response_202(<<"dialing endpoints">>, Context)
@@ -336,6 +461,7 @@ build_endpoint(Number, {Endpoints, Call}) ->
                ,{<<"Route">>,  Number}
                ,{<<"To-DID">>, Number}
                ,{<<"To-Realm">>, AccountRealm}
+               ,{<<"Simplify-Loopback">>, 'true'}
                ,{<<"Custom-Channel-Vars">>
                 ,kz_json:from_list([{<<"Account-ID">>, kapps_call:account_id(Call)}
                                    ,{<<"Authorizing-Type">>, <<"conference">>}
@@ -343,6 +469,7 @@ build_endpoint(Number, {Endpoints, Call}) ->
                                    ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
                                    ,{<<"Request-URI">>, <<Number/binary, "@", AccountRealm/binary>>}
                                    ])
+
                 }
                ],
 
@@ -412,6 +539,8 @@ handle_participants_action(Context, ConferenceId, Action=?UNDEAF) ->
                                end);
 handle_participants_action(Context, ConferenceId, Action=?KICK) ->
     handle_participants_action(Context, ConferenceId, Action, fun kz_term:always_true/1);
+handle_participants_action(Context, ConferenceId, Action=?PLAY) ->
+    handle_conference_action(Context, ConferenceId, Action);
 handle_participants_action(Context, ConferenceId, ?RELATE) ->
     OnSuccess = fun(C) -> handle_participants_relate(C, ConferenceId) end,
     RelateData = cb_context:req_value(Context, <<"data">>, kz_json:new()),
@@ -433,7 +562,7 @@ handle_participants_action(Context, ConferenceId, Action, Selector) ->
     ConfData = request_conference_details(ConferenceId),
     Participants = extract_participants(ConfData),
     Conf = conference(ConferenceId),
-    _ = [perform_participant_action(Conf, Action, kz_json:get_value(<<"Participant-ID">>, P))
+    _ = [perform_participant_action(Conf, Action, kz_json:get_ne_binary_value(<<"Participant-ID">>, P))
          || P <- Participants,
             filter_participant(P, Selector)
         ],
@@ -490,7 +619,10 @@ find_participants(Participants, ParticipantId, OtherParticipantId) ->
 
 -spec participant_not_found(pos_integer(), cb_context:context()) -> cb_context:context().
 participant_not_found(ParticipantId, Context) ->
-    cb_context:add_validation_error(ParticipantId, 404, <<"participant not found">>, Context).
+    cb_context:add_system_error('bad_identifier'
+                               ,kz_json:from_list([{<<"id">>, ParticipantId}])
+                               ,Context
+                               ).
 
 -spec perform_participant_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
 perform_participant_action(Conference, ?MUTE, ParticipantId) ->
@@ -625,5 +757,5 @@ search_conferences(Context) ->
 -spec search_conferences_fold(kz_json:object(), kz_json:object()) ->
                                      kz_json:object().
 search_conferences_fold(JObj, Acc) ->
-    V = kz_json:get_value(<<"Conferences">>, JObj, kz_json:new()),
+    V = kz_json:get_json_value(<<"Conferences">>, JObj, kz_json:new()),
     kz_json:merge_jobjs(V, Acc).

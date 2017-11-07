@@ -150,7 +150,7 @@ guess_type(_F, _D) ->
 
 -spec process() -> list().
 process() ->
-    io:format("processing conference schema"),
+    io:format("processing conference schema: "),
     Usages = process('kapps_conference'),
     io:format(" done~n"),
     Usages.

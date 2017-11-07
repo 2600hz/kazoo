@@ -775,6 +775,7 @@ wait_for_noop(Call, NoopId) ->
                            {'ok', kapps_call:call()} |
                            {'error', any()}.
 process_event(Call, NoopId, JObj) ->
+    MsgId = kz_api:msg_id(JObj),
     case kapps_call_command:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
             lager:debug("channel was destroyed"),
@@ -782,9 +783,19 @@ process_event(Call, NoopId, JObj) ->
         {<<"error">>, _, <<"noop">>} ->
             lager:debug("channel execution error while waiting for ~s: ~s", [NoopId, kz_json:encode(JObj)]),
             {'error', JObj};
-        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
-            lager:debug("noop has returned"),
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>}
+          when NoopId =:= MsgId ->
+            lager:debug("noop ~s received", [NoopId]),
             {'ok', Call};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
+            case kz_json:get_value(<<"Application-Response">>, JObj) of
+                NoopId ->
+                    lager:debug("noop ~s received", [NoopId]),
+                    {'ok', Call};
+                _Resp ->
+                    lager:debug("ignoring noop ~s(~s) (waiting for ~s)", [MsgId, _Resp, NoopId]),
+                    wait_for_noop(Call, NoopId)
+            end;
         {<<"call_event">>, <<"DTMF">>, _} ->
             DTMF = kz_json:get_value(<<"DTMF-Digit">>, JObj),
             lager:debug("recv DTMF ~s, adding to default", [DTMF]),

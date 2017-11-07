@@ -331,6 +331,7 @@
                       ]).
 -define(OPTIONAL_DIAL_HEADERS, [<<"Caller-ID-Name">>
                                ,<<"Caller-ID-Number">>
+                               ,<<"Custom-Channel-Vars">>
                                ]).
 -define(DIAL_VALUES, [{<<"Event-Category">>, <<"conference">>}
                      ,{<<"Event-Name">>, <<"command">>}
@@ -339,6 +340,7 @@
 -define(DIAL_TYPES, [{<<"Caller-ID-Name">>, fun is_binary/1}
                     ,{<<"Caller-ID-Number">>, fun is_binary/1}
                     ,{<<"Endpoints">>, fun kz_term:is_ne_list/1}
+                    ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                     ]).
 
 %% Conference Participants Event
