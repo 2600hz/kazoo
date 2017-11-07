@@ -69,9 +69,9 @@
 -export([soft_hold/1, soft_hold/2
         ,soft_hold_command/2, soft_hold_command/4, soft_hold_command/5
         ]).
--export([play/2, play/3, play/4
-        ,play_command/2, play_command/3, play_command/4
-        ,b_play/2, b_play/3, b_play/4
+-export([play/2, play/3, play/4, play/5
+        ,play_command/2, play_command/3, play_command/4, play_command/5
+        ,b_play/2, b_play/3, b_play/4, b_play/5
         ]).
 -export([prompt/2, prompt/3]).
 
@@ -1356,6 +1356,8 @@ b_prompt(Prompt, Lang, Call) ->
                   ne_binary().
 -spec play(ne_binary(), api_binaries(), api_binary(), kapps_call:call()) ->
                   ne_binary().
+-spec play(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call()) ->
+                  ne_binary().
 
 -spec play_command(ne_binary(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
@@ -1363,12 +1365,16 @@ b_prompt(Prompt, Lang, Call) ->
                           kz_json:object().
 -spec play_command(ne_binary(), api_binaries(), api_binary(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
+-spec play_command(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call() | ne_binary()) ->
+                          kz_json:object().
 
 -spec b_play(ne_binary(), kapps_call:call()) ->
                     kapps_api_std_return().
 -spec b_play(ne_binary(), api_binaries(), kapps_call:call()) ->
                     kapps_api_std_return().
 -spec b_play(ne_binary(), api_binaries(), api_binary(), kapps_call:call()) ->
+                    kapps_api_std_return().
+-spec b_play(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call()) ->
                     kapps_api_std_return().
 
 play_command(Media, Call) ->
@@ -1404,12 +1410,14 @@ play(Media, Call) -> play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
     play(Media, Terminators, 'undefined', Call).
 play(Media, Terminators, Leg, Call) ->
+    play(Media, Terminators, Leg, 'false', Call).
+play(Media, Terminators, Leg, Endless, Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                                   ,{<<"Msg-ID">>, NoopId}
                                   ])
-               ,play_command(Media, Terminators, Leg, Call)
+               ,play_command(Media, Terminators, Leg, Endless, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
               ,{<<"Commands">>, Commands}
@@ -1422,7 +1430,9 @@ b_play(Media, Call) ->
 b_play(Media, Terminators, Call) ->
     b_play(Media, Terminators, 'undefined', Call).
 b_play(Media, Terminators, Leg, Call) ->
-    wait_for_noop(Call, play(Media, Terminators, Leg, Call)).
+    b_play(Media, Terminators, Leg, 'false', Call).
+b_play(Media, Terminators, Leg, Endless, Call) ->
+    wait_for_noop(Call, play(Media, Terminators, Leg, Endless, Call)).
 
 %%--------------------------------------------------------------------
 %% @public
