@@ -605,13 +605,17 @@ check_attachment_exists(Call, MessageId) ->
 %%--------------------------------------------------------------------
 -spec forward_to_vmbox(kapps_call:call(), kz_json:object(), ne_binary(), kz_proplist()) -> new_msg_ret().
 forward_to_vmbox(Call, Metadata, SrcBoxId, Props) ->
+    forward_to_vmbox(Call, Metadata, SrcBoxId, Props, []).
+
+-spec forward_to_vmbox(kapps_call:call(), kz_json:object(), ne_binary(), kz_proplist(), update_funs()) -> new_msg_ret().
+forward_to_vmbox(Call, Metadata, SrcBoxId, Props, Funs) ->
     AccountId = kapps_call:account_id(Call),
     MediaId = kzd_box_message:media_id(Metadata),
     DestBoxId = props:get_value(<<"Box-Id">>, Props),
     Length = props:get_value(<<"Length">>, Props),
     ResultMap = copy_to_vmbox(AccountId, MediaId, SrcBoxId, DestBoxId, #{}
                              ,kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DestBoxId)
-                             ,[]
+                             ,Funs
                              ),
     Failed = maps:get(failed, ResultMap, []),
     Succeeded = maps:get(succeeded, ResultMap, []),
@@ -635,19 +639,23 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
         {'ok', _} ->
             %%TODO: update length and caller_id
             notify_and_update_meta(Call, ForwardId, Length, Props);
-        {'error', _R} ->
+        {'error', Reason} ->
             %% prepend failed, so at least try to forward without a prepend message
-            archive_malform_vm(Call, ForwardId, Props),
-            forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
+            remove_malform_vm(Call, ForwardId),
+            ErrorMessage = kz_term:to_binary(io_lib:format("failed to prepend and joining audio files: ~p", [Reason])),
+            UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
+            forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
     catch
         _T:_E ->
+            remove_malform_vm(Call, ForwardId),
             ST = erlang:get_stacktrace(),
-            lager:error("exception occurred during prepend and forward message: ~p:~p", [_T, _E]),
+            ErrorMessage = kz_term:to_binary(io_lib:format("exception occurred during prepend and joining audio files: ~p:~p", [_T, _E])),
+            lager:error(ErrorMessage),
             kz_util:log_stacktrace(ST),
 
             %% prepend failed, so at least try to forward without a prepend message
-            archive_malform_vm(Call, ForwardId, Props),
-            forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
+            UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
+            forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
     end.
 
 -spec prepend_forward_message(kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> db_ret().
@@ -673,7 +681,7 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
         {'ok', FileContents} ->
             JoinFilename = <<(kz_binary:rand_hex(16))/binary, ".mp3">>,
             _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
-            %%TODO: update forwarded doc with lenght and media_filename
+            %%TODO: update forwarded doc with length and media_filename
             try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, 3);
         {'error', _} ->
             _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
@@ -684,7 +692,7 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
 
 -spec try_put_fwd_attachment(ne_binary(), ne_binary(), ne_binary(), iodata(), 1..3) -> db_ret().
 try_put_fwd_attachment(AccountId, ForwardId, _JoinFilename, _FileContents, 0) ->
-    lager:error("max retries to save prepend forward voicemail attachmanet ~s in db ~s"
+    lager:error("max retries to save prepend forward voicemail attachment ~s in db ~s"
                ,[ForwardId, kvm_util:get_db(AccountId, ForwardId)]
                ),
     {'error', 'max_save_retries'};
@@ -715,21 +723,13 @@ write_attachment_to_file(AccountId, MessageId, [AttachmentId]) ->
     {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, MessageId, AttachmentId),
     FilePath = kz_binary:join([<<"/tmp/_">>, AttachmentId], <<>>),
     kz_util:write_file(FilePath, AttachmentBin, ['write', 'binary']),
+    lager:debug("saved attachment ~s from ~s in ~s", [AttachmentId, MessageId, FilePath]),
     {'ok', FilePath}.
 
--spec archive_malform_vm(kapps_call:call(), ne_binary(), kz_proplist()) -> 'ok'.
-archive_malform_vm(Call, ForwardId, Props) ->
-    AccountId = kapps_call:account_id(Call),
-    BoxId = props:get_value(<<"Box-Id">>, Props),
-    Db = kvm_util:get_db(AccountId, ForwardId),
-
-    UpdateFuns = [fun(J) -> kz_json:set_value(<<"pvt_type">>, <<"vm_recovery">>, J) end],
-
-    lager:debug("archiving the unsuccessful prepend voicemail ~s/~s for recovery later with pvt_type=vm_recovery"
-               ,[ForwardId, Db]
-               ),
-
-    _ = update(AccountId, BoxId, ForwardId, UpdateFuns),
+-spec remove_malform_vm(kapps_call:call(), ne_binary()) -> 'ok'.
+remove_malform_vm(Call, ForwardId) ->
+    AccountDb = kz_util:format_account_db(kapps_call:account_id(Call)),
+    _ = kz_datamgr:del_doc(AccountDb, ForwardId),
     'ok'.
 
 %%--------------------------------------------------------------------
