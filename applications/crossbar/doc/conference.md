@@ -83,7 +83,7 @@ Sometimes you want to dial out from a conference to an endpoint (versus waiting 
 }
 ```
 
-As in [./quickcall.md](quickcalls), you can include `custom_channel_vars`:
+As when making [quickcalls](./quickcall.md), you can include `custom_channel_vars`:
 
 ```json
 {
