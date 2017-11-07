@@ -521,10 +521,18 @@
 -define(EAVESDROP_REQ_TYPES, [{<<"Move-Channel-If-Necessary">>, fun kz_term:is_boolean/1}]).
 
 %% Play Request
--define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>, <<"Leg">>
-                                   ,<<"Voice">>, <<"Language">>, <<"Format">>
+-define(PLAY_REQ_HEADERS, [<<"Application-Name">>
+                          ,<<"Call-ID">>
+                          ,<<"Media-Name">>
+                          ]).
+-define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Endless-Playback">>
+                                   ,<<"Format">>
                                    ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
+                                   ,<<"Insert-At">>
+                                   ,<<"Language">>
+                                   ,<<"Leg">>
+                                   ,<<"Terminators">>
+                                   ,<<"Voice">>
                                    ]).
 -define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                          ,{<<"Event-Name">>, <<"command">>}
@@ -532,7 +540,9 @@
                          ,{<<"Leg">>, [<<"A">>, <<"B">>, <<"Both">>]}
                          ,?INSERT_AT_TUPLE
                          ]).
--define(PLAY_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
+-define(PLAY_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}
+                        ,{<<"Endless-Playback">>, fun kz_term:is_boolean/1}
+                        ]).
 
 %% Break Request
 -define(BREAK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).

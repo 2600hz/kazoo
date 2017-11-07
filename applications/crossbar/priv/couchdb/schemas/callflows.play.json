@@ -7,9 +7,18 @@
             "description": "Whether to answer an unanswered call",
             "type": "boolean"
         },
+        "endless_playback": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
+        },
         "id": {
             "description": "Media ID or URL of the media to play",
             "type": "string"
+        },
+        "terminators": {
+            "description": "",
+            "type": "array"
         }
     },
     "type": "object"
