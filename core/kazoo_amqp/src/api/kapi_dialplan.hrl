@@ -835,6 +835,7 @@
                             ,{<<"Insert-At">>, <<"now">>}
                             ]).
 -define(MEDIA_MACRO_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                           ,{<<"Media-Macros">>, fun kz_json:is_json_object/1}
                            ]).
 
 %% play_macro

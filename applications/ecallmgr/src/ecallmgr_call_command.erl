@@ -604,7 +604,7 @@ get_fs_app(Node, UUID, JObj, <<"media_macro">>) ->
                                         [{K, media_macro_to_file_string(Macro)} | Acc]
                                 end
                                ,[]
-                               ,kz_json:get_list_value(<<"Media-Macros">>, JObj)
+                               ,kz_json:get_json_value(<<"Media-Macros">>, JObj)
                                ),
             {<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, KVs, <<"|">>)}
     end;
@@ -613,7 +613,7 @@ get_fs_app(_Node, _UUID, JObj, <<"play_macro">>) ->
     case kapi_dialplan:play_macro_v(JObj) of
         'false' -> {'error', <<"play macro failed to execute as JObj did not validate">>};
         'true' ->
-            Macro = kz_json:get_list_value(<<"Media-Macro">>, JObj, []),
+            Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
             Result = media_macro_to_file_string(Macro),
             {<<"playback">>, Result}
     end;
