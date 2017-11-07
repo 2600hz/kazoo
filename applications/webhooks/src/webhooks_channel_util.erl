@@ -8,6 +8,10 @@
 -export([handle_event/2]).
 -export([maybe_handle_channel_event/3]).
 
+-ifdef(TEST).
+-export([fireable_hook/2]).
+-endif.
+
 -include("webhooks.hrl").
 
 -spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -29,8 +33,25 @@ maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),
     case webhooks_util:find_webhooks(HookEvent, AccountId) of
         [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
-        Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
+        Hooks ->
+            maybe_fire_event(AccountId, HookEvent, JObj, Hooks)
     end.
+
+-spec maybe_fire_event(ne_binary(), ne_binary(), kz_json:object(), webhooks()) -> 'ok'.
+maybe_fire_event(AccountId, HookEvent, JObj, Hooks) ->
+    FireAbleHooks = fireable_hooks(JObj, Hooks),
+    webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), FireAbleHooks).
+
+-spec fireable_hooks(kz_json:object(), webhooks()) -> webhooks().
+fireable_hooks(JObj, Hooks) ->
+    [Hook || #webhook{}=Hook <- Hooks,
+             fireable_hook(JObj, Hook)
+    ].
+
+-spec fireable_hook(kz_json:object(), webhook()) -> boolean().
+fireable_hook(_JObj, #webhook{include_loopback='true'}) -> 'true';
+fireable_hook(JObj, #webhook{include_loopback='false'}) ->
+    kz_json:is_false(<<"Channel-Is-Loopback">>, JObj, 'true').
 
 -spec hook_event_name(ne_binary()) -> ne_binary().
 hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
