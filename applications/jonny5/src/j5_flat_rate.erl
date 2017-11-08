@@ -57,8 +57,9 @@ reconcile_cdr(_, _) -> 'ok'.
 -spec eligible_for_flat_rate(j5_request:request()) -> boolean().
 eligible_for_flat_rate(Request) ->
     Number = knm_converters:normalize(j5_request:number(Request)),
-    TrunkWhitelist = ?WHITELIST,
-    TrunkBlacklist = ?BLACKLIST,
+    {TrunkWhitelist, TrunkBlacklist} = maybe_get_resource_flat_rate(Request),
+    lager:debug("using whitelist: ~p for flat rate check", [TrunkWhitelist]),
+    lager:debug("using blacklist: ~p for flat rate check", [TrunkBlacklist]),
     (kz_term:is_empty(TrunkWhitelist)
      orelse re:run(Number, TrunkWhitelist) =/= 'nomatch'
     )
@@ -66,6 +67,23 @@ eligible_for_flat_rate(Request) ->
           (kz_term:is_empty(TrunkBlacklist)
            orelse re:run(Number, TrunkBlacklist) =:= 'nomatch'
           ).
+
+-spec maybe_get_resource_flat_rate(j5_request:request()) -> {ne_binary(), ne_binary()}.
+maybe_get_resource_flat_rate(Request) ->
+    case kapps_config:get_is_true(?APP_NAME, <<"resource_flat_rate_lookup">>, 'false') of
+        'false' ->
+            {?WHITELIST, ?BLACKLIST};
+        'true' ->
+            ResourceId = j5_request:resource_id(Request),
+            case kz_datamgr:open_cache_doc(?KZ_OFFNET_DB, ResourceId) of
+                {'ok', JObj} ->
+                    {kz_json:get_ne_binary_value(<<"flat_rate_whitelist">>, JObj, ?WHITELIST)
+                    ,kz_json:get_ne_binary_value(<<"flat_rate_blacklist">>, JObj, ?BLACKLIST)
+                    };
+                {'error', _E} ->
+                    {?WHITELIST, ?BLACKLIST}
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
