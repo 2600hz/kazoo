@@ -8,6 +8,7 @@
 -module(ecallmgr_fs_bridge).
 
 -export([call_command/3
+        ,try_create_bridge_string/2
         ,unbridge/2
         ]).
 
