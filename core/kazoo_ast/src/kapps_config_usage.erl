@@ -120,6 +120,8 @@ process_project() ->
     Options = [{'expression', fun expression_to_schema/2}
               ,{'module', fun print_dot/2}
               ,{'accumulator', new_acc()}
+              ,{'application', fun add_app_config/2}
+              ,{'after_application', fun add_schemas_to_bucket/2}
               ],
     #{'project_schemas' := Usage} = kazoo_ast:walk_project(Options),
     io:format(" done~n"),
