@@ -54,4 +54,10 @@ play(Data, Call, Media) ->
             timer:sleep(?POST_ANSWER_DELAY)
     end,
     lager:info("playing media ~s", [Media]),
-    kapps_call_command:play(Media, Call).
+
+    kapps_call_command:play(Media
+                           ,kz_json:get_list_value(<<"terminators">>, Data)
+                           ,'undefined'
+                           ,kz_json:is_true(<<"endless_playback">>, Data, 'false')
+                           ,Call
+                           ).

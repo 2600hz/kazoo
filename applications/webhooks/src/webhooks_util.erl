@@ -85,6 +85,7 @@ to_json(#webhook{}=Hook) ->
       ,{<<"retries">>, Hook#webhook.retries}
       ,{<<"account_id">>, Hook#webhook.account_id}
       ,{<<"include_subaccounts">>, Hook#webhook.include_subaccounts}
+      ,{<<"include_internal_legs">>, Hook#webhook.include_loopback}
       ,{<<"custom_data">>, Hook#webhook.custom_data}
       ,{<<"modifiers">>, Hook#webhook.modifiers}
       ]).
@@ -448,6 +449,7 @@ jobj_to_rec(Hook) ->
             ,retries = kzd_webhook:retries(Hook)
             ,account_id = kz_doc:account_id(Hook)
             ,include_subaccounts = kzd_webhook:include_subaccounts(Hook)
+            ,include_loopback = kzd_webhook:include_internal_legs(Hook)
             ,custom_data = kzd_webhook:custom_data(Hook)
             ,modifiers = kzd_webhook:modifiers(Hook)
             }.
