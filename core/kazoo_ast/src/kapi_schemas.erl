@@ -1,7 +1,7 @@
 -module(kapi_schemas).
 
--export([process/0, process/1
-        ,to_schemas/0, to_schema/1
+-export([process/0, process_app/1, process_module/1
+        ,to_schemas/0, to_schemas/1, to_schema/1
         ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -10,26 +10,41 @@
 -include_lib("kazoo_amqp/src/api/kapi_presence.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_route.hrl").
 
+-define(DEBUG(_Fmt, _Args), 'ok').
+%%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+
 -record(acc, {kapi_name = <<"empty">> :: ne_binary() %% s/kapi_(.+)/\1/
              ,api_name = <<"empty">> :: api_ne_binary() %% api function
-             ,schemas = kz_json:new() :: kz_json:object()
+             ,app_schemas = kz_json:new() :: kz_json:object()
+             ,project_schemas = kz_json:new() :: kz_json:object()
+             ,schema_dir = kz_ast_util:default_schema_priv_dir() :: file:filename_all()
              }).
 -type acc() :: #acc{}.
 
 -spec to_schemas() -> 'ok'.
--spec to_schema(module()) -> 'ok'.
+-spec to_schemas(atom()) -> 'ok'.
 to_schemas() ->
-    lists:foreach(fun update_schema/1, process()).
+    kz_json:foreach(fun update_schema/1, process()).
+to_schemas(App) ->
+    kz_json:foreach(fun update_schema/1, process_app(App)).
 
+-spec to_schema(module()) -> 'ok'.
 to_schema(KapiModule) ->
-    lists:foreach(fun update_schema/1, process(KapiModule)).
+    kz_json:foreach(fun update_schema/1, process_module(KapiModule)).
 
-update_schema(?JSON_WRAPPER(_)=GeneratedJObj) ->
-    update_schema(GeneratedJObj, kz_doc:id(GeneratedJObj)).
+update_schema({PrivDir, KapiModule}) ->
+    kz_json:foreach(fun({_KAPI, API}) -> update_schema(PrivDir, API) end, KapiModule).
 
-update_schema(_JObj, 'undefined') -> 'ok';
-update_schema(GeneratedJObj, ID) ->
-    Path = kz_ast_util:schema_path(<<ID/binary, ".json">>),
+update_schema(PrivDir, API) ->
+    kz_json:foreach(fun({_A, Schema}) -> maybe_update_schema(PrivDir, Schema) end, API).
+
+maybe_update_schema(PrivDir, API) ->
+    maybe_update_schema(PrivDir, API, kz_doc:id(API)).
+
+maybe_update_schema(_PrivDir, _JObj, 'undefined') -> 'ok';
+maybe_update_schema(PrivDir, GeneratedJObj, ID) ->
+    ?DEBUG("adding ~s to ~s: ~s", [ID, PrivDir, kz_json:encode(GeneratedJObj)]),
+    Path = kz_ast_util:schema_path(<<ID/binary, ".json">>, PrivDir),
     ExistingJObj = existing_schema(Path),
     MergedJObj = kz_json:merge(fun kz_json:merge_left/2
                               ,ExistingJObj
@@ -53,38 +68,48 @@ existing_schema(Name) ->
             kz_json:new()
     end.
 
--spec process() -> kz_json:objects().
--spec process(module()) -> kz_json:objects().
+-spec process() -> kz_json:object().
+-spec process_app(atom()) -> kz_json:object().
+-spec process_module(module()) -> kz_json:object().
 process() ->
     io:format("process kapi modules: "),
     Options = [{'expression', fun expression_to_schema/2}
               ,{'function', fun set_function/2}
               ,{'module', fun print_dot/2}
               ,{'accumulator', #acc{}}
+              ,{'application', fun add_app_config/2}
+              ,{'after_application', fun add_schemas_to_bucket/2}
               ],
-    #acc{schemas=Schemas} = kazoo_ast:walk_project(Options),
+    #acc{project_schemas=Schemas} = kazoo_ast:walk_project(Options),
     io:format(" done~n", []),
-    schemas_to_list(Schemas).
+    Schemas.
 
-process(KapiModule) ->
+process_app(App) ->
+    io:format("process kapi modules: "),
+    Options = [{'expression', fun expression_to_schema/2}
+              ,{'function', fun set_function/2}
+              ,{'module', fun print_dot/2}
+              ,{'accumulator', #acc{}}
+              ,{'application', fun add_app_config/2}
+              ,{'after_application', fun add_schemas_to_bucket/2}
+              ],
+    #acc{project_schemas=Schemas} = kazoo_ast:walk_app(App, Options),
+    io:format(" done~n", []),
+    Schemas.
+
+process_module(KapiModule) ->
     io:format("process kapi module ~s: ", [KapiModule]),
     Options = [{'expression', fun expression_to_schema/2}
               ,{'function', fun set_function/2}
               ,{'module', fun print_dot/2}
               ,{'accumulator', #acc{}}
+              ,{'application', fun add_app_config/2}
+              ,{'after_application', fun add_schemas_to_bucket/2}
               ],
-    #acc{schemas=Schemas} = kazoo_ast:walk_modules([KapiModule], Options),
+    #acc{project_schemas=Schemas} = kazoo_ast:walk_modules([KapiModule], Options),
     io:format(" done~n", []),
-    schemas_to_list(Schemas).
-
-schemas_to_list(Schemas) ->
-    kz_json:foldl(fun schema_api_to_list/3, [], Schemas).
-
-schema_api_to_list(_KAPI, API, Acc0) ->
-    kz_json:foldl(fun(_A, Schema, Acc) -> [Schema | Acc] end
-                 ,Acc0
-                 ,API
-                 ).
+    ?DEBUG("schemas: ~p~n", [Schemas]),
+    Schemas.
 
 -spec print_dot(ne_binary() | module(), acc()) ->
                        acc() |
@@ -95,11 +120,38 @@ print_dot(<<"kapi_schemas">>, #acc{}=Acc) ->
     {'skip', Acc};
 print_dot(<<"kapi_", Module/binary>>, #acc{}=Acc) ->
     io:format("."),
+    ?DEBUG("process kapi_~s~n", [Module]),
     Acc#acc{kapi_name=Module};
 print_dot(<<_/binary>>, #acc{}=Acc) ->
     {'skip', Acc};
 print_dot(Module, #acc{}=Acc) ->
     print_dot(kz_term:to_binary(Module), Acc).
+
+-spec add_app_config(atom(), acc()) -> acc().
+add_app_config(App, Acc) ->
+    case application:get_env(App, 'schemas_to_priv') of
+        {'ok', 'true'} ->
+            ?DEBUG("detected schemas will go in ~s/priv~n", [App]),
+            Acc#acc{schema_dir = kz_term:to_binary(code:priv_dir(App))};
+        _ ->
+            ?DEBUG("schemas for ~s go in default location~n", [App]),
+            Acc#acc{schema_dir = kz_ast_util:default_schema_priv_dir()}
+    end.
+
+add_schemas_to_bucket(_App, #acc{schema_dir = PrivDir
+                                ,app_schemas = AppSchemas
+                                ,project_schemas = ProjectSchemas
+                                }=Acc) ->
+    ProjectSchema = kz_json:get_json_value(PrivDir, ProjectSchemas, kz_json:new()),
+
+    ?DEBUG("merging dir ~s / app ~p into proj ~p~n", [PrivDir, AppSchemas, ProjectSchema]),
+
+    UpdatedSchema = kz_json:merge(ProjectSchema, AppSchemas),
+    ?DEBUG("merged: ~p~n", [UpdatedSchema]),
+
+    Acc#acc{app_schemas = kz_json:new()
+           ,project_schemas = kz_json:set_value(PrivDir, UpdatedSchema, ProjectSchemas)
+           }.
 
 -spec set_function(ne_binary() | function(), acc()) -> acc().
 set_function(<<_/binary>> = Function, #acc{}=Acc) ->
@@ -163,7 +215,7 @@ flatten_required([R, <<_/binary>>=Optional], {Req, Opt}) ->
 flatten_required([R, Optional], {Req, Opt}) ->
     {[R | Req], Optional ++ Opt}.
 
-kapi_schema(#acc{schemas=Schemas
+kapi_schema(#acc{app_schemas=Schemas
                 ,kapi_name=KAPI
                 ,api_name=API
                 }) ->
@@ -179,11 +231,11 @@ base_schema(KAPI, API) ->
                       ,{<<"type">>, <<"object">>}
                       ]).
 
-set_kapi_schema(#acc{schemas=Schemas
+set_kapi_schema(#acc{app_schemas=Schemas
                     ,kapi_name=KAPI
                     ,api_name=API
                     }=Acc, Schema) ->
-    Acc#acc{schemas=kz_json:set_value([KAPI, API], Schema, Schemas)}.
+    Acc#acc{app_schemas=kz_json:set_value([KAPI, API], Schema, Schemas)}.
 
 add_field([_|_]=Fields, Schema) ->
     Path = property_path(Fields),
