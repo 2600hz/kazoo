@@ -279,10 +279,11 @@ correct_depreciated_classifiers(Classifier, ?NE_BINARY=Regex, JObj) ->
                           ]),
     kz_json:set_value(Classifier, J, JObj);
 correct_depreciated_classifiers(Classifier, J, JObj) ->
-    case kz_json:get_value(<<"friendly_name">>, J) of
-        'undefined' ->
-            Updated = kz_json:set_value(<<"friendly_name">>, Classifier, JObj),
-            kz_json:set_value(Classifier, Updated, JObj);
-        _Else ->
-            kz_json:set_value(Classifier, J, JObj)
+    Updated = case kz_json:get_value(<<"friendly_name">>, J) of
+                  'undefined' -> kz_json:set_value(<<"friendly_name">>, Classifier, J);
+                  _ -> J
+              end,
+    case kz_json:get_value(<<"regex">>, Updated) of
+        'undefined' -> JObj;
+        _ -> kz_json:set_value(Classifier, Updated, JObj)
     end.
