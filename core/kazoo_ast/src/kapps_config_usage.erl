@@ -140,6 +140,7 @@ process_app(App) ->
 
 print_dot(_Module, Acc) ->
     io:format("."),
+    ?DEBUG("mod: ~p~n", [_Module]),
     Acc.
 
 -spec new_acc() -> acc().
@@ -152,10 +153,16 @@ new_acc() ->
 -spec add_app_config(atom(), acc()) -> acc().
 add_app_config(App, Acc) ->
     case application:get_env(App, 'schemas_to_priv') of
+        'undefined' ->
+            ?DEBUG("failed to load ~p env, trying to load app~n", [App]),
+            application:load(App),
+            add_app_config(App, Acc);
         {'ok', 'true'} ->
-            ?DEBUG("detected schemas will go in ~s/priv~n", [App]),
+            ?DEBUG("detected schemas will go in ~s/priv~n", [code:priv_dir(App)]),
             Acc#{schema_dir => kz_term:to_binary(code:priv_dir(App))};
-        _ -> Acc#{schema_dir => kz_ast_util:default_schema_priv_dir()}
+        _E ->
+            ?DEBUG("app ~s using default priv (~p)~n", [App, _E]),
+            Acc#{schema_dir => kz_ast_util:default_schema_priv_dir()}
     end.
 
 add_schemas_to_bucket(_App, #{schema_dir := PrivDir
@@ -257,6 +264,7 @@ config_key_to_schema(Source, F, Document, Key, Default, #{app_schemas := Schemas
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     Path = [Document, ?FIELD_PROPERTIES | Key],
 
+    ?DEBUG("setting ~s from source ~s~n", [Path, Source]),
     Acc#{app_schemas => kz_json:set_value(Path, Properties, Schemas)}.
 
 category_to_document(?VAR(_)) -> 'undefined';
