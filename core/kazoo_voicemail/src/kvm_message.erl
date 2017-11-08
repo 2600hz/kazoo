@@ -674,7 +674,7 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     {'ok', OrigSampleRate} = kz_media_util:detect_file_sample_rate(OrigPath),
 
     TonePath = kz_binary:join([<<"/tmp/">>, <<(kz_binary:rand_hex(16))/binary, ".wav">>], <<>>),
-    kz_media_util:synthesize_tone(OrigSampleRate, <<"440">>, <<"0.5">>, TonePath),
+    {'ok', _} = kz_media_util:synthesize_tone(OrigSampleRate, <<"440">>, <<"0.5">>, TonePath),
 
     lager:debug("joining prepend to original message"),
     case kz_media_util:join_media_files([TmpPath, TonePath, OrigPath], [{sample_rate, OrigSampleRate}]) of
