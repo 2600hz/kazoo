@@ -64,7 +64,7 @@ scheme(Account, Cluster, Zone) ->
     kz_util:iolist_join($., [Account, Cluster, Zone, Hostname, Service]).
 
 print_metric(Scheme, Key, Value) ->
-    io:format("~s.~s ~B ~B\n", [Scheme, Key, Value, get(timestamp)]).
+    io:format(user, "~s.~s ~B ~B\n", [Scheme, Key, Value, get(timestamp)]).
 
 graphite(Scheme, memory_statistics, MemoryMetrics) ->
     [print_metric(Scheme, "memory_" ++ atom_to_list(Key), Value)

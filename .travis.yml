@@ -34,7 +34,8 @@ install:
 script:
   - |
     if [[ "$USING_REBAR3" = 'true' ]]; then
-      rebar3 eunit --cover
+      rebar3 cover --reset
+      rebar3 eunit
       rebar3 as test proper
       rebar3 cover
     else
