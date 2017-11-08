@@ -2752,6 +2752,9 @@ wait_for_bridge(Timeout, Fun, Call) ->
 
 wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
+    _ChannelState =  kz_json:get_value(<<"Channel-State">>, JObj),
+    ChannelCallState =  kz_json:get_value(<<"Channel-Call-State">>, JObj),
+
     Disposition = kz_json:get_value(<<"Disposition">>, JObj),
     Cause = kz_json:get_first_defined([<<"Application-Response">>
                                       ,<<"Hangup-Cause">>
@@ -2782,6 +2785,13 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             %% TODO: reduce log level if no issue is found with
             %%    basing the Result on Disposition
             lager:info("bridge channel destroy completed with result ~s/~s => ~s", [Disposition, Cause, Result]),
+            {Result, JObj};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>}
+          when ChannelCallState =/= <<"ACTIVE">> ->
+            %% TODO: reduce log level if no issue is found with
+            %%    basing the Result on Disposition
+%            lager:info("bridge channel execute completed with result ~s(~s)", [Disposition, Result]),
+            lager:info_unsafe("bridge channel execute completed with result ~s(~s) : ~s", [Disposition, Result, kz_json:encode(JObj, ['pretty'])]),
             {Result, JObj};
         _E ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
