@@ -46,31 +46,31 @@ init() ->
 
 -spec handle_event(map()) -> 'ok'.
 handle_event(#{node := Node, payload := JObj}) ->
-    Event = kzd_conference:event(JObj),
+    Event = kz_conference_event:event(JObj),
     process_event(Event, JObj, Node).
 
 -spec process_event(ne_binary(), kz_json:object(), atom()) -> any().
 process_event(<<"conference-create">>, JObj, Node) ->
     _ = ecallmgr_fs_conferences:create(JObj, Node),
-    ConferenceId = kzd_conference:conference_id(JObj),
-    UUID = kzd_conference:instance_id(JObj),
+    ConferenceId = kz_conference_event:conference_id(JObj),
+    UUID = kz_conference_event:instance_id(JObj),
     ecallmgr_conference_control_sup:start_conference_control(Node, ConferenceId, UUID);
 process_event(<<"conference-destroy">>, JObj, Node) ->
-    ConferenceId = kzd_conference:conference_id(JObj),
-    InstanceId = kzd_conference:instance_id(JObj),
+    ConferenceId = kz_conference_event:conference_id(JObj),
+    InstanceId = kz_conference_event:instance_id(JObj),
     _ = ecallmgr_fs_conferences:destroy(InstanceId),
     _ = ecallmgr_conference_control_sup:stop_conference_control(Node, ConferenceId, InstanceId);
 
 process_event(<<"add-member">>, JObj, Node) ->
     ecallmgr_fs_conferences:participant_create(JObj, Node);
 process_event(<<"del-member">>, JObj, _Node) ->
-    ecallmgr_fs_conferences:participant_destroy(kzd_conference:call_id(JObj));
+    ecallmgr_fs_conferences:participant_destroy(kz_conference_event:call_id(JObj));
 
 process_event(<<"lock">>, JObj, _) ->
-    UUID = kzd_conference:instance_id(JObj),
+    UUID = kz_conference_event:instance_id(JObj),
     ecallmgr_fs_conferences:update(UUID, {#conference.locked, 'true'});
 process_event(<<"unlock">>, JObj, _) ->
-    UUID = kzd_conference:instance_id(JObj),
+    UUID = kz_conference_event:instance_id(JObj),
     ecallmgr_fs_conferences:update(UUID, {#conference.locked, 'false'});
 process_event(Event, JObj, _Node) ->
     case lists:member(Event, ?MEMBER_UPDATE_EVENTS) of
@@ -79,9 +79,9 @@ process_event(Event, JObj, _Node) ->
     end.
 
 update_participant(JObj) ->
-    ConferenceVars = kzd_conference:conference_channel_vars(JObj),
-    CustomVars = kzd_conference:custom_channel_vars(JObj),
-    UUID = kzd_conference:call_id(JObj),
+    ConferenceVars = kz_conference_event:conference_channel_vars(JObj),
+    CustomVars = kz_conference_event:custom_channel_vars(JObj),
+    UUID = kz_conference_event:call_id(JObj),
     Update = [{#participant.conference_channel_vars, ConferenceVars}
              ,{#participant.custom_channel_vars, CustomVars}
              ],

@@ -770,15 +770,15 @@ conference_from_jobj(JObj, Node) ->
 
 -spec conference_from_jobj(kz_json:object(), atom(), conference()) -> conference().
 conference_from_jobj(JObj, Node, Conference) ->
-    CtrlNode = kzd_conference:conference_node(JObj),
+    CtrlNode = kz_conference_event:conference_node(JObj),
     Conference#conference{node=Node
-                         ,uuid=kzd_conference:instance_id(JObj)
-                         ,name=kzd_conference:conference_id(JObj)
-                         ,profile_name=kzd_conference:profile(JObj)
+                         ,uuid=kz_conference_event:instance_id(JObj)
+                         ,name=kz_conference_event:conference_id(JObj)
+                         ,profile_name=kz_conference_event:profile(JObj)
                          ,start_time = kz_time:current_tstamp()
-                         ,switch_hostname=kzd_conference:switch_hostname(JObj)
-                         ,switch_url=kzd_conference:switch_url(JObj)
-                         ,account_id = kzd_conference:account_id(JObj)
+                         ,switch_hostname=kz_conference_event:switch_hostname(JObj)
+                         ,switch_url=kz_conference_event:switch_url(JObj)
+                         ,account_id = kz_conference_event:account_id(JObj)
                          ,handling_locally = CtrlNode =:= kz_term:to_binary(node())
                          ,origin_node = CtrlNode
                          ,control_node = CtrlNode
@@ -791,13 +791,13 @@ participant_from_jobj(JObj, Node) ->
 -spec participant_from_jobj(kz_json:object(), atom(), participant()) -> participant().
 participant_from_jobj(JObj, Node, Participant) ->
     Participant#participant{node=Node
-                           ,uuid=kzd_conference:call_id(JObj)
-                           ,conference_uuid=kzd_conference:instance_id(JObj)
-                           ,conference_name=kzd_conference:conference_id(JObj)
-                           ,join_time=kzd_conference:join_time(JObj, kz_time:current_tstamp())
-                           ,caller_id_number=kzd_conference:caller_id_number(JObj)
-                           ,caller_id_name=kzd_conference:caller_id_name(JObj)
-                           ,custom_channel_vars=kzd_conference:custom_channel_vars(JObj)
-                           ,conference_channel_vars=kzd_conference:conference_channel_vars(JObj)
-                           ,custom_application_vars=kzd_conference:custom_application_vars(Props)
+                           ,uuid=kz_conference_event:call_id(JObj)
+                           ,conference_uuid=kz_conference_event:instance_id(JObj)
+                           ,conference_name=kz_conference_event:conference_id(JObj)
+                           ,join_time=kz_conference_event:join_time(JObj, kz_time:current_tstamp())
+                           ,caller_id_number=kz_conference_event:caller_id_number(JObj)
+                           ,caller_id_name=kz_conference_event:caller_id_name(JObj)
+                           ,custom_channel_vars=kz_conference_event:custom_channel_vars(JObj)
+                           ,conference_channel_vars=kz_conference_event:conference_channel_vars(JObj)
+                           ,custom_application_vars=kz_conference_event:custom_application_vars(JObj)
                            }.

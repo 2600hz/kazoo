@@ -42,9 +42,9 @@ init() ->
 
 -spec publish_event(map()) -> 'ok'.
 publish_event(#{payload := JObj}) ->
-    Event = kzd_conference:event(JObj),
+    Event = kz_conference_event:event(JObj),
     case lists:member(Event, events())
-        andalso kzd_conference:conference_node(JObj) =:= kz_term:to_binary(node())
+        andalso kz_conference_event:conference_node(JObj) =:= kz_term:to_binary(node())
     of
         'true' -> kapi_conference:publish_event(JObj);
         'false' -> lager:debug("not publishing conference event : ~s", [Event])
