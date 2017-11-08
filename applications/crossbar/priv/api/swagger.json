@@ -24030,6 +24030,14 @@
                     },
                     "type": "array"
                 },
+                "flat_rate_blacklist": {
+                    "description": "Regex for determining if a number should not be eligible for flat-rate trunking",
+                    "type": "string"
+                },
+                "flat_rate_whitelist": {
+                    "description": "Regex for determining if the number is eligible for flat-rate trunking",
+                    "type": "string"
+                },
                 "format_from_uri": {
                     "description": "When set to true requests to this resource will have a re-formated SIP From Header",
                     "type": "boolean"
