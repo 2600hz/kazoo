@@ -143,7 +143,8 @@ bridge(Prop) when is_list(Prop) ->
                kz_json:from_list(EPProps)
            end
            || EP <- props:get_value(<<"Endpoints">>, Prop, []),
-              bridge_endpoint_v(EP)],
+              bridge_endpoint_v(EP)
+          ],
     Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
     case bridge_v(Prop1) of
         'true' -> kz_api:build_message(Prop1, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
