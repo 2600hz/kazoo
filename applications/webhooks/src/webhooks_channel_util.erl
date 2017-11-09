@@ -53,7 +53,14 @@ is_fireable_hook(_JObj, #webhook{include_loopback='true'}) -> 'true';
 is_fireable_hook(JObj, #webhook{include_loopback='false'
                                ,id=_Id, hook_id=_HookId
                                }) ->
-    case kz_json:is_false(<<"Channel-Is-Loopback">>, JObj, 'true') of
+    case kz_json:is_false(<<"Channel-Is-Loopback">>, JObj, 'true')
+        andalso 'undefined' =:= kz_json:get_first_defined([<<"Channel-Loopback-Leg">>
+                                                          ,<<"Channel-Loopback-Bowout-Execute">>
+                                                          ,<<"Channel-Loopback-Other-Leg-ID">>
+                                                          ]
+                                                         ,JObj
+                                                         )
+    of
         'true' -> 'true';
         'false' ->
             lager:debug("channel is loopback, filtering hook ~s", [_Id]),
