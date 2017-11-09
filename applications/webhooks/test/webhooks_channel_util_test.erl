@@ -16,7 +16,7 @@ include_loopback_test_() ->
             ,{?IS_NOT_LOOPBACK_EVT, ?FILTER_LOOPBACK_HOOK, 'true'}
             ],
     [?_assertEqual(Include
-                  ,webhooks_channel_util:fireable_hook(JObj, Hook)
+                  ,webhooks_channel_util:is_fireable_hook(JObj, Hook)
                   )
      || {JObj, Hook, Include} <- Tests
     ].

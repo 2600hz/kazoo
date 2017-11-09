@@ -9,7 +9,7 @@
 -export([maybe_handle_channel_event/3]).
 
 -ifdef(TEST).
--export([fireable_hook/2]).
+-export([is_fireable_hook/2]).
 -endif.
 
 -include("webhooks.hrl").
