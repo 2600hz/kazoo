@@ -502,7 +502,7 @@ maybe_find_port_number(Context, Number, 'true') ->
         {'error', _} -> reply_number_not_found(Context);
         {'ok', Result} ->
             Port = kz_json:get_value(<<"value">>, Result),
-            PN = normalize_port_number(Port, Num, cb_context:auth_account_id(Context)),
+            {'ok', PN} = normalize_port_number(Port, Num, cb_context:auth_account_id(Context)),
             Values = [{[<<"_read_only">>, <<"port_id">>], kz_json:get_value(<<"port_id">>, Port)}
                      ,{[<<"_read_only">>, <<"port_state">>], kz_json:get_value(<<"port_state">>, Port)}
                      ],
@@ -518,7 +518,7 @@ port_number_summary(_PhoneNumber, Context, 'false') ->
     reply_number_not_found(Context).
 
 -spec normalize_port_number(kz_json:object(), ne_binary(), ne_binary()) ->
-                                   knm_phone_number:knm_phone_number().
+                                   knm_phone_number_return().
 normalize_port_number(JObj, Num, AuthBy) ->
     knm_phone_number:setters(knm_phone_number:from_number_with_options(Num, [{auth_by, AuthBy}])
                             ,[{fun knm_phone_number:set_assigned_to/2, kz_json:get_value(<<"assigned_to">>, JObj)}
