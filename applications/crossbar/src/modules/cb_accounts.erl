@@ -1509,7 +1509,7 @@ notify_new_account(Context) ->
 
 notify_new_account(_Context, 'undefined') -> 'ok';
 notify_new_account(Context, _AuthDoc) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     JObj = cb_context:doc(Context),
     lager:debug("triggering new account notification for ~s", [cb_context:account_id(Context)]),
     Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
