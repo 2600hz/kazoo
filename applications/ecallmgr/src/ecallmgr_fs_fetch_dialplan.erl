@@ -98,12 +98,13 @@ maybe_expired(#{request := Request}=Map) ->
     wait_for_route_resp(add_time_marker(request_sent, Map)).
 
 wait_for_route_resp(#{timeout := Timeout}=Map) ->
-    Now = kz_time:current_tstamp(),
+    lager:debug("waiting ~B ms for route response", [Timeout]),
+    Now = kz_time:now_ms(),
     receive
         {'route_resp', Resp, Props} ->
             case kz_api:defer_response(Resp) of
                 true ->
-                    lager:notice("received deferred reply"),
+                    lager:debug("received deferred reply - waiting for others"),
                     NewTimeout = Timeout - kz_time:elapsed_ms(Now),
                     wait_for_route_resp(Map#{timeout => NewTimeout, reply => #{payload => Resp, props => Props}});
                 false ->
