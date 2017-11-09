@@ -164,7 +164,7 @@ handle_controls_request(JObj, Conference) ->
     ControlsName = get_conference_controls_name(ControlsType, Conference),
     Controls = kapps_conference:controls(Conference, ControlsName),
     ServerId = kz_api:server_id(JObj),
-    Resp = [{<<"Caller-Controls">>, controls(ControlsName, Controls)}
+    Resp = [{<<"Caller-Controls">>, controls(ControlsType, Controls)}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
