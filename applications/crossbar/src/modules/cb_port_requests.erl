@@ -665,8 +665,8 @@ view_key_options(Context, Type, 'true') ->
     };
 view_key_options(Context, Type, 'false') ->
     {'false'
-    ,[{'startkey', [cb_context:account_id(Context), Type, kz_json:new()]}
-     ,{'endkey', [cb_context:account_id(Context), Type]}
+    ,[{'startkey', [cb_context:account_id(Context), Type]}
+     ,{'endkey', [cb_context:account_id(Context), Type, kz_json:new()]}
      ]
     }.
 
