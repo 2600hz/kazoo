@@ -34,6 +34,7 @@ handle_route_req(JObj, Props) ->
 park_call(JObj, Props, Call) ->
     Q = props:get_value('queue', Props),
     Resp = props:filter_undefined([{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                                  ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
                                   ,{<<"Method">>, <<"park">>}
                                    | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                                   ]),

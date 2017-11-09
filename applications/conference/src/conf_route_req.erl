@@ -38,6 +38,7 @@ maybe_send_route_response(JObj, Call) ->
 send_route_response(JObj, Call, Conference) ->
     lager:info("conference knows how to route the call! sending park response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, kz_api:msg_id(JObj)}
+                                  ,{?KEY_REPLY_TO_PID, kz_api:from_pid(JObj)}
                                   ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
                                   ,{<<"Routes">>, []}
                                   ,{<<"Method">>, <<"park">>}
