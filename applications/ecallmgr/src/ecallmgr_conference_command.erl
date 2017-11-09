@@ -34,6 +34,7 @@ exec_cmd(_Node, _ConferenceId, JObj, _DestId) ->
 
 api(Node, ConferenceId, {AppName, AppData}) ->
     Command = kz_term:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
+    lager:debug("api: ~s", [Command]),
     freeswitch:api(Node, 'conference', Command).
 
 -spec get_conf_command(ne_binary(), atom(), ne_binary(), kz_json:object()) ->
