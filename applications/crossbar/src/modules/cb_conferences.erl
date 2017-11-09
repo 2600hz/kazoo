@@ -129,23 +129,23 @@ validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
 
 -spec validate_participants(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
 validate_participants(?HTTP_GET, Context0, ConferenceId) ->
-    Context1 = load_conference(ConferenceId, Context0),
+    Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
         'success' -> enrich_participants(ConferenceId, Context1);
         _Else -> Context1
     end;
 validate_participants(?HTTP_PUT, Context, ConferenceId) ->
-    load_conference(ConferenceId, Context).
+    maybe_load_conference(ConferenceId, Context).
 
 -spec validate_participant(http_method(), cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 validate_participant(?HTTP_GET, Context0, ConferenceId, ParticipantId) ->
-    Context1 = load_conference(ConferenceId, Context0),
+    Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
         'success' -> enrich_participant(ParticipantId, ConferenceId, Context1);
         _Else -> Context1
     end;
 validate_participant(?HTTP_PUT, Context, ConferenceId, _ParticipantId) ->
-    load_conference(ConferenceId, Context).
+    maybe_load_conference(ConferenceId, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _ConferenceId) ->
