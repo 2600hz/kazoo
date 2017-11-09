@@ -333,6 +333,7 @@
                                ,<<"Caller-ID-Number">>
                                ,<<"Custom-Channel-Vars">>
                                ,<<"Outbound-Call-ID">>
+                               ,<<"Timeout">>
                                ]).
 -define(DIAL_VALUES, [{<<"Event-Category">>, <<"conference">>}
                      ,{<<"Event-Name">>, <<"command">>}
@@ -342,6 +343,7 @@
                     ,{<<"Caller-ID-Number">>, fun is_binary/1}
                     ,{<<"Endpoints">>, fun kz_term:is_ne_list/1}
                     ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                    ,{<<"Timeout">>, fun is_integer/1}
                     ]).
 
 %% Conference Participants Event
@@ -1018,8 +1020,17 @@ config_resp_v(JObj) -> config_resp_v(kz_json:to_proplist(JObj)).
 
 -spec dial(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 dial(Prop) when is_list(Prop) ->
-    case dial_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?DIAL_HEADERS, ?OPTIONAL_DIAL_HEADERS);
+    EPs = [begin
+               {'ok', EPProps} = kapi_dialplan:bridge_endpoint(EP),
+               kz_json:from_list(EPProps)
+           end
+           || EP <- props:get_value(<<"Endpoints">>, Prop, []),
+              kapi_dialplan:bridge_endpoint_v(EP)
+          ],
+    Prop1 = [{<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
+
+    case dial_v(Prop1) of
+        'true' -> kz_api:build_message(Prop1, ?DIAL_HEADERS, ?OPTIONAL_DIAL_HEADERS);
         'false' -> {'error', "Proplist failed validation for dial"}
     end;
 dial(JObj) -> dial(kz_json:to_proplist(JObj)).
