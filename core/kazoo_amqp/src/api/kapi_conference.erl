@@ -332,6 +332,7 @@
 -define(OPTIONAL_DIAL_HEADERS, [<<"Caller-ID-Name">>
                                ,<<"Caller-ID-Number">>
                                ,<<"Custom-Channel-Vars">>
+                               ,<<"Outbound-Call-ID">>
                                ]).
 -define(DIAL_VALUES, [{<<"Event-Category">>, <<"conference">>}
                      ,{<<"Event-Name">>, <<"command">>}
