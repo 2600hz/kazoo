@@ -75,7 +75,7 @@ process_req(DataJObj) ->
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
     ReqData = kz_json:set_value(<<"port_request">>
-                               ,teletype_port_utils:fix_port_request_data(PortReqJObj)
+                               ,teletype_port_utils:fix_port_request_data(PortReqJObj, DataJObj)
                                ,DataJObj
                                ),
 
