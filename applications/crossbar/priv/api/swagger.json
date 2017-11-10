@@ -15618,6 +15618,9 @@
                 "Cc": {
                     "type": "string"
                 },
+                "Comments": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "notification"
