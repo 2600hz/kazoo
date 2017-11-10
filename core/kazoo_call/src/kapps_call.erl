@@ -87,6 +87,11 @@
         ,custom_channel_vars/1
         ]).
 
+-export([custom_application_var/3
+        ,custom_application_var/2
+        ,custom_application_vars/1
+        ]).
+
 -export([set_custom_sip_header/3
         ,set_custom_sip_headers/2
         ,custom_sip_header/2, custom_sip_header/3
@@ -171,8 +176,9 @@
                     ,app_name = <<"kapps_call">> :: ne_binary()        %% The application name used during kapps_call_command
                     ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during kapps_call_command
                     ,custom_publish_fun :: kapps_custom_publish() | 'undefined'     %% A custom command used to publish kapps_call_command
-                    ,ccvs = kz_json:new() :: kz_json:object()      %% Any custom channel vars that where provided with the route request
-                    ,sip_headers = kz_json:new() :: kz_json:object()                   %% Custom SIP Headers
+                    ,ccvs = kz_json:new() :: kz_json:object()           %% Any custom channel vars that where provided with the route request
+                    ,cavs = kz_json:new() :: kz_json:object()           %% Any custom application vars that where provided with the route request
+                    ,sip_headers = kz_json:new() :: kz_json:object()    %% Custom SIP Headers
                     ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                     ,other_leg_call_id :: api_binary()
                     ,resource_type :: api_binary()                      %% from route_req
@@ -229,6 +235,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                                     ,account_id=OldAccountId
                                     ,account_db=OldAccountDb
                                     ,ccvs=OldCCVs
+                                    ,cavs=OldCAVs
                                     ,sip_headers=OldSHs
                                     ,request=OldRequest
                                     ,from=OldFrom
@@ -238,6 +245,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
     kz_util:put_callid(CallId),
 
     CCVs = merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteReq)),
+    CAVs = merge(OldCAVs, kz_json:get_json_value(<<"Custom-Application-Vars">>, RouteReq)),
     SHs = merge(OldSHs, kz_json:get_json_value(<<"Custom-SIP-Headers">>, RouteReq)),
 
     Request = kz_json:get_ne_binary_value(<<"Request">>, RouteReq, OldRequest),
@@ -284,6 +292,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                     ,caller_id_number = kz_json:get_binary_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
                     ,callee_id_number = kz_json:get_binary_value(<<"Callee-ID-Number">>, RouteReq, ToUser)
                     ,ccvs = CCVs
+                    ,cavs = CAVs
                     ,sip_headers = SHs
                     ,resource_type = kz_json:get_ne_binary_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
                     ,to_tag = kz_json:get_ne_binary_value(<<"To-Tag">>, RouteReq, to_tag(Call))
@@ -298,6 +307,7 @@ from_route_win(RouteWin) ->
 -spec from_route_win(kz_json:object(), call()) -> call().
 from_route_win(RouteWin, #kapps_call{call_id=OldCallId
                                     ,ccvs=OldCCVs
+                                    ,cavs=OldCAVs
                                     ,sip_headers=OldSHs
                                     ,inception=OldInception
                                     ,account_id=OldAccountId
@@ -312,24 +322,26 @@ from_route_win(RouteWin, #kapps_call{call_id=OldCallId
     CallId = kz_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     kz_util:put_callid(CallId),
 
-    CCVs = merge(OldCCVs, kz_json:get_value(<<"Custom-Channel-Vars">>, RouteWin)),
-    SHs = merge(OldSHs, kz_json:get_value(<<"Custom-SIP-Headers">>, RouteWin)),
+    CCVs = merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteWin)),
+    CAVs = merge(OldCAVs, kz_json:get_json_value(<<"Custom-Application-Vars">>, RouteWin)),
+    SHs = merge(OldSHs, kz_json:get_json_value(<<"Custom-SIP-Headers">>, RouteWin)),
 
     {AccountId, AccountDb} =
-        find_account_info(OldAccountId, OldAccountDb, kz_json:get_value(<<"Account-ID">>, CCVs)),
+        find_account_info(OldAccountId, OldAccountDb, kz_json:get_ne_binary_value(<<"Account-ID">>, CCVs)),
 
     Call#kapps_call{call_id=CallId
                    ,account_id=AccountId
                    ,account_db=AccountDb
                    ,ccvs=CCVs
+                   ,cavs=CAVs
                    ,sip_headers=SHs
-                   ,control_q = kz_json:get_value(<<"Control-Queue">>, RouteWin)
-                   ,inception = kz_json:get_value(<<"Inception">>, CCVs, OldInception)
-                   ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
-                   ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
-                   ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
-                   ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, CCVs, OldFetchId)
-                   ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
+                   ,control_q = kz_json:get_ne_binary_value(<<"Control-Queue">>, RouteWin)
+                   ,inception = kz_json:get_ne_binary_value(<<"Inception">>, CCVs, OldInception)
+                   ,authorizing_id = kz_json:get_ne_binary_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
+                   ,authorizing_type = kz_json:get_ne_binary_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
+                   ,owner_id = kz_json:get_ne_binary_value(<<"Owner-ID">>, CCVs, OldOwnerId)
+                   ,fetch_id = kz_json:get_ne_binary_value(<<"Fetch-ID">>, CCVs, OldFetchId)
+                   ,bridge_id = kz_json:get_ne_binary_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
                    ,language = kz_media_util:prompt_language(AccountId, OldLanguage)
                    }.
 
@@ -394,10 +406,12 @@ from_json(JObj) ->
     from_json(JObj, new()).
 
 from_json(JObj, #kapps_call{ccvs=OldCCVs
+                           ,cavs=OldCAVs
                            ,kvs=Kvs
                            ,sip_headers=OldSHs
                            }=Call) ->
-    CCVs = kz_json:merge(OldCCVs, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
+    CCVs = kz_json:merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
+    CAVs = kz_json:merge(OldCAVs, kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new())),
     SHs = kz_json:merge(OldSHs, kz_json:get_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new())),
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Call#kapps_call{call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj, call_id_direct(Call))
@@ -432,6 +446,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    ,app_name = kz_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
                    ,app_version = kz_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
                    ,ccvs = CCVs
+                   ,cavs = CAVs
                    ,sip_headers = SHs
                    ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Kvs, KVS)
                    ,other_leg_call_id = kz_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
@@ -463,53 +478,54 @@ to_json(#kapps_call{}=Call) ->
     kz_json:from_list([KV
                        || {_, V}=KV <- [{<<"Key-Value-Store">>, kz_json:from_list(KVS)} |
                                         props:delete(<<"Key-Value-Store">>, Props)
-                                       ]
-                              ,V =/= 'undefined'
-                              ,kz_json:is_json_term(V)
+                                       ],
+                          V =/= 'undefined',
+                          kz_json:is_json_term(V)
                       ]).
 
 -spec to_proplist(call()) -> kz_proplist().
 to_proplist(#kapps_call{}=Call) ->
-    [{<<"Call-ID">>, call_id_direct(Call)}
-    ,{<<"Control-Queue">>, control_queue_direct(Call)}
-    ,{<<"Controller-Queue">>, controller_queue(Call)}
-    ,{<<"Caller-ID-Name">>, caller_id_name(Call)}
-    ,{<<"Caller-ID-Number">>, caller_id_number(Call)}
-    ,{<<"Callee-ID-Name">>, callee_id_name(Call)}
-    ,{<<"Callee-ID-Number">>, callee_id_number(Call)}
-    ,{<<"Request">>, request(Call)}
-    ,{<<"Request-User">>, request_user(Call)}
-    ,{<<"Request-Realm">>, request_realm(Call)}
-    ,{<<"From">>, from(Call)}
-    ,{<<"From-User">>, from_user(Call)}
-    ,{<<"From-Realm">>, from_realm(Call)}
-    ,{<<"To">>, to(Call)}
-    ,{<<"To-User">>, to_user(Call)}
-    ,{<<"To-Realm">>, to_realm(Call)}
-    ,{<<"Switch-Hostname">>, switch_hostname(Call)}
-    ,{<<"Switch-Nodename">>, switch_nodename(Call)}
-    ,{<<"Switch-URL">>, switch_url(Call)}
-    ,{<<"Switch-URI">>, switch_uri(Call)}
-    ,{<<"Inception">>, inception(Call)}
-    ,{<<"Account-DB">>, account_db(Call)}
+    [{<<"Account-DB">>, account_db(Call)}
     ,{<<"Account-ID">>, account_id(Call)}
     ,{<<"Authorizing-ID">>, authorizing_id(Call)}
     ,{<<"Authorizing-Type">>, authorizing_type(Call)}
-    ,{<<"Owner-ID">>, owner_id(Call)}
-    ,{<<"Fetch-ID">>, fetch_id(Call)}
     ,{<<"Bridge-ID">>, bridge_id(Call)}
+    ,{<<"Call-Bridged">>, call_bridged(Call)}
+    ,{<<"Call-Direction">>, direction(Call)}
+    ,{<<"Call-ID">>, call_id_direct(Call)}
+    ,{<<"Callee-ID-Name">>, callee_id_name(Call)}
+    ,{<<"Callee-ID-Number">>, callee_id_number(Call)}
+    ,{<<"Caller-ID-Name">>, caller_id_name(Call)}
+    ,{<<"Caller-ID-Number">>, caller_id_number(Call)}
+    ,{<<"Control-Queue">>, control_queue_direct(Call)}
+    ,{<<"Controller-Queue">>, controller_queue(Call)}
+    ,{<<"Custom-Application-Vars">>, custom_application_vars(Call)}
     ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
     ,{<<"Custom-SIP-Headers">>, custom_sip_headers(Call)}
-    ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
-    ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
-    ,{<<"Resource-Type">>, resource_type(Call)}
-    ,{<<"Language">>, language(Call)}
-    ,{<<"To-Tag">>, to_tag(Call)}
+    ,{<<"Fetch-ID">>, fetch_id(Call)}
+    ,{<<"From">>, from(Call)}
+    ,{<<"From-Realm">>, from_realm(Call)}
     ,{<<"From-Tag">>, from_tag(Call)}
-    ,{<<"Call-Direction">>, direction(Call)}
-    ,{<<"Call-Bridged">>, call_bridged(Call)}
-    ,{<<"Message-Left">>, message_left(Call)}
+    ,{<<"From-User">>, from_user(Call)}
+    ,{<<"Inception">>, inception(Call)}
     ,{<<"Is-Recording">>, is_recording(Call)}
+    ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
+    ,{<<"Language">>, language(Call)}
+    ,{<<"Message-Left">>, message_left(Call)}
+    ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
+    ,{<<"Owner-ID">>, owner_id(Call)}
+    ,{<<"Request">>, request(Call)}
+    ,{<<"Request-Realm">>, request_realm(Call)}
+    ,{<<"Request-User">>, request_user(Call)}
+    ,{<<"Resource-Type">>, resource_type(Call)}
+    ,{<<"Switch-Hostname">>, switch_hostname(Call)}
+    ,{<<"Switch-Nodename">>, switch_nodename(Call)}
+    ,{<<"Switch-URI">>, switch_uri(Call)}
+    ,{<<"Switch-URL">>, switch_url(Call)}
+    ,{<<"To">>, to(Call)}
+    ,{<<"To-Realm">>, to_realm(Call)}
+    ,{<<"To-Tag">>, to_tag(Call)}
+    ,{<<"To-User">>, to_user(Call)}
     ].
 
 -spec is_call(any()) -> boolean().
@@ -1118,6 +1134,18 @@ custom_channel_var(Key, #kapps_call{ccvs=CCVs}) ->
 -spec custom_channel_vars(call()) -> kz_json:object().
 custom_channel_vars(#kapps_call{ccvs=CCVs}) ->
     CCVs.
+
+-spec custom_application_var(any(), Default, call()) -> Default | _.
+custom_application_var(Key, Default, #kapps_call{cavs=CAVs}) ->
+    kz_json:get_value(Key, CAVs, Default).
+
+-spec custom_application_var(any(), call()) -> any().
+custom_application_var(Key, #kapps_call{cavs=CAVs}) ->
+    kz_json:get_value(Key, CAVs).
+
+-spec custom_application_vars(call()) -> kz_json:object().
+custom_application_vars(#kapps_call{cavs=CAVs}) ->
+    CAVs.
 
 -spec set_custom_sip_header(kz_json:path(), kz_json:json_term(), call()) -> call().
 set_custom_sip_header(Key, Value, #kapps_call{sip_headers=SHs}=Call) ->
