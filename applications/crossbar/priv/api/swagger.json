@@ -18910,6 +18910,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -19072,6 +19075,9 @@
             "properties": {
                 "Bypass-Media": {
                     "type": "boolean"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -19326,6 +19332,9 @@
                 "Control-Queue": {
                     "type": "string"
                 },
+                "Custom-Appliction-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -19565,6 +19574,9 @@
                 },
                 "Control-Queue": {
                     "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
