@@ -440,11 +440,12 @@
 %% Set
 -define(SET_REQ_HEADERS, [<<"Application-Name">>
                          ,<<"Call-ID">>
-                         ,<<"Custom-Application-Vars">>
                          ,<<"Custom-Call-Vars">>
                          ,<<"Custom-Channel-Vars">>
                          ]).
--define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>
+                                  ,<<"Custom-Application-Vars">>
+                                  ]).
 -define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                         ,{<<"Event-Name">>, <<"command">>}
                         ,{<<"Application-Name">>, <<"set">>}
