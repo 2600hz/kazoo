@@ -417,13 +417,13 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
 -spec exec_dial_endpoints(cb_context:context(), path_token(), kz_json:object(), kz_json:objects()) -> 'ok'.
 exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     Conference = cb_context:doc(Context),
-    CCVs = kz_json:from_list(cb_modules_util:ccvs_from_context(Context)),
+    CAVs = kz_json:from_list(cb_modules_util:cavs_from_context(Context)),
     Command = [{<<"Application-Name">>, <<"dial">>}
               ,{<<"Endpoints">>, ToDial}
               ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
               ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)}
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
-              ,{<<"Custom-Application-Vars">>, CCVs}
+              ,{<<"Custom-Application-Vars">>, CAVs}
               ,{<<"Conference-ID">>, ConferenceId}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],

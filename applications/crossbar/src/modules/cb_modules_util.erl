@@ -12,7 +12,7 @@
         ,update_mwi/2
         ,get_devices_owned_by/2
         ,maybe_originate_quickcall/1
-        ,ccvs_from_context/1
+        ,cavs_from_context/1
 
         ,attachment_name/2
         ,parse_media_type/1
@@ -213,21 +213,21 @@ aleg_cid(Number, Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
--spec ccvs_from_context(cb_context:context()) -> kz_proplist().
-ccvs_from_context(Context) ->
+-spec cavs_from_context(cb_context:context()) -> kz_proplist().
+cavs_from_context(Context) ->
     ReqData = cb_context:req_data(Context),
     QueryString = cb_context:query_string(Context),
-    ccvs_from_request(ReqData, QueryString).
+    cavs_from_request(ReqData, QueryString).
 
--spec ccvs_from_request(api_object(), api_object()) -> kz_proplist().
-ccvs_from_request('undefined', 'undefined') -> [];
-ccvs_from_request('undefined', QueryString) ->
+-spec cavs_from_request(api_object(), api_object()) -> kz_proplist().
+cavs_from_request('undefined', 'undefined') -> [];
+cavs_from_request('undefined', QueryString) ->
     kapps_call_util:filter_ccvs(QueryString);
-ccvs_from_request(ReqData, 'undefined') ->
+cavs_from_request(ReqData, 'undefined') ->
     kapps_call_util:filter_ccvs(kz_json:get_json_value(<<"custom_channel_vars">>, ReqData));
-ccvs_from_request(ReqData, QueryString) ->
-    CCVs = kz_json:get_json_value(<<"custom_channel_vars">>, ReqData, kz_json:new()),
-    kapps_call_util:filter_ccvs(kz_json:merge(CCVs, QueryString)).
+cavs_from_request(ReqData, QueryString) ->
+    CAVs = kz_json:get_json_value(<<"custom_channel_vars">>, ReqData, kz_json:new()),
+    kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
 
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
@@ -238,8 +238,10 @@ originate_quickcall(Endpoints, Call, Context) ->
            ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
-            | ccvs_from_context(Context)
            ],
+
+    CAVs = cavs_from_context(Context),
+
     MsgId = case kz_term:is_empty(cb_context:req_id(Context)) of
                 'true' -> kz_binary:rand_hex(16);
                 'false' -> cb_context:req_id(Context)
@@ -272,6 +274,7 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
           ,{<<"Continue-On-Fail">>, 'false'}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+          ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
           ,{<<"Export-Custom-Channel-Vars">>, [ <<"Account-ID">>
                                               , <<"Retain-CID">>
                                               , <<"Authorizing-ID">>

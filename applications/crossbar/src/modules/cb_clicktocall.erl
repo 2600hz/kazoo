@@ -457,8 +457,8 @@ build_originate_req(Contact, Context) ->
            ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ,{<<"Inherit-Codec">>, 'false'}
            ,{<<"Retain-CID">>, 'true'}
-            | cb_modules_util:ccvs_from_context(Context)
            ],
+    CAVs = cb_modules_util:cavs_from_context(Context),
 
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  Callee#contact.route}
@@ -490,6 +490,7 @@ build_originate_req(Contact, Context) ->
       ,{<<"Continue-On-Fail">>, 'true'}
       ,{<<"Custom-SIP-Headers">>, kz_json:get_value(<<"custom_sip_headers">>, JObj)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
                                           ,<<"Loopback-Request-URI">>
                                           ,<<"From-URI">>, <<"Request-URI">>

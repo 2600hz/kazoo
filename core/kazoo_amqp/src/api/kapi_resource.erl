@@ -69,6 +69,7 @@
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>
+                                        ,<<"Custom-Application-Vars">>
                                         ,<<"Custom-Channel-Vars">>
                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore
                                         ,<<"Export-Custom-Channel-Vars">>
@@ -100,6 +101,7 @@
 -define(ORIGINATE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
                              ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                              ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                             ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                              ,{<<"Continue-On-Fail">>, fun kz_term:is_boolean/1}
                              ,{<<"Simplify-Bowout">>, fun kz_term:is_boolean/1}
                              ]).
@@ -111,6 +113,7 @@
                                        ]).
 -define(ORIGINATE_REQ_ENDPOINT_TYPES, [{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                                       ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                                      ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                                       ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
                                       ,{<<"Ignore-Early-Media">>, fun kz_term:is_boolean/1}
                                       ,{<<"Bypass-Media">>, fun kz_term:is_boolean/1}
@@ -122,7 +125,9 @@
 -define(ORIGINATE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_resp">>}
                                ]).
--define(ORIGINATE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}]).
+-define(ORIGINATE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                              ,{<<"Custom-Appliction-Vars">>, fun kz_json:is_json_object/1}
+                              ]).
 
 %% Origintate Started
 -define(ORIGINATE_STARTED_HEADERS, [<<"Call-ID">>]).
@@ -130,7 +135,9 @@
 -define(ORIGINATE_STARTED_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                   ,{<<"Event-Name">>, <<"originate_started">>}
                                   ]).
--define(ORIGINATE_STARTED_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}]).
+-define(ORIGINATE_STARTED_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                                 ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
+                                 ]).
 
 %% Origintate UUID
 -define(ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-ID">>]).
