@@ -748,7 +748,7 @@ maybe_apply_call_waiting(Endpoints) ->
 
 -spec call_waiting_map(kz_json:object()) -> kz_json:object().
 call_waiting_map(Endpoint) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"Call-Waiting-Disabled">>, CCVs) of
         'false' -> Endpoint;
         'true' ->
