@@ -8188,6 +8188,9 @@
                 "Conference-ID": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -9792,6 +9795,9 @@
                     "type": "string"
                 },
                 "Codecs": {
+                    "type": "string"
+                },
+                "Custom-Application-Vars": {
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {

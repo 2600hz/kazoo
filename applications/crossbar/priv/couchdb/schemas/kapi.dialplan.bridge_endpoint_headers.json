@@ -30,6 +30,9 @@
         "Codecs": {
             "type": "string"
         },
+        "Custom-Application-Vars": {
+            "type": "string"
+        },
         "Custom-Channel-Vars": {
             "type": "string"
         },
