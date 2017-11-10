@@ -332,6 +332,7 @@
 -define(OPTIONAL_DIAL_HEADERS, [<<"Caller-ID-Name">>
                                ,<<"Caller-ID-Number">>
                                ,<<"Custom-Channel-Vars">>
+                               ,<<"Custom-Application-Vars">>
                                ,<<"Outbound-Call-ID">>
                                ,<<"Timeout">>
                                ]).
