@@ -12,8 +12,6 @@
 -ifndef(KAPI_DIALPLAN_HRL).
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--define(CAVS, <<"Custom-Application-Vars">>).
-
 %% For dialplan messages, what does the Invite-Format param accept as values?
 -define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>
                              ,[<<"username">>, <<"e164">>
@@ -53,7 +51,7 @@
         ,<<"Confirm-Cancel-Timeout">>
         ,<<"Confirm-File">>
         ,<<"Continue-On-Fail">>
-        ,?CAVS
+        ,<<"Custom-Application-Vars">>
         ,<<"Custom-Channel-Vars">>
         ,<<"Custom-SIP-Headers">>
         ,<<"Dial-Endpoint-Method">>
@@ -92,7 +90,7 @@
                            ]).
 -define(BRIDGE_REQ_TYPES, [{<<"B-Leg-Events">>, fun b_leg_events_v/1}
                           ,{<<"Continue-On-Fail">>, fun kz_term:is_boolean/1}
-                          ,{?CAVS, fun kz_json:is_json_object/1}
+                          ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                           ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                           ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                           ,{<<"Endpoints">>, fun kz_json:are_json_objects/1}
@@ -112,7 +110,7 @@
         ,<<"Caller-ID-Name">>
         ,<<"Caller-ID-Number">>
         ,<<"Codecs">>
-        ,?CAVS
+        ,<<"Custom-Application-Vars">>
         ,<<"Custom-Channel-Vars">>
         ,<<"Custom-SIP-Headers">>
         ,<<"Enable-T38-Fax">>
@@ -158,7 +156,7 @@
                                     ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>, <<"sctp">>]}
                                     ]).
 -define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-                                   ,{?CAVS, fun kz_json:is_json_object/1}
+                                   ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                                    ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                                    ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
                                    ,{<<"Ignore-Early-Media">>, fun kz_term:is_boolean/1}
@@ -442,7 +440,7 @@
 %% Set
 -define(SET_REQ_HEADERS, [<<"Application-Name">>
                          ,<<"Call-ID">>
-                         ,?CAVS
+                         ,<<"Custom-Application-Vars">>
                          ,<<"Custom-Call-Vars">>
                          ,<<"Custom-Channel-Vars">>
                          ]).
@@ -452,7 +450,7 @@
                         ,{<<"Application-Name">>, <<"set">>}
                         ,?INSERT_AT_TUPLE
                         ]).
--define(SET_REQ_TYPES, [{?CAVS, fun kz_json:is_json_object/1}
+-define(SET_REQ_TYPES, [{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                        ,{<<"Custom-Channel-Vars">>,fun kz_json:is_json_object/1}
                        ,{<<"Custom-Call-Vars">>, fun kz_json:is_json_object/1}
                        ]).
