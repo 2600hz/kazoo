@@ -1172,7 +1172,8 @@ send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
         end,
 
     BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, <<"store">>),
-    ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
+    ChanProps = maybe_add_ccvs(BaseProps, ChannelProps),
+    ApiProps = maybe_add_cavs(ChanProps, ChannelProps),
     kz_amqp_worker:cast(ApiProps, fun kapi_call:publish_event/1);
 send_store_call_event(Node, UUID, MediaTransResults) ->
     send_store_call_event(Node, UUID, {MediaTransResults, 'undefined'}).
@@ -1183,6 +1184,17 @@ maybe_add_ccvs(BaseProps, ChannelProps) ->
         [] -> BaseProps;
         CustomProp ->
             props:set_value(<<"Custom-Channel-Vars">>
+                           ,kz_json:from_list(CustomProp)
+                           ,BaseProps
+                           )
+    end.
+
+-spec maybe_add_cavs(kz_proplist(), kz_proplist()) -> kz_proplist().
+maybe_add_cavs(BaseProps, ChannelProps) ->
+    case ecallmgr_util:custom_application_vars(ChannelProps) of
+        [] -> BaseProps;
+        CustomProp ->
+            props:set_value(<<"Custom-Application-Vars">>
                            ,kz_json:from_list(CustomProp)
                            ,BaseProps
                            )

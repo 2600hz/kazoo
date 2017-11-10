@@ -178,7 +178,9 @@ route_req_ccvs(FetchId, Props) ->
       ,{<<"Redirected-Reason">>, RedirectedReason}
        | props:delete_keys([<<?CALL_INTERACTION_ID>>
                            ,<<"Fetch-ID">>
-                           ], CCVs) ++ kz_privacy:flags(Props)
+                           ], CCVs)
+       ++ ecallmgr_util:custom_application_vars(Props)
+       ++ kz_privacy:flags(Props)
       ]
      ).
 

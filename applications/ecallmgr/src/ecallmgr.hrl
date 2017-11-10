@@ -141,6 +141,7 @@
                      ,caller_id_number :: api_ne_binary() | '_'
                      ,conference_channel_vars = [] :: kz_proplist() | '_'
                      ,custom_channel_vars = [] :: kz_proplist() | '_'
+                     ,custom_application_vars = [] :: kz_proplist() | '_'
                      }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].

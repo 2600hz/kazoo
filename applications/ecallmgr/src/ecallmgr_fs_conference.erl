@@ -235,10 +235,13 @@ process_event(Action, Props, _Node) ->
 
 update_participant(Props) ->
     ConferenceVars = ecallmgr_util:conference_channel_vars(Props),
-    CustomVars = ecallmgr_util:custom_channel_vars(Props),
+    ChanVars = ecallmgr_util:custom_channel_vars(Props),
+    AppVars = ecallmgr_util:custom_application_vars(Props),
+
     UUID = kzd_freeswitch:call_id(Props),
     Update = [{#participant.conference_channel_vars, ConferenceVars}
-             ,{#participant.custom_channel_vars, CustomVars}
+             ,{#participant.custom_channel_vars, ChanVars}
+             ,{#participant.custom_application_vars, AppVars}
              ],
     ecallmgr_fs_conferences:participant_update(UUID, Update).
 
@@ -271,7 +274,9 @@ publish_event(Event) ->
 
 conference_event(Action, Conference, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CAVs = ecallmgr_util:custom_application_vars(Props),
     ConfVars = ecallmgr_util:conference_channel_vars(Props),
+
     props:filter_undefined(
       [{<<"Event">>, Action}
       ,{<<"Account-ID">>, Conference#conference.account_id}
@@ -283,6 +288,7 @@ conference_event(Action, Conference, Props) ->
       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
       ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
       ,{<<"Conference-Channel-Vars">>, kz_json:from_list(ConfVars)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

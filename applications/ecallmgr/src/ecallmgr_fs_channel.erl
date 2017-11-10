@@ -690,6 +690,7 @@ props_to_record(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     OtherLeg = get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props),
+
     #channel{uuid=UUID
             ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
             ,direction=kzd_freeswitch:call_direction(Props)

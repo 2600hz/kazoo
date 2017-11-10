@@ -627,22 +627,32 @@ create_event(EventName, ApplicationName, Props) ->
                                               kz_proplist().
 specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
-    Vars = ecallmgr_util:custom_channel_vars(Props),
+    ChanVars = kz_json:from_list(ecallmgr_util:custom_channel_vars(Props)),
+    AppVars = kz_json:from_list(ecallmgr_util:custom_application_vars(Props)),
+
     lager:debug("checking interaction cache for ~s", [UUID]),
     case kz_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, UUID) of
         {'ok', 'undefined'} ->
             lager:debug("interaction cache for ~s in null", [UUID]),
-            [{<<"Custom-Channel-Vars">>, kz_json:from_list(Vars)}];
+            [{<<"Custom-Channel-Vars">>, ChanVars}
+            ,{<<"Custom-Application-Vars">>, AppVars}
+            ];
         {'ok', CDR} ->
-            NewVars = props:set_value(<<?CALL_INTERACTION_ID>>, CDR, Vars),
+            NewVars = kz_json:set_value(<<?CALL_INTERACTION_ID>>, CDR, ChanVars),
             lager:debug("found interaction cache ~s for ~s", [CDR, UUID]),
-            [{<<"Custom-Channel-Vars">>, kz_json:from_list(NewVars)}];
+            [{<<"Custom-Channel-Vars">>, NewVars}
+            ,{<<"Custom-Application-Vars">>, AppVars}
+            ];
         _ ->
             lager:debug("interaction cache for ~s not found", [UUID]),
-            [{<<"Custom-Channel-Vars">>, kz_json:from_list(Vars)}]
+            [{<<"Custom-Channel-Vars">>, ChanVars}
+            ,{<<"Custom-Application-Vars">>, AppVars}
+            ]
     end;
 specific_call_channel_vars_props(_EventName, Props) ->
-    [{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}].
+    [{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+    ,{<<"Custom-Application-Vars">>, kz_json:from_lisT(ecallmgr_util:custom_application_vars(Props))}
+    ].
 
 -spec generic_call_event_props(kz_proplist()) -> kz_proplist().
 generic_call_event_props(Props) ->
