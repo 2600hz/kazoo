@@ -578,7 +578,7 @@ get_fs_kv(Key, Val, _) ->
 
 -spec get_fs_key(ne_binary()) -> binary().
 get_fs_key(?CCV(Key)) -> get_fs_key(Key);
-get_fs_key(?CAV(Key)) -> ?CAV(Key);
+get_fs_key(?CAV(_)=CAV) -> CAV;
 get_fs_key(<<"X-", _/binary>>=Key) -> <<"sip_h_", Key/binary>>;
 get_fs_key(Key) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
