@@ -176,6 +176,7 @@
 %% When an event occurs, we include all prefixed vars in the API
 %% message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
+-define(APPLICATION_VAR_PREFIX, "cav_").
 
 -define(CCV(Key), <<?CHANNEL_VAR_PREFIX, Key/binary>>).
 -define(GET_CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
@@ -184,6 +185,11 @@
 -define(GET_CUSTOM_HEADER(Key), <<"variable_sip_h_X-", Key/binary>>).
 -define(CUSTOM_HEADER(Key), <<"sip_h_X-", Key/binary>>).
 -define(GET_VAR(Key), <<"variable_", Key/binary>>).
+
+-define(CAV(Key), <<?APPLICATION_VAR_PREFIX, Key/binary>>).
+-define(GET_CAV(Key), <<"variable_", ?APPLICATION_VAR_PREFIX, Key/binary>>).
+-define(SET_CAV(Key, Value), <<?APPLICATION_VAR_PREFIX, Key/binary, "=", Value/binary>>).
+-define(GET_CAV_HEADER(Key), <<"variable_sip_h_X-", ?APPLICATION_VAR_PREFIX, Key/binary>>).
 
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
 
