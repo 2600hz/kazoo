@@ -40,6 +40,12 @@
                 "command"
             ],
             "type": "string"
+        },
+        "Outbound-Call-ID": {
+            "type": "string"
+        },
+        "Timeout": {
+            "type": "integer"
         }
     },
     "required": [

@@ -8210,6 +8210,12 @@
                         "command"
                     ],
                     "type": "string"
+                },
+                "Outbound-Call-ID": {
+                    "type": "string"
+                },
+                "Timeout": {
+                    "type": "integer"
                 }
             },
             "required": [
@@ -9557,6 +9563,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -9694,6 +9703,9 @@
             "properties": {
                 "Bypass-Media": {
                     "type": "boolean"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -11786,6 +11798,9 @@
                 },
                 "Call-ID": {
                     "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Call-Vars": {
                     "type": "object"
