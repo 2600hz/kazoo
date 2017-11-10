@@ -3,7 +3,7 @@
     "_id": "callflows.set_variables",
     "description": "Validator for the set_variables callflow's data object",
     "properties": {
-        "custom_channel_vars": {
+        "custom_application_vars": {
             "default": {},
             "description": "Key-value pairs to set as custom_channel_vars on the channel",
             "patternProperties": {
