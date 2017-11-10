@@ -342,7 +342,7 @@
                      ]).
 -define(DIAL_TYPES, [{<<"Caller-ID-Name">>, fun is_binary/1}
                     ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                    ,{<<"Endpoints">>, fun kz_term:are_json_objects/1}
+                    ,{<<"Endpoints">>, fun kz_json:are_json_objects/1}
                     ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                     ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                     ,{<<"Timeout">>, fun is_integer/1}
