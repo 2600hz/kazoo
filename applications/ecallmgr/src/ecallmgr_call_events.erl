@@ -651,7 +651,7 @@ specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     end;
 specific_call_channel_vars_props(_EventName, Props) ->
     [{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-    ,{<<"Custom-Application-Vars">>, kz_json:from_lisT(ecallmgr_util:custom_application_vars(Props))}
+    ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_util:custom_application_vars(Props))}
     ].
 
 -spec generic_call_event_props(kz_proplist()) -> kz_proplist().
