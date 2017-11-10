@@ -660,44 +660,43 @@ generic_call_event_props(Props) ->
     FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
     NormalizedFSTimestamp = kz_time:unix_seconds_to_gregorian_seconds(FSTimestamp div ?MICROSECONDS_IN_SECOND),
 
-    [{<<"Timestamp">>, NormalizedFSTimestamp}
-    ,{<<"Msg-ID">>, kz_term:to_binary(FSTimestamp)}
-    ,{<<"Origination-Call-ID">>, kzd_freeswitch:origination_call_id(Props)}
+    [{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
     ,{<<"Call-ID">>, get_call_id(Props)}
-    ,{<<"Transfer-History">>, get_transfer_history(Props)}
+    ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props)}
+    ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props)}
+    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
+    ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
+    ,{<<"Channel-Is-Loopback">>, get_is_loopback(props:get_value(<<"variable_is_loopback">>, Props))}
+    ,{<<"Channel-Loopback-Bowout">>, props:get_is_true(<<"variable_loopback_bowout">>, Props)}
+    ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_is_true(<<"variable_loopback_bowout_on_execute">>, Props)}
+    ,{<<"Channel-Loopback-Leg">>, props:get_value(<<"variable_loopback_leg">>, Props)}
+    ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
+    ,{<<"Channel-Moving">>, get_channel_moving(Props)}
+    ,{<<"Channel-Name">>, props:get_value(<<"Channel-Name">>, Props)}
+    ,{<<"Channel-State">>, get_channel_state(Props)}
+    ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+    ,{<<"Disposition">>, get_disposition(Props)}
+    ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
     ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
     ,{<<"Hangup-Code">>, get_hangup_code(Props)}
-    ,{<<"Disposition">>, get_disposition(Props)}
-    ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
-    ,{<<"Channel-Moving">>, get_channel_moving(Props)}
-    ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-    ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props)}
-    ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props)}
-    ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
+    ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+    ,{<<"Msg-ID">>, kz_term:to_binary(FSTimestamp)}
+    ,{<<"Origination-Call-ID">>, kzd_freeswitch:origination_call_id(Props)}
+    ,{<<"Other-Leg-Call-ID">>, get_other_leg(Props)}
     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
-    ,{<<"Other-Leg-Call-ID">>, get_other_leg(Props)}
-
+    ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
     ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
     ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
-    ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+    ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
     ,{<<"Replaced-By">>, props:get_first_defined([<<"att_xfer_replaced_by">>, ?ACQUIRED_UUID], Props)}
-    ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
-    ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
-    ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
-    ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
-    ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
     ,{<<"Switch-Nodename">>, props:get_value(<<"Switch-Nodename">>, Props)}
-    ,{<<"Channel-State">>, get_channel_state(Props)}
-    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
-    ,{<<"Channel-Name">>, props:get_value(<<"Channel-Name">>, Props)}
-    ,{<<"Channel-Is-Loopback">>, get_is_loopback(props:get_value(<<"variable_is_loopback">>, Props))}
-    ,{<<"Channel-Loopback-Leg">>, props:get_value(<<"variable_loopback_leg">>, Props)}
-    ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
-    ,{<<"Channel-Loopback-Bowout">>, props:get_is_true(<<"variable_loopback_bowout">>, Props)}
-    ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_is_true(<<"variable_loopback_bowout_on_execute">>, Props)}
-    ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
+    ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
+    ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
+    ,{<<"Timestamp">>, NormalizedFSTimestamp}
+    ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
+    ,{<<"Transfer-History">>, get_transfer_history(Props)}
      | callee_call_event_props(Props)
      ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].

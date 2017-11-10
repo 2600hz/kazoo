@@ -102,6 +102,7 @@ build_offnet_request(Data, Call) ->
       ,{<<"Flags">>, get_flags(Data, Call)}
       ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
       ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+      ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
       ,{<<"To-DID">>, get_to_did(Data, Call)}
       ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
       ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
