@@ -19793,6 +19793,9 @@
                     },
                     "type": "object"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -19917,6 +19920,9 @@
                 "Application-Data": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -20016,6 +20022,9 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"

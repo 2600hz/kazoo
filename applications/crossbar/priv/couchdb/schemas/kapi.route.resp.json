@@ -6,6 +6,9 @@
         "Application-Data": {
             "type": "string"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },
