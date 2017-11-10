@@ -83,13 +83,13 @@ Sometimes you want to dial out from a conference to an endpoint (versus waiting 
 }
 ```
 
-As when making [quickcalls](./quickcall.md), you can include `custom_channel_vars`:
+As when making [quickcalls](./quickcall.md), you can include `custom_application_vars`:
 
 ```json
 {
     "data":{
         "action":"dial"
-        ,"custom_channel_vars":{
+        ,"custom_application_vars":{
             "foo":"bar"
         }
         "data":{
@@ -107,7 +107,7 @@ You can also include the outbound call id you'd like the leg to use:
 {
     "data":{
         "action":"dial"
-        ,"custom_channel_vars":{
+        ,"custom_application_vars":{
             "foo":"bar"
         }
         "data":{

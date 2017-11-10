@@ -15,15 +15,15 @@ Key | Type | Description
 `media` | `string('bypass', 'process')` | Toggle whether to go peer-to-peer([bypass](https://freeswitch.org/confluence/display/FREESWITCH/Bypass+Media+Overview) with the RTP
 `number_filter` | `boolean()`, `regex()` | If true, remove non-alphanumeric characters. If a regex, use the first capture group as the "number" to dial.
 `timeout` | `integer(3..)` | In seconds, how long to ring the device(s) (defaults to 30)
-`custom_channel_vars` | `object()` | Custom data to include on the call (and events related to the call)
+`custom_application_vars` | `object()` | Custom data to include on the call (and events related to the call)
 
-##### Custom Channel Vars
+##### Custom Application Vars
 
-CCVs allow you to set custom data that will appear on subsequent call events (found in webhook and websocket payloads) as well as the final CDR.
+CAVs allow you to set custom data that will appear on subsequent call events (found in webhook and websocket payloads) as well as the final CDR.
 
 As query-string parameters: `/quickcall/{NUMBER}?foo=bar`
 
-As POST body: `{"data":{"custom_channel_vars":{"foo":"bar"}}}`
+As POST body: `{"data":{"custom_application_vars":{"foo":"bar"}}}`
 
 #### Non-blocking Quickcall
 

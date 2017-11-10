@@ -224,9 +224,9 @@ cavs_from_request('undefined', 'undefined') -> [];
 cavs_from_request('undefined', QueryString) ->
     kapps_call_util:filter_ccvs(QueryString);
 cavs_from_request(ReqData, 'undefined') ->
-    kapps_call_util:filter_ccvs(kz_json:get_json_value(<<"custom_channel_vars">>, ReqData));
+    kapps_call_util:filter_ccvs(kz_json:get_json_value(<<"custom_application_vars">>, ReqData));
 cavs_from_request(ReqData, QueryString) ->
-    CAVs = kz_json:get_json_value(<<"custom_channel_vars">>, ReqData, kz_json:new()),
+    CAVs = kz_json:get_json_value(<<"custom_application_vars">>, ReqData, kz_json:new()),
     kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
 
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
