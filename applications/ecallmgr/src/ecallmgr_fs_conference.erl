@@ -202,7 +202,7 @@ handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
 
 -spec process_event(ne_binary(), kzd_freeswitch:data(), atom()) -> any().
 process_event(<<"conference-create">>, Props, Node) ->
-    ecallmgr_fs_conferences:create(Props, Node),
+    _ = ecallmgr_fs_conferences:create(Props, Node),
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     ecallmgr_conference_sup:start_conference_control(Node, ConferenceId, UUID);
