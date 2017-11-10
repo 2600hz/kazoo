@@ -1020,17 +1020,8 @@ config_resp_v(JObj) -> config_resp_v(kz_json:to_proplist(JObj)).
 
 -spec dial(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 dial(Prop) when is_list(Prop) ->
-    EPs = [begin
-               {'ok', EPProps} = kapi_dialplan:bridge_endpoint(EP),
-               kz_json:from_list(EPProps)
-           end
-           || EP <- props:get_value(<<"Endpoints">>, Prop, []),
-              kapi_dialplan:bridge_endpoint_v(EP)
-          ],
-    Prop1 = [{<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
-
-    case dial_v(Prop1) of
-        'true' -> kz_api:build_message(Prop1, ?DIAL_HEADERS, ?OPTIONAL_DIAL_HEADERS);
+    case dial_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?DIAL_HEADERS, ?OPTIONAL_DIAL_HEADERS);
         'false' -> {'error', "Proplist failed validation for dial"}
     end;
 dial(JObj) -> dial(kz_json:to_proplist(JObj)).
