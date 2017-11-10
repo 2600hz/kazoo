@@ -25,6 +25,12 @@ handle(Data, Call) ->
             lager:info("completed successful bridge to the device"),
             cf_exe:stop(Call);
         {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
+        {'error', 'invalid_endpoint'} ->
+            lager:info("failed to build endpoint from device"),
+            cf_exe:continue(Call);
+        {'error', timeout} ->
+            lager:info("timeout bridging to the device"),
+            cf_exe:continue(Call);
         {'error', _R} when is_atom(_R) ->
             lager:info("failed to build endpoint from device: ~p", [_R]),
             cf_exe:continue(Call);
