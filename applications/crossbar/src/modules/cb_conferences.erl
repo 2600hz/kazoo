@@ -423,8 +423,7 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
               ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
               ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)}
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
-              ,{<<"Custom-Channel-Vars">>, CCVs}
-              ,{<<"Export-Custom-Channel-Vars">>, kz_json:get_keys(CCVs)}
+              ,{<<"Custom-Application-Vars">>, CCVs}
               ,{<<"Conference-ID">>, ConferenceId}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
