@@ -101,6 +101,25 @@ As when making [quickcalls](./quickcall.md), you can include `custom_channel_var
 }
 ```
 
+You can also include the outbound call id you'd like the leg to use:
+
+```json
+{
+    "data":{
+        "action":"dial"
+        ,"custom_channel_vars":{
+            "foo":"bar"
+        }
+        "data":{
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "caller_id_name":"Conference XYZ",
+            "caller_id_number":"5551212",
+            "outbound_call_id":"xyz-abc"
+        }
+    }
+}
+```
+
 A full example:
 
 ```shell

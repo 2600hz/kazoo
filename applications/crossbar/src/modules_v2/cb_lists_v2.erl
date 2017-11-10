@@ -205,7 +205,7 @@ validate_doc(Id, Type, Context) ->
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ListId) ->
-    delete(Context, ListId, ?ENTRIES),
+    _ = delete(Context, ListId, ?ENTRIES),
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     crossbar_doc:delete(Context1).
 delete(Context, _ListId, ?ENTRIES) ->

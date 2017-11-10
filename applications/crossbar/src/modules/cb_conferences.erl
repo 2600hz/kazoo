@@ -129,23 +129,23 @@ validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
 
 -spec validate_participants(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
 validate_participants(?HTTP_GET, Context0, ConferenceId) ->
-    Context1 = load_conference(ConferenceId, Context0),
+    Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
         'success' -> enrich_participants(ConferenceId, Context1);
         _Else -> Context1
     end;
 validate_participants(?HTTP_PUT, Context, ConferenceId) ->
-    load_conference(ConferenceId, Context).
+    maybe_load_conference(ConferenceId, Context).
 
 -spec validate_participant(http_method(), cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 validate_participant(?HTTP_GET, Context0, ConferenceId, ParticipantId) ->
-    Context1 = load_conference(ConferenceId, Context0),
+    Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
         'success' -> enrich_participant(ParticipantId, ConferenceId, Context1);
         _Else -> Context1
     end;
 validate_participant(?HTTP_PUT, Context, ConferenceId, _ParticipantId) ->
-    load_conference(ConferenceId, Context).
+    maybe_load_conference(ConferenceId, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _ConferenceId) ->
@@ -407,30 +407,48 @@ dial_endpoints(Context, _ConferenceId, _Data, []) ->
                                    ,Context
                                    );
 dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
+    case build_endpoints_to_dial(Context, ConferenceId, Endpoints) of
+        [] -> error_no_endpoints(Context);
+        ToDial ->
+            exec_dial_endpoints(Context, ConferenceId, Data, ToDial),
+            crossbar_util:response_202(<<"dialing endpoints">>, Context)
+    end.
+
+-spec exec_dial_endpoints(cb_context:context(), path_token(), kz_json:object(), kz_json:objects()) -> 'ok'.
+exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
+    Conference = cb_context:doc(Context),
+    CCVs = kz_json:from_list(cb_modules_util:ccvs_from_context(Context)),
+    Command = [{<<"Application-Name">>, <<"dial">>}
+              ,{<<"Endpoints">>, ToDial}
+              ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
+              ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)}
+              ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
+              ,{<<"Custom-Channel-Vars">>, CCVs}
+              ,{<<"Export-Custom-Channel-Vars">>, kz_json:get_keys(CCVs)}
+              ,{<<"Conference-ID">>, ConferenceId}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    'ok' = kz_amqp_worker:cast(Command, fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end).
+
+-spec build_endpoints_to_dial(cb_context:context(), path_token(), ne_binaries()) ->
+                                     kz_json:objects().
+build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
     {ToDial, _} = lists:foldl(fun build_endpoint/2
                              ,{[], create_call(Context, ConferenceId)}
                              ,Endpoints
                              ),
+    ToDial.
 
-    case ToDial of
-        [] ->
-            cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
-                                           ,<<"minItems">>
-                                           ,kz_json:from_list([{<<"message">>, <<"endpoints failed to resolve to route-able destinations">>}
-                                                              ,{<<"target">>, 1}
-                                                              ])
-                                           ,Context
-                                           );
-        _ ->
-            Conference = cb_context:doc(Context),
-            kapps_conference_command:dial(ToDial
-                                         ,kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)
-                                         ,kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))
-                                         ,kz_json:from_list(cb_modules_util:ccvs_from_context(Context))
-                                         ,ConferenceId
-                                         ),
-            crossbar_util:response_202(<<"dialing endpoints">>, Context)
-    end.
+
+-spec error_no_endpoints(cb_context:context()) -> cb_context:context().
+error_no_endpoints(Context) ->
+    cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
+                                   ,<<"minItems">>
+                                   ,kz_json:from_list([{<<"message">>, <<"endpoints failed to resolve to route-able destinations">>}
+                                                      ,{<<"target">>, 1}
+                                                      ])
+                                   ,Context
+                                   ).
 
 -spec create_call(cb_context:context(), ne_binary()) -> kapps_call:call().
 create_call(Context, ConferenceId) ->

@@ -1456,7 +1456,7 @@ play_vars(Node, UUID, JObj) ->
                              {ne_binary(), ne_binary()} | 'undefined'.
 get_terminators('undefined') -> 'undefined';
 get_terminators(Ts) when is_binary(Ts) -> get_terminators([Ts]);
-get_terminators([_|_]=Ts) ->
+get_terminators(Ts) when is_list(Ts) ->
     case Ts =:= get('$prior_terminators') of
         'true' -> 'undefined';
         'false' ->
