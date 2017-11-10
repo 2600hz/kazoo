@@ -8325,13 +8325,13 @@
                     "type": "string"
                 },
                 "Conference-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Conference-ID": {
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event": {
                     "type": "string"
@@ -8523,7 +8523,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Energy-Level": {
                     "type": "string"
@@ -9807,13 +9807,13 @@
                     "type": "string"
                 },
                 "Custom-Application-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -10275,7 +10275,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Error-Message": {
                     "type": "string"
@@ -10314,7 +10314,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -10618,7 +10618,7 @@
                     "type": "string"
                 },
                 "Media-Macros": {
-                    "type": "string"
+                    "type": "object"
                 }
             },
             "required": [
@@ -12545,7 +12545,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -13611,7 +13611,8 @@
                 "Action": {
                     "enum": [
                         "refresh_database",
-                        "refresh_views"
+                        "refresh_views",
+                        "clean_services"
                     ],
                     "type": "string"
                 },
@@ -15399,7 +15400,6 @@
             },
             "required": [
                 "Account-ID",
-                "Password",
                 "User-ID"
             ],
             "type": "object"
@@ -16340,7 +16340,8 @@
             },
             "required": [
                 "Account-ID",
-                "Audit-Log"
+                "Audit-Log",
+                "Time-Stamp"
             ],
             "type": "object"
         },
@@ -18542,7 +18543,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -18749,7 +18750,7 @@
                     "type": "string"
                 },
                 "Export-Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -18978,7 +18979,7 @@
                     "type": "string"
                 },
                 "Export-Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -19135,10 +19136,10 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -19342,7 +19343,7 @@
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "DTMF-Digit": {
                     "type": "string"
@@ -19585,7 +19586,7 @@
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "DTMF-Digit": {
                     "type": "string"
@@ -19815,7 +19816,7 @@
                     "type": "object"
                 },
                 "Custom-Routing-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
                     "type": "object"
@@ -20628,10 +20629,10 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"

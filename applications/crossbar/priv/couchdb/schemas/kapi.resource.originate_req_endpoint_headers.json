@@ -31,10 +31,10 @@
             "type": "string"
         },
         "Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Custom-SIP-Headers": {
-            "type": "string"
+            "type": "object"
         },
         "Enable-T38-Fax": {
             "type": "string"

@@ -93,7 +93,7 @@
             "type": "string"
         },
         "Export-Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Fail-On-Single-Reject": {
             "type": "string"
