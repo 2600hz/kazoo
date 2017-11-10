@@ -23,8 +23,12 @@
 -export([get_expires/1]).
 -export([get_interface_list/1, get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
--export([custom_channel_vars/1]).
--export([conference_channel_vars/1]).
+
+-export([custom_channel_vars/1
+        ,custom_application_vars/1
+        ,conference_channel_vars/1
+        ]).
+
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
 -export([build_bridge_string/1, build_bridge_string/2]).
@@ -362,6 +366,39 @@ custom_channel_vars_fold({?GET_CCV_HEADER(Key), V}, Acc) ->
         'false' -> [{Key, V} | Acc]
     end;
 custom_channel_vars_fold(_, Acc) -> Acc.
+
+-spec custom_application_vars(kzd_freeswitch:data()) -> kz_proplist().
+-spec custom_application_vars(kz_proplist(), kz_proplist()) -> kz_proplist().
+-spec custom_application_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
+custom_application_vars(Props) ->
+    lists:map(fun application_var_map/1, custom_application_vars(Props, [])).
+
+custom_application_vars(Props, Initial) ->
+    CCVs = lists:foldl(fun custom_application_vars_fold/2, Initial, Props),
+    maybe_update_referred_ccv(Props, application_vars_sort(CCVs)).
+
+-spec application_vars_sort(kz_proplist()) -> kz_proplist().
+application_vars_sort(ApplicationVars) ->
+    lists:usort(fun application_var_sort/2, ApplicationVars).
+
+-spec application_var_sort(tuple(), tuple()) -> boolean().
+application_var_sort({A, _}, {B, _}) -> A =< B.
+
+custom_application_vars_fold({?GET_CAV(Key), V}, Acc) ->
+    [{Key, V} | Acc];
+custom_application_vars_fold({?CAV(Key), V}, Acc) ->
+    [{Key, V} | Acc];
+custom_application_vars_fold({?GET_CAV_HEADER(Key), V}, Acc) ->
+    case props:is_defined(Key, Acc) of
+        'true' -> Acc;
+        'false' -> [{Key, V} | Acc]
+    end;
+custom_application_vars_fold(_, Acc) -> Acc.
+
+-spec application_var_map({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary() | ne_binaries()}.
+application_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
+    {Key, binary:split(Serialized, <<"|:">>, ['global'])};
+application_var_map({Key, Other}) -> {Key, Other}.
 
 -spec maybe_update_referred_ccv(kz_proplist(), kz_proplist()) -> kz_proplist().
 maybe_update_referred_ccv(Props, CCVs) ->
