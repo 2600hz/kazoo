@@ -658,7 +658,7 @@ specific_call_channel_vars_props(_EventName, Props) ->
 generic_call_event_props(Props) ->
     Timestamp = kz_time:now_us(),
     FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
-    NormalizedFSTimestamp = kz_time:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
+    NormalizedFSTimestamp = kz_time:unix_seconds_to_gregorian_seconds(FSTimestamp div ?MICROSECONDS_IN_SECOND),
 
     [{<<"Timestamp">>, NormalizedFSTimestamp}
     ,{<<"Msg-ID">>, kz_term:to_binary(FSTimestamp)}
