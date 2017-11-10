@@ -136,34 +136,35 @@ route_resp_xml(_, Section, JObj, Props) ->
 route_req(CallId, FetchId, Props, Node) ->
     AccountId = kzd_freeswitch:account_id(Props),
     props:filter_empty(
-      [{<<"Msg-ID">>, FetchId}
-      ,{<<"Call-ID">>, CallId}
+      [{<<"Body">>, get_body(Props) }
       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
+      ,{<<"Call-ID">>, CallId}
       ,{<<"Caller-ID-Name">>
        ,kzd_freeswitch:caller_id_name(Props, kz_privacy:anonymous_caller_id_name(AccountId))
        }
       ,{<<"Caller-ID-Number">>
        ,kzd_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))
        }
+      ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_util:custom_application_vars(Props))}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
+      ,{<<"Custom-Routing-Headers">>, props:get_value(<<"Custom-Routing-Headers">>, Props)}
+      ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
-      ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
-      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-      ,{<<"Body">>, get_body(Props) }
-      ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
-      ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
-      ,{<<"Switch-Hostname">>, kzd_freeswitch:hostname(Props)}
-      ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
-      ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
-      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
-      ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
-      ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
-      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
       ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
-      ,{<<"Custom-Routing-Headers">>, props:get_value(<<"Custom-Routing-Headers">>, Props)}
+      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
+      ,{<<"Msg-ID">>, FetchId}
+      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+      ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
+      ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
+      ,{<<"Switch-Hostname">>, kzd_freeswitch:hostname(Props)}
+      ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
+      ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
+      ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
+      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
+      ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -179,7 +180,6 @@ route_req_ccvs(FetchId, Props) ->
        | props:delete_keys([<<?CALL_INTERACTION_ID>>
                            ,<<"Fetch-ID">>
                            ], CCVs)
-       ++ ecallmgr_util:custom_application_vars(Props)
        ++ kz_privacy:flags(Props)
       ]
      ).

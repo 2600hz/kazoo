@@ -99,6 +99,7 @@
                  ,loopback_other_leg :: api_binary() | '_'
                  ,callflow_id :: api_binary() | '_'
                  ,is_onhold = 'false' :: boolean() | '_'
+                 ,cavs :: kz_proplist() | '_' | 'undefined'
                  }).
 
 -type channel() :: #channel{}.
