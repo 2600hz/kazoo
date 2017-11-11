@@ -1466,8 +1466,9 @@ play_vars(Node, UUID, JObj) ->
 %%--------------------------------------------------------------------
 -spec get_terminators(api_binary() | ne_binaries() | kz_json:object()) ->
                              {ne_binary(), ne_binary()} | 'undefined'.
-get_terminators('undefined') -> 'undefined';
+get_terminators('undefined') -> {<<"playback_terminators">>, <<"none">>};
 get_terminators(Ts) when is_binary(Ts) -> get_terminators([Ts]);
+get_terminators([]) -> {<<"playback_terminators">>, <<"none">>};
 get_terminators(Ts) when is_list(Ts) ->
     case Ts =:= get('$prior_terminators') of
         'true' -> 'undefined';

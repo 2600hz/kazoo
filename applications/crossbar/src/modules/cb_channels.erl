@@ -239,7 +239,10 @@ validate_action(Context, CallId) ->
     Ctx = read(Context, CallId),
     case cb_context:has_errors(Ctx) of
         'true' -> Ctx;
-        'false' -> validate_action(Ctx, CallId, cb_context:req_value(Context, <<"action">>))
+        'false' ->
+            Envelope = cb_context:req_json(Context),
+            Data = cb_context:req_data(Context),
+            validate_action(Ctx, CallId, kz_json:find(<<"action">>, [Envelope, Data]))
     end.
 
 validate_action(Context, _UUID, <<"metaflow">>) ->

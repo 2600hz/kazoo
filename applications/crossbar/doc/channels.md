@@ -118,7 +118,7 @@ Metaflow feature is a `metaflow` object which validates with its json schema.
 curl -v -X PUT \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"action": "metaflow", "data": { "module": "hangup" }}}' \
+    -d '{"action":"metaflow", "data": {"data": { "module": "hangup" }}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 

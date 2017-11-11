@@ -1497,7 +1497,9 @@ tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
       ]).
 
+-spec tts_terminators(api_ne_binaries()) -> api_ne_binaries().
 tts_terminators('undefined') -> ?ANY_DIGIT;
+tts_terminators([]) -> 'undefined';
 tts_terminators(Terminators) -> Terminators.
 
 tts_voice('undefined') -> kazoo_tts:default_voice();
