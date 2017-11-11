@@ -187,6 +187,7 @@ to_props(Channel) ->
       ,{<<"channel_authorized">>, Channel#channel.is_authorized}
       ,{<<"context">>, Channel#channel.context}
       ,{<<"custom_application_vars">>, Channel#channel.cavs}
+      ,{<<"custom_channel_vars">>, Channel#channel.ccvs}
       ,{<<"destination">>, Channel#channel.destination}
       ,{<<"dialplan">>, Channel#channel.dialplan}
       ,{<<"direction">>, Channel#channel.direction}
@@ -235,8 +236,8 @@ to_api_props(#channel{}=Channel) ->
       ,{<<"CallFlow-ID">>, Channel#channel.callflow_id}
       ,{<<"Channel-Authorized">>, Channel#channel.is_authorized}
       ,{<<"Context">>, Channel#channel.context}
-      ,{<<"Custom-Application-Vars">>, kz_json:from_list(channel_cavs(Channel))}
-      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(channel_ccvs(Channel))}
+      ,{<<"Custom-Application-Vars">>, Channel#channel.cavs}
+      ,{<<"Custom-Channel-Vars">>, Channel#channel.ccvs}
       ,{<<"Destination">>, Channel#channel.destination}
       ,{<<"Dialplan">>, Channel#channel.dialplan}
       ,{<<"Elapsed-Seconds">>, kz_time:elapsed_s(Channel#channel.timestamp)}
@@ -267,54 +268,20 @@ to_api_props(?NE_BINARY=CallId) ->
     to_api_props(Channel).
 
 -spec channel_ccvs(channel() | kz_json:object() | kz_term:proplist()) -> kz_term:proplist().
-channel_ccvs(#channel{}=Channel) ->
-    props:filter_undefined(
-      [{<<"Account-ID">>, Channel#channel.account_id}
-      ,{<<"Account-Billing">>, Channel#channel.account_billing}
-      ,{<<"Authorizing-ID">>, Channel#channel.authorizing_id}
-      ,{<<"Authorizing-Type">>, Channel#channel.authorizing_type}
-      ,{<<"Channel-Authorized">>, Channel#channel.is_authorized}
-      ,{<<"Owner-ID">>, Channel#channel.owner_id}
-      ,{<<"Resource-ID">>, Channel#channel.resource_id}
-      ,{<<"Presence-ID">>, Channel#channel.presence_id}
-      ,{<<"Fetch-ID">>, Channel#channel.fetch_id}
-      ,{<<"Bridge-ID">>, Channel#channel.bridge_id}
-      ,{<<"Precedence">>, Channel#channel.precedence}
-      ,{<<"Reseller-ID">>, Channel#channel.reseller_id}
-      ,{<<"Reseller-Billing">>, Channel#channel.reseller_billing}
-      ,{<<"Realm">>, Channel#channel.realm}
-      ,{<<"Username">>, Channel#channel.username}
-      ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
-      ,{<<"CallFlow-ID">>, Channel#channel.callflow_id}
-      ]);
+channel_ccvs(#channel{ccvs='undefined'}) -> [];
+channel_ccvs(#channel{ccvs=CCVs}) -> kz_json:to_proplist(CCVs);
 channel_ccvs([_|_]=Props) ->
-    props:filter_undefined(
-      [{<<"Account-ID">>, props:get_value(<<"account_id">>, Props)}
-      ,{<<"Account-Billing">>, props:get_value(<<"account_billing">>, Props)}
-      ,{<<"Authorizing-ID">>, props:get_value(<<"authorizing_id">>, Props)}
-      ,{<<"Authorizing-Type">>, props:get_value(<<"authorizing_type">>, Props)}
-      ,{<<"Channel-Authorized">>, props:get_value(<<"channel_authorized">>, Props)}
-      ,{<<"Owner-ID">>, props:get_value(<<"owner_id">>, Props)}
-      ,{<<"Resource-ID">>, props:get_value(<<"resource_id">>, Props)}
-      ,{<<"Presence-ID">>, props:get_value(<<"presence_id">>, Props)}
-      ,{<<"Fetch-ID">>, props:get_value(<<"fetch_id">>, Props)}
-      ,{<<"Bridge-ID">>, props:get_value(<<"bridge_id">>, Props)}
-      ,{<<"Precedence">>, props:get_value(<<"precedence">>, Props)}
-      ,{<<"Reseller-ID">>, props:get_value(<<"reseller_id">>, Props)}
-      ,{<<"Reseller-Billing">>, props:get_value(<<"reseller_billing">>, Props)}
-      ,{<<"Realm">>, props:get_value(<<"realm">>, Props)}
-      ,{<<"Username">>, props:get_value(<<"username">>, Props)}
-      ,{<<?CALL_INTERACTION_ID>>, props:get_value(<<"interaction_id">>, Props)}
-      ,{<<"callflow_id">>, props:get_value(<<"callflow_id">>, Props)}
-      ]);
+    kz_json:to_proplist(props:get_value(<<"custom_channel_vars">>, Props, kz_json:new()));
 channel_ccvs(JObj) ->
-    channel_ccvs(kz_json:to_proplist(JObj)).
+    kz_json:to_proplist(<<"Custom-Channel-Vars">>, JObj).
 
 -spec channel_cavs(channel() | kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
 channel_cavs(#channel{cavs='undefined'}) -> [];
-channel_cavs(#channel{cavs=CAVs}) -> CAVs;
-channel_cavs([_|_]=Props) -> props:get_value(<<"custom_application_vars">>, Props, []);
-channel_cavs(JObj) -> kz_json:get_list_value(<<"custom_application_vars">>, JObj, []).
+channel_cavs(#channel{cavs=CAVs}) -> kz_json:to_proplist(CAVs);
+channel_cavs([_|_]=Props) ->
+    kz_json:to_proplist(props:get_value(<<"custom_application_vars">>, Props, kz_json:new()));
+channel_cavs(JObj) ->
+    kz_json:to_proplist(<<"Custom-Application-Vars">>, JObj).
 
 -spec fetch_channel(kz_term:ne_binary()) -> kz_term:proplist() | 'undefined'.
 fetch_channel(UUID) ->
@@ -378,6 +345,7 @@ props_to_record(Props, Node) ->
             ,loopback_other_leg=kz_evt_freeswitch:loopback_other_leg(Props)
             ,callflow_id=props:get_value(<<"CallFlow-ID">>, CCVs)
             ,cavs=CAVs
+            ,ccvs=CCVs
             }.
 
 -spec other_leg_handling_locally(kz_term:ne_binary()) -> boolean().

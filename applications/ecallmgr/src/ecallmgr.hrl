@@ -102,7 +102,8 @@
                  ,loopback_other_leg :: kz_term:api_ne_binary() | '_'
                  ,callflow_id :: kz_term:api_ne_binary() | '_'
                  ,is_onhold = 'false' :: boolean() | '_'
-                 ,cavs :: kz_term:proplist() | '_' | 'undefined'
+                 ,cavs :: kz_term:api_object() | '_'
+                 ,ccvs :: kz_term:api_object() | '_'
                  }).
 
 -type channel() :: #channel{}.

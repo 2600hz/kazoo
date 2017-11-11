@@ -784,7 +784,8 @@ print_details({[#channel{}=Channel]
              ,Count) ->
     io:format("~n"),
     _ = [io:format("~-19s: ~s~n", [K, kz_term:to_binary(V)])
-         || {K, V} <- ecallmgr_fs_channel:to_props(Channel)
+         || {K, V} <- ecallmgr_fs_channel:to_props(Channel),
+                      not kz_json:is_json_object(V)
         ],
     print_details(ets:select(Continuation), Count + 1).
 

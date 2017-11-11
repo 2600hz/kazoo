@@ -94,52 +94,53 @@ jobj_to_update(_Node, _UUID, _JObj) -> [].
 
 -spec jobj_to_record(atom(), ne_binary(), kz_json:object()) -> channel().
 jobj_to_record(Node, UUID, JObj) ->
-    CCVs = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
-    CAVs = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new())),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CAVs = kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new()),
     OtherLeg = kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, JObj),
     #channel{uuid=UUID
-            ,destination=kz_json:get_value(<<"Caller-Destination-Number">>, JObj)
-            ,direction=kz_json:get_value(<<"Call-Direction">>, JObj)
+            ,destination=kz_json:get_ne_binary_value(<<"Caller-Destination-Number">>, JObj)
+            ,direction=kz_json:get_ne_binary_value(<<"Call-Direction">>, JObj)
 
-            ,account_id=props:get_value(<<"Account-ID">>, CCVs)
-            ,account_billing=props:get_value(<<"Account-Billing">>, CCVs)
-            ,authorizing_id=props:get_value(<<"Authorizing-ID">>, CCVs)
-            ,authorizing_type=props:get_value(<<"Authorizing-Type">>, CCVs)
-            ,is_authorized=props:is_true(<<"Channel-Authorized">>, CCVs)
-            ,owner_id=props:get_value(<<"Owner-ID">>, CCVs)
-            ,resource_id=props:get_value(<<"Resource-ID">>, CCVs)
-            ,fetch_id=props:get_value(<<"Fetch-ID">>, CCVs)
-            ,bridge_id=props:get_value(<<"Bridge-ID">>, CCVs, UUID)
-            ,reseller_id=props:get_value(<<"Reseller-ID">>, CCVs)
-            ,reseller_billing=props:get_value(<<"Reseller-Billing">>, CCVs)
-            ,precedence=kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
+            ,account_id=kz_json:get_ne_binary_value(<<"Account-ID">>, CCVs)
+            ,account_billing=kz_json:get_ne_binary_value(<<"Account-Billing">>, CCVs)
+            ,authorizing_id=kz_json:get_ne_binary_value(<<"Authorizing-ID">>, CCVs)
+            ,authorizing_type=kz_json:get_ne_binary_value(<<"Authorizing-Type">>, CCVs)
+            ,is_authorized=kz_json:is_true(<<"Channel-Authorized">>, CCVs)
+            ,owner_id=kz_json:get_ne_binary_value(<<"Owner-ID">>, CCVs)
+            ,resource_id=kz_json:get_ne_binary_value(<<"Resource-ID">>, CCVs)
+            ,fetch_id=kz_json:get_ne_binary_value(<<"Fetch-ID">>, CCVs)
+            ,bridge_id=kz_json:get_ne_binary_value(<<"Bridge-ID">>, CCVs, UUID)
+            ,reseller_id=kz_json:get_ne_binary_value(<<"Reseller-ID">>, CCVs)
+            ,reseller_billing=kz_json:get_ne_binary_value(<<"Reseller-Billing">>, CCVs)
+            ,precedence=kz_term:to_integer(kz_json:get_integer_value(<<"Precedence">>, CCVs, 5))
 
-            ,presence_id=kz_json:get_value(<<"Presence-ID">>, JObj)
-            ,realm=props:get_value(<<"Realm">>, CCVs)
-            ,username=props:get_value(<<"Username">>, CCVs)
+            ,presence_id=kz_json:get_ne_binary_value(<<"Presence-ID">>, JObj)
+            ,realm=kz_json:get_ne_binary_value(<<"Realm">>, CCVs)
+            ,username=kz_json:get_ne_binary_value(<<"Username">>, CCVs)
 
-            ,answered=kz_json:get_value(<<"Answer-State">>, JObj) =:= <<"answered">>
+            ,answered=kz_json:get_ne_binary_value(<<"Answer-State">>, JObj) =:= <<"answered">>
             ,node=Node
             ,timestamp=kz_time:current_tstamp()
 
-            ,profile=kz_json:get_value(<<"Caller-Profile">>, JObj, ?DEFAULT_FS_PROFILE)
-            ,context=kz_json:get_value(<<"Caller-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT)
-            ,dialplan=kz_json:get_value(<<"Caller-Dialplan">>, JObj, ?DEFAULT_FS_DIALPLAN)
+            ,profile=kz_json:get_ne_binary_value(<<"Caller-Profile">>, JObj, ?DEFAULT_FS_PROFILE)
+            ,context=kz_json:get_ne_binary_value(<<"Caller-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT)
+            ,dialplan=kz_json:get_ne_binary_value(<<"Caller-Dialplan">>, JObj, ?DEFAULT_FS_DIALPLAN)
 
             ,other_leg=OtherLeg
-            ,handling_locally=handling_locally(props:get_value(<<"Ecallmgr-Node">>, CCVs), OtherLeg)
+            ,handling_locally=handling_locally(kz_json:get_ne_binary_value(<<"Ecallmgr-Node">>, CCVs), OtherLeg)
 
             ,to_tag=kz_json:get_value(<<"To-Tag">>, JObj)
             ,from_tag=kz_json:get_value(<<"From-Tag">>, JObj)
 
-            ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
+            ,interaction_id=kz_json:get_ne_binary_value(<<?CALL_INTERACTION_ID>>, CCVs)
 
             ,is_loopback=kz_json:is_true(<<"Channel-Is-Loopback">>, JObj)
             ,loopback_leg_name=kz_json:get_value(<<"Channel-Loopback-Leg">>, JObj)
             ,loopback_other_leg=kz_json:get_value(<<"Channel-Loopback-Other-Leg-ID">>, JObj)
 
-            ,callflow_id=props:get_value(<<"CallFlow-ID">>, CCVs)
+            ,callflow_id=kz_json:get_ne_binary_value(<<"CallFlow-ID">>, CCVs)
             ,cavs=CAVs
+            ,ccvs=CCVs
             }.
 
 
