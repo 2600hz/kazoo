@@ -60,7 +60,8 @@
     },
     "required": [
         "Account-ID",
-        "Audit-Log"
+        "Audit-Log",
+        "Time-Stamp"
     ],
     "type": "object"
 }

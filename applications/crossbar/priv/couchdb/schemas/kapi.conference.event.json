@@ -16,13 +16,13 @@
             "type": "string"
         },
         "Conference-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Conference-ID": {
             "type": "string"
         },
         "Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Event": {
             "type": "string"

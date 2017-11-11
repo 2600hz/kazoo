@@ -68,6 +68,9 @@
         "Control-Queue": {
             "type": "string"
         },
+        "Custom-Appliction-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },

@@ -53,6 +53,7 @@ is_fireable_hook(_JObj, #webhook{include_loopback='true'}) -> 'true';
 is_fireable_hook(JObj, #webhook{include_loopback='false'
                                ,id=_Id, hook_id=_HookId
                                }) ->
+    lager:debug("evt: ~s", [kz_json:encode(JObj)]),
     case kz_json:is_false(<<"Channel-Is-Loopback">>, JObj, 'true') of
         'true' -> 'true';
         'false' ->
@@ -113,6 +114,7 @@ base_hook_event(JObj, AccountId, Acc) ->
       ,{<<"caller_id_name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
       ,{<<"caller_id_number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
       ,{<<"custom_channel_vars">>, non_reserved_ccvs(JObj)}
+      ,{<<"custom_application_vars">>, cavs(JObj)}
       ,{<<"emergency_resource_used">>, kz_term:is_true(ccv(JObj, <<"Emergency-Resource">>))}
       ,{<<"from">>, kz_json:get_value(<<"From">>, JObj)}
       ,{<<"inception">>, kz_json:get_value(<<"Inception">>, JObj)}
@@ -150,3 +152,9 @@ non_reserved_ccvs(JObj) ->
 non_reserved_ccvs(_CCVs, 'undefined') -> 'undefined';
 non_reserved_ccvs(CCVs, Keys) ->
     kz_json:filter(fun({K, _}) -> not lists:member(K, Keys) end, CCVs).
+
+
+-spec cavs(kz_json:object()) ->
+                  api_object().
+cavs(JObj) ->
+    kz_call_event:custom_application_vars(JObj).

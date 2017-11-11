@@ -47,7 +47,7 @@ init() ->
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     authorize(Context, cb_context:req_nouns(Context)).
 
 authorize(Context, [{<<"ips">>, []}]) ->
@@ -102,11 +102,11 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     validate_ips(Context, cb_context:req_verb(Context)).
 
 validate(Context, PathToken) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     validate_ips(Context, PathToken, cb_context:req_verb(Context)).
 
 -spec validate_ips(cb_context:context(), ne_binary()) -> cb_context:context().

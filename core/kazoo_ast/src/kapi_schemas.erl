@@ -106,9 +106,10 @@ process_module(KapiModule) ->
               ,{'application', fun add_app_config/2}
               ,{'after_application', fun add_schemas_to_bucket/2}
               ],
-    #acc{project_schemas=Schemas} = kazoo_ast:walk_modules([KapiModule], Options),
+    Acc = kazoo_ast:walk_modules([KapiModule], Options),
+    #acc{project_schemas=Schemas} = add_schemas_to_bucket(KapiModule, Acc),
+
     io:format(" done~n", []),
-    ?DEBUG("schemas: ~p~n", [Schemas]),
     Schemas.
 
 -spec print_dot(ne_binary() | module(), acc()) ->
@@ -157,8 +158,10 @@ add_schemas_to_bucket(_App, #acc{schema_dir = PrivDir
 set_function(<<_/binary>> = Function, #acc{}=Acc) ->
     case kz_binary:reverse(Function) of
         <<"v_", Nuf/binary>> ->
+            ?DEBUG("validator ~s~n", [Function]),
             Acc#acc{api_name=kz_binary:reverse(Nuf)};
         _ ->
+            ?DEBUG("builder ~s~n", [Function]),
             Acc#acc{api_name=Function}
     end;
 set_function(Function, Acc) ->
@@ -242,6 +245,8 @@ add_field([_|_]=Fields, Schema) ->
 
     Guessed = guess_field_default(lists:last(Fields)),
 
+    ?DEBUG("adding path ~p guessed type ~p~n", [Path, Guessed]),
+
     Properties = kz_json:get_json_value(Path, Schema, kz_json:new()),
 
     kz_json:set_value(Path, kz_json:merge(Guessed, Properties), Schema);
@@ -317,7 +322,12 @@ guess_field_default_rev(<<"timil_", _/binary>>) ->
     kz_json:from_list([{<<"type">>, <<"integer">>}]);
 guess_field_default_rev(<<"tfel_", _/binary>>) ->
     kz_json:from_list([{<<"type">>, <<"integer">>}]);
+guess_field_default_rev(<<"srav_", _/binary>>) ->
+    kz_json:from_list([{<<"type">>, <<"object">>}]);
+guess_field_default_rev(<<"sredaeh_", _/binary>>) ->
+    kz_json:from_list([{<<"type">>, <<"object">>}]);
 guess_field_default_rev(_Dleif) ->
+    ?DEBUG("failed to guess ~s~n", [kz_binary:reverse(_Dleif)]),
     kz_json:from_list([{<<"type">>, <<"string">>}]).
 
 validators_to_schema(Values, Types, Acc) ->

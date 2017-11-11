@@ -2819,18 +2819,18 @@
         "callflows.set_variables": {
             "description": "Validator for the set_variables callflow's data object",
             "properties": {
-                "custom_channel_vars": {
+                "custom_application_vars": {
                     "default": {},
-                    "description": "Key-value pairs to set as custom_channel_vars on the channel",
+                    "description": "Key-value pairs to set as custom_application_vars on the channel",
                     "type": "object"
                 },
                 "export": {
-                    "description": "When true the provided custom_channel_vars are set on the channel and any channel bridged to it later",
+                    "description": "When true the provided custom_application_vars are set on the channel and any channel bridged to it later",
                     "type": "boolean"
                 }
             },
             "required": [
-                "custom_channel_vars"
+                "custom_application_vars"
             ],
             "type": "object"
         },
@@ -7007,6 +7007,9 @@
                 "Caller-ID-Number": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -7316,6 +7319,9 @@
                 "Call-ID": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -7450,6 +7456,9 @@
                 },
                 "Control-Queue": {
                     "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -8188,6 +8197,9 @@
                 "Conference-ID": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -8210,6 +8222,12 @@
                         "command"
                     ],
                     "type": "string"
+                },
+                "Outbound-Call-ID": {
+                    "type": "string"
+                },
+                "Timeout": {
+                    "type": "integer"
                 }
             },
             "required": [
@@ -8307,13 +8325,13 @@
                     "type": "string"
                 },
                 "Conference-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Conference-ID": {
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event": {
                     "type": "string"
@@ -8505,7 +8523,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Energy-Level": {
                     "type": "string"
@@ -9557,6 +9575,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -9695,6 +9716,9 @@
                 "Bypass-Media": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -9782,11 +9806,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -10248,7 +10275,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Error-Message": {
                     "type": "string"
@@ -10287,7 +10314,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -10591,7 +10618,7 @@
                     "type": "string"
                 },
                 "Media-Macros": {
-                    "type": "string"
+                    "type": "object"
                 }
             },
             "required": [
@@ -11787,6 +11814,9 @@
                 "Call-ID": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Call-Vars": {
                     "type": "object"
                 },
@@ -12515,7 +12545,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -13581,7 +13611,8 @@
                 "Action": {
                     "enum": [
                         "refresh_database",
-                        "refresh_views"
+                        "refresh_views",
+                        "clean_services"
                     ],
                     "type": "string"
                 },
@@ -15369,7 +15400,6 @@
             },
             "required": [
                 "Account-ID",
-                "Password",
                 "User-ID"
             ],
             "type": "object"
@@ -16310,7 +16340,8 @@
             },
             "required": [
                 "Account-ID",
-                "Audit-Log"
+                "Audit-Log",
+                "Time-Stamp"
             ],
             "type": "object"
         },
@@ -17118,6 +17149,9 @@
                 },
                 "Control-Queue": {
                     "type": "string"
+                },
+                "Custom-Appliction-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -18512,7 +18546,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -18662,11 +18696,14 @@
                 "Continue-On-Fail": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Dial-Endpoint-Method": {
                     "type": "string"
@@ -18716,7 +18753,7 @@
                     "type": "string"
                 },
                 "Export-Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -18880,6 +18917,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -18942,7 +18982,7 @@
                     "type": "string"
                 },
                 "Export-Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -19043,6 +19083,9 @@
                 "Bypass-Media": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -19095,11 +19138,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -19296,11 +19342,17 @@
                 "Control-Queue": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Appliction-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "DTMF-Digit": {
                     "type": "string"
@@ -19536,11 +19588,14 @@
                 "Control-Queue": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "DTMF-Digit": {
                     "type": "string"
@@ -19763,11 +19818,14 @@
                     },
                     "type": "object"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-Routing-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
                     "type": "object"
@@ -19887,6 +19945,9 @@
                 "Application-Data": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -19986,6 +20047,9 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -20369,6 +20433,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -20573,11 +20640,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"

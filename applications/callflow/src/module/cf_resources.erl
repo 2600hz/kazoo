@@ -86,6 +86,7 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_B_LEG_EVENTS, [<<"DTMF">>]}
       ,{?KEY_CALL_ID, cf_exe:callid(Call)}
       ,{?KEY_CCVS, get_channel_vars(Call)}
+      ,{?KEY_CAVS, kapps_call:custom_application_vars(Call)}
       ,{?KEY_REQUESTOR_CCVS, kapps_call:custom_channel_vars(Call)}
       ,{?KEY_CONTROL_QUEUE, cf_exe:control_queue(Call)}
       ,{?KEY_CSHS, get_sip_headers(Data, Call)}

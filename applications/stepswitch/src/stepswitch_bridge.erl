@@ -382,6 +382,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Caller-ID-Number">>, Number}
       ,{<<"Caller-ID-Name">>, Name}
       ,{<<"Custom-Channel-Vars">>, CCVs}
+      ,{<<"Custom-Application-Vars">>, kapi_offnet_resource:custom_application_vars(OffnetReq)}
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
       ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
       ,{<<"Media">>, kapi_offnet_resource:media(OffnetReq)}

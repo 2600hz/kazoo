@@ -18,6 +18,9 @@
         "Conference-ID": {
             "type": "string"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },
@@ -40,6 +43,12 @@
                 "command"
             ],
             "type": "string"
+        },
+        "Outbound-Call-ID": {
+            "type": "string"
+        },
+        "Timeout": {
+            "type": "integer"
         }
     },
     "required": [

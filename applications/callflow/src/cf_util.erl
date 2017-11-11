@@ -45,6 +45,8 @@
         ,event_listener_name/2
         ]).
 
+-export([flush_control_queue/1]).
+
 -include("callflow.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
@@ -873,3 +875,18 @@ vm_count(JObj) ->
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kvm_messages:count_by_owner(AccountDb, OwnerId).
+
+-spec flush_control_queue(kapps_call:call()) -> 'ok'.
+flush_control_queue(Call) ->
+    ControlQueue = kapps_call:control_queue_direct(Call),
+    CallId = kapps_call:call_id_direct(Call),
+
+    NoopId = kz_datamgr:get_uuid(),
+    Command = [{<<"Application-Name">>, <<"noop">>}
+              ,{<<"Msg-ID">>, NoopId}
+              ,{<<"Insert-At">>, <<"flush">>}
+              ,{<<"Call-ID">>, CallId}
+               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("flushing with ~p", [Command]),
+    kz_amqp_worker:cast(Command, fun(C) -> kapi_dialplan:publish_command(ControlQueue, C) end).

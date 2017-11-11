@@ -454,10 +454,10 @@ maybe_update_tts(Context, Text, VoiceLang, 'success') ->
 
     try kazoo_tts:create(Text, VoiceLang) of
         {'error', Reason} ->
-            crossbar_doc:delete(Context),
+            _ = crossbar_doc:delete(Context),
             crossbar_util:response('error', kz_term:to_binary(Reason), Context);
         {'error', 'tts_provider_failure', Reason} ->
-            crossbar_doc:delete(Context),
+            _ = crossbar_doc:delete(Context),
             crossbar_util:response('error', kz_term:to_binary(Reason), Context);
         {'ok', ContentType, Content} ->
             MediaId = kz_doc:id(JObj),
@@ -480,7 +480,7 @@ maybe_update_tts(Context, Text, VoiceLang, 'success') ->
     catch
         _E:_R ->
             lager:debug("creating tts excepted: ~s: ~p", [_E, _R]),
-            crossbar_doc:delete(Context),
+            _ = crossbar_doc:delete(Context),
             crossbar_util:response('error', <<"creating TTS failed unexpectedly">>, Context)
     end;
 maybe_update_tts(Context, _Text, _Voice, _Status) -> Context.
