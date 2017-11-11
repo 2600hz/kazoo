@@ -2,15 +2,70 @@
     "_id": "_design/mailbox_messages",
     "language": "javascript",
     "views": {
+        "count_per_box_folder": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted)",
+                "    return;",
+                "  emit([doc.source_id, doc.metadata.folder, doc.metadata.timestamp]);",
+                "}"
+            ]
+        },
         "count_per_folder": {
-            "map": "function(doc) { if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted) return; emit([doc.source_id, doc.metadata.folder], 1); }",
-            "reduce": "_count"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted)",
+                "    return;",
+                "  emit([doc.metadata.folder, doc.metadata.timestamp, doc.source_id]);",
+                "}"
+            ]
         },
         "listing_by_mailbox": {
-            "map": "function(doc) { if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted) return; emit([doc.source_id, doc.metadata.timestamp], {'timestamp': doc.metadata.timestamp, 'from': doc.metadata.from, 'to': doc.metadata.to, 'caller_id_number': doc.metadata.caller_id_number, 'caller_id_name': doc.metadata.caller_id_name, 'call_id': doc.metadata.call_id, 'folder': doc.metadata.folder, 'length': doc.metadata.length, 'media_id': doc.metadata.media_id}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted)",
+                "    return;",
+                "  emit([doc.source_id, doc.metadata.timestamp], {",
+                "    'timestamp': doc.metadata.timestamp,",
+                "    'from': doc.metadata.from,",
+                "    'to': doc.metadata.to,",
+                "    'caller_id_number': doc.metadata.caller_id_number,",
+                "    'caller_id_name': doc.metadata.caller_id_name,",
+                "    'call_id': doc.metadata.call_id,",
+                "    'folder': doc.metadata.folder,",
+                "    'length': doc.metadata.length,",
+                "    'media_id': doc.metadata.media_id",
+                "   });",
+                "}"
+            ]
+        },
+        "listing_by_timestamp": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted)",
+                "    return;",
+                "  emit([doc.metadata.timestamp, doc.source_id], {",
+                "    'timestamp': doc.metadata.timestamp,",
+                "    'from': doc.metadata.from,",
+                "    'to': doc.metadata.to,",
+                "    'caller_id_number': doc.metadata.caller_id_number,",
+                "    'caller_id_name': doc.metadata.caller_id_name,",
+                "    'call_id': doc.metadata.call_id,",
+                "    'folder': doc.metadata.folder,",
+                "    'length': doc.metadata.length,",
+                "    'media_id': doc.metadata.media_id",
+                "   });",
+                "}"
+            ]
         },
         "missing_metadata": {
-            "map": "function(doc) { if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted || doc.metadata) return; emit(doc._id); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'mailbox_message' || doc.pvt_deleted || doc.metadata)",
+                "    return;",
+                "  emit(doc._id);",
+                "}"
+            ]
         }
     }
 }

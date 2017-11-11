@@ -14,8 +14,7 @@
         ]).
 
 -export([count/1, count_per_folder/1, count_per_folder/2
-         %% functions below are returning counts in JObj format
-        ,count/2, count_by_owner/2, count_none_deleted/2
+        ,count/2, count_by_owner/2, count_non_deleted/2
         ]).
 
 -export([update/3, update/4, change_folder/4, change_folder/5
@@ -25,63 +24,122 @@
 
 -include("kz_voicemail.hrl").
 
--define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
--define(MSG_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
+-define(COUNT_ALL, [<<"new">>, <<"saved">>, <<"deleted">>]).
+-define(COUNT_NON_DELETED, [<<"new">>, <<"saved">>]).
 
--define(BOX_ID_KEY_INDEX, 1).
--define(FOLDER_KEY_INDEX, 2).
+-define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
+-define(MSG_LISTING_BY_TIMESTAMP, <<"mailbox_messages/listing_by_timestamp">>).
+-define(MSG_COUNT_PER_FOLDER, <<"mailbox_messages/count_per_folder">>).
+-define(MSG_COUNT_PER_BOX_FOLDER, <<"mailbox_messages/count_per_box_folder">>).
 
 -type norm_fun() :: 'undefined' |
-                    fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+                    fun((kz_json:object()) -> kz_json:object()).
+
+
+%% keys are: <<"new">>, <<"saved">>, <<"deleted">>, <<"non_deleted">>, <<"total">>
+-type per_folder_count() :: #{ne_binary() => non_neg_integer()}.
+
+-type count_map() :: #{ne_binary() => per_folder_count()}.
+-type non_deleted_tuple() :: {non_neg_integer(), non_neg_integer()}.
+
+-type get_map() :: #{ne_binary() => kz_json:objects()}.
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc fetch all messages for a voicemail box or on an account
+%% @doc
+%% Get all voicemail messages (metadata only) for an account which
+%% are in retention duration range in whatever folder they're in.
+%%
+%% returns a map with box_id as key and a list of messages metadata
+%% as key's value
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) -> kz_json:objects().
--spec get(ne_binary(), message() | kz_proplist()) -> kz_json:objects().
+-spec get(ne_binary()) -> get_map().
 get(AccountId) ->
-    get(AccountId, []).
+    ViewOpts = [{'startkey', []}
+               ,{'endkey', []}
+               ],
+    normalize_account_listing(get_view_results(AccountId, ?MSG_LISTING_BY_TIMESTAMP, ViewOpts, 'undefined')).
 
-get(AccountId, ?NE_BINARY = BoxId) ->
-    get(AccountId, [{'startkey', [BoxId]}
-                   ,{'endkey', [BoxId, kz_json:new()]}
-                   ]);
-get(AccountId, ViewOpts) when is_list(ViewOpts) ->
-    NormFun = fun normalize_view_results/2,
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get all voicemail messages (metadata only) for a specific box which
+%% are in retention duration range and in whatever folder they're in.
+%% @end
+%%--------------------------------------------------------------------
+-spec get(ne_binary(), message() | kz_proplist()) -> kz_json:objects().
+get(AccountId, ?NE_BINARY=BoxId) ->
+    ViewOpts = [{'startkey', [BoxId]}
+               ,{'endkey', [BoxId]}
+               ],
+    NormFun = fun(JObj) -> kz_json:get_value(<<"value">>, JObj) end,
     get_view_results(AccountId, ?MSG_LISTING_BY_MAILBOX, ViewOpts, NormFun);
 get(AccountId, Box) ->
     get(AccountId, kz_doc:id(Box)).
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Sum of non-deleted messages
+%% @doc
+%% Returns count of messages in an account which are in retention
+%% duration in whatever folder they are in.
+%%
+%% Note: returns a map with box_id as key, and a map of count of
+%% each folder as box_id key's value
+%%
+%% @equiv Same as calling count_per_folder/1
+%%
+%% Example:
+%% #{<<"5ee08e5e8d4cac3d0fbc2f23870e5dbc">> =>
+%%       #{<<"new">> => 7,<<"non_deleted">> => 8,<<"saved">> => 1,
+%%         <<"total">> => 8},
+%%   <<"79371edb968bf5086d61a41b1849ab8e">> =>
+%%       #{<<"new">> => 7,<<"non_deleted">> => 7,<<"total">> => 7}}
 %% @end
 %%--------------------------------------------------------------------
--spec count(ne_binary()) -> kz_json:object().
--spec count(ne_binary(), ne_binary()) -> non_neg_integer().
--spec count_none_deleted(ne_binary(), ne_binary()) -> count_result().
-%% Note: returns counts per folders in JObj
+-spec count(ne_binary()) -> count_map().
 count(AccountId) ->
     count_per_folder(AccountId).
-
-%% Note: returns total non-deleted count
-count(AccountId, BoxId) ->
-    {New, Saved} = count_none_deleted(AccountId, BoxId),
-    New + Saved.
-
-%% Note: returns counts in {new, saved} format
-count_none_deleted(AccountId, BoxId) ->
-    FoldersCounts = count_per_folder(AccountId, BoxId),
-    normalize_count_none_deleted(BoxId, FoldersCounts).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Returns total count of non-deleted messages in a specific box which
+%% are in retention duration and are in 'new' or 'saved' folder only.
 %% @end
 %%--------------------------------------------------------------------
--spec count_by_owner(ne_binary(), ne_binary()) -> count_result().
+-spec count(ne_binary(), ne_binary()) -> non_neg_integer().
+count(AccountId, BoxId) ->
+    {New, Saved} = count_non_deleted(AccountId, BoxId),
+    New + Saved.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns a tuple of count of non-deleted messages in a specific box which
+%% are in retention duration and are in 'new' or 'saved' folder only.
+%%
+%% Note: returns counts in {new, saved} format (both values are integer)
+%% @end
+%%--------------------------------------------------------------------
+-spec count_non_deleted(ne_binary(), ne_binary()) -> non_deleted_tuple().
+count_non_deleted(AccountId, BoxId) ->
+    CountMap = count_per_folder(AccountId, [BoxId], ?MSG_COUNT_PER_BOX_FOLDER, ?COUNT_NON_DELETED),
+    VMBoxCount = maps:get(BoxId, CountMap, maps:new()),
+    {maps:get(<<"new">>, VMBoxCount, 0)
+    ,maps:get(<<"saved">>, VMBoxCount, 0)
+    }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get a list of voicemail boxes assign to a user first and then
+%% return total count of non-deleted messages of those boxes.
+%%
+%% returns same format as count_non_deleted/2
+%% @end
+%%--------------------------------------------------------------------
+-spec count_by_owner(ne_binary(), ne_binary()) -> non_deleted_tuple().
 count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
     AccountId = kz_util:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
@@ -92,47 +150,77 @@ count_by_owner(AccountId, OwnerId) ->
             lager:info("no voicemail boxes belonging to user ~s found", [OwnerId]),
             {0, 0};
         {'ok', Boxes} ->
-            FolderQuantities = count_per_folder(AccountId),
             BoxIds = [kz_json:get_value(<<"value">>, Box) || Box <- Boxes],
             lager:debug("found ~p vociemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
-            sum_owner_mailboxes(FolderQuantities, BoxIds, {0, 0});
+            sum_owner_mailboxes(AccountId, BoxIds, {0, 0});
         {'error', _R} ->
             lager:info("unable to lookup vm counts by owner: ~p", [_R]),
             {0, 0}
     end.
 
--spec sum_owner_mailboxes(kz_json:object(), ne_binaries(), count_result()) -> count_result().
+-spec sum_owner_mailboxes(ne_binary(), ne_binaries(), non_deleted_tuple()) -> non_deleted_tuple().
 sum_owner_mailboxes(_, [], Results) -> Results;
-sum_owner_mailboxes(FolderQuantities, [BoxId|BoxIds], {New, Saved}) ->
-    {BoxNew, BoxSaved} = normalize_count_none_deleted(BoxId, FolderQuantities),
+sum_owner_mailboxes(AccountId, [BoxId|BoxIds], {New, Saved}) ->
+    {BoxNew, BoxSaved} = count_non_deleted(AccountId, BoxId),
     lager:debug("adding mailbox ~s with ~p new and ~p saved messages to user's quantities"
                ,[BoxId, BoxNew, BoxSaved]),
-    sum_owner_mailboxes(FolderQuantities, BoxIds, {New + BoxNew, Saved + BoxSaved}).
+    sum_owner_mailboxes(AccountId,  BoxIds, {New + BoxNew, Saved + BoxSaved}).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Returns count of messages per box per folder in an account which are in
+%% retention duration.
+%%
+%% Note: returns a map with box_id as key, and a map of count of
+%% each folder as box_id key's value
+%%
+%% Example:
+%% #{<<"5ee08e5e8d4cac3d0fbc2f23870e5dbc">> =>
+%%       #{<<"new">> => 7,<<"non_deleted">> => 8,<<"saved">> => 1,
+%%         <<"total">> => 8},
+%%   <<"79371edb968bf5086d61a41b1849ab8e">> =>
+%%       #{<<"new">> => 7,<<"non_deleted">> => 7,<<"total">> => 7}}
 %% @end
 %%--------------------------------------------------------------------
--spec count_per_folder(ne_binary()) -> kz_json:object().
--spec count_per_folder(ne_binary(), ne_binary() | kz_proplist()) -> kz_json:object().
+-spec count_per_folder(ne_binary()) -> count_map().
 count_per_folder(AccountId) ->
-    count_per_folder(AccountId, []).
+    count_per_folder(AccountId, [], ?MSG_COUNT_PER_FOLDER, ?COUNT_ALL).
 
-count_per_folder(AccountId, ?NE_BINARY = BoxId) ->
-    ViewOpts = [{'startkey', [BoxId]}
-               ,{'endkey', [BoxId, kz_json:new()]}
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Same as count_per_folder/1 but only for a specific box
+%% @end
+%%--------------------------------------------------------------------
+-spec count_per_folder(ne_binary(), ne_binary()) -> count_map().
+count_per_folder(AccountId, BoxId) ->
+    count_per_folder(AccountId, [BoxId], ?MSG_COUNT_PER_BOX_FOLDER, ?COUNT_ALL).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Loop over each folder, get view result and do the sum with
+%% previous result.
+%% @end
+%%--------------------------------------------------------------------
+-spec count_per_folder(ne_binary(), ne_binaries(), ne_binary(), ne_binaries()) -> count_map().
+count_per_folder(AccountId, Keys, View, Folders) ->
+    lists:foldl(fun(Folder, ResultMap) ->
+                        count_per_folder(AccountId, Keys, View, Folder, ResultMap)
+                end
+               ,#{}
+               ,Folders
+               ).
+
+-spec count_per_folder(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), count_map()) -> count_map().
+count_per_folder(AccountId, Keys, View, Folder, ResultMap) ->
+    ViewOpts = [{'startkey', Keys ++ [Folder]}
+               ,{'endkey', Keys ++ [Folder]}
                ],
-    count_per_folder(AccountId, ViewOpts);
-count_per_folder(AccountId, ViewOpts0) ->
-    ViewOpts = ['reduce'
-               ,'group'
-               ,{'group_level', 2}
-                | ViewOpts0
-               ],
-    case get_view_results(AccountId, ?MSG_COUNT_VIEW, ViewOpts, 'undefined') of
-        [] -> kz_json:new();
-        Results -> normalize_count(Results)
+    case get_view_results(AccountId, View, ViewOpts, 'undefined') of
+        [] -> ResultMap;
+        Results -> normalize_count(View, Results, ResultMap)
     end.
 
 %%--------------------------------------------------------------------
@@ -146,33 +234,47 @@ update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
 
 update(AccountId, BoxId, [?NE_BINARY = _Msg | _] = MsgIds, Funs) ->
-    FetchResult = fetch(AccountId, MsgIds, BoxId),
-    SucceededJObjs = kz_json:get_value(<<"succeeded">>, FetchResult, []),
-    FailedJObjs = kz_json:get_value(<<"failed">>, FetchResult, []),
-    Results = do_update(AccountId, SucceededJObjs, Funs, FailedJObjs),
-    kz_json:from_list(dict:to_list(Results));
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    FetchMap = fetch(AccountId, MsgIds, BoxId, RetenTimestamp),
+    do_update(AccountId, FetchMap, Funs, RetenTimestamp);
 update(AccountId, _BoxId, JObjs, Funs) ->
-    Results = do_update(AccountId, JObjs, Funs, []),
-    kz_json:from_list(dict:to_list(Results)).
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    do_update(AccountId, #{succeeded => JObjs}, Funs, RetenTimestamp).
 
--spec do_update(ne_binary(), kz_json:objects(), update_funs(), kz_json:objects()) -> dict:dict().
-do_update(AccountId, SucceededJObjs, Funs, FailedJObjs) ->
-    ToUpdateDict = apply_fun_and_map_msgs_to_modb(AccountId, SucceededJObjs, Funs, dict:new()),
-    ResultsDict = dict:from_list([{<<"failed">>, FailedJObjs}]),
-    dict:fold(fun update_fun/3, ResultsDict, ToUpdateDict).
+-spec do_update(ne_binary(), bulk_map(), update_funs(), gregorian_seconds()) -> kz_json:object().
+do_update(AccountId, FetchMap, Funs, RetenTimestamp) ->
+    #{to_update_map := ToUpdateMap
+     ,failed := Failed
+     ,enforce_set := EnforceSet
+     } = split_to_modbs_and_apply_funs(FetchMap, AccountId, Funs, RetenTimestamp),
+    bulk_result(
+      maps:fold(fun update_fun/3
+               ,#{succeeded => []
+                 ,failed => Failed
+                 ,enforce_set => EnforceSet
+                 }
+               ,ToUpdateMap
+               )
+     ).
 
--spec update_fun(ne_binary(), kz_json:objects(), dict:dict()) -> dict:dict().
-update_fun(Db, JObj, ResDict) ->
-    case kz_datamgr:save_docs(Db, JObj) of
+-spec bulk_result(bulk_map()) -> kz_json:object().
+bulk_result(Map) ->
+    kz_json:from_list_recursive(
+      props:filter_empty(
+        [{<<"succeeded">>, maps:get(succeeded, Map, [])}
+        ,{<<"failed">>, maps:get(failed, Map, [])}
+        ])
+     ).
+
+-spec update_fun(ne_binary(), kz_json:objects(), bulk_map()) -> bulk_map().
+update_fun(Db, JObjs, #{failed := Failed}=ResultMap) ->
+    case kz_datamgr:save_docs(Db, JObjs) of
         {'ok', Saved} ->
-            normalize_bulk_results(<<"update">>, 'undefined', 'undefined', Saved, ResDict);
+            normalize_bulk_results(ResultMap, Saved, <<"update">>, 'undefined', 'undefined');
         {'error', R} ->
-            lager:warning("failed to bulk update voicemail messages for db ~s: ~p"
-                         ,[Db, R]),
-            Failed = kz_json:from_list([{kz_doc:id(D), kz_term:to_binary(R)}
-                                        || D <- JObj
-                                       ]),
-            dict:append(<<"failed">>, Failed, ResDict)
+            lager:warning("failed to bulk update voicemail messages for db ~s: ~p", [Db, R]),
+            IdReasons = [{kz_doc:id(D), kz_term:to_binary(R)} || D <- JObjs],
+            ResultMap#{failed => Failed ++ IdReasons}
     end.
 
 %%--------------------------------------------------------------------
@@ -181,42 +283,40 @@ update_fun(Db, JObj, ResDict) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), ne_binaries()) -> kz_json:object().
--spec fetch(ne_binary(), ne_binaries(), api_ne_binary()) -> kz_json:object().
 fetch(AccountId, MsgIds) ->
     fetch(AccountId, MsgIds, 'undefined').
 
+-spec fetch(ne_binary(), ne_binaries(), api_ne_binary()) -> kz_json:object().
 fetch(AccountId, MsgIds, BoxId) ->
-    DbsRange = kvm_util:create_range_dbs(AccountId, MsgIds),
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
-    Fun = fun(Db, Ids, ResDict) ->
-                  fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp)
-          end,
-    kz_json:from_list(
-      dict:to_list(
-        dict:fold(Fun, dict:new(), DbsRange)
-       )
-     ).
+    bulk_result(fetch(AccountId, MsgIds, BoxId, RetenTimestamp)).
 
--spec fetch_fun(ne_binary(), ne_binary(), ne_binaries(), dict:dict(), gregorian_seconds()) -> dict:dict().
-fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp) ->
+-spec fetch(ne_binary(), ne_binaries(), api_ne_binary(), gregorian_seconds()) -> bulk_map().
+fetch(AccountId, MsgIds, BoxId, RetenTimestamp) ->
+    DbsRange = kvm_util:split_to_modbs(AccountId, MsgIds),
+    Fun = fun(Db, Ids, ResultMap) ->
+                  fetch_fun(Db, BoxId, Ids, ResultMap, RetenTimestamp)
+          end,
+    maps:fold(Fun, #{succeeded => [], failed => []}, DbsRange).
+
+-spec fetch_fun(ne_binary(), ne_binary(), ne_binaries(), bulk_map(), gregorian_seconds()) -> bulk_map().
+fetch_fun(Db, BoxId, Ids, ResultMap, RetenTimestamp) ->
     case kz_datamgr:db_exists(Db)
-        andalso kz_datamgr:open_cache_docs(Db, Ids)
+        andalso kz_datamgr:open_docs(Db, Ids)
     of
         'false' ->
-            fetch_faild_with_reason("not_found", Db, Ids, ResDict);
+            fetch_faild_with_reason("not_found", Db, Ids, ResultMap);
         {'ok', JObjs} ->
-            normalize_bulk_results(<<"fetch">>, BoxId, RetenTimestamp, JObjs, ResDict);
+            normalize_bulk_results(ResultMap, JObjs, <<"fetch">>, BoxId, RetenTimestamp);
         {'error', R} ->
-            fetch_faild_with_reason(R, Db, Ids, ResDict)
+            fetch_faild_with_reason(R, Db, Ids, ResultMap)
     end.
 
--spec fetch_faild_with_reason(any(), ne_binary(), ne_binaries(), dict:dict()) -> dict:dict().
-fetch_faild_with_reason(Reason, Db, Ids, ResDict) ->
+-spec fetch_faild_with_reason(any(), ne_binary(), ne_binaries(), bulk_map()) -> bulk_map().
+fetch_faild_with_reason(Reason, Db, Ids, #{failed := Failed}=ResultMap) ->
     lager:warning("failed to bulk fetch voicemail messages from db ~s: ~p", [Db, Reason]),
-    Failed = kz_json:from_list([{Id, kz_term:to_binary(Reason)}
-                                || Id <- Ids
-                               ]),
-    dict:append(<<"failed">>, Failed, ResDict).
+    IdReasons = [{Id, kz_term:to_binary(Reason)} || Id <- Ids],
+    ResultMap#{failed => IdReasons ++ Failed}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -251,24 +351,24 @@ move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId) ->
 move_to_vmbox(AccountId, [?NE_BINARY = _Msg | _] = MsgIds, OldBoxId, NewBoxId, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-    Results = do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, dict:new(), Funs),
-    kz_json:from_list(dict:to_list(Results));
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    bulk_result(do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, #{}, Funs, RetenTimestamp));
 move_to_vmbox(AccountId, MsgJObjs, OldBoxId, NewBoxId, Funs) ->
     MsgIds = [kzd_box_message:get_msg_id(J) || J <- MsgJObjs],
     move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId, Funs).
 
--spec do_move(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_json:object(), dict:dict(), update_funs()) -> dict:dict().
-do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResDict, _) ->
-    ResDict;
-do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResDict, Funs) ->
-    case kvm_message:do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ, Funs) of
+-spec do_move(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_json:object(), bulk_map(), update_funs(), gregorian_seconds()) -> bulk_map().
+do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResultMap, _, _) ->
+    ResultMap;
+do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResultMap, Funs, RetenTimestamp) ->
+    case kvm_message:maybe_do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ, Funs, RetenTimestamp) of
         {'ok', Moved} ->
-            Res = dict:append(<<"succeeded">>, kz_doc:id(Moved), ResDict),
-            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res, Funs);
+            NewMap = maps:update_with(succeeded, fun(List) -> [kz_doc:id(Moved)|List] end, [kz_doc:id(Moved)], ResultMap),
+            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, NewMap, Funs, RetenTimestamp);
         {'error', Reason} ->
-            Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
-            Res = dict:append(<<"failed">>, Failed, ResDict),
-            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res, Funs)
+            IdReason = {FromId, kz_term:to_binary(Reason)},
+            NewMap = maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], ResultMap),
+            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, NewMap, Funs, RetenTimestamp)
     end.
 
 %%--------------------------------------------------------------------
@@ -286,15 +386,14 @@ copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId], Funs);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Funs) ->
-    kz_json:from_list(
-      dict:to_list(
-        lists:foldl(fun(Id, AccDict) ->
-                            kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccDict, Funs)
-                    end
-                   ,dict:new()
-                   ,Ids
-                   )
-       )
+    RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
+    bulk_result(
+      lists:foldl(fun(Id, AccMap) ->
+                          kvm_message:maybe_copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccMap, Funs, RetenTimestamp)
+                  end
+                 ,#{}
+                 ,Ids
+                 )
      ).
 
 %%%===================================================================
@@ -306,25 +405,24 @@ copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Funs) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) ->
-                              kz_json:objects().
--spec get_view_results(ne_binaries(), ne_binary(), kz_proplist(), norm_fun(), kz_json:objects()) ->
-                              kz_json:objects().
+-spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) -> kz_json:objects().
 get_view_results(?NE_BINARY = AccountId, View, ViewOpts, NormFun) ->
-    Dbs = kvm_util:get_range_db(AccountId),
-    get_view_results(Dbs, View, ViewOpts, NormFun, []).
+    {From, To, Dbs} = kvm_util:get_range_db(AccountId),
+    get_view_results(Dbs, View, maybe_add_range_to_keys(From, To, ViewOpts), NormFun, []).
 
+-spec get_view_results(ne_binaries(), ne_binary(), kz_proplist(), norm_fun(), kz_json:objects()) -> kz_json:objects().
 get_view_results([], _View, _ViewOpts, 'undefined', ViewResults) ->
     ViewResults;
 get_view_results([], _View, _ViewOpts, NormFun, ViewResults) ->
     [JObj
-     || JObj <- lists:foldl(NormFun, [], ViewResults),
+     || J <- ViewResults,
+        JObj <- [NormFun(J)],
         not kz_term:is_empty(JObj)
     ];
 get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
     case kazoo_modb:get_results(Db, View, ViewOpts) of
         {'ok', []} -> get_view_results(Dbs, View, ViewOpts, NormFun, Acc);
-        {'ok', Msgs} -> get_view_results(Dbs, View, ViewOpts, NormFun, Msgs ++ Acc);
+        {'ok', Msgs} -> get_view_results(Dbs, View, ViewOpts, NormFun, Acc ++ Msgs);
         {'error', _}=_E ->
             lager:debug("failed to get voicemail message ~s view results from db ~s with ViewOpts ~s"
                        ,[View, Db, ViewOpts]
@@ -332,113 +430,181 @@ get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
             get_view_results(Dbs, View, ViewOpts, NormFun, Acc)
     end.
 
+-spec maybe_add_range_to_keys(gregorian_seconds(), gregorian_seconds(), kz_proplist()) -> kz_proplist().
+maybe_add_range_to_keys(From, To, ViewOpts) ->
+    [{'startkey', add_timestamp_if_defined('startkey', To, ViewOpts)}
+    ,{'endkey', add_timestamp_if_defined('startkey', From, ViewOpts)}
+    ,'descending'
+     | props:delete_keys(['startkey', 'endkey'], ViewOpts)
+    ].
+
+-spec add_timestamp_if_defined('startkey' | 'endkey', gregorian_seconds(), kz_proplist()) -> kz_json:path().
+add_timestamp_if_defined(Key, Timestamp, ViewOpts) ->
+    case props:get_value(Key, ViewOpts) of
+        [] -> [Timestamp];
+        [Thing] -> [Thing, Timestamp];
+        [Thing1, Thing2] -> [Thing1, Thing2, Timestamp]
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Normalize listing view results
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj) | Acc].
+-define(LISTING_BY_TIMESTAMP_BOX_ID_KEY_INDEX, 2).
+
+-spec normalize_account_listing(kz_json:objects()) -> get_map().
+normalize_account_listing(JObjs) ->
+    lists:foldl(fun normalize_account_listing/2, #{}, JObjs).
+
+-spec normalize_account_listing(kz_json:object(), get_map()) -> get_map().
+normalize_account_listing(JObj, Map) ->
+    Value = kz_json:get_value(<<"value">>, JObj),
+    case kz_json:get_value([<<"key">>, ?LISTING_BY_TIMESTAMP_BOX_ID_KEY_INDEX], JObj) of
+        'undefined' -> Map;
+        BoxId ->
+            maps:update_with(BoxId, fun(List) -> List ++ [Value] end, [Value], Map)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Normalize fetch/update bulk result
-%% Note: Optional checks message belonging to the BoxId
-%% Note: It always returns a dict which contains succeeded and failed
-%%       messages operation
+%% Note: Optional checks message belonging to the BoxId and message
+%%       retention
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_bulk_results(ne_binary(), api_ne_binary(), api_seconds(), kz_json:objects(), dict:dict()) ->
-                                    dict:dict().
-normalize_bulk_results(Method, BoxId, RetenTimestamp, JObjs, Dict) ->
-    DefaultDict = dict:from_list([{<<"succeeded">>, []}
-                                 ,{<<"failed">>, []}
-                                 ]),
-    MergeFun = fun(_K, _V1, V2) -> V2 end,
-    normalize_bulk_results1(Method, BoxId, RetenTimestamp, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
-
-normalize_bulk_results1(_Method, _BoxId, _, [], Dict) ->
+-spec normalize_bulk_results(bulk_map(), kz_json:objects(), ne_binary(), api_ne_binary(), api_seconds()) -> bulk_map().
+normalize_bulk_results(ResultMap, [], _Method, _BoxId, _) ->
     lager:debug("voicemail ~s bulk for mailbox ~s resulted in ~b succeeded and ~b failed docs"
                ,[_Method
                 ,_BoxId
-                ,length(dict:fetch(<<"succeeded">>, Dict))
-                ,length(dict:fetch(<<"failed">>, Dict))
+                ,erlang:length(maps:get(succeeded, ResultMap, []))
+                ,erlang:length(maps:get(failed, ResultMap, []))
                 ]),
-    Dict;
-normalize_bulk_results1(Method, BoxId, RetenTimestamp, [JObj | JObjs], Dict) ->
+    ResultMap;
+normalize_bulk_results(#{succeeded := Succeeded
+                        ,failed := Failed
+                        }=ResultMap, [JObj | JObjs], Method, BoxId, RetenTimestamp) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
-    IsPrior = is_prior_to_retention(kzd_box_message:utc_seconds(kz_json:get_value(<<"doc">>, JObj)), RetenTimestamp),
-    NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
-                  andalso kz_json:get_value(<<"error">>, JObj)
-              of
-                  'false' ->
-                      Failed = kz_json:from_list([{Id, <<"not_found">>}]),
-                      dict:append(<<"failed">>, Failed, Dict);
-                  'undefined' when not IsPrior ->
-                      dict:append(<<"succeeded">>, kz_json:get_value(<<"doc">>, JObj, Id), Dict);
-                  'undefined' ->
-                      Failed = kz_json:from_list([{Id, <<"prior_to_retention_duration">>}]),
-                      dict:append(<<"failed">>, Failed, Dict);
-                  Error ->
-                      Failed = kz_json:from_list([{Id, kz_term:to_binary(Error)}]),
-                      dict:append(<<"failed">>, Failed, Dict)
-              end,
-    normalize_bulk_results1(Method, BoxId, RetenTimestamp, JObjs, NewDict).
 
--spec is_prior_to_retention(non_neg_integer(), api_seconds()) -> boolean().
-is_prior_to_retention(0, _RetenTimestamp) -> 'false';
-is_prior_to_retention(_UtcSeconds, 'undefined') -> 'false';
-is_prior_to_retention(UtcSeconds, RetenTimestamp) when UtcSeconds > RetenTimestamp -> 'false';
-is_prior_to_retention(_UtcSeconds, _RetenTimestamp) -> 'true'.
+    IsPrior = is_prior_to_retention(JObj, RetenTimestamp, ResultMap),
+
+    NewMap = case kvm_util:check_msg_belonging(BoxId, JObj)
+                 andalso kz_json:get_value(<<"error">>, JObj)
+             of
+                 'false' ->
+                     ResultMap#{failed => [{Id, <<"not_found">>}|Failed]};
+                 'undefined' when not IsPrior ->
+                     ResultMap#{succeeded => [kz_json:get_value(<<"doc">>, JObj, Id)|Succeeded]};
+                 'undefined' ->
+                     case Method of
+                         <<"fetch">> ->
+                             ResultMap#{succeeded => [kvm_util:enforce_retention(kz_json:get_value(<<"doc">>, JObj), 'true')
+                                                      | Succeeded
+                                                     ]
+                                       };
+                         <<"update">> ->
+                             ResultMap#{failed => [{Id, <<"prior_to_retention_duration">>}|Failed]}
+                     end;
+                 Error ->
+                     ResultMap#{failed => [{Id, kz_term:to_binary(Error)}|Failed]}
+             end,
+    normalize_bulk_results(NewMap, JObjs, Method, BoxId, RetenTimestamp).
+
+%% check message retention, also if the operation is update, checks if the message is in retention enforce set
+%% so the message won't be added to succeeded list
+-spec is_prior_to_retention(kz_json:object(), api_seconds(), bulk_map()) -> boolean().
+is_prior_to_retention(JObj, _, #{enforce_set := EnforceSet}) ->
+    sets:is_element(kz_doc:id(JObj), EnforceSet);
+is_prior_to_retention(JObj, RetenTimestamp, _) ->
+    kvm_util:is_prior_to_retention(kz_json:get_value(<<"doc">>, JObj), RetenTimestamp).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Normalize count view results
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_count(kz_json:objects()) -> kz_json:object().
-normalize_count(ViewRes) ->
-    lists:foldl(fun normalize_count_fold/2, kz_json:new(), ViewRes).
+-define(PER_FOLDER_VIEW_FOLDER_KEY_INDEX, 1).
+-define(PER_FOLDER_VIEW_BOX_ID_KEY_INDEX, 3).
 
--spec normalize_count_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
-normalize_count_fold(M, Acc) ->
-    VMBoxId = kz_json:get_binary_value([<<"key">>, ?BOX_ID_KEY_INDEX], M),
-    Folder = kz_json:get_binary_value([<<"key">>, ?FOLDER_KEY_INDEX], M),
-    Value = kz_json:get_integer_value(<<"value">>, M),
+-define(PER_BOX_FOLDER_VIEW_BOX_ID_KEY_INDEX, 1).
+-define(PER_BOX_FOLDER_VIEW_FOLDER_KEY_INDEX, 2).
 
-    Total = kz_json:get_integer_value([VMBoxId, <<"total">>], Acc, 0),
-    PreviousNonDeleted = kz_json:get_integer_value([VMBoxId, <<"non_deleted">>], Acc, 0),
+-spec normalize_count(ne_binary(), kz_json:objects(), count_map()) -> count_map().
+normalize_count(?MSG_COUNT_PER_BOX_FOLDER, ViewResults, ResultMap) ->
+    lists:foldl(fun(JObj, Map) ->
+                        sum_per_folder(JObj, ?PER_BOX_FOLDER_VIEW_FOLDER_KEY_INDEX, ?PER_BOX_FOLDER_VIEW_BOX_ID_KEY_INDEX, Map)
+                end
+               ,ResultMap
+               ,ViewResults
+               );
+normalize_count(?MSG_COUNT_PER_FOLDER, ViewResults, ResultMap) ->
+    lists:foldl(fun(JObj, Map) ->
+                        sum_per_folder(JObj, ?PER_FOLDER_VIEW_FOLDER_KEY_INDEX, ?PER_FOLDER_VIEW_BOX_ID_KEY_INDEX, Map)
+                end
+               ,ResultMap
+               ,ViewResults
+               ).
+
+
+-spec sum_per_folder(kz_json:object(), non_neg_integer(), non_neg_integer(), count_map()) -> count_map().
+sum_per_folder(JObj, FolderKeyIndex, BoxIdKeyIndex, ResultMap) ->
+    Folder = kz_json:get_binary_value([<<"key">>, FolderKeyIndex], JObj),
+    BoxId = kz_json:get_binary_value([<<"key">>, BoxIdKeyIndex], JObj),
+
+    VMBoxCount = maps:get(BoxId, ResultMap, maps:new()),
+    OldNonDeleted = maps:get(<<"non_deleted">>, VMBoxCount, 0),
     NonDeleted = case Folder of
-                     ?VM_FOLDER_NEW -> PreviousNonDeleted + Value;
-                     ?VM_FOLDER_SAVED -> PreviousNonDeleted + Value;
-                     _ -> PreviousNonDeleted
+                     ?VM_FOLDER_NEW -> OldNonDeleted + 1;
+                     ?VM_FOLDER_SAVED -> OldNonDeleted + 1;
+                     _ -> OldNonDeleted
                  end,
-    PreviousValue = kz_json:get_integer_value([VMBoxId, Folder], Acc, 0),
-    kz_json:set_values([{[VMBoxId, Folder], PreviousValue + Value}
-                       ,{[VMBoxId, <<"non_deleted">>], NonDeleted}
-                       ,{[VMBoxId, <<"total">>], Total + Value}
-                       ]
-                      ,Acc
-                      ).
-
--spec normalize_count_none_deleted(ne_binary(), kz_json:object()) -> count_result().
-normalize_count_none_deleted(BoxId, ViewRes) ->
-    {kz_json:get_integer_value([BoxId, ?VM_FOLDER_NEW], ViewRes, 0)
-    ,kz_json:get_integer_value([BoxId, ?VM_FOLDER_SAVED], ViewRes, 0)
-    }.
+    OldFolderCount = maps:get(Folder, VMBoxCount, 0),
+    ResultMap#{BoxId => VMBoxCount#{Folder => OldFolderCount + 1
+                                   ,<<"non_deleted">> => NonDeleted
+                                   ,<<"total">> => maps:get(<<"total">>, VMBoxCount, 0) + 1
+                                   }
+              }.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Apply update functions and map all messages to their MODBs
+%% @doc
+%% Apply update functions and map all messages to their MODBs
+%%
+%% If message is prior to retention, do not apply functions, just
+%% set the folder to 'deleted' and set it to_update_map to update the
+%% document in database then add it to enforce_set to return it to caller
+%% as an error.
 %% @end
 %%--------------------------------------------------------------------
--spec apply_fun_and_map_msgs_to_modb(ne_binary(), kz_json:objects(), update_funs(), dict:dict()) ->
-                                            dict:dict().
-apply_fun_and_map_msgs_to_modb(_AccountId, [], _Funs, Dict) -> Dict;
-apply_fun_and_map_msgs_to_modb(AccountId, [JObj | JObjs], Funs, Dict) ->
-    NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
-    Db = kz_doc:account_db(JObj, kvm_util:get_db(AccountId, kz_doc:id(NewJObj))),
-    NewDict = dict:append(Db, NewJObj, Dict),
-    apply_fun_and_map_msgs_to_modb(AccountId, JObjs, Funs, NewDict).
+-spec split_to_modbs_and_apply_funs(bulk_map(), ne_binary(), update_funs(), gregorian_seconds()) -> bulk_map().
+split_to_modbs_and_apply_funs(FetchMap, AccountId, Funs, RetenTimestamp) ->
+    Succeeded = maps:get(succeeded, FetchMap, []),
+    Failed = maps:get(failed, FetchMap, []),
+    Map = #{to_update_map => #{}
+           ,failed => Failed
+           ,enforce_set => sets:new()
+           },
+    split_to_modbs_and_apply_funs(Map, AccountId, Succeeded, Funs, RetenTimestamp).
+
+-spec split_to_modbs_and_apply_funs(bulk_map(), ne_binary(), kz_json:objects(), update_funs(), gregorian_seconds()) -> bulk_map().
+split_to_modbs_and_apply_funs(SplitMap, _AccountId, [], _Funs, _RetenTimestamp) ->
+    SplitMap;
+split_to_modbs_and_apply_funs(#{to_update_map := ToUpdateMap
+                               ,enforce_set := EnforceSet
+                               }=SplitMap, AccountId, [JObj | JObjs], Funs, RetenTimestamp) ->
+    case kvm_util:is_prior_to_retention(JObj, RetenTimestamp) of
+        'true' ->
+            Id = kz_doc:id(JObj),
+            Db = kvm_util:get_db(AccountId, JObj),
+            NewJObj = kvm_util:enforce_retention(JObj, 'true'),
+            NewMap = SplitMap#{to_update_map => maps:update_with(Db, fun(List) -> [NewJObj|List] end, [NewJObj], ToUpdateMap)
+                              ,enforce_set => sets:add_element(Id, EnforceSet)
+                              },
+            split_to_modbs_and_apply_funs(NewMap, AccountId, JObjs, Funs, RetenTimestamp);
+        'false' ->
+            NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
+            Db = kvm_util:get_db(AccountId, NewJObj),
+            NewToUpdateMap = maps:update_with(Db, fun(List) -> [NewJObj|List] end, [NewJObj], ToUpdateMap),
+            split_to_modbs_and_apply_funs(SplitMap#{to_update_map => NewToUpdateMap}, AccountId, JObjs, Funs, RetenTimestamp)
+    end.

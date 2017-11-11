@@ -864,7 +864,7 @@ get_mailbox(AccountDb, VMNumber) ->
 vm_count(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     BoxId = kz_doc:id(JObj),
-    kvm_messages:count_none_deleted(AccountId, BoxId).
+    kvm_messages:count_non_deleted(AccountId, BoxId).
 
 %%--------------------------------------------------------------------
 %% @private
