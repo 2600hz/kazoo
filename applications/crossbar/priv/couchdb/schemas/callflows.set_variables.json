@@ -5,7 +5,7 @@
     "properties": {
         "custom_application_vars": {
             "default": {},
-            "description": "Key-value pairs to set as custom_channel_vars on the channel",
+            "description": "Key-value pairs to set as custom_application_vars on the channel",
             "patternProperties": {
                 "[a-zA-Z0-9\\-_]+": {
                     "type": "string"
@@ -14,12 +14,12 @@
             "type": "object"
         },
         "export": {
-            "description": "When true the provided custom_channel_vars are set on the channel and any channel bridged to it later",
+            "description": "When true the provided custom_application_vars are set on the channel and any channel bridged to it later",
             "type": "boolean"
         }
     },
     "required": [
-        "custom_channel_vars"
+        "custom_application_vars"
     ],
     "type": "object"
 }
