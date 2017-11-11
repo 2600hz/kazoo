@@ -16,6 +16,7 @@
         ,ccv/2, ccv/3
         ,custom_channel_vars/1
         ,conference_channel_vars/1
+        ,custom_application_vars/1
         ,join_time/1, join_time/2
         ,core_uuid/1
         ,switch_url/1, switch_uri/1, switch_hostname/1
@@ -47,6 +48,9 @@ custom_channel_vars(JObj) -> kz_json:get_json_value(<<"Custom-Channel-Vars">>, J
 
 -spec conference_channel_vars(data()) -> data().
 conference_channel_vars(JObj) -> kz_json:get_json_value(<<"Conference-Channel-Vars">>, JObj).
+
+-spec custom_application_vars(data()) -> data().
+custom_application_vars(JObj) -> kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj).
 
 -spec event(data()) -> api_binary().
 event(JObj) ->

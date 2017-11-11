@@ -401,7 +401,7 @@ authz_req(Props) ->
       ,{<<"From-Network-Addr">>, kz_evt_freeswitch:from_network_ip(Props)}
       ,{<<"From-Network-Port">>, kz_evt_freeswitch:from_network_port(Props)}
       ,{<<"Custom-Channel-Vars">>, kz_evt_freeswitch:ccvs(Props)}
-      ,{<<"Custom-Channel-Vars">>, kz_evt_freeswitch:cavs(Props)}
+      ,{<<"Custom-Application-Vars">>, kz_evt_freeswitch:cavs(Props)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 

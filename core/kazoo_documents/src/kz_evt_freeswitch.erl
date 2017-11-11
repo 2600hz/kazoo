@@ -19,6 +19,7 @@
         ,caller_id_number/1, caller_id_number/2
         ,ccvs/1, ccv/2, ccv/3
         ,set_ccv/3, set_ccvs/2
+        ,cavs/1
         ,channel_authorized/1
         ,conference_name/1, conference_profile_name/1, conference_uuid/1
         ,dialed_number/1
@@ -263,6 +264,10 @@ set_ccvs(JObj, Values) ->
 -spec ccvs(data()) -> data().
 ccvs(JObj) ->
     kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()).
+
+-spec cavs(data()) -> data().
+cavs(JObj) ->
+    kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new()).
 
 -spec from_tag(data()) -> api_binary().
 from_tag(JObj) ->
