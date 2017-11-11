@@ -10,11 +10,11 @@
 
 -export([new/2, forward_message/4
         ,fetch/2, fetch/3, message/2, message/3
-        ,set_folder/3, change_folder/3, change_folder/4
+        ,set_folder/3, change_folder/4, change_folder/5
 
         ,update/3, update/4
-        ,move_to_vmbox/4, do_move/5
-        ,copy_to_vmboxes/4, copy_to_vmboxes/5
+        ,move_to_vmbox/4, move_to_vmbox/5, maybe_do_move/7
+        ,copy_to_vmboxes/4, copy_to_vmboxes/5, maybe_copy_to_vmboxes/7
 
         ,media_url/2
         ]).
@@ -83,7 +83,7 @@ forward_message(Call, Metadata, SrcBoxId, Props) ->
             %% user chose to forward without prepending
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props);
         _AttachmentName ->
-            %% user chose to forward and prepend a messge
+            %% user chose to forward and prepend a message
             new_forward_message(Call, Metadata, SrcBoxId, Props)
     end.
 
@@ -127,21 +127,30 @@ new_forward_message(Call, Metadata, SrcBoxId, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), ne_binary()) -> db_ret().
--spec fetch(ne_binary(), ne_binary(), api_ne_binary()) -> db_ret().
 fetch(AccountId, MessageId) ->
     fetch(AccountId, MessageId, 'undefined').
 
+-spec fetch(ne_binary(), ne_binary(), api_ne_binary()) -> db_ret().
 fetch(AccountId, MessageId, BoxId) ->
+    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(AccountId),
+    {_, DbRet} = do_fetch(AccountId, MessageId, BoxId, RetenTimestamp),
+    DbRet.
+
+-spec do_fetch(ne_binary(), ne_binary(), api_ne_binary(), gregorian_seconds()) -> {boolean(), db_ret()}.
+do_fetch(AccountId, MessageId, BoxId, RetenTimestamp) ->
     case kvm_util:open_modb_doc(AccountId, MessageId, kzd_box_message:type()) of
         {'ok', JObj} ->
+            IsPrior = kvm_util:is_prior_to_retention(JObj, RetenTimestamp),
             case kvm_util:check_msg_belonging(BoxId, JObj) of
-                'false' -> {'error', 'not_found'};
+                'false' -> {'false', {'error', 'not_found'}};
+                'true' when IsPrior ->
+                    {'true', {'ok', kvm_util:enforce_retention(JObj, 'true')}};
                 'true' ->
-                    {'ok', kvm_util:maybe_set_deleted_by_retention(JObj)}
+                    {'false', {'ok', JObj}}
             end;
         {'error', _E} = Error ->
             lager:debug("failed to open message ~s:~p", [MessageId, _E]),
-            Error
+            {'false', Error}
     end.
 
 %%--------------------------------------------------------------------
@@ -182,11 +191,11 @@ set_folder(Folder, Message, AccountId) ->
 -spec maybe_set_folder(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
 maybe_set_folder(_, ?VM_FOLDER_DELETED = ToFolder, MessageId, AccountId, _Msg) ->
     %% ensuring that message is really deleted
-    change_folder(ToFolder, MessageId, AccountId);
+    change_folder(ToFolder, MessageId, AccountId, 'undefined');
 maybe_set_folder(FromFolder, FromFolder, _MessageId, _AccountId, Msg) ->
     {'ok', Msg};
 maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
-    change_folder(ToFolder, MessageId, AccountId).
+    change_folder(ToFolder, MessageId, AccountId, 'undefined').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -196,15 +205,16 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
 %%      folder(for recovering later by user)
 %% @end
 %%--------------------------------------------------------------------
--spec change_folder(vm_folder(), message(), ne_binary()) -> db_ret().
 -spec change_folder(vm_folder(), message(), ne_binary(), api_binary()) -> db_ret().
-change_folder(Folder, Message, AccountId) ->
-    change_folder(Folder, Message, AccountId, 'undefined').
-
 change_folder(Folder, Message, AccountId, BoxId) ->
-    Fun = [fun(J) -> kzd_box_message:apply_folder(Folder, J) end
-          ],
-    case update(AccountId, BoxId, Message, Fun) of
+    change_folder(Folder, Message, AccountId, BoxId, []).
+
+-spec change_folder(vm_folder(), message(), ne_binary(), api_binary(), update_funs()) -> db_ret().
+change_folder(Folder, Message, AccountId, BoxId, Funs0) ->
+    Funs = [fun(J) -> kzd_box_message:apply_folder(Folder, J) end
+            | Funs0
+           ],
+    case update(AccountId, BoxId, Message, Funs) of
         {'ok', JObj} ->
             {'ok', kzd_box_message:metadata(JObj)};
         {'error', _R} = Error ->
@@ -223,13 +233,28 @@ update(AccountId, BoxId, Message) ->
     update(AccountId, BoxId, Message, []).
 
 update(AccountId, BoxId, ?NE_BINARY = MsgId, Funs) ->
-    case fetch(AccountId, MsgId, BoxId) of
-        {'ok', JObj} ->
-            update(AccountId, BoxId, JObj, Funs);
-        Error ->
+    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(AccountId),
+    case do_fetch(AccountId, MsgId, BoxId, RetenTimestamp) of
+        {'true', {'ok', JObj}} ->
+            _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
+            {'error', <<"prior_to_retention_duration">>};
+        {'false', {'ok', JObj}} ->
+            do_update(JObj, Funs);
+        {_, {'error', _}=Error} ->
             Error
     end;
-update(_AccountId, _BoxId, JObj, Funs) ->
+update(AccountId, _BoxId, JObj, Funs) ->
+    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(AccountId),
+    case kvm_util:is_prior_to_retention(JObj, RetenTimestamp) of
+        'true' ->
+            _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
+            {'error', <<"prior_to_retention_duration">>};
+        'false' ->
+            do_update(JObj, Funs)
+    end.
+
+-spec do_update(kz_json:object(), update_funs()) -> db_ret().
+do_update(JObj, Funs) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
     case try_save_document('undefined', NewJObj, 3) of
         {'ok', _}=OK -> OK;
@@ -243,22 +268,38 @@ update(_AccountId, _BoxId, JObj, Funs) ->
 %% @doc Move a message to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec move_to_vmbox(ne_binary(), message(), ne_binary(), ne_binary()) ->
-                           db_ret().
-move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId) ->
-    %% FIXME: maybe fetch message to make sure it's exists
+-spec move_to_vmbox(ne_binary(), message(), ne_binary(), ne_binary()) -> db_ret().
+move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId) ->
+    move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId, []).
+
+-spec move_to_vmbox(ne_binary(), message(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
+move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, NewBoxId) of
-        {'ok', NBoxJ} -> do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ);
+        {'ok', NBoxJ} ->
+            RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(AccountId),
+            maybe_do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs, RetenTimestamp);
         {'error', _Reason} = Error ->
-            lager:debug("failed to open destination vmbox ~s", NewBoxId),
+            lager:debug("failed to open destination vmbox ~s: ~p", [NewBoxId, _Reason]),
             Error
     end;
-move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId) ->
-    move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId).
+move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId, Funs) ->
+    move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId, Funs).
 
--spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
-do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
+-spec maybe_do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs(), gregorian_seconds()) -> db_ret().
+maybe_do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs, RetenTimestamp) ->
+    case do_fetch(AccountId, FromId, OldBoxId, RetenTimestamp) of
+        {'true', {'ok', JObj}} ->
+            _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
+            {'error', <<"prior_to_retention_duration">>};
+        {'false', {'ok', _}} ->
+            do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs);
+        {_, {'error', _}=Error} ->
+            Error
+    end.
+
+-spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs()) -> db_ret().
+do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs) ->
     {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId),
 
     FromDb = kvm_util:get_db(AccountId, FromId),
@@ -268,7 +309,7 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
                ,[FromDb, FromId, OldBoxId, ToDb, ToId, NewBoxId]
                ),
 
-    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}
+    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns ++ Funs) end}
            ,{max_retries, 3}
            ],
     case kazoo_modb:move_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
@@ -292,57 +333,75 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
 %% @doc copy a message to other vmbox(es)
 %% @end
 %%--------------------------------------------------------------------
--spec copy_to_vmboxes(ne_binary(), ne_binary() | kz_json:object(), ne_binary(), ne_binary() | ne_binaries()) ->
-                             kz_json:object().
-copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId) ->
-    copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId]);
-copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds) ->
+-spec copy_to_vmboxes(ne_binary(), ne_binary()|kz_json:object(), ne_binary(), ne_binary()|ne_binaries()) -> kz_json:object().
+copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds) ->
+    copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds, []).
+
+-spec copy_to_vmboxes(ne_binary(), ne_binary()|kz_json:object(), ne_binary(), ne_binary()|ne_binaries(), update_funs()) -> kz_json:object().
+copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
+    copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId], Funs);
+copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds, Funs) ->
     %% FIXME: maybe fetch message to make sure it's exists
-    kz_json:from_list(
-      dict:to_list(
-        copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, dict:new())
+    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(AccountId),
+    kz_json:from_list_recursive(
+      maps:to_list(
+        maybe_copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, #{}, Funs, RetenTimestamp)
        )
      );
-copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds) ->
-    copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds).
+copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds, Funs) ->
+    copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds, Funs).
 
--spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             dict:dict().
-copy_to_vmboxes(_, _, _, [], CopiedDict) ->
-    CopiedDict;
-copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopiedDict) ->
-    NewCopiedDict = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict),
-    copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopiedDict).
+-spec maybe_copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), bulk_map(), update_funs(), gregorian_seconds()) -> bulk_map().
+maybe_copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs, RetenTimestamp) ->
+    case do_fetch(AccountId, FromId, OldBoxId, RetenTimestamp) of
+        {'true', {'ok', JObj}} ->
+            _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
+            IdReason = {FromId, <<"prior_to_retention_duration">>},
+            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
+        {'false', {'ok', _}} ->
+            copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs);
+        {_, {'error', Reason}} ->
+            IdReason = {FromId, kz_term:to_binary(Reason)},
+            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
+    end.
 
--spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict()) ->
-                           dict:dict().
-copy_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
+-spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), bulk_map(), update_funs()) -> bulk_map().
+copy_to_vmboxes(_, _, _, [], CopyMap, _) ->
+    CopyMap;
+copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopyMap, Funs) ->
+    NewCopyMap = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap, Funs),
+    copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopyMap, Funs).
+
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), bulk_map(), update_funs()) -> bulk_map().
+copy_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, ?NE_BINARY = NBId, CopyMap, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
-    %% FIXME: maybe bulk read vmbox in above function clause to avoid lots of cache query
-    copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
+    copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
                  ,kz_datamgr:open_cache_doc(AccountDb, NBId)
+                 ,Funs
                  ).
 
--spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict(), kz_datamgr:data_error() | {'ok', kz_json:object()}) ->
-                           dict:dict().
-copy_to_vmbox(_AccountId, FromId, _OldBoxId, NBId, CopiedDict
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), bulk_map(), kz_datamgr:data_error() | {'ok', kz_json:object()}, update_funs()) ->
+                           bulk_map().
+copy_to_vmbox(_AccountId, FromId, _OldBoxId, NBId, CopyMap
              ,{'error', Reason}
+             ,_
              ) ->
     lager:warning("could not open destination vmbox ~s", [NBId]),
-    Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
-    dict:append(<<"failed">>, Failed, CopiedDict);
-copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
+    IdReason = {FromId, kz_term:to_binary(Reason)},
+    maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
+copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
              ,{'ok', NBox}
+             ,Funs
              ) ->
     {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBox, OldBoxId),
 
-    case do_copy(AccountId, FromId, ToId, TransformFuns) of
+    case do_copy(AccountId, FromId, ToId, TransformFuns ++ Funs) of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
-            dict:append(<<"succeeded">>, CopiedId, CopiedDict);
+            maps:update_with(succeeded, fun(List) -> [CopiedId|List] end, [CopiedId], CopyMap);
         {'error', R} ->
-            Failed = kz_json:from_list([{FromId, kz_term:to_binary(R)}]),
-            dict:append(<<"failed">>, Failed, CopiedDict)
+            IdReason = {FromId, kz_term:to_binary(R)},
+            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
     end.
 
 -spec do_copy(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
@@ -457,7 +516,7 @@ create_forward_message_doc(Call, Metadata, SrcBoxId, Props) ->
                                                            ,SrcBoxId
                                                            ,kz_doc:id(JObj)
                                                            ),
-    Updates = [fun(M) -> kz_json:set_value(<<"lenght">>, props:get_value(<<"Length">>, Props), M) end
+    Updates = [fun(M) -> kz_json:set_value(<<"length">>, props:get_value(<<"Length">>, Props), M) end
                | VMChangeFuns
               ],
     MsgJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Updates),
@@ -546,17 +605,24 @@ check_attachment_exists(Call, MessageId) ->
 %%--------------------------------------------------------------------
 -spec forward_to_vmbox(kapps_call:call(), kz_json:object(), ne_binary(), kz_proplist()) -> new_msg_ret().
 forward_to_vmbox(Call, Metadata, SrcBoxId, Props) ->
+    forward_to_vmbox(Call, Metadata, SrcBoxId, Props, []).
+
+-spec forward_to_vmbox(kapps_call:call(), kz_json:object(), ne_binary(), kz_proplist(), update_funs()) -> new_msg_ret().
+forward_to_vmbox(Call, Metadata, SrcBoxId, Props, Funs) ->
     AccountId = kapps_call:account_id(Call),
     MediaId = kzd_box_message:media_id(Metadata),
     DestBoxId = props:get_value(<<"Box-Id">>, Props),
     Length = props:get_value(<<"Length">>, Props),
-    Result = copy_to_vmboxes(AccountId, MediaId, SrcBoxId, DestBoxId),
-    Failed = kz_json:get_value(<<"failed">>, Result, []),
-    Succeeded = kz_json:get_value(<<"succeeded">>, Result, []),
+    ResultMap = copy_to_vmbox(AccountId, MediaId, SrcBoxId, DestBoxId, #{}
+                             ,kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DestBoxId)
+                             ,Funs
+                             ),
+    Failed = maps:get(failed, ResultMap, []),
+    Succeeded = maps:get(succeeded, ResultMap, []),
     case {Failed, Succeeded} of
         {[], []} -> {'error', Call, 'internal_error'};
         {[], [ForwardId]} ->
-            %%TODO: update lenght and caller_id
+            %%TODO: update length and caller_id
             notify_and_update_meta(Call, ForwardId, Length, Props);
         {[{_Id, Reason}], _} -> {'error', Call, Reason}
     end.
@@ -571,21 +637,25 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
     Length = props:get_value(<<"Length">>, Props),
     try prepend_forward_message(Call, ForwardId, Metadata, SrcBoxId, Props) of
         {'ok', _} ->
-            %%TODO: update lenght and caller_id
+            %%TODO: update length and caller_id
             notify_and_update_meta(Call, ForwardId, Length, Props);
-        {'error', _R} ->
+        {'error', Reason} ->
             %% prepend failed, so at least try to forward without a prepend message
-            archive_malform_vm(Call, ForwardId, Props),
-            forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
+            remove_malform_vm(Call, ForwardId),
+            ErrorMessage = kz_term:to_binary(io_lib:format("failed to prepend and joining audio files: ~p", [Reason])),
+            UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
+            forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
     catch
         _T:_E ->
+            remove_malform_vm(Call, ForwardId),
             ST = erlang:get_stacktrace(),
-            lager:error("exception occured during prepend and forward message: ~p:~p", [_T, _E]),
+            ErrorMessage = kz_term:to_binary(io_lib:format("exception occurred during prepend and joining audio files: ~p:~p", [_T, _E])),
+            lager:error(ErrorMessage),
             kz_util:log_stacktrace(ST),
 
             %% prepend failed, so at least try to forward without a prepend message
-            archive_malform_vm(Call, ForwardId, Props),
-            forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
+            UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
+            forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
     end.
 
 -spec prepend_forward_message(kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> db_ret().
@@ -604,14 +674,14 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     {'ok', OrigSampleRate} = kz_media_util:detect_file_sample_rate(OrigPath),
 
     TonePath = kz_binary:join([<<"/tmp/">>, <<(kz_binary:rand_hex(16))/binary, ".wav">>], <<>>),
-    kz_media_util:synthesize_tone(OrigSampleRate, <<"440">>, <<"0.5">>, TonePath),
+    {'ok', _} = kz_media_util:synthesize_tone(OrigSampleRate, <<"440">>, <<"0.5">>, TonePath),
 
     lager:debug("joining prepend to original message"),
     case kz_media_util:join_media_files([TmpPath, TonePath, OrigPath], [{sample_rate, OrigSampleRate}]) of
         {'ok', FileContents} ->
             JoinFilename = <<(kz_binary:rand_hex(16))/binary, ".mp3">>,
             _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
-            %%TODO: update forwarded doc with lenght and media_filename
+            %%TODO: update forwarded doc with length and media_filename
             try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, 3);
         {'error', _} ->
             _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
@@ -622,7 +692,7 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
 
 -spec try_put_fwd_attachment(ne_binary(), ne_binary(), ne_binary(), iodata(), 1..3) -> db_ret().
 try_put_fwd_attachment(AccountId, ForwardId, _JoinFilename, _FileContents, 0) ->
-    lager:error("max retries to save prepend forward voicemail attachmanet ~s in db ~s"
+    lager:error("max retries to save prepend forward voicemail attachment ~s in db ~s"
                ,[ForwardId, kvm_util:get_db(AccountId, ForwardId)]
                ),
     {'error', 'max_save_retries'};
@@ -653,21 +723,13 @@ write_attachment_to_file(AccountId, MessageId, [AttachmentId]) ->
     {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, MessageId, AttachmentId),
     FilePath = kz_binary:join([<<"/tmp/_">>, AttachmentId], <<>>),
     kz_util:write_file(FilePath, AttachmentBin, ['write', 'binary']),
+    lager:debug("saved attachment ~s from ~s in ~s", [AttachmentId, MessageId, FilePath]),
     {'ok', FilePath}.
 
--spec archive_malform_vm(kapps_call:call(), ne_binary(), kz_proplist()) -> 'ok'.
-archive_malform_vm(Call, ForwardId, Props) ->
-    AccountId = kapps_call:account_id(Call),
-    BoxId = props:get_value(<<"Box-Id">>, Props),
-    Db = kvm_util:get_db(AccountId, ForwardId),
-
-    UpdateFuns = [fun(J) -> kz_json:set_value(<<"pvt_type">>, <<"vm_recovery">>, J) end],
-
-    lager:debug("archiving the unsuccessful prepend voicemail ~s/~s for recovery later with pvt_type=vm_recovery"
-               ,[ForwardId, Db]
-               ),
-
-    _ = update(AccountId, BoxId, ForwardId, UpdateFuns),
+-spec remove_malform_vm(kapps_call:call(), ne_binary()) -> 'ok'.
+remove_malform_vm(Call, ForwardId) ->
+    AccountDb = kz_util:format_account_db(kapps_call:account_id(Call)),
+    _ = kz_datamgr:del_doc(AccountDb, ForwardId),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -756,8 +818,8 @@ update_metadata(Call, BoxId, MessageId, UpdateFuns) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Double check document to make sure it's not exists in db
-%% Using `kz_datamgr:ensure_save` is more effient here, but
-%% we're doing this fetch/retry for proof of conecpt whether document's id
+%% Using `kz_datamgr:ensure_save` is more efficient here, but
+%% we're doing this fetch/retry for proof of concept whether document's id
 %% had collision or not.
 %% @end
 %%--------------------------------------------------------------------

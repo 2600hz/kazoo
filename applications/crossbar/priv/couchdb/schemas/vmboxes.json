@@ -10,7 +10,7 @@
         },
         "delete_after_notify": {
             "default": false,
-            "description": "Delete the voicemail after the notification has been sent (Voicemail is not stored in the database if this option is selected)",
+            "description": "Move the voicemail to delete folder after the notification has been sent",
             "type": "boolean"
         },
         "is_setup": {
@@ -94,7 +94,7 @@
         },
         "save_after_notify": {
             "default": false,
-            "description": "Save the voicemail after the notification has been sent (This setting will override delete_after_notify)",
+            "description": "Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify)",
             "type": "boolean"
         },
         "skip_greeting": {

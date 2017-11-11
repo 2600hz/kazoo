@@ -234,7 +234,7 @@ validate_messages(Context, DocId, ?HTTP_POST) ->
             maybe_load_vmboxes([DocId | NewBoxId], Context)
     end;
 validate_messages(Context, DocId, ?HTTP_PUT) ->
-    C1 = load_message('undefined', DocId, Context),
+    C1 = validate_new_message(DocId, Context),
     case cb_context:resp_status(C1) of
         'success' ->
             validate_media_binary(C1, cb_context:req_files(Context), 'false');
@@ -261,17 +261,17 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
     load_message(MessageId, BoxId, Context, 'true');
 validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
-    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(),
+    RetentionTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(cb_context:account_id(Context)),
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', Msg} ->
-            case kzd_box_message:utc_seconds(Msg) < RetenTimestamp of
+            case kzd_box_message:utc_seconds(Msg) < RetentionTimestamp of
                 'true' ->
                     ErrMsg = <<"cannot make changes to messages prior to retention duration">>,
                     cb_context:add_validation_error(MessageId
                                                    ,<<"date_range">>
                                                    ,kz_json:from_list(
                                                       [{<<"message">>, ErrMsg}
-                                                      ,{<<"cause">>, RetenTimestamp}
+                                                      ,{<<"cause">>, RetentionTimestamp}
                                                       ])
                                                    ,Context
                                                    );
@@ -392,13 +392,14 @@ delete(Context, DocId) ->
     AccountId = cb_context:account_id(Context),
     Msgs = kvm_messages:get(AccountId, DocId),
     MsgIds = [kzd_box_message:media_id(M) || M <- Msgs],
-    _ = kvm_messages:change_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context), DocId),
+    _ = kvm_messages:change_folder(?VM_FOLDER_DELETED, MsgIds, AccountId, DocId),
     C = crossbar_doc:delete(Context),
     update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
+    AccountId = cb_context:account_id(Context),
     MsgIds = cb_context:resp_data(Context),
-    Result = kvm_messages:change_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, cb_context:account_id(Context), DocId),
+    Result = kvm_messages:change_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, AccountId, DocId),
     C = crossbar_util:response(Result, Context),
     update_mwi(C, DocId).
 
@@ -471,12 +472,8 @@ save_attachment(Context, Filename, FileJObj) ->
            ,{'rev', kz_doc:revision(JObj)}
             | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
            ],
-    C1 = crossbar_doc:save_attachment(DocId
-                                     ,cb_modules_util:attachment_name(Filename, CT)
-                                     ,Contents
-                                     ,Context
-                                     ,Opts
-                                     ),
+    AttName = cb_modules_util:attachment_name(Filename, CT),
+    C1 = crossbar_doc:save_attachment(DocId, AttName, Contents, Context, Opts),
     case cb_context:resp_status(C1) of
         'success' ->
             C2 = crossbar_util:response(kzd_box_message:metadata(JObj), C1),
@@ -555,7 +552,7 @@ validate_media_binary(Context, [], 'false') -> Context;
 validate_media_binary(Context, [], 'true') ->
     cb_context:add_validation_error(<<"file">>
                                    ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"Please provide an media file">>}])
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide a media file">>}])
                                    ,Context
                                    );
 validate_media_binary(Context, [{_Filename, FileObj}], _) ->
@@ -704,32 +701,32 @@ validate_patch(Context, DocId)->
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
     Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
-    AccountMsgCounts = kvm_messages:count(cb_context:account_id(Context)),
-    RspData = merge_summary_results(cb_context:doc(Context1), AccountMsgCounts),
+    CountMap = kvm_messages:count(cb_context:account_id(Context)),
+    RspData = add_counts_to_summary_results(cb_context:doc(Context1), CountMap),
     cb_context:set_resp_data(cb_context:set_doc(Context1, RspData), RspData).
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec merge_summary_results(kz_json:objects(), kz_json:object()) -> kz_json:objects().
-merge_summary_results(BoxSummary, AccountMsgCounts) ->
-    MergeFun = fun(JObj, Acc) ->
-                       [merge_summary_fold(JObj, AccountMsgCounts) | Acc]
+-spec add_counts_to_summary_results(kz_json:objects(), map()) -> kz_json:objects().
+add_counts_to_summary_results(BoxSummaries, CountMap) ->
+    MergeFun = fun(BoxSummary, Acc) ->
+                       [merge_summary_fold(BoxSummary, CountMap) | Acc]
                end,
-    lists:foldl(MergeFun, [], BoxSummary).
+    lists:foldl(MergeFun, [], BoxSummaries).
 
--spec merge_summary_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
-merge_summary_fold(JObj, AccountMsgCounts) ->
-    BoxId = kz_json:get_value(<<"id">>, JObj),
-    case kz_json:get_value(BoxId, AccountMsgCounts) of
+-spec merge_summary_fold(kz_json:object(), map()) -> kz_json:object().
+merge_summary_fold(BoxSummary, CountMap) ->
+    BoxId = kz_json:get_value(<<"id">>, BoxSummary),
+    case maps:get(BoxId, CountMap, 'undefined') of
         'undefined' ->
-            JObj;
-        J ->
-            BCount = kz_json:get_integer_value(?VM_KEY_MESSAGES, JObj, 0),
-            New = kz_json:get_integer_value(?VM_FOLDER_NEW, J, 0),
-            Saved = kz_json:get_integer_value(?VM_FOLDER_SAVED, J, 0),
-            kz_json:set_value(?VM_KEY_MESSAGES, BCount + New + Saved, JObj)
+            BoxSummary;
+        BoxCountMap ->
+            MsgsArrayCount = kz_json:get_integer_value(?VM_KEY_MESSAGES, BoxSummary, 0),
+            New = maps:get(?VM_FOLDER_NEW, BoxCountMap, 0),
+            Saved = maps:get(?VM_FOLDER_SAVED, BoxCountMap, 0),
+            kz_json:set_value(?VM_KEY_MESSAGES, MsgsArrayCount + New + Saved, BoxSummary)
     end.
 
 %%--------------------------------------------------------------------
@@ -782,13 +779,11 @@ empty_source_id(Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
-    MaxRetenSecond = kvm_util:retention_seconds(),
-    RetenTimestamp = kz_time:current_tstamp() - MaxRetenSecond,
-    case message_summary_view_options(Context, BoxId, MaxRetenSecond) of
+    {MaxRange, RetentionSeconds} = get_max_range(Context),
+    RetentionTimestamp = kz_time:current_tstamp() - RetentionSeconds,
+    NormlizeFun = fun(J, Acc) -> message_summary_normalizer(BoxId, J, Acc, RetentionTimestamp) end,
+    case message_summary_view_options(Context, BoxId, MaxRange) of
         {'ok', ViewOptions} ->
-            NormlizeFun = fun(J, Acc) ->
-                                  message_summary_normalizer(BoxId, J, Acc, RetenTimestamp)
-                          end,
             C1 = prefix_qs_filter_keys(cb_context:set_resp_status(Context, 'success')),
             ViewResults = crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
                                                 ,ViewOptions
@@ -801,9 +796,7 @@ load_message_summary(BoxId, Context) ->
 
 -spec prefix_qs_filter_keys(cb_context:context()) -> cb_context:context().
 prefix_qs_filter_keys(Context) ->
-    NewQs = kz_json:map(fun(K, V) ->
-                                prefix_filter_key(K, V)
-                        end
+    NewQs = kz_json:map(fun(K, V) -> prefix_filter_key(K, V) end
                        ,cb_context:query_string(Context)
                        ),
     cb_context:set_query_string(Context, NewQs).
@@ -824,25 +817,24 @@ prefix_filter_key(Key, Value) ->
 
 -spec message_summary_normalizer(api_binary(), kz_json:object(), kz_json:objects(), gregorian_seconds()) ->
                                         kz_json:objects().
-message_summary_normalizer('undefined', JObj, Acc, RetenTimestamp) ->
+message_summary_normalizer('undefined', JObj, Acc, RetentionTimestamp) ->
     [kz_json:from_list(
        [{kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], JObj)
-        ,kvm_util:maybe_set_deleted_by_retention(kz_json:get_value(<<"value">>, JObj), RetenTimestamp)
+        ,kvm_util:enforce_retention(kz_json:get_value(<<"value">>, JObj), RetentionTimestamp)
         }
        ])
      | Acc
     ];
-message_summary_normalizer(_BoxId, JObj, Acc, RetenTimestamp) ->
-    [kvm_util:maybe_set_deleted_by_retention(kz_json:get_value(<<"value">>, JObj), RetenTimestamp)
+message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
+    [kvm_util:enforce_retention(kz_json:get_value(<<"value">>, JObj), RetentionTimestamp)
      | Acc
     ].
 
--spec message_summary_view_options(cb_context:context(), api_binary(), gregorian_seconds()) ->
+-spec message_summary_view_options(cb_context:context(), api_binary(), pos_integer()) ->
                                           {'ok', crossbar_doc:view_options()} |
                                           cb_context:context().
-message_summary_view_options(Context, BoxId, MaxRetenSecond) ->
+message_summary_view_options(Context, BoxId, MaxRange) ->
     AccountId = cb_context:account_id(Context),
-    MaxRange = get_max_range(Context, MaxRetenSecond),
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
             MODBs = lists:reverse(kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)),
@@ -866,15 +858,20 @@ maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% check if create_from is exists or not, if not set max_range to max_retention
-%% to return all messages in retention duration
+%% For Backward compatibility with voicemail box `messages` array, set
+%% `max_range` to retention seconds to get all messages which are in
+%% retention duration range *only* if request doesn't have
+%% `created_from` in the query string.
+%%
+%% If `created_from` is set, use default Crossbar max range.
 %% @end
 %%--------------------------------------------------------------------
--spec get_max_range(cb_context:context(), gregorian_seconds()) -> gregorian_seconds().
-get_max_range(Context, MaxRetenSecond) ->
+-spec get_max_range(cb_context:context()) -> {pos_integer(), gregorian_seconds()}.
+get_max_range(Context) ->
+    RetentionSeconds = kvm_util:retention_seconds(cb_context:account_id(Context)),
     case cb_context:req_value(Context, <<"created_from">>) of
-        'undefined' -> MaxRetenSecond;
-        _ -> ?MAX_RANGE
+        'undefined' -> {RetentionSeconds, RetentionSeconds};
+        _ -> {?MAX_RANGE, RetentionSeconds}
     end.
 
 -spec maybe_fix_envelope(cb_context:context()) -> cb_context:context().
@@ -922,17 +919,7 @@ fix_key_fold(Key, Envelope) ->
 load_message(MessageId, BoxId, Context) ->
     load_message(MessageId, BoxId, Context, 'false').
 
--spec load_message(api_binary(), ne_binary(), cb_context:context(), boolean()) -> cb_context:context().
-load_message('undefined', BoxId, Context, _) ->
-    C1 = load_vmbox(BoxId, Context),
-    case cb_context:resp_status(C1) of
-        'success' ->
-            BoxJObj = cb_context:doc(C1),
-            OnSuccess = fun(C) -> create_new_message_document(C, BoxJObj) end,
-            C2 = cb_context:store(Context, 'vmbox', BoxJObj),
-            cb_context:validate_request_data(<<"vm_message_metadata">>, C2, OnSuccess);
-        _ -> C1
-    end;
+-spec load_message(ne_binary(), ne_binary(), cb_context:context(), boolean()) -> cb_context:context().
 load_message(MessageId, BoxId, Context, ReturnMetadata) ->
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', Msg} when ReturnMetadata ->
@@ -941,6 +928,18 @@ load_message(MessageId, BoxId, Context, ReturnMetadata) ->
             crossbar_doc:handle_json_success(Msg, Context);
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MessageId, Context)
+    end.
+
+-spec validate_new_message(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_new_message(BoxId, Context) ->
+    C1 = load_vmbox(BoxId, Context),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            BoxJObj = cb_context:doc(C1),
+            OnSuccess = fun(C) -> create_new_message_document(C, BoxJObj) end,
+            C2 = cb_context:store(Context, 'vmbox', BoxJObj),
+            cb_context:validate_request_data(<<"vm_message_metadata">>, C2, OnSuccess);
+        _ -> C1
     end.
 
 -spec create_new_message_document(cb_context:context(), kz_json:object()) -> cb_context:context().
@@ -962,14 +961,14 @@ create_new_message_document(Context, BoxJObj) ->
     DefaultCID = kz_privacy:anonymous_caller_id_number(AccountId),
     CallerNumber = kz_json:get_ne_binary_value(<<"caller_id_number">>, Doc, DefaultCID),
     CallerName = kz_json:get_ne_binary_value(<<"caller_id_name">>, Doc, DefaultCID),
-    From = kz_json:get_ne_binary_value(<<"from">>, Doc, <<CallerNumber/binary, "@", AccountRealm/binary>>),
-    To = kz_json:get_ne_binary_value(<<"to">>, Doc, <<BoxNum/binary, "@", AccountRealm/binary>>),
+    From = kz_json:get_ne_binary_value(<<"from">>, Doc, CallerNumber),
+    To = kz_json:get_ne_binary_value(<<"to">>, Doc, BoxNum),
     Length = kz_json:get_integer_value(<<"length">>, Doc, 1),
 
     Timestamp = kz_json:get_value(<<"pvt_created">>, JObj),
 
-    Routines = [{fun kapps_call:set_to/2, <<To/binary, "@nodomain">>}
-               ,{fun kapps_call:set_from/2, <<From/binary, "@nodomain">>}
+    Routines = [{fun kapps_call:set_to/2, <<To/binary, "@", AccountRealm/binary>>}
+               ,{fun kapps_call:set_from/2, <<From/binary, "@", AccountRealm/binary>>}
                ,{fun kapps_call:set_call_id/2, kz_json:get_ne_binary_value(<<"call_id">>, Doc, kz_binary:rand_hex(12))}
                ,{fun kapps_call:set_caller_id_number/2, CallerNumber}
                ,{fun kapps_call:set_caller_id_name/2, CallerName}

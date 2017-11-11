@@ -240,7 +240,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
     unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
 
 unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
-    lager:debug("unsolicitated mwi updated disabled : ~s", [_AccountDb]);
+    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                   ,'include_docs'
@@ -288,7 +288,7 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
     unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
 
 unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
-    lager:debug("unsolicitated mwi updated disabled : ~s", [_AccountDb]);
+    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
     case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
         {'error', _}=E -> E;
@@ -304,7 +304,7 @@ maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
     maybe_send_endpoint_mwi_update(AccountDb, JObj, kz_device:unsolicitated_mwi_updates(JObj)).
 
 maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
-    lager:debug("unsolicitated mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
+    lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     Username = kz_device:sip_username(JObj),
@@ -851,7 +851,7 @@ get_mailbox(AccountDb, VMNumber) ->
 vm_count(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     BoxId = kz_doc:id(JObj),
-    kvm_messages:count_none_deleted(AccountId, BoxId).
+    kvm_messages:count_non_deleted(AccountId, BoxId).
 
 %%--------------------------------------------------------------------
 %% @private

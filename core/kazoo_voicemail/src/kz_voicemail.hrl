@@ -24,8 +24,13 @@
 -type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
 -type message() :: ne_binary() | kz_json:object().
 -type messages() :: ne_binaries() | kz_json:objects().
--type count_result() :: {non_neg_integer(), non_neg_integer()}.
 -type update_funs() :: [fun((kz_json:object()) -> kz_json:object())].
+
+-type bulk_map() :: #{succeeded => ne_binaries() | kz_json:objects()
+                     ,failed => [{ne_binary(), ne_binary()}]
+                     ,to_update_map => #{ne_binary() => kz_json:objects()}
+                     ,enforce_set => set:sets()
+                     }.
 
 -type next_account() :: {ne_binary(), gregorian_seconds(), gregorian_seconds()}.
 

@@ -9,15 +9,16 @@
 -module(kvm_util).
 
 -export([get_db/1, get_db/2
-        ,get_range_db/1, get_range_db/2, create_range_dbs/2
+        ,get_range_db/1, get_range_db/2, split_to_modbs/2
         ,open_modb_doc/3, open_accountdb_doc/3
         ,check_doc_type/3
 
         ,check_msg_belonging/2
         ,get_change_vmbox_funs/4, get_change_vmbox_funs/5
 
+        ,retention_days/1
         ,retention_seconds/0, retention_seconds/1
-        ,maybe_set_deleted_by_retention/1, maybe_set_deleted_by_retention/2
+        ,enforce_retention/1, enforce_retention/2, is_prior_to_retention/2
 
         ,publish_saved_notify/5, publish_voicemail_saved/5
         ,get_notify_completed_message/1
@@ -54,22 +55,22 @@ get_db(AccountId, Year, Month) ->
 %% @doc Generate a range of database names
 %% @end
 %%--------------------------------------------------------------------
--spec get_range_db(ne_binary()) -> ne_binaries().
--spec get_range_db(ne_binary(), pos_integer()) -> ne_binaries().
+-spec get_range_db(ne_binary()) -> {gregorian_seconds(), gregorian_seconds(), ne_binaries()}.
+-spec get_range_db(ne_binary(), pos_integer()) -> {gregorian_seconds(), gregorian_seconds(), ne_binaries()}.
 get_range_db(AccountId) ->
-    get_range_db(AccountId, ?RETENTION_DAYS).
+    get_range_db(AccountId, retention_days(AccountId)).
 
 get_range_db(AccountId, Days) ->
     To = kz_time:current_tstamp(),
     From = To - retention_seconds(Days),
-    lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)]).
+    {From, To, lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)])}.
 
--spec create_range_dbs(ne_binary(), ne_binaries()) -> dict:dict().
-create_range_dbs(AccountId, MsgIds) ->
-    lists:foldl(fun(Id, Acc) ->
+-spec split_to_modbs(ne_binary(), ne_binaries()) -> map().
+split_to_modbs(AccountId, MsgIds) ->
+    lists:foldl(fun(Id, Map) ->
                         Db = get_db(AccountId, Id),
-                        dict:append(Db, Id, Acc)
-                end, dict:new(), MsgIds).
+                        maps:update_with(Db, fun(List) -> [Id|List] end, [Id], Map)
+                end, #{}, MsgIds).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -131,13 +132,25 @@ check_msg_belonging(_BoxId, _JObj, _SourceId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec retention_seconds() -> pos_integer().
--spec retention_seconds(pos_integer()) -> pos_integer().
+-spec retention_seconds() -> gregorian_seconds().
 retention_seconds() ->
     retention_seconds(?RETENTION_DAYS).
 
-retention_seconds(Days) ->
-    ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR.
+-spec retention_seconds(integer() | api_binary()) -> gregorian_seconds().
+retention_seconds(Days) when is_integer(Days)
+                             andalso Days > 0 ->
+    ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR;
+retention_seconds(?NE_BINARY=AccountId) ->
+    retention_seconds(retention_days(AccountId));
+retention_seconds(_) ->
+    retention_seconds(?RETENTION_DAYS).
+
+-spec retention_days(ne_binary()) -> integer().
+retention_days(AccountId) ->
+    case kapps_account_config:get_pos_integer(AccountId, ?CF_CONFIG_CAT, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]) of
+        'undefined' -> ?RETENTION_DAYS;
+        Days -> try kz_term:to_integer(Days) catch _:_ -> ?RETENTION_DAYS end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -145,20 +158,31 @@ retention_seconds(Days) ->
 %% if message is older than retention duration, set folder to deleted
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_deleted_by_retention(kz_json:object()) -> kz_json:object().
--spec maybe_set_deleted_by_retention(kz_json:object(), pos_integer()) -> kz_json:object().
-maybe_set_deleted_by_retention(JObj) ->
-    maybe_set_deleted_by_retention(JObj, retention_seconds()).
+-spec enforce_retention(kz_json:object()) -> kz_json:object().
+enforce_retention(JObj) ->
+    enforce_retention(JObj, kz_time:current_tstamp() - retention_seconds(kz_doc:account_id(JObj))).
 
-maybe_set_deleted_by_retention(JObj, Timestamp) ->
-    TsTampPath = [<<"utc_seconds">>, <<"timestamp">>],
-    MsgTstamp = kz_term:to_integer(kz_json:get_first_defined(TsTampPath, JObj, 0)),
-    case MsgTstamp =/= 0
-        andalso MsgTstamp < Timestamp
-    of
-        'true' -> kzd_box_message:set_folder_deleted(JObj);
-        'false' -> JObj
+-spec enforce_retention(kz_json:object(), gregorian_seconds() | boolean()) -> kz_json:object().
+enforce_retention(JObj, RetentionTimestamp)
+  when is_integer(RetentionTimestamp) ->
+    enforce_retention(JObj, is_prior_to_retention(JObj, RetentionTimestamp));
+enforce_retention(JObj, 'false') ->
+    JObj;
+enforce_retention(JObj, 'true') ->
+    case kzd_box_message:metadata(JObj) of
+        'undefined' -> kzd_box_message:set_folder_deleted(JObj);
+        Metadata ->
+            kzd_box_message:set_metadata(kzd_box_message:set_folder_deleted(Metadata), JObj)
     end.
+
+-spec is_prior_to_retention(kz_json:object(), api_seconds()) -> boolean().
+is_prior_to_retention(_, 'undefined') ->
+    'false';
+is_prior_to_retention(JObj, RetentionTimestamp) ->
+    TsTampPath = [<<"utc_seconds">>, <<"timestamp">>, [<<"metadata">>, <<"timestamp">>], <<"pvt_create">>],
+    MsgTstamp = kz_term:to_integer(kz_json:get_first_defined(TsTampPath, JObj, 0)),
+    MsgTstamp =/= 0
+        andalso MsgTstamp < RetentionTimestamp.
 
 %%--------------------------------------------------------------------
 %% @public

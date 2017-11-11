@@ -49,7 +49,6 @@
                ,failed_accounts = [] :: ne_binaries()
                ,calling_process = 'undefined' :: api_pid()
                ,timer_ref :: api_reference()
-               ,retention_seconds = kvm_util:retention_seconds() :: gregorian_seconds()
                ,account_queue :: queue:queue() | 'undefined'
                }).
 -type state() :: #state{}.
@@ -140,12 +139,10 @@ init(Pid) ->
             ?WARNING("################### BEGINNING MIGRATING VOICEMAIL FOR ~b ACCOUNTS ###################~n~n", [length(Ids)]),
             AccountIds = kz_term:shuffle_list(Ids),
             %% first start migrating messages in retention durations
-            RetentionSeconds = kvm_util:retention_seconds(),
-            Queue = populate_queue(AccountIds, kz_time:current_tstamp(), RetentionSeconds),
+            Queue = populate_queue(AccountIds, kz_time:current_tstamp()),
             {'ok', #state{account_ids = AccountIds
                          ,total_account = length(AccountIds)
                          ,account_queue = Queue
-                         ,retention_seconds = RetentionSeconds
                          ,timer_ref = cleanup_account_timer()
                          ,calling_process = Pid
                          }}
@@ -290,19 +287,17 @@ code_change(_OldVsn, State, _Extra) ->
 -spec spawn_worker(state()) -> state().
 -spec maybe_spawn_worker(state(), next_account_ret()) -> state().
 spawn_worker(#state{account_queue = Queue
-                   ,retention_seconds = RetentionSeconds
                    ,retention_passed = IsRetPassed
                    ,workers = Workers
                    }=State) ->
-    NextAccount = get_next_account(Queue, Workers, RetentionSeconds, IsRetPassed),
+    NextAccount = get_next_account(Queue, Workers, IsRetPassed),
     maybe_spawn_worker(State, NextAccount).
 
 maybe_spawn_worker(#state{account_ids = AccountIds
-                         ,retention_seconds = RetentionSeconds
                          }=State, 'retention_passed') ->
     ?WARNING("~n########## all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails ##########~n", []),
     State#state{retention_passed = 'true'
-               ,account_queue = populate_queue(AccountIds, RetentionSeconds)
+               ,account_queue = populate_queue(AccountIds)
                };
 maybe_spawn_worker(State, 'empty') ->
     %% migration is done waiting for workers to finish their jobs
@@ -365,36 +360,36 @@ cleanup_account_timer() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_next_account(queue:queue(), workers(), gregorian_seconds(), boolean()) ->
+-spec get_next_account(queue:queue(), workers(), boolean()) ->
                               next_account_ret().
-get_next_account(Queue, Workers, RetentionSeconds, IsRetPassed) ->
+get_next_account(Queue, Workers, IsRetPassed) ->
     case queue:out(Queue) of
         {{'value', {AccountId, _, _} = NextAccount}, Q} ->
             WorkerNextAccount = [WNA
                                  || {_Pid, {WorkerAccountId, _, _} = WNA} <- Workers,
                                     WorkerAccountId == AccountId
                                 ],
-            get_next(Queue, WorkerNextAccount, NextAccount, Q, RetentionSeconds, IsRetPassed);
+            get_next(Queue, WorkerNextAccount, NextAccount, Q, IsRetPassed);
         {'empty', _} when not IsRetPassed ->
             'retention_passed';
         {'empty', _} ->
             'empty'
     end.
 
--spec get_next(queue:queue(), [next_account()], next_account(), queue:queue(), gregorian_seconds(), boolean()) ->
+-spec get_next(queue:queue(), [next_account()], next_account(), queue:queue(), boolean()) ->
                       next_account_ret().
-get_next(_, [], {AccountId, FirstOfMonth, _LastOfMonth}, Q, RetentionSeconds, 'false') ->
+get_next(_, [], {AccountId, FirstOfMonth, _LastOfMonth}, Q, 'false') ->
     PrevMonth = previous_month_timestamp(FirstOfMonth),
-    case PrevMonth < RetentionSeconds of
+    case PrevMonth < kvm_util:retention_seconds(AccountId) of
         'true' ->
             {'account_hit_retention', Q};
         'false' ->
             NextAccount = {AccountId, PrevMonth, FirstOfMonth},
             {NextAccount, queue:in(NextAccount, Q)}
     end;
-get_next(_, [], NextAccount, Q, _, 'true') ->
+get_next(_, [], NextAccount, Q, 'true') ->
     {NextAccount, queue:in(NextAccount, Q)};
-get_next(_Queue, _WorkerNextAccount, _NextAccount, _Q, _, _IsRetPassed) ->
+get_next(_Queue, _WorkerNextAccount, _NextAccount, _Q, _IsRetPassed) ->
     'continue'.
 
 %%--------------------------------------------------------------------
@@ -402,15 +397,15 @@ get_next(_Queue, _WorkerNextAccount, _NextAccount, _Q, _, _IsRetPassed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec populate_queue(ne_binaries(), gregorian_seconds()) -> queue:queue().
--spec populate_queue(ne_binaries(), gregorian_seconds(), gregorian_seconds()) -> queue:queue().
-populate_queue(AccountIds, _RetentionSeconds) ->
+-spec populate_queue(ne_binaries()) -> queue:queue().
+populate_queue(AccountIds) ->
     Props = [{AccountId, 'undefined', 'undefined'}
              || AccountId <- AccountIds
             ],
     queue:from_list(Props).
 
-populate_queue(AccountIds, LastOfMonth, _RetentionSeconds) ->
+-spec populate_queue(ne_binaries(), gregorian_seconds()) -> queue:queue().
+populate_queue(AccountIds, LastOfMonth) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(LastOfMonth),
     FirstOfMonth = calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}}),
     Props = [{AccountId, FirstOfMonth, LastOfMonth}

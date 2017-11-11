@@ -90,7 +90,7 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Normalize audio file to the system default or specified sample rate.
-%% Acceptes a path to the media file as input.
+%% Accept a path to the media file as input.
 %%
 %% By default it returns result as binary, if you want file path to the
 %%  normalized file only, pass the {'output', 'file'} as option.
@@ -312,8 +312,8 @@ maybe_normalize_copy_files([{File, SampleRate, Format}|Files], SampleRate, Acc) 
     case file:copy(File, NewFile) of
         {'ok', _} ->
             maybe_normalize_copy_files(Files, SampleRate, [{NewFile, SampleRate, Format}|Acc]);
-        {'error', _} ->
-            lager:warning("failed to copy file to a temproray place to join media files"),
+        {'error', _Reason} ->
+            lager:warning("failed to copy file to a temporary place to join media files: ~p", [_Reason]),
             %% cleanup already copied files
             _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
             {'error', 'normalization_failed'}
@@ -325,8 +325,8 @@ maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
     case normalize_media_file(Format, Format, File, NormOptions) of
         {'ok', NormFile} ->
             maybe_normalize_copy_files(Files, SampleRate, [{NormFile, SampleRate, Format}|Acc]);
-        {'error', _} ->
-            lager:warning("can't normalize file ~s for preforming join media", [File]),
+        {'error', _Reason} ->
+            lager:warning("can't normalize file ~s for preforming join media: ~p", [File, _Reason]),
             %% cleanup already copied files
             _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
             {'error', 'normalization_failed'}

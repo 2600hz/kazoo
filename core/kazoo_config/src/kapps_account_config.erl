@@ -15,6 +15,7 @@
 
         ,get_ne_binary/3, get_ne_binary/4
         ,get_ne_binaries/3, get_ne_binaries/4
+        ,get_pos_integer/3, get_pos_integer/4
 
         ,get_global/2, get_global/3, get_global/4
         ,get_from_reseller/3, get_from_reseller/4
@@ -65,6 +66,30 @@ get_ne_binaries(Account, Category, Path, Default) ->
     case kz_term:is_ne_binaries(Values) of
         false -> Default;
         true -> Values
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get a configuration key for a given category and cast it as a pos_integer
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_pos_integer(api_account(), ne_binary(), kz_json:path()) -> pos_integer().
+get_pos_integer(Account, Category, Path) ->
+    get_pos_integer(Account, Category, Path, 'undefined').
+
+-spec get_pos_integer(api_account(), ne_binary(), kz_json:path(), Default) -> pos_integer() | Default.
+get_pos_integer(Account, Category, Path, Default) ->
+    to_pos_integer(get(Account, Category, Path, Default), Default).
+
+-spec to_pos_integer(any(), Default) -> pos_integer() | Default.
+to_pos_integer(Value, Default) ->
+    try kz_term:to_integer(Value) of
+        PosInteger when is_integer(Value), Value > 0 ->
+            PosInteger;
+        _ -> Default
+    catch
+        _:_ -> Default
     end.
 
 %%--------------------------------------------------------------------
