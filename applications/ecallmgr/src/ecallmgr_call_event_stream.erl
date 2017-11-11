@@ -47,7 +47,7 @@ create_event(EventName, ApplicationName, Props) ->
                                               kz_proplist().
 specific_call_channel_vars_props(_EventName, Props) ->
     [{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-    ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_util:custom_application_vars(Props))}    
+    ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_util:custom_application_vars(Props))}
     ].
 
 -spec generic_call_event_props(kz_proplist()) -> kz_proplist().
