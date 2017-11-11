@@ -225,11 +225,11 @@ create_loopback_endpoint(Props, OffnetReq) ->
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = knm_number_options:number(Props),
     AccountId = knm_number_options:account_id(Props),
-    OriginalAccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    OriginalAccountId = kz_json:get_value(<<"Account-ID">>, OffnetReq),
     Realm = get_account_realm(AccountId),
     FromRealm = get_account_realm(OriginalAccountId),
     FromURI = <<CIDNum/binary, "@", Realm/binary>>,
-    CCVsOrig = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetReq),
     CCVs = kz_json:from_list(
              [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
