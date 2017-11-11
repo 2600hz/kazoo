@@ -850,7 +850,7 @@ create_registration(JObj) ->
 
 -spec augment_registration(registration(), kz_json:object()) -> registration().
 augment_registration(Reg, JObj) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     AccountId = kz_json:find(<<"Account-ID">>
                             ,[JObj, CCVs]
                             ,Reg#registration.account_id
@@ -1037,7 +1037,7 @@ update_from_authn_response(#registration{username=Username
                                         ,realm=Realm
                                         }=Reg
                           ,JObj) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     AccountId = kz_json:get_value(<<"Account-ID">>, CCVs),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     AuthorizingId = kz_json:get_value(<<"Authorizing-ID">>, CCVs),

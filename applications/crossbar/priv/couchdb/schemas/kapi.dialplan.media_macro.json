@@ -31,7 +31,7 @@
             "type": "string"
         },
         "Media-Macros": {
-            "type": "string"
+            "type": "object"
         }
     },
     "required": [

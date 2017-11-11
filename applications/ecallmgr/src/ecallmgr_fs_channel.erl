@@ -31,6 +31,7 @@
 -export([to_json/1
         ,to_props/1
         ,channel_ccvs/1
+        ,channel_cavs/1
         ]).
 -export([to_api_json/1
         ,to_api_props/1
@@ -208,43 +209,44 @@ to_json(Channel) ->
 -spec to_props(channel()) -> kz_proplist().
 to_props(Channel) ->
     props:filter_undefined(
-      [{<<"uuid">>, Channel#channel.uuid}
-      ,{<<"destination">>, Channel#channel.destination}
-      ,{<<"direction">>, Channel#channel.direction}
+      [{<<"account_billing">>, Channel#channel.account_billing}
       ,{<<"account_id">>, Channel#channel.account_id}
-      ,{<<"account_billing">>, Channel#channel.account_billing}
+      ,{<<"answered">>, Channel#channel.answered}
       ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
       ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
-      ,{<<"channel_authorized">>, Channel#channel.is_authorized}
-      ,{<<"owner_id">>, Channel#channel.owner_id}
-      ,{<<"resource_id">>, Channel#channel.resource_id}
-      ,{<<"presence_id">>, Channel#channel.presence_id}
-      ,{<<"fetch_id">>, Channel#channel.fetch_id}
       ,{<<"bridge_id">>, Channel#channel.bridge_id}
-      ,{<<"precedence">>, Channel#channel.precedence}
-      ,{<<"reseller_id">>, Channel#channel.reseller_id}
-      ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
-      ,{<<"realm">>, Channel#channel.realm}
-      ,{<<"username">>, Channel#channel.username}
-      ,{<<"answered">>, Channel#channel.answered}
-      ,{<<"node">>, Channel#channel.node}
-      ,{<<"timestamp">>, Channel#channel.timestamp}
-      ,{<<"profile">>, Channel#channel.profile}
+      ,{<<"callflow_id">>, Channel#channel.callflow_id}
+      ,{<<"channel_authorized">>, Channel#channel.is_authorized}
       ,{<<"context">>, Channel#channel.context}
+      ,{<<"custom_application_vars">>, Channel#channel.cavs}
+      ,{<<"destination">>, Channel#channel.destination}
       ,{<<"dialplan">>, Channel#channel.dialplan}
-      ,{<<"other_leg">>, Channel#channel.other_leg}
-      ,{<<"handling_locally">>, Channel#channel.handling_locally}
-      ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
-      ,{<<"switch_nodename">>, Channel#channel.node}
-      ,{<<"to_tag">>, Channel#channel.to_tag}
-      ,{<<"from_tag">>, Channel#channel.from_tag}
+      ,{<<"direction">>, Channel#channel.direction}
       ,{<<"elapsed_s">>, kz_time:elapsed_s(Channel#channel.timestamp)}
+      ,{<<"fetch_id">>, Channel#channel.fetch_id}
+      ,{<<"from_tag">>, Channel#channel.from_tag}
+      ,{<<"handling_locally">>, Channel#channel.handling_locally}
       ,{<<"interaction_id">>, Channel#channel.interaction_id}
       ,{<<"is_loopback">>, Channel#channel.is_loopback}
+      ,{<<"is_onhold">>, Channel#channel.is_onhold}
       ,{<<"loopback_leg_name">>, Channel#channel.loopback_leg_name}
       ,{<<"loopback_other_leg">>, Channel#channel.loopback_other_leg}
-      ,{<<"callflow_id">>, Channel#channel.callflow_id}
-      ,{<<"is_onhold">>, Channel#channel.is_onhold}
+      ,{<<"node">>, Channel#channel.node}
+      ,{<<"other_leg">>, Channel#channel.other_leg}
+      ,{<<"owner_id">>, Channel#channel.owner_id}
+      ,{<<"precedence">>, Channel#channel.precedence}
+      ,{<<"presence_id">>, Channel#channel.presence_id}
+      ,{<<"profile">>, Channel#channel.profile}
+      ,{<<"realm">>, Channel#channel.realm}
+      ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
+      ,{<<"reseller_id">>, Channel#channel.reseller_id}
+      ,{<<"resource_id">>, Channel#channel.resource_id}
+      ,{<<"switch_nodename">>, Channel#channel.node}
+      ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
+      ,{<<"timestamp">>, Channel#channel.timestamp}
+      ,{<<"to_tag">>, Channel#channel.to_tag}
+      ,{<<"username">>, Channel#channel.username}
+      ,{<<"uuid">>, Channel#channel.uuid}
       ]).
 
 -spec to_api_json(channel()) -> kz_json:object().
@@ -334,6 +336,10 @@ channel_ccvs([_|_]=Props) ->
       ]);
 channel_ccvs(JObj) ->
     channel_ccvs(kz_json:to_proplist(JObj)).
+
+-spec channel_cavs(channel()) -> kz_proplist().
+channel_cavs(#channel{cavs='undefined'}) -> [];
+channel_cavs(#channel{cavs=CAVs}) -> CAVs.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -689,7 +695,9 @@ maybe_publish_restricted(Props) ->
 props_to_record(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CAVs = ecallmgr_util:custom_application_vars(Props),
     OtherLeg = get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props),
+
     #channel{uuid=UUID
             ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
             ,direction=kzd_freeswitch:call_direction(Props)
@@ -727,6 +735,7 @@ props_to_record(Props, Node) ->
             ,loopback_leg_name=kzd_freeswitch:loopback_leg_name(Props)
             ,loopback_other_leg=kzd_freeswitch:loopback_other_leg(Props)
             ,callflow_id=props:get_value(<<"CallFlow-ID">>, CCVs)
+            ,cavs=CAVs
             }.
 
 -spec other_leg_handling_locally(ne_binary()) -> boolean().
@@ -775,38 +784,42 @@ get_realm(Props) ->
 props_to_update(Props) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
-    props:filter_undefined([{#channel.destination, props:get_value(<<"Caller-Destination-Number">>, Props)}
-                           ,{#channel.direction, kzd_freeswitch:call_direction(Props)}
-                           ,{#channel.account_id, props:get_value(<<"Account-ID">>, CCVs)}
-                           ,{#channel.account_billing, props:get_value(<<"Account-Billing">>, CCVs)}
-                           ,{#channel.authorizing_id, props:get_value(<<"Authorizing-ID">>, CCVs)}
-                           ,{#channel.authorizing_type, props:get_value(<<"Authorizing-Type">>, CCVs)}
-                           ,{#channel.is_authorized, props:get_value(?GET_CCV(<<"Channel-Authorized">>), Props)}
-                           ,{#channel.owner_id, props:get_value(<<"Owner-ID">>, CCVs)}
-                           ,{#channel.resource_id, props:get_value(<<"Resource-ID">>, CCVs)}
-                           ,{#channel.presence_id, props:get_value(<<"Channel-Presence-ID">>, CCVs
-                                                                  ,props:get_value(<<"variable_presence_id">>, Props))}
-                           ,{#channel.fetch_id, props:get_value(<<"Fetch-ID">>, CCVs)}
-                           ,{#channel.bridge_id, props:get_value(<<"Bridge-ID">>, CCVs, UUID)}
-                           ,{#channel.reseller_id, props:get_value(<<"Reseller-ID">>, CCVs)}
-                           ,{#channel.reseller_billing, props:get_value(<<"Reseller-Billing">>, CCVs)}
-                           ,{#channel.precedence, kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))}
-                           ,{#channel.realm, props:get_value(<<"Realm">>, CCVs, get_realm(Props))}
-                           ,{#channel.username, props:get_value(<<"Username">>, CCVs, get_username(Props))}
-                           ,{#channel.import_moh, props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'}
-                           ,{#channel.answered, props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>}
-                           ,{#channel.profile, props:get_value(<<"variable_sofia_profile_name">>, Props)}
-                           ,{#channel.context, props:get_value(<<"Caller-Context">>, Props)}
-                           ,{#channel.dialplan, props:get_value(<<"Caller-Dialplan">>, Props)}
-                           ,{#channel.to_tag, props:get_value(<<"variable_sip_to_tag">>, Props)}
-                           ,{#channel.from_tag, props:get_value(<<"variable_sip_from_tag">>, Props)}
-                           ,{#channel.interaction_id, props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)}
-                           ,{#channel.is_loopback, kzd_freeswitch:is_loopback(Props)}
-                           ,{#channel.loopback_leg_name, kzd_freeswitch:loopback_leg_name(Props)}
-                           ,{#channel.loopback_other_leg, kzd_freeswitch:loopback_other_leg(Props)}
-                           ,{#channel.callflow_id, props:get_value(<<"CallFlow-ID">>, CCVs)}
-                            | update_callee(UUID, Props)
-                           ]).
+    CAVs = ecallmgr_util:custom_application_vars(Props),
+
+    props:filter_undefined(
+      [{#channel.destination, props:get_value(<<"Caller-Destination-Number">>, Props)}
+      ,{#channel.direction, kzd_freeswitch:call_direction(Props)}
+      ,{#channel.account_id, props:get_value(<<"Account-ID">>, CCVs)}
+      ,{#channel.account_billing, props:get_value(<<"Account-Billing">>, CCVs)}
+      ,{#channel.authorizing_id, props:get_value(<<"Authorizing-ID">>, CCVs)}
+      ,{#channel.authorizing_type, props:get_value(<<"Authorizing-Type">>, CCVs)}
+      ,{#channel.is_authorized, props:get_value(?GET_CCV(<<"Channel-Authorized">>), Props)}
+      ,{#channel.owner_id, props:get_value(<<"Owner-ID">>, CCVs)}
+      ,{#channel.resource_id, props:get_value(<<"Resource-ID">>, CCVs)}
+      ,{#channel.presence_id, props:get_value(<<"Channel-Presence-ID">>, CCVs
+                                             ,props:get_value(<<"variable_presence_id">>, Props))}
+      ,{#channel.fetch_id, props:get_value(<<"Fetch-ID">>, CCVs)}
+      ,{#channel.bridge_id, props:get_value(<<"Bridge-ID">>, CCVs, UUID)}
+      ,{#channel.reseller_id, props:get_value(<<"Reseller-ID">>, CCVs)}
+      ,{#channel.reseller_billing, props:get_value(<<"Reseller-Billing">>, CCVs)}
+      ,{#channel.precedence, kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))}
+      ,{#channel.realm, props:get_value(<<"Realm">>, CCVs, get_realm(Props))}
+      ,{#channel.username, props:get_value(<<"Username">>, CCVs, get_username(Props))}
+      ,{#channel.import_moh, props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'}
+      ,{#channel.answered, props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>}
+      ,{#channel.profile, props:get_value(<<"variable_sofia_profile_name">>, Props)}
+      ,{#channel.context, props:get_value(<<"Caller-Context">>, Props)}
+      ,{#channel.dialplan, props:get_value(<<"Caller-Dialplan">>, Props)}
+      ,{#channel.to_tag, props:get_value(<<"variable_sip_to_tag">>, Props)}
+      ,{#channel.from_tag, props:get_value(<<"variable_sip_from_tag">>, Props)}
+      ,{#channel.interaction_id, props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)}
+      ,{#channel.is_loopback, kzd_freeswitch:is_loopback(Props)}
+      ,{#channel.loopback_leg_name, kzd_freeswitch:loopback_leg_name(Props)}
+      ,{#channel.loopback_other_leg, kzd_freeswitch:loopback_other_leg(Props)}
+      ,{#channel.callflow_id, props:get_value(<<"CallFlow-ID">>, CCVs)}
+      ,{#channel.cavs, CAVs}
+       | update_callee(UUID, Props)
+      ]).
 
 -spec update_callee(binary(), channel_updates()) -> channel_updates().
 update_callee(UUID, Props) ->

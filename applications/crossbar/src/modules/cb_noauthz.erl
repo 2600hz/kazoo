@@ -24,8 +24,8 @@
 
 -spec init() -> ok.
 init() ->
-    crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    ok.
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    'ok'.
 
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(_) ->

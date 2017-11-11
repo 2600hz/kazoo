@@ -3,7 +3,7 @@
 %%% @doc
 %%%
 %%% "data":{
-%%%   "custom_channel_vars": {"key": "value", "key": "value"},
+%%%   "custom_application_vars": {"key": "value", "key": "value"},
 %%%   "export": true
 %%% }
 %%%
@@ -37,13 +37,13 @@ handle(Data, Call) ->
 
 -spec get_custom_channel_vars(kz_json:object()) -> kz_json:object().
 get_custom_channel_vars(Data) ->
-    JObj = kz_json:get_ne_value(<<"custom_channel_vars">>, Data, kz_json:new()),
+    JObj = kz_json:get_json_value(<<"custom_application_vars">>, Data, kz_json:new()),
     kz_json:from_list(kapps_call_util:filter_ccvs(JObj)).
 
 -spec set_variables(boolean(), kz_json:object(), kapps_call:call()) -> 'ok'.
 set_variables('true', JObj, Call) ->
-    lager:debug("exporting custom channel vars: ~p", [JObj]),
-    kapps_call_command:set('undefined', JObj, Call);
+    lager:debug("exporting custom app vars: ~p", [JObj]),
+    kapps_call_command:set('undefined', 'undefined', JObj, Call);
 set_variables('false', JObj, Call) ->
-    lager:debug("setting custom channel vars: ~p", [JObj]),
-    kapps_call_command:set(JObj, 'undefined', Call).
+    lager:debug("setting custom app vars: ~p", [JObj]),
+    kapps_call_command:set('undefined', 'undefined', JObj, Call).

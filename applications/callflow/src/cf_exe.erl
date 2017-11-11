@@ -898,24 +898,9 @@ handle_channel_pivoted(Self, PidRef, JObj, Call) ->
         FlowBin ->
             _ = maybe_stop_action(PidRef),
             lager:debug("pivoting to ~s", [FlowBin]),
-            flush(Call),
+            cf_util:flush_control_queue(Call),
             continue_with_flow(kz_json:decode(FlowBin), Self)
     end.
-
--spec flush(kapps_call:call()) -> 'ok'.
-flush(Call) ->
-    ControlQueue = kapps_call:control_queue_direct(Call),
-    CallId = kapps_call:call_id_direct(Call),
-
-    NoopId = kz_datamgr:get_uuid(),
-    Command = [{<<"Application-Name">>, <<"noop">>}
-              ,{<<"Msg-ID">>, NoopId}
-              ,{<<"Insert-At">>, <<"flush">>}
-              ,{<<"Call-ID">>, CallId}
-               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("flushing with ~p", [Command]),
-    kz_amqp_worker:cast(Command, fun(C) -> kapi_dialplan:publish_command(ControlQueue, C) end).
 
 -spec maybe_stop_action(api_pid_ref()) -> 'ok'.
 maybe_stop_action({Pid, _Ref}) ->

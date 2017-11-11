@@ -47,7 +47,7 @@ resource_exists() -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     validate(Context, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -71,7 +71,7 @@ validate(Context, ?HTTP_DELETE) ->
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
 
     AuthToken = cb_context:auth_token(Context),
     case kz_datamgr:del_doc(?KZ_TOKEN_DB, AuthToken) of
@@ -112,7 +112,7 @@ authorize(Context) ->
                           boolean() |
                           {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     authenticate(Context, cb_context:auth_account_id(Context), cb_context:auth_token_type(Context)).
 
 authenticate(_Context, ?NE_BINARY = _AccountId, 'x-auth-token') -> 'true';
@@ -142,7 +142,7 @@ authenticate(_Context, _AccountId, _TokenType) -> 'false'.
                                 boolean() |
                                 {'true', cb_context:context()}.
 early_authenticate(Context) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     early_authenticate(Context, cb_context:auth_token_type(Context)).
 
 early_authenticate(Context, 'x-auth-token') ->

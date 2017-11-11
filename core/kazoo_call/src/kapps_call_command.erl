@@ -43,7 +43,7 @@
         ,hangup/1, hangup/2
         ,break/1
         ,queued_hangup/1
-        ,set/3, set_terminators/2
+        ,set/3, set/4, set_terminators/2
         ,fetch/1, fetch/2
         ]).
 -export([echo/1]).
@@ -774,18 +774,23 @@ recv_dtmf_command(DTMFs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set(api_object(), api_object(), kapps_call:call()) -> 'ok'.
-set('undefined', CallVars, Call) -> set(kz_json:new(), CallVars, Call);
-set(ChannelVars, 'undefined', Call) -> set(ChannelVars, kz_json:new(), Call);
+-spec set(api_object(), api_object(), api_object(), kapps_call:call()) -> 'ok'.
 set(ChannelVars, CallVars, Call) ->
+    set(ChannelVars, CallVars, 'undefined', Call).
+
+set('undefined', CallVars, AppVars, Call) -> set(kz_json:new(), CallVars, AppVars, Call);
+set(ChannelVars, 'undefined', AppVars, Call) -> set(ChannelVars, kz_json:new(), AppVars, Call);
+set(ChannelVars, CallVars, AppVars, Call) ->
     case kz_json:is_empty(ChannelVars)
         andalso kz_json:is_empty(CallVars)
     of
         'true' -> 'ok';
         'false' ->
             Command = [{<<"Application-Name">>, <<"set">>}
-                      ,{<<"Insert-At">>, <<"now">>}
-                      ,{<<"Custom-Channel-Vars">>, ChannelVars}
+                      ,{<<"Custom-Application-Vars">>, AppVars}
                       ,{<<"Custom-Call-Vars">>, CallVars}
+                      ,{<<"Custom-Channel-Vars">>, ChannelVars}
+                      ,{<<"Insert-At">>, <<"now">>}
                       ],
             send_command(Command, Call)
     end.

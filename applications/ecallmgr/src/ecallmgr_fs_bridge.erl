@@ -45,6 +45,7 @@ call_command(Node, UUID, JObj) ->
                        ,fun handle_secure_rtp/5
                        ,fun maybe_handle_bypass_media/5
                        ,fun handle_ccvs/5
+                       ,fun handle_cavs/5
                        ,fun pre_exec/5
                        ,fun handle_loopback/5
                        ,fun create_command/5
@@ -181,11 +182,21 @@ bypass_endpoint_media_enabled(Endpoint, BridgeProfile, ChannelProfile) ->
 
 -spec handle_ccvs(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 handle_ccvs(DP, Node, UUID, _Channel, JObj) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    case kz_json:is_json_object(CCVs) of
-        'false' -> DP;
-        'true' ->
+    case kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj) of
+        'undefined' -> DP;
+        CCVs ->
             Args = ecallmgr_util:process_fs_kv(Node, UUID, kz_json:to_proplist(CCVs), 'set'),
+            AppArgs = ecallmgr_util:fs_args_to_binary(Args),
+            [{"application", <<"kz_multiset ", AppArgs/binary>>}] ++ DP
+    end.
+
+-spec handle_cavs(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+handle_cavs(DP, Node, UUID, _Channel, JObj) ->
+    case kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj) of
+        'undefined' -> DP;
+        CAVs ->
+            SetCAVs = [{?CAV(K), V} || {K, V} <- kz_json:to_proplist(CAVs)],
+            Args = ecallmgr_util:process_fs_kv(Node, UUID, SetCAVs, 'set'),
             AppArgs = ecallmgr_util:fs_args_to_binary(Args),
             [{"application", <<"kz_multiset ", AppArgs/binary>>}] ++ DP
     end.

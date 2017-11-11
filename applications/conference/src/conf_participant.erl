@@ -338,9 +338,24 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             lager:debug("received channel hangup event, terminate"),
             gen_listener:cast(Srv, 'hungup');
+        {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
+            handle_channel_pivot(JObj, Call);
         {_, _} -> 'ok'
     end,
     {'reply', [{'call_event_consumers', Consumers}]}.
+
+handle_channel_pivot(JObj, Call) ->
+    case kz_json:get_ne_binary_value(<<"Application-Data">>, JObj) of
+        'undefined' -> lager:info("no app data to pivot");
+        FlowBin ->
+            lager:info("recv channel pivot with flow ~s", [FlowBin]),
+
+            Req = [{<<"Flow">>, kz_json:decode(FlowBin)}
+                  ,{<<"Call">>, kapps_call:to_json(Call)}
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  ],
+            kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
