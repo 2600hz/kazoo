@@ -66,7 +66,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"*.finish_request.post.vmboxes">>, ?MODULE, 'finish_request'),
     ok.
 
 %%--------------------------------------------------------------------
