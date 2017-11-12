@@ -34,6 +34,7 @@ init() ->
 
 -spec dialplan(map()) -> fs_sendmsg_ret().
 dialplan(#{fetch_id := FetchId, payload := JObj}=Map) ->
+    lager:debug_unsafe("FETCH ~s", [kz_json:encode(JObj, ['pretty'])]),
     lager:debug("start dialplan fetch ~s for ~s", [FetchId, kzd_fetch:call_id(JObj)]),
     Routines = [fun call_id/1
                ,fun timeout/1
@@ -53,12 +54,12 @@ process(#{payload := JObj}=Map) ->
     maybe_expired(kz_maps:exec(Routines, Map)).
 
 request(#{request := _Request}=Map) -> Map;
-request(#{node := Node, fetch_id := FetchId, call_id := UUID, control_q := ControlQ, payload := JObj}=Map) ->
-    Map#{request => ecallmgr_fs_router_util:route_req(ControlQ, UUID, FetchId, kz_json:to_proplist(JObj), Node)}.
+request(#{control_q := ControlQ, payload := JObj}=Map) ->
+    Map#{request => kz_json:set_value(?KEY_SERVER_ID, ControlQ, JObj)}.
 
 control_p(#{control_p := _Pid}=Map) -> Map;
 control_p(#{request := Request}=Map) ->
-    Map#{request => [{<<"Request-From-PID">>, kz_term:to_binary(self())} | Request], control_p => self()}.
+    Map#{request => kz_json:set_value(?KEY_REQUEST_FROM_PID, kz_term:to_binary(self()), Request), control_p => self()}.
 
 timeout(#{timeout := _Timeout}=Map) -> Map;
 timeout(#{payload := JObj}=Map) ->
