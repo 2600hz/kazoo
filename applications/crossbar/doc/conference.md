@@ -54,7 +54,7 @@ Key | Description | Type | Default | Required
 
 ```shell
 curl -v -X PUT \
-    -d '{"data": {"action": {CONFERENCE_ACTION}}}' \
+    -d '{"action": "{CONFERENCE_ACTION}", "data": {"ACTION":"DATA"}}' \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
@@ -103,8 +103,8 @@ As when making [quickcalls](./quickcall.md), you can include `custom_application
 
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
         ,"custom_application_vars":{
             "foo":"bar"
         }
@@ -121,8 +121,8 @@ You can also include the outbound call id you'd like the leg to use:
 
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
         ,"custom_application_vars":{
             "foo":"bar"
         }
@@ -142,8 +142,8 @@ Sometimes you want to create ad-hoc conferences and put a participant in there. 
 
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
         "data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
             "caller_id_name":"Conference XYZ",
@@ -163,10 +163,11 @@ These properties will be merged into a "default" conference document and then ex
 Playing a media file to everyone in a conference:
 
 ```json
-{"data"{
-    "action":"play",
-    "data":{"media_id":"{MEDIA_ID}"}
- }
+{
+    action":"play"
+    ,"data"{
+        "data":{"media_id":"{MEDIA_ID}"}
+    }
 }
 ```
 
