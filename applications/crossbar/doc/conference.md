@@ -70,6 +70,22 @@ curl -v -X PUT \
 
 Sometimes you want to dial out from a conference to an endpoint (versus waiting for the caller to dial into the conference). Similar to how the `group` callflow works, you can include device and user IDs; unlike groups, you can include DIDs as well (similar to quickcall/click2call).
 
+###### Schema
+
+Schema for conference dial API command
+
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false`
+`caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
+`endpoints.[]` |   | `string()` |   | `true`
+`endpoints` |   | `array(string())` |   | `true`
+`timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
+
+###### Examples
+
 ```json
 {
     "data":{
@@ -117,28 +133,6 @@ You can also include the outbound call id you'd like the leg to use:
             "outbound_call_id":"xyz-abc"
         }
     }
-}
-```
-
-A full example:
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: $AUTH_TOKEN" \
-    "http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}" \
-    -d'{"data":{"action":"dial","data":{"endpoints":["{DEVICE_ID}"]}}}'
-```
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": "dialing endpoints",
-    "node": "{NODE}",
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success",
-    "timestamp": "{TIMESTAMP}",
-    "version": "4.2.2"
 }
 ```
 

@@ -425,6 +425,7 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
               ,{<<"Custom-Application-Vars">>, CAVs}
               ,{<<"Conference-ID">>, ConferenceId}
+              ,{<<"Timeout">>, kz_json:get_integer_value(<<"timeout">>, Data)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     'ok' = kz_amqp_worker:cast(Command, fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end).
@@ -472,6 +473,12 @@ build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
             lager:info("failed to build endpoint ~s: ~p", [EndpointId, _E]),
             {Endpoints, Call}
     end;
+build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call}) ->
+    lager:info("building SIP endpoint ~s", [URI]),
+    Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
+                                 ,{<<"Route">>, URI}
+                                 ]),
+    {[Endpoint | Endpoints], Call};
 build_endpoint(Number, {Endpoints, Call}) ->
     AccountRealm = kapps_call:account_realm(Call),
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
