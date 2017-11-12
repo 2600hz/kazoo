@@ -3863,8 +3863,7 @@
                     "type": "object"
                 },
                 "call_recording": {
-                    "$ref": "#/definitions/call_recording",
-                    "type": "object"
+                    "$ref": "#/definitions/call_recording"
                 },
                 "call_restriction": {
                     "additionalProperties": {
@@ -3889,9 +3888,7 @@
                 },
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
-                    "default": {},
-                    "description": "The device caller ID parameters",
-                    "type": "object"
+                    "description": "The device caller ID parameters"
                 },
                 "contact_list": {
                     "default": {},
@@ -3910,9 +3907,7 @@
                 },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
-                    "default": {},
-                    "description": "A list of rules used to modify dialed numbers",
-                    "type": "object"
+                    "description": "A list of rules used to modify dialed numbers"
                 },
                 "do_not_disturb": {
                     "description": "DND Parameters",
@@ -3935,8 +3930,7 @@
                     "type": "boolean"
                 },
                 "formatters": {
-                    "$ref": "#/definitions/formatters",
-                    "type": "object"
+                    "$ref": "#/definitions/formatters"
                 },
                 "language": {
                     "description": "The language for the device",
