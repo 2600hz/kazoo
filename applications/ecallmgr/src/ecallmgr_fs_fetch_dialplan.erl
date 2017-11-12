@@ -65,7 +65,7 @@ timeout(#{timeout := _Timeout}=Map) -> Map;
 timeout(#{payload := JObj}=Map) ->
     T0 = kz_json:get_integer_value(<<"Fetch-Timestamp-Micro">>, JObj),
     T1 = kz_json:get_integer_value(<<"Fetch-Timeout">>, JObj),
-    T3 = erlang:system_time('micro_seconds'), %kz_time:now_us(),
+    T3 = erlang:system_time('micro_seconds'),
     T4 = T3 - T0,
     T5 = T1 - T4,
     T6 = T5 div 1000,
