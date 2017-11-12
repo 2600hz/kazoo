@@ -88,8 +88,8 @@ Key | Description | Type | Default | Required
 
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
         ,"data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
             "caller_id_name":"Conference XYZ",
