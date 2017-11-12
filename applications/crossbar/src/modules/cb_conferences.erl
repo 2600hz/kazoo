@@ -159,8 +159,7 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 put(Context, ConferenceId) ->
-    Action = cb_context:req_value(Context, ?PUT_ACTION),
-    handle_conference_action(Context, ConferenceId, Action).
+    handle_conference_action(Context, ConferenceId, cb_modules_util:get_request_action(Context)).
 
 put(Context, ConferenceId, ?PARTICIPANTS) ->
     Action = cb_context:req_value(Context, ?PUT_ACTION),

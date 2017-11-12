@@ -30,6 +30,8 @@
         ,log_assignment_updates/1
 
         ,normalize_media_upload/5
+
+        ,get_request_action/1
         ]).
 
 -include("crossbar.hrl").
@@ -686,3 +688,14 @@ handle_normalized_upload(Context, FileJObj, ToExt, {'error', _R}) ->
     UpdatedDoc = kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context)),
     UpdatedContext = cb_context:set_doc(Context, UpdatedDoc),
     {UpdatedContext, FileJObj}.
+
+%% Before, we used cb_context:req_value/2 which searched "data" then the envelope
+%% but we want "action" on the envelope to be respected for these PUTs against
+%% /channels or /conferences, so we reverse the order here (just in case people are
+%% only putting "action" in "data"
+-spec get_request_action(cb_context:context()) -> api_ne_binary().
+get_request_action(Context) ->
+    kz_json:find(<<"action">>, [cb_context:req_json(Context)
+                               ,cb_context:req_data(Context)
+                               ]
+                ).
