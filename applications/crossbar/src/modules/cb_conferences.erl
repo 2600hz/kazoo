@@ -394,18 +394,16 @@ media_id_required(Context) ->
 dial(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"dial">>);
 dial(Context, ConferenceId, Data) ->
-    dial_endpoints(Context, ConferenceId, Data, kz_json:get_list_value(<<"endpoints">>, Data, [])).
+    case kz_json_schema:validate(<<"conferences.dial">>, Data) of
+        {'ok', ValidData} ->
+            dial_endpoints(Context, ConferenceId, ValidData, kz_json:get_list_value(<<"endpoints">>, Data));
+        {'error', Errors} ->
+            lager:info("dial data failed to validate"),
+            cb_context:failed(Context, Errors)
+    end.
 
 -spec dial_endpoints(cb_context:context(), path_token(), kz_json:object(), ne_binaries()) ->
                             cb_context:context().
-dial_endpoints(Context, _ConferenceId, _Data, []) ->
-    cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
-                                   ,<<"minItems">>
-                                   ,kz_json:from_list([{<<"message">>, <<"endpoints must have at least one specified">>}
-                                                      ,{<<"target">>, 1}
-                                                      ])
-                                   ,Context
-                                   );
 dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
     case build_endpoints_to_dial(Context, ConferenceId, Endpoints) of
         [] -> error_no_endpoints(Context);
@@ -438,7 +436,6 @@ build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
                              ,Endpoints
                              ),
     ToDial.
-
 
 -spec error_no_endpoints(cb_context:context()) -> cb_context:context().
 error_no_endpoints(Context) ->
