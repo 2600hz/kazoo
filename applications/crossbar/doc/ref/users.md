@@ -181,7 +181,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 `children` | Children metaflows | `object()` |   | `false`
-`data` | The data/arguments of the metaflow module | `object()` |   | `false`
+`data` | The data/arguments of the metaflow module | `object()` | `{}` | `false`
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true`
 
 ##### metaflows
@@ -332,15 +332,5 @@ curl -v -X POST \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
-```
-
-#### Fetch
-
-> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}
 ```
 

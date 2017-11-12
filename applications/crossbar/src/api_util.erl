@@ -37,6 +37,9 @@
         ,content_type_matches/2
         ,ensure_content_type/1
         ,create_event_name/2
+
+        ,create_chunked_resp_envelope/1
+        ,encode_start_key/1, decode_start_key/1
         ]).
 
 -include("crossbar.hrl").
@@ -433,7 +436,7 @@ uploaded_filename(Context) ->
 
 -spec default_filename() -> ne_binary().
 default_filename() ->
-    <<"uploaded_file_", (kz_term:to_binary(kz_time:current_tstamp()))/binary>>.
+    <<"uploaded_file_", (kz_term:to_binary(kz_time:now_s()))/binary>>.
 
 -spec decode_base64(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                            {cb_context:context(), cowboy_req:req()} |
@@ -804,8 +807,7 @@ prefer_new_context([{'halt', Context1}|_], Req, _Context, _Return) ->
     lager:debug("authn halted"),
     ?MODULE:halt(Req, Context1).
 
--spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
-                            {cowboy_req:req(), cb_context:context()}.
+-spec get_auth_token(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
 get_auth_token(Req0, Context) ->
     case cowboy_req:header(<<"x-auth-token">>, Req0) of
         {'undefined', Req1} ->
@@ -820,8 +822,7 @@ get_auth_token(Req0, Context) ->
             {Req1, set_auth_context(Context, Token, 'x-auth-token')}
     end.
 
--spec get_authorization_token(cowboy_req:req(), cb_context:context()) ->
-                                     {cowboy_req:req(), cb_context:context()}.
+-spec get_authorization_token(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
 get_authorization_token(Req0, Context) ->
     case cowboy_req:header(<<"authorization">>, Req0) of
         {'undefined', Req1} ->
@@ -866,8 +867,7 @@ get_authorization_token_type(Token) -> {Token, 'unknown'}.
 %% otherwise will result in false
 %% @end
 %%--------------------------------------------------------------------
--spec get_pretty_print(cowboy_req:req(), cb_context:context()) ->
-                              {cowboy_req:req(), cb_context:context()}.
+-spec get_pretty_print(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
 get_pretty_print(Req0, Context) ->
     case cowboy_req:header(<<"x-pretty-print">>, Req0) of
         {'undefined', Req1} ->
@@ -1331,7 +1331,7 @@ do_create_resp_envelope(Context) ->
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}
-                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:current_tstamp())}
+                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
                    ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
                    ,{<<"data">>, RespData}
                    ];
@@ -1341,7 +1341,7 @@ do_create_resp_envelope(Context) ->
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}
-                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:current_tstamp())}
+                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
                    ,{<<"status">>, <<"error">>}
                    ,{<<"message">>, ErrorMsg}
                    ,{<<"error">>, kz_term:to_binary(ErrorCode)}
@@ -1349,10 +1349,46 @@ do_create_resp_envelope(Context) ->
                    ]
            end,
 
-    kz_json:set_values(
-      props:filter_undefined(Resp)
-                      ,cb_context:resp_envelope(Context)
-     ).
+    encode_start_keys(kz_json:set_values(props:filter_undefined(Resp), cb_context:resp_envelope(Context))).
+
+-spec create_chunked_resp_envelope(cb_context:context()) -> kz_proplist().
+create_chunked_resp_envelope(Context) ->
+    RespEnvelope = kz_json:to_proplist(
+                     encode_start_keys(cb_context:resp_envelope(Context))
+                    ),
+    RespEnvelope ++
+        props:filter_undefined(
+          [{<<"status">>, <<"success">>}
+          ,{<<"request_id">>, cb_context:req_id(Context)}
+          ,{<<"node">>, kz_nodes:node_encoded()}
+          ,{<<"version">>, kz_util:kazoo_version()}
+          ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
+          ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
+          ,{<<"auth_token">>, cb_context:auth_token(Context)}
+          ]).
+
+-spec encode_start_keys(kz_json:object()) -> kz_json:object().
+encode_start_keys(Resp) ->
+    lists:foldl(fun(Key, JObj) ->
+                        case kz_json:get_value(Key, JObj) of
+                            'undefined' -> JObj;
+                            Value ->
+                                kz_json:set_value(Key, encode_start_key(Value), JObj)
+                        end
+                end
+               ,Resp
+               ,[<<"start_key">>, <<"next_start_key">>]
+               ).
+
+-spec encode_start_key(kz_json:path()) -> ne_binary().
+encode_start_key(StartKey) ->
+    kz_base64url:encode(erlang:term_to_binary(StartKey)).
+
+-spec decode_start_key(ne_binary()) -> kz_json:path().
+decode_start_key(Encoded) ->
+    try erlang:binary_to_term(kz_base64url:decode(Encoded))
+    catch _:_ -> Encoded
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -24,6 +24,7 @@
         ,custom_data/1, custom_data/2, set_custom_data/2
         ,modifiers/1, modifiers/2, set_modifiers/2
         ,include_subaccounts/1, enable_subaccounts/1, disable_subaccounts/1
+        ,include_internal_legs/1
         ]).
 
 -include("kz_documents.hrl").
@@ -42,6 +43,7 @@
 -define(CUSTOM_DATA, <<"custom_data">>).
 -define(MODIFIERS, <<"modifiers">>).
 -define(INCLUDE_SUBACCOUNTS, <<"include_subaccounts">>).
+-define(INCLUDE_INTERNAL, <<"include_internal_legs">>).
 
 -spec is_enabled(doc()) -> boolean().
 -spec is_enabled(doc(), Default) -> boolean() | Default.
@@ -207,3 +209,8 @@ disable_subaccounts(Hook) ->
                      ,'false'
                      ,Hook
                      ).
+
+
+-spec include_internal_legs(doc()) -> boolean().
+include_internal_legs(Hook) ->
+    kz_json:is_true(?INCLUDE_INTERNAL, Hook, 'true').

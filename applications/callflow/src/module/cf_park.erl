@@ -93,6 +93,10 @@ handle_nomatch(Data, Call, PresenceType, ParkedCalls, SlotNumber, ReferredTo) ->
 handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, SlotNumber) ->
     lager:info("call was the result of a direct dial"),
     case kz_json:get_ne_binary_value(<<"action">>, Data, <<"park">>) of
+        <<"direct_park">> ->
+            lager:info("action is to directly park the call"),
+            Slot = create_slot(cf_exe:callid(Call), PresenceType, SlotNumber, Data, Call),
+            direct_park(SlotNumber, Slot, ParkedCalls, Data, Call);
         <<"park">> ->
             lager:info("action is to park the call"),
             Slot = create_slot(<<>>, PresenceType, SlotNumber, Data, Call),
@@ -116,6 +120,15 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
                 {'ok', _} ->
                     cf_exe:transfer(Call)
             end
+    end.
+
+-spec direct_park(ne_binary(), kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
+direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
+    case save_slot(SlotNumber, Slot, ParkedCalls, Call) of
+        {'ok', _} -> parked_call(SlotNumber, Slot, Data, Call);
+        {'error', _Reason} ->
+            lager:info("unable to save direct park slot: ~p", [_Reason]),
+            cf_exe:stop(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -234,13 +247,16 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             end,
             'ok';
         %% blind transfer and allowed to update the provided slot number
-        {_, {'ok', _}} ->
-            ParkedCallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
-            lager:info("call ~s parked in slot ~s", [ParkedCallId, SlotNumber]),
-            _ = publish_parked(Call, SlotNumber),
-            update_presence(Slot),
-            wait_for_pickup(SlotNumber, Slot, Data, Call)
+        {_, {'ok', _}} -> parked_call(SlotNumber, Slot, Data, Call)
     end.
+
+-spec parked_call(ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
+parked_call(SlotNumber, Slot, Data, Call) ->
+    ParkedCallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
+    lager:info("call ~s parked in slot ~s", [ParkedCallId, SlotNumber]),
+    _ = publish_parked(Call, SlotNumber),
+    update_presence(Slot),
+    wait_for_pickup(SlotNumber, Slot, Data, Call).
 
 -spec wait_for_hangup(kapps_call:call()) -> {'ok', 'channel_hungup'} | {'error', 'timeout'}.
 wait_for_hangup(Call) ->

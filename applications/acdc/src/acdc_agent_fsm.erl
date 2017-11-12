@@ -101,10 +101,10 @@
                ,sync_ref :: api_reference()
                ,pause_ref :: api_reference()
 
-               ,member_call :: kapps_call:call()
+               ,member_call :: kapps_call:call() | 'undefined'
                ,member_call_id :: api_binary()
                ,member_call_queue_id :: api_binary()
-               ,member_call_start :: kz_now() | undefined
+               ,member_call_start :: kz_now() | 'undefined'
                ,caller_exit_key = <<"#">> :: ne_binary()
                ,queue_notifications :: api_object()
 
@@ -398,7 +398,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     {'ok'
     ,'wait'
     ,#state{account_id = AccountId
-           ,account_db = kz_util:format_account_id(AccountId, 'encoded')
+           ,account_db = kz_util:format_account_db(AccountId)
            ,agent_id = AgentId
            ,statem_call_id = StateMCallId
            ,max_connect_failures = max_failures(AccountId)
@@ -1837,7 +1837,7 @@ notify(Url, Method, Key, #state{account_id=AccountId
              ,{<<"caller_id_name">>, kapps_call:caller_id_name(MemberCall)}
              ,{<<"caller_id_number">>, kapps_call:caller_id_number(MemberCall)}
              ,{<<"call_state">>, Key}
-             ,{<<"now">>, kz_time:current_tstamp()}
+             ,{<<"now">>, kz_time:now_s()}
              ]),
     notify(Url, Method, Data).
 

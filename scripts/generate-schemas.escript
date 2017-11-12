@@ -8,6 +8,7 @@
 
 main(_) ->
     cf_data_usage:to_schema_docs(),
+    (catch kp_data_usage:to_schema_docs()),
     kapps_config_usage:to_schema_docs(),
     conference_schema_builder:to_schema(),
     kapi_schemas:to_schemas().

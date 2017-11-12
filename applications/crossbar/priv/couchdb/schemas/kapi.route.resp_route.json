@@ -29,6 +29,9 @@
             },
             "type": "array"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },

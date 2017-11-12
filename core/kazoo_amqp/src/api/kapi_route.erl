@@ -105,8 +105,7 @@ is_actionable_resp(Prop) when is_list(Prop) ->
         <<"sms">> -> 'true';
         <<"plan">> -> 'true';
         <<"application">> -> 'true';
-        <<"error">> ->
-            kz_term:is_true(props:get_value(<<"Defer-Response">>, Prop));
+        <<"error">> -> 'true';
         _ -> 'false'
     end;
 is_actionable_resp(JObj) ->
@@ -297,7 +296,9 @@ account_id(API) when is_list(API) ->
 account_id(API) ->
     kz_json:get_first_defined([<<"Account-ID">>
                               ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                              ], API).
+                              ]
+                             ,API
+                             ).
 
 -spec resource_type(api_terms()) -> ne_binary().
 resource_type(ApiProp) when is_list(ApiProp) ->

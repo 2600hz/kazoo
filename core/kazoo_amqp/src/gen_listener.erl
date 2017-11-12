@@ -278,7 +278,7 @@ enter_loop(Module, Options, ModuleState, ServerName, Timeout) ->
     gen_server:enter_loop(?MODULE, [], MyState, ServerName, Timeout).
 
 -spec add_responder(server_ref(), responder_callback(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
-add_responder(Srv, Responder, Key) when not is_list(Key) ->
+add_responder(Srv, Responder, {_,_}=Key) ->
     add_responder(Srv, Responder, [Key]);
 add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {'add_responder', Responder, Keys}).
@@ -830,7 +830,7 @@ client_handle_event(JObj, 'undefined', ConsumerKey, Callback, CallbackData, Deli
     client_handle_event(JObj, Callback, CallbackData, Deliver);
 client_handle_event(JObj, Channel, ConsumerKey, Callback, CallbackData, Deliver) ->
     _ = kz_util:put_callid(JObj),
-    kz_amqp_channel:consumer_pid(ConsumerKey),
+    _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     _ = is_process_alive(Channel)
         andalso kz_amqp_channel:consumer_channel(Channel),
     client_handle_event(JObj, Callback, CallbackData, Deliver).
@@ -901,7 +901,8 @@ callback_handle_event(JObj
              ]
             ,NewModuleState
             };
-        {'EXIT', _Why} ->
+        {'EXIT', Why} ->
+            lager:error("CRASH in handle_event ~p", [Why]),
             [{'server', Self}
             ,{'queue', Queue}
             ,{'basic', Basic}
@@ -1315,7 +1316,7 @@ maybe_add_broker_connection(Broker) ->
     maybe_add_broker_connection(Broker, Count).
 
 maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
-    kz_amqp_connections:add(Broker, kz_binary:rand_hex(6), [<<"hidden">>]),
+    _Connection = kz_amqp_connections:add(Broker, kz_binary:rand_hex(6), [<<"hidden">>]),
     kz_amqp_channel:requisition(self(), Broker);
 maybe_add_broker_connection(Broker, _Count) ->
     kz_amqp_channel:requisition(self(), Broker).

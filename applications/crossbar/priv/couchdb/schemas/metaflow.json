@@ -13,6 +13,7 @@
             "type": "object"
         },
         "data": {
+            "default": {},
             "description": "The data/arguments of the metaflow module",
             "kazoo-validation": true,
             "type": "object"

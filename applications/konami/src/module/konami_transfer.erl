@@ -91,18 +91,20 @@
 
 -define(TRANSFEREE_CALL_EVENTS, ?TRANSFEROR_CALL_EVENTS).
 
--define(TARGET_CALL_EVENTS, [<<"CHANNEL_CREATE">>
-                            ,<<"CHANNEL_BRIDGE">>
+-define(TARGET_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>
+                            ,<<"CHANNEL_CREATE">>
                             ,<<"CHANNEL_DESTROY">>
-                            ,<<"DTMF">>, <<"CHANNEL_REPLACED">>
+                            ,<<"CHANNEL_REPLACED">>
+                            ,<<"DTMF">>
+                            ,<<"LEG_CREATED">>
+                            ,<<"LEG_DESTROYED">>
                             ,<<"dialplan">>
-                            ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
                             ]).
 
 -spec handle(kz_json:object(), kapps_call:call()) -> no_return().
 handle(Data, Call) ->
     kapps_call:put_callid(Call),
-    Transferor = kz_json:get_value(<<"dtmf_leg">>, Data),
+    Transferor = kz_json:get_ne_binary_value(<<"dtmf_leg">>, Data),
     Transferee =
         case kapps_call:call_id(Call) of
             Transferor -> kapps_call:other_leg_call_id(Call);

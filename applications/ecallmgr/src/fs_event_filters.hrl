@@ -22,7 +22,6 @@
         ,<<"Caller-Context">>
         ,<<"Caller-Destination-Number">>
         ,<<"Caller-Dialplan">>
-        ,<<"Caller-Logical-Direction">>
         ,<<"Caller-Unique-ID">>
         ,<<"Channel-Call-State">>
         ,<<"Channel-Call-UUID">>

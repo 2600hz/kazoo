@@ -6,6 +6,9 @@
         "Bypass-Media": {
             "type": "boolean"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },
@@ -44,6 +47,12 @@
                 "contact"
             ],
             "type": "string"
+        },
+        "SIP-Invite-Parameters": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
         },
         "SIP-Transport": {
             "enum": [

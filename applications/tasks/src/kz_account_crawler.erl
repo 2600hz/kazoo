@@ -410,7 +410,7 @@ maybe_low_balance_notify(AccountJObj, CurrentBalance, 'true') ->
     case kz_account:low_balance_tstamp(AccountJObj) of
         LowBalanceSent when is_number(LowBalanceSent) ->
             Cycle = ?LOW_BALANCE_REPEAT,
-            Diff = kz_time:current_tstamp() - LowBalanceSent,
+            Diff = kz_time:now_s() - LowBalanceSent,
             case Diff >= Cycle of
                 'true' -> notify_of_low_balance(AccountJObj, CurrentBalance);
                 'false' ->

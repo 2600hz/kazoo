@@ -21,11 +21,8 @@
         ,ensure_saved/1, ensure_saved/2
         ,rev_to_etag/1
         ,current_doc_vsn/0
-        ,update_pvt_parameters/2
+        ,update_pvt_parameters/2, add_pvt_auth/2
         ,start_key/1, start_key/2
-        ,pagination_page_size/0, pagination_page_size/1
-        ,has_qs_filter/1
-        ,filtered_doc_by_qs/2, filtered_doc_by_qs/3
         ]).
 
 -export([handle_json_success/2]).
@@ -34,8 +31,7 @@
         ]).
 
 -ifdef(TEST).
--export([filter_doc_by_querystring/2
-        ,patch_the_doc/2
+-export([patch_the_doc/2
         ]).
 -endif.
 
@@ -55,9 +51,6 @@
                   ,fun add_pvt_request_id/2
                   ,fun add_pvt_auth/2
                   ]).
-
--define(PAGINATION_PAGE_SIZE
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
 
 -type direction() :: 'ascending' | 'descending'.
 
@@ -88,22 +81,6 @@
                           ,direction = 'ascending' :: direction()
                           }).
 -type load_view_params() :: #load_view_params{}.
-
--spec pagination_page_size() -> pos_integer().
--spec pagination_page_size(cb_context:context()) -> api_pos_integer().
--spec pagination_page_size(cb_context:context(), ne_binary()) -> api_pos_integer().
-pagination_page_size() ->
-    ?PAGINATION_PAGE_SIZE.
-
-pagination_page_size(Context) ->
-    pagination_page_size(Context, cb_context:api_version(Context)).
-
-pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
-pagination_page_size(Context, _Version) ->
-    case cb_context:req_value(Context, <<"page_size">>) of
-        'undefined' -> pagination_page_size();
-        V -> try kz_term:to_integer(V) catch _:_ -> 'undefined' end
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -355,7 +332,7 @@ patch_the_doc(RequestData, ExistingDoc) ->
 load_view(View, Options, Context) ->
     load_view(View, Options, Context
              ,start_key(Options, Context)
-             ,pagination_page_size(Context)
+             ,cb_context:pagination_page_size(Context)
              ,'undefined'
              ).
 
@@ -364,12 +341,12 @@ load_view(View, Options, Context, FilterFun)
        is_function(FilterFun, 3) ->
     load_view(View, Options, Context
              ,start_key(Options, Context)
-             ,pagination_page_size(Context)
+             ,cb_context:pagination_page_size(Context)
              ,FilterFun
              );
 load_view(View, Options, Context, StartKey) ->
     load_view(View, Options, Context, StartKey
-             ,pagination_page_size(Context)
+             ,cb_context:pagination_page_size(Context)
              ).
 
 load_view(View, Options, Context, StartKey, PageSize) ->
@@ -422,7 +399,7 @@ load_view(#load_view_params{view = View
                            ,context = Context
                            ,start_key = StartKey
                            ,page_size = PageSize
-                           ,dbs = [Db|_]=Dbs
+                           ,dbs = [Db|RestDbs]=Dbs
                            ,direction = _Direction
                            } = LVPs) ->
     Limit = limit_by_page_size(Context, PageSize),
@@ -432,11 +409,11 @@ load_view(#load_view_params{view = View
         props:filter_undefined(
           [{'startkey', StartKey}
           ,{'limit', Limit}
-           | props:delete_keys(['startkey', 'limit', 'databases'], Options)
+           | props:delete_keys(['startkey', 'startkey_fun', 'limit', 'databases'], Options)
           ]),
 
     IncludeOptions =
-        case has_qs_filter(Context) of
+        case crossbar_filter:is_defined(Context) of
             'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
             'false' -> DefaultOptions
         end,
@@ -451,12 +428,12 @@ load_view(#load_view_params{view = View
     lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
     case kz_datamgr:get_results(Db, View, ViewOptions) of
         %% There were more dbs, so move to the next one
-        {'error', 'not_found'} when [] =:= tl(Dbs) ->
+        {'error', 'not_found'} when [] =:= RestDbs ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             crossbar_util:response_missing_view(Context);
         {'error', 'not_found'} ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
-            load_view(LVPs#load_view_params{dbs = tl(Dbs)});
+            load_view(LVPs#load_view_params{dbs = RestDbs});
         {'error', Error} ->
             handle_datamgr_errors(Error, View, Context);
         {'ok', JObjs} ->
@@ -998,13 +975,13 @@ handle_datamgr_pagination_success([_|_]=JObjs
 -spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
                           kz_json:objects().
 apply_filter(FilterFun, JObjs, Context, Direction) ->
-    apply_filter(FilterFun, JObjs, Context, Direction, has_qs_filter(Context)).
+    apply_filter(FilterFun, JObjs, Context, Direction, crossbar_filter:is_defined(Context)).
 
 apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
     lager:debug("applying filter fun: ~p, qs filter: ~p to dir ~p", [FilterFun, HasQSFilter, Direction]),
     Filtered0 = [JObj
                  || JObj <- JObjs,
-                    filtered_doc_by_qs(JObj, HasQSFilter, Context)
+                    crossbar_filter:by_doc(kz_json:get_value(<<"doc">>, JObj), Context, HasQSFilter)
                 ],
     Filtered = maybe_apply_custom_filter(Context, FilterFun, Filtered0),
     lager:debug("filter resulted in ~p out of ~p objects", [length(Filtered), length(JObjs)]),
@@ -1024,22 +1001,6 @@ maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
      || JObj <- lists:foldl(Fun, [], JObjs),
         not kz_term:is_empty(JObj)
     ].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec filtered_doc_by_qs(kz_json:object(), cb_context:context()) -> boolean().
--spec filtered_doc_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
-
-filtered_doc_by_qs(JObj, Context) ->
-    filter_doc(JObj, Context).
-
-filtered_doc_by_qs(_JObj, 'false', _Context) -> 'true';
-filtered_doc_by_qs(JObj, 'true', Context) ->
-    filter_doc(kz_json:get_value(<<"doc">>, JObj), Context).
 
 -spec handle_datamgr_success(kz_json:object() | kz_json:objects(), cb_context:context()) -> cb_context:context().
 handle_datamgr_success([], Context) ->
@@ -1222,13 +1183,13 @@ add_pvt_account_id(JObj, Context) ->
 -spec add_pvt_created(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_created(JObj, _) ->
     case kz_doc:revision(JObj) of
-        'undefined' -> kz_doc:set_created(JObj, kz_time:current_tstamp());
+        'undefined' -> kz_doc:set_created(JObj, kz_time:now_s());
         _ -> JObj
     end.
 
 -spec add_pvt_modified(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_modified(JObj, _) ->
-    kz_doc:set_modified(JObj, kz_time:current_tstamp()).
+    kz_doc:set_modified(JObj, kz_time:now_s()).
 
 -spec add_pvt_request_id(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_request_id(JObj, Context) ->
@@ -1240,10 +1201,13 @@ add_pvt_auth(JObj, Context) ->
     case cb_context:is_authenticated(Context) of
         'false' -> kz_json:set_value(<<"pvt_is_authenticated">>, 'false', JObj);
         'true' ->
+            AuthDoc = cb_context:auth_doc(Context),
             Values = props:filter_undefined(
                        [{<<"pvt_is_authenticated">>, 'true'}
                        ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
                        ,{<<"pvt_auth_user_id">>, cb_context:auth_user_id(Context)}
+                       ,{<<"pvt_original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
+                       ,{<<"pvt_original_auth_owner_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}
                        ]),
             kz_json:set_values(Values, JObj)
     end.
@@ -1268,134 +1232,3 @@ extract_included_docs_fold(JObj, {Docs, Context}) ->
         Doc ->
             {[Doc|Docs], Context}
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a context or query parameter json object determines if the
-%% request has a filter defined
-%% @end
-%%--------------------------------------------------------------------
--spec has_qs_filter(cb_context:context()) -> boolean().
-has_qs_filter(Context) ->
-    kz_json:any(fun is_filter_key/1, cb_context:query_string(Context)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Given a proplist element from the query string, determines if it
-%% represents a filter parameter
-%% @end
-%%--------------------------------------------------------------------
--spec is_filter_key({binary(), any()}) -> boolean().
-is_filter_key({<<"filter_", _/binary>>, _}) -> 'true';
-is_filter_key({<<"has_key", _/binary>>, _}) -> 'true';
-is_filter_key({<<"key_missing", _/binary>>, _}) -> 'true';
-is_filter_key({<<"has_value", _/binary>>, _}) -> 'true';
-is_filter_key({<<"created_from">>, _}) -> 'true';
-is_filter_key({<<"created_to">>, _}) -> 'true';
-is_filter_key({<<"modified_from">>, _}) -> 'true';
-is_filter_key({<<"modified_to">>, _}) -> 'true';
-is_filter_key(_) -> 'false'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns 'true' if all of the requested props are found, 'false' if one is not found
-%% @end
-%%--------------------------------------------------------------------
--spec filter_doc(api_object(), cb_context:context()) -> boolean().
-filter_doc('undefined', _Context) ->
-    lager:debug("no doc was returned (no include_docs?)"),
-    'true';
-filter_doc(Doc, Context) ->
-    filter_doc_by_querystring(Doc, cb_context:query_string(Context)).
-
--spec filter_doc_by_querystring(kz_json:object(), kz_json:object()) -> boolean().
-filter_doc_by_querystring(Doc, QueryString) ->
-    kz_json:all(fun({K, V}) ->
-                        should_filter_doc(Doc, K, V)
-                end
-               ,QueryString
-               ).
-
--spec should_filter_doc(kz_json:object(), ne_binary(), kz_json:json_term()) -> boolean().
-should_filter_doc(Doc, K, V) ->
-    try filter_prop(Doc, K, V) of
-        'undefined' -> 'true';
-        Bool -> Bool
-    catch
-        _E:_R ->
-            lager:debug("failed to process filter ~s: ~s:~p", [K, _E, _R]),
-            'false'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns 'true' or 'false' if the prop is found inside the doc
-%% @end
-%%--------------------------------------------------------------------
--spec filter_prop(kz_json:object(), ne_binary(), any()) -> api_boolean().
-filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
-    not should_filter(Doc, Key, Val);
-filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
-    should_filter(Doc, Key, Val);
-filter_prop(Doc, <<"has_key">>, Key) ->
-    has_key(Doc, Key);
-filter_prop(Doc, <<"key_missing">>, Key) ->
-    not has_key(Doc, Key);
-filter_prop(Doc, <<"has_value">>, Key) ->
-    has_value(Doc, Key);
-filter_prop(Doc, <<"created_from">>, Val) ->
-    lowerbound(kz_doc:created(Doc), kz_term:to_integer(Val));
-filter_prop(Doc, <<"created_to">>, Val) ->
-    upperbound(kz_doc:created(Doc), kz_term:to_integer(Val));
-filter_prop(Doc, <<"modified_from">>, Val) ->
-    lowerbound(kz_doc:modified(Doc), kz_term:to_integer(Val));
-filter_prop(Doc, <<"modified_to">>, Val) ->
-    upperbound(kz_doc:modified(Doc), kz_term:to_integer(Val));
-filter_prop(_, _, _) ->
-    'undefined'.
-
--spec upperbound(integer(), integer()) -> boolean().
-upperbound(DocTimestamp, QSTimestamp) ->
-    QSTimestamp >= DocTimestamp.
-
--spec lowerbound(integer(), integer()) -> boolean().
-lowerbound(DocTimestamp, QSTimestamp) ->
-    QSTimestamp =< DocTimestamp.
-
--spec should_filter(binary(), ne_binary()) -> boolean().
--spec should_filter(kz_json:object(), ne_binary(), kz_json:json_term()) -> boolean().
-should_filter(Val, Val) -> 'true';
-should_filter(Val, FilterVal) ->
-    try kz_json:unsafe_decode(FilterVal) of
-        List when is_list(List) -> lists:member(Val, List);
-        Val -> 'true';
-        _Data ->
-            lager:debug("data is not a list: ~p", [_Data]),
-            'false'
-    catch
-        _Error -> 'false'
-    end.
-
-should_filter(Doc, Key, Val) ->
-    Keys = binary_key_to_json_key(Key),
-    should_filter(kz_json:get_binary_value(Keys, Doc, <<>>)
-                 ,kz_term:to_binary(Val)
-                 ).
-
--spec has_key(kz_json:object(), ne_binary()) -> boolean().
-has_key(Doc, Key) ->
-    Keys = binary_key_to_json_key(Key),
-    kz_json:get_value(Keys, Doc) =/= 'undefined'.
-
--spec has_value(kz_json:object(), ne_binary()) -> boolean().
-has_value(Doc, Key) ->
-    Keys = binary_key_to_json_key(Key),
-    kz_json:get_ne_value(Keys, Doc) =/= 'undefined'.
-
--spec binary_key_to_json_key(ne_binary()) -> ne_binaries().
-binary_key_to_json_key(Key) ->
-    binary:split(Key, <<".">>, ['global']).

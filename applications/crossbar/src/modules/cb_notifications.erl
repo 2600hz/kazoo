@@ -245,7 +245,7 @@ validate(Context) ->
     validate_notifications(maybe_update_db(Context), ReqVerb).
 
 validate(Context, ?SMTP_LOG) ->
-    crossbar_view:load(Context, ?CB_LIST_SMTP_LOG, [{mapper, fun normalize_view_result/1}]);
+    crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, [{mapper, crossbar_view:map_value_fun()}]);
 validate(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     DbId = kz_notification:db_id(Id),
@@ -388,7 +388,7 @@ do_post(Context) ->
     Context1 = crossbar_doc:save(set_system_macros(Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            maybe_note_notification_preference(Context1),
+            maybe_set_teletype_as_default(Context1),
             leak_doc_id(Context1);
         _Status -> Context1
     end.
@@ -861,7 +861,7 @@ migrate_template_to_account(Context, Id) ->
         'success' ->
             lager:debug("saved template ~s to account ~s", [Id, cb_context:account_db(Context1)]),
             Context2 = migrate_template_attachments(Context1, Id, kz_doc:attachments(Template)),
-            maybe_note_notification_preference(Context2),
+            maybe_set_teletype_as_default(Context2),
             Context2;
         _Status -> Context1
     end.
@@ -948,31 +948,27 @@ masquerade(Context, AccountId) ->
                        ,{fun cb_context:set_account_db/2, AccountDb}
                        ]).
 
--spec maybe_note_notification_preference(cb_context:context()) -> 'ok'.
--spec maybe_note_notification_preference(ne_binary(), kz_json:object()) -> 'ok'.
-maybe_note_notification_preference(Context) ->
+-spec maybe_set_teletype_as_default(cb_context:context()) -> 'ok'.
+maybe_set_teletype_as_default(Context) ->
     AccountDb = cb_context:account_db(Context),
     case kz_account:fetch(AccountDb) of
         {'error', _E} -> lager:debug("failed to note preference: ~p", [_E]);
         {'ok', AccountJObj} ->
-            maybe_note_notification_preference(AccountDb, AccountJObj)
+            maybe_set_teletype_as_default(Context, AccountDb, AccountJObj)
     end.
 
-maybe_note_notification_preference(AccountDb, AccountJObj) ->
+-spec maybe_set_teletype_as_default(cb_context:context(), ne_binary(), kz_json:object()) -> 'ok'.
+maybe_set_teletype_as_default(Context, AccountDb, AccountJObj) ->
     case kz_account:notification_preference(AccountJObj) of
-        'undefined' -> note_notification_preference(AccountDb, AccountJObj);
+        'undefined' -> set_teletype_as_default(Context, AccountDb, AccountJObj);
         <<"teletype">> -> lager:debug("account already prefers teletype");
-        _Pref -> note_notification_preference(AccountDb, AccountJObj)
+        _Pref -> set_teletype_as_default(Context, AccountDb, AccountJObj)
     end.
 
--spec note_notification_preference(ne_binary(), kz_json:object()) -> 'ok'.
-note_notification_preference(AccountDb, AccountJObj) ->
-    case kz_datamgr:save_doc(AccountDb
-                            ,kz_account:set_notification_preference(AccountJObj
-                                                                   ,<<"teletype">>
-                                                                   )
-                            )
-    of
+-spec set_teletype_as_default(cb_context:context(), ne_binary(), kz_json:object()) -> 'ok'.
+set_teletype_as_default(Context, AccountDb, AccountJObj) ->
+    JObj = kz_account:set_notification_preference(AccountJObj, <<"teletype">>),
+    case kz_datamgr:save_doc(AccountDb, crossbar_doc:update_pvt_parameters(JObj, Context)) of
         {'ok', UpdatedAccountJObj} ->
             _ = cb_accounts:replicate_account_definition(UpdatedAccountJObj),
             lager:debug("updated pref for account");
@@ -1240,10 +1236,7 @@ summary_account(Context, AccountAvailable) ->
 -spec filter_available(cb_context:context()) -> kz_json:objects().
 filter_available(Context) ->
     [A || A <- cb_context:doc(Context),
-          crossbar_doc:filtered_doc_by_qs(kz_json:from_list([{<<"doc">>, A}])
-                                         ,'true'
-                                         ,Context
-                                         )
+          crossbar_filter:by_doc(kz_json:from_list([{<<"doc">>, A}]), Context, 'true')
     ].
 
 -spec merge_available(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
@@ -1446,10 +1439,6 @@ maybe_update_db(Context) ->
         'undefined' -> cb_context:set_account_db(Context, ?KZ_CONFIG_DB);
         _AccountId -> Context
     end.
-
--spec normalize_view_result(kz_json:object()) -> kz_json:object().
-normalize_view_result(JObj) ->
-    kz_json:get_value(<<"value">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @private

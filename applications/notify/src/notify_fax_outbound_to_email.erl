@@ -39,7 +39,7 @@ handle_req(JObj, _Props) ->
     MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
-    AccountDb = kapi_notifications:account_db(JObj),
+    AccountDb = kapi_notifications:account_db(JObj, 'true'),
     JobId = kz_json:get_value(<<"Fax-JobId">>, JObj),
     lager:debug("account-db: ~s, fax-id: ~s", [AccountDb, JobId]),
 
@@ -73,12 +73,13 @@ process_req(FaxDoc, JObj, _Props) ->
                                                <<"outbound_fax_to_email">>,
                                                <<"email_subject_template">>], AcctObj),
 
-    AccountDb = kapi_notifications:account_db(JObj),
+    AccountDb = kapi_notifications:account_db(JObj, 'true'),
 
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
+    notify_util:send_update(kz_api:server_id(JObj), kz_api:msg_id(JObj), <<"pending">>),
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props), AccountDb)
     catch
         C:R ->
@@ -97,7 +98,7 @@ process_req(FaxDoc, JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:objects(), kz_json:object()) -> kz_proplist().
 create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
 
     CIDName = kz_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = kz_json:get_value(<<"Caller-ID-Number">>, Event),
@@ -126,7 +127,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
                  ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
                   | fax_values(kz_json:get_value(<<"Fax-Info">>, Event))
                  ]}
-    ,{<<"account_db">>, kapi_notifications:account_db(Event)}
+    ,{<<"account_db">>, kapi_notifications:account_db(Event, 'true')}
     ].
 
 fax_values(Event) ->

@@ -51,16 +51,19 @@
 
 -define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
 -define(DEVICES_QCALL_NOUNS(DeviceId, Number)
-       ,[{<<"devices">>, [DeviceId, ?QUICKCALL_PATH_TOKEN, Number]}
-        ,{?KZ_ACCOUNTS_DB, [_]}
+       ,[{<<"quickcall">>, [Number]}
+        ,{<<"devices">>, [DeviceId]}
+        ,{?KZ_ACCOUNTS_DB, [_AccountId]}
         ]).
 -define(USERS_QCALL_NOUNS(UserId, Number)
-       ,[{<<"users">>, [UserId, ?QUICKCALL_PATH_TOKEN , Number]}
-        ,{?KZ_ACCOUNTS_DB, [_]}
+       ,[{<<"quickcall">>, [Number]}
+        ,{<<"users">>, [UserId]}
+        ,{?KZ_ACCOUNTS_DB, [_AccountId]}
         ]).
 
--define(DEVICES_ALLOW_AGGREGATES,
-        kapps_config:get_is_true(<<(?CONFIG_CAT)/binary, ".devices">>, <<"allow_aggregates">>, 'true')).
+-define(DEVICES_ALLOW_AGGREGATES
+       ,kapps_config:get_is_true(<<(?CONFIG_CAT)/binary, ".devices">>, <<"allow_aggregates">>, 'true')
+       ).
 
 -define(DEFAULT_MODULES, ['cb_about'
                          ,'cb_accounts'
@@ -105,7 +108,6 @@
                          ,'cb_search'
                          ,'cb_security'
                          ,'cb_service_plans'
-                         ,'cb_service_planner'
                          ,'cb_services'
                          ,'cb_simple_authz'
                          ,'cb_sms'

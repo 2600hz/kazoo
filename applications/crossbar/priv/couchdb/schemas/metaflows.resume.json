@@ -1,0 +1,7 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.resume",
+    "description": "Reconnect the two legs of a call, if possible",
+    "properties": {},
+    "type": "object"
+}

@@ -38,7 +38,7 @@
 -type state() :: #state{}.
 
 -record(object, {call_id :: ne_binary()
-                ,timestamp = kz_time:current_tstamp() :: gregorian_seconds()
+                ,timestamp = kz_time:now_s() :: gregorian_seconds()
                 ,type :: chunk | analysis
                 ,value :: ci_chunk:chunk() | ci_analysis:analysis()
                 }).

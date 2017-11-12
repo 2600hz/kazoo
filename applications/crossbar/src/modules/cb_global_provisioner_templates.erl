@@ -62,7 +62,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.global_provisioner_templates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.global_provisioner_templates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.global_provisioner_templates">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"*.finish_request.put.devices">>, ?MODULE, 'device_updated'),
     ok.
 
 init_db() ->

@@ -11,7 +11,7 @@
 %% ci_parsers_util: utilities for parsers.
 
 -export([timestamp/1, timestamp/0]).
--export([open_file/1]).
+-export([open_file_for_read/1]).
 -export([parse_interval/0]).
 -export([make_name/1]).
 -export([call_id/1
@@ -31,7 +31,7 @@
 timestamp() ->
     {_, _, Micro} = os:timestamp(),
     kz_term:to_integer(Micro) / ?MICROSECONDS_IN_SECOND +
-        kz_time:current_tstamp().
+        kz_time:now_s().
 
 -spec timestamp(ne_binary() | kz_now()) -> api_float().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
@@ -48,16 +48,17 @@ timestamp({_,_,_} = TS) ->
     kz_time:now_s(TS);
 timestamp(_) -> 'undefined'.
 
--spec open_file(iodata()) -> file:io_device().
-open_file(Filename) ->
-    Options = ['read','append'     %% Read whole file then from its end
+-spec open_file_for_read(iodata()) -> {'ok', file:io_device()} | {'error', any()}.
+open_file_for_read(Filename) ->
+    Options = ['read'              %% Read whole file
               ,'binary'            %% Return binaries instead of lists
-              ,'raw','read_ahead'  %% Faster access to file
+              ,'raw', 'read_ahead' %% Faster access to file
               ],
     case file:open(Filename, Options) of
         {'ok', IoDevice} -> IoDevice;
-        {'error', _FileOpenError} ->
-            lager:debug("parser cannot open '~p': ~p", [Filename,_FileOpenError])
+        {'error', _FileOpenError}=Error ->
+            lager:debug("parser cannot open '~p': ~p", [Filename,_FileOpenError]),
+            {'error', Error}
     end.
 
 -spec parse_interval() -> pos_integer().

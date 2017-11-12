@@ -14,8 +14,13 @@
 -define(SERVICES_PVT_TREE, <<"pvt_tree">>).
 -define(SERVICES_PVT_TREE_PREVIOUSLY, <<"pvt_previous_tree">>).
 
--define(KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER,
-        kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>, 'kz_bookkeeper_local')).
+-define(KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER
+       ,kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>, 'kz_bookkeeper_local')
+       ).
+
+-define(SUPPORT_BILLING_ID
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"support_billing_id">>, 'true')
+       ).
 
 -define(KZ_SERVICE_HRL, 'true').
 -endif.

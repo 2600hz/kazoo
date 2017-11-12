@@ -21,7 +21,7 @@
 -define(KEY_PUBLISHER_USURP, <<"publisher.usurp.">>).
 
 -define(KEY_CONFERENCE_DISCOVERY, <<"conference.discovery">>).
--define(KEY_CONFERENCE_COMMAND, <<"conference.command.">>).
+-define(KEY_CONFERENCE_COMMAND_L, "conference.command.").
 -define(KEY_CONFERENCE_EVENT, <<"conference.event.">>).
 -define(KEY_CONFERENCE_CONFIG, <<"conference.config.">>).
 

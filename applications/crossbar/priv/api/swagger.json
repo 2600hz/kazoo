@@ -2164,6 +2164,7 @@
                     "default": "park",
                     "description": "Action to take for the caller",
                     "enum": [
+                        "direct_park",
                         "park",
                         "retrieve",
                         "auto"
@@ -2259,9 +2260,35 @@
                     "description": "Whether to answer an unanswered call",
                     "type": "boolean"
                 },
+                "endless_playback": {
+                    "default": false,
+                    "description": "Loop the media continuously",
+                    "type": "boolean"
+                },
                 "id": {
                     "description": "Media ID or URL of the media to play",
                     "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 }
             },
             "type": "object"
@@ -2279,7 +2306,7 @@
                     "type": "string"
                 },
                 "apply_to": {
-                    "default": "original",
+                    "default": "current",
                     "description": "Apply the prepend to which caller ID",
                     "enum": [
                         "original",
@@ -2431,7 +2458,7 @@
                 "time_limit": {
                     "default": 3600,
                     "description": "Time limit, in seconds, for the recording",
-                    "maximum": 3600,
+                    "maximum": 10800,
                     "minimum": 5,
                     "type": "integer"
                 },
@@ -2682,6 +2709,54 @@
             ],
             "type": "object"
         },
+        "callflows.route_to_cid": {
+            "description": "Endpoints lookup by cid number",
+            "properties": {
+                "can_call_self": {
+                    "description": "Toggle whether devices of the same owner can call each other",
+                    "type": "boolean"
+                },
+                "can_text_self": {
+                    "description": "Toggle whether devices of the same owner can text each other",
+                    "type": "boolean"
+                },
+                "cid_types": {
+                    "default": [
+                        "internal"
+                    ],
+                    "description": "CID types to perform search: internal, external, custom",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "delay": {
+                    "default": 0,
+                    "description": "How long to delay ringing the device, in seconds",
+                    "type": "integer"
+                },
+                "endpoint_types": {
+                    "default": [],
+                    "description": "Endpoint types to perform search: user, device",
+                    "type": "array"
+                },
+                "static_invite": {
+                    "description": "Override the SIP Username",
+                    "type": "string"
+                },
+                "suppress_clid": {
+                    "description": "Suppress sending caller ID",
+                    "type": "boolean"
+                },
+                "timeout": {
+                    "default": 0,
+                    "description": "Time, in seconds, to wait for device to bridge",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "callflows.send_dtmf": {
             "description": "Validator for the Send DTMF callflow action",
             "properties": {
@@ -2744,6 +2819,24 @@
                     "type": "string"
                 }
             },
+            "type": "object"
+        },
+        "callflows.set_variables": {
+            "description": "Validator for the set_variables callflow's data object",
+            "properties": {
+                "custom_application_vars": {
+                    "default": {},
+                    "description": "Key-value pairs to set as custom_application_vars on the channel",
+                    "type": "object"
+                },
+                "export": {
+                    "description": "When true the provided custom_application_vars are set on the channel and any channel bridged to it later",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "custom_application_vars"
+            ],
             "type": "object"
         },
         "callflows.skel": {
@@ -6949,6 +7042,9 @@
                 "Caller-ID-Number": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -7258,6 +7354,9 @@
                 "Call-ID": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -7392,6 +7491,9 @@
                 },
                 "Control-Queue": {
                     "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -8112,6 +8214,64 @@
             ],
             "type": "object"
         },
+        "kapi.conference.dial": {
+            "description": "AMQP API for conference.dial",
+            "properties": {
+                "Application-Name": {
+                    "enum": [
+                        "dial"
+                    ],
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Conference-ID": {
+                    "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Endpoints": {
+                    "items": {
+                        "$ref": "#/definitions/kapi.dialplan.bridge_endpoint",
+                        "type": "object"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "conference"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                },
+                "Outbound-Call-ID": {
+                    "type": "string"
+                },
+                "Timeout": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "Application-Name",
+                "Conference-ID",
+                "Endpoints"
+            ],
+            "type": "object"
+        },
         "kapi.conference.discovery_req": {
             "description": "AMQP API for conference.discovery_req",
             "properties": {
@@ -8200,13 +8360,13 @@
                     "type": "string"
                 },
                 "Conference-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Conference-ID": {
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event": {
                     "type": "string"
@@ -8398,7 +8558,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Energy-Level": {
                     "type": "string"
@@ -8766,10 +8926,16 @@
                     "type": "string"
                 },
                 "Other-Participant": {
-                    "type": "string"
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
                 },
                 "Participant-ID": {
-                    "type": "string"
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
                 },
                 "Relationship": {
                     "enum": [
@@ -9444,6 +9610,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -9545,6 +9714,12 @@
                 "Ringback": {
                     "type": "string"
                 },
+                "SIP-Invite-Parameters": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "SIP-Transport": {
                     "enum": [
                         "udp",
@@ -9575,6 +9750,9 @@
             "properties": {
                 "Bypass-Media": {
                     "type": "boolean"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -9614,6 +9792,12 @@
                         "contact"
                     ],
                     "type": "string"
+                },
+                "SIP-Invite-Parameters": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "SIP-Transport": {
                     "enum": [
@@ -9657,11 +9841,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -9745,6 +9932,9 @@
                     "type": "string"
                 },
                 "SIP-Interface": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
                     "type": "string"
                 },
                 "SIP-Transport": {
@@ -10120,7 +10310,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Error-Message": {
                     "type": "string"
@@ -10159,7 +10349,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -10463,7 +10653,7 @@
                     "type": "string"
                 },
                 "Media-Macros": {
-                    "type": "string"
+                    "type": "object"
                 }
             },
             "required": [
@@ -10730,6 +10920,9 @@
                 },
                 "Call-ID": {
                     "type": "string"
+                },
+                "Endless-Playback": {
+                    "type": "boolean"
                 },
                 "Event-Category": {
                     "enum": [
@@ -11322,6 +11515,50 @@
             ],
             "type": "object"
         },
+        "kapi.dialplan.recv_dtmf": {
+            "description": "AMQP API for dialplan.recv_dtmf",
+            "properties": {
+                "Application-Name": {
+                    "enum": [
+                        "recv_dtmf"
+                    ],
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "DTMFs": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "call"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                },
+                "Insert-At": {
+                    "enum": [
+                        "head",
+                        "tail",
+                        "flush",
+                        "now"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Application-Name",
+                "Call-ID",
+                "DTMFs"
+            ],
+            "type": "object"
+        },
         "kapi.dialplan.redirect": {
             "description": "AMQP API for dialplan.redirect",
             "properties": {
@@ -11611,6 +11848,9 @@
                 },
                 "Call-ID": {
                     "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Call-Vars": {
                     "type": "object"
@@ -12340,7 +12580,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -13460,7 +13700,8 @@
                 "Action": {
                     "enum": [
                         "refresh_database",
-                        "refresh_views"
+                        "refresh_views",
+                        "clean_services"
                     ],
                     "type": "string"
                 },
@@ -15248,7 +15489,6 @@
             },
             "required": [
                 "Account-ID",
-                "Password",
                 "User-ID"
             ],
             "type": "object"
@@ -15290,6 +15530,9 @@
                     "type": "string"
                 },
                 "HTML": {
+                    "type": "string"
+                },
+                "Metadata": {
                     "type": "string"
                 },
                 "Preview": {
@@ -15492,6 +15735,9 @@
                     "type": "string"
                 },
                 "Cc": {
+                    "type": "string"
+                },
+                "Comments": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -16186,7 +16432,8 @@
             },
             "required": [
                 "Account-ID",
-                "Audit-Log"
+                "Audit-Log",
+                "Time-Stamp"
             ],
             "type": "object"
         },
@@ -16995,6 +17242,9 @@
                 "Control-Queue": {
                     "type": "string"
                 },
+                "Custom-Appliction-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -17106,6 +17356,12 @@
                 },
                 "Presence-ID": {
                     "type": "string"
+                },
+                "Requestor-Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Requestor-Custom-SIP-Headers": {
+                    "type": "object"
                 },
                 "Resource-Type": {
                     "enum": [
@@ -17913,7 +18169,13 @@
                 "From": {
                     "type": "string"
                 },
+                "From-Realm": {
+                    "type": "string"
+                },
                 "From-Tag": {
+                    "type": "string"
+                },
+                "From-User": {
                     "type": "string"
                 },
                 "Presence-ID": {
@@ -17939,7 +18201,13 @@
                 "To": {
                     "type": "string"
                 },
+                "To-Realm": {
+                    "type": "string"
+                },
                 "To-Tag": {
+                    "type": "string"
+                },
+                "To-User": {
                     "type": "string"
                 }
             },
@@ -18036,6 +18304,78 @@
             },
             "required": [
                 "Token-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.qubicle_session.create_session": {
+            "description": "AMQP API for qubicle_session.create_session",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Session-Type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID",
+                "Session-Type"
+            ],
+            "type": "object"
+        },
+        "kapi.qubicle_session.delete_session": {
+            "description": "AMQP API for qubicle_session.delete_session",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.qubicle_session.join_queue": {
+            "description": "AMQP API for qubicle_session.join_queue",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Join-Queue-ID": {
+                    "type": "string"
+                },
+                "Session-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call",
+                "Call-ID",
+                "Join-Queue-ID",
+                "Session-ID"
             ],
             "type": "object"
         },
@@ -18298,7 +18638,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -18448,11 +18788,14 @@
                 "Continue-On-Fail": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Dial-Endpoint-Method": {
                     "type": "string"
@@ -18502,7 +18845,7 @@
                     "type": "string"
                 },
                 "Export-Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -18562,6 +18905,9 @@
                     "type": "string"
                 },
                 "Ringback": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
                     "type": "string"
                 },
                 "SIP-Transport": {
@@ -18663,6 +19009,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -18725,7 +19074,7 @@
                     "type": "string"
                 },
                 "Export-Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -18792,6 +19141,9 @@
                 "Ringback": {
                     "type": "string"
                 },
+                "SIP-Invite-Parameters": {
+                    "type": "string"
+                },
                 "SIP-Transport": {
                     "type": "string"
                 },
@@ -18822,6 +19174,9 @@
             "properties": {
                 "Bypass-Media": {
                     "type": "boolean"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -18875,11 +19230,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -18963,6 +19321,9 @@
                     "type": "string"
                 },
                 "SIP-Interface": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
                     "type": "string"
                 },
                 "SIP-Transport": {
@@ -19073,11 +19434,17 @@
                 "Control-Queue": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Appliction-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "DTMF-Digit": {
                     "type": "string"
@@ -19313,11 +19680,14 @@
                 "Control-Queue": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "DTMF-Digit": {
                     "type": "string"
@@ -19540,11 +19910,14 @@
                     },
                     "type": "object"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-Routing-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
                     "type": "object"
@@ -19664,6 +20037,9 @@
                 "Application-Data": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -19763,6 +20139,9 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -20146,6 +20525,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -20257,6 +20639,9 @@
                 "SIP-Headers": {
                     "type": "object"
                 },
+                "SIP-Invite-Parameters": {
+                    "type": "string"
+                },
                 "SIP-Transport": {
                     "enum": [
                         "udp",
@@ -20347,11 +20732,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -20435,6 +20823,9 @@
                     "type": "string"
                 },
                 "SIP-Interface": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
                     "type": "string"
                 },
                 "SIP-Transport": {
@@ -21692,6 +22083,7 @@
                     "type": "object"
                 },
                 "data": {
+                    "default": {},
                     "description": "The data/arguments of the metaflow module",
                     "type": "object"
                 },
@@ -21704,283 +22096,6 @@
             },
             "required": [
                 "module"
-            ],
-            "type": "object"
-        },
-        "metaflow.audio_level": {
-            "description": "audio_level metaflow schema",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "mode": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "action"
-            ],
-            "type": "object"
-        },
-        "metaflow.break": {
-            "description": "break metaflow schema",
-            "properties": {},
-            "type": "object"
-        },
-        "metaflow.callflow": {
-            "description": "callflow metaflow schema",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.hangup": {
-            "description": "hangup metaflow schema",
-            "properties": {},
-            "type": "object"
-        },
-        "metaflow.hold": {
-            "description": "hold metaflow schema",
-            "properties": {
-                "moh_aleg": {
-                    "type": "string"
-                },
-                "moh_bleg": {
-                    "type": "string"
-                },
-                "unhold_key": {
-                    "default": "1",
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.hold_control": {
-            "description": "hold_control metaflow schema",
-            "properties": {
-                "action": {
-                    "default": "toggle",
-                    "enum": [
-                        "hold",
-                        "unhold",
-                        "toggle"
-                    ]
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.intercept": {
-            "description": "intercept metaflow schema",
-            "properties": {
-                "auto_answer": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "target_id": {
-                    "type": "string"
-                },
-                "target_type": {
-                    "enum": [
-                        "device",
-                        "user",
-                        "number"
-                    ]
-                },
-                "unbridged_only": {
-                    "default": true,
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "target_type",
-                "target_id"
-            ],
-            "type": "object"
-        },
-        "metaflow.move": {
-            "description": "move metaflow schema",
-            "properties": {
-                "auto_answer": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "dial_strategy": {
-                    "enum": [
-                        "single",
-                        "simultaneous"
-                    ],
-                    "type": "string"
-                },
-                "owner_id": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.play": {
-            "description": "play metaflow schema",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "leg": {
-                    "default": "both",
-                    "enum": [
-                        "both",
-                        "self",
-                        "peer"
-                    ]
-                }
-            },
-            "required": [
-                "id"
-            ],
-            "type": "object"
-        },
-        "metaflow.record_call": {
-            "description": "record_call metaflow schema",
-            "properties": {
-                "action": {
-                    "default": "toggle",
-                    "enum": [
-                        "start",
-                        "stop",
-                        "toggle"
-                    ]
-                },
-                "format": {
-                    "type": "string"
-                },
-                "media_name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "action"
-            ],
-            "type": "object"
-        },
-        "metaflow.resume": {
-            "description": "resume metaflow schema",
-            "properties": {},
-            "type": "object"
-        },
-        "metaflow.say": {
-            "description": "say metaflow schema",
-            "properties": {
-                "language": {
-                    "type": "string"
-                },
-                "method": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "text"
-            ],
-            "type": "object"
-        },
-        "metaflow.sound_touch": {
-            "description": "sound_touch metaflow schema",
-            "properties": {
-                "action": {
-                    "enum": [
-                        "start",
-                        "stop"
-                    ]
-                },
-                "adjust_in_octaves": {
-                    "type": "integer"
-                },
-                "adjust_in_semitones": {
-                    "type": "integer"
-                },
-                "hook_dtmf": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "pitch": {
-                    "type": "integer"
-                },
-                "rate": {
-                    "type": "integer"
-                },
-                "sending_leg": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "tempo": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "action"
-            ],
-            "type": "object"
-        },
-        "metaflow.transfer": {
-            "description": "transfer metaflow schema",
-            "properties": {
-                "Transfer-Type": {
-                    "default": "attended",
-                    "enum": [
-                        "attended",
-                        "blind"
-                    ]
-                },
-                "captures": {
-                    "type": "string"
-                },
-                "target": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "metaflow.tts": {
-            "description": "tts metaflow schema",
-            "properties": {
-                "engine": {
-                    "default": "flite",
-                    "type": "string"
-                },
-                "language": {
-                    "type": "string"
-                },
-                "leg": {
-                    "default": "self",
-                    "enum": [
-                        "self",
-                        "peer"
-                    ]
-                },
-                "terminators": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                },
-                "voice": {
-                    "default": "female",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "text"
             ],
             "type": "object"
         },
@@ -22031,6 +22146,534 @@
                     "additionalProperties": false,
                     "description": "A list of patterns with their flows",
                     "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.audio_level": {
+            "description": "Allow changing the volume on a channel (including mute/unmute)",
+            "properties": {
+                "action": {
+                    "description": "Start or stop the audio adjustment",
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
+                    "type": "string"
+                },
+                "level": {
+                    "description": "Adjustment level for the audio",
+                    "maximum": 4,
+                    "minimum": -4,
+                    "type": "integer"
+                },
+                "mode": {
+                    "description": "What mode to use (depends on direction)",
+                    "enum": [
+                        "read",
+                        "write"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.break": {
+            "description": "Break out of media being sent to a channel",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.callflow": {
+            "description": "Run a callflow on an active call",
+            "properties": {
+                "captures": {
+                    "description": "Callflow extension",
+                    "type": "string"
+                },
+                "collected": {
+                    "description": "Callflow extension",
+                    "type": "string"
+                },
+                "flow": {
+                    "$ref": "#/definitions/callflows.action",
+                    "description": "include the flow you'd like to run (Pivot without the HTTP interaction)",
+                    "type": "object"
+                },
+                "id": {
+                    "description": "The callflow ID to run",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.hangup": {
+            "description": "Hangup the call leg immediately",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.hold": {
+            "description": "Put the leg on hold",
+            "properties": {
+                "moh_aleg": {
+                    "description": "MOH ID for the a-leg",
+                    "type": "string"
+                },
+                "moh_bleg": {
+                    "description": "MOH ID for the b-leg",
+                    "type": "string"
+                },
+                "unhold_key": {
+                    "default": "1",
+                    "description": "DTMF to press to unhold the call",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.hold_control": {
+            "description": "Control the hold on a call",
+            "properties": {
+                "action": {
+                    "default": "toggle",
+                    "description": "How to manipulate the hold on the call",
+                    "enum": [
+                        "hold",
+                        "unhold",
+                        "toggle"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.intercept": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "auto_answer": {
+                    "default": false,
+                    "description": "Auto-answer the leg",
+                    "type": "boolean"
+                },
+                "can_call_self": {
+                    "default": true,
+                    "description": "Can intercept devices of the same targeted user",
+                    "type": "boolean"
+                },
+                "target_id": {
+                    "description": "ID of the target (device or user)",
+                    "type": "string"
+                },
+                "target_type": {
+                    "description": "Type of entity of the target",
+                    "enum": [
+                        "device",
+                        "user",
+                        "number"
+                    ],
+                    "type": "string"
+                },
+                "unbridged_only": {
+                    "default": true,
+                    "description": "Only intercept if the a-leg is unbridged",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.move": {
+            "description": "Move a call from one device to another",
+            "properties": {
+                "auto_answer": {
+                    "default": false,
+                    "description": "Whether to auto-answer the new leg",
+                    "type": "boolean"
+                },
+                "can_call_self": {
+                    "default": true,
+                    "description": "Can intercept devices of the same targeted user",
+                    "type": "boolean"
+                },
+                "device_id": {
+                    "description": "Move the call to a specific device",
+                    "type": "string"
+                },
+                "dial_strategy": {
+                    "default": "simultaneous",
+                    "description": "How to ring the endpoints, if multiple",
+                    "type": "string"
+                },
+                "owner_id": {
+                    "description": "User ID to use for finding endpoints",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.pivot": {
+            "description": "Validator for the Pivot metaflow element",
+            "properties": {
+                "cdr_url": {
+                    "description": "Optional URL to send the CDR to at the end of the call",
+                    "pattern": "^https?://",
+                    "type": "string"
+                },
+                "debug": {
+                    "default": false,
+                    "description": "Store debug logs related to processing this Pivot call",
+                    "type": "boolean"
+                },
+                "method": {
+                    "default": "get",
+                    "description": "What HTTP verb to send the request(s) with",
+                    "enum": [
+                        "get",
+                        "post",
+                        "GET",
+                        "POST"
+                    ],
+                    "type": "string"
+                },
+                "req_format": {
+                    "default": "kazoo",
+                    "description": "What format of Pivot will the your server respond with",
+                    "enum": [
+                        "kazoo",
+                        "twiml"
+                    ],
+                    "type": "string"
+                },
+                "voice_url": {
+                    "description": "What URL to request the initial Pivot callflow",
+                    "pattern": "^https?://",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "voice_url"
+            ],
+            "type": "object"
+        },
+        "metaflows.play": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "id": {
+                    "description": "Media ID to play",
+                    "type": "string"
+                },
+                "leg": {
+                    "default": "both",
+                    "description": "Leg to play the media to",
+                    "enum": [
+                        "self",
+                        "peer",
+                        "both"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.record_call": {
+            "description": "Start a call recording",
+            "properties": {
+                "action": {
+                    "default": "toggle",
+                    "description": "Whether to start/stop the recording",
+                    "enum": [
+                        "start",
+                        "stop",
+                        "toggle"
+                    ],
+                    "type": "string"
+                },
+                "format": {
+                    "description": "What format to store the recording",
+                    "enum": [
+                        "mp3",
+                        "wav"
+                    ],
+                    "type": "string"
+                },
+                "label": {
+                    "description": "Add a custom label to the recording",
+                    "type": "string"
+                },
+                "media_name": {
+                    "description": "Name of the recording file",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "HTTP method if using an HTTP destination",
+                    "enum": [
+                        "put",
+                        "post"
+                    ],
+                    "type": "string"
+                },
+                "origin": {
+                    "description": "Track how the recording was started",
+                    "type": "string"
+                },
+                "record_min_sec": {
+                    "description": "Miniumum number of seconds recorded to consider it a valid recording",
+                    "type": "integer"
+                },
+                "record_on_answer": {
+                    "default": false,
+                    "description": "Whether to start recording when the leg is answered",
+                    "type": "boolean"
+                },
+                "record_on_bridge": {
+                    "default": false,
+                    "description": "Whether to start recording when the leg is bridged",
+                    "type": "boolean"
+                },
+                "record_sample_rate": {
+                    "default": 8000,
+                    "description": "Sampling rate for the recording",
+                    "type": "integer"
+                },
+                "time_limit": {
+                    "description": "How long to allow the recording, in seconds",
+                    "type": "integer"
+                },
+                "url": {
+                    "description": "HTTP URL to send the finished recording",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.relate": {
+            "description": "Relate two participants to each other in a conference",
+            "properties": {
+                "conference_id": {
+                    "description": "The ID of the conference",
+                    "type": "string"
+                },
+                "other_participant": {
+                    "description": "The other participant ID to relate",
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
+                },
+                "participant_id": {
+                    "description": "The participant ID to relate",
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
+                },
+                "relationship": {
+                    "default": "clear",
+                    "description": "The relationship to establish between the two participants",
+                    "enum": [
+                        "deaf",
+                        "clear",
+                        "mute"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "participant_id",
+                "other_participant",
+                "conference_id"
+            ],
+            "type": "object"
+        },
+        "metaflows.resume": {
+            "description": "Reconnect the two legs of a call, if possible",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflows.say": {
+            "description": "Say the provided text",
+            "properties": {
+                "gender": {
+                    "description": "The gender of the voice to say the text",
+                    "enum": [
+                        "feminine",
+                        "masculine",
+                        "neuter"
+                    ],
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Language of the text",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "Toggle the way the text is read to the caller",
+                    "enum": [
+                        "pronounced",
+                        "iterated",
+                        "counted"
+                    ],
+                    "type": "string"
+                },
+                "text": {
+                    "description": "The text to say to the caller",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type of text to say",
+                    "enum": [
+                        "account_number",
+                        "currency",
+                        "current_date",
+                        "current_date_time",
+                        "current_time",
+                        "email_address",
+                        "ip_address",
+                        "items",
+                        "messages",
+                        "name_phonetic",
+                        "name_spelled",
+                        "number",
+                        "persons",
+                        "postal_address",
+                        "short_date_time",
+                        "telephone_extension",
+                        "telephone_number",
+                        "time_measurement",
+                        "url"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.sound_touch": {
+            "description": "Pitch-shift and other audio effects",
+            "properties": {
+                "action": {
+                    "description": "Whether to start or stop touching the sound",
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
+                    "type": "string"
+                },
+                "adjust_in_octaves": {
+                    "default": 0,
+                    "description": "Adjust the pitch in octaves",
+                    "maximum": 1.0,
+                    "minimum": -1.0,
+                    "type": "number"
+                },
+                "adjust_in_semitones": {
+                    "default": 0,
+                    "description": "Asjust the pitch in semitones",
+                    "maximum": 14.0,
+                    "minimum": -14.0,
+                    "type": "number"
+                },
+                "hook_dtmf": {
+                    "default": false,
+                    "description": "Enable DTMF control of audio modifications",
+                    "type": "boolean"
+                },
+                "pitch": {
+                    "default": 1.0,
+                    "description": "Set the pitch directly (lower number = lower tone)",
+                    "minimum": 1.0,
+                    "type": "number"
+                },
+                "rate": {
+                    "default": 1.0,
+                    "description": "Set the rate directly",
+                    "minimum": 1.0,
+                    "type": "number"
+                },
+                "sending_leg": {
+                    "default": false,
+                    "description": "Apply the filter to the sending leg",
+                    "type": "boolean"
+                },
+                "tempo": {
+                    "default": 1.0,
+                    "description": "Set the tempo directly",
+                    "minimum": 1.0,
+                    "type": "number"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.transfer": {
+            "description": "Perform a transfer",
+            "properties": {
+                "captures": {
+                    "default": [
+                        "no_match"
+                    ],
+                    "description": "Capture groups?",
+                    "type": "array"
+                },
+                "leg": {
+                    "description": "Which leg to be the transfer leg",
+                    "type": "string"
+                },
+                "target": {
+                    "description": "The target extension/DID",
+                    "type": "string"
+                },
+                "transfer_type": {
+                    "default": "blind",
+                    "description": "The type of transfer to perform",
+                    "enum": [
+                        "attended",
+                        "blind"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "metaflows.tts": {
+            "description": "Use the Text-to-speech engine to say the provided text",
+            "properties": {
+                "engine": {
+                    "default": "flite",
+                    "description": "What engine to use (system-dependant)",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "What language is the text in",
+                    "type": "string"
+                },
+                "leg": {
+                    "default": "self",
+                    "description": "What leg to say the text to",
+                    "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate the TTS playback",
+                    "type": "array"
+                },
+                "text": {
+                    "description": "What to say",
+                    "type": "string"
+                },
+                "voice": {
+                    "default": "female",
+                    "description": "What voice to use when speaking",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -23549,6 +24192,14 @@
                     },
                     "type": "array"
                 },
+                "flat_rate_blacklist": {
+                    "description": "Regex for determining if a number should not be eligible for flat-rate trunking",
+                    "type": "string"
+                },
+                "flat_rate_whitelist": {
+                    "description": "Regex for determining if the number is eligible for flat-rate trunking",
+                    "type": "string"
+                },
                 "format_from_uri": {
                     "description": "When set to true requests to this resource will have a re-formated SIP From Header",
                     "type": "boolean"
@@ -23677,6 +24328,23 @@
                                     "1npan"
                                 ],
                                 "type": "string"
+                            },
+                            "invite_parameters": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "dynamic": {
+                                        "description": "A list of properties that, if found on the inbound call, should be added as an INVITE parameter",
+                                        "type": "array"
+                                    },
+                                    "static": {
+                                        "description": "A list of static values that should be added as INVITE parameters",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                },
+                                "type": "object"
                             },
                             "media": {
                                 "description": "The media parameters for the resource gateway",
@@ -23989,21 +24657,24 @@
                 },
                 "manual_recurring": {
                     "description": "Monthly recurring items",
-                    "properties": {
-                        "name": {
-                            "description": "A friendly name for the item",
-                            "type": "string"
+                    "items": {
+                        "properties": {
+                            "name": {
+                                "description": "A friendly name for the item",
+                                "type": "string"
+                            },
+                            "quantity": {
+                                "description": "How many of the item are allowed",
+                                "type": "integer"
+                            },
+                            "rates": {
+                                "description": "Item's rate",
+                                "type": "number"
+                            }
                         },
-                        "quantity": {
-                            "description": "How many of the item are allowed",
-                            "type": "integer"
-                        },
-                        "rates": {
-                            "description": "Item's rate",
-                            "type": "number"
-                        }
+                        "type": "object"
                     },
-                    "type": "object"
+                    "type": "array"
                 },
                 "name": {
                     "description": "A friendly name for the service plan",
@@ -24109,13 +24780,16 @@
                     "properties": {
                         "bucket": {
                             "description": "Bucket name to store data to",
+                            "maxLength": 63,
+                            "minLength": 6,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         },
                         "bucket_access_method": {
                             "description": "how to access the host.",
                             "enum": [
                                 "auto",
-                                "host",
+                                "vhost",
                                 "path"
                             ],
                             "type": "string"
@@ -24125,11 +24799,16 @@
                             "type": "boolean"
                         },
                         "host": {
-                            "description": "the s3 host",
+                            "description": "the s3 host, leave empty for default",
+                            "minLength": 1,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         },
                         "key": {
                             "description": "AWS Key to use",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         },
                         "port": {
@@ -24138,6 +24817,8 @@
                         },
                         "region": {
                             "description": "the region where the bucket is located",
+                            "minLength": 1,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         },
                         "scheme": {
@@ -24150,6 +24831,9 @@
                         },
                         "secret": {
                             "description": "AWS Secret to use",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "pattern": "^[^\\s]*$",
                             "type": "string"
                         }
                     },
@@ -24763,6 +25447,39 @@
                     "default": 5000,
                     "description": "call_command message timeout",
                     "type": "integer"
+                },
+                "reserved_ccv_keys": {
+                    "default": [
+                        "Account-ID",
+                        "Account-Name",
+                        "Account-Realm",
+                        "Authorizing-ID",
+                        "Authorizing-Type",
+                        "Auto-Answer",
+                        "Call-Forward",
+                        "Call-Waiting-Disabled",
+                        "Confirm-Cancel-Timeout",
+                        "Confirm-File",
+                        "Confirm-Key",
+                        "Fax-Enabled",
+                        "Loopback-Bowout",
+                        "Media-Encryption-Enforce-Security",
+                        "Media-Webrtc",
+                        "Owner-ID",
+                        "Presence-ID",
+                        "RTCP-MUX",
+                        "Realm",
+                        "Require-Ignore-Early-Media",
+                        "Retain-CID",
+                        "SIP-Invite-Domain",
+                        "Simplify-Loopback",
+                        "Username"
+                    ],
+                    "description": "call_command reserved_ccv_keys",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 }
             },
             "type": "object"
@@ -25324,6 +26041,12 @@
                     "description": "crossbar ip",
                     "type": "string"
                 },
+                "load_view_chunk_size": {
+                    "default": 50,
+                    "description": "crossbar load_view_chunk_size",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "magic_path_patterns": {
                     "default": [
                         "/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw",
@@ -25350,6 +26073,7 @@
                 "pagination_page_size": {
                     "default": 50,
                     "description": "crossbar pagination page size",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "port": {
@@ -25504,6 +26228,7 @@
                 "maximum_bulk": {
                     "default": 50,
                     "description": "The maximum number of call stats to load in a request",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "maximum_range": {
@@ -25628,6 +26353,18 @@
             },
             "type": "object"
         },
+        "system_config.crossbar.call_inspector": {
+            "description": "Schema for crossbar.call_inspector system_config",
+            "properties": {
+                "maximum_bulk": {
+                    "default": 50,
+                    "description": "crossbar call_inspector maximum_bulk",
+                    "minimum": 1,
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.crossbar.callflows": {
             "description": "Schema for crossbar.callflows system_config",
             "properties": {
@@ -25650,6 +26387,7 @@
                 "maximum_bulk": {
                     "default": 50,
                     "description": "crossbar.cdrs maximum bulk",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "maximum_range": {
@@ -27083,6 +27821,11 @@
                     "default": "^\\+1\\d{10}$",
                     "description": "jonny5 flat rate whitelist",
                     "type": "string"
+                },
+                "resource_flat_rate_lookup": {
+                    "default": false,
+                    "description": "lookup flat rate regexes per resource",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -27364,6 +28107,17 @@
                     "default": false,
                     "description": "konami webseq enabled",
                     "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.konami_pro": {
+            "description": "Schema for konami_pro system_config",
+            "properties": {
+                "route_win_timeout": {
+                    "default": 3000,
+                    "description": "konami_pro route_win_timeout",
+                    "type": "integer"
                 }
             },
             "type": "object"
@@ -28814,6 +29568,17 @@
             },
             "type": "object"
         },
+        "system_config.qubicle": {
+            "description": "Schema for qubicle system_config",
+            "properties": {
+                "enable_event_call_props": {
+                    "default": false,
+                    "description": "qubicle enable_event_call_props",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "system_config.registrar": {
             "description": "Schema for registrar system_config",
             "properties": {
@@ -28907,12 +29672,6 @@
                     "description": "allow resellers configure bookkeeper for children billing",
                     "type": "boolean"
                 },
-                "scan_rate": {
-                    "default": 20000,
-                    "description": "services scan rate",
-                    "minimum": 0,
-                    "type": "integer"
-                },
                 "should_save_master_audit_logs": {
                     "default": false,
                     "description": "services should save master audit logs",
@@ -28921,17 +29680,6 @@
                 "support_billing_id": {
                     "default": true,
                     "description": "services support billing id",
-                    "type": "boolean"
-                },
-                "sync_buffer_period": {
-                    "default": 600,
-                    "description": "services sync buffer period",
-                    "minimum": 0,
-                    "type": "integer"
-                },
-                "sync_services": {
-                    "default": false,
-                    "description": "services sync services",
                     "type": "boolean"
                 }
             },
@@ -29028,6 +29776,12 @@
                 "retries": {
                     "default": 1,
                     "description": "smtp_client retries",
+                    "type": "integer"
+                },
+                "send_timeout_ms": {
+                    "default": 10000,
+                    "description": "Timeout in milliseconds waiting for response from SMTP server",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "tls": {
@@ -29420,6 +30174,12 @@
                     "minimum": 0,
                     "type": "integer"
                 },
+                "scan_rate": {
+                    "default": 20000,
+                    "description": "tasks scan_rate",
+                    "minimum": 0,
+                    "type": "integer"
+                },
                 "send_progress_after_processed": {
                     "default": 1000,
                     "description": "tasks send progress after processed",
@@ -29445,6 +30205,22 @@
                     "default": 10000,
                     "description": "tasks soft delete pause in milliseconds",
                     "type": "integer"
+                },
+                "support_billing_id": {
+                    "default": true,
+                    "description": "tasks support_billing_id",
+                    "type": "boolean"
+                },
+                "sync_buffer_period": {
+                    "default": 600,
+                    "description": "tasks sync_buffer_period",
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "sync_services": {
+                    "default": false,
+                    "description": "tasks sync_services",
+                    "type": "boolean"
                 },
                 "unfinished_port_request_lifetime_s": {
                     "default": 2592000,
@@ -30824,6 +31600,11 @@
                     ],
                     "type": "string"
                 },
+                "include_internal_legs": {
+                    "default": true,
+                    "description": "Whether to filter out call legs that are internal to the system (loopback)",
+                    "type": "boolean"
+                },
                 "include_subaccounts": {
                     "description": "Should the webhook be fired for subaccount events.",
                     "type": "boolean"
@@ -31142,6 +31923,25 @@
             "required": true,
             "type": "string"
         },
+        "ENDPOINT_ID": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "ENDPOINT_ID",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
+        "ENDPOINT_TYPE": {
+            "enum": [
+                "users",
+                "devices"
+            ],
+            "in": "path",
+            "name": "ENDPOINT_TYPE",
+            "required": true,
+            "type": "string"
+        },
         "EXTENSION": {
             "in": "path",
             "name": "EXTENSION",
@@ -31313,6 +32113,13 @@
             "minLength": 32,
             "name": "NOTIFICATION_ID",
             "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
+        "NUMBER": {
+            "in": "path",
+            "name": "NUMBER",
+            "pattern": "^\\+?[0-9]+",
             "required": true,
             "type": "string"
         },
@@ -34165,30 +34972,6 @@
                     },
                     {
                         "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/DEVICE_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{PHONE_NUMBER}": {
-            "get": {
-                "description": "Execute quickcall to {NUMBER}",
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PHONE_NUMBER"
                     },
                     {
                         "$ref": "#/parameters/DEVICE_ID"
@@ -39196,112 +39979,6 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/service_planner": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/service_planner/{PLAN_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "patch": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/PLAN_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/accounts/{ACCOUNT_ID}/service_plans": {
             "get": {
                 "parameters": [
@@ -40846,29 +41523,6 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/USER_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/PHONE_NUMBER"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard": {
             "get": {
                 "parameters": [
@@ -41817,6 +42471,56 @@
                     },
                     {
                         "$ref": "#/parameters/WHITELABEL_DOMAIN"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/{ENDPOINT_TYPE}/{ENDPOINT_ID}/quickcall/{NUMBER}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/NUMBER"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_TYPE"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/NUMBER"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_TYPE"
+                    },
+                    {
+                        "$ref": "#/parameters/ENDPOINT_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

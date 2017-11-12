@@ -634,7 +634,7 @@ get_string_value(Key, JObj) ->
 get_string_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_list/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_list/1)
     end.
 
 -spec get_list_value(path(), object() | objects()) -> api_list().
@@ -655,7 +655,7 @@ get_binary_value(Key, JObj) ->
 get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_binary/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_binary/1)
     end.
 
 -spec get_ne_binary_value(path(), object() | objects()) -> api_ne_binary().
@@ -676,7 +676,7 @@ get_lower_binary(Key, JObj) ->
 get_lower_binary(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_lower_binary/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_lower_binary/1)
     end.
 
 %% must be an existing atom
@@ -687,7 +687,7 @@ get_atom_value(Key, JObj) ->
 get_atom_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_atom/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_atom/1)
     end.
 
 -spec get_boolean_value(path(), object() | objects()) -> api_atom().
@@ -697,7 +697,7 @@ get_boolean_value(Key, JObj) ->
 get_boolean_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_boolean/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_boolean/1)
     end.
 
 -spec get_integer_value(path(), object() | objects()) -> api_integer().
@@ -707,15 +707,7 @@ get_integer_value(Key, JObj) ->
 get_integer_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_integer/1)
-    end.
-
--type caster() :: fun((json_term()) -> json_term()).
--spec safe_cast(json_term(), json_term(), caster()) -> json_term().
-safe_cast(Value, Default, CastFun) ->
-    try CastFun(Value)
-    catch
-        _:_ -> Default
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_integer/1)
     end.
 
 -spec get_number_value(path(), object() | objects()) -> api_number().
@@ -725,7 +717,7 @@ get_number_value(Key, JObj) ->
 get_number_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_number/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_number/1)
     end.
 
 -spec get_float_value(path(), object() | objects()) -> api_float().
@@ -735,7 +727,7 @@ get_float_value(Key, JObj) ->
 get_float_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> safe_cast(Value, Default, fun kz_term:to_float/1)
+        Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_float/1)
     end.
 
 -spec is_false(path(), object() | objects()) -> boolean().
@@ -800,24 +792,28 @@ get_ne_value(Key, JObj, Default) ->
 %%--------------------------------------------------------------------
 -spec find(path(), objects()) -> api_json_term().
 -spec find(path(), objects(), Default) -> json_term() | Default.
-find(Key, Docs) ->
-    find(Key, Docs, 'undefined').
+find(Key, JObjs) ->
+    find(Key, JObjs, 'undefined').
 find(_, [], Default) -> Default;
 find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
-    case get_value(Key, JObj) of
+    try get_value(Key, JObj) of
         'undefined' -> find(Key, JObjs, Default);
         V -> V
+    catch
+        'error':'badarg' -> find(Key, JObjs, Default)
     end.
 
 -spec find_first_defined(paths(), objects()) -> api_json_term().
 -spec find_first_defined(paths(), objects(), Default) -> json_term() | Default.
-find_first_defined(Keys, Docs) ->
-    find_first_defined(Keys, Docs, 'undefined').
-find_first_defined([], _Docs, Default) -> Default;
-find_first_defined([Key|Keys], Docs, Default) ->
-    case find(Key, Docs) of
-        'undefined' -> find_first_defined(Keys, Docs, Default);
+find_first_defined(Keys, JObjs) ->
+    find_first_defined(Keys, JObjs, 'undefined').
+find_first_defined([], _JObjs, Default) -> Default;
+find_first_defined([Key|Keys], JObjs, Default) ->
+    try find(Key, JObjs) of
+        'undefined' -> find_first_defined(Keys, JObjs, Default);
         V -> V
+    catch
+        'error':'badarg' -> find(Key, JObjs, Default)
     end.
 
 %%--------------------------------------------------------------------
@@ -833,9 +829,11 @@ find_value(Key, Value, JObjs) ->
     find_value(Key, Value, JObjs, 'undefined').
 find_value(_Key, _Value, [], Default) -> Default;
 find_value(Key, Value, [JObj|JObjs], Default) ->
-    case get_value(Key, JObj) of
+    try get_value(Key, JObj) of
         Value -> JObj;
         _Value -> find_value(Key, Value, JObjs, Default)
+    catch
+        'error':'badarg' -> find_value(Key, Value, JObjs, Default)
     end.
 
 -spec get_first_defined(paths(), object()) -> json_term() | 'undefined'.
@@ -844,15 +842,18 @@ get_first_defined(Keys, JObj) ->
     get_first_defined(Keys, JObj, 'undefined').
 get_first_defined([], _JObj, Default) -> Default;
 get_first_defined([H|T], JObj, Default) ->
-    case get_value(H, JObj) of
+    try get_value(H, JObj) of
         'undefined' -> get_first_defined(T, JObj, Default);
         V -> V
+    catch
+        'error':'badarg' -> get_first_defined(T, JObj, Default)
     end.
 
 -spec get_value(path(), object() | objects()) -> json_term() | 'undefined'.
 -spec get_value(path(), object() | objects(), Default) -> json_term() | Default.
 get_value(Key, JObj) ->
     get_value(Key, JObj, 'undefined').
+
 get_value([Key|Ks], L, Default) when is_list(L) ->
     try
         get_value1(Ks, lists:nth(kz_term:to_integer(Key), L), Default)
@@ -864,8 +865,9 @@ get_value([Key|Ks], L, Default) when is_list(L) ->
 get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
--spec get_value1(path(), object() | objects(), Default) ->
+-spec get_value1(path(), api_object() | objects(), Default) ->
                         json_term() | Default.
+get_value1([], 'undefined', Default) -> Default;
 get_value1([], JObj, _Default) -> JObj;
 get_value1(Key, JObj, Default) when not is_list(Key)->
     get_value1([Key], JObj, Default);
@@ -877,7 +879,7 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
         _:_ -> Default
     end;
 get_value1([K|Ks], ?JSON_WRAPPER(Props), Default) ->
-    get_value1(Ks, props:get_value(K, Props, Default), Default);
+    get_value1(Ks, props:get_value(K, Props), Default);
 get_value1(_, undefined, Default) ->
     Default;
 get_value1(_, ?JSON_WRAPPER(_), Default) ->
@@ -1053,7 +1055,10 @@ delete_keys(Keys, JObj) when is_list(Keys) ->
 %%--------------------------------------------------------------------
 -spec prune_keys(paths(), object()) -> object().
 prune_keys(Keys, JObj) when is_list(Keys) ->
-    lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0, prune) end, JObj, Keys).
+    lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0, 'prune') end
+               ,JObj
+               ,Keys
+               ).
 
 -spec prune(keys(), object() | objects()) -> object() | objects().
 prune([], JObj) -> JObj;
@@ -1065,12 +1070,9 @@ prune([K], JObj) when not is_list(JObj) ->
 prune([K|T], JObj) when not is_list(JObj) ->
     case get_value(K, JObj) of
         'undefined' -> JObj;
-        V ->
-            case prune(T, V) of
-                ?EMPTY_JSON_OBJECT -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
-                [] -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
-                V1 -> from_list([{K, V1} | lists:keydelete(K, 1, to_proplist(JObj))])
-            end
+        ?JSON_WRAPPER(_)=V -> prune_tail(K, T, JObj, V);
+        V when is_list(V) -> prune_tail(K, T, JObj, V);
+        _ -> erlang:error('badarg')
     end;
 prune(_, []) -> [];
 prune([K|T], [_|_]=JObjs) ->
@@ -1081,10 +1083,19 @@ prune([K|T], [_|_]=JObjs) ->
         V1 -> replace_in_list(K, V1, JObjs, [])
     end.
 
+-spec prune_tail(key(), keys(), object() | objects(), object() | objects()) ->
+                        object() | objects().
+prune_tail(K, T, JObj, V) ->
+    case prune(T, V) of
+        ?EMPTY_JSON_OBJECT -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
+        [] -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
+        V1 -> from_list([{K, V1} | lists:keydelete(K, 1, to_proplist(JObj))])
+    end.
+
 -spec no_prune(keys(), object() | objects()) -> object() | objects().
-no_prune([], JObj) -> JObj;
-no_prune([K], JObj) when not is_list(JObj) ->
-    case lists:keydelete(K, 1, to_proplist(JObj)) of
+no_prune([], ?JSON_WRAPPER(_)=JObj) -> JObj;
+no_prune([K], ?JSON_WRAPPER(Props)) ->
+    case lists:keydelete(K, 1, Props) of
         [] -> new();
         L -> from_list(L)
     end;
@@ -1097,11 +1108,14 @@ no_prune([K|T], Array) when is_list(Array), is_integer(K) ->
             Less ++ 'no_prune'(Keys, Arr) ++ More;
         {_,_,_} -> Less ++ More
     end;
-no_prune([K|T], JObj) ->
+no_prune([K|T], ?JSON_WRAPPER(_)=JObj) ->
     case get_value(K, JObj) of
         'undefined' -> JObj;
-        V ->
-            from_list([{K, no_prune(T, V)} | lists:keydelete(K, 1, to_proplist(JObj))])
+        ?JSON_WRAPPER(_)=V ->
+            from_list([{K, no_prune(T, V)} | lists:keydelete(K, 1, to_proplist(JObj))]);
+        V when is_list(V) ->
+            from_list([{K, no_prune(T, V)} | lists:keydelete(K, 1, to_proplist(JObj))]);
+        _ -> erlang:error('badarg')
     end;
 no_prune(_, []) -> [];
 no_prune([K|T], [_|_]=JObjs) when is_integer(K) ->
@@ -1115,7 +1129,7 @@ no_prune([K|T], [_|_]=JObjs) when is_integer(K) ->
     end.
 
 replace_in_list(N, _, _, _) when N < 1 ->
-    exit('badarg');
+    erlang:error('badarg');
 replace_in_list(1, 'undefined', [_OldV | Vs], Acc) ->
     lists:reverse(Acc) ++ Vs;
 replace_in_list(1, V1, [_OldV | Vs], Acc) ->

@@ -1016,14 +1016,12 @@ start_key(Context) ->
 
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
-    cb_context:set_resp_envelope(
-      cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
-                                ,lists:foldl(
-                                   fun fix_envelope_fold/2
-                                            ,cb_context:resp_envelope(Context)
-                                            ,[<<"start_key">>, <<"next_start_key">>]
-                                  )
-     ).
+    RespData = lists:reverse(cb_context:resp_data(Context)),
+    RespEnv = lists:foldl(fun fix_envelope_fold/2
+                         ,cb_context:resp_envelope(Context)
+                         ,[<<"start_key">>, <<"next_start_key">>]
+                         ),
+    cb_context:set_resp_envelope(cb_context:set_resp_data(Context, RespData), RespEnv).
 
 -spec fix_envelope_fold(binary(), kz_json:object()) -> kz_json:object().
 fix_envelope_fold(Key, JObj) ->
@@ -1378,21 +1376,10 @@ ensure_accounts_db_exists() ->
 
 -spec create_account_definition(cb_context:context()) -> cb_context:context().
 create_account_definition(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AccountDb = cb_context:account_db(Context),
+    Doc = crossbar_doc:update_pvt_parameters(cb_context:doc(Context), Context),
+    JObj = maybe_set_trial_expires(kz_doc:set_id(Doc, cb_context:account_id(Context))),
 
-    TStamp = kz_time:current_tstamp(),
-    Props = [{<<"_id">>, AccountId}
-            ,{<<"pvt_account_id">>, AccountId}
-            ,{<<"pvt_account_db">>, AccountDb}
-            ,{<<"pvt_modified">>, TStamp}
-            ,{<<"pvt_created">>, TStamp}
-            ,{<<"pvt_vsn">>, <<"1">>}
-            ],
-
-    JObj = maybe_set_trial_expires(kz_json:set_values(Props, cb_context:doc(Context))),
-
-    case kz_datamgr:save_doc(AccountDb, JObj) of
+    case kz_datamgr:save_doc(cb_context:account_db(Context), JObj) of
         {'ok', AccountDef}->
             _ = replicate_account_definition(AccountDef),
             cb_context:setters(Context
@@ -1415,7 +1402,7 @@ maybe_set_trial_expires(JObj) ->
 -spec set_trial_expires(kz_json:object()) -> kz_json:object().
 set_trial_expires(JObj) ->
     TrialTime = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
-    Expires = kz_time:current_tstamp() + TrialTime,
+    Expires = kz_time:now_s() + TrialTime,
     kz_account:set_trial_expiration(JObj, Expires).
 
 
@@ -1522,7 +1509,7 @@ notify_new_account(Context) ->
 
 notify_new_account(_Context, 'undefined') -> 'ok';
 notify_new_account(Context, _AuthDoc) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     JObj = cb_context:doc(Context),
     lager:debug("triggering new account notification for ~s", [cb_context:account_id(Context)]),
     Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
@@ -1639,12 +1626,12 @@ delete_mod_dbs(AccountId, Year, Month) ->
 delete_remove_from_accounts(Context) ->
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->
-            crossbar_doc:delete(
-              cb_context:setters(Context
-                                ,[{fun cb_context:set_account_db/2, ?KZ_ACCOUNTS_DB}
-                                 ,{fun cb_context:set_doc/2, JObj}
-                                 ])
-             );
+            UpdatedContext = cb_context:setters(Context
+                                               ,[{fun cb_context:set_account_db/2, ?KZ_ACCOUNTS_DB}
+                                                ,{fun cb_context:set_doc/2, JObj}
+                                                ]),
+            crossbar_doc:delete(UpdatedContext);
+
         {'error', 'not_found'} ->
             crossbar_util:response(kz_json:new(), Context);
         {'error', _R} ->

@@ -12,6 +12,7 @@
         ,update_mwi/2
         ,get_devices_owned_by/2
         ,maybe_originate_quickcall/1
+        ,cavs_from_context/1
 
         ,attachment_name/2
         ,parse_media_type/1
@@ -19,10 +20,6 @@
         ,bucket_name/1
         ,token_cost/1, token_cost/2, token_cost/3
         ,bind/2
-
-        ,range_view_options/1, range_view_options/2, range_view_options/3, range_view_options/5
-
-        ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3, range_modb_view_options/5
 
         ,take_sync_field/1
 
@@ -39,125 +36,6 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
-
--spec range_view_options(cb_context:context()) ->
-                                {gregorian_seconds(), gregorian_seconds()} |
-                                cb_context:context().
--spec range_view_options(cb_context:context(), pos_integer()) ->
-                                {gregorian_seconds(), gregorian_seconds()} |
-                                cb_context:context().
--spec range_view_options(cb_context:context(), pos_integer(), ne_binary()) ->
-                                {gregorian_seconds(), gregorian_seconds()} |
-                                cb_context:context().
--spec range_view_options(cb_context:context(), pos_integer(), ne_binary(), pos_integer(), pos_integer()) ->
-                                {gregorian_seconds(), gregorian_seconds()} |
-                                cb_context:context().
-range_view_options(Context) ->
-    range_view_options(Context, ?MAX_RANGE).
-range_view_options(Context, MaxRange) ->
-    range_view_options(Context, MaxRange, <<"created">>).
-range_view_options(Context, MaxRange, Key) ->
-    TStamp =  kz_time:current_tstamp(),
-    RangeTo = range_to(Context, TStamp, Key),
-    RangeFrom = range_from(Context, RangeTo, MaxRange, Key),
-    range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo).
-range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
-    Path = <<Key/binary, "_from">>,
-    case RangeTo - RangeFrom of
-        N when N < 0 ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<Path/binary, " is prior to ", Key/binary, "_to">>}
-                    ,{<<"cause">>, RangeFrom}
-                    ]),
-            cb_context:add_validation_error(Path, <<"date_range">>, Msg, Context);
-        N when N > MaxRange ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<Key/binary, "_to is more than "
-                                       ,(integer_to_binary(MaxRange))/binary
-                                       ," seconds from ", Path/binary>>}
-                    ,{<<"cause">>, RangeTo}
-                    ]),
-            cb_context:add_validation_error(Path, <<"date_range">>, Msg, Context);
-        _ ->
-            {RangeFrom, RangeTo}
-    end.
-
--spec range_modb_view_options(cb_context:context()) ->
-                                     {'ok', crossbar_doc:view_options()} |
-                                     cb_context:context().
-range_modb_view_options(Context) ->
-    range_modb_view_options(Context, 'undefined', 'undefined').
-
--spec range_modb_view_options(cb_context:context(), api_binaries()) ->
-                                     {'ok', crossbar_doc:view_options()} |
-                                     cb_context:context().
-range_modb_view_options(Context, PrefixKeys) ->
-    range_modb_view_options(Context, PrefixKeys, 'undefined').
-
--spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
-                                     {'ok', crossbar_doc:view_options()} |
-                                     cb_context:context().
-range_modb_view_options(Context, 'undefined', SuffixKeys) ->
-    range_modb_view_options(Context, [], SuffixKeys);
-range_modb_view_options(Context, PrefixKeys, 'undefined') ->
-    range_modb_view_options(Context, PrefixKeys, []);
-range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
-    case range_view_options(Context) of
-        {CreatedFrom, CreatedTo} ->
-            range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
-        Context1 -> Context1
-    end.
-
--spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
-                                     {'ok', crossbar_doc:view_options()} |
-                                     cb_context:context().
-range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
-    case range_view_options(Context, ?MAX_RANGE, <<"created">>, CreatedFrom, CreatedTo) of
-        {CreatedFrom, CreatedTo} ->
-            range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
-        Context1 -> Context1
-    end.
-
--spec range_modb_view_options1(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
-                                      {'ok', crossbar_doc:view_options()} |
-                                      cb_context:context().
-range_modb_view_options1(Context, [], [], CreatedFrom, CreatedTo) ->
-    lager:debug("from ~p to ~p (range: ~p)"
-               ,[CreatedFrom, CreatedTo, (CreatedTo - CreatedFrom)]
-               ),
-    {'ok'
-    ,[{'startkey', CreatedFrom}
-     ,{'endkey', CreatedTo}
-     ,{'databases', kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo)}
-     ]
-    };
-range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
-    lager:debug("prefix/suffix'd from ~p to ~p (range: ~p)"
-               ,[CreatedFrom, CreatedTo, (CreatedTo - CreatedFrom)]
-               ),
-    {'ok'
-    ,[{'startkey', PrefixKeys ++ [CreatedFrom] ++ SuffixKeys}
-     ,{'endkey',   PrefixKeys ++ [CreatedTo]   ++ SuffixKeys}
-     ,{'databases', kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo)}
-     ]
-    }.
-
--spec range_to(cb_context:context(), pos_integer(), ne_binary()) -> pos_integer().
-range_to(Context, TStamp, Key) ->
-    case crossbar_doc:start_key(Context) of
-        'undefined' ->
-            lager:debug("building ~s_to from req value", [Key]),
-            kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
-        StartKey ->
-            lager:debug("found startkey ~p as ~s_to", [StartKey, Key]),
-            kz_term:to_integer(StartKey)
-    end.
-
--spec range_from(cb_context:context(), pos_integer(), pos_integer(), ne_binary()) -> pos_integer().
-range_from(Context, CreatedTo, MaxRange, Key) ->
-    MaxFrom = CreatedTo - MaxRange,
-    lager:debug("building from req value '~s_from' or default ~p", [Key, MaxFrom]),
-    kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, MaxFrom)).
 
 -type binding() :: {ne_binary(), atom()}.
 -type bindings() :: [binding(),...].
@@ -189,7 +67,7 @@ send_mwi_update(BoxId, AccountId) ->
     BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
 
     _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    {New, Saved} = kvm_messages:count_none_deleted(AccountId, BoxId),
+    {New, Saved} = kvm_messages:count_non_deleted(AccountId, BoxId),
     _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),
     lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, AccountId, New, Saved]).
 
@@ -227,6 +105,7 @@ maybe_originate_quickcall(Context) ->
     Call = create_call_from_context(Context),
     case get_endpoints(Call, Context) of
         [] ->
+            lager:info("no endpoints found"),
             cb_context:add_system_error('unspecified_fault', Context);
         Endpoints ->
             originate_quickcall(Endpoints, Call, Context)
@@ -235,14 +114,13 @@ maybe_originate_quickcall(Context) ->
 -spec create_call_from_context(cb_context:context()) -> kapps_call:call().
 create_call_from_context(Context) ->
     Routines =
-        [{F, V} ||
-            {F, V} <-
-                [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
-                ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
-                ,{fun kapps_call:set_resource_type/2, <<"audio">>}
-                ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
-                 | request_specific_extraction_funs(Context)
-                ],
+        [{F, V}
+         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+                      ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_binary_value(<<"owner_id">>, cb_context:doc(Context))}
+                       | request_specific_extraction_funs(Context)
+                      ],
             'undefined' =/= V
         ],
     kapps_call:exec(Routines, kapps_call:new()).
@@ -335,6 +213,22 @@ aleg_cid(Number, Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
+-spec cavs_from_context(cb_context:context()) -> kz_proplist().
+cavs_from_context(Context) ->
+    ReqData = cb_context:req_data(Context),
+    QueryString = cb_context:query_string(Context),
+    cavs_from_request(ReqData, QueryString).
+
+-spec cavs_from_request(api_object(), api_object()) -> kz_proplist().
+cavs_from_request('undefined', 'undefined') -> [];
+cavs_from_request('undefined', QueryString) ->
+    kapps_call_util:filter_ccvs(QueryString);
+cavs_from_request(ReqData, 'undefined') ->
+    kapps_call_util:filter_ccvs(kz_json:get_json_value(<<"custom_application_vars">>, ReqData));
+cavs_from_request(ReqData, QueryString) ->
+    CAVs = kz_json:get_json_value(<<"custom_application_vars">>, ReqData, kz_json:new()),
+    kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
+
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
@@ -345,6 +239,9 @@ originate_quickcall(Endpoints, Call, Context) ->
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
            ],
+
+    CAVs = cavs_from_context(Context),
+
     MsgId = case kz_term:is_empty(cb_context:req_id(Context)) of
                 'true' -> kz_binary:rand_hex(16);
                 'false' -> cb_context:req_id(Context)
@@ -359,13 +256,15 @@ originate_quickcall(Endpoints, Call, Context) ->
     {DefaultCIDNumber, DefaultCIDName} = kz_attributes:caller_id(CIDType, Call),
     lager:debug("quickcall default cid ~s : ~s : ~s", [CIDType, DefaultCIDNumber, DefaultCIDName]),
 
+    CallTimeoutS = get_timeout(Context),
+
     Request =
         kz_json:from_list(
           [{<<"Application-Name">>, <<"transfer">>}
           ,{<<"Application-Data">>, get_application_data(Context)}
           ,{<<"Msg-ID">>, MsgId}
           ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
-          ,{<<"Timeout">>, get_timeout(Context)}
+          ,{<<"Timeout">>, CallTimeoutS}
           ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
           ,{<<"Media">>, get_media(Context)}
           ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
@@ -375,8 +274,8 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
           ,{<<"Continue-On-Fail">>, 'false'}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-          ,{<<"Export-Custom-Channel-Vars">>, [
-                                               <<"Account-ID">>
+          ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
+          ,{<<"Export-Custom-Channel-Vars">>, [ <<"Account-ID">>
                                               , <<"Retain-CID">>
                                               , <<"Authorizing-ID">>
                                               , <<"Authorizing-Type">>
@@ -385,9 +284,62 @@ originate_quickcall(Endpoints, Call, Context) ->
                                               ]}
            | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
           ]),
+
+    originate(Request, Context, cb_context:req_verb(Context), CallTimeoutS).
+
+originate(Request, Context, ?HTTP_GET, _CallTimeoutS) ->
     kz_amqp_worker:cast(Request, fun kapi_resource:publish_originate_req/1),
     JObj = kz_json:normalize(kz_api:remove_defaults(Request)),
-    crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
+    crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request));
+originate(Request, Context, ?HTTP_POST, CallTimeoutS) ->
+    case kz_amqp_worker:call_collect(Request
+                                    ,fun kapi_resource:publish_originate_req/1
+                                    ,fun([Resp | _Resps]) ->
+                                             kapi_resource:originate_resp_v(Resp)
+                                                 orelse kz_api:error_resp_v(Resp)
+                                     end
+                                    ,CallTimeoutS * ?MILLISECONDS_IN_SECOND
+                                    )
+    of
+        {'ok', JObjs} ->
+            handle_originate_resp(Request, Context, JObjs);
+        {'error', E} ->
+            lager:info("error starting quickcall: ~p", [E]),
+            cb_context:add_system_error(E, Context)
+    end.
+
+-spec handle_originate_resp(kz_json:object(), cb_context:context(), kz_json:objects()) ->
+                                   cb_context:context().
+handle_originate_resp(Request, Context, JObjs) ->
+    case lists:filter(fun kapi_resource:originate_resp_v/1, JObjs) of
+        [Resp] -> send_originate_resp(Request, Context, Resp);
+        [] -> send_error_resp(Context, lists:filter(fun kz_api:error_resp_v/1, JObjs))
+    end.
+
+-spec send_originate_resp(kz_json:object(), cb_context:context(), kz_json:object()) ->
+                                 cb_context:context().
+send_originate_resp(Request, Context, Response) ->
+    RequestJObj = kz_json:normalize(kz_api:remove_defaults(Request)),
+    ResponseJObj = kz_json:normalize(kz_api:remove_defaults(Response)),
+    APIResponse = kz_json:merge(RequestJObj, ResponseJObj),
+    crossbar_util:response_202(<<"quickcall initiated">>, APIResponse, cb_context:set_resp_data(Context, APIResponse)).
+
+-spec send_error_resp(cb_context:context(), kz_json:objects()) ->
+                             cb_context:context().
+send_error_resp(Context, []) ->
+    crossbar_util:response('error'
+                          ,<<"quickcall initiation failed">>
+                          ,500
+                          ,Context
+                          );
+send_error_resp(Context, [Error]) ->
+    ErrorJObj = kz_json:normalize(kz_api:remove_defaults(Error)),
+    crossbar_util:response('error'
+                          ,<<"quickcall initiation failed">>
+                          ,500
+                          ,ErrorJObj
+                          ,cb_context:set_resp_data(Context, ErrorJObj)
+                          ).
 
 -spec update_quickcall_endpoints(boolean(), kz_json:objects()) -> kz_json:objects().
 update_quickcall_endpoints(AutoAnswer, [Endpoint]) ->

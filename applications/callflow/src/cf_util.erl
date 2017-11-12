@@ -45,6 +45,8 @@
         ,event_listener_name/2
         ]).
 
+-export([flush_control_queue/1]).
+
 -include("callflow.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
@@ -775,6 +777,7 @@ wait_for_noop(Call, NoopId) ->
                            {'ok', kapps_call:call()} |
                            {'error', any()}.
 process_event(Call, NoopId, JObj) ->
+    MsgId = kz_api:msg_id(JObj),
     case kapps_call_command:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
             lager:debug("channel was destroyed"),
@@ -782,9 +785,19 @@ process_event(Call, NoopId, JObj) ->
         {<<"error">>, _, <<"noop">>} ->
             lager:debug("channel execution error while waiting for ~s: ~s", [NoopId, kz_json:encode(JObj)]),
             {'error', JObj};
-        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
-            lager:debug("noop has returned"),
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>}
+          when NoopId =:= MsgId ->
+            lager:debug("noop ~s received", [NoopId]),
             {'ok', Call};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
+            case kz_json:get_value(<<"Application-Response">>, JObj) of
+                NoopId ->
+                    lager:debug("noop ~s received", [NoopId]),
+                    {'ok', Call};
+                _Resp ->
+                    lager:debug("ignoring noop ~s(~s) (waiting for ~s)", [MsgId, _Resp, NoopId]),
+                    wait_for_noop(Call, NoopId)
+            end;
         {<<"call_event">>, <<"DTMF">>, _} ->
             DTMF = kz_json:get_value(<<"DTMF-Digit">>, JObj),
             lager:debug("recv DTMF ~s, adding to default", [DTMF]),
@@ -851,7 +864,7 @@ get_mailbox(AccountDb, VMNumber) ->
 vm_count(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     BoxId = kz_doc:id(JObj),
-    kvm_messages:count_none_deleted(AccountId, BoxId).
+    kvm_messages:count_non_deleted(AccountId, BoxId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -862,3 +875,18 @@ vm_count(JObj) ->
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kvm_messages:count_by_owner(AccountDb, OwnerId).
+
+-spec flush_control_queue(kapps_call:call()) -> 'ok'.
+flush_control_queue(Call) ->
+    ControlQueue = kapps_call:control_queue_direct(Call),
+    CallId = kapps_call:call_id_direct(Call),
+
+    NoopId = kz_datamgr:get_uuid(),
+    Command = [{<<"Application-Name">>, <<"noop">>}
+              ,{<<"Msg-ID">>, NoopId}
+              ,{<<"Insert-At">>, <<"flush">>}
+              ,{<<"Call-ID">>, CallId}
+               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("flushing with ~p", [Command]),
+    kz_amqp_worker:cast(Command, fun(C) -> kapi_dialplan:publish_command(ControlQueue, C) end).

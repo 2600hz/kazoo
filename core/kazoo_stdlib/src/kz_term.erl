@@ -28,6 +28,8 @@
         ,to_lower_char/1
         ,to_pid/1
 
+        ,safe_cast/3
+
         ,error_to_binary/1
         ]).
 -export([is_true/1, is_false/1
@@ -35,7 +37,7 @@
         ,is_ne_binary/1, is_api_ne_binary/1
         ,is_ne_binaries/1
         ,is_empty/1, is_not_empty/1
-        ,is_proplist/1
+        ,is_proplist/1, is_ne_list/1
         ,identity/1
         ,always_true/1, always_false/1
         ]).
@@ -213,6 +215,15 @@ is_true("true") -> 'true';
 is_true('true') -> 'true';
 is_true(_) -> 'false'.
 
+
+-type caster() :: fun((any()) -> any()).
+-spec safe_cast(any(), any(), caster()) -> any().
+safe_cast(Value, Default, CastFun) ->
+    try CastFun(Value)
+    catch
+        _:_ -> Default
+    end.
+
 -spec always_true(any()) -> 'true'.
 always_true(_) -> 'true'.
 
@@ -276,6 +287,10 @@ is_not_empty(Term) -> not is_empty(Term).
 is_proplist(Term) when is_list(Term) ->
     lists:all(fun({_,_}) -> 'true'; (A) -> is_atom(A) end, Term);
 is_proplist(_) -> 'false'.
+
+-spec is_ne_list(any()) -> boolean().
+is_ne_list([_|_]) -> 'true';
+is_ne_list(_) -> 'false'.
 
 -spec identity(X) -> X.
 identity(X) -> X.

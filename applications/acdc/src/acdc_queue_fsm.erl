@@ -69,7 +69,7 @@
                ,connection_timer_ref :: api_reference() % how long can a caller wait in the queue
                ,agent_ring_timer_ref :: api_reference() % how long to ring an agent before moving to the next
 
-               ,member_call :: kapps_call:call()
+               ,member_call :: kapps_call:call() | 'undefined'
                ,member_call_start :: api_non_neg_integer()
                ,member_call_winner :: api_object() %% who won the call
 
@@ -794,7 +794,7 @@ maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
 
             {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()
                                                      ,member_call=Call
-                                                     ,member_call_start=kz_time:current_tstamp()
+                                                     ,member_call_start=kz_time:now_s()
                                                      ,connection_timer_ref=start_connection_timer(ConnTimeout)
                                                      }};
         'false' ->

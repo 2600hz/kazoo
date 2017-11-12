@@ -182,8 +182,8 @@ new(Ledger, Amount, Type) ->
                    ,pvt_amount = abs(Amount)
                    ,pvt_account_id = kz_util:format_account_id(Ledger)
                    ,pvt_account_db = kz_util:format_account_mod_id(Ledger)
-                   ,pvt_created = kz_time:current_tstamp()
-                   ,pvt_modified = kz_time:current_tstamp()
+                   ,pvt_created = kz_time:now_s()
+                   ,pvt_modified = kz_time:now_s()
                    }.
 
 %%--------------------------------------------------------------------
@@ -473,7 +473,7 @@ save(#kz_transaction{}=Transaction) ->
         T=#kz_transaction{pvt_account_id = AccountId
                          ,pvt_created = Created
                          } ->
-            JObj = to_json(T#kz_transaction{pvt_modified = kz_time:current_tstamp()
+            JObj = to_json(T#kz_transaction{pvt_modified = kz_time:now_s()
                                            }),
             case kazoo_modb:save_doc(AccountId, JObj, Created) of
                 {'error', _}=E -> E;
@@ -500,7 +500,7 @@ service_save(#kz_transaction{}=Transaction) ->
 -spec service_save_transaction(transaction()) -> {'ok', transaction()} |
                                                  {'error', any()}.
 service_save_transaction(#kz_transaction{pvt_account_id = AccountId}=Transaction) ->
-    TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified = kz_time:current_tstamp()
+    TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified = kz_time:now_s()
                                                         }),
     case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _R}=Error ->
@@ -638,7 +638,7 @@ prepare_topup_transaction(Transaction) ->
 
 -spec modb_doc_id() -> ne_binary().
 modb_doc_id() ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:current_tstamp()),
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:now_s()),
     <<(kz_term:to_binary(Year))/binary
       ,(kz_date:pad_month(Month))/binary
       ,"-"

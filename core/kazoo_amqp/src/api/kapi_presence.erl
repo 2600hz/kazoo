@@ -658,62 +658,62 @@ unbind_q(Queue, 'undefined', _) ->
 unbind_q(Queue, ['search_req'|Restrict], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     RoutingKey = search_req_routing_key(Realm),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['sync'|Restrict], Props) ->
-    amqp_util:unbind_q_from_presence(Queue, <<"sync">>),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, <<"sync">>),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['subscribe'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     RoutingKey = subscribe_routing_key(User),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['update'|Restrict], Props) ->
     PresenceId = props:get_value('presence-id', Props, <<"*">>),
     CallId = props:get_value('call', Props, <<"*">>),
     RoutingKey = update_routing_key(CallId, PresenceId),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['dialog'|Restrict], Props) ->
     PresenceId = props:get_value('presence-id', Props, <<"*@*">>),
     CallId = props:get_value('call', Props, <<"*">>),
     RoutingKey = dialog_routing_key(CallId, PresenceId),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['probe'|Restrict], Props) ->
     ProbeType = props:get_value('probe_type', Props, <<"*">>),
     RoutingKey = probe_routing_key(ProbeType),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['mwi_update'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     Realm = props:get_value('realm', Props, <<"*">>),
     RoutingKey = mwi_update_routing_key(User, Realm),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['mwi_unsolicited_update'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     RoutingKey = mwi_unsolicited_update_routing_key(User),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     bind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['mwi_query'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     RoutingKey = mwi_query_routing_key(User),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['register_overwrite'|Restrict], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     RoutingKey = register_overwrite_routing_key(Realm),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['flush'|Restrict], Props) ->
-    amqp_util:unbind_q_from_presence(Queue, <<"flush">>),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, <<"flush">>),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['reset'|Restrict], Props) ->
     Username = props:get_value('username', Props, <<"*">>),
     Realm = props:get_value('realm', Props, <<"*">>),
     RoutingKey = reset_routing_key(Realm, Username),
-    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    'ok' = amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, [_|Restrict], Props) ->
     unbind_q(Queue, Restrict, Props);

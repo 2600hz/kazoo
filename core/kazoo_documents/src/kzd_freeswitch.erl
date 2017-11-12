@@ -144,7 +144,6 @@ original_call_direction(Props) ->
 call_direction(Props) ->
     props:get_first_defined([<<"Application-Logical-Direction">>
                             ,?CCV(<<"Application-Logical-Direction">>)
-                            ,<<"Caller-Logical-Direction">>
                             ,<<"Call-Direction">>
                             ]
                            ,Props
@@ -433,7 +432,7 @@ conference_uuid(Props) ->
 -spec join_time(data()) -> gregorian_seconds().
 -spec join_time(data(), Default) -> gregorian_seconds() | Default.
 join_time(Props) ->
-    join_time(Props, kz_time:current_tstamp()).
+    join_time(Props, kz_time:now_s()).
 join_time(Props, Default) ->
     props:get_integer_value(<<"Join-Time">>, Props, Default).
 

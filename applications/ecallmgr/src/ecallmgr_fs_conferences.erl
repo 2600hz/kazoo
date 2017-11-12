@@ -29,7 +29,9 @@
 -export([participant_get/1]).
 -export([sync_node/1]).
 -export([flush_node/1]).
--export([handle_search_req/2]).
+-export([handle_search_req/2
+        ,handle_dial_req/2
+        ]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -59,6 +61,9 @@
 
 -define(RESPONDERS, [{{?MODULE, 'handle_search_req'}
                      ,[{<<"conference">>, <<"search_req">>}]
+                     }
+                    ,{{?MODULE, 'handle_dial_req'}
+                     ,[{<<"conference">>, <<"command">>}]
                      }
                     ]).
 -define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}
@@ -187,14 +192,35 @@ flush_node(Node) -> gen_server:cast(?SERVER, {'flush_node', Node}).
 
 -spec handle_search_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_search_req(JObj, Props) ->
-    case kz_json:get_value(<<"Conference-ID">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj) of
         'undefined' -> handle_search_account(JObj, Props);
-        _Conference -> handle_search_conference(JObj, Props)
+        ConferenceId -> handle_search_conference(JObj, Props, ConferenceId)
     end.
 
--spec handle_search_conference(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_search_conference(JObj, _Props) ->
-    Name = kz_json:get_value(<<"Conference-ID">>, JObj),
+-spec handle_dial_req(kapi_conference:doc(), kz_proplist()) -> 'ok'.
+handle_dial_req(JObj, _Props) ->
+    'true' = kapi_conference:dial_v(JObj),
+    ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
+    lager:info("dialing out from conference ~s", [ConferenceId]),
+    case node(ConferenceId) of
+        {'error', 'not_found'} ->
+            lager:info("conference ~s not started, dialing out to start it", [ConferenceId]),
+            start_conference(JObj, ConferenceId);
+        {'ok', ConferenceNode} ->
+            lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
+            {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(ConferenceNode, ConferenceId, JObj),
+            lager:info("starting dial resulted in ~s", [_Resp])
+    end.
+
+-spec start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
+start_conference(JObj, ConferenceId) ->
+    [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
+    lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, Node]),
+    {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(Node, ConferenceId, JObj),
+    lager:info("starting dial resulted in ~s", [_Resp]).
+
+-spec handle_search_conference(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
+handle_search_conference(JObj, _Props, Name) ->
     lager:info("received search request for conference name ~s", [Name]),
     case ets:match_object(?CONFERENCES_TBL, #conference{name=Name, _ = '_'}) of
         %% TODO: this ignores conferences on multiple nodes until big-conferences
@@ -212,7 +238,7 @@ handle_search_conference(JObj, _Props) ->
             Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                    ,{<<"Conference-ID">>, Name}
                    ,{<<"UUID">>, UUID}
-                   ,{<<"Run-Time">>, kz_time:current_tstamp() - StartTime}
+                   ,{<<"Run-Time">>, kz_time:now_s() - StartTime}
                    ,{<<"Start-Time">>, StartTime}
                    ,{<<"Locked">>, Locked}
                    ,{<<"Switch-Hostname">>, Hostname}
@@ -258,6 +284,7 @@ handle_search_account(JObj, _Props) ->
             kapi_conference:publish_search_resp(kz_api:server_id(JObj), Resp)
     end.
 
+-spec conference_resp(conference()) -> {ne_binary(), kz_json:object()}.
 conference_resp(#conference{uuid=UUID
                            ,name=Name
                            ,start_time=StartTime
@@ -269,7 +296,7 @@ conference_resp(#conference{uuid=UUID
     Participants = participants(Name),
     {Moderators, Members} = lists:partition(fun is_moderator/1, Participants),
     Resp = [{<<"UUID">>, UUID}
-           ,{<<"Run-Time">>, kz_time:current_tstamp() - StartTime}
+           ,{<<"Run-Time">>, kz_time:now_s() - StartTime}
            ,{<<"Start-Time">>, StartTime}
            ,{<<"Is-Locked">>, Locked}
            ,{<<"Switch-Hostname">>, Hostname}
@@ -473,7 +500,7 @@ conference_from_props(Props, Node, Conference) ->
                          ,uuid = kzd_freeswitch:conference_uuid(Props)
                          ,name = kzd_freeswitch:conference_name(Props)
                          ,profile_name = kzd_freeswitch:conference_profile_name(Props)
-                         ,start_time = kz_time:current_tstamp()
+                         ,start_time = kz_time:now_s()
                          ,switch_hostname = kzd_freeswitch:hostname(Props, kz_term:to_binary(Node))
                          ,switch_url = ecallmgr_fs_nodes:sip_url(Node)
                          ,switch_external_ip = ecallmgr_fs_nodes:sip_external_ip(Node)
@@ -493,6 +520,7 @@ participant_from_props(Props, Node) ->
                 ,caller_id_number = kzd_freeswitch:caller_id_number(Props)
                 ,caller_id_name = kzd_freeswitch:caller_id_name(Props)
                 ,custom_channel_vars = ecallmgr_util:custom_channel_vars(Props)
+                ,custom_application_vars = ecallmgr_util:custom_application_vars(Props)
                 ,conference_channel_vars = ecallmgr_util:conference_channel_vars(Props)
                 }.
 
@@ -516,18 +544,20 @@ participant_to_props(#participant{uuid=UUID
                                  ,caller_id_number=CallerIDNumber
                                  ,custom_channel_vars=CCVs
                                  ,conference_channel_vars=ConfVars
+                                 ,custom_application_vars=CAVs
                                  }) ->
     props:filter_undefined(
       [{<<"Call-ID">>, UUID}
-      ,{<<"Conference-Name">>, ConfName}
-      ,{<<"Conference-UUID">>, ConfUUID}
-      ,{<<"Switch-Hostname">>, Node}
-      ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
-      ,{<<"Join-Time">>, JoinTime}
       ,{<<"Caller-ID-Name">>, CallerIDName}
       ,{<<"Caller-ID-Number">>, CallerIDNumber}
-      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Conference-Channel-Vars">>, kz_json:from_list(ConfVars)}
+      ,{<<"Conference-Name">>, ConfName}
+      ,{<<"Conference-UUID">>, ConfUUID}
+      ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Join-Time">>, JoinTime}
+      ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
+      ,{<<"Switch-Hostname">>, Node}
       ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().
@@ -654,9 +684,7 @@ xml_attr_to_conference(Conference, 'exit_sound', Value) ->
 xml_attr_to_conference(Conference, 'enter_sound', Value) ->
     Conference#conference{enter_sound=kz_term:is_true(Value)};
 xml_attr_to_conference(Conference, 'run_time', Value) ->
-    Conference#conference{start_time=kz_time:decr_timeout(kz_time:current_tstamp()
-                                                         ,kz_term:to_integer(Value)
-                                                         )};
+    Conference#conference{start_time=kz_time:now_s() - kz_term:to_integer(Value)};
 xml_attr_to_conference(Conference, _Name, _Value) ->
     lager:debug("unhandled conference k/v ~s: ~p", [_Name, _Value]),
     Conference.
@@ -796,7 +824,7 @@ print_summary({[#conference{name=Name
              ,Count) ->
     Participants = participants(Name),
     io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~-5s|~n"
-             ,[Name, Node, length(Participants), kz_time:current_tstamp() - StartTime, AccountId, IsLocal]
+             ,[Name, Node, length(Participants), kz_time:now_s() - StartTime, AccountId, IsLocal]
              ),
     print_summary(ets:select(Continuation), Count + 1).
 

@@ -28,6 +28,11 @@
             ],
             "type": "string"
         },
+        "include_internal_legs": {
+            "default": true,
+            "description": "Whether to filter out call legs that are internal to the system (loopback)",
+            "type": "boolean"
+        },
         "include_subaccounts": {
             "description": "Should the webhook be fired for subaccount events.",
             "type": "boolean"

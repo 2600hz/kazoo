@@ -26,7 +26,6 @@ pages:
     - 'applications/crossbar/doc/limits.md'
     - 'applications/crossbar/doc/port_requests.md'
     - 'applications/crossbar/doc/search.md'
-    - 'applications/crossbar/doc/service_planner.md'
     - 'applications/crossbar/doc/service_plans.md'
     - 'applications/crossbar/doc/services.md'
     - 'applications/crossbar/doc/transactions.md'
@@ -67,6 +66,7 @@ pages:
     - 'applications/crossbar/doc/menus.md'
     - 'applications/crossbar/doc/metaflows.md'
     - 'applications/crossbar/doc/phone_numbers.md'
+    - 'applications/crossbar/doc/quickcall.md'
     - 'applications/crossbar/doc/recordings.md'
     - 'applications/crossbar/doc/sms.md'
     - 'applications/crossbar/doc/temporal_rules.md'
@@ -136,6 +136,7 @@ pages:
       - 'applications/pivot/doc/issues.md'
   - 'Websockets':
     - 'applications/blackhole/doc/README.md'
+    - 'Ping': 'applications/blackhole/doc/ping.md'
     - 'Bindings': 'applications/blackhole/doc/bindings.md'
     - 'API': 'applications/crossbar/doc/websockets.md'
     - 'HAProxy configuration': 'applications/blackhole/doc/haproxy.md'
@@ -176,6 +177,7 @@ pages:
         - 'Ring Group': 'applications/callflow/doc/ring_group.md'
         - 'Ring Group Toggle': 'applications/callflow/doc/ring_group_toggle.md'
         - 'Page Group': 'applications/callflow/doc/page_group.md'
+        - 'Dynamic lookup': 'applications/callflow/doc/route_to_cid.md'
     - 'Call Parking': 'applications/callflow/doc/park.md'
     - 'Call Recording':
         - 'Record Call': 'applications/callflow/doc/record_call.md'
@@ -219,7 +221,9 @@ pages:
         - 'Send DTMF': 'applications/callflow/doc/send_dtmf.md'
         - 'Flush DTMF': 'applications/callflow/doc/flush_dtmf.md'
     - 'Intercom': 'applications/callflow/doc/intercom.md'
-    - 'Set Call Variable': 'applications/callflow/doc/set_variable.md'
+    - 'Set Call Variable(s)':
+        - 'applications/callflow/doc/set_variable.md'
+        - 'applications/callflow/doc/set_variables.md'
     - 'Intercept':
         - 'Action': 'applications/callflow/doc/intercept.md'
         - 'Feature Code': 'applications/callflow/doc/intercept_feature.md'
@@ -285,11 +289,22 @@ pages:
   - 'Jonny5':
     - 'applications/jonny5/doc/README.md'
   - 'Konami':
-    - 'applications/konami/doc/transfer.md'
-    - 'applications/konami/doc/README.md'
-    - 'applications/konami/doc/hold.md'
-    - 'applications/konami/doc/move.md'
-    - 'applications/konami/doc/resume.md'
+      - 'applications/konami/doc/README.md'
+      - 'applications/konami/doc/audio_level.md'
+      - 'applications/konami/doc/break.md'
+      - 'applications/konami/doc/callflow.md'
+      - 'applications/konami/doc/hangup.md'
+      - 'applications/konami/doc/hold.md'
+      - 'applications/konami/doc/hold_control.md'
+      - 'applications/konami/doc/intercept.md'
+      - 'applications/konami/doc/move.md'
+      - 'applications/konami/doc/play.md'
+      - 'applications/konami/doc/record_call.md'
+      - 'applications/konami/doc/resume.md'
+      - 'applications/konami/doc/say.md'
+      - 'applications/konami/doc/sound_touch.md'
+      - 'applications/konami/doc/transfer.md'
+      - 'applications/konami/doc/tts.md'
   - 'Media Manager':
     - 'applications/media_mgr/doc/README.md'
   - 'Milliwatt':
@@ -378,6 +393,7 @@ pages:
     - 'core/kazoo/doc/README.md'
   - 'Kazoo Speech':
       - 'core/kazoo_speech/doc/README.md'
+      - 'core/kazoo_speech/doc/ispeech.md'
   - 'Kazoo MODB':
     - 'core/kazoo_modb/doc/README.md'
   - 'Kazoo CouchDB':

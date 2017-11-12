@@ -68,6 +68,7 @@ handle_req(JObj, _Props) ->
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
+    notify_util:send_update(RespQ, MsgId, <<"pending">>),
     notify_util:maybe_send_update(build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props))
                                  ,RespQ
                                  ,MsgId
@@ -81,7 +82,7 @@ handle_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:objects(), kz_json:object()) -> kz_proplist().
 create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
 
     CIDName = kz_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = kz_json:get_value(<<"Caller-ID-Number">>, Event),

@@ -46,7 +46,7 @@ If you feel that this system secret is compromised, use this API to reset it.
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "action": "reset_signature_secret", "data": {} }'
+    -d '{ "action": "reset_signature_secret", "data": {} }' \
     http://{SERVER}:8000/v2/auth
 ```
 
@@ -82,7 +82,7 @@ If you feel that an account or a user secret is compromised, use this API to res
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "action": "reset_signature_secret", "data": {} }'
+    -d '{ "action": "reset_signature_secret", "data": {} }' \
     http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/auth
 ```
 
@@ -93,7 +93,7 @@ curl -v -X PUT \
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{ "action": "reset_signature_secret", "data": {} }'
+    -d '{ "action": "reset_signature_secret", "data": {} }' \
     http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/users/3bedb94b3adfc4873a548b41d28778b5/auth
 ```
 

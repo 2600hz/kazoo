@@ -36,11 +36,14 @@
         "Continue-On-Fail": {
             "type": "string"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Custom-SIP-Headers": {
-            "type": "string"
+            "type": "object"
         },
         "Dial-Endpoint-Method": {
             "type": "string"
@@ -90,7 +93,7 @@
             "type": "string"
         },
         "Export-Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Fail-On-Single-Reject": {
             "type": "string"
@@ -150,6 +153,9 @@
             "type": "string"
         },
         "Ringback": {
+            "type": "string"
+        },
+        "SIP-Invite-Parameters": {
             "type": "string"
         },
         "SIP-Transport": {

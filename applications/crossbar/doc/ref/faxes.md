@@ -20,8 +20,10 @@ Key | Description | Type | Default | Required
 `document` | Parameters related to the storage of a fax document | `object()` |   | `false`
 `from_name` | The sender name for the fax | `string()` |   | `false`
 `from_number` | The sender number for the fax | `string()` |   | `true`
+`notifications.email.send_to.[]` |   | `string()` |   | `false`
 `notifications.email.send_to` | A list or string of email recipent(s) | `string() | array(string())` |   | `false`
 `notifications.email` | Email notifications | `object()` |   | `false`
+`notifications.sms.send_to.[]` |   | `string()` |   | `false`
 `notifications.sms.send_to` | A list or string of sms recipent(s) | `string() | array(string())` |   | `false`
 `notifications.sms` | SMS notifications | `object()` |   | `false`
 `notifications` | Status notifications | `object()` |   | `false`

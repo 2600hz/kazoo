@@ -27,22 +27,24 @@
 
 -define(SERVER, ?MODULE).
 
--define(NUMBERS_TO_CRAWL,
-        kapps_config:get_pos_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)).
+-define(NUMBERS_TO_CRAWL
+       ,kapps_config:get_pos_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+       ).
 
--define(DISCOVERY_EXPIRY,
-        kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"discovery_expiry_d">>, 1)).
+-define(DISCOVERY_EXPIRY
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"discovery_expiry_d">>, 1)
+       ).
 
--define(AGING_EXPIRY,
-        kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"aging_expiry_d">>, 90)).
+-define(AGING_EXPIRY
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"aging_expiry_d">>, 90)
+       ).
 
--define(TIME_BETWEEN_CRAWLS,
-        kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"crawler_timer_ms">>, ?MILLISECONDS_IN_DAY)).
+-define(TIME_BETWEEN_CRAWLS
+       ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"crawler_timer_ms">>, ?MILLISECONDS_IN_DAY)
+       ).
 
--record(state, {cleanup_ref :: reference()
-               }).
+-record(state, {cleanup_ref :: reference()}).
 -type state() :: #state{}.
-
 
 %%%===================================================================
 %%% API
@@ -206,4 +208,4 @@ maybe_transition_aging(PN, T, Expiry) ->
 -spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
 is_old_enough(PN, Expiry) ->
     knm_phone_number:modified(PN)
-        < (kz_time:current_tstamp() + Expiry * ?SECONDS_IN_DAY).
+        < (kz_time:now_s() + Expiry * ?SECONDS_IN_DAY).

@@ -391,7 +391,7 @@ conference_publish(Payload, 'config', ConfProfile, Options, ContentType) ->
 conference_publish(Payload, 'event', ConfId, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, Payload, ContentType, Options);
 conference_publish(Payload, 'command', ConfId, Options, ContentType) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, Payload, ContentType, Options).
+    basic_publish(?EXCHANGE_CONFERENCE, conference_command_binding(ConfId), Payload, ContentType, Options).
 
 -spec conference_publish(amqp_payload(), 'event', ne_binary(), ne_binary(), kz_proplist(), ne_binary()) -> 'ok'.
 conference_publish(Payload, 'event', ConfId, CallId, Options, ContentType) ->
@@ -949,9 +949,13 @@ bind_q_to_conference(Queue, 'discovery', _) ->
 bind_q_to_conference(Queue, 'event', EventKey) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, EventKey/binary>>, ?EXCHANGE_CONFERENCE);
 bind_q_to_conference(Queue, 'command', ConfId) ->
-    bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
+    bind_q_to_exchange(Queue, conference_command_binding(ConfId), ?EXCHANGE_CONFERENCE);
 bind_q_to_conference(Queue, 'config', ConfProfile) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, ?EXCHANGE_CONFERENCE).
+
+-spec conference_command_binding(ne_binary()) -> ne_binary().
+conference_command_binding(ConferenceId) ->
+    <<?KEY_CONFERENCE_COMMAND_L, ConferenceId/binary>>.
 
 -spec bind_q_to_leader(ne_binary(), ne_binary()) -> 'ok'.
 bind_q_to_leader(Queue, Bind) ->
@@ -967,7 +971,6 @@ bind_q_to_tasks(Queue, Routing) ->
     bind_q_to_tasks(Queue, Routing, []).
 bind_q_to_tasks(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TASKS, Options).
-
 
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
@@ -1010,7 +1013,7 @@ unbind_q_from_conference(Queue, 'event', ConfId) ->
 unbind_q_from_conference(Queue, 'config', ConfProfile) ->
     unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, ?EXCHANGE_CONFERENCE);
 unbind_q_from_conference(Queue, 'command', ConfId) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
+    unbind_q_from_exchange(Queue, conference_command_binding(ConfId), ?EXCHANGE_CONFERENCE).
 
 -spec unbind_q_from_conference(ne_binary(), 'event', ne_binary(), ne_binary()) ->
                                       'ok' | {'error', any()}.

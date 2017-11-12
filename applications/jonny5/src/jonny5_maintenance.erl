@@ -67,7 +67,7 @@ authz_details([]) ->
 authz_details([Channel|Channels]) ->
     io:format("~n", []),
     Props = j5_channels:to_props(Channel),
-    Timestamp = kz_time:current_tstamp(),
+    Timestamp = kz_time:now_s(),
     pretty_print_field(<<"Call ID">>, props:get_value(<<"Call-ID">>, Props)),
     pretty_print_field(<<"Other Leg Call ID">>, props:get_value(<<"Other-Leg-Call-ID">>, Props)),
     pretty_print_field(<<"Direction">>, props:get_value(<<"Direction">>, Props)),
@@ -239,7 +239,7 @@ pretty_print_field(Name, Value) when is_number(Value) ->
 pretty_print_field(Name, Value) ->
     io:format("~-25s: ~s~n", [Name, Value]).
 
--spec current_balance(ne_binary()) -> ne_binary().
+-spec current_balance(ne_binary()) -> iolist().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
         {'ok', Balance} -> kz_term:to_list(wht_util:units_to_dollars(Balance));

@@ -428,7 +428,7 @@ handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=S
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     Reason = kz_json:get_value(<<"Reason">>, JObj),
 
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, Reason),
+    'ok' = acdc_stats:call_abandoned(AccountId, QueueId, CallId, Reason),
     {'noreply', State#state{ignored_member_calls=dict:store(K, 'true', Dict)}};
 handle_cast({'monitor_call', Call}, State) ->
     CallId = kapps_call:call_id(Call),
@@ -560,12 +560,12 @@ handle_cast({'add_queue_member', JObj}, #state{account_id=AccountId
                                             ,Position
                                             ,kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj))),
 
-    acdc_stats:call_waiting(AccountId, QueueId
-                           ,kapps_call:call_id(Call)
-                           ,kapps_call:caller_id_name(Call)
-                           ,kapps_call:caller_id_number(Call)
-                           ,kz_json:get_integer_value(<<"Member-Priority">>, JObj)
-                           ),
+    'ok' = acdc_stats:call_waiting(AccountId, QueueId
+                                  ,kapps_call:call_id(Call)
+                                  ,kapps_call:caller_id_name(Call)
+                                  ,kapps_call:caller_id_number(Call)
+                                  ,kz_json:get_integer_value(<<"Member-Priority">>, JObj)
+                                  ),
 
     publish_queue_member_add(AccountId, QueueId, Call),
 
@@ -978,7 +978,7 @@ cancel_position_announcements(Call, Pids) ->
         Pid ->
             lager:debug("cancelling announcements for ~s", [CallId]),
             Pids1 = maps:remove(CallId, Pids),
-            acdc_announcements_sup:stop_announcements(Pid),
+            _ = acdc_announcements_sup:stop_announcements(Pid),
 
             %% Attempt to skip remaining announcement media, but don't flush hangups
             NoopId = kz_datamgr:get_uuid(),

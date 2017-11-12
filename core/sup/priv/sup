@@ -1,33 +1,31 @@
 #!/bin/sh
 
-# The file to copy/symlink under /usr/bin or similar
+# look for kazoo release root directory
 DEFAULT_ROOT=${KAZOO_ROOT:-_rel/kazoo}
 if [ -d "$DEFAULT_ROOT/_rel/kazoo" ]; then
-    DEFAULT_ROOT="$DEFAULT_ROOT"
+    DEFAULT_ROOT="$DEFAULT_ROOT/_rel/kazoo"
 elif [ -d "$DEFAULT_ROOT/bin" ]; then
     DEFAULT_ROOT="$DEFAULT_ROOT"
 elif [ -d /opt/kazoo/_rel/kazoo ]; then
     DEFAULT_ROOT="/opt/kazoo/_rel/kazoo"
 elif [ -d /opt/kazoo/bin ]; then
     DEFAULT_ROOT="/opt/kazoo"
-elif [ -d /kazoo/bin ]; then
-    DEFAULT_ROOT="/kazoo"
 else
     echo "Can't find Kazoo release root directory, is the release built?"
     exit -1
 fi
 
-  while getopts "n:c:" optname
-    do
-      case "$optname" in
+while getopts "n:c:" optname
+do
+    case "$optname" in
         "n")
-      SUP_NODE_ARG=$OPTARG
-          ;;
+            SUP_NODE_ARG=$OPTARG
+            ;;
         "c")
-      SUP_COOKIE_ARG=$OPTARG
-          ;;
-      esac
-    done
+            SUP_COOKIE_ARG=$OPTARG
+            ;;
+    esac
+done
 
 shift $(($OPTIND - 1))
 

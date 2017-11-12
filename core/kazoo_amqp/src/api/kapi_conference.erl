@@ -41,6 +41,7 @@
         ,config_resp/1, config_resp_v/1
         ]).
 -export([play_macro_req/1, play_macro_req_v/1]).
+-export([dial/1, dial_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
@@ -74,10 +75,14 @@
 -export([publish_targeted_command/2, publish_targeted_command/3]).
 -export([publish_config_req/1, publish_config_req/2
         ,publish_config_resp/2, publish_config_resp/3
+        ,publish_dial/2, publish_dial/3
         ]).
 
 -include_lib("amqp_util.hrl").
 -include("kapi_dialplan.hrl").
+
+-type doc() :: kz_json:object().
+-export_type([doc/0]).
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [ [<<"Conference-ID">>, <<"Account-ID">>] ]).
@@ -221,7 +226,11 @@
 
 
 %% Conference Relate Participants
--define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>, <<"Other-Participant">>]).
+-define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>
+                                     ,<<"Conference-ID">>
+                                     ,<<"Other-Participant">>
+                                     ,<<"Participant-ID">>
+                                     ]).
 -define(OPTIONAL_RELATE_PARTICIPANTS_HEADERS, [<<"Relationship">>]).
 -define(RELATE_PARTICIPANTS_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                     ,{<<"Event-Name">>, <<"command">>}
@@ -229,6 +238,14 @@
                                     ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"clear">>]}
                                     ]).
 -define(RELATE_PARTICIPANTS_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                                   ,{<<"Participant-ID">> ,fun(ID) -> is_integer(ID)
+                                                                          orelse is_binary(ID)
+                                                           end
+                                    }
+                                   ,{<<"Other-Participant">>, fun(ID) -> is_integer(ID)
+                                                                             orelse is_binary(ID)
+                                                              end
+                                    }
                                    ]).
 
 %% Conference Set
@@ -296,16 +313,40 @@
                                      ]).
 
 %% Conference Set Volume Out
--define(PARTICIPANT_VOLUME_OUT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>
-                                        ,<<"Participant-ID">>, <<"Volume-Out-Level">>
+-define(PARTICIPANT_VOLUME_OUT_HEADERS, [<<"Application-Name">>
+                                        ,<<"Conference-ID">>
+                                        ,<<"Participant-ID">>
+                                        ,<<"Volume-Out-Level">>
                                         ]).
 -define(OPTIONAL_PARTICIPANT_VOLUME_OUT_HEADERS, []).
 -define(PARTICIPANT_VOLUME_OUT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                        ,{<<"Event-Name">>, <<"command">>}
                                        ,{<<"Application-Name">>, <<"participant_volume_out">>}
                                        ]).
--define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                      ]).
+-define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+
+-define(DIAL_HEADERS, [<<"Endpoints">>
+                      ,<<"Conference-ID">>
+                      ,<<"Application-Name">>
+                      ]).
+-define(OPTIONAL_DIAL_HEADERS, [<<"Caller-ID-Name">>
+                               ,<<"Caller-ID-Number">>
+                               ,<<"Custom-Channel-Vars">>
+                               ,<<"Custom-Application-Vars">>
+                               ,<<"Outbound-Call-ID">>
+                               ,<<"Timeout">>
+                               ]).
+-define(DIAL_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                     ,{<<"Event-Name">>, <<"command">>}
+                     ,{<<"Application-Name">>, <<"dial">>}
+                     ]).
+-define(DIAL_TYPES, [{<<"Caller-ID-Name">>, fun is_binary/1}
+                    ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                    ,{<<"Endpoints">>, fun kz_json:are_json_objects/1}
+                    ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                    ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
+                    ,{<<"Timeout">>, fun is_integer/1}
+                    ]).
 
 %% Conference Participants Event
 -define(PARTICIPANT_EVENT_HEADERS, [<<"Event">>
@@ -328,7 +369,9 @@
                                    ,<<"Custom-Channel-Vars">>
                                    ]).
 -define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, []).
--define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}, {<<"Event-Name">>, <<"participant_event">>}]).
+-define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                  ,{<<"Event-Name">>, <<"participant_event">>}
+                                  ]).
 -define(PARTICIPANT_EVENT_TYPES, []).
 
 %% Conference Event
@@ -393,17 +436,20 @@
                         ,{<<"unmute_participant">>, ?UNMUTE_PARTICIPANT_VALUES, fun unmute_participant/1}
                         ,{<<"participant_volume_in">>, ?PARTICIPANT_VOLUME_IN_VALUES, fun participant_volume_in/1}
                         ,{<<"participant_volume_out">>, ?PARTICIPANT_VOLUME_OUT_VALUES, fun participant_volume_out/1}
+                        ,{<<"dial">>, ?DIAL_VALUES, fun dial/1}
                         ,{<<"tones">>, ?CONF_TONES_REQ_VALUES, fun tones/1}
                         ,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun say/1}
                         ,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun tts/1}
                         ,{<<"play_macro">>, ?CONF_PLAY_MACRO_REQ_VALUES, fun play_macro_req/1}
                         ]).
 
--define(CONF_PLAY_MACRO_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Macro">>]).
+-define(CONF_PLAY_MACRO_REQ_HEADERS, [<<"Application-Name">>
+                                     ,<<"Conference-ID">>
+                                     ,<<"Media-Macro">>
+                                     ]).
 -define(OPTIONAL_CONF_PLAY_MACRO_REQ_HEADERS, []).
 -define(CONF_PLAY_MACRO_REQ_VALUES, []).
--define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                   ]).
+-define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 -spec focus_queue_name(atom()) -> ne_binary().
 focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
@@ -417,7 +463,9 @@ focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
                              ,{<<"Application-Name">>, [<<"say">>, <<"tts">>]}
                               | props:delete_keys([<<"Event-Category">>
                                                   ,<<"Application-Name">>
-                                                  ], ?TONES_REQ_VALUES)
+                                                  ]
+                                                 ,?TONES_REQ_VALUES
+                                                 )
                              ]).
 -spec say(api_terms()) -> api_formatter_return() .
 say(Prop) when is_list(Prop) ->
@@ -972,6 +1020,19 @@ config_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONFIG_RESP_HEADERS, ?CONFIG_RESP_VALUES, ?CONFIG_RESP_TYPES);
 config_resp_v(JObj) -> config_resp_v(kz_json:to_proplist(JObj)).
 
+-spec dial(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+dial(Prop) when is_list(Prop) ->
+    case dial_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?DIAL_HEADERS, ?OPTIONAL_DIAL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for dial"}
+    end;
+dial(JObj) -> dial(kz_json:to_proplist(JObj)).
+
+-spec dial_v(api_terms()) -> boolean().
+dial_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?DIAL_HEADERS, ?DIAL_VALUES, ?DIAL_TYPES);
+dial_v(JObj) -> dial_v(kz_json:to_proplist(JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Bind a queue to the conference exchange
@@ -1475,3 +1536,16 @@ publish_config_resp(Queue, JObj) ->
 publish_config_resp(Queue, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CONFIG_RESP_VALUES, fun config_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_dial(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_dial(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_dial(ConferenceId, JObj) ->
+    publish_dial(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_dial(ConferenceId, Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIAL_VALUES, fun dial/1),
+    amqp_util:conference_publish(Payload, 'discovery', ConferenceId, [], ContentType).

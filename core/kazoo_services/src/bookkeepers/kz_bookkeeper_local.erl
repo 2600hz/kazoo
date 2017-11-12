@@ -31,7 +31,7 @@ is_good_standing(_AccountId, _Status) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(kz_service_item:items(), ne_binary()) -> bookkeeper_sync_result().
+-spec sync(kz_service_items:items(), ne_binary()) -> bookkeeper_sync_result().
 sync(_Items, _AccountId) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -94,7 +94,7 @@ send_topup_notification(BillingId, Transaction) ->
             ,{<<"Response">>, <<"Authorized">>}
             ,{<<"Success">>, <<"true">>}
             ,{<<"ID">>, kz_transaction:id(Transaction)}
-            ,{<<"Timestamp">>, kz_time:current_tstamp()}
+            ,{<<"Timestamp">>, kz_time:now_s()}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_topup/1).

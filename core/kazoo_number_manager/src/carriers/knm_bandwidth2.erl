@@ -214,7 +214,7 @@ acquire_number(Number) ->
         'true' ->
             PhoneNumber = knm_number:phone_number(Number),
             Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
-            ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_time:current_tstamp())]),
+            ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_time:now_s())]),
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
             Props = [{'Name', [ON]}

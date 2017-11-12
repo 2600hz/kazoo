@@ -108,18 +108,18 @@ authenticate(_, _) -> 'false'.
 %% The Requestor (PUT):
 %%     IE: Create (PUT) a local auth token
 %% This request bypasses authentication, test the 'shared_token' against our
-%% authorative server.  Basicly preform a noraml 'get' to this module with the
+%% authoritative server.  Basically preform a normal 'get' to this module with the
 %% shared token as the auth token.  If it succeeds we will send 'ourself' the
 %% account id, otherwise the token was not known to the auth server.
 %%
 %% The Authority (GET):
 %%     IE: Fetch (GET) the account and user of a shared token
-%% If we are validating a 'get' request then we are the authoriative box.  This means
+%% If we are validating a 'get' request then we are the authoritative box.  This means
 %% another box is using their 'shared_tokens' as our auth token and it validated.
 %% So lets figure out what account they belong to and return the complete account
 %% definition so they can import it.
 %%
-%% If the authoriate box is running with noauth[n|z] then just send back a 401 to the
+%% If the authoritative box is running with noauth[n|z] then just send back a 401 to the
 %% requestor because we wont know what account to fetch
 %%
 %% Failure here returns 400 or 401
@@ -135,7 +135,7 @@ validate_request(Context, ?HTTP_PUT, _) ->
     SharedToken = kz_json:get_value(<<"shared_token">>, cb_context:req_data(Context)),
     case authenticate_shared_token(SharedToken, ?AUTHORITATIVE_CROSSBAR) of
         {'ok', Payload} ->
-            lager:debug("authoritive shared auth request succeeded"),
+            lager:debug("authoritative shared auth request succeeded"),
             RemoteData = kz_json:get_value(<<"data">>, kz_json:decode(Payload)),
             case import_missing_data(RemoteData) of
                 'true' ->
@@ -147,10 +147,10 @@ validate_request(Context, ?HTTP_PUT, _) ->
                     cb_context:add_system_error('datastore_fault', Context)
             end;
         {'forbidden', _} ->
-            lager:debug("authoritive shared auth request forbidden"),
+            lager:debug("authoritative shared auth request forbidden"),
             cb_context:add_system_error('invalid_credentials', Context);
         {'error', _}=E ->
-            lager:debug("authoritive shared auth request error: ~p", [E]),
+            lager:debug("authoritative shared auth request error: ~p", [E]),
             cb_context:add_system_error('datastore_unreachable', Context)
     end;
 
@@ -208,8 +208,8 @@ create_local_token(Context) ->
     JObj = cb_context:doc(Context),
     Token = kz_json:from_list([{<<"account_id">>, kz_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>)}
                               ,{<<"owner_id">>, kz_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>)}
-                              ,{<<"created">>, kz_time:current_tstamp()}
-                              ,{<<"modified">>, kz_time:current_tstamp()}
+                              ,{<<"created">>, kz_time:now_s()}
+                              ,{<<"modified">>, kz_time:now_s()}
                               ,{<<"method">>, kz_term:to_binary(?MODULE)}
                               ,{<<"shared_token">>, cb_context:auth_token(Context)}
                               ]),
@@ -228,7 +228,7 @@ create_local_token(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Make a crossbar request to the authoriative server to authorize
+%% Make a crossbar request to the authoritative server to authorize
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
@@ -259,12 +259,16 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
 %%--------------------------------------------------------------------
 -spec import_missing_data(kz_json:object()) -> boolean().
 import_missing_data(RemoteData) ->
-    Account = kz_json:get_value(<<"account">>, RemoteData),
+    import_missing_data(kz_json:get_json_value(<<"account">>, RemoteData)
+                       ,kz_json:get_json_value(<<"user">>, RemoteData)
+                       ).
+
+import_missing_data('undefined', _User) -> 'false';
+import_missing_data(_Account, 'undefined') -> 'false';
+import_missing_data(Account, User) ->
     AccountId = kz_doc:account_id(Account),
-    User = kz_json:get_value(<<"user">>, RemoteData),
-    UserId = kz_doc:id(User),
     import_missing_account(AccountId, Account)
-        andalso import_missing_user(AccountId, UserId, User).
+        andalso import_missing_user(AccountId, kz_doc:id(User), User).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -273,21 +277,18 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api_binary(), api_object()) -> boolean().
+-spec import_missing_account(api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
     'false';
-import_missing_account(_AccountId, 'undefined') ->
-    lager:debug("shared auth reply did not define an account definition"),
-    'false';
 import_missing_account(AccountId, Account) ->
     %% check if the account database exists
-    Db = kz_util:format_account_id(AccountId, 'encoded'),
+    Db = kz_util:format_account_db(AccountId),
     case kz_datamgr:db_exists(Db) of
         %% if the account database exists make sure it has the account
         %% definition, because when couch is acting up it can skip this
         'true' ->
-            lager:debug("remote account db ~s alread exists locally", [AccountId]),
+            lager:debug("remote account db ~s already exists locally", [AccountId]),
             %% make sure the account definition is in the account, if not
             %% use the one we got from shared auth
             case kz_account:fetch(AccountId) of
@@ -295,15 +296,16 @@ import_missing_account(AccountId, Account) ->
                     lager:debug("missing local account definition, creating from shared auth response"),
                     Doc = kz_doc:delete_revision(Account),
                     Event = <<"*.execute.post.accounts">>,
-                    Context1 = crossbar_bindings:fold(Event
-                                                     ,[cb_context:set_doc(
-                                                         cb_context:set_account_db(cb_context:new(), Db)
-                                                                         ,Doc)
-                                                      ,AccountId
-                                                      ]),
-                    case cb_context:resp_status(Context1) of
+
+                    Context = cb_context:setters(cb_context:new()
+                                                ,[{fun cb_context:set_account_db/2,  Db}
+                                                 ,{fun cb_context:set_doc/2, Doc}
+                                                 ]),
+                    PostContext = crossbar_bindings:fold(Event, [Context, AccountId]),
+
+                    case cb_context:resp_status(PostContext) of
                         'success' ->
-                            lager:debug("udpated account definition"),
+                            lager:debug("updated account definition"),
                             'true';
                         _ ->
                             lager:debug("could not update account definition"),
@@ -335,15 +337,12 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(api_binary(), api_binary(), api_object()) -> boolean().
+-spec import_missing_user(ne_binary(), api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
     'false';
-import_missing_user(_, _, 'undefined') ->
-    lager:debug("shared auth reply did not define an user object"),
-    'false';
 import_missing_user(AccountId, UserId, User) ->
-    Db = kz_util:format_account_id(AccountId, 'encoded'),
+    Db = kz_util:format_account_db(AccountId),
     case kz_datamgr:lookup_doc_rev(Db, UserId) of
         {'ok', _} ->
             lager:debug("remote user ~s already exists locally in account ~s", [UserId, AccountId]),
@@ -351,10 +350,13 @@ import_missing_user(AccountId, UserId, User) ->
         _Else ->
             Doc = kz_doc:delete_revision(User),
             Event = <<"*.execute.put.users">>,
-            Context1 = crossbar_bindings:fold(Event, [cb_context:set_doc(
-                                                        cb_context:set_account_db(cb_context:new(), Db)
-                                                                        ,Doc)]),
-            case cb_context:resp_status(Context1) of
+            Context = cb_context:setters(cb_context:new()
+                                        ,[{fun cb_context:set_account_db/2,  Db}
+                                         ,{fun cb_context:set_doc/2, Doc}
+                                         ]),
+            PostContext = crossbar_bindings:fold(Event, [Context, AccountId]),
+
+            case cb_context:resp_status(PostContext) of
                 'success' ->
                     lager:debug("imported user ~s in account ~s", [UserId, AccountId]),
                     'true';

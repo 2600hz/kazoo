@@ -2,7 +2,7 @@
 
 ### About Dead Air
 
-Answers the call and switches media off. Could be usefull for external calls/conferences recording over inbound leg.
+Answers the call and switches media off. Could be useful for external calls/conferences recording over inbound leg.
 
 #### Schema
 

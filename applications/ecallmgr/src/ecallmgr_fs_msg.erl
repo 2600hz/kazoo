@@ -145,7 +145,7 @@ handle_info({'EXIT', _, 'noconnection'}, State) ->
 handle_info({'EXIT', _, Reason}, State) ->
     {stop, Reason, State};
 handle_info(_Info, State) ->
-    lager:debug("MSG UN", [_Info]),
+    lager:debug("MSG UN ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------

@@ -176,7 +176,7 @@ maybe_migrate_fax_to_modb(AccountDb, JObj, Options) ->
     end.
 
 migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
-    Timestamp = kz_doc:created(JObj, kz_time:current_tstamp()),
+    Timestamp = kz_doc:created(JObj, kz_time:now_s()),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
     FaxMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
@@ -341,7 +341,7 @@ update_job(JobID, State, JObj) ->
             Opts = [{'rev', kz_doc:revision(JObj)}],
             kz_datamgr:save_doc(?KZ_FAXES_DB
                                ,kz_json:set_values([{<<"pvt_job_status">>, State}
-                                                   ,{<<"pvt_modified">>, kz_time:current_tstamp()}
+                                                   ,{<<"pvt_modified">>, kz_time:now_s()}
                                                    ]
                                                   ,JObj
                                                   )

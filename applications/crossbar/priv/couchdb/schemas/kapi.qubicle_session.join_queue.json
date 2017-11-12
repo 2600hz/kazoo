@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.qubicle_session.join_queue",
+    "description": "AMQP API for qubicle_session.join_queue",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Call": {
+            "type": "object"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Join-Queue-ID": {
+            "type": "string"
+        },
+        "Session-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Call",
+        "Call-ID",
+        "Join-Queue-ID",
+        "Session-ID"
+    ],
+    "type": "object"
+}

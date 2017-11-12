@@ -60,7 +60,6 @@
     },
     "required": [
         "Account-ID",
-        "Password",
         "User-ID"
     ],
     "type": "object"

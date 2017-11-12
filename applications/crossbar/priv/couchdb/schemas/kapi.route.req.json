@@ -38,11 +38,14 @@
             },
             "type": "object"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },
         "Custom-Routing-Headers": {
-            "type": "string"
+            "type": "object"
         },
         "Custom-SIP-Headers": {
             "type": "object"

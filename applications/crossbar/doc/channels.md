@@ -111,12 +111,6 @@ currently only `metaflow` is supported
 
 Metaflow feature is a `metaflow` object which validates with its json schema.
 
-. reasoning
-The `POST` action required that every metaflow action would have to be coded into the module.
-
-. benefits
-The metaflow feature allows adding new types of metaflows without changing the code.
-It also allows full metaflows and not only single actions, ie, the `children` node is also processed.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -124,6 +118,15 @@ It also allows full metaflows and not only single actions, ie, the `children` no
 curl -v -X PUT \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"action": "metaflow", "data": { "module": "hangup" }}}' \
+    -d '{"action":"metaflow", "data": {"data": { "module": "hangup" }}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
+
+##### Reasoning
+
+The `POST` action required that every metaflow action would have to be coded into the module.
+
+##### Benefits
+
+The metaflow feature allows adding new types of metaflows without changing the code.
+It also allows full metaflows and not only single actions, ie, the `children` node is also processed.

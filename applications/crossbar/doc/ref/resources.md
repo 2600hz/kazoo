@@ -14,6 +14,8 @@ Key | Description | Type | Default | Required
 `enabled` | Determines if the resource is currently enabled | `boolean()` | `true` | `false`
 `flags.[]` |   | `string()` |   | `false`
 `flags` | A list of flags that can be provided on the request and must match for the resource to be eligible | `array(string())` | `[]` | `false`
+`flat_rate_blacklist` | Regex for determining if a number should not be eligible for flat-rate trunking | `string()` |   | `false`
+`flat_rate_whitelist` | Regex for determining if the number is eligible for flat-rate trunking | `string()` |   | `false`
 `format_from_uri` | When set to true requests to this resource will have a re-formated SIP From Header | `boolean()` |   | `false`
 `formatters` |   | `object()` |   | `false`
 `from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string()` |   | `false`
@@ -33,6 +35,10 @@ Key | Description | Type | Default | Required
 `gateways.[].format_from_uri` | When set to true requests to this resource gateway will have a re-formated SIP From Header | `boolean()` |   | `false`
 `gateways.[].from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string()` |   | `false`
 `gateways.[].invite_format` | The format of the DID needed by the underlying hardware/gateway | `string('route' | 'username' | 'e164' | 'npan' | '1npan')` | `route` | `false`
+`gateways.[].invite_parameters.dynamic` | A list of properties that, if found on the inbound call, should be added as an INVITE parameter | `array()` |   | `false`
+`gateways.[].invite_parameters.static.[]` |   | `string()` |   | `false`
+`gateways.[].invite_parameters.static` | A list of static values that should be added as INVITE parameters | `array(string())` |   | `false`
+`gateways.[].invite_parameters` |   | `object()` |   | `false`
 `gateways.[].media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
 `gateways.[].media.rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` |   | `false`
 `gateways.[].media` | The media parameters for the resource gateway | `object()` |   | `false`

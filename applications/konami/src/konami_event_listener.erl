@@ -70,29 +70,32 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(TRACKED_CALL_EVENTS, [<<"DTMF">>, <<"CHANNEL_ANSWER">>
-                             ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_DESTROY">>
-                             ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_REPLACED">>
+-define(TRACKED_CALL_EVENTS, [<<"CHANNEL_ANSWER">>
+                             ,<<"CHANNEL_BRIDGE">>
+                             ,<<"CHANNEL_DESTROY">>
+                             ,<<"CHANNEL_REPLACED">>
+                             ,<<"CHANNEL_TRANSFEREE">>
+                             ,<<"DTMF">>
                              ]).
 
--define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ?TRACKED_CALL_EVENTS}
-                                       ,{'callid', CallId}
-                                       ]
-                              }).
--define(DYN_BINDINGS(CallId, Events), {'call', [{'restrict_to', Events}
-                                               ,{'callid', CallId}
-                                               ]
-                                      }).
--define(META_BINDINGS(CallId), {'metaflow', [{'callid', CallId}
-                                            ,{'action', <<"*">>}
-                                            ,{'restrict_to', ['action']}
-                                            ,'federate'
-                                            ]
-                               }).
--define(KONAMI_BINDINGS(CallId), {'konami', [{'callid', CallId}
-                                            ,{'restrict_to', ['transferred']}
-                                            ]
-                                 }).
+-define(DYN_BINDINGS(CallId), 'call', [{'restrict_to', ?TRACKED_CALL_EVENTS}
+                                      ,{'callid', CallId}
+                                      ]
+       ).
+-define(DYN_BINDINGS(CallId, Events), 'call', [{'restrict_to', Events}
+                                              ,{'callid', CallId}
+                                              ]
+       ).
+-define(META_BINDINGS(CallId), 'metaflow', [{'callid', CallId}
+                                           ,{'action', <<"*">>}
+                                           ,{'restrict_to', ['action']}
+                                           ,'federate'
+                                           ]
+       ).
+-define(KONAMI_BINDINGS(CallId), 'konami', [{'callid', CallId}
+                                           ,{'restrict_to', ['transferred']}
+                                           ]
+       ).
 -define(KONAMI_REG(CallId), {'p', 'l', {'konami_event', CallId}}).
 
 %%%===================================================================
@@ -138,8 +141,8 @@ rm_konami_binding('undefined') -> 'ok';
 rm_konami_binding(<<_/binary>> = CallId) ->
     gen_listener:rm_binding(?SERVER, ?KONAMI_BINDINGS(CallId)).
 
--spec add_call_binding(api_binary() | kapps_call:call()) -> 'ok'.
--spec add_call_binding(api_binary() | kapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
+-spec add_call_binding(api_ne_binary() | kapps_call:call()) -> 'ok'.
+-spec add_call_binding(api_ne_binary() | kapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
 add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("add fsm binding for call ~s: ~p", [CallId, ?TRACKED_CALL_EVENTS]),
@@ -162,7 +165,7 @@ add_call_binding(Call, Events) ->
     catch gproc:reg(?KONAMI_REG({'pid', kapps_call:account_id(Call)})),
     add_call_binding(kapps_call:call_id_direct(Call), Events).
 
--spec rm_call_binding(api_binary() | kapps_call:call()) -> 'ok'.
+-spec rm_call_binding(api_ne_binary() | kapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) ->
     catch gproc:unreg(?KONAMI_REG({'fsm', CallId})),
@@ -257,7 +260,8 @@ relay_to_fsms(CallId, Event, JObj) ->
      || FSM <- fsms_for_callid(CallId)
     ].
 
--spec fsms_for_callid(ne_binary() | '_') -> pids().
+-spec fsms_for_callid(api_ne_binary() | '_') -> pids().
+fsms_for_callid('undefined') -> [];
 fsms_for_callid(CallId) ->
     %% {{'p', 'l', Key}, PidToMatch, ValueToMatch}
     MatchHead = {?KONAMI_REG({'fsm', CallId}), '$1', '_'},

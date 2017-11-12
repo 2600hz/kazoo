@@ -2,19 +2,6 @@
 
 This file will serve as a reference point for upcoming announcements, both of the temporal nature (this library will be deprecated in 6 months) and version-specific (upgrading from X to Y will require A, B, and C).
 
-
-## Notices
-
-
-### Further Module Name Changes in Core
-
-As the code base has grown and new authors have joined the team over the years, the core module naming has become increasingly inconsistent. In order to make module names predictable, remove obscure references (such as wht\\\_\*) and adhere to stronger coding standards, we will be making these consistent. This will be the last refactor to core and as before the `scripts/wh-to-kz.sh` script will be extended to provide developers with a tool to refactor any modules they have created.
-
-This final refactor has been contentious as we discussed the value a consistent naming scheme in core would bring. This has delayed the final phase of the renaming initiative but we are now preparing to preform this action. We feel that the benefits outweigh disadvantages and understand that once 4.0 has been released as stable we will not have an opportunity to correct this until the next major version.
-
-We hope that you agree and are not inconvenienced by this change. As always we are here to help or answer any questions! Thank you for your understanding.
-
-
 ## Versions
 
 ### 4.2
@@ -23,10 +10,35 @@ We hope that you agree and are not inconvenienced by this change. As always we a
 
     Starting with Kazoo 4.2 Erlang support will target 19+ and will not be backward compatible with prior Erlang versions.
 
+2. Time
+
+    In accordance with the new [time correction](http://erlang.org/doc/apps/erts/time_correction.html) work in Erlang 19+, cleanup of [kz_time](core/kazoo_stdlib/src/kz_time.erl) has been done to ensure Kazoo uses the proper time functions.
+
+    The big change (that should be mostly transparent) is that `kz_time:now_s/0` returns Gregorian seconds instead of Unix Epoch seconds. The majority of code either doesn't care or expected Gregorian seconds, so this change should have minimal impact on existing code. If you need a Unix timestamp, `kz_time:current_unix_tstamp/0` is what you want.
+
+3. System Teletype Templates
+
+    Starting with Kazoo 4.2 Teletype templates are using their own Teletype specific Email configuration from system configuration. Previously some properties like `from`, `to`, `cc`, `bcc`, etc... were read from `notify.{TEMPLATE_ID}` documents in `system_config` database to initialize the system templates. This has been changed to read from `notification.{TEMPLATE_ID}` which it's the place actual Teletype templates are saved.
+
+    If you directly made configurations to these documents, you need to re-configure them in the Teletype templates documents.
+
+    > **Note:** This change is not affecting users which are using the Notify application
+
+    > **Note:** This only applied to templates from **system**, not account's specific templates
+
+    > **Note:** Those parameters are the default values, that means if Teletype can't find the value in the notification payload it receives or account's template then it falls back to these system values (if necessary)
+
+4. Crossbar Load View
+
+    In order to reduce pagination problems, increase maintainability and standardizing Crossbar view operations on multiple databases and handling huge number of documents properly, [`crossbar_doc:load_view/3,4,5,6`](https://github.com/2600hz/kazoo/blob/873dc106c7a7330393201207eddc365837c3dbe6/applications/crossbar/src/crossbar_doc.erl#L15) has been deprecated in favor of new module `crossbar_view`. Please migrate your current Crossbar modules or write your new modules to use this new Corssbar view functionality.
+
+    Starting with Kazoo 4.2, helper functions for creating range view options in [`cb_mdule_utils`](https://github.com/2600hz/kazoo/blob/873dc106c7a7330393201207eddc365837c3dbe6/applications/crossbar/src/modules/cb_modules_util.erl#L23-L26) has been removed. Instead several options has been introduced in `crossbar_view` to generating correct range view options according to query string parameters or module's options and requested sort direction.
+
+    Crossbar View module introduce new functions to simple load view (`load/2,3`), ranged load (`load_range/2,3`) and ranged load from MODBs (`load_modb/2,3`). It has several ways to configure the `startkey` and `endkey` and the time range and a new generic way to return chunked base response.
 
 ### 4.1
 
-1.  kz\_util refactoring
+1.  `kz_util` refactoring
 
     We are starting to break kz\_util up into more appropriately-named modules. There is a script that will take care of migrating existing code, \`scripts/kz\_util\_diaspora.bash\`. This is run as part of CircleCI (under the \`make code\_checks\` target) as well.
 
@@ -34,6 +46,19 @@ We hope that you agree and are not inconvenienced by this change. As always we a
 
     cb\_queues and cb\_agents have been moved to be part of ACDc's modules. Please know that you will need acdc present if you wish to use ACDc's Crossbar endpoints in a particular Erlang VM.
 
+3. The configuration /etc/kazoo/core/vm.args should no longer be modified locally
+
+    Changes to vm.args is resulting in RPMnew files that will keep kazoo from starting - simply overwrite the vm.args with vm.args.rpmnew
+    
+    Also, you should no longer edit vm.args all parameters are now pulled from config.ini.
+
+4. Kamailio Auto Discovery of FreeSWITCH servers
+
+    Kamilio will automatically manage the dispatcher list, drawn from the list of FreeSWITCH servers connected to eCallMgr.  To check the current status use the command: kazoo-Kamailio status
+
+    > **Note:** Dbtext, /etc/kazoo/kamailio/dbtext, is no longer used.  You can override the automatic discovery and set the dispatcher list manually but you must use the SQL interface: KazooDB
+    
+    > **Note:** Make sure your Kamailio is properly federated on a multi-zone cluster to avoid inter zone call looping
 
 ### 4.0
 
@@ -86,7 +111,7 @@ We hope that you agree and are not inconvenienced by this change. As always we a
 
 10. Removing socket.io support from Websockets
 
-    The Blackhole application providing websocket support currently utilizes the socket.io client libraries. Due to the poor support for this server side in Erlang as well as the judgment that this provides little benifit it has been removed. The websockets now provide messaging without the socket.io overhead. More documentation will be available shortly. Please note that we still consider websockets beta functionality.
+    The Blackhole application providing websocket support currently utilizes the socket.io client libraries. Due to the poor support for this server side in Erlang as well as the judgment that this provides little benefit it has been removed. The websockets now provide messaging without the socket.io overhead. More documentation will be available shortly. Please note that we still consider websockets beta functionality.
 
 11. System media has been moved
 

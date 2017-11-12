@@ -20,6 +20,8 @@
         ,call_id/1
         ,custom_channel_var/2, custom_channel_var/3
         ,custom_channel_vars/1, custom_channel_vars/2
+        ,custom_application_var/2, custom_application_var/3
+        ,custom_application_vars/1, custom_application_vars/2
         ,custom_sip_headers/1
         ,disposition/1
         ,dtmf_digit/1
@@ -92,6 +94,24 @@ custom_channel_var(JObj, Key) ->
 
 custom_channel_var(JObj, Key, Default) ->
     kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, Key], JObj, Default).
+
+-spec custom_application_vars(doc()) -> api_object().
+-spec custom_application_vars(doc(), Default) -> kz_json:object() | Default.
+custom_application_vars(JObj) ->
+    custom_application_vars(JObj, 'undefined').
+
+custom_application_vars(JObj, Default) ->
+    kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, Default).
+
+-spec custom_application_var(doc(), kz_json:path()) ->
+                                    api_binary().
+-spec custom_application_var(doc(), kz_json:path(), Default) ->
+                                    ne_binary() | Default.
+custom_application_var(JObj, Key) ->
+    custom_application_var(JObj, Key, 'undefined').
+
+custom_application_var(JObj, Key, Default) ->
+    kz_json:get_ne_binary_value([<<"Custom-Application-Vars">>, Key], JObj, Default).
 
 -spec custom_sip_headers(doc()) -> api_object().
 custom_sip_headers(JObj) ->

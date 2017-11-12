@@ -264,7 +264,7 @@ handle_cast({'set_conference', Conference}, Participant=#participant{call=Call})
     ConferenceId = kapps_conference:id(Conference),
     CallId = kapps_call:call_id(Call),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
-    gen_listener:add_binding(self(), 'conference', [{ 'restrict_to', [{'event', {ConferenceId,CallId}}] }]),
+    gen_listener:add_binding(self(), 'conference', [{'restrict_to', [{'event', {ConferenceId,CallId}}] }]),
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
@@ -338,9 +338,24 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             lager:debug("received channel hangup event, terminate"),
             gen_listener:cast(Srv, 'hungup');
+        {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
+            handle_channel_pivot(JObj, Call);
         {_, _} -> 'ok'
     end,
     {'reply', [{'call_event_consumers', Consumers}]}.
+
+handle_channel_pivot(JObj, Call) ->
+    case kz_json:get_ne_binary_value(<<"Application-Data">>, JObj) of
+        'undefined' -> lager:info("no app data to pivot");
+        FlowBin ->
+            lager:info("recv channel pivot with flow ~s", [FlowBin]),
+
+            Req = [{<<"Flow">>, kz_json:decode(FlowBin)}
+                  ,{<<"Call">>, kapps_call:to_json(Call)}
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  ],
+            kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -485,7 +500,7 @@ name_pronounced_headers({_, AccountId, MediaId}) ->
 send_conference_command(Conference, Call) ->
     Profile = list_to_binary([kapps_conference:account_id(Conference)
                              ,"_"
-                             ,kapps_conference:id(Conference)
+                             ,kapps_conference:profile(Conference)
                              ]),
     kapps_call_command:conference(kapps_conference:id(Conference)
                                  ,is_muted(Conference)

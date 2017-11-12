@@ -5,12 +5,12 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged
 
 all: compile rel/dev-vm.args
 
 compile: ACTION = all
-compile: deps $(KAZOODIRS)
+compile: deps kazoo
 
 $(KAZOODIRS):
 	$(MAKE) -C $(@D) $(ACTION)
@@ -65,13 +65,12 @@ deps/Makefile: .erlang.mk
 	cp $(ROOT)/make/Makefile.deps deps/Makefile
 
 core:
-	$(MAKE) -C core/ all
+	$(MAKE) -j -C core/ all
 
-apps:
-	$(MAKE) -C applications/ all
+apps: core
+	$(MAKE) -j -C applications/ all
 
-kazoo: core apps
-
+kazoo: apps
 
 $(RELX):
 	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
@@ -189,9 +188,8 @@ bump-copyright:
 $(FMT):
 	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' | tar xz -C $(ROOT)/make/
 
-fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
-	@$(FMT) $(TO_FMT)
+	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
@@ -200,11 +198,11 @@ code_checks:
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
-	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/couchdb/schemas/*.json
+	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/schemas/*.json')
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-api-endpoints.escript
 	@$(ROOT)/scripts/generate-doc-schemas.sh `grep -rl '#### Schema' core/ applications/ | grep -v '.erl'`
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
-	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/*.json
+	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/api/*.json')
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
@@ -242,3 +240,59 @@ sdks:
 
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
+
+CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
+TO_FMT := $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
+CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
+PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
+
+circle-pre:
+ifneq ($(PIP2),)
+## needs root access
+	@echo $(CHANGED)
+	@$(PIP2) install --upgrade pip
+	@$(PIP2) install PyYAML mkdocs pyembed-markdown jsonschema
+else
+	$(error "pip/pip2 is not available, please install python2-pip package")
+endif
+
+circle-docs:
+	@./scripts/state-of-docs.sh || true
+	@$(MAKE) apis
+	@$(MAKE) docs
+
+circle-codechecks:
+	@./scripts/code_checks.bash $(CHANGED)
+	@$(MAKE) code_checks
+	@./scripts/validate-js.sh $(CHANGED)
+
+circle-fmt:
+	@$(MAKE) fmt
+	@$(MAKE) elvis
+
+circle-build:
+	@$(MAKE) clean deps kazoo xref sup_completion
+
+circle-schemas:
+	@$(MAKE) validate-schemas
+	@$(if $(CHANGED_SWAGGER), $(MAKE) circle-swagger)
+
+circle-swagger:
+	@-$(MAKE) validate-swagger
+
+circle-unstaged:
+	echo Unstaged changes!
+	git status --porcelain
+	git --no-pager diff
+	echo 'Maybe try `make apis` and see if that fixes anything ;)'
+	exit 1
+
+circle-dialyze:
+	@$(MAKE) build-plt
+	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze
+
+circle-release:
+	@$(MAKE) build-ci-release
+
+circle: circle-pre circle-fmt circle-build circle-codechecks circle-docs circle-schemas circle-dialyze circle-release
+	@$(if $(git status --porcelain | wc -l), $(MAKE) circle-unstaged)

@@ -1,0 +1,59 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflows.say",
+    "description": "Say the provided text",
+    "properties": {
+        "gender": {
+            "description": "The gender of the voice to say the text",
+            "enum": [
+                "feminine",
+                "masculine",
+                "neuter"
+            ],
+            "type": "string"
+        },
+        "language": {
+            "description": "Language of the text",
+            "type": "string"
+        },
+        "method": {
+            "description": "Toggle the way the text is read to the caller",
+            "enum": [
+                "pronounced",
+                "iterated",
+                "counted"
+            ],
+            "type": "string"
+        },
+        "text": {
+            "description": "The text to say to the caller",
+            "type": "string"
+        },
+        "type": {
+            "description": "The type of text to say",
+            "enum": [
+                "account_number",
+                "currency",
+                "current_date",
+                "current_date_time",
+                "current_time",
+                "email_address",
+                "ip_address",
+                "items",
+                "messages",
+                "name_phonetic",
+                "name_spelled",
+                "number",
+                "persons",
+                "postal_address",
+                "short_date_time",
+                "telephone_extension",
+                "telephone_number",
+                "time_measurement",
+                "url"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

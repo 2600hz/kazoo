@@ -91,7 +91,7 @@
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), kz_proplist()) -> doc().
 new(AccountId, Props) ->
-    UtcSeconds = props:get_integer_value(<<"Message-Timestamp">>, Props, kz_time:current_tstamp()),
+    UtcSeconds = props:get_integer_value(<<"Message-Timestamp">>, Props, kz_time:now_s()),
     Timestamp  = props:get_integer_value(<<"Document-Timestamp">>, Props, UtcSeconds),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
 

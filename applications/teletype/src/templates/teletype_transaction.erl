@@ -10,20 +10,19 @@
 
 -export([init/0
         ,handle_req/1
+        ,process_req/2
         ]).
 
 -include("teletype.hrl").
 
--define(SUCCESS_TEMPLATE_ID, <<"transaction">>).
--define(FAILED_TEMPLATE_ID, <<"transaction_failed">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?SUCCESS_TEMPLATE_ID)/binary>>).
+-define(TEMPLATE_ID, <<"transaction">>).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"plan.id">>, <<"plan_id">>, <<"Plan ID">>, <<"Plan ID">>)
           ,?MACRO_VALUE(<<"plan.category">>, <<"plan_category">>, <<"Plan Category">>, <<"Plan Category">>)
           ,?MACRO_VALUE(<<"plan.item">>, <<"plan_item">>, <<"Plan Item">>, <<"Plan Item">>)
-          ,?MACRO_VALUE(<<"plan.activation_charge">>, <<"plan_activation_charge">>, <<"Activation Charge">>, <<"Activiation Charge">>)
+          ,?MACRO_VALUE(<<"plan.activation_charge">>, <<"plan_activation_charge">>, <<"Activation Charge">>, <<"Activation Charge">>)
            | ?TRANSACTION_MACROS
            ++ ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
@@ -31,58 +30,41 @@
          )
        ).
 
--define(SUCCESS_TEMPLATE_SUBJECT, <<"Receipt for your payment of account '{{account.name}}'">>).
--define(FAILED_TEMPLATE_SUBJECT, <<"Payment problem for your account '{{account.name}}'">>).
+-define(TEMPLATE_SUBJECT, <<"Receipt for your payment of account '{{account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
--define(SUCCESS_TEMPLATE_NAME, <<"Transaction Success">>).
--define(FAILED_TEMPLATE_NAME, <<"Transaction Problem">>).
+-define(TEMPLATE_NAME, <<"Transaction Success">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
--define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_FROM, teletype_util:default_from_address()).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
--define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to()).
 
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    Fields =  [{'macros', ?TEMPLATE_MACROS}
-              ,{'category', ?TEMPLATE_CATEGORY}
-              ,{'to', ?TEMPLATE_TO}
-              ,{'from', ?TEMPLATE_FROM}
-              ,{'cc', ?TEMPLATE_CC}
-              ,{'bcc', ?TEMPLATE_BCC}
-              ,{'reply_to', ?TEMPLATE_REPLY_TO}
-              ],
-    SucessParams = [{'friendly_name', ?SUCCESS_TEMPLATE_NAME}
-                   ,{'subject', ?SUCCESS_TEMPLATE_SUBJECT}
-                    | Fields
-                   ],
-    FailedParams = [{'friendly_name', ?FAILED_TEMPLATE_NAME}
-                   ,{'subject', ?FAILED_TEMPLATE_SUBJECT}
-                    | Fields
-                   ],
-    teletype_templates:init(?SUCCESS_TEMPLATE_ID, SucessParams),
-    teletype_templates:init(?FAILED_TEMPLATE_ID, FailedParams),
+    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ]),
     teletype_bindings:bind(<<"transaction">>, ?MODULE, 'handle_req').
 
--spec transaction_template_id(kz_json:object()) -> ne_binary().
-transaction_template_id(DataJObj) ->
-    case kz_json:is_true(<<"success">>, DataJObj) of
-        'true' -> ?SUCCESS_TEMPLATE_ID;
-        'false' -> ?FAILED_TEMPLATE_ID
-    end.
-
--spec handle_req(kz_json:object()) -> 'ok'.
+-spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
     handle_req(JObj, kapi_notifications:transaction_v(JObj)).
 
--spec handle_req(kz_json:object(), boolean()) -> 'ok'.
-handle_req(JObj, 'false') ->
-    lager:debug("invalid data for ~s", [?SUCCESS_TEMPLATE_ID]),
-    teletype_util:send_update(JObj, <<"failed">>, <<"validation_failed">>);
+-spec handle_req(kz_json:object(), boolean()) -> template_response().
+handle_req(_, 'false') ->
+    lager:debug("invalid data for ~s", [?TEMPLATE_ID]),
+    teletype_util:notification_failed(?TEMPLATE_ID, <<"validation_failed">>);
 handle_req(JObj, 'true') ->
-    lager:debug("valid data for ~s, processing...", [?SUCCESS_TEMPLATE_ID]),
+    lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     'true' = kapi_notifications:transaction_v(JObj),
     kz_util:put_callid(JObj),
@@ -94,15 +76,15 @@ handle_req(JObj, 'true') ->
     ReqData =
         kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
 
-    TemplateId = transaction_template_id(DataJObj),
-    case teletype_util:is_notice_enabled(AccountId, JObj, TemplateId) of
-        'false' -> teletype_util:notification_disabled(DataJObj, TemplateId);
-        'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData))
+    case kz_json:is_true(<<"success">>, DataJObj) %% check if it's for transaction success template
+        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
+    of
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
+        'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData), ?TEMPLATE_ID)
     end.
 
--spec process_req(kz_json:object()) -> 'ok'.
-process_req(DataJObj) ->
-    TemplateId = transaction_template_id(DataJObj),
+-spec process_req(kz_json:object(), ne_binary()) -> template_response().
+process_req(DataJObj, TemplateId) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
              ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
@@ -116,16 +98,13 @@ process_req(DataJObj) ->
     AccountId = kapi_notifications:account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(TemplateId, AccountId),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-                                          ,Macros
-               ),
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj]), Macros),
 
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
-        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+        'ok' -> teletype_util:notification_completed(TemplateId);
+        {'error', Reason} -> teletype_util:notification_failed(TemplateId, Reason)
     end.
 
 -spec service_plan_data(kz_json:object()) -> kz_proplist().

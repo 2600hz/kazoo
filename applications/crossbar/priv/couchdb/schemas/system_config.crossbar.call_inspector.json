@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.crossbar.call_inspector",
+    "description": "Schema for crossbar.call_inspector system_config",
+    "properties": {
+        "maximum_bulk": {
+            "default": 50,
+            "description": "crossbar call_inspector maximum_bulk",
+            "minimum": 1,
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

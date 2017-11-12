@@ -78,6 +78,7 @@ Key | Description | Type | Default | Required
 `bill` | Billing information of the losing carrier | `object()` |   | `false`
 `comments` | The history of comments made on a port request | `array(object())` |   | `false`
 `name` | A friendly name for the port request | `string(1..128)` |   | `true`
+`notifications.email.send_to.[]` |   | `string()` |   | `false`
 `notifications.email.send_to` | A list or string of email recipent(s) | `string() | array(string())` |   | `false`
 `notifications.email` | Inbound Email Notifications | `object()` |   | `false`
 `notifications` | Status notifications | `object()` |   | `false`

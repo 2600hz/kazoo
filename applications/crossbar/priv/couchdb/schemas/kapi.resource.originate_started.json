@@ -78,11 +78,14 @@
         "Control-Queue": {
             "type": "string"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },
         "Custom-SIP-Headers": {
-            "type": "string"
+            "type": "object"
         },
         "DTMF-Digit": {
             "type": "string"

@@ -68,6 +68,7 @@
         ,callee_id_name/1
         ]).
 -export([resource_type/1]).
+-export([resource_id/1]).
 -export([account_trunk_usage/1]).
 -export([reseller_trunk_usage/1]).
 
@@ -129,7 +130,7 @@ from_jobj(JObj) ->
             ,node = kz_api:node(JObj)
             ,billing_seconds = kz_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
             ,answered_time = kz_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
-            ,timestamp = kz_json:get_integer_value(<<"Timestamp">>, JObj, kz_time:current_tstamp())
+            ,timestamp = kz_json:get_integer_value(<<"Timestamp">>, JObj, kz_time:now_s())
             ,classification = knm_converters:classify(Number)
             ,number = Number
             ,request_jobj = JObj
@@ -569,6 +570,10 @@ callee_id_name(#request{request_jobj=JObj}) ->
 -spec resource_type(request()) -> api_binary().
 resource_type(#request{request_ccvs=CCVs}) ->
     kz_json:get_value(<<"Resource-Type">>, CCVs).
+
+-spec resource_id(request()) -> api_ne_binary().
+resource_id(#request{request_ccvs=CCVs}) ->
+    kz_json:get_ne_binary_value(<<"Resource-ID">>, CCVs).
 
 -spec account_trunk_usage(request()) -> api_binary().
 account_trunk_usage(#request{request_ccvs=CCVs}) ->

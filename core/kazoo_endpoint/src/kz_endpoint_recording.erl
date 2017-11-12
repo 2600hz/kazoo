@@ -354,13 +354,13 @@ handler_fields(Url, State) ->
     handler_fields_for_protocol(Protocol, Url, State).
 
 -spec handler_fields_for_protocol(ne_binary(), ne_binary(), state()) -> list().
-handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, #{format:=Ext}) ->
+handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, #{extension:=Ext}) ->
     [<<"call_recording_">>
     ,{field, <<"call_id">>}
     ,<<".", Ext/binary>>
     ];
 handler_fields_for_protocol(<<"http", _/binary>>, Url, #{account_id:=AccountId
-                                                        ,format:=Ext
+                                                        ,extension:=Ext
                                                         }) ->
     {S1, S2} = check_url(Url),
     [<<S1/binary, "call_recording_">>
@@ -515,6 +515,7 @@ maybe_save_recording(_Pid, 'undefined', _JObj) -> 'ok';
 maybe_save_recording(_Pid, EndpointId, JObj) ->
     AccountId = kz_call_event:account_id(JObj),
     Media = {_, MediaId} = get_response_media(JObj),
+    Ext = filename:extension(MediaId),
     lager:debug("saving recording media ~s for endpoint ~s in account ~s", [MediaId, EndpointId, AccountId]),
     {'ok', Endpoint} = kz_endpoint:get(EndpointId, AccountId),
     Inception = kz_call_event:custom_channel_var(JObj, <<"Media-Recording-Origin">>),
@@ -532,6 +533,7 @@ maybe_save_recording(_Pid, EndpointId, JObj) ->
 
     Store = #{url => Url
              ,media => Media
+             ,extension => Ext
              ,doc_id => DocId
              ,doc_db => AccountDb
              ,cdr_id => CdrId

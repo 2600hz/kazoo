@@ -23,7 +23,7 @@
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
 -record(kz_service_update, {bt_subscription :: braintree_subscription:subscription()
-                           ,plan_id :: ne_binary()
+                           ,plan_id :: api_ne_binary()
                            }).
 
 -record(kz_service_updates, {bt_subscriptions = [] :: [update()]
@@ -165,7 +165,7 @@ commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
             NewTransactions = kz_json:get_list_value(<<"transactions">>, ServicesJObj, [])
                 ++ kz_transactions:to_json(Transactions),
             Values = [{?SERVICES_PVT_IS_DIRTY, 'true'}
-                     ,{?SERVICES_PVT_MODIFIED, kz_time:current_tstamp()}
+                     ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
                      ,{<<"transactions">>, NewTransactions}
                      ],
             case kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Values, ServicesJObj)) of
@@ -284,7 +284,7 @@ notification_data(Success, BillingId, Amount, 'undefined') ->
     ,{<<"Amount">>, Amount}
     ,{<<"Success">>, Success}
     ,{<<"Response">>, <<"Unknown Error">>}
-    ,{<<"Timestamp">>, kz_time:current_tstamp()}
+    ,{<<"Timestamp">>, kz_time:now_s()}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 notification_data(_Success, BillingId, _Amount, BraintreeTransaction) ->
@@ -421,8 +421,8 @@ calculate([Addon|Addons], Acc) ->
 %%--------------------------------------------------------------------
 -spec timestamp_to_braintree(api_seconds()) -> ne_binary().
 timestamp_to_braintree('undefined') ->
-    lager:debug("timestamp undefined using current_tstamp"),
-    timestamp_to_braintree(kz_time:current_tstamp());
+    lager:debug("timestamp undefined using now_s"),
+    timestamp_to_braintree(kz_time:now_s());
 timestamp_to_braintree(Timestamp) ->
     {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     <<(kz_date:pad_month(M))/binary, "/"
@@ -620,10 +620,9 @@ fetch_or_create_subscription(PlanId, #kz_service_updates{bt_subscriptions=[]
 fetch_or_create_subscription(PlanId, #kz_service_updates{bt_subscriptions=Subscriptions
                                                         ,bt_customer=Customer
                                                         }) ->
-    case lists:keyfind(PlanId, #kz_service_update.plan_id, Subscriptions) of
-        'false' ->
-            fetch_or_create_subscription(PlanId, Customer);
-        #kz_service_update{bt_subscription=Subscription} -> Subscription
+    case find_subscription_by_plan_id(PlanId, Subscriptions) of
+        'undefined' -> fetch_or_create_subscription(PlanId, Customer);
+        Subscription -> Subscription
     end;
 fetch_or_create_subscription(PlanId, #bt_customer{}=Customer) ->
     try braintree_customer:get_subscription(PlanId, Customer) of
@@ -636,6 +635,20 @@ fetch_or_create_subscription(PlanId, #bt_customer{}=Customer) ->
         'throw':{'not_found', _} ->
             lager:debug("creating new subscription for plan id ~s", [PlanId]),
             braintree_customer:new_subscription(PlanId, Customer)
+    end.
+
+-spec find_subscription_by_plan_id(ne_binary(), [update()]) ->
+                                          'undefined' |
+                                          braintree_subscription:subscription().
+find_subscription_by_plan_id(PlanId, Subscriptions) ->
+    case [Subscription || #kz_service_update{bt_subscription=Subscription
+                                            ,plan_id=UpdatePlanId
+                                            } <- Subscriptions,
+                          UpdatePlanId =:= PlanId
+         ]
+    of
+        [] -> 'undefined';
+        [Subscription] -> Subscription
     end.
 
 %% @private

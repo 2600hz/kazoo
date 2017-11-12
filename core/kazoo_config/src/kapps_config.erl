@@ -357,12 +357,12 @@ get_ne_binary(Category, Key, Default, Node) ->
         'false' -> kz_term:to_binary(Value)
     end.
 
--spec get_ne_binaries(config_category(), config_key()) -> ne_binaries().
+-spec get_ne_binaries(config_category(), config_key()) -> api_ne_binaries().
 -spec get_ne_binaries(config_category(), config_key(), Default) -> ne_binaries() | Default.
 -spec get_ne_binaries(config_category(), config_key(), Default, ne_binary()) -> ne_binaries() | Default.
 
 get_ne_binaries(Category, Key) ->
-    get_ne_binaries(Category, Key, undefined).
+    get_ne_binaries(Category, Key, 'undefined').
 get_ne_binaries(Category, Key, Default) ->
     get_ne_binaries(Category, Key, Default, kz_term:to_binary(node())).
 get_ne_binaries(Category, Key, Default, Node) ->
@@ -501,7 +501,7 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
                                Default | _.
 get_default_value(Category, Keys, Default, JObj) ->
     case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
-        'undefined' ->
+        'undefined' when Default /= 'undefined' ->
             lager:debug("setting default for ~s ~p: ~p", [Category, Keys, Default]),
             _ = set_default(Category, Keys, Default),
             Default;

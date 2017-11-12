@@ -43,6 +43,9 @@
         "Continue-On-Fail": {
             "type": "boolean"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },
@@ -105,7 +108,7 @@
             "type": "string"
         },
         "Export-Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Fail-On-Single-Reject": {
             "type": "string"
@@ -170,6 +173,9 @@
             "type": "string"
         },
         "Ringback": {
+            "type": "string"
+        },
+        "SIP-Invite-Parameters": {
             "type": "string"
         },
         "SIP-Transport": {

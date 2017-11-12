@@ -70,7 +70,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {call :: kapps_call:call()
+-record(state, {call :: kapps_call:call() | 'undefined'
                ,acdc_queue_id :: api_ne_binary() % the ACDc Queue ID
                ,msg_queue_id :: api_ne_binary() % the AMQP Queue ID of the ACDc Queue process
                ,agent_id :: api_ne_binary()
@@ -78,12 +78,12 @@
                ,acct_id :: api_ne_binary()
                ,fsm_pid :: api_pid()
                ,agent_queues = [] :: ne_binaries()
-               ,last_connect :: kz_now() | undefined % last connection
-               ,last_attempt :: kz_now() | undefined % last attempt to connect
+               ,last_connect :: kz_now() | 'undefined' % last connection
+               ,last_attempt :: kz_now() | 'undefined' % last attempt to connect
                ,my_id :: ne_binary()
                ,my_q :: api_binary() % AMQP queue name
                ,timer_ref :: api_reference()
-               ,sync_resp :: kz_json:object() % furthest along resp
+               ,sync_resp :: api_object() % furthest along resp
                ,supervisor :: pid()
                ,record_calls = 'false' :: boolean()
                ,recording_url :: api_binary() %% where to send recordings after the call
@@ -207,9 +207,9 @@ stop(Srv) -> gen_listener:cast(Srv, {'stop_agent', self()}).
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {'member_connect_resp', ReqJObj}).
 
--spec member_connect_retry(pid(), kz_json:object()) -> 'ok'.
-member_connect_retry(Srv, WinJObj) ->
-    gen_listener:cast(Srv, {'member_connect_retry', WinJObj}).
+-spec member_connect_retry(pid(), ne_binary() | kz_json:object()) -> 'ok'.
+member_connect_retry(Srv, WinOrCallId) ->
+    gen_listener:cast(Srv, {'member_connect_retry', WinOrCallId}).
 
 -spec agent_timeout(pid()) -> 'ok'.
 agent_timeout(Srv) -> gen_listener:cast(Srv, 'agent_timeout').

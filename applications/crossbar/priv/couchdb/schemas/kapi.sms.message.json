@@ -45,6 +45,9 @@
         "Continue-On-Fail": {
             "type": "boolean"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },
@@ -155,6 +158,9 @@
         },
         "SIP-Headers": {
             "type": "object"
+        },
+        "SIP-Invite-Parameters": {
+            "type": "string"
         },
         "SIP-Transport": {
             "enum": [

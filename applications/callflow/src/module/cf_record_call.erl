@@ -38,8 +38,7 @@ handle(Data, Call, <<"start">>) ->
 handle(_Data, Call, <<"stop">>) ->
     cf_exe:update_call(kapps_call:stop_recording(Call)).
 
--spec get_action(api_object()) -> ne_binary().
-get_action('undefined') -> <<"start">>;
+-spec get_action(kz_json:object()) -> ne_binary().
 get_action(Data) ->
     case kz_json:get_ne_binary_value(<<"action">>, Data) of
         <<"stop">> -> <<"stop">>;

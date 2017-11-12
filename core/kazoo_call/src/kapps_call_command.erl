@@ -43,7 +43,7 @@
         ,hangup/1, hangup/2
         ,break/1
         ,queued_hangup/1
-        ,set/3, set_terminators/2
+        ,set/3, set/4, set_terminators/2
         ,fetch/1, fetch/2
         ]).
 -export([echo/1]).
@@ -54,8 +54,8 @@
         ,receive_fax/4
         ,b_receive_fax/1
         ]).
--export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
-        ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7, bridge/8, bridge/9
+        ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8, b_bridge/9
         ,unbridge/1, unbridge/2, unbridge/3
         ,b_bridge_wait/2
         ]).
@@ -69,9 +69,9 @@
 -export([soft_hold/1, soft_hold/2
         ,soft_hold_command/2, soft_hold_command/4, soft_hold_command/5
         ]).
--export([play/2, play/3, play/4
-        ,play_command/2, play_command/3, play_command/4
-        ,b_play/2, b_play/3, b_play/4
+-export([play/2, play/3, play/4, play/5
+        ,play_command/2, play_command/3, play_command/4, play_command/5
+        ,b_play/2, b_play/3, b_play/4, b_play/5
         ]).
 -export([prompt/2, prompt/3]).
 
@@ -117,6 +117,7 @@
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1
         ,send_dtmf/2, send_dtmf/3
+        ,recv_dtmf/2
         ]).
 -export([privacy/1
         ,privacy/2
@@ -291,19 +292,46 @@ presence(State, PresenceId, Call) ->
 presence(State, PresenceId, CallId, Call) ->
     presence(State, PresenceId, CallId, 'undefined', Call).
 
+presence(State, PresenceId, CallId, 'undefined', 'undefined') ->
+    [User, Realm] = binary:split(PresenceId, <<"@">>),
+    Command = props:filter_undefined(
+                [{<<"Presence-ID">>, PresenceId}
+                ,{<<"From">>, <<"sip:", PresenceId/binary>>}
+                ,{<<"From-User">>, User}
+                ,{<<"From-Realm">>, Realm}
+                ,{<<"To">>, <<"sip:", PresenceId/binary>>}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
+                ,{<<"State">>, State}
+                ,{<<"Call-ID">>, CallId}
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    kapi_presence:publish_update(Command);
 presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
+    [User, Realm] = binary:split(PresenceId, <<"@">>),
     Command = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}
                 ,{<<"From">>, TargetURI}
+                ,{<<"From-User">>, User}
+                ,{<<"From-Realm">>, Realm}
+                ,{<<"To">>, TargetURI}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_presence:publish_update(Command);
 presence(State, PresenceId, CallId, TargetURI, Call) ->
+    [User, Realm] = binary:split(PresenceId, <<"@">>),
     Command = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}
                 ,{<<"From">>, TargetURI}
+                ,{<<"From-User">>, User}
+                ,{<<"From-Realm">>, Realm}
+                ,{<<"To">>, TargetURI}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
                 ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
                 ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
                 ,{<<"State">>, State}
@@ -725,6 +753,18 @@ send_dtmf_command(DTMFs, Duration) ->
       ,{<<"Application-Name">>, <<"send_dtmf">>}
       ]).
 
+-spec recv_dtmf(ne_binary(), kapps_call:call()) -> 'ok'.
+recv_dtmf(DTMFs, Call) ->
+    Cmd = recv_dtmf_command(DTMFs),
+    send_command(Cmd, Call).
+
+-spec recv_dtmf_command(ne_binary()) -> kz_proplist().
+recv_dtmf_command(DTMFs) ->
+    props:filter_undefined(
+      [{<<"DTMFs">>, DTMFs}
+      ,{<<"Application-Name">>, <<"recv_dtmf">>}
+      ]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -734,18 +774,23 @@ send_dtmf_command(DTMFs, Duration) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set(api_object(), api_object(), kapps_call:call()) -> 'ok'.
-set('undefined', CallVars, Call) -> set(kz_json:new(), CallVars, Call);
-set(ChannelVars, 'undefined', Call) -> set(ChannelVars, kz_json:new(), Call);
+-spec set(api_object(), api_object(), api_object(), kapps_call:call()) -> 'ok'.
 set(ChannelVars, CallVars, Call) ->
+    set(ChannelVars, CallVars, 'undefined', Call).
+
+set('undefined', CallVars, AppVars, Call) -> set(kz_json:new(), CallVars, AppVars, Call);
+set(ChannelVars, 'undefined', AppVars, Call) -> set(ChannelVars, kz_json:new(), AppVars, Call);
+set(ChannelVars, CallVars, AppVars, Call) ->
     case kz_json:is_empty(ChannelVars)
         andalso kz_json:is_empty(CallVars)
     of
         'true' -> 'ok';
         'false' ->
             Command = [{<<"Application-Name">>, <<"set">>}
-                      ,{<<"Insert-At">>, <<"now">>}
-                      ,{<<"Custom-Channel-Vars">>, ChannelVars}
+                      ,{<<"Custom-Application-Vars">>, AppVars}
                       ,{<<"Custom-Call-Vars">>, CallVars}
+                      ,{<<"Custom-Channel-Vars">>, ChannelVars}
+                      ,{<<"Insert-At">>, <<"now">>}
                       ],
             send_command(Command, Call)
     end.
@@ -1026,6 +1071,7 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) 
 -spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
 -spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), kapps_call:call()) -> 'ok'.
 -spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
 
 -spec b_bridge(kz_json:objects(), kapps_call:call()) ->
                       kapps_api_bridge_return().
@@ -1041,6 +1087,8 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) 
                       kapps_api_bridge_return().
 -spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), kapps_call:call()) ->
                       kapps_api_bridge_return().
+-spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), api_binary(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 
 bridge_command(Endpoints, Call) ->
     bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
@@ -1054,15 +1102,18 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) -
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
-bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
     [{<<"Application-Name">>, <<"bridge">>}
     ,{<<"Endpoints">>, Endpoints}
     ,{<<"Timeout">>, Timeout}
     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
     ,{<<"Ringback">>, kz_media_util:media_path(Ringback, kapps_call:account_id(Call))}
+    ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
     ,{<<"Dial-Endpoint-Method">>, Strategy}
     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-    ,{<<"Ignore-Forward">>, IgnoreFoward}
+    ,{<<"Ignore-Forward">>, IgnoreForward}
     ].
 
 bridge(Endpoints, Call) ->
@@ -1083,8 +1134,11 @@ bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     send_command(Command, Call).
-bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
-    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call),
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call),
+    send_command(Command, Call).
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call),
     send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
@@ -1107,6 +1161,9 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
     b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call),
+    b_bridge_wait(Timeout, Call).
+b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call),
     b_bridge_wait(Timeout, Call).
 
 -spec b_bridge_wait(pos_integer(), kapps_call:call()) -> kapps_api_bridge_return().
@@ -1304,12 +1361,16 @@ b_prompt(Prompt, Lang, Call) ->
                   ne_binary().
 -spec play(ne_binary(), api_binaries(), api_binary(), kapps_call:call()) ->
                   ne_binary().
+-spec play(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call()) ->
+                  ne_binary().
 
 -spec play_command(ne_binary(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
 -spec play_command(ne_binary(), api_binaries(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
 -spec play_command(ne_binary(), api_binaries(), api_binary(), kapps_call:call() | ne_binary()) ->
+                          kz_json:object().
+-spec play_command(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
 
 -spec b_play(ne_binary(), kapps_call:call()) ->
@@ -1318,21 +1379,29 @@ b_prompt(Prompt, Lang, Call) ->
                     kapps_api_std_return().
 -spec b_play(ne_binary(), api_binaries(), api_binary(), kapps_call:call()) ->
                     kapps_api_std_return().
+-spec b_play(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call()) ->
+                    kapps_api_std_return().
 
 play_command(Media, Call) ->
     play_command(Media, ?ANY_DIGIT, Call).
+
 play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
-play_command(Media, Terminators, Leg, CallId=?NE_BINARY) ->
+
+play_command(Media, Terminators, Leg, Call) ->
+    play_command(Media, Terminators, Leg, 'false', Call).
+
+play_command(Media, Terminators, Leg, Endless, CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"play">>}
       ,{<<"Media-Name">>, Media}
       ,{<<"Terminators">>, play_terminators(Terminators)}
       ,{<<"Leg">>, play_leg(Leg)}
       ,{<<"Call-ID">>, CallId}
+      ,{<<"Endless-Playback">>, Endless}
       ]);
-play_command(Media, Terminators, Leg, Call) ->
-    play_command(Media, Terminators, Leg, kapps_call:call_id(Call)).
+play_command(Media, Terminators, Leg, Endless, Call) ->
+    play_command(Media, Terminators, Leg, Endless, kapps_call:call_id(Call)).
 
 -spec play_terminators(api_binaries()) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
@@ -1346,12 +1415,14 @@ play(Media, Call) -> play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
     play(Media, Terminators, 'undefined', Call).
 play(Media, Terminators, Leg, Call) ->
+    play(Media, Terminators, Leg, 'false', Call).
+play(Media, Terminators, Leg, Endless, Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                                   ,{<<"Msg-ID">>, NoopId}
                                   ])
-               ,play_command(Media, Terminators, Leg, Call)
+               ,play_command(Media, Terminators, Leg, Endless, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
               ,{<<"Commands">>, Commands}
@@ -1364,7 +1435,9 @@ b_play(Media, Call) ->
 b_play(Media, Terminators, Call) ->
     b_play(Media, Terminators, 'undefined', Call).
 b_play(Media, Terminators, Leg, Call) ->
-    wait_for_noop(Call, play(Media, Terminators, Leg, Call)).
+    b_play(Media, Terminators, Leg, 'false', Call).
+b_play(Media, Terminators, Leg, Endless, Call) ->
+    wait_for_noop(Call, play(Media, Terminators, Leg, Endless, Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1424,7 +1497,9 @@ tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
       ]).
 
+-spec tts_terminators(api_ne_binaries()) -> api_ne_binaries().
 tts_terminators('undefined') -> ?ANY_DIGIT;
+tts_terminators([]) -> 'undefined';
 tts_terminators(Terminators) -> Terminators.
 
 tts_voice('undefined') -> kazoo_tts:default_voice();
@@ -1631,16 +1706,17 @@ b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     send_command(Command, Call),
     wait_for_headless_application(<<"store_vm">>).
 
--spec audio_level_command(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec audio_level_command(kapps_call:call(), ne_binary(), ne_binary(), ne_binary() | integer()) ->
+                                 kz_proplist().
 audio_level_command(_Call, Mode, Action, Level) ->
     [{<<"Application-Name">>, <<"audio_level">>}
     ,{<<"Action">>, Action}
-    ,{<<"Level">>, Level}
+    ,{<<"Level">>, kz_term:to_binary(Level)}
     ,{<<"Mode">>, Mode}
     ,{<<"Insert-At">>, <<"now">>}
     ].
 
--spec audio_level(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec audio_level(kapps_call:call(), ne_binary(), ne_binary(), ne_binary() | integer()) -> 'ok'.
 audio_level(Call, Mode, Action, Level) ->
     Command = audio_level_command(Call, Mode, Action, Level),
     send_command(Command, Call).

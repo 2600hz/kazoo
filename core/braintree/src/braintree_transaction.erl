@@ -511,7 +511,7 @@ record_to_notification_props(#bt_transaction{}=BraintreeTransaction) ->
       ,{<<"Billing-Address">>, kz_json:get_value(<<"billing_address">>, Transaction)}
       ,{<<"Card-Last-Four">>, kz_json:get_value([<<"card">>, <<"last_four">>], Transaction)}
       ,{<<"Tax-Amount">>, kz_json:get_value(<<"tax_amount">>, Transaction)}
-      ,{<<"Timestamp">>, kz_time:current_tstamp()}
+      ,{<<"Timestamp">>, kz_time:now_s()}
       ,{<<"Purchase-Order">>, purchase_order_reason(Transaction)}
       ,{<<"Currency-Code">>, kz_json:get_value(<<"currency_code">>, Transaction)}
       ]).

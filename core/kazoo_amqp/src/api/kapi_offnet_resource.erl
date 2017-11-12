@@ -25,8 +25,12 @@
         ,call_id/1, call_id/2
         ,control_queue/1, control_queue/2
         ,custom_channel_vars/1, custom_channel_vars/2
+        ,custom_application_vars/1, custom_application_vars/2
+        ,requestor_custom_channel_vars/1, requestor_custom_channel_vars/2
         ,custom_sip_headers/1, custom_sip_headers/2
         ,custom_sip_header/2
+        ,requestor_custom_sip_headers/1, requestor_custom_sip_headers/2
+        ,requestor_custom_sip_header/2
         ,emergency_caller_id_name/1, emergency_caller_id_name/2
         ,emergency_caller_id_number/1, emergency_caller_id_number/2
         ,fax_identity_name/1, fax_identity_name/2
@@ -96,7 +100,10 @@
         ,?KEY_CALL_ID
         ,?KEY_CONTROL_QUEUE
         ,?KEY_CCVS
+        ,?KEY_CAVS
+        ,?KEY_REQUESTOR_CCVS
         ,?KEY_CSHS
+        ,?KEY_REQUESTOR_CSHS
         ,?KEY_E_CALLER_ID_NAME
         ,?KEY_E_CALLER_ID_NUMBER
         ,?KEY_ENABLE_T38
@@ -151,7 +158,10 @@
         ,{?KEY_CALL_ID, fun erlang:is_binary/1}
         ,{?KEY_CONTROL_QUEUE, fun erlang:is_binary/1}
         ,{?KEY_CCVS, fun kz_json:is_json_object/1}
+        ,{?KEY_CAVS, fun kz_json:is_json_object/1}
+        ,{?KEY_REQUESTOR_CCVS, fun kz_json:is_json_object/1}
         ,{?KEY_CSHS, fun kz_json:is_json_object/1}
+        ,{?KEY_REQUESTOR_CSHS, fun kz_json:is_json_object/1}
         ,{?KEY_ENABLE_T38_GATEWAY, fun erlang:is_binary/1}
         ,{?KEY_FLAGS, fun erlang:is_list/1}
         ,{?KEY_FORCE_FAX, fun kz_term:is_boolean/1}
@@ -359,6 +369,20 @@ custom_channel_vars(Req) ->
 custom_channel_vars(?REQ_TYPE(JObj), Default) ->
     kz_json:get_json_value(?KEY_CCVS, JObj, Default).
 
+-spec custom_application_vars(req()) -> api_object().
+-spec custom_application_vars(req(), Default) -> kz_json:object() | Default.
+custom_application_vars(Req) ->
+    custom_application_vars(Req, 'undefined').
+custom_application_vars(?REQ_TYPE(JObj), Default) ->
+    kz_json:get_json_value(?KEY_CAVS, JObj, Default).
+
+-spec requestor_custom_channel_vars(req()) -> api_object().
+-spec requestor_custom_channel_vars(req(), Default) -> kz_json:object() | Default.
+requestor_custom_channel_vars(Req) ->
+    requestor_custom_channel_vars(Req, 'undefined').
+requestor_custom_channel_vars(?REQ_TYPE(JObj), Default) ->
+    kz_json:get_json_value(?KEY_REQUESTOR_CCVS, JObj, Default).
+
 -spec custom_sip_headers(req()) -> api_object().
 -spec custom_sip_headers(req(), Default) -> kz_json:object() | Default.
 custom_sip_headers(Req) ->
@@ -369,6 +393,18 @@ custom_sip_headers(?REQ_TYPE(JObj), Default) ->
 -spec custom_sip_header(req(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
 custom_sip_header(Req, Header) ->
     SipHeaders = custom_sip_headers(Req, kz_json:new()),
+    kz_json:get_value(Header, SipHeaders).
+
+-spec requestor_custom_sip_headers(req()) -> api_object().
+-spec requestor_custom_sip_headers(req(), Default) -> kz_json:object() | Default.
+requestor_custom_sip_headers(Req) ->
+    requestor_custom_sip_headers(Req, 'undefined').
+requestor_custom_sip_headers(?REQ_TYPE(JObj), Default) ->
+    kz_json:get_json_value(?KEY_REQUESTOR_CSHS, JObj, Default).
+
+-spec requestor_custom_sip_header(req(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+requestor_custom_sip_header(Req, Header) ->
+    SipHeaders = requestor_custom_sip_headers(Req, kz_json:new()),
     kz_json:get_value(Header, SipHeaders).
 
 -spec timeout(req()) -> api_integer().

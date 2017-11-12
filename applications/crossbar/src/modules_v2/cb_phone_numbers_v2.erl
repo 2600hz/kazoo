@@ -583,7 +583,7 @@ maybe_add_port_request_numbers(Context) ->
 maybe_add_port_request_numbers(_Context, 'false') -> kz_json:new();
 maybe_add_port_request_numbers(Context, 'true') ->
     AccountId = cb_context:account_id(Context),
-    HasQs = crossbar_doc:has_qs_filter(Context),
+    HasQs = crossbar_filter:is_defined(Context),
     ViewOptions = [{'startkey', [cb_context:account_id(Context)]}
                   ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
                   ],
@@ -592,17 +592,10 @@ maybe_add_port_request_numbers(Context, 'true') ->
         {'ok', Ports} ->
             PortNumberList = [normalize_port_view_result(P)
                               || P <- Ports,
-                                 maybe_filter_port_number(P, Context, HasQs)
+                                 crossbar_filter:by_doc(kz_json:get_value(<<"value">>, P), Context, HasQs)
                              ],
             lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), PortNumberList)
     end.
-
-%% @private
--spec maybe_filter_port_number(kz_json:object(), cb_context:context(), boolean()) ->
-                                      boolean().
-maybe_filter_port_number(_Port, _Context, 'false') -> 'true';
-maybe_filter_port_number(Port, Context, 'true') ->
-    crossbar_doc:filtered_doc_by_qs(kz_json:get_value(<<"value">>, Port), Context).
 
 %% @private
 -spec rename_qs_filters(cb_context:context()) -> cb_context:context().
@@ -860,7 +853,7 @@ update_phone_numbers_locality(Context, Localities) ->
     DocId = kz_doc:id(cb_context:doc(Context)),
     case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
-            J = kz_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
+            J = kz_json:foldl(fun(K, V, J) -> update_phone_numbers_locality_fold(K, V, J, Context) end, JObj, Localities),
             kz_datamgr:save_doc(AccountDb, J);
         {'error', _E}=E ->
             lager:error("failed to update locality for ~s in ~s: ~p", [DocId, AccountDb, _E]),
@@ -868,16 +861,17 @@ update_phone_numbers_locality(Context, Localities) ->
     end.
 
 %% @private
--spec update_phone_numbers_locality_fold(ne_binary(), kz_json:object(), kz_json:object()) ->
+-spec update_phone_numbers_locality_fold(ne_binary(), kz_json:object(), kz_json:object(), cb_context:context()) ->
                                                 kz_json:object().
-update_phone_numbers_locality_fold(Key, Value, JObj) ->
+update_phone_numbers_locality_fold(Key, Value, JObj, Context) ->
     case kz_json:get_value(<<"status">>, Value) of
         <<"success">> ->
             case kz_json:get_value(Key, JObj) of
                 'undefined' -> JObj;
                 _Else ->
                     Locality = kz_json:delete_key(<<"status">>, Value),
-                    kz_json:set_value([Key, <<"locality">>], Locality, JObj)
+                    JObj1 = kz_json:set_value([Key, <<"locality">>], Locality, JObj),
+                    crossbar_doc:update_pvt_parameters(JObj1, Context)
             end;
         _Else -> JObj
     end.

@@ -1,42 +1,180 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   Roman Galeev
+%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
-
 -module(crossbar_filter).
+
+-export([build/1
+        ,build_with_mapper/2, build_with_mapper/3
+        ,is_defined/1, is_only_time_filter/2
+
+        ,by_doc/2, by_doc/3
+        ]).
+
 -include("crossbar.hrl").
--export([build/1, is_defined/1]).
 
--spec true(any()) -> 'true'.
-true(_) -> 'true'.
+-ifdef(TEST).
+-export([filter_doc_by_querystring/2
+        ]).
+-endif.
 
--spec build(cb_context:context()) -> fun().
+-type filter_fun() :: fun((kz_json:object()) -> boolean()).
+
+-export_type([filter_fun/0]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Build filter function if filter is requested by the client.
+%% @end
+%%--------------------------------------------------------------------
+-spec build(cb_context:context()) -> filter_fun().
 build(Context) ->
-    QS = cb_context:query_string(Context),
-    build(QS, is_defined_in(QS)).
+    build(Context, is_defined(Context)).
 
--spec build(kz_json:object(), boolean()) -> fun().
-build(_QS, 'false') -> fun true/1;
-build(QS, 'true') -> build_with(QS).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Equivalent of build_with_mapper/3, will call is_defined/1 on Context.
+%% @end
+%%--------------------------------------------------------------------
+-spec build_with_mapper(cb_context:context(), crossbar_view:user_mapper_fun()) -> crossbar_view:mapper_fun().
+build_with_mapper(Context, UserMapper) ->
+    build_with_mapper(Context, UserMapper, is_defined(Context)).
 
--spec build_with(kz_json:object()) -> fun().
-build_with(QueryString) ->
-    fun(Doc) ->
-            filter_doc_by_querystring(Doc, QueryString)
-    end.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Build a function with arity 2 if filter is requested by the client.
+%% This function will filter documents and then applies caller map function
+%% on the view result.
+%% @end
+%%--------------------------------------------------------------------
+-spec build_with_mapper(cb_context:context(), crossbar_view:user_mapper_fun(), boolean()) -> crossbar_view:mapper_fun().
+build_with_mapper(Context, UserMapper, 'false') when is_function(UserMapper, 3) ->
+    fun(Object, Acc) -> UserMapper(Context, Object, Acc) end;
+build_with_mapper(_, UserMapper, 'false') ->
+    UserMapper;
+build_with_mapper(Context, UserMapper, 'true') ->
+    FilterFun = build(Context, 'true'),
+    build_filter_map_fun(Context, FilterFun, UserMapper).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Check if there is any filter request in query string.
+%% @end
+%%--------------------------------------------------------------------
 -spec is_defined(cb_context:context()) -> boolean().
 is_defined(Context) ->
-    is_defined_in(cb_context:query_string(Context)).
+    cb_context:fetch(Context, 'has_qs_filter', 'true') %% set by crossbar_view build load params only
+        andalso kz_json:any(fun is_filter_key/1, cb_context:query_string(Context)).
 
--spec is_defined_in(kz_json:object()) -> boolean().
-is_defined_in(QueryString) ->
-    kz_json:any(fun is_filter_key/1, QueryString).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Check if only time filters are defined in query string, useful to
+%% crossbar_view to not add `include_docs` if only they are defined.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_only_time_filter(cb_context:context(), ne_binary()) -> boolean().
+is_only_time_filter(Context, FilterKey) ->
+    Fun = fun({<<"created_from">>, _}) -> 'true';
+             ({<<"created_to">>, _}) -> 'true';
+             ({<<"modified_from">>, _}) -> 'true';
+             ({<<"modified_to">>, _}) -> 'true';
+             ({Key, _}) ->
+                  Key =/= <<FilterKey/binary, "_from">>
+                      andalso Key =/= <<FilterKey/binary, "_to">>
+          end,
+    kz_json:all(Fun, cb_context:query_string(Context)).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns 'true' if all of the requested props are found, 'false' if one is not found
+%% @end
+%%--------------------------------------------------------------------
+-spec by_doc(api_object(), cb_context:context()) -> boolean().
+by_doc(Doc, Context) ->
+    by_doc(Doc, Context, is_defined(Context)).
+
+-spec by_doc(api_object(), cb_context:context(), boolean()) -> boolean().
+by_doc(_, _, 'false') ->
+    'true';
+by_doc('undefined', _, 'true') ->
+    lager:debug("no doc was returned (no include_docs?)"),
+    'true';
+by_doc(Doc, Context, 'true') ->
+    filter_doc_by_querystring(Doc, cb_context:query_string(Context)).
+
+%%%===================================================================
+%%% Load view internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Build filter function if filter is requested by the client.
+%% @end
+%%--------------------------------------------------------------------
+-spec build(cb_context:context(), boolean()) -> filter_fun().
+build(_, 'false') -> fun kz_term:always_true/1;
+build(Context, 'true') ->
+    fun(Doc) ->
+            filter_doc_by_querystring(Doc, cb_context:query_string(Context))
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Build a function with arity 2 if filter is requested by the client.
+%% This function will filter documents and then applies caller map function
+%% on the view result.
+%% @end
+%%--------------------------------------------------------------------
+-spec build_filter_map_fun(cb_context:context(), filter_fun(), crossbar_view:user_mapper_fun()) -> crossbar_view:mapper_fun().
+build_filter_map_fun(_, FilterFun, 'undefined') ->
+    fun(JObj, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, JObj)) of
+                'true' -> [JObj|Acc];
+                'false' -> Acc
+            end
+    end;
+build_filter_map_fun(_, FilterFun, UserMapper) when is_function(UserMapper, 1) ->
+    fun(JObjs) ->
+            Filtered0 = [JObj
+                         || JObj <- JObjs,
+                            FilterFun(kz_json:get_value(<<"doc">>, JObj))
+                        ],
+            UserMapper(Filtered0)
+    end;
+build_filter_map_fun(_, FilterFun, UserMapper) when is_function(UserMapper, 2) ->
+    fun(JObj, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, JObj)) of
+                'true' -> UserMapper(JObj, Acc);
+                'false' -> Acc
+            end
+    end;
+build_filter_map_fun(Context, FilterFun, UserMapper) when is_function(UserMapper, 3) ->
+    fun(JObj, Acc) ->
+            case FilterFun(kz_json:get_value(<<"doc">>, JObj)) of
+                'true' -> UserMapper(Context, JObj, Acc);
+                'false' -> Acc
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Return `true` if key is a filter key
+%% @end
+%%--------------------------------------------------------------------
 -spec is_filter_key({binary(), any()}) -> boolean().
 is_filter_key({<<"filter_", _/binary>>, _}) -> 'true';
 is_filter_key({<<"has_key", _/binary>>, _}) -> 'true';
@@ -63,6 +201,12 @@ should_filter_doc(Doc, K, V) ->
             'false'
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns 'true' or 'false' if the prop is found inside the doc
+%% @end
+%%--------------------------------------------------------------------
 -spec filter_prop(kz_json:object(), ne_binary(), any()) -> api_boolean().
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not should_filter(Doc, Key, Val);
@@ -98,8 +242,8 @@ lowerbound(DocTimestamp, QSTimestamp) ->
 should_filter(Val, Val) -> 'true';
 should_filter(Val, FilterVal) ->
     try kz_json:unsafe_decode(FilterVal) of
-        List when is_list(List) ->
-            lists:member(Val, List);
+        List when is_list(List) -> lists:member(Val, List);
+        Val -> 'true';
         _Data ->
             lager:debug("data is not a list: ~p", [_Data]),
             'false'
@@ -109,10 +253,9 @@ should_filter(Val, FilterVal) ->
 
 should_filter(Doc, Key, Val) ->
     Keys = binary_key_to_json_key(Key),
-    should_filter(
-      kz_json:get_binary_value(Keys, Doc, <<>>)
+    should_filter(kz_json:get_binary_value(Keys, Doc, <<>>)
                  ,kz_term:to_binary(Val)
-     ).
+                 ).
 
 -spec has_key(kz_json:object(), ne_binary()) -> boolean().
 has_key(Doc, Key) ->

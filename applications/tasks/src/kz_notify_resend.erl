@@ -202,7 +202,7 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', State) ->
     ViewOptions = [{'startkey', 0}
-                  ,{'endkey', kz_time:current_tstamp()}
+                  ,{'endkey', kz_time:now_s()}
                   ,{'limit', ?READ_LIMIT}
                   ,'include_docs'
                   ],
@@ -336,7 +336,6 @@ db_bulk_result(JObj) ->
     end.
 
 -spec handle_result(kz_amqp_worker:request_return()) -> boolean().
-handle_result('ok') -> 'true';
 handle_result({'ok', Resp}) -> is_completed(Resp);
 handle_result({'error', [Error|_]=List}) ->
     case kz_json:is_json_object(Error) of
@@ -409,7 +408,7 @@ apply_reschedule_rules(NotifyType, {[Rule | Rules], [Key | Keys]}, JObj) ->
 
 -spec set_default_update_fields(kz_json:object(), integer()) -> kz_json:object().
 set_default_update_fields(JObj, Attempts) ->
-    kz_json:set_values([{<<"pvt_modified">>, kz_time:current_tstamp()}
+    kz_json:set_values([{<<"pvt_modified">>, kz_time:now_s()}
                        ,{<<"retry_after">>, fudge_retry_after(Attempts)}
                        ]
                       ,JObj
@@ -440,7 +439,7 @@ collecting([JObj|_]) ->
         _ -> 'false'
     end.
 
--spec is_completed(kz_json:objects()) -> boolean().
+-spec is_completed(kz_json:object() | kz_json:objects()) -> boolean().
 is_completed([]) -> 'false';
 is_completed([JObj|_]) ->
     case kapi_notifications:notify_update_v(JObj)
@@ -450,4 +449,5 @@ is_completed([JObj|_]) ->
         %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
-    end.
+    end;
+is_completed(JObj) -> is_completed([JObj]).

@@ -9,7 +9,7 @@ ITU_URL = https://raw.githubusercontent.com/mledoze/countries/c212082894e48e8be1
 # official list https://www.itu.int/pub/T-SP-E.164D
 # but there are newer ones… https://www.itu.int/pub/T-SP-OB
 #
-# maintained & god enough https://raw.githubusercontent.com/mledoze/countries/master/countries.json
+# maintained & good enough https://raw.githubusercontent.com/mledoze/countries/master/countries.json
 #
 # http://country.io/phone.json
 #
@@ -24,13 +24,18 @@ ITU_URL = https://raw.githubusercontent.com/mledoze/countries/c212082894e48e8be1
 
 SOURCES = src/*.erl src/*/*.erl $(ITU)
 
-COMPILE_MOAR = $(ITU)
 CLEAN_MOAR = clean-generated
 
 all: compile
 
-include $(ROOT)/make/kz.mk
+compile: $(ITU)
 
+compile-test: compile-also
+
+compile-also:
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
+
+include $(ROOT)/make/kz.mk
 
 clean-generated:
 	$(if $(wildcard $(ITU)), rm $(ITU))

@@ -45,6 +45,7 @@ $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 	echo '-spec to_extensions(binary()) -> [binary()].' >> $(GEN_OUT)
 	echo 'to_extensions(<<"audio/mp3">>) -> [<<"mp3">>];' >> $(GEN_OUT)
 	echo 'to_extensions(<<"audio/wav">>) -> [<<"wav">>];' >> $(GEN_OUT)
+	echo 'to_extensions(<<"audio/x-wave">>) -> [<<"wav">>];' >> $(GEN_OUT)
 	echo 'to_extensions(<<"application/x-pem-file">>) -> [<<"pem">>];' >> $(GEN_OUT)
 	cat $(GEN_FILE) \
 		| grep -v ^# \

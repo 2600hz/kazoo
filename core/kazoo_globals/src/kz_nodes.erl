@@ -179,7 +179,7 @@ whapp_count(Whapp, 'remote') ->
                  }],
     determine_whapp_count(kz_term:to_binary(Whapp), MatchSpec);
 whapp_count(Whapp, Unhandled) ->
-    lager:debug("invalid parameters", [Whapp, Unhandled]),
+    lager:debug("invalid parameters ~p ~p", [Whapp, Unhandled]),
     0.
 
 -spec determine_whapp_count(ne_binary(), ets:match_spec()) -> non_neg_integer().

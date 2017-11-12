@@ -13,7 +13,7 @@
 -callback is_good_standing(ne_binary(), ne_binary()) ->
     boolean().
 
--callback sync(kz_service_item:items(), ne_binary()) ->
+-callback sync(kz_service_items:items(), ne_binary()) ->
     bookkeeper_sync_result().
 
 -callback transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->

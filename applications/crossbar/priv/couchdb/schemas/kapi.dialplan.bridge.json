@@ -69,6 +69,9 @@
         "Continue-On-Fail": {
             "type": "boolean"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
             "type": "object"
         },
@@ -169,6 +172,12 @@
         },
         "Ringback": {
             "type": "string"
+        },
+        "SIP-Invite-Parameters": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
         },
         "SIP-Transport": {
             "enum": [

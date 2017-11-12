@@ -69,7 +69,7 @@
                   ,api_binary()
                   ,api_binary()
                   ,api_binary()
-                  ) -> 'ok' | {'error', any()}.
+                  ) -> 'ok'.
 call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -77,40 +77,40 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
              ,{<<"Call-ID">>, CallId}
              ,{<<"Caller-ID-Name">>, CallerIdName}
              ,{<<"Caller-ID-Number">>, CallerIdNumber}
-             ,{<<"Entered-Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Entered-Timestamp">>, kz_time:now_s()}
              ,{<<"Caller-Priority">>, CallerPriority}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'waiting', Prop),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_waiting/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_waiting/1).
 
--spec call_abandoned(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec call_abandoned(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
 call_abandoned(AccountId, QueueId, CallId, Reason) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
              ,{<<"Call-ID">>, CallId}
              ,{<<"Abandon-Reason">>, Reason}
-             ,{<<"Abandon-Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Abandon-Timestamp">>, kz_time:now_s()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'abandoned', Prop),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_abandoned/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_abandoned/1).
 
--spec call_handled(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec call_handled(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 call_handled(AccountId, QueueId, CallId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
              ,{<<"Call-ID">>, CallId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Handled-Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Handled-Timestamp">>, kz_time:now_s()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'handled', Prop),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_handled/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_handled/1).
 
--spec call_missed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec call_missed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -118,130 +118,130 @@ call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
              ,{<<"Call-ID">>, CallId}
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Miss-Reason">>, ErrReason}
-             ,{<<"Miss-Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Miss-Timestamp">>, kz_time:now_s()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'missed', Prop),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_missed/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_missed/1).
 
--spec call_processed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec call_processed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
 call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Queue-ID">>, QueueId}
              ,{<<"Call-ID">>, CallId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Processed-Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Processed-Timestamp">>, kz_time:now_s()}
              ,{<<"Hung-Up-By">>, Initiator}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'processed', Prop),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_processed/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_processed/1).
 
--spec agent_ready(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec agent_ready(ne_binary(), ne_binary()) -> 'ok'.
 agent_ready(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"ready">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_ready/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_ready/1).
 
--spec agent_logged_in(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec agent_logged_in(ne_binary(), ne_binary()) -> 'ok'.
 agent_logged_in(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"logged_in">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_logged_in/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_logged_in/1).
 
--spec agent_logged_out(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec agent_logged_out(ne_binary(), ne_binary()) -> 'ok'.
 agent_logged_out(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"logged_out">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_logged_out/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_logged_out/1).
 
--spec agent_connecting(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
--spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_ne_binary(), api_ne_binary()) -> 'ok' | {'error', any()}.
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_ne_binary(), api_ne_binary()) -> 'ok'.
 agent_connecting(AcctId, AgentId, CallId) ->
     agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
 agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"connecting">>}
              ,{<<"Call-ID">>, CallId}
              ,{<<"Caller-ID-Name">>, CallerIDName}
              ,{<<"Caller-ID-Number">>, CallerIDNumber}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_connecting/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_connecting/1).
 
--spec agent_connected(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
--spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_ne_binary(), api_ne_binary()) -> 'ok' | {'error', any()}.
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_ne_binary(), api_ne_binary()) -> 'ok'.
 agent_connected(AcctId, AgentId, CallId) ->
     agent_connected(AcctId, AgentId, CallId, 'undefined', 'undefined').
 agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"connected">>}
              ,{<<"Call-ID">>, CallId}
              ,{<<"Caller-ID-Name">>, CallerIDName}
              ,{<<"Caller-ID-Number">>, CallerIDNumber}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_connected/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_connected/1).
 
--spec agent_wrapup(ne_binary(), ne_binary(), pos_integer()) -> 'ok' | {'error', any()}.
+-spec agent_wrapup(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
 agent_wrapup(AcctId, AgentId, WaitTime) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"wrapup">>}
              ,{<<"Wait-Time">>, WaitTime}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_wrapup/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_wrapup/1).
 
--spec agent_paused(ne_binary(), ne_binary(), api_pos_integer()) -> 'ok' | {'error', any()}.
+-spec agent_paused(ne_binary(), ne_binary(), api_pos_integer()) -> 'ok'.
 agent_paused(AcctId, AgentId, 'undefined') ->
     lager:debug("undefined pause time for ~s(~s)", [AgentId, AcctId]);
 agent_paused(AcctId, AgentId, PauseTime) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"paused">>}
              ,{<<"Pause-Time">>, PauseTime}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_paused/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_paused/1).
 
--spec agent_outbound(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec agent_outbound(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 agent_outbound(AcctId, AgentId, CallId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
              ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:current_tstamp()}
+             ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"outbound">>}
              ,{<<"Call-ID">>, CallId}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_outbound/1).
+    'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_outbound/1).
 
 -spec agent_statuses() -> ne_binaries().
 agent_statuses() ->
@@ -487,7 +487,7 @@ call_match_builder_fold(<<"Status">>, Status, {CallStat, Contstraints}) ->
             {'error', kz_json:from_list([{<<"Status">>, <<"unknown status supplied">>}])}
     end;
 call_match_builder_fold(<<"Start-Range">>, Start, {CallStat, Contstraints}) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     Past = Now - ?CLEANUP_WINDOW,
 
     try kz_term:to_integer(Start) of
@@ -510,7 +510,7 @@ call_match_builder_fold(<<"Start-Range">>, Start, {CallStat, Contstraints}) ->
             {'error', kz_json:from_list([{<<"Start-Range">>, <<"supplied value is not an integer">>}])}
     end;
 call_match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_time:now_s(),
     Past = Now - ?CLEANUP_WINDOW,
 
     try kz_term:to_integer(End) of
@@ -545,7 +545,7 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
     case ets:select(call_table_id(), Match) of
         [] ->
             lager:debug("no stats found, sorry ~s", [RespQ]),
-            Resp = [{<<"Query-Time">>, kz_time:current_tstamp()}
+            Resp = [{<<"Query-Time">>, kz_time:now_s()}
                    ,{<<"Msg-ID">>, MsgId}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
@@ -562,7 +562,7 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
                    ,{<<"Handled">>, dict:fetch(<<"handled">>, QueryResult)}
                    ,{<<"Abandoned">>, dict:fetch(<<"abandoned">>, QueryResult)}
                    ,{<<"Processed">>, dict:fetch(<<"processed">>, QueryResult)}
-                   ,{<<"Query-Time">>, kz_time:current_tstamp()}
+                   ,{<<"Query-Time">>, kz_time:now_s()}
                    ,{<<"Msg-ID">>, MsgId}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
@@ -584,7 +584,7 @@ force_archive_data() ->
     'ok'.
 
 cleanup_data(Srv) ->
-    Past = kz_time:current_tstamp() - ?CLEANUP_WINDOW,
+    Past = kz_time:now_s() - ?CLEANUP_WINDOW,
     PastConstraint = {'=<', '$1', Past},
 
     TypeConstraints = [{'=/=', '$2', {'const', <<"waiting">>}}
@@ -639,7 +639,7 @@ archive_call_data(Srv, 'true') ->
 archive_call_data(Srv, 'false') ->
     kz_util:put_callid(<<"acdc_stats.call_archiver">>),
 
-    Past = kz_time:current_tstamp() - ?ARCHIVE_WINDOW,
+    Past = kz_time:now_s() - ?ARCHIVE_WINDOW,
     Match = [{#call_stat{entered_timestamp='$1'
                         ,status='$2'
                         ,is_archived='$3'

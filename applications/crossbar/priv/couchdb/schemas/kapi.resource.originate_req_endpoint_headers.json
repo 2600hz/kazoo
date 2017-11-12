@@ -30,11 +30,14 @@
         "Codecs": {
             "type": "string"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Custom-SIP-Headers": {
-            "type": "string"
+            "type": "object"
         },
         "Enable-T38-Fax": {
             "type": "string"
@@ -118,6 +121,9 @@
             "type": "string"
         },
         "SIP-Interface": {
+            "type": "string"
+        },
+        "SIP-Invite-Parameters": {
             "type": "string"
         },
         "SIP-Transport": {

@@ -314,64 +314,34 @@ validate_jobs(Context, ?HTTP_PUT) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
-    do_collection(Context, cb_context:account_db(Context));
+    maybe_reload_acls(cb_context:account_db(Context)),
+    collection_process(Context);
 post(Context, Id) ->
-    do_post(Context, Id, cb_context:account_db(Context)).
+    do_post(Context, Id).
+
+-spec do_post(cb_context:context(), path_token()) -> cb_context:context().
+do_post(Context, _Id) ->
+    Db = cb_context:account_db(Context),
+    maybe_reload_acls(Db),
+    Context1 = crossbar_doc:save(Context),
+    maybe_aggregate_resource(Context1, Db).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, Id) ->
-    do_post(Context, Id, cb_context:account_db(Context)).
-
--spec do_collection(cb_context:context(), ne_binary()) -> cb_context:context().
-do_collection(Context, ?KZ_OFFNET_DB) ->
-    _ = reload_acls(),
-    _ = reload_gateways(),
-    collection_process(Context);
-do_collection(Context, _AccountDb) ->
-    collection_process(Context).
-
--spec do_post(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
-do_post(Context, _Id, ?KZ_OFFNET_DB) ->
-    _ = reload_acls(),
-    _ = reload_gateways(),
-    crossbar_doc:save(Context);
-do_post(Context, _Id, _AccountDb) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = cb_local_resources:maybe_aggregate_resource(Context1),
-    Context1.
+patch(Context, Id) -> do_post(Context, Id).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
-    do_put(Context, cb_context:account_db(Context)).
+    Db = cb_context:account_db(Context),
+    maybe_reload_acls(Db),
+    Context1 = crossbar_doc:save(Context),
+    maybe_aggregate_resource(Context1, Db).
 
 put(Context, ?COLLECTION) ->
-    put_collection(Context, cb_context:account_db(Context));
-put(Context, ?JOBS) ->
-    put_job(Context).
-
--spec do_put(cb_context:context(), ne_binary()) -> cb_context:context().
-do_put(Context, ?KZ_OFFNET_DB) ->
-    _ = reload_acls(),
-    _ = reload_gateways(),
-    crossbar_doc:save(Context);
-do_put(Context, _AccountDb) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = cb_local_resources:maybe_aggregate_resource(Context1),
-    Context1.
-
--spec put_collection(cb_context:context(), ne_binary()) -> cb_context:context().
-put_collection(Context, ?KZ_OFFNET_DB) ->
+    maybe_reload_acls(cb_context:account_db(Context)),
     collection_process(Context);
-put_collection(Context, _AccountDb) ->
-    _ = reload_acls(),
-    _ = reload_gateways(),
-    collection_process(Context).
-
--spec put_job(cb_context:context()) -> cb_context:context().
-put_job(Context) ->
-    Modb = cb_context:account_modb(Context),
-    Context1 = crossbar_doc:save(cb_context:set_account_db(Context, Modb)),
+put(Context, ?JOBS) ->
+    Context1 = crossbar_doc:save(cb_context:set_account_db(Context, cb_context:account_modb(Context))),
 
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -383,21 +353,25 @@ put_job(Context) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ResourceId) ->
-    do_delete(Context, ResourceId, cb_context:account_db(Context)).
-
--spec do_delete(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-do_delete(Context, _ResourceId, ?KZ_OFFNET_DB) ->
-    _ = reload_acls(),
-    _ = reload_gateways(),
-    crossbar_doc:delete(Context);
-do_delete(Context, ResourceId, _AccountDb) ->
+    maybe_reload_acls(cb_context:account_db(Context)),
     Context1 = crossbar_doc:delete(Context),
-    _ = cb_local_resources:maybe_remove_aggregate(ResourceId, Context1),
-    Context1.
+    maybe_remove_aggregate(Context1, ResourceId, cb_context:account_db(Context)).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec maybe_aggregate_resource(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_aggregate_resource(Context, ?KZ_OFFNET_DB) -> Context;
+maybe_aggregate_resource(Context, _AccountDb) ->
+    _ = cb_local_resources:maybe_aggregate_resource(Context),
+    Context.
+
+-spec maybe_remove_aggregate(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+maybe_remove_aggregate(Context, _ResourceId, ?KZ_OFFNET_DB) -> Context;
+maybe_remove_aggregate(Context, ResourceId, _AccountDb) ->
+    _ = cb_local_resources:maybe_remove_aggregate(ResourceId, Context),
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -425,11 +399,10 @@ leak_job_fields(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
             JObj = cb_context:doc(Context),
-            cb_context:set_resp_data(Context
-                                    ,kz_json:set_values([{<<"timestamp">>, kz_doc:created(JObj)}
-                                                        ,{<<"status">>, kz_json:get_value(<<"pvt_status">>, JObj)}
-                                                        ], cb_context:resp_data(Context))
-                                    );
+            RespData = [{<<"timestamp">>, kz_doc:created(JObj)}
+                       ,{<<"status">>, kz_json:get_value(<<"pvt_status">>, JObj)}
+                       ],
+            cb_context:set_resp_data(Context, kz_json:set_values(RespData, cb_context:resp_data(Context)));
         _Status -> Context
     end.
 
@@ -453,27 +426,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec jobs_summary(cb_context:context()) -> cb_context:context().
 jobs_summary(Context) ->
-    case cb_modules_util:range_view_options(Context) of
-        {CreatedFrom, CreatedTo} ->
-            crossbar_doc:load_view(?JOBS_LIST
-                                  ,[{'startkey', CreatedFrom}
-                                   ,{'endkey', CreatedTo}
-                                   ,{'limit', crossbar_doc:pagination_page_size(Context)}
-                                   ,{'databases', databases(Context, CreatedFrom, CreatedTo)}
-                                   ]
-                                  ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
-                                  ,fun normalize_view_results/2
-                                  );
-        Context1 -> Context1
-    end.
-
--spec databases(cb_context:context(), pos_integer(), pos_integer()) -> ne_binaries().
-databases(Context, CreatedFrom, CreatedTo) ->
-    FromDb = cb_context:account_modb(Context, CreatedFrom),
-    case cb_context:account_modb(Context, CreatedTo) of
-        FromDb -> [FromDb];
-        ToDb -> [FromDb, ToDb]
-    end.
+    crossbar_view:load_modb(Context, ?JOBS_LIST, [{'mapper', crossbar_view:map_doc_fun()}]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -542,26 +495,19 @@ on_successful_local_validation(Id, Context) ->
 
 -spec on_successful_job_validation('undefined', cb_context:context()) -> cb_context:context().
 on_successful_job_validation('undefined', Context) ->
-    {Year, Month, _} = erlang:date(),
-    Id = list_to_binary([kz_term:to_binary(Year)
-                        ,kz_date:pad_month(Month)
-                        ,"-"
-                        ,kz_binary:rand_hex(8)
-                        ]),
+    Props = [{<<"_id">>, kazoo_modb_util:modb_id(kz_binary:rand_hex(8))}
+            ,{<<"errors">>, kz_json:new()}
+            ,{<<"pvt_status">>, <<"pending">>}
+            ,{?KEY_SUCCESS, kz_json:new()}
+            ,{<<"pvt_type">>, <<"resource_job">>}
+            ],
+    cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))).
 
-    cb_context:set_doc(Context
-                      ,kz_json:set_values([{<<"pvt_type">>, <<"resource_job">>}
-                                          ,{<<"pvt_status">>, <<"pending">>}
-                                          ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
-                                          ,{<<"pvt_request_id">>, cb_context:req_id(Context)}
-                                          ,{<<"_id">>, Id}
-
-                                          ,{?KEY_SUCCESS, kz_json:new()}
-                                          ,{<<"errors">>, kz_json:new()}
-                                          ]
-                                         ,cb_context:doc(Context)
-                                         )
-                      ).
+-spec maybe_reload_acls(ne_binary()) -> 'ok'.
+maybe_reload_acls(?KZ_OFFNET_DB) ->
+    reload_acls(),
+    reload_gateways();
+maybe_reload_acls(_) -> 'ok'.
 
 -spec reload_acls() -> 'ok'.
 reload_acls() ->

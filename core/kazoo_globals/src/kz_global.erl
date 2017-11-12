@@ -48,7 +48,7 @@
                    ,server :: any() | '_'
                    ,name :: name() | '$1' | '_'
                    ,monitor :: api_reference() | '_'
-                   ,state = 'none' :: kapi_globals:state() | '_'
+                   ,state = 'none' :: kapi_globals:state() | '_' | '$1'
                    ,timestamp = new_timestamp() :: integer() | '_'
                    }).
 

@@ -15,7 +15,8 @@
 
 -type resp_data() :: kz_json:object() | kz_json:objects() |
                      kz_json:json_term() | kz_json:json_proplist() |
-                     api_binary() | ne_binaries().
+                     api_binary() | ne_binaries() |
+                     map().
 
 %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
 -type req_file() :: {ne_binary(), kz_json:object()}.
@@ -57,6 +58,8 @@
 
 -type couch_doc_path() :: ne_binaries().
 -type couch_schema() :: [{couch_doc_path(), validator_rules()}].
+
+-type cb_cowboy_payload() :: {cowboy_req:req(), cb_context:context()}.
 
 -define(HTTP_GET, <<"GET">>).
 -define(HTTP_POST, <<"POST">>).

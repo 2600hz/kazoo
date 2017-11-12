@@ -83,7 +83,7 @@ remove_deprecated_modules(Modules, Deprecated) ->
         Modules -> Modules;
         Ms ->
             io:format(" removed deprecated modules from autoloaded modules: ~p~n", [Deprecated]),
-            crossbar_config:set_autoload_modules(Ms),
+            {'ok', _} = crossbar_config:set_autoload_modules(Ms),
             Ms
     end.
 
@@ -110,7 +110,7 @@ migrate_account_data(Account) ->
 add_missing_modules(_, []) -> 'no_return';
 add_missing_modules(Modules, MissingModules) ->
     io:format("  saving autoload_modules with missing modules added: ~p~n", [MissingModules]),
-    crossbar_config:set_autoload_modules(lists:sort(Modules ++ MissingModules)),
+    {'ok', _} = crossbar_config:set_autoload_modules(lists:sort(Modules ++ MissingModules)),
     'no_return'.
 
 %%--------------------------------------------------------------------
@@ -159,10 +159,10 @@ maybe_autoload_module(Module) ->
 
 -spec persist_module(ne_binary(), ne_binaries()) -> 'ok'.
 persist_module(Module, Mods) ->
-    crossbar_config:set_default_autoload_modules(
-      [kz_term:to_binary(Module)
-       | lists:delete(kz_term:to_binary(Module), Mods)
-      ]),
+    {'ok', _} = crossbar_config:set_default_autoload_modules(
+                  [kz_term:to_binary(Module)
+                   | lists:delete(kz_term:to_binary(Module), Mods)
+                  ]),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -175,7 +175,7 @@ persist_module(Module, Mods) ->
 stop_module(Module) ->
     'ok' = crossbar_init:stop_mod(Module),
     Mods = crossbar_config:autoload_modules(),
-    crossbar_config:set_default_autoload_modules(lists:delete(kz_term:to_binary(Module), Mods)),
+    {'ok', _} = crossbar_config:set_default_autoload_modules(lists:delete(kz_term:to_binary(Module), Mods)),
     io:format("stopped and removed ~s from autoloaded modules~n", [Module]).
 
 %%--------------------------------------------------------------------
@@ -703,8 +703,8 @@ base_group_ring_group(JObj) ->
     BaseGroup = kz_json:from_list(
                   [{<<"pvt_vsn">>, <<"1">>}
                   ,{<<"pvt_type">>, <<"callflow">>}
-                  ,{<<"pvt_modified">>, kz_time:current_tstamp()}
-                  ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                  ,{<<"pvt_modified">>, kz_time:now_s()}
+                  ,{<<"pvt_created">>, kz_time:now_s()}
                   ,{<<"pvt_account_db">>, kz_doc:account_db(JObj)}
                   ,{<<"pvt_account_id">>, kz_doc:account_id(JObj)}
                   ,{<<"flow">>, kz_json:from_list([{<<"children">>, kz_json:new()}

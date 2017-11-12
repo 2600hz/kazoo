@@ -50,7 +50,7 @@
         ,missed_call/1, missed_call_v/1
         ,skel/1, skel_v/1
         ,headers/1
-        ,account_id/1, account_db/1
+        ,account_id/1, account_db/2
         ]).
 
 -export([publish_voicemail_new/1, publish_voicemail_new/2
@@ -335,8 +335,8 @@
 -define(ACCOUNT_ZONE_CHANGE_TYPES, []).
 
 %% Notify New User
--define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>, <<"Password">>]).
--define(OPTIONAL_NEW_USER_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>]).
+-define(OPTIONAL_NEW_USER_HEADERS, [<<"Password">> | ?DEFAULT_OPTIONAL_HEADERS]).
 -define(NEW_USER_VALUES, [{<<"Event-Category">>, <<"notification">>}
                          ,{<<"Event-Name">>, <<"new_user">>}
                          ]).
@@ -426,7 +426,7 @@
 -define(PORTED_TYPES, []).
 
 %% Notify Ported Request
--define(PORT_COMMENT_HEADERS, [<<"Account-ID">>]).
+-define(PORT_COMMENT_HEADERS, [<<"Account-ID">>, <<"Comments">>]).
 -define(OPTIONAL_PORT_COMMENT_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
                                        ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
                                             | ?DEFAULT_OPTIONAL_HEADERS
@@ -526,7 +526,7 @@
 -define(WEBHOOK_DISABLED_TYPES, []).
 
 -define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
--define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>
+-define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>, <<"Metadata">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
 -define(NOTIFY_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -584,8 +584,13 @@
                      ]).
 -define(SKEL_TYPES, []).
 
--spec account_id(kz_json:object()) -> api_binary().
-account_id(JObj) ->
+-spec account_id(api_terms()) -> api_ne_binary().
+account_id('undefined') -> 'undefined';
+account_id(Req) when is_list(Req) -> find_account_id(Req, fun props:get_first_defined/2);
+account_id(Req) -> find_account_id(Req, fun kz_json:get_first_defined/2).
+
+-spec find_account_id(api_terms(), function()) -> api_ne_binary().
+find_account_id(Req, GetFun) ->
     Paths = [<<"account_id">>
             ,[<<"account">>, <<"_id">>]
             ,<<"pvt_account_id">>
@@ -596,20 +601,28 @@ account_id(JObj) ->
             ,[<<"details">>, <<"custom_channel_vars">>, <<"account_id">>]
             ,[<<"Details">>, <<"Custom-Channel-Vars">>, <<"Account-ID">>]
             ],
-    kz_json:get_first_defined(Paths, JObj).
+    case GetFun(Paths, Req) of
+        ?NE_BINARY=Id -> Id;
+        _ -> 'undefined'
+    end.
 
--spec account_db(kz_json:object()) -> api_ne_binary().
-account_db(JObj) ->
+-spec account_db(api_terms(), boolean()) -> api_ne_binary().
+account_db('undefined', _) -> 'undefined';
+account_db(Req, StrictMODB) when is_list(Req) -> find_account_db(Req, StrictMODB, fun props:get_first_defined/2);
+account_db(Req, StrictMODB) -> find_account_db(Req, StrictMODB, fun kz_json:get_first_defined/2).
+
+-spec find_account_db(api_terms(), boolean(), function()) -> api_ne_binary().
+find_account_db(Req, StrictMODB, GetFun) ->
     Paths = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
-    case kz_json:get_first_defined(Paths, JObj) of
+    case GetFun(Paths, Req) of
         'undefined' ->
-            case account_id(JObj) of
+            case find_account_id(Req, GetFun) of
                 'undefined' -> 'undefined';
                 AccountId -> kz_util:format_account_db(AccountId)
             end;
-        ?MATCH_MODB_SUFFIX_RAW(_, _, _)=Db -> kz_util:format_account_modb(Db, 'encoded');
-        ?MATCH_MODB_SUFFIX_UNENCODED(_, _, _)=Db -> kz_util:format_account_modb(Db, 'encoded');
-        ?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db -> Db;
+        ?MATCH_MODB_SUFFIX_RAW(_, _, _)=Db when StrictMODB -> kz_util:format_account_modb(Db, 'encoded');
+        ?MATCH_MODB_SUFFIX_UNENCODED(_, _, _)=Db when StrictMODB -> kz_util:format_account_modb(Db, 'encoded');
+        ?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db when StrictMODB -> Db;
         ?NE_BINARY=Db -> kz_util:format_account_db(Db);
         _ -> 'undefined'
     end.

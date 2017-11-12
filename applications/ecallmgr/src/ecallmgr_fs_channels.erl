@@ -345,6 +345,7 @@ handle_channel_status(JObj, _Props) ->
                   ,{<<"Realm">>, kz_json:get_value(<<"realm">>, Channel)}
                   ,{<<"Username">>, kz_json:get_value(<<"username">>, Channel)}
                   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel))}
+                  ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_fs_channel:channel_cavs(Channel))}
                   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ]
@@ -803,11 +804,12 @@ publish_channel_connection_event(#channel{uuid=UUID
                                          ,answered=IsAnswered
                                          }=Channel
                                 ,ChannelSpecific) ->
-    Event = [{<<"Timestamp">>, kz_time:current_tstamp()}
+    Event = [{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Call-Direction">>, Direction}
             ,{<<"Media-Server">>, Node}
             ,{<<"Custom-Channel-Vars">>, connection_ccvs(Channel)}
+            ,{<<"Custom-Application-Vars">>, connection_cavs(Channel)}
             ,{<<"To">>, <<Destination/binary, "@", Realm/binary>>}
             ,{<<"From">>, <<Username/binary, "@", Realm/binary>>}
             ,{<<"Presence-ID">>, PresenceId}
@@ -842,6 +844,12 @@ connection_ccvs(#channel{account_id=AccountId
       ,{<<"Owner-ID">>, OwnerId}
       ]).
 
+-spec connection_cavs(channel()) -> api_object().
+connection_cavs(#channel{cavs=CAVs}) when is_list(CAVs) ->
+    kz_json:from_list(CAVs);
+connection_cavs(#channel{}) -> 'undefined'.
+
+
 -define(MAX_CHANNEL_UPTIME_KEY, <<"max_channel_uptime_s">>).
 
 -spec max_channel_uptime() -> non_neg_integer().
@@ -872,7 +880,7 @@ maybe_cleanup_old_channels() ->
 cleanup_old_channels() ->
     cleanup_old_channels(max_channel_uptime()).
 cleanup_old_channels(MaxAge) ->
-    NoOlderThan = kz_time:current_tstamp() - MaxAge,
+    NoOlderThan = kz_time:now_s() - MaxAge,
 
     MatchSpec = [{#channel{uuid='$1'
                           ,node='$2'

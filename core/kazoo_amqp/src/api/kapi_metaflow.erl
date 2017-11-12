@@ -203,21 +203,21 @@ unbind_q(Queue, Props) ->
 unbind_q(Queue, Props, ['bind_req' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
     Leg = props:get_value('leg', Props, <<"*">>),
-    amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_BIND_REQ_ROUTING_KEY(AccountId, Leg), ?METAFLOW_EXCHANGE),
+    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_BIND_REQ_ROUTING_KEY(AccountId, Leg), ?METAFLOW_EXCHANGE),
     unbind_q(Queue, Props, T);
 unbind_q(Queue, Props, ['action' | T]) ->
     CallId = props:get_value('callid', Props, <<"*">>),
     Action = props:get_value('action', Props, <<"*">>),
-    amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_ACTION_ROUTING_KEY(CallId, Action), ?METAFLOW_EXCHANGE),
+    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_ACTION_ROUTING_KEY(CallId, Action), ?METAFLOW_EXCHANGE),
     unbind_q(Queue, Props, T);
 unbind_q(Queue, Props, ['flow' | T]) ->
     CallId = props:get_value('callid', Props, <<"*">>),
-    amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_FLOW_ROUTING_KEY(CallId), ?METAFLOW_EXCHANGE),
+    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_FLOW_ROUTING_KEY(CallId), ?METAFLOW_EXCHANGE),
     unbind_q(Queue, Props, T);
 unbind_q(Queue, Props, ['bindings' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
     CallId = props:get_value('callid', Props, <<"*">>),
-    amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), ?METAFLOW_EXCHANGE),
+    'ok' = amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), ?METAFLOW_EXCHANGE),
     unbind_q(Queue, Props, T);
 unbind_q(Queue, Props, [_U | T]) ->
     lager:debug("unknown restriction ~p in metaflow unbind", [_U]),

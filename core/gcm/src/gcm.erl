@@ -8,6 +8,7 @@
 
 -export([push/3, push/4, sync_push/3, sync_push/4]).
 
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(SERVER, ?MODULE).
@@ -34,11 +35,11 @@ start(Name, Key) ->
 stop(Name) ->
     gen_server:call(Name, stop).
 
--spec push(atom(), list(), any()) -> ok.
+-spec push(server_ref(), list(), any()) -> ok.
 push(Name, RegIds, Message) ->
     push(Name, RegIds, Message, ?RETRY).
 
--spec push(atom(), list(), any(), non_neg_integer()) -> ok.
+-spec push(server_ref(), list(), any(), non_neg_integer()) -> ok.
 push(Name, RegIds, Message, Retry) ->
     gen_server:cast(Name, {send, RegIds, Message, Retry}).
 

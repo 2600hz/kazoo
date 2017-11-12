@@ -41,7 +41,7 @@ bindings(_Context, #{account_id := AccountId
         ,listeners => Listeners
         }.
 
--spec skel_bind_options(ne_binary(), ne_binary()) -> gen_listener:bindings().
+-spec skel_bind_options(ne_binary(), ne_binary()) -> kz_proplist().
 skel_bind_options(AccountId, MyId) ->
     [{'restrict_to', ['skel.updates']}
     ,{'account_id', AccountId}

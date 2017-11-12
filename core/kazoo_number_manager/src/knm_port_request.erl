@@ -280,7 +280,7 @@ transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
                                               ,optional_reason := OptionalReason
                                               }) ->
     kz_json:from_list_recursive(
-      [{?TRANSITION_TIMESTAMP, kz_time:current_tstamp()}
+      [{?TRANSITION_TIMESTAMP, kz_time:now_s()}
       ,{?TRANSITION_TYPE, ?PORT_TRANSITION}
       ,{?TRANSITION_REASON, OptionalReason}
       ,{<<"transition">>, [{<<"new">>, ToState}

@@ -39,7 +39,8 @@
                            ,<<"To">>
                            ]).
 -define(BALANCE_CHECK_REQ_HEADERS, [<<"Accounts">>]).
--define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>
+-define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Application-Vars">>
+                                    ,<<"Custom-Channel-Vars">>
                                     ,<<"From-Network-Addr">>
                                     ,<<"From-Network-Port">>
                                     ,<<"Other-Leg-Call-ID">>
@@ -60,6 +61,7 @@
                          ,{<<"Account-ID">>, fun is_binary/1}
                          ,{<<"Caller-ID-Name">>, fun is_binary/1}
                          ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                         ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                          ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                          ,{<<"Usage">>, fun kz_json:is_json_object/1}
                          ]).

@@ -137,6 +137,7 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
 
 -spec endpoint_type_as(api_binary()) -> api_binary().
 endpoint_type_as(<<"click2call">>) -> <<"device">>;
+endpoint_type_as(<<"conference">>) -> <<"device">>;
 endpoint_type_as(Type) -> Type.
 
 -spec has_endpoint(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
@@ -645,6 +646,7 @@ build(Endpoint, Properties, Call) ->
                             {'ok', kz_json:objects()} |
                             {'error', build_errors()}.
 build_endpoint(Endpoint, Properties, Call) ->
+    lager:debug("attempting to build endpoint ~s", [kz_doc:id(Endpoint)]),
     case should_create_endpoint(Endpoint, Properties, Call) of
         'ok' -> create_endpoints(Endpoint, Properties, Call);
         {'error', _}=E -> E
@@ -1691,7 +1693,7 @@ maybe_set_call_waiting({Endpoint, Call, CallFwd, CCVs}) ->
 
 -spec get_invite_format(kz_json:object()) -> ne_binary().
 get_invite_format(SIPJObj) ->
-    kz_json:get_value(<<"invite_format">>, SIPJObj, <<"username">>).
+    kz_json:get_ne_binary_value(<<"invite_format">>, SIPJObj, <<"username">>).
 
 -spec get_to_did(kz_json:object(), kapps_call:call()) -> api_binary().
 get_to_did(Endpoint, Call) ->

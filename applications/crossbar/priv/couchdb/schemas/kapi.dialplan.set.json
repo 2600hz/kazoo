@@ -12,6 +12,9 @@
         "Call-ID": {
             "type": "string"
         },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
         "Custom-Call-Vars": {
             "type": "object"
         },

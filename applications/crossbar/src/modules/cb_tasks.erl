@@ -333,7 +333,7 @@ put(Context) ->
     of
         {'ok', TaskJObj} ->
             TaskId = kz_json:get_value([<<"_read_only">>, <<"id">>], TaskJObj),
-            save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
+            _ = save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
             crossbar_util:response(TaskJObj, Context);
         {'error', 'unknown_category_action'=Reason} ->
             crossbar_util:response_bad_identifier(Reason, Context);
@@ -556,7 +556,7 @@ read_attachment_file(TaskId, Context, AttachmentName) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     AccountId = cb_context:account_id(Context),
-    ViewOptions = [{startkey, [AccountId, kz_time:current_tstamp(), kz_json:new()]}
+    ViewOptions = [{startkey, [AccountId, kz_time:now_s(), kz_json:new()]}
                   ,{endkey, [AccountId]}
                   ,descending
                   ],

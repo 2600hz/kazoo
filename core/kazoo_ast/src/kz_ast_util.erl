@@ -4,10 +4,12 @@
         ,add_module_ast/3
 
         ,ast_to_list_of_binaries/1
+        ,ast_list_to_list/1
         ,binary_match_to_binary/1
         ,smash_snake/1
 
-        ,schema_path/1
+        ,default_schema_priv_dir/0
+        ,schema_path/1, schema_path/2
         ,api_path/1
         ,ensure_file_exists/1
         ,create_schema/1
@@ -91,7 +93,19 @@ binary_match_to_binary(Match) when is_list(Match) ->
 binary_part_to_binary(?BINARY_STRING(V)) -> V;
 binary_part_to_binary(?SUB_BINARY(V)) -> V;
 binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms);
-binary_part_to_binary(?BINARY_FROM_ATOM(Atom)) -> atom_to_binary(Atom, utf8).
+binary_part_to_binary(?BINARY_FROM_ATOM(Atom)) -> atom_to_binary(Atom, 'utf8').
+
+-spec ast_list_to_list(term()) -> list().
+ast_list_to_list(?EMPTY_LIST) -> [];
+ast_list_to_list(?LIST(_, _)=ASTList) ->
+    ast_list_to_list(ASTList, []).
+
+ast_list_to_list(?EMPTY_LIST, List) -> lists:reverse(List);
+ast_list_to_list(?LIST(H, T), List) ->
+    ast_list_to_list(T, [ast_list_el_to_el(H) | List]).
+
+ast_list_el_to_el(?TUPLE(Fields)) ->
+    list_to_tuple(Fields).
 
 %% user_auth -> User Auth
 -spec smash_snake(ne_binary()) -> iolist().
@@ -111,9 +125,16 @@ format_name_part(<<"auth">>) -> <<"Authentication">>;
 format_name_part(Part) ->
     kz_binary:ucfirst(Part).
 
+-spec default_schema_priv_dir() -> file:filename_all().
+default_schema_priv_dir() ->
+    kz_term:to_binary(code:priv_dir('crossbar')).
+
 -spec schema_path(binary()) -> file:filename_all().
+-spec schema_path(binary(), file:filename_all()) -> file:filename_all().
 schema_path(Base) ->
-    case filename:join([code:priv_dir('crossbar')
+    schema_path(Base, default_schema_priv_dir()).
+schema_path(Base, PrivDir) ->
+    case filename:join([PrivDir
                        ,<<"couchdb">>
                        ,<<"schemas">>
                        ,Base
@@ -295,7 +316,7 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
         end,
 
     maybe_sub_properties_to_row(SchemaJObj
-                               ,kz_json:get_ne_value(<<"type">>, Settings)
+                               ,kz_json:get_value(<<"type">>, Settings)
                                ,Names
                                ,Settings
                                ,{[?TABLE_ROW(cell_wrap(kz_binary:join(Names, <<".">>))
@@ -469,11 +490,16 @@ maybe_sub_properties_to_row(SchemaJObj, <<"array">>, Names, Settings, {Table, Re
             };
         _Type -> {Table, Refs}
     end;
+maybe_sub_properties_to_row(SchemaJObj, [_|_]=Types, Names, Settings, Acc) ->
+    lists:foldl(fun(Type, Acc0) -> maybe_sub_properties_to_row(SchemaJObj, Type, Names, Settings, Acc0) end
+               ,Acc
+               ,Types
+               );
 maybe_sub_properties_to_row(_SchemaJObj, _Type, _Keys, _Settings, Acc) ->
     Acc.
 
 maybe_object_properties_to_row(SchemaJObj, Key, Acc0, Names, Settings) ->
-    SubSchema = kz_json:get_value(Key, Settings, kz_json:new()),
+    SubSchema = kz_json:get_json_value(Key, Settings, kz_json:new()),
     kz_json:foldl(fun(Name, SubSettings, Acc1) ->
                           property_to_row(SchemaJObj, Names ++ [maybe_regex_name(Key, Name)], SubSettings, Acc1)
                   end

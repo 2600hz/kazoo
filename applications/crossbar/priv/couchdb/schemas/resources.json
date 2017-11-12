@@ -21,6 +21,14 @@
             },
             "type": "array"
         },
+        "flat_rate_blacklist": {
+            "description": "Regex for determining if a number should not be eligible for flat-rate trunking",
+            "type": "string"
+        },
+        "flat_rate_whitelist": {
+            "description": "Regex for determining if the number is eligible for flat-rate trunking",
+            "type": "string"
+        },
         "format_from_uri": {
             "description": "When set to true requests to this resource will have a re-formated SIP From Header",
             "type": "boolean"
@@ -149,6 +157,75 @@
                             "1npan"
                         ],
                         "type": "string"
+                    },
+                    "invite_parameters": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "dynamic": {
+                                "description": "A list of properties that, if found on the inbound call, should be added as an INVITE parameter",
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "pattern": "custom_channel_vars\\..*",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "pattern": "custom_sip_headers\\..*",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "enum": [
+                                                "zone"
+                                            ],
+                                            "type": "string"
+                                        },
+                                        {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "key": {
+                                                    "oneOf": [
+                                                        {
+                                                            "pattern": "custom_channel_vars\\..*",
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "pattern": "custom_sip_headers\\..*",
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "enum": [
+                                                                "zone"
+                                                            ],
+                                                            "type": "string"
+                                                        }
+                                                    ]
+                                                },
+                                                "seperator": {
+                                                    "type": "string"
+                                                },
+                                                "tag": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "key",
+                                                "tag"
+                                            ],
+                                            "type": "object"
+                                        }
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            "static": {
+                                "description": "A list of static values that should be added as INVITE parameters",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        },
+                        "type": "object"
                     },
                     "media": {
                         "description": "The media parameters for the resource gateway",

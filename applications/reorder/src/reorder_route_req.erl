@@ -30,7 +30,7 @@ maybe_known_number(ControllerQ, JObj) ->
         {'ok', _, _} -> send_known_number_response(JObj, ControllerQ);
         {'error', _R} ->
             lager:debug("~s is not associated with any account, ~p", [Number, _R]),
-            send_unknown_number_response(JObj, ControllerQ)
+            send_unknown_number_response(JObj, ControllerQ, knm_converters:is_reconcilable(Number))
     end.
 
 -spec get_dest_number(kz_json:object()) -> ne_binary().
@@ -65,8 +65,8 @@ send_known_number_response(JObj, Q) ->
            ],
     kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec send_unknown_number_response(kz_json:object(), ne_binary()) -> 'ok'.
-send_unknown_number_response(JObj, Q) ->
+-spec send_unknown_number_response(kz_json:object(), ne_binary(), boolean()) -> 'ok'.
+send_unknown_number_response(JObj, Q, Reconcilable) ->
     ErrorCode = kapps_config:get_binary(?APP_NAME, <<"unknown-error-code">>, <<"604">>),
     ErrorMsg = kapps_config:get_binary(?APP_NAME, <<"unknown-error-message">>, <<"Nope Nope Nope">>),
     lager:debug("sending unknown number response: ~s ~s", [ErrorCode, ErrorMsg]),
@@ -74,7 +74,7 @@ send_unknown_number_response(JObj, Q) ->
            ,{<<"Method">>, <<"error">>}
            ,{<<"Route-Error-Code">>, ErrorCode}
            ,{<<"Route-Error-Message">>, ErrorMsg}
-           ,{<<"Defer-Response">>, <<"true">>}
+           ,{<<"Defer-Response">>, (not Reconcilable)}
             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
