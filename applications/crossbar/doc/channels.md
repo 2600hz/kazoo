@@ -103,14 +103,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 
-#### Put a feature on a channel
-
-currently only `metaflow` is supported
-
-#### Metaflow
-
-Metaflow feature is a `metaflow` object which validates with its json schema.
-
+#### Put a feature (metaflow) on a channel
 
 > PUT /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -121,6 +114,8 @@ curl -v -X PUT \
     -d '{"action":"metaflow", "data": {"data": { "module": "hangup" }}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
+
+The Metaflow feature is a `metaflow` object which validates with its json schema.
 
 ##### Reasoning
 
