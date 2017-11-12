@@ -270,7 +270,7 @@ start_receive_fax(#state{call=Call
                         ,fax_id=FaxId
                         }=State) ->
     NewState = maybe_update_fax_settings(State),
-    ResourceFlag = kapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),
+    ResourceFlag = kz_term:to_atom(kapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call), 'true'),
     LocalFile = get_fs_filename(NewState),
     send_status(NewState, list_to_binary(["New Fax from ", kapps_call:caller_id_number(Call)]), ?FAX_START, 'undefined'),
     kapps_call_command:answer(Call),
