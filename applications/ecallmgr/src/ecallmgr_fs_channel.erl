@@ -169,8 +169,8 @@ channel_data(Node, UUID) ->
     freeswitch:sync_channel(Node, UUID),
     receive
         {'channel_sync', JObj} -> {'ok', JObj}
-    after ?SYNC_TIMEOUT ->
-        {'error', timeout}
+    after ?SYNC_TIMEOUT ->        
+            {'error', timeout}
     end.
 
 -spec to_json(channel()) -> kz_json:object().
