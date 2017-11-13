@@ -69,7 +69,7 @@ get_range_db(AccountId, Days) ->
 split_to_modbs(AccountId, MsgIds) ->
     lists:foldl(fun(Id, Map) ->
                         Db = get_db(AccountId, Id),
-                        maps:update_with(Db, fun(List) -> [Id|List] end, [Id], Map)
+                        kz_maps:update_with(Db, fun(List) -> [Id|List] end, [Id], Map)
                 end, #{}, MsgIds).
 
 %%--------------------------------------------------------------------

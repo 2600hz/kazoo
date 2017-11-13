@@ -363,11 +363,11 @@ do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResultMap, _, _) ->
 do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResultMap, Funs, RetenTimestamp) ->
     case kvm_message:maybe_do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ, Funs, RetenTimestamp) of
         {'ok', Moved} ->
-            NewMap = maps:update_with(succeeded, fun(List) -> [kz_doc:id(Moved)|List] end, [kz_doc:id(Moved)], ResultMap),
+            NewMap = kz_maps:update_with(succeeded, fun(List) -> [kz_doc:id(Moved)|List] end, [kz_doc:id(Moved)], ResultMap),
             do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, NewMap, Funs, RetenTimestamp);
         {'error', Reason} ->
             IdReason = {FromId, kz_term:to_binary(Reason)},
-            NewMap = maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], ResultMap),
+            NewMap = kz_maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], ResultMap),
             do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, NewMap, Funs, RetenTimestamp)
     end.
 
@@ -463,7 +463,7 @@ normalize_account_listing(JObj, Map) ->
     case kz_json:get_value([<<"key">>, ?LISTING_BY_TIMESTAMP_BOX_ID_KEY_INDEX], JObj) of
         'undefined' -> Map;
         BoxId ->
-            maps:update_with(BoxId, fun(List) -> List ++ [Value] end, [Value], Map)
+            kz_maps:update_with(BoxId, fun(List) -> List ++ [Value] end, [Value], Map)
     end.
 
 %%--------------------------------------------------------------------
@@ -598,13 +598,13 @@ split_to_modbs_and_apply_funs(#{to_update_map := ToUpdateMap
             Id = kz_doc:id(JObj),
             Db = kvm_util:get_db(AccountId, JObj),
             NewJObj = kvm_util:enforce_retention(JObj, 'true'),
-            NewMap = SplitMap#{to_update_map => maps:update_with(Db, fun(List) -> [NewJObj|List] end, [NewJObj], ToUpdateMap)
+            NewMap = SplitMap#{to_update_map => kz_maps:update_with(Db, fun(List) -> [NewJObj|List] end, [NewJObj], ToUpdateMap)
                               ,enforce_set => sets:add_element(Id, EnforceSet)
                               },
             split_to_modbs_and_apply_funs(NewMap, AccountId, JObjs, Funs, RetenTimestamp);
         'false' ->
             NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
             Db = kvm_util:get_db(AccountId, NewJObj),
-            NewToUpdateMap = maps:update_with(Db, fun(List) -> [NewJObj|List] end, [NewJObj], ToUpdateMap),
+            NewToUpdateMap = kz_maps:update_with(Db, fun(List) -> [NewJObj|List] end, [NewJObj], ToUpdateMap),
             split_to_modbs_and_apply_funs(SplitMap#{to_update_map => NewToUpdateMap}, AccountId, JObjs, Funs, RetenTimestamp)
     end.

@@ -357,12 +357,12 @@ maybe_copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs, Ret
         {'true', {'ok', JObj}} ->
             _ = do_update(JObj, [fun(J) -> kvm_util:enforce_retention(J, 'true') end]),
             IdReason = {FromId, <<"prior_to_retention_duration">>},
-            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
+            kz_maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
         {'false', {'ok', _}} ->
             copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs);
         {_, {'error', Reason}} ->
             IdReason = {FromId, kz_term:to_binary(Reason)},
-            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
+            kz_maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
     end.
 
 -spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), bulk_map(), update_funs()) -> bulk_map().
@@ -388,7 +388,7 @@ copy_to_vmbox(_AccountId, FromId, _OldBoxId, NBId, CopyMap
              ) ->
     lager:warning("could not open destination vmbox ~s", [NBId]),
     IdReason = {FromId, kz_term:to_binary(Reason)},
-    maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
+    kz_maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap);
 copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
              ,{'ok', NBox}
              ,Funs
@@ -398,10 +398,10 @@ copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopyMap
     case do_copy(AccountId, FromId, ToId, TransformFuns ++ Funs) of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
-            maps:update_with(succeeded, fun(List) -> [CopiedId|List] end, [CopiedId], CopyMap);
+            kz_maps:update_with(succeeded, fun(List) -> [CopiedId|List] end, [CopiedId], CopyMap);
         {'error', R} ->
             IdReason = {FromId, kz_term:to_binary(R)},
-            maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
+            kz_maps:update_with(failed, fun(List) -> [IdReason|List] end, [IdReason], CopyMap)
     end.
 
 -spec do_copy(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> db_ret().

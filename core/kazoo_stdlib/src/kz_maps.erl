@@ -13,6 +13,7 @@
 -export([merge/2, merge/3]).
 -export([get/2, get/3]).
 -export([keys_to_atoms/1, keys_to_atoms/2]).
+-export([update_with/4]).
 
 %% if you want specific merge functionality, first arg to merge/3
 -export([merge_left/2, merge_right/2]).
@@ -106,6 +107,14 @@ keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
     Acc#{kz_term:to_atom(K, 'true') => keys_to_atoms(V)};
 keys_to_atoms_fold(K, V, Acc) ->
     Acc#{kz_term:to_atom(K, 'true') => V}.
+
+-spec update_with(term(), fun((any()) -> any()), any(), map()) -> map().
+update_with(Key, UpdateFun, Init, Map) ->
+    try maps:get(Key, Map) of
+        OldValue -> maps:put(Key, UpdateFun(OldValue), Map)
+    catch
+        error:{badkey, _} -> maps:put(Key, Init, Map)
+    end.
 
 %% ====================================================================
 %% Internal functions

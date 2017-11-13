@@ -70,14 +70,6 @@ next_skip(Remaining, Skip, ViewOptions) ->
         false -> props:set_value('skip', Skip, ViewOptions)
     end.
 
--spec maps_update_with(ne_binary(), fun((any()) -> any()), any(), map()) -> map().
-maps_update_with(Key, UpdateFun, Init, Map) ->
-    try maps:get(Key, Map) of
-        OldValue -> maps:put(Key, UpdateFun(OldValue), Map)
-    catch
-        error:{badkey, _} -> maps:put(Key, Init, Map)
-    end.
-
 %%%===================================================================
 %%% Voicemail Migration
 %%%===================================================================
@@ -163,21 +155,21 @@ move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
     case kazoo_modb:move_doc(AccountDb, FromId, ToDb, ToId, Opts) of
         {'ok', _} ->
             io:format("done~n"),
-            Map#{result := maps_update_with(BoxId
-                                           ,fun(Old) -> sets:add_element(FromId, Old) end
-                                           ,sets:from_list([FromId])
-                                           ,Result
-                                           )
+            Map#{result := kz_maps:update_with(BoxId
+                                              ,fun(Old) -> sets:add_element(FromId, Old) end
+                                              ,sets:from_list([FromId])
+                                              ,Result
+                                              )
                 ,moved := Moved + 1
                 ,processed := Processed + 1
                 };
         {'error', 'conflict'} ->
             io:format("done~n"),
-            Map#{result := maps_update_with(BoxId
-                                           ,fun(Old) -> sets:add_element(FromId, Old) end
-                                           ,sets:from_list([FromId])
-                                           ,Result
-                                           )
+            Map#{result := kz_maps:update_with(BoxId
+                                              ,fun(Old) -> sets:add_element(FromId, Old) end
+                                              ,sets:from_list([FromId])
+                                              ,Result
+                                              )
                 ,moved := Moved + 1
                 ,processed := Processed + 1
                 };
@@ -337,7 +329,7 @@ map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
                     ],
     NewDoc = lists:foldl(fun(F, J) -> F(J) end, Doc, TransformFuns),
 
-    NewMap = maps_update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [NewDoc], Map),
+    NewMap = kz_maps:update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [NewDoc], Map),
     map_tranform_cdrs(AccountId, VRs, NewMap).
 
 -spec do_move_cdrs(ne_binary(), kz_json:object(), ne_binaries()) -> ne_binaries().

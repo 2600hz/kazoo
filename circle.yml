@@ -1,6 +1,6 @@
 machine:
   environment:
-    OTP_VERSION: 19.3
+    OTP_VERSION: 18.3
     PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
     CHANGED: 'git --no-pager diff --name-only HEAD origin/4.1 -- applications core'
     CHANGED_SWAGGER: 'git --no-pager diff --name-only HEAD origin/4.1 -- applications/crossbar/priv/api/swagger.json'
