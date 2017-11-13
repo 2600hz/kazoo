@@ -18,17 +18,17 @@ Accounts represent tenants or customers on the system. Each account represents a
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`call_recording.account` |   | `object()` |   | `false`
-`call_recording.endpoint` |   | `object()` |   | `false`
+`call_recording.account` |   | [#/definitions/call_recording](#call_recording) |   | `false`
+`call_recording.endpoint` |   | [#/definitions/call_recording](#call_recording) |   | `false`
 `call_recording` | call recording configuration | `object()` |   | `false`
 `call_restriction` | Account level call restrictions for each available number classification | `object()` | `{}` | `false`
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
-`caller_id` | The account default caller ID parameters | `object()` | `{}` | `false`
-`dial_plan` | A list of default rules used to modify dialed numbers | `object()` | `{}` | `false`
+`caller_id` | The account default caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false`
+`dial_plan` | A list of default rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false`
 `do_not_disturb.enabled` | The default value for do-not-disturb | `boolean()` |   | `false`
 `do_not_disturb` |   | `object()` |   | `false`
 `enabled` | Determines if the account is currently enabled | `boolean()` | `true` | `false`
-`formatters` |   | `object()` |   | `false`
+`formatters` |   | [#/definitions/formatters](#formatters) |   | `false`
 `language` | The language for this account | `string()` |   | `false`
 `metaflows` |   | [#/definitions/metaflows](#metaflows) |   | `false`
 `music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..128)` |   | `false`

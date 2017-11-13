@@ -359,12 +359,10 @@
                     "description": "call recording configuration",
                     "properties": {
                         "account": {
-                            "$ref": "#/definitions/call_recording",
-                            "type": "object"
+                            "$ref": "#/definitions/call_recording"
                         },
                         "endpoint": {
-                            "$ref": "#/definitions/call_recording",
-                            "type": "object"
+                            "$ref": "#/definitions/call_recording"
                         }
                     },
                     "type": "object"
@@ -392,15 +390,11 @@
                 },
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
-                    "default": {},
-                    "description": "The account default caller ID parameters",
-                    "type": "object"
+                    "description": "The account default caller ID parameters"
                 },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
-                    "default": {},
-                    "description": "A list of default rules used to modify dialed numbers",
-                    "type": "object"
+                    "description": "A list of default rules used to modify dialed numbers"
                 },
                 "do_not_disturb": {
                     "properties": {
@@ -417,8 +411,7 @@
                     "type": "boolean"
                 },
                 "formatters": {
-                    "$ref": "#/definitions/formatters",
-                    "type": "object"
+                    "$ref": "#/definitions/formatters"
                 },
                 "language": {
                     "description": "The language for this account",
