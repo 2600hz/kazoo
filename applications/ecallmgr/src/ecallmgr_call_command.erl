@@ -335,8 +335,7 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
     case kapi_dialplan:execute_extension_v(JObj) of
         'false' -> {'error', <<"execute extension failed to execute as JObj did not validate">>};
         'true' ->
-            Routines = [fun execute_exten_handle_reset/4
-                       ,fun execute_exten_handle_ccvs/4
+            Routines = [fun execute_exten_handle_ccvs/4
                        ,fun execute_exten_pre_exec/4
                        ,fun execute_exten_create_command/4
                        ,fun execute_exten_post_exec/4
@@ -929,13 +928,6 @@ wait_for_conference(ConfName) ->
 %% @doc Execute extension helpers
 %% @end
 %%------------------------------------------------------------------------------
-execute_exten_handle_reset(DP, Node, UUID, JObj) ->
-    case kz_json:is_true(<<"Reset">>, JObj) of
-        'false' -> 'ok';
-        'true' ->
-            create_dialplan_move_ccvs(Node, UUID, DP)
-    end.
-
 execute_exten_handle_ccvs(DP, _Node, UUID, JObj) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     case kz_json:is_empty(CCVs) of
@@ -964,42 +956,6 @@ execute_exten_post_exec(DP, _Node, _UUID, _JObj) ->
     ,{"application", "park "}
      |DP
     ].
-
--spec create_dialplan_move_ccvs(atom(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
-create_dialplan_move_ccvs(Node, UUID, DP) ->
-    case ecallmgr_fs_channel:channel_data(Node, UUID) of
-        {'ok', Props} ->
-            create_dialplan_move_ccvs(DP, Props);
-        {'error', _E} ->
-            lager:debug("failed to create ccvs for move, no channel data for ~s: ~p", [UUID, _E]),
-            DP
-    end.
-
--spec create_dialplan_move_ccvs(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
-create_dialplan_move_ccvs(DP, Props) ->
-    lists:foldr(fun create_dialplan_move_ccvs_fold/2, DP, Props).
-
-create_dialplan_move_ccvs_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
-    [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
-    ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
-     |Acc
-    ];
-create_dialplan_move_ccvs_fold({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
-    [{"application", <<"unset ", Key/binary>>}
-    ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT, K/binary, "=", Val/binary>>}
-     |Acc
-    ];
-create_dialplan_move_ccvs_fold({<<"variable_sip_h_X-", Key/binary>>, Val}, Acc) ->
-    [{"application", <<"unset sip_h_X-", Key/binary>>}
-    ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
-     |Acc
-    ];
-create_dialplan_move_ccvs_fold({<<"sip_h_X-", Key/binary>>, Val}, Acc) ->
-    [{"application", <<"unset sip_h_X-", Key/binary>>}
-    ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
-     |Acc
-    ];
-create_dialplan_move_ccvs_fold(_, Acc) -> Acc.
 
 -spec tts(atom(), kz_term:ne_binary(), kz_json:object()) ->
                  {kz_term:ne_binary(), kz_term:ne_binary()}.
