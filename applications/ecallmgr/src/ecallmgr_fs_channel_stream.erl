@@ -58,10 +58,10 @@ channel_data(#{node := Node, call_id := UUID, payload := JObj}) ->
 
 -spec channel_sync(map()) -> any().
 channel_sync(#{node := Node, call_id := UUID, payload := JObj}) ->
-    case kz_json:get_ne_binary_value(<<"Event-PID">>, JObj) of
-        'undefined' -> 'ok';
-        Pid -> kz_term:to_pid(Pid) ! {'channel_sync', JObj}
-    end,
+    _ = case kz_json:get_ne_binary_value(<<"Event-PID">>, JObj) of
+            'undefined' -> 'ok';
+            Pid -> kz_term:to_pid(Pid) ! {'channel_sync', JObj}
+        end,
     ecallmgr_fs_channel:update(Node, UUID, JObj).
 
 -spec channel_bridge(map()) -> any().

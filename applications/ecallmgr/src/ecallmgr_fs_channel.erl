@@ -169,7 +169,7 @@ channel_data(Node, UUID) ->
     freeswitch:sync_channel(Node, UUID),
     receive
         {'channel_sync', JObj} -> {'ok', JObj}
-    after ?SYNC_TIMEOUT ->        
+    after ?SYNC_TIMEOUT ->
             {'error', timeout}
     end.
 
