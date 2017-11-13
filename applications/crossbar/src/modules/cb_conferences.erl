@@ -462,6 +462,12 @@ create_call(Context, ConferenceId) ->
 
 -type build_acc() :: {kz_json:objects(), kapps_call:call()}.
 -spec build_endpoint(ne_binary(), build_acc()) -> build_acc().
+build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call}) ->
+    lager:info("building SIP endpoint ~s", [URI]),
+    Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
+                                 ,{<<"Route">>, URI}
+                                 ]),
+    {[Endpoint | Endpoints], Call};
 build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), EndpointId) of
         {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call});
@@ -469,12 +475,6 @@ build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
             lager:info("failed to build endpoint ~s: ~p", [EndpointId, _E]),
             {Endpoints, Call}
     end;
-build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call}) ->
-    lager:info("building SIP endpoint ~s", [URI]),
-    Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
-                                 ,{<<"Route">>, URI}
-                                 ]),
-    {[Endpoint | Endpoints], Call};
 build_endpoint(Number, {Endpoints, Call}) ->
     AccountRealm = kapps_call:account_realm(Call),
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
