@@ -192,3 +192,15 @@ These properties may exist on a CDR for a fax request (inbound or outbound):
 * `fax_result_code` - [Result code](http://wiki.freeswitch.org/wiki/Variable_fax_result_code) of the transmission
 * `fax_success` - boolean for whether the fax was considered a success
 * `fax_t38` - boolean for whether the fax T.38 was used
+
+##### Resource Properties
+
+All resource properties are set by the Stepswitch application.
+
+* `resource_type` - This property attemtps to explain the reason the resource was used.  The possible values are:
+    * offnet-origination - Inbound call from a resource/carrier to a Kazoo account 
+    * offnet-termination - Outbound call from a Kazoo account to a resource/carrier 
+    * onnet-origination - Inbound call from a Kazoo account to another Kazoo account 
+    * onnet-termination - Outbound call from a Kazoo account to another Kazoo account 
+* `global_resource` - This boolean is TRUE when the channel has been created by processing a resource from the offnet database, and FALSE if the resource is from an account database (local).
+* `resource_id` - This is resource document id used to create the channel
