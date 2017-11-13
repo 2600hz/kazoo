@@ -99,13 +99,13 @@ print_result(Result, true) ->
     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
     try stdout("Result: ~s", [String])
     catch
-        erro:badarg -> stdout("Result: ~p", [String])
+        error:badarg -> stdout("Result: ~p", [String])
     end;
 print_result(Result, false) ->
     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
     try stdout("~s", [String])
     catch
-        erro:badarg -> stdout("~p", [String])
+        error:badarg -> stdout("~p", [String])
     end.
 
 -spec get_target(kz_proplist(), boolean()) -> atom().
