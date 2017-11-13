@@ -45,6 +45,8 @@
         ,set_app_screenshots/2
         ]).
 
+-export([does_schema_exist/1]).
+
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
 
@@ -505,15 +507,17 @@ db_exists(Database, ShouldRetry) ->
 
 -spec do_schemas_exist() -> boolean().
 do_schemas_exist() ->
-    Schemas = [<<"users">>, <<"accounts">>],
+    Schemas = [<<"users">>
+              ,<<"accounts">>
+              ,<<"profile">>
+              ],
     lists:all(fun does_schema_exist/1, Schemas).
 
 -spec does_schema_exist(ne_binary()) -> boolean().
 does_schema_exist(Schema) ->
     case kz_json_schema:load(Schema) of
-        {'ok', _} -> 'true';
-        {'error', 'not_found'} ->
-            maybe_fload(Schema)
+        {'ok', SchemaJObj} -> maybe_load_refs(SchemaJObj);
+        {'error', 'not_found'} -> maybe_fload(Schema)
     end.
 
 -spec maybe_fload(ne_binary()) -> boolean().
@@ -522,15 +526,27 @@ maybe_fload(Schema) ->
         {'ok', SchemaJObj} ->
             lager:info("schema ~s exists on disk, refreshing in db"),
             case kz_datamgr:save_doc(?KZ_SCHEMA_DB, SchemaJObj) of
-                {'ok', _} -> 'true';
-                {'error', 'conflict'} -> 'true'
-            end;
+                {'ok', _} -> 'ok';
+                {'error', 'conflict'} -> 'ok'
+            end,
+            maybe_load_refs(SchemaJObj);
         {'error', _E} ->
             lager:error("schema ~s not in db or on disk: ~p", [Schema, _E]),
             throw(kz_json:from_list([{<<"error">>, <<"schema ", Schema/binary, " not found">>}
                                     ,{<<"schema">>, Schema}
                                     ])
                  )
+    end.
+
+maybe_load_refs(SchemaJObj) ->
+    kz_json:all(fun maybe_load_ref/1
+               ,kz_json:get_json_value(<<"properties">>, SchemaJObj, kz_json:new())
+               ).
+
+maybe_load_ref({_Property, Schema}) ->
+    case kz_json:get_ne_binary_value(<<"$ref">>, Schema) of
+        'undefined' -> maybe_load_refs(Schema);
+        Ref -> does_schema_exist(Ref)
     end.
 
 %%--------------------------------------------------------------------
