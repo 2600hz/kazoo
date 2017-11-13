@@ -451,6 +451,7 @@ prechecks(Context) ->
            ,fun db_accounts_exists/0
            ,fun db_system_config_exists/0
            ,fun db_system_schemas_exists/0
+           ,fun do_schemas_exist/0
            ],
     'true' = lists:all(fun(F) -> F() end, Funs),
     lager:info("prechecks passed"),
@@ -498,6 +499,36 @@ db_exists(Database, ShouldRetry) ->
         'false' ->
             throw(kz_json:from_list([{<<"error">>, <<"database not ready">>}
                                     ,{<<"database">>, Database}
+                                    ])
+                 )
+    end.
+
+-spec do_schemas_exist() -> boolean().
+do_schemas_exist() ->
+    Schemas = [<<"users">>, <<"accounts">>],
+    lists:all(fun does_schema_exist/1, Schemas).
+
+-spec does_schema_exist(ne_binary()) -> boolean().
+does_schema_exist(Schema) ->
+    case kz_json_schema:load(Schema) of
+        {'ok', _} -> 'true';
+        {'error', 'not_found'} ->
+            maybe_fload(Schema)
+    end.
+
+-spec maybe_fload(ne_binary()) -> boolean().
+maybe_fload(Schema) ->
+    case kz_json_schema:fload(Schema) of
+        {'ok', SchemaJObj} ->
+            lager:info("schema ~s exists on disk, refreshing in db"),
+            case kz_datamgr:save_doc(?KZ_SCHEMA_DB, SchemaJObj) of
+                {'ok', _} -> 'true';
+                {'error', 'conflict'} -> 'true'
+            end;
+        {'error', _E} ->
+            lager:error("schema ~s not in db or on disk: ~p", [Schema, _E]),
+            throw(kz_json:from_list([{<<"error">>, <<"schema ", Schema/binary, " not found">>}
+                                    ,{<<"schema">>, Schema}
                                     ])
                  )
     end.
