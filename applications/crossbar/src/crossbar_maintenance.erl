@@ -447,12 +447,18 @@ update_system_config(AccountId) ->
 
 -spec prechecks(cb_context:context()) -> {'ok', cb_context:context()}.
 prechecks(Context) ->
-    Funs = [fun db_accounts_exists/0
+    Funs = [fun is_crossbar_running/0
+           ,fun db_accounts_exists/0
            ,fun db_system_config_exists/0
            ,fun db_system_schemas_exists/0
            ],
     'true' = lists:all(fun(F) -> F() end, Funs),
+    lager:info("prechecks passed"),
     {'ok', Context}.
+
+-spec is_crossbar_running() -> boolean().
+is_crossbar_running() ->
+    lists:member('crossbar', kapps_controller:running_apps()).
 
 -spec db_accounts_exists() -> 'true'.
 db_accounts_exists() ->
