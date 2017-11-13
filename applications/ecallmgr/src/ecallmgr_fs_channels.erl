@@ -22,7 +22,7 @@
 -export([flush_node/1]).
 -export([new/1]).
 -export([destroy/2]).
--export([update/3, updates/2]).
+-export([update/2, update/3, updates/2]).
 -export([deferred_update/3, deferred_updates/2]).
 -export([cleanup_old_channels/0, cleanup_old_channels/1
         ,max_channel_uptime/0
@@ -197,16 +197,19 @@ flush_node(Node) ->
 
 -spec new(channel()) -> 'ok'.
 new(#channel{}=Channel) ->
-    gen_server:call(?SERVER, {'new_channel', Channel}).
+    gen_server:call(?SERVER, {'channel', Channel}).
 
 -spec destroy(kz_term:ne_binary(), atom()) -> 'ok'.
 destroy(UUID, Node) ->
     gen_server:cast(?SERVER, {'destroy_channel', UUID, Node}).
 
+-spec update(kz_term:ne_binary(), channel()) -> 'ok'.
+update(UUID, Channel) ->
+    gen_server:call(?SERVER, {'channel', UUID, Channel}).
+
 -spec update(kz_term:ne_binary(), pos_integer(), any()) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
-
 
 -spec updates(kz_term:ne_binary(), channel_updates()) -> 'ok'.
 updates(UUID, Updates) ->
@@ -419,8 +422,10 @@ start_cleanup_ref() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call({'new_channel', Channel}, _, State) ->
+handle_call({'channel', Channel}, _, State) ->
     ets:insert(?CHANNELS_TBL, Channel),
+    {'reply', 'ok', State};
+handle_call({'channel_updates', _UUID, []}, _, State) ->
     {'reply', 'ok', State};
 handle_call({'channel_updates', UUID, Update}, _, State) ->
     ets:update_element(?CHANNELS_TBL, UUID, Update),
@@ -812,21 +817,22 @@ handle_channel_disconnected(Channel) ->
 publish_channel_connection_event(#channel{uuid=UUID
                                          ,direction=Direction
                                          ,node=Node
-                                         ,destination=Destination
-                                         ,username=Username
-                                         ,realm=Realm
                                          ,presence_id=PresenceId
                                          ,answered=IsAnswered
+                                         ,from=From
+                                         ,to=To
                                          }=Channel
                                 ,ChannelSpecific) ->
+    lager:debug("CHANNEL ~p", [Channel]),
+    lager:debug_unsafe("CHANNEL json ~s", [kz_json:encode(ecallmgr_fs_channel:to_api_json(Channel), ['pretty'])]),
     Event = [{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Call-Direction">>, Direction}
             ,{<<"Media-Server">>, Node}
             ,{<<"Custom-Channel-Vars">>, connection_ccvs(Channel)}
             ,{<<"Custom-Application-Vars">>, connection_cavs(Channel)}
-            ,{<<"To">>, <<Destination/binary, "@", Realm/binary>>}
-            ,{<<"From">>, <<Username/binary, "@", Realm/binary>>}
+            ,{<<"To">>, To}
+            ,{<<"From">>, From}
             ,{<<"Presence-ID">>, PresenceId}
             ,{<<"Channel-Call-State">>, channel_call_state(IsAnswered)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ ChannelSpecific
@@ -840,30 +846,11 @@ channel_call_state('true') ->
 channel_call_state('false') ->
     'undefined'.
 
--spec connection_ccvs(channel()) -> kz_json:object().
-connection_ccvs(#channel{account_id=AccountId
-                        ,authorizing_id=AuthorizingId
-                        ,authorizing_type=AuthorizingType
-                        ,resource_id=ResourceId
-                        ,fetch_id=FetchId
-                        ,bridge_id=BridgeId
-                        ,owner_id=OwnerId
-                        }) ->
-    kz_json:from_list(
-      [{<<"Account-ID">>, AccountId}
-      ,{<<"Authorizing-ID">>, AuthorizingId}
-      ,{<<"Authorizing-Type">>, AuthorizingType}
-      ,{<<"Resource-ID">>, ResourceId}
-      ,{<<"Fetch-ID">>, FetchId}
-      ,{<<"Bridge-ID">>, BridgeId}
-      ,{<<"Owner-ID">>, OwnerId}
-      ]).
+-spec connection_ccvs(channel()) -> api_object().
+connection_ccvs(#channel{ccvs=CCVs}) -> CCVs.
 
 -spec connection_cavs(channel()) -> kz_term:api_object().
-connection_cavs(#channel{cavs=CAVs}) when is_list(CAVs) ->
-    kz_json:from_list(CAVs);
-connection_cavs(#channel{}) -> 'undefined'.
-
+connection_cavs(#channel{cavs=CAVs}) -> CAVs.
 
 -define(MAX_CHANNEL_UPTIME_KEY, <<"max_channel_uptime_s">>).
 

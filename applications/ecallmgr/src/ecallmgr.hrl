@@ -103,8 +103,10 @@
                  ,loopback_other_leg :: kz_term:api_ne_binary() | '_'
                  ,callflow_id :: kz_term:api_ne_binary() | '_'
                  ,is_onhold = 'false' :: boolean() | '_'
-                 ,cavs :: kz_term:api_object() | '_'
-                 ,ccvs :: kz_term:api_object() | '_'
+                 ,cavs :: api_object() | '_'
+                 ,ccvs :: api_object() | '_'
+                 ,from :: kz_term:api_binary() | '_'
+                 ,to :: kz_term:api_binary() | '_'
                  }).
 
 -type channel() :: #channel{}.
@@ -405,7 +407,7 @@
                    ,{record, ['RECORD_START', 'RECORD_STOP']}
                    ,{callflow, ['ROUTE_WINNER', 'CHANNEL_EXECUTE_COMPLETE']}
                    ,{presence, ['PRESENCE_IN']}
-                   ,{channel_full_update, ['CHANNEL_DATA','CALL_UPDATE', 'CALL_SECURE']}
+                   ,{channel_full_update, ['CHANNEL_DATA','CHANNEL_SYNC','CALL_UPDATE', 'CALL_SECURE']}
                    ,{channel_update, ['CHANNEL_HOLD','CHANNEL_UNHOLD']}
                    ,{conference, ['conference::maintenance']}
                    ,{fax, ?FAX_EVENTS}

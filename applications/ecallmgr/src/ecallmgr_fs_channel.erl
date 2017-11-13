@@ -20,6 +20,8 @@
         ,renew/2
         ,channel_data/2
         ,get_other_leg/2
+        ,new/3
+        ,update/3
         ]).
 -export([to_json/1
         ,to_props/1
@@ -35,6 +37,7 @@
 -include("ecallmgr.hrl").
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
+-define(SYNC_TIMEOUT, 2 * ?MILLISECONDS_IN_SECOND).
 
 %%%=============================================================================
 %%% API
@@ -156,18 +159,18 @@ set_authorized(UUID, Value) ->
                    {'error', 'timeout' | 'badarg'}.
 renew(Node, UUID) ->
     case channel_data(Node, UUID) of
-        {'ok', Props} ->
-            {'ok', props_to_record(Props, Node)};
+        {'ok', JObj} -> {'ok', jobj_to_record(Node, UUID, JObj)};
         {'error', _}=E -> E
     end.
 
--spec channel_data(atom(), kz_term:ne_binary()) -> {'ok', kz_term:proplist()} |
+-spec channel_data(atom(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
                                                    freeswitch:fs_api_error().
 channel_data(Node, UUID) ->
-    case freeswitch:api(Node, 'uuid_dump', UUID) of
-        {'error', _}=E -> E;
-        {'ok', Dump} ->
-            {'ok', ecallmgr_util:eventstr_to_proplist(Dump)}
+    freeswitch:sync_channel(Node, UUID),
+    receive
+        {'channel_sync', JObj} -> {'ok', JObj}
+    after ?SYNC_TIMEOUT ->
+        {'error', timeout}
     end.
 
 -spec to_json(channel()) -> kz_json:object().
@@ -242,6 +245,7 @@ to_api_props(#channel{}=Channel) ->
       ,{<<"Dialplan">>, Channel#channel.dialplan}
       ,{<<"Elapsed-Seconds">>, kz_time:elapsed_s(Channel#channel.timestamp)}
       ,{<<"Fetch-ID">>, Channel#channel.fetch_id}
+      ,{<<"From">>, Channel#channel.from}
       ,{<<"From-Tag">>, Channel#channel.from_tag}
       ,{<<"Is-Loopback">>, Channel#channel.is_loopback}
       ,{<<"Is-On-Hold">>, Channel#channel.is_onhold}
@@ -259,6 +263,7 @@ to_api_props(#channel{}=Channel) ->
       ,{<<"Resource-ID">>, Channel#channel.resource_id}
       ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
       ,{<<"Timestamp">>, Channel#channel.timestamp}
+      ,{<<"To">>, Channel#channel.to}
       ,{<<"To-Tag">>, Channel#channel.to_tag}
       ,{<<"Username">>, Channel#channel.username}
       ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
@@ -300,129 +305,6 @@ fetch_remote(UUID) ->
             Props ++ CCVs
     end.
 
--spec props_to_record(kz_term:proplist(), atom()) -> channel().
-props_to_record(Props, Node) ->
-    UUID = props:get_value(<<"Unique-ID">>, Props),
-    CCVs = ecallmgr_util:custom_channel_vars(Props),
-    CAVs = ecallmgr_util:custom_application_vars(Props),
-    OtherLeg = get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props),
-
-    #channel{uuid=UUID
-            ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
-            ,direction=kz_evt_freeswitch:call_direction(Props)
-            ,account_id=props:get_value(<<"Account-ID">>, CCVs)
-            ,account_billing=props:get_value(<<"Account-Billing">>, CCVs)
-            ,authorizing_id=props:get_value(<<"Authorizing-ID">>, CCVs)
-            ,authorizing_type=props:get_value(<<"Authorizing-Type">>, CCVs)
-            ,is_authorized=props:is_true(<<"Channel-Authorized">>, CCVs)
-            ,owner_id=props:get_value(<<"Owner-ID">>, CCVs)
-            ,resource_id=props:get_value(<<"Resource-ID">>, CCVs)
-            ,presence_id=props:get_value(<<"Channel-Presence-ID">>
-                                        ,CCVs
-                                        ,props:get_value(<<"variable_presence_id">>, Props)
-                                        )
-            ,fetch_id=props:get_value(<<"Fetch-ID">>, CCVs)
-            ,bridge_id=props:get_value(<<"Bridge-ID">>, CCVs, UUID)
-            ,reseller_id=props:get_value(<<"Reseller-ID">>, CCVs)
-            ,reseller_billing=props:get_value(<<"Reseller-Billing">>, CCVs)
-            ,precedence=kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
-            ,realm=get_realm(Props, CCVs)
-            ,username=props:get_value(<<"Username">>, CCVs, get_username(Props))
-            ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'
-            ,answered=props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>
-            ,node=Node
-            ,timestamp=kz_time:now_s()
-            ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
-            ,context=kzd_freeswitch:context(Props, ?DEFAULT_FREESWITCH_CONTEXT)
-            ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
-            ,other_leg=OtherLeg
-            ,handling_locally=handling_locally(Props, OtherLeg)
-            ,to_tag=props:get_value(<<"variable_sip_to_tag">>, Props)
-            ,from_tag=props:get_value(<<"variable_sip_from_tag">>, Props)
-            ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
-            ,is_loopback=kz_evt_freeswitch:is_loopback(Props)
-            ,loopback_leg_name=kz_evt_freeswitch:loopback_leg_name(Props)
-            ,loopback_other_leg=kz_evt_freeswitch:loopback_other_leg(Props)
-            ,callflow_id=props:get_value(<<"CallFlow-ID">>, CCVs)
-            ,cavs=CAVs
-            ,ccvs=CCVs
-            }.
-
--spec other_leg_handling_locally(kz_term:ne_binary()) -> boolean().
-other_leg_handling_locally(OtherLeg) ->
-    case fetch(OtherLeg, 'record') of
-        {'ok', #channel{handling_locally=HandleLocally}} -> HandleLocally;
-        _ -> 'false'
-    end.
-
--spec handling_locally(kz_term:proplist(), kz_term:api_binary()) -> boolean().
-handling_locally(Props, 'undefined') ->
-    ChannelEcallmgr = props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props),
-    lager:debug("channel has ecallmgr ~s (we are ~s)", [ChannelEcallmgr, node()]),
-    ChannelEcallmgr =:= kz_term:to_binary(node());
-handling_locally(Props, OtherLeg) ->
-    Node = kz_term:to_binary(node()),
-    case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
-        Node -> 'true';
-        _OtherNode ->
-            lager:debug("ccv has ecallmgr ~s (we are ~s), checking other leg ~s"
-                       ,[_OtherNode, node(), OtherLeg]
-                       ),
-            other_leg_handling_locally(OtherLeg)
-    end.
-
--spec get_username(kz_term:proplist()) -> kz_term:api_binary().
-get_username(Props) ->
-    case props:get_first_defined([?GET_CCV(<<"Username">>)
-                                 ,<<"variable_user_name">>
-                                 ]
-                                ,Props
-                                )
-    of
-        'undefined' ->
-            lager:debug("no username in CCVs or variable_user_name"),
-            'undefined';
-        Username -> kz_term:to_lower_binary(Username)
-    end.
-
--spec get_realm(kzd_freeswitch:data(), kz_term:proplist()) ->
-                       kz_term:api_ne_binary().
-get_realm(Props, CCVs) ->
-    case props:get_value(<<"Realm">>, CCVs) of
-        'undefined' ->
-            lager:info("no 'Realm' in CCVs, checking FS props"),
-            get_realm_from_props(Props);
-        Realm -> Realm
-    end.
-
--spec get_realm_from_props(kzd_freeswitch:data()) ->
-                                  kz_term:api_ne_binary().
-get_realm_from_props(Props) ->
-    case props:get_value(<<"variable_domain_name">>, Props) of
-        'undefined' ->
-            lager:info("no realm found in 'variable_domain_name' in FS props"),
-            'undefined';
-        Realm -> kz_term:to_lower_binary(Realm)
-    end.
-
-%% -spec update_callee(binary(), channel_updates()) -> channel_updates().
-%% update_callee(UUID, Props) ->
-%%     case fetch(UUID, 'record') of
-%%         {'ok', #channel{callee_number = Num2
-%%                        ,callee_name = Name2
-%%                        }} ->
-%%             Num1 = kz_evt_freeswitch:callee_id_number(Props),
-%%             Name1 = kz_evt_freeswitch:callee_id_name(Props),
-%%             [{#channel.callee_number, maybe_update_callee_field(Num1, Num2)}
-%%             ,{#channel.callee_name, maybe_update_callee_field(Name1, Name2)}
-%%             ];
-%%         _ -> []
-%%     end.
-%%
-%% -spec maybe_update_callee_field(api_binary(), api_binary()) -> api_binary().
-%% maybe_update_callee_field(Value, 'undefined') -> Value;
-%% maybe_update_callee_field(_Value, Existing) -> Existing.
-
 -spec get_other_leg(kz_term:api_binary(), kz_term:proplist()) -> kz_term:api_binary().
 get_other_leg('undefined', _Props) -> 'undefined';
 get_other_leg(UUID, Props) ->
@@ -458,3 +340,82 @@ maybe_other_bridge_leg(UUID, Props, _, _) ->
         UUID -> 'undefined';
         BridgeId -> BridgeId
     end.
+
+-spec jobj_to_record(atom(), ne_binary(), kz_json:object()) -> channel().
+jobj_to_record(Node, UUID, JObj) ->
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CAVs = kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new()),
+    OtherLeg = kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, JObj),
+    #channel{uuid=UUID
+            ,destination=kz_json:get_ne_binary_value(<<"Caller-Destination-Number">>, JObj)
+            ,direction=kz_json:get_ne_binary_value(<<"Call-Direction">>, JObj)
+
+            ,account_id=kz_json:get_ne_binary_value(<<"Account-ID">>, CCVs)
+            ,account_billing=kz_json:get_ne_binary_value(<<"Account-Billing">>, CCVs)
+            ,authorizing_id=kz_json:get_ne_binary_value(<<"Authorizing-ID">>, CCVs)
+            ,authorizing_type=kz_json:get_ne_binary_value(<<"Authorizing-Type">>, CCVs)
+            ,is_authorized=kz_json:is_true(<<"Channel-Authorized">>, CCVs)
+            ,owner_id=kz_json:get_ne_binary_value(<<"Owner-ID">>, CCVs)
+            ,resource_id=kz_json:get_ne_binary_value(<<"Resource-ID">>, CCVs)
+            ,fetch_id=kz_json:get_ne_binary_value(<<"Fetch-ID">>, CCVs)
+            ,bridge_id=kz_json:get_ne_binary_value(<<"Bridge-ID">>, CCVs, UUID)
+            ,reseller_id=kz_json:get_ne_binary_value(<<"Reseller-ID">>, CCVs)
+            ,reseller_billing=kz_json:get_ne_binary_value(<<"Reseller-Billing">>, CCVs)
+            ,precedence=kz_term:to_integer(kz_json:get_integer_value(<<"Precedence">>, CCVs, 5))
+
+            ,presence_id=kz_json:get_ne_binary_value(<<"Presence-ID">>, JObj)
+            ,realm=kz_json:get_ne_binary_value(<<"Realm">>, CCVs)
+            ,username=kz_json:get_ne_binary_value(<<"Username">>, CCVs)
+
+            ,answered=kz_json:get_ne_binary_value(<<"Answer-State">>, JObj) =:= <<"answered">>
+            ,node=Node
+            ,timestamp=kz_time:current_tstamp()
+
+            ,profile=kz_json:get_ne_binary_value(<<"Caller-Profile">>, JObj, ?DEFAULT_FS_PROFILE)
+            ,context=kz_json:get_ne_binary_value(<<"Caller-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT)
+            ,dialplan=kz_json:get_ne_binary_value(<<"Caller-Dialplan">>, JObj, ?DEFAULT_FS_DIALPLAN)
+
+            ,other_leg=OtherLeg
+            ,handling_locally=handling_locally(kz_json:get_ne_binary_value(<<"Ecallmgr-Node">>, CCVs), OtherLeg)
+
+            ,to_tag=kz_json:get_value(<<"To-Tag">>, JObj)
+            ,from_tag=kz_json:get_value(<<"From-Tag">>, JObj)
+
+            ,interaction_id=kz_json:get_ne_binary_value(<<?CALL_INTERACTION_ID>>, CCVs)
+
+            ,is_loopback=kz_json:is_true(<<"Channel-Is-Loopback">>, JObj)
+            ,loopback_leg_name=kz_json:get_value(<<"Channel-Loopback-Leg">>, JObj)
+            ,loopback_other_leg=kz_json:get_value(<<"Channel-Loopback-Other-Leg-ID">>, JObj)
+
+            ,callflow_id=kz_json:get_ne_binary_value(<<"CallFlow-ID">>, CCVs)
+            ,cavs=CAVs
+            ,ccvs=CCVs
+            ,from=kz_json:get_ne_binary_value(<<"From">>, JObj)
+            ,to=kz_json:get_ne_binary_value(<<"To">>, JObj)
+            }.
+
+
+-spec other_leg_handling_locally(ne_binary()) -> boolean().
+other_leg_handling_locally(OtherLeg) ->
+    case fetch(OtherLeg, 'record') of
+        {'ok', #channel{handling_locally=HandleLocally}} -> HandleLocally;
+        _ -> 'false'
+    end.
+
+-spec handling_locally(api_binary(), api_binary()) -> boolean().
+handling_locally('undefined', 'undefined') -> 'false';
+handling_locally(Node, 'undefined') ->
+    Node =:= kz_term:to_binary(node());
+handling_locally(Node, OtherLeg) ->
+    case kz_term:to_binary(node()) of
+        Node -> 'true';
+        _ -> other_leg_handling_locally(OtherLeg)
+    end.
+
+-spec new(atom(), ne_binary(), kz_json:object()) -> 'ok'.
+new(Node, UUID, JObj) ->
+    ecallmgr_fs_channels:new(jobj_to_record(Node, UUID, JObj)).
+
+-spec update(atom(), ne_binary(), kz_json:object()) -> 'ok'.
+update(Node, UUID, JObj) ->
+    ecallmgr_fs_channels:update(UUID, jobj_to_record(Node, UUID, JObj)).
