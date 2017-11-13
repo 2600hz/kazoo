@@ -458,7 +458,18 @@ prechecks(Context) ->
 
 -spec is_crossbar_running() -> boolean().
 is_crossbar_running() ->
-    lists:member('crossbar', kapps_controller:running_apps()).
+    case lists:member('crossbar', kapps_controller:running_apps()) of
+        'false' -> start_crossbar();
+        'true' -> 'true'
+    end.
+
+start_crossbar() ->
+    case kapps_controller:start_app('crossbar') of
+        {'ok', _} -> 'true';
+        {'error', _E} ->
+            io:format("failed to start crossbar: ~p~n", [_E]),
+            'false'
+    end.
 
 -spec db_accounts_exists() -> 'true'.
 db_accounts_exists() ->

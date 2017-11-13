@@ -38,7 +38,9 @@ start_link() ->
 start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_KAPPS].
 
--spec start_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
+-spec start_app(atom() | nonempty_string() | ne_binary()) ->
+                       {'ok', atoms()} |
+                       {'error', any()}.
 start_app(App) when is_atom(App) ->
     case application:ensure_all_started(App) of
         {'ok', _}=OK ->
