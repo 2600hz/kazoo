@@ -28,10 +28,6 @@
 -define(NUMBER, <<"number">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
 
--define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
-                           ,{<<"text">>, <<"comma-separated-values">>}
-                           ]).
-
 -define(NUMBER_RESP_FIELDS, [<<"Base-Cost">>
                             ,<<"E164-Number">>
                             ,<<"Prefix">>
@@ -121,7 +117,7 @@ content_types_accepted(Context) ->
 
 -spec content_types_accepted_by_verb(cb_context:context(), http_method()) -> cb_context:context().
 content_types_accepted_by_verb(Context, ?HTTP_POST) ->
-    cb_context:set_content_types_accepted(Context, [{'from_binary', ?UPLOAD_MIME_TYPES}]);
+    cb_context:set_content_types_accepted(Context, [{'from_binary', ?CSV_CONTENT_TYPES}]);
 content_types_accepted_by_verb(Context, _) -> Context.
 
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
@@ -386,6 +382,9 @@ process_upload_file(Context, _ReqFiles) ->
 convert_file(<<"text/csv">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
 convert_file(<<"text/comma-separated-values">>, FileContents, Context) ->
+    csv_to_rates(FileContents, Context);
+convert_file(<<"application/octet-stream">>, FileContents, Context) ->
+    lager:debug("content type is 'application/octet-stream', assuming it's csv"),
     csv_to_rates(FileContents, Context);
 convert_file(ContentType, _, _) ->
     lager:debug("unknown content type: ~s", [ContentType]),

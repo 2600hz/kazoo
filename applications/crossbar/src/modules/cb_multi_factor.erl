@@ -283,43 +283,32 @@ validate_patch(Id, Context) ->
 summary(Context) ->
     Options = [{'startkey', [<<"multi_factor">>]}
               ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
-              ,{'mapper', crossbar_view:map_value_fun()}
+              ,{'unchunkable', 'true'}
+              ,{'mapper', fun(JObjs) -> normalize_summary(Context, JObjs) end}
               ],
-    add_available_providers(
-      crossbar_view:load(Context, <<"auth/providers_by_type">>, Options)
-     ).
+    crossbar_view:load(Context, <<"auth/providers_by_type">>, Options).
 
 system_summary(Context) ->
     Options = [{'startkey', [<<"multi_factor">>]}
               ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
               ,{'mapper', crossbar_view:map_value_fun()}
               ,{'databases', [?KZ_AUTH_DB]}
+              ,{'unchunkable', 'true'}
               ],
     crossbar_view:load(Context, <<"providers/list_by_type">>, Options).
 
--spec add_available_providers(cb_context:context()) -> cb_context:context().
-add_available_providers(Context) ->
+-spec normalize_summary(cb_context:context(), kz_json:objects()) -> kz_json:object().
+normalize_summary(Context, JObjs) ->
     C1 = system_summary(Context),
     case cb_context:resp_status(C1) of
-        'success' ->
-            crossbar_doc:handle_json_success(merge_summary(Context, cb_context:doc(C1)), Context);
-        _ -> crossbar_doc:handle_json_success(merge_summary(Context, []), Context)
+        'success' -> merge_summary(JObjs, cb_context:doc(C1));
+        _ -> merge_summary(JObjs, [])
     end.
 
--spec merge_summary(cb_context:context(), kz_json:objects()) -> kz_json:object().
-merge_summary(Context, Available) ->
-    merge_summary(Context, Available, cb_context:resp_status(Context)).
-
--spec merge_summary(cb_context:context(), kz_json:objects(), cb_context:crossbar_status()) -> kz_json:object().
-merge_summary(Context, Available, 'success') ->
+-spec merge_summary(kz_json:objects(), kz_json:objects()) -> kz_json:object().
+merge_summary(Configured, Available) ->
     kz_json:from_list(
-      [{<<"configured">>, cb_context:doc(Context)}
-      ,{<<"multi_factor_providers">>, Available}
-      ]
-     );
-merge_summary(_Context, Available, _) ->
-    kz_json:from_list(
-      [{<<"configured">>, []}
+      [{<<"configured">>, Configured}
       ,{<<"multi_factor_providers">>, Available}
       ]
      ).

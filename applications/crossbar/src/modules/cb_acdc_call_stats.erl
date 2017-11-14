@@ -63,25 +63,11 @@ init() ->
 
 -spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_json({Req, Context}) ->
-    Options = [{'is_chunked', 'true'}
-              ,{'chunk_size', ?MAX_BULK}
-              ,{'cowboy_req', Req}
-              ,{'chunked_mapper', fun load_chunked_acdc_stats/2}
-              ,{'chunk_response_type', 'json'}
-              ,{'mapper', crossbar_view:map_value_fun()}
-              ],
-    crossbar_view:load_modb(Context, ?CB_LIST, Options).
+    {Req, cb_context:set_resp_data(Context, normalize_acdc_stats(Context, <<"json">>))}.
 
 -spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_csv({Req, Context}) ->
-    Options = [{'is_chunked', 'true'}
-              ,{'chunk_size', ?MAX_BULK}
-              ,{'cowboy_req', Req}
-              ,{'chunked_mapper', fun load_chunked_acdc_stats/2}
-              ,{'chunk_response_type', 'csv'}
-              ,{'mapper', crossbar_view:map_value_fun()}
-              ],
-    crossbar_view:load_modb(cb_context:store(Context, 'is_csv', 'true'), ?CB_LIST, Options).
+    {Req, cb_context:set_resp_data(Context, normalize_acdc_stats(Context, <<"csv">>))}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,10 +130,11 @@ validate(Context) ->
 -spec load_stats_summary(cb_context:context(), req_nouns()) -> cb_context:context().
 load_stats_summary(Context, [_, {?KZ_ACCOUNTS_DB, [_]} | _]) ->
     lager:debug("loading call stats for account ~s", [cb_context:account_id(Context)]),
-    case crossbar_view:time_range(Context) of
-        {_StartTime, _EndTime} -> cb_context:set_resp_status(Context, 'success');
-        Ctx -> Ctx
-    end;
+    Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
+              ,{'mapper', crossbar_view:map_value_fun()}
+              ],
+    crossbar_view:load_modb(Context, ?CB_LIST, Options);
 load_stats_summary(Context, _Nouns) ->
     lager:debug("invalid URL chain for stats summary request"),
     cb_context:add_system_error('faulty_request', Context).
@@ -157,25 +144,20 @@ load_stats_summary(Context, _Nouns) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_chunked_acdc_stats(cb_cowboy_payload(), kz_json:objects()) -> crossbar_view:chunked_mapper_ret().
-load_chunked_acdc_stats({Req, Context}, JObjs) ->
-    case cb_context:fetch(Context, 'is_csv', 'false') of
-        'true' ->
-            {CSVs, Context1} = lists:foldl(fun normalize_stat_to_csv/2, {[], Context}, JObjs),
-            {lists:reverse(CSVs), {Req, Context1}};
-        'false' ->
-            {[kz_json:from_list([{K, F(JObj)} || {K, F} <- ?COLUMNS]) || JObj <- JObjs], {Req, Context}}
-    end.
+-spec normalize_acdc_stats(cb_context:context(), ne_binary()) -> ne_binaries() | kz_json:objects().
+normalize_acdc_stats(Context, <<"csv">>) ->
+    [normalize_stat_to_csv(Context, JObj) || JObj <- cb_context:resp_data(Context)];
+normalize_acdc_stats(Context, <<"json">>) ->
+    [kz_json:from_list([{K, F(JObj)} || {K, F} <- ?COLUMNS]) || JObj <- cb_context:resp_data(Context)].
 
--spec normalize_stat_to_csv(kz_json:objects(), {binaries(), cb_context:context()}) -> {binaries(), cb_context:context()}.
-normalize_stat_to_csv(JObj, {CSVs, Context}) ->
+-spec normalize_stat_to_csv(cb_context:context(), kz_json:object()) -> ne_binary().
+normalize_stat_to_csv(Context, JObj) ->
     CSV = kz_binary:join([F(JObj) || {_, F} <- ?COLUMNS], <<",">>),
-    case cb_context:fetch(Context, 'started_chunk') of
-        'true' ->
-            {[<<CSV/binary, "\r\n">>|CSVs], Context};
+    case cb_context:fetch(Context, 'chunking_started') of
+        'true' -> <<CSV/binary, "\r\n">>;
         _Else ->
             Header = kz_binary:join([K || {K, _Fun} <- ?COLUMNS], <<",">>),
-            {[<<Header/binary, "\r\n", CSV/binary, "\r\n">>|CSVs], cb_context:store(Context, 'started_chunk', 'true')}
+            <<Header/binary, "\r\n", CSV/binary, "\r\n">>
     end.
 
 col_id(JObj) -> kz_doc:id(JObj, <<>>).

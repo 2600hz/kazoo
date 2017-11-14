@@ -105,42 +105,22 @@ init() ->
 
 -spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_json({Req, Context}) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    IsReseller = kz_services:is_reseller(AuthAccountId),
-    to_json(Req, cb_context:store(Context, 'is_reseller', IsReseller), get_view_options(cb_context:req_nouns(Context))).
-
--spec to_json(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
-to_json(Req, Context, {'undefined', _}) ->
-    {Req, Context};
-to_json(Req, Context, {ViewName, Options0}) ->
-    Options = [{'is_chunked', 'true'}
-              ,{'chunk_size', ?MAX_BULK}
-              ,{'cowboy_req', Req}
-              ,{'chunked_mapper', fun load_chunked_cdrs/3}
-              ,{'chunk_response_type', 'json'}
-               | Options0
-              ],
-    crossbar_view:load_modb(Context, ViewName, Options).
+    {Req, to_response(Context, <<"json">>, cb_context:req_nouns(Context))}.
 
 -spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_csv({Req, Context}) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    IsReseller = kz_services:is_reseller(AuthAccountId),
-    to_csv(Req, cb_context:store(Context, 'is_reseller', IsReseller), get_view_options(cb_context:req_nouns(Context))).
+    {Req, to_response(Context, <<"csv">>, cb_context:req_nouns(Context))}.
 
--spec to_csv(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
-to_csv(Req, Context, {'undefined', _}) ->
-    lager:debug("invalid URL chain for cdrs request"),
-    {Req, cb_context:add_system_error('faulty_request', Context)};
-to_csv(Req, Context, {ViewName, Options0}) ->
-    Options = [{'is_chunked', 'true'}
-              ,{'chunk_size', ?MAX_BULK}
-              ,{'cowboy_req', Req}
-              ,{'chunked_mapper', fun load_chunked_cdrs/3}
-              ,{'chunk_response_type', 'csv'}
-               | Options0
-              ],
-    crossbar_view:load_modb(cb_context:store(Context, 'is_csv', 'true'), ViewName, Options).
+to_response(Context, RespType, [{<<"cdrs">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    load_chunked_cdrs(Context, RespType);
+to_response(Context, RespType, [{<<"cdrs">>, []}, {<<"users">>, _}|_]) ->
+    load_chunked_cdrs(Context, RespType);
+to_response(Context, RespType, [{<<"cdrs">>, [?PATH_INTERACTION]}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    load_chunked_cdrs(Context, RespType);
+to_response(Context, RespType, [{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>, _}|_]) ->
+    load_chunked_cdrs(Context, RespType);
+to_response(Context, _, _) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -220,10 +200,10 @@ provided_types(Context) ->
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    validate_path_and_date_range(Context, cb_context:req_nouns(Context)).
+    validate_chunk_view(Context).
 
 validate(Context, ?PATH_INTERACTION) ->
-    validate_path_and_date_range(Context, cb_context:req_nouns(Context));
+    validate_chunk_view(Context);
 validate(Context, ?PATH_SUMMARY) ->
     load_cdr_summary(Context);
 validate(Context, CDRId) ->
@@ -235,21 +215,25 @@ validate(Context, _, _) ->
     lager:debug("invalid URL chain for cdr request"),
     cb_context:add_system_error('faulty_request', Context).
 
--spec validate_path_and_date_range(cb_context:context(), req_nouns()) -> cb_context:context().
-validate_path_and_date_range(Context, [{<<"cdrs">>, _}, {?KZ_ACCOUNTS_DB, _}|_]) ->
-    validate_date_range(Context);
-validate_path_and_date_range(Context, [{<<"cdrs">>, _}, {<<"users">>, [_]}|_]) ->
-    validate_date_range(Context);
-validate_path_and_date_range(Context, [{<<"cdrs">>, _}|_]) ->
-    lager:debug("invalid URL chain for cdrs request"),
-    cb_context:add_system_error('faulty_request', Context).
-
--spec validate_date_range(cb_context:context()) -> cb_context:context().
-validate_date_range(Context) ->
-    case crossbar_view:time_range(Context) of
-        {_StartTime, _EndTime} -> cb_context:set_resp_status(Context, 'success');
-        Ctx -> Ctx
+-spec validate_chunk_view(cb_context:context()) -> cb_context:context().
+validate_chunk_view(Context) ->
+    case get_view_options(cb_context:req_nouns(Context)) of
+        {'undefined', []} ->
+            lager:debug("invalid URL chain for cdrs request"),
+            cb_context:add_system_error('faulty_request', Context);
+        {ViewName, Options} ->
+            load_chunk_view(Context, ViewName, Options)
     end.
+
+-spec load_chunk_view(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
+load_chunk_view(Context, ViewName, Options0) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsReseller = kz_services:is_reseller(AuthAccountId),
+    Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
+               | Options0
+              ],
+    crossbar_view:load_modb(cb_context:store(Context, 'is_reseller', IsReseller), ViewName, Options).
 
 %%%===================================================================
 %%% Internal functions
@@ -341,31 +325,49 @@ maybe_add_stale_to_options('false') ->[].
 %% Loads CDR docs from database and normalized the them.
 %% @end
 %%--------------------------------------------------------------------
--spec load_chunked_cdrs(cb_cowboy_payload(), kz_json:objects(), ne_binary()) -> crossbar_view:chunked_mapper_ret().
-load_chunked_cdrs(Payload, JObjs, Db) ->
-    Ids = [kz_doc:id(JObj) || JObj <- JObjs],
-    load_chunked_cdr_ids(Payload, Ids, Db).
+-spec load_chunked_cdrs(cb_context:context(), ne_binary()) -> cb_context:context().
+load_chunked_cdrs(Context, RespType) ->
+    Fun = fun(JObj, Acc) -> split_to_modbs(cb_context:account_id(Context), kz_doc:id(JObj), Acc) end,
+    MapIds = lists:foldl(Fun, #{}, cb_context:resp_data(Context)),
+    C1 = cb_context:set_resp_data(Context, []),
+    maps:fold(fun(Db, Ids, C) -> load_chunked_cdr_ids(C, RespType, Db, Ids) end, C1, MapIds).
+
+%% if request is not chunked, map Ids to MODBs
+-spec split_to_modbs(ne_binary(), ne_binary(), map()) -> map().
+split_to_modbs(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, Map) ->
+    Db = kazoo_modb:get_modb(AccountId, Year, Month),
+    maps:update_with(Db, fun(List) -> List ++ [Id] end, [Id], Map).
 
 %% @public
--spec load_chunked_cdr_ids(cb_cowboy_payload(), ne_binaries(), ne_binary()) -> crossbar_view:chunked_mapper_ret().
-load_chunked_cdr_ids({Req, Context}, Ids, Db) ->
-    case kz_datamgr:open_docs(Db, Ids, [{'doc_type', <<"cdr">>}]) of
+-spec load_chunked_cdr_ids(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+load_chunked_cdr_ids(Context, RespType, Ids) ->
+    Fun = fun(Id, Acc) -> split_to_modbs(cb_context:account_id(Context), Id, Acc) end,
+    MapIds = lists:foldl(Fun, #{}, Ids),
+    C1 = cb_context:set_resp_data(Context, []),
+    maps:fold(fun(Db, DbIds, C) -> load_chunked_cdr_ids(C, RespType, Db, DbIds) end, C1, MapIds).
+
+-spec load_chunked_cdr_ids(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) -> cb_context:context().
+load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
+    case cb_context:resp_status(Context) =:= 'success'
+        andalso kz_datamgr:open_docs(Db, Ids, [{'doc_type', <<"cdr">>}])
+    of
+        'false' -> Context;
         {'ok', Results} ->
             JObjs = [kz_json:get_value(<<"doc">>, Result)
                      || Result <- Results,
                         crossbar_filter:by_doc(kz_json:get_value(<<"doc">>, Result), Context)
                     ],
-            case cb_context:fetch(Context, 'is_csv', 'false') of
-                'true' ->
-                    {CSVs, Context1} = lists:foldl(fun normalize_cdr_to_csv/2, {[], Context}, JObjs),
-                    {lists:reverse(CSVs), {Req, Context1}};
-                'false' ->
-                    {[normalize_cdr_to_jobj(JObj, Context) || JObj <- JObjs], {Req, Context}}
-            end;
-        {'error', _Reason} ->
-            lager:debug("failed to load cdrs doc from ~s: ~p", [Db, _Reason]),
-            {'stop', {Req, Context}}
+            RespData = cb_context:resp_data(Context),
+            cb_context:set_resp_data(Context, RespData ++ normalize_cdrs(Context, RespType, JObjs));
+        {'error', Reason} ->
+            lager:debug("failed to load cdrs doc from ~s: ~p", [Db, Reason]),
+            crossbar_doc:handle_datamgr_errors(Reason, <<"load_cdrs">>, Context)
     end.
+
+normalize_cdrs(Context, <<"json">>, JObjs) ->
+    [normalize_cdr_to_jobj(JObj, Context) || JObj <- JObjs];
+normalize_cdrs(Context, <<"csv">>, JObjs) ->
+    [normalize_cdr_to_csv(JObj, Context) || JObj <- JObjs].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -385,17 +387,15 @@ normalize_cdr_to_jobj(JObj, Context) ->
 %% Normalize CDR in CSV
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_cdr_to_csv(kz_json:object(), {binaries(), cb_context:context()}) ->
-                                  {binaries(), cb_context:context()}.
-normalize_cdr_to_csv(JObj, {CSVs, Context}) ->
+-spec normalize_cdr_to_csv(kz_json:object(), cb_context:context()) -> binary().
+normalize_cdr_to_csv(JObj, Context) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0),
     CSV = kz_binary:join([F(JObj, Timestamp) || {_, F} <- csv_rows(Context)], <<",">>),
-    case cb_context:fetch(Context, 'started_chunk') of
-        'true' ->
-            {[<<CSV/binary, "\r\n">>|CSVs], Context};
+    case cb_context:fetch(Context, 'chunking_started') of
+        'true' -> <<CSV/binary, "\r\n">>;
         'false' ->
             CSVHeader = kz_binary:join([K || {K, _Fun} <- csv_rows(Context)], <<",">>),
-            {[<<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>|CSVs], Context}
+            <<CSVHeader/binary, "\r\n", CSV/binary, "\r\n">>
 
     end.
 

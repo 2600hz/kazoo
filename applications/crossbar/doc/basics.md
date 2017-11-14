@@ -10,14 +10,14 @@ Crossbar is the REST API server, from which developers can build applications th
 * `{VERSION}` - The version of the API you are calling.
     * v2 - Most APIs respond on the v2
     * v2 - A select number of APIs have newer behaviour. If you used the v2 version, it will work as before.
-* `{ACCOUNT_ID}` - Most requests operate against a specific account and thus require the account_id to route the resquest properly
+* `{ACCOUNT_ID}` - Most requests operate against a specific account and thus require the account_id to route the request properly
 * `{RESOURCE_ID}` - When accessing a specific resource, like a device, user, or callflow, this is the `{RESOURCE_ID}` points to the specific instance you're accessing.
 
 ##### Resources
 
 There are two parts to how a request is routed in Crossbar: the REST endpoint and the resource ID. Let's break down a common URI and see how Crossbar figures out what is an endpoint and what is a resource ID.
 
-Given a uri of `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`:
+Given a URI of `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`:
 
 0. First, strip the version off the URI
     * Version: v2
@@ -50,7 +50,7 @@ The HTTP verb will determine the class of actions to take against the resource. 
 
 * `/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}`
     * GET: Fetches the full representation of the resource
-    * POST: Updates the full respresentation of the resource
+    * POST: Updates the full representation of the resource
     * DELETE: Deletes the resource
 
 ##### PATCH
@@ -81,7 +81,7 @@ Some clients do not support the ability to set the [Accept header](http://www.w3
 Most APIs require the client to have authenticated and received a token usable on subsequent requests. Crossbar provides a couple ways to receive an authentication token:
 
 1. [User Authentication](./user_authentication.md): This is the preferred way of authenticating a user and useful for making an UI
-2. [API Key Authentication](./api_authentication.md): If you're building a server applications, the recommanded way for authentication is using your account's API key
+2. [API Key Authentication](./api_authentication.md): If you're building server applications, the recommended way for authentication is using your account's API key
 3. [Multi Factor Authentication](./multi_factor.md): For adding more security to your system, authenticate users with a multi factor authentication provider
 4. [Crossbar Security Configuration](./security.md): API endpoint for configuring Crossbar authentication methods.
 
@@ -116,7 +116,7 @@ When receiving JSON responses, clients will receive the response in an envelope.
 * `status`: One of 'success', 'error', or 'fatal'
 * `message`: Optional message that should clarify what happened on the request
 * `error`: Error code, if any
-* `request_id`: ID of the request; usuable for debugging the server-side processing of the request
+* `request_id`: ID of the request; usable for debugging the server-side processing of the request
 
 **Sample Response Envelope:**
 
@@ -157,7 +157,7 @@ curl -v \
         {CDR_OBJECT},
         ...
     ],
-    "next_start_key": 63566193143,
+    "next_start_key": g24FAPch18wO,
     "page_size": 25,
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
@@ -174,6 +174,12 @@ The pagination response keys are `next_start_key`, `page_size`, and `start_key`.
 
 Assuming no changes are made to the underlying documents, `start_key` will get you this page of results, and `next_start_key` will give you a pointer to the next page (imagine a linked-list).
 
+###### Encoded Start Keys (Kazoo 4.2+ Only)
+
+As you can see from the response above, both the `start_key` and `next_start_key` are encoded as URL-safe Base64 strings of their Erlang term representation. A couple character substitutions (`_` for `/` and `_` for `+`) and one character removal (`=`) ensures a string that plays nice in URLs.
+
+In practice, the client should treat these keys as opaque and supply them as-is in future requests.
+
 ###### Requesting a page
 
 Using the `next_start_key` value, let's request the next page of CDRs:
@@ -182,7 +188,7 @@ Using the `next_start_key` value, let's request the next page of CDRs:
 curl -v \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?start_key=63566193143
+    http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?start_key=g24FAPch18wO
 ```
 
 ```json
@@ -193,11 +199,11 @@ curl -v \
         {CDR_OBJECT},
         ...
     ],
-    "next_start_key": 63566542092,
+    "next_start_key": g24FAAx13MwO,
     "page_size": 25,
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
-    "start_key": 63566193143,
+    "start_key": g24FAPch18wO,
     "status": "success"
 }
 ```
@@ -208,13 +214,33 @@ Observe now that `start_key` is the requested `start_key` and `next_start_key` p
 
 You can also choose to receive pages in bigger or smaller increments by specifying `page_size` on the request. Do take care, as the `next_start_key` will probably vary if you use the same `start_key` but differing `page_size` values.
 
+##### Setting Page Size
+
+By default, API requests have a page size of 50 results. This value is customizable by system administrator in the `crossbar.maximum_range` system_config setting.
+
+For individual API request, you can also include a `page_size` query string parameter. For example: `http://{SERVER}:8000/v2/{API_URL}?page_size=25`.
+
+##### Setting sorting order
+
+By default, Crossbar returns the results in descending order. To get results in ascending order either set `ascending=true` (Kazoo 4.2+ only) or `descending=false` in the request's query string.
+
+> *Note:* The field used to sort the individual API results depends on the internal implementation of the API endpoint and is not controllable by the client.
+
 ##### Disabling Pagination
 
 If you want to disable pagination for a request, simply include `paginate=false` on the query string.
 
+#### Chunked Response
+
+Starting with Kazoo 4.2, most of the summary API endpoints can send [chunked responses](https://en.wikipedia.org/wiki/Chunked_transfer_encoding). Some known APIs, which tend to have larger datasets, are chunked by default (e.g. `/cdrs/interaction` and `/ledgers/{LEDGER}`).
+
+The query string parameter `is_chunked` (boolean value) can be used to enable or disable chunking per-request.
+
+To set the default chunk size, you can use `chunk_size` in the query string. Default value is `50`.
+
 #### Pretty Printing
 
-If needed the json response to be pretty printed, the server can can do so.
+If needed, the json response to be pretty printed, the server can can do so.
 
 Include pretty printing inside the header.
 

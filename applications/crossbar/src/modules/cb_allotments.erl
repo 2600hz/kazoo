@@ -147,6 +147,7 @@ foldl_consumed(Classification, ValueJObj, {Context, {CycleMode, From0, To0}=Mode
               ,{'created_from', From}
               ,{'created_to', To}
               ,{'group_level', 1}
+              ,{'unchunkable', 'true'}
               ],
     C1 = crossbar_view:load_modb(Context, ?LIST_CONSUMED, Options),
     case cb_context:resp_status(C1) of
