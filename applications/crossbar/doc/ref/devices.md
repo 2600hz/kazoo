@@ -19,19 +19,19 @@ Key | Description | Type | Default | Required
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean()` | `true` | `false`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean()` | `true` | `false`
 `call_forward` | The device call forward parameters | `object()` |   | `false`
-`call_recording` |   | `object()` |   | `false`
+`call_recording` |   | [#/definitions/call_recording](#call_recording) |   | `false`
 `call_restriction` | Device level call restrictions for each available number classification | `object()` | `{}` | `false`
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
-`caller_id` | The device caller ID parameters | `object()` | `{}` | `false`
+`caller_id` | The device caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false`
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false`
 `contact_list` | Contect List Parameters | `object()` | `{}` | `false`
 `device_type` | Arbitrary device type used by the UI and billing system | `string()` |   | `false`
-`dial_plan` | A list of rules used to modify dialed numbers | `object()` | `{}` | `false`
+`dial_plan` | A list of rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false`
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this device? | `boolean()` |   | `false`
 `do_not_disturb` | DND Parameters | `object()` |   | `false`
 `enabled` | Determines if the device is currently enabled | `boolean()` | `true` | `false`
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false`
-`formatters` |   | `object()` |   | `false`
+`formatters` |   | [#/definitions/formatters](#formatters) |   | `false`
 `language` | The language for the device | `string()` |   | `false`
 `media.audio.codecs.[]` |   | `string()` |   | `false`
 `media.audio.codecs` | A list of audio codecs the device supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` | `["PCMU"]` | `false`

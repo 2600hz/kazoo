@@ -501,7 +501,10 @@ validate_request(AccountId, Context) ->
                    ,fun validate_account_schema/2
                    ,fun disallow_direct_clients/2
                    ],
-    lists:foldl(fun(F, C) -> F(AccountId, C) end, Context, ValidateFuns).
+    lists:foldl(fun(F, C) -> F(AccountId, C) end
+               ,Context
+               ,ValidateFuns
+               ).
 
 -spec ensure_account_has_realm(api_binary(), cb_context:context()) -> cb_context:context().
 ensure_account_has_realm(_AccountId, Context) ->

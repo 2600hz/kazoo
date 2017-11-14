@@ -97,7 +97,8 @@ A more full example:
       ,...
     }
 
-This will
+This will:
+
 1. Format the 'From' DID as E164 before republishing the inbound request
 2. Format the From as NPAN on an offnet(outbound) request
 3. Format the Diversion username to match the invite format of the request on an outbound request

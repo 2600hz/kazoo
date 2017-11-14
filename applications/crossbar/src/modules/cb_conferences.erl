@@ -159,8 +159,7 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 put(Context, ConferenceId) ->
-    Action = cb_context:req_value(Context, ?PUT_ACTION),
-    handle_conference_action(Context, ConferenceId, Action).
+    handle_conference_action(Context, ConferenceId, cb_modules_util:get_request_action(Context)).
 
 put(Context, ConferenceId, ?PARTICIPANTS) ->
     Action = cb_context:req_value(Context, ?PUT_ACTION),
@@ -394,18 +393,16 @@ media_id_required(Context) ->
 dial(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"dial">>);
 dial(Context, ConferenceId, Data) ->
-    dial_endpoints(Context, ConferenceId, Data, kz_json:get_list_value(<<"endpoints">>, Data, [])).
+    case kz_json_schema:validate(<<"conferences.dial">>, Data) of
+        {'ok', ValidData} ->
+            dial_endpoints(Context, ConferenceId, ValidData, kz_json:get_list_value(<<"endpoints">>, Data));
+        {'error', Errors} ->
+            lager:info("dial data failed to validate"),
+            cb_context:failed(Context, Errors)
+    end.
 
 -spec dial_endpoints(cb_context:context(), path_token(), kz_json:object(), ne_binaries()) ->
                             cb_context:context().
-dial_endpoints(Context, _ConferenceId, _Data, []) ->
-    cb_context:add_validation_error([<<"data">>, <<"endpoints">>]
-                                   ,<<"minItems">>
-                                   ,kz_json:from_list([{<<"message">>, <<"endpoints must have at least one specified">>}
-                                                      ,{<<"target">>, 1}
-                                                      ])
-                                   ,Context
-                                   );
 dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
     case build_endpoints_to_dial(Context, ConferenceId, Endpoints) of
         [] -> error_no_endpoints(Context);
@@ -425,6 +422,7 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
               ,{<<"Custom-Application-Vars">>, CAVs}
               ,{<<"Conference-ID">>, ConferenceId}
+              ,{<<"Timeout">>, kz_json:get_integer_value(<<"timeout">>, Data)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     'ok' = kz_amqp_worker:cast(Command, fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end).
@@ -437,7 +435,6 @@ build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
                              ,Endpoints
                              ),
     ToDial.
-
 
 -spec error_no_endpoints(cb_context:context()) -> cb_context:context().
 error_no_endpoints(Context) ->
@@ -465,6 +462,12 @@ create_call(Context, ConferenceId) ->
 
 -type build_acc() :: {kz_json:objects(), kapps_call:call()}.
 -spec build_endpoint(ne_binary(), build_acc()) -> build_acc().
+build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call}) ->
+    lager:info("building SIP endpoint ~s", [URI]),
+    Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
+                                 ,{<<"Route">>, URI}
+                                 ]),
+    {[Endpoint | Endpoints], Call};
 build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), EndpointId) of
         {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call});

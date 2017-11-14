@@ -50,8 +50,7 @@
             "type": "object"
         },
         "call_recording": {
-            "$ref": "call_recording",
-            "type": "object"
+            "$ref": "call_recording"
         },
         "call_restriction": {
             "additionalProperties": {
@@ -76,9 +75,7 @@
         },
         "caller_id": {
             "$ref": "caller_id",
-            "default": {},
-            "description": "The device caller ID parameters",
-            "type": "object"
+            "description": "The device caller ID parameters"
         },
         "contact_list": {
             "default": {},
@@ -93,9 +90,7 @@
         },
         "dial_plan": {
             "$ref": "dialplans",
-            "default": {},
-            "description": "A list of rules used to modify dialed numbers",
-            "type": "object"
+            "description": "A list of rules used to modify dialed numbers"
         },
         "directories": {
             "description": "Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller.",
@@ -328,9 +323,7 @@
         },
         "profile": {
             "$ref": "profile",
-            "default": {},
-            "description": "User's profile data",
-            "type": "object"
+            "description": "User's profile data"
         },
         "pronounced_name": {
             "description": "Name pronounced by user to introduce himself to conference members",
