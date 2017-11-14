@@ -524,7 +524,7 @@ does_schema_exist(Schema) ->
 maybe_fload(Schema) ->
     case kz_json_schema:fload(Schema) of
         {'ok', SchemaJObj} ->
-            lager:info("schema ~s exists on disk, refreshing in db"),
+            lager:info("schema ~s exists on disk, refreshing in db", [Schema]),
             case kz_datamgr:save_doc(?KZ_SCHEMA_DB, SchemaJObj) of
                 {'ok', _} -> 'ok';
                 {'error', 'conflict'} -> 'ok'
