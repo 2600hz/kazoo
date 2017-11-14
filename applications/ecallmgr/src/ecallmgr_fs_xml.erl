@@ -638,6 +638,9 @@ get_channel_vars({<<?CHANNEL_LOOPBACK_HEADER_PREFIX, Key/binary>>, V}, Vars) ->
     Var = ecallmgr_util:get_fs_key(Key),
     [encode_fs_val(<<?CHANNEL_LOOPBACK_HEADER_PREFIX, Var/binary>>, Val) | Vars];
 
+get_channel_vars({<<"Route">>, <<"loopback/", Route/binary>>}, Vars) ->
+    [list_to_binary(["sip_loopback_req_uri=", Route, "@${sip_invite_domain}"]) | Vars];
+
 get_channel_vars({AMQPHeader, V}, Vars) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
@@ -645,6 +648,7 @@ get_channel_vars({AMQPHeader, V}, Vars) ->
             Val = ecallmgr_util:maybe_sanitize_fs_value(AMQPHeader, V),
             [encode_fs_val(Prefix, Val) | Vars]
     end;
+
 get_channel_vars(_, Vars) -> Vars.
 
 -spec participant_flags_to_var(kz_term:ne_binaries()) -> kz_term:ne_binary().
