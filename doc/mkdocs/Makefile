@@ -1,6 +1,6 @@
 .PHONY: docs-build docs-serve clean
 
-DOCS_ROOT ?= $(shell readlink -f .)
+DOCS_ROOT ?= $(shell cd "$(dirname '.')" && pwd -P)
 
 YML ?= $(filter-out local,$(wildcard *.yml))
 LOCAL = $(YML:.yml=.local)
