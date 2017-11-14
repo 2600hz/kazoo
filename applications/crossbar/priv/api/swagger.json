@@ -25991,6 +25991,12 @@
                     "description": "crossbar maximum upload size",
                     "type": "integer"
                 },
+                "maximum_chunk_size": {
+                    "default": 50,
+                    "description": "crossbar maximum_chunk_size",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "maximum_range": {
                     "default": 2682000,
                     "description": "crossbar maximum range",
