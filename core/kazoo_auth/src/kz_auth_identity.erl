@@ -16,6 +16,7 @@
         ,token/1
         ,reset_system_secret/0
         ,reset_secret/1
+        ,reset_doc_secret/1
         ]).
 
 -include("kazoo_auth.hrl").
@@ -231,7 +232,7 @@ update_kazoo_secret(#{auth_db := Db
                      ,auth_db_id := Key
                      }=Token) ->
     lager:debug("generating new kazoo signing secret for ~s/~s", [Db, Key]),
-    update_kazoo_secret(Token, kz_binary:rand_hex(16)).
+    update_kazoo_secret(Token, generate_new_kazoo_signing_secret()).
 
 -spec update_kazoo_secret(map(), ne_binary()) -> map() | {'error', any()}.
 update_kazoo_secret(#{auth_db := Db
@@ -359,6 +360,16 @@ reset_secret(Claims)
 reset_secret(Claims) ->
     reset_secret(kz_json:to_map(Claims)).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set a new ?PVT_SIGNING_SECRET value on supplied doc
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_doc_secret(kz_json:object()) -> kz_json:object().
+reset_doc_secret(JObj) ->
+    kz_json:set_value(?PVT_SIGNING_SECRET, generate_new_kazoo_signing_secret(), JObj).
+
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
@@ -384,3 +395,13 @@ reset_identity_secret(#{auth_db := Db
             lager:debug("failed to read identity document, auth_db ~s auth_id ~s: ~p", [Db, Key, _Reason]),
             Error
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Generate a new Kazoo signing secret
+%% @end
+%%--------------------------------------------------------------------
+-spec generate_new_kazoo_signing_secret() -> ne_binary().
+generate_new_kazoo_signing_secret() ->
+    kz_binary:rand_hex(16).

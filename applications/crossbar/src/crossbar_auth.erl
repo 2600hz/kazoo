@@ -10,6 +10,7 @@
 -export([create_auth_token/2
         ,validate_auth_token/1, validate_auth_token/2
         ,authorize_auth_token/1
+        ,reset_identity_secret/1
         ,log_success_auth/4, log_success_auth/5, log_success_auth/6
         ,log_failed_auth/4, log_failed_auth/5, log_failed_auth/6
         ,get_inherited_config/1
@@ -175,6 +176,17 @@ authorize_auth_token(Token) ->
 -spec maybe_db_token(map() | ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update pvt_signature_secret for user
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_identity_secret(cb_context:context()) -> cb_context:context().
+reset_identity_secret(Context) ->
+    Doc = kz_auth_identity:reset_doc_secret(cb_context:doc(Context)),
+    cb_context:set_doc(Context, Doc).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -146,6 +146,9 @@ authorize(Context) ->
 -spec authenticate(cb_context:context()) ->
                           boolean() |
                           {'true' | 'halt', cb_context:context()}.
+-spec authenticate(cb_context:context(), api_ne_binary(), atom()) ->
+                          boolean() |
+                          {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
     authenticate(Context, cb_context:auth_account_id(Context), cb_context:auth_token_type(Context)).
@@ -153,7 +156,11 @@ authenticate(Context) ->
 authenticate(_Context, ?NE_BINARY = _AccountId, 'x-auth-token') -> 'true';
 authenticate(Context, 'undefined', 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
-    case is_rate_limited(Context) of
+    case kz_buckets:consume_tokens(?APP_NAME
+                                  ,cb_modules_util:bucket_name(Context)
+                                  ,cb_modules_util:token_cost(Context)
+                                  )
+    of
         'true' ->
             lager:info("checking for x-auth-token"),
             check_auth_token(Context
@@ -165,14 +172,6 @@ authenticate(Context, 'undefined', 'x-auth-token') ->
             {'halt', cb_context:add_system_error('too_many_requests', Context)}
     end;
 authenticate(_Context, _AccountId, _TokenType) -> 'false'.
-
--spec is_rate_limited(cb_context:context()) -> boolean().
-is_rate_limited(Context) ->
-    _ = cb_context:put_reqid(Context),
-    kz_buckets:consume_tokens(?APP_NAME
-                             ,cb_modules_util:bucket_name(Context)
-                             ,cb_modules_util:token_cost(Context)
-                             ).
 
 -spec early_authenticate(cb_context:context()) ->
                                 boolean() |
