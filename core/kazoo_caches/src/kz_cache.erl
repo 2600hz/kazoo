@@ -360,12 +360,14 @@ wait_for_key_local(_, _, _) ->
     {error, timeout}.
 -else.
 wait_for_key_local(Srv, Key, Timeout) ->
-    {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}),
+    WaitFor = Timeout + 100,
+    {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}, WaitFor),
     lager:debug("waiting for message with ref ~p", [Ref]),
     receive
         {'exists', Ref, Value} -> {'ok', Value};
         {'store', Ref, Value} -> {'ok', Value};
         {_, Ref, _} -> {'error', 'timeout'}
+    after WaitFor -> {'error', 'timeout'}
     end.
 -endif.
 
