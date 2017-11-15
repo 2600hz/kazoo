@@ -543,7 +543,9 @@ gc_pool(Pool, PoolPid) ->
 
 -spec gc_workers(pid()) -> [{pid(), integer(), integer(), integer()}].
 gc_workers(Pid) ->
-    lists:keysort(3, [gc_worker(W) || {_, W, _, _} <- gen_server:call(Pid, 'get_all_workers')]).
+    lists:reverse(
+      lists:keysort(3, [gc_worker(W) || {_, W, _, _} <- gen_server:call(Pid, 'get_all_workers')])
+     ).
 
 -spec gc_worker(pid()) -> {pid(), integer(), integer(), integer()}.
 gc_worker(P) ->
@@ -552,12 +554,45 @@ gc_worker(P) ->
     [{_, S2}] = process_info(P, ['total_heap_size']),
     {P, abs(S2-S1), S1, S2}.
 
--define(GC_RESULT_FORMAT, " ~-16s | ~-8s | ~-8s | ~-8s~n").
+-define(GC_RESULT_FORMAT, "  ~-16s | ~-8s | ~-8s | ~-8s~n").
 
 print_gc_results(Pool, Results) ->
     io:format("gc'd ~p:~n", [Pool]),
+    print_gc_summary(Results),
     io:format(?GC_RESULT_FORMAT, ["Worker", "Delta", "Before", "After"]),
     lists:foreach(fun print_gc_result/1, Results).
+
+-spec print_gc_summary([{pid(), integer(), integer(), integer()}]) -> 'ok'.
+print_gc_summary(Results) ->
+    {Min, Max, Sum, Count} = gc_summary(Results),
+    Summary = kz_binary:join([kz_util:pretty_print_bytes(kz_term:words_to_bytes(Min), 'truncated')
+                             ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Sum div Count), 'truncated')
+                             ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Max), 'truncated')
+                             ]
+                            ,<<" < ">>
+                            ),
+    io:format("  Min/Avg/Max of ~p workers: ~s~n", [Count, Summary]).
+
+-spec gc_summary([{pid(), integer(), integer(), integer()}]) ->
+                        {integer(), integer(), integer(), integer()}.
+gc_summary([{_W, Diff, _B, _A} | Results]) ->
+    lists:foldl(fun gc_summary_fold/2
+               ,{Diff, Diff, Diff, 1}
+               ,Results
+               ).
+
+-spec gc_summary_fold({pid(), integer(), integer(), integer()}
+                     ,{integer(), integer(), integer(), integer()}
+                     ) ->
+                             {integer(), integer(), integer(), integer()}.
+gc_summary_fold({_W, Diff, _B, _A}
+               ,{Min, Max, Sum, Count}
+               ) ->
+    {lists:min([Diff, Min])
+    ,lists:max([Diff, Max])
+    ,Diff + Sum
+    ,Count + 1
+    }.
 
 -spec print_gc_result({pid(), integer(), integer(), integer()}) -> 'ok'.
 print_gc_result({W, Diff, Before, After}) ->
