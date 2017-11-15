@@ -25,6 +25,8 @@
         ,consumer_details/3
         ]).
 
+-export([gc_pools/0, gc_pool/1]).
+
 -include("amqp_util.hrl").
 
 -define(ASSIGNMENTS, 'kz_amqp_assignments').
@@ -520,3 +522,49 @@ print_consumer_history([Command|Commands]) ->
     {'$lager_record', Name, Props} = lager:pr(Command, ?MODULE),
     io:format("    ~s~n      ~p~n", [Name, Props]),
     print_consumer_history(Commands).
+
+-spec gc_pools() -> 'ok'.
+gc_pools() ->
+    _ = [gc_pool(Pool, Pid) || {Pool, Pid} <- kz_amqp_sup:pools()],
+    'ok'.
+
+-spec gc_pool(text()) -> 'ok'.
+gc_pool(Pool) when is_atom(Pool) ->
+    case [P || {Name, _}=P <- kz_amqp_sup:pools(), Pool =:= Name] of
+        [] -> io:format("no pool named ~p found~n", [Pool]);
+        [{Pool, Pid}] -> gc_pool(Pool, Pid)
+    end;
+gc_pool(PoolBin) ->
+    gc_pool(kz_term:to_atom(PoolBin)).
+
+-spec gc_pool(atom(), pid()) -> 'ok'.
+gc_pool(Pool, PoolPid) ->
+    print_gc_results(Pool, gc_workers(PoolPid)).
+
+-spec gc_workers(pid()) -> [{pid(), integer(), integer(), integer()}].
+gc_workers(Pid) ->
+    lists:keysort(3, [gc_worker(W) || {_, W, _, _} <- gen_server:call(Pid, 'get_all_workers')]).
+
+-spec gc_worker(pid()) -> {pid(), integer(), integer(), integer()}.
+gc_worker(P) ->
+    [{_, S1}] = process_info(P, ['total_heap_size']),
+    garbage_collect(P),
+    [{_, S2}] = process_info(P, ['total_heap_size']),
+    {P, abs(S2-S1), S1, S2}.
+
+-define(GC_RESULT_FORMAT, " ~-16s | ~-8s | ~-8s | ~-8s~n").
+
+print_gc_results(Pool, Results) ->
+    io:format("gc'd ~p:~n", [Pool]),
+    io:format(?GC_RESULT_FORMAT, ["Worker", "Delta", "Before", "After"]),
+    lists:foreach(fun print_gc_result/1, Results).
+
+-spec print_gc_result({pid(), integer(), integer(), integer()}) -> 'ok'.
+print_gc_result({W, Diff, Before, After}) ->
+    io:format(?GC_RESULT_FORMAT
+             ,[kz_term:to_list(W)
+              ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Diff), 'truncated')
+              ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Before), 'truncated')
+              ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(After), 'truncated')
+              ]
+             ).

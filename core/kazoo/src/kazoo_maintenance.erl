@@ -209,10 +209,7 @@ sort_tables(Ts) ->
 
 -spec table_size(ets:tid()) -> integer().
 table_size(T) ->
-    words_to_bytes(ets:info(T, 'memory')).
-
-words_to_bytes(Words) ->
-    Words * erlang:system_info('wordsize').
+    kz_term:words_to_bytes(ets:info(T, 'memory')).
 
 -spec print_table({ets:tab(), integer()}) -> 'ok'.
 print_table({T, Mem}) ->

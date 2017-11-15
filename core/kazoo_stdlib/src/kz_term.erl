@@ -28,6 +28,8 @@
         ,to_lower_char/1
         ,to_pid/1
 
+        ,words_to_bytes/1
+
         ,safe_cast/3
 
         ,error_to_binary/1
@@ -368,3 +370,7 @@ error_to_binary(Reason) ->
         'error':'function_clause' -> <<"Unknown Error">>;
         'error':'badarg' -> <<"Unknown Error">>
     end.
+
+-spec words_to_bytes(integer()) -> integer().
+words_to_bytes(Words) ->
+    Words * erlang:system_info('wordsize').
