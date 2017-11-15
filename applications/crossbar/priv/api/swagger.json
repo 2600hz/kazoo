@@ -42970,6 +42970,15 @@
                 }
             }
         },
+        "/token_auth/refresh": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/ubiquiti_auth": {
             "put": {
                 "parameters": [

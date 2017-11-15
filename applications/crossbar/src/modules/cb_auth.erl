@@ -154,7 +154,7 @@ authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}]) -> cb_context:is_superduper_adm
 authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}, {<<"accounts">>, _}]) -> cb_context:is_account_admin(C);
 authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}, {<<"users">>, [UserId]}, {<<"accounts">>, [AccountId]}]) ->
     cb_context:is_account_admin(C)
-        %% Permit a user to reset their own signature secret
+    %% Permit a user to reset their own signature secret
         orelse (cb_context:auth_account_id(C) =:= AccountId
                 andalso cb_context:auth_user_id(C) =:= UserId
                );

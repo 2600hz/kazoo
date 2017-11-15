@@ -140,3 +140,13 @@ curl -v -X GET \
     "status": "success"
 }
 ```
+
+#### Request a new token while current token is still valid
+
+> POST /v2/token_auth/refresh
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/token_auth/refresh
+```

@@ -178,7 +178,7 @@ maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Update pvt_signature_secret for user
 %% @end
