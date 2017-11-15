@@ -6,6 +6,7 @@
 %%%   "voice_url":"http://your.pivot.server/path/to/pivot/dialplan"
 %%%   ,"cdr_url":"http://your.pivot.server/path/to/cdr/receiver"
 %%%   ,"req_format":"kazoo" // or "twiml"
+%%%   ,"req_body_format":"form" // or "json"
 %%%   ,"method":"get" // or "post"
 %%%   ,"debug":false // or true
 %%% }
@@ -43,9 +44,10 @@
 handle(Data, Call) ->
     Prop = props:filter_empty(
              [{<<"Call">>, kapps_call:to_json(Call)}
-             ,{<<"Voice-URI">>, kz_json:get_value(<<"voice_url">>, Data)}
-             ,{<<"CDR-URI">>, kz_json:get_value(<<"cdr_url">>, Data)}
-             ,{<<"Request-Format">>, kz_json:get_value(<<"req_format">>, Data)}
+             ,{<<"Voice-URI">>, kz_json:get_ne_binary_value(<<"voice_url">>, Data)}
+             ,{<<"CDR-URI">>, kz_json:get_ne_binary_value(<<"cdr_url">>, Data)}
+             ,{<<"Request-Format">>, kz_json:get_ne_binary_value(<<"req_format">>, Data)}
+             ,{<<"Request-Body-Format">>, kz_json:get_ne_binary_value(<<"req_body_format">>, Data, <<"form">>)}
              ,{<<"HTTP-Method">>, kzt_util:http_method(kz_json:get_value(<<"method">>, Data, 'get'))}
              ,{<<"Debug">>, kz_json:is_true(<<"debug">>, Data, 'false')}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
