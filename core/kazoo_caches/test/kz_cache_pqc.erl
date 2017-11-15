@@ -5,6 +5,7 @@
 -ifdef(PROPER).
 
 -include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
@@ -26,6 +27,17 @@
                ,now_ms = 0 :: pos_integer()
                }).
 
+proper_test_() ->
+    {"Runs kz_cache PropEr tests"
+    ,[{"sequential testing"
+      ,?assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}]))
+      }
+     ,{"parallel testing"
+      ,?assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}]))
+      }
+     ]
+    }.
+
 correct() ->
     ?FORALL(Cmds
            ,commands(?MODULE)
@@ -33,7 +45,7 @@ correct() ->
                begin
                    kz_util:put_callid(?MODULE),
                    kz_cache:stop_local(?SERVER),
-                   {'ok', P} = kz_cache:start_link(?SERVER, [{'origin_bindings', [[]]}]),
+                   {'ok', P} = kz_cache:start_link(?SERVER),
                    {History, State, Result} = run_commands(?MODULE, Cmds),
                    kz_cache:stop_local(P),
                    ?WHENFAIL(io:format("Final State of ~p: ~p\nFailing Cmds: ~p\n"
@@ -50,7 +62,7 @@ correct_parallel() ->
            ,parallel_commands(?MODULE),
             begin
                 kz_cache:stop_local(?SERVER),
-                {'ok', P} = kz_cache:start_link(?SERVER, [{'origin_bindings', [[]]}]),
+                {'ok', P} = kz_cache:start_link(?SERVER),
                 {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
                 kz_cache:stop_local(P),
                 ?WHENFAIL(io:format("Failing Cmds: ~p\nS: ~p\nP: ~p\n"
