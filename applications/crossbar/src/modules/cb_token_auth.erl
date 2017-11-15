@@ -6,29 +6,23 @@
 %%% This is a simple auth mechanism, once the user has aquired an
 %%% auth token this module will allow access.  This module should be
 %%% updated to be FAR more robust.
-%%%
-%%% A user can also request a new access token using their current one.
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(cb_token_auth).
 
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1
-        ,resource_exists/0, resource_exists/1
-        ,validate/1, validate/2
-        ,post/2
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,validate/1
         ,delete/1
         ,authenticate/1, early_authenticate/1
         ,authorize/1
         ]).
 
 -include("crossbar.hrl").
-
--define(REFRESH_PATH_TOKEN, <<"refresh">>).
 
 %%%===================================================================
 %%% API
@@ -42,43 +36,22 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.token_auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.token_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.token_auth">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.token_auth">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.token_auth">>, ?MODULE, 'delete'),
     ok.
 
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_DELETE, ?HTTP_GET].
 
-allowed_methods(?REFRESH_PATH_TOKEN) -> [?HTTP_POST].
-
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
 
-resource_exists(?REFRESH_PATH_TOKEN) -> 'true'.
-
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     _ = cb_context:put_reqid(Context),
-    validate_1(Context, cb_context:req_verb(Context)).
+    validate(Context, cb_context:req_verb(Context)).
 
-validate(Context, ?REFRESH_PATH_TOKEN) ->
-    cb_context:put_reqid(Context),
-    AuthDoc = kz_doc:public_fields(cb_context:auth_doc(Context)),
-    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc),
-    OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, AuthDoc),
-    Doc = kz_json:from_list([{<<"account_id">>, AccountId}
-                            ,{<<"owner_id">>, OwnerId}
-                            ]),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_doc/2, Doc}
-                       ]).
-
--spec validate_1(cb_context:context(), ne_binary()) -> cb_context:context().
-validate_1(Context, ?HTTP_GET) ->
+-spec validate(cb_context:context(), ne_binary()) -> cb_context:context().
+validate(Context, ?HTTP_GET) ->
     JObj = crossbar_util:response_auth(
              kz_doc:public_fields(cb_context:auth_doc(Context))
             ),
@@ -86,7 +59,7 @@ validate_1(Context, ?HTTP_GET) ->
               ,{fun cb_context:set_resp_data/2, JObj}
               ],
     cb_context:setters(Context, Setters);
-validate_1(Context, ?HTTP_DELETE) ->
+validate(Context, ?HTTP_DELETE) ->
     case cb_context:auth_doc(Context) of
         'undefined' -> Context;
         AuthDoc ->
@@ -95,11 +68,6 @@ validate_1(Context, ?HTTP_DELETE) ->
                                ,{fun cb_context:set_doc/2, AuthDoc}
                                ])
     end.
-
--spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, ?REFRESH_PATH_TOKEN) ->
-    cb_context:put_reqid(Context),
-    crossbar_auth:create_auth_token(Context, ?MODULE).
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->

@@ -4,6 +4,7 @@
 %%%
 %%% @end
 %%% @contributors:
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(cb_auth).
 
@@ -31,6 +32,7 @@
 -define(PROVIDERS_PATH, <<"providers">>).
 -define(KEYS_PATH, <<"keys">>).
 -define(WHITELABEL_PATH, <<"whitelabel">>).
+-define(REFRESH_PATH, <<"refresh">>).
 
 -define(LINKS_VIEW, <<"users/list_linked_users">>).
 -define(PROVIDERS_VIEW, <<"providers/list_by_type">>).
@@ -77,6 +79,7 @@ allowed_methods(?CALLBACK_PATH) -> [?HTTP_PUT];
 allowed_methods(?KEYS_PATH) -> [?HTTP_GET];
 allowed_methods(?LINKS_PATH) -> [?HTTP_GET];
 allowed_methods(?PROVIDERS_PATH) -> [?HTTP_GET];
+allowed_methods(?REFRESH_PATH) -> [?HTTP_POST];
 allowed_methods(?TOKENINFO_PATH) -> [?HTTP_GET, ?HTTP_POST].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
@@ -103,6 +106,7 @@ resource_exists(?CALLBACK_PATH) -> 'true';
 resource_exists(?KEYS_PATH) -> 'true';
 resource_exists(?LINKS_PATH) -> 'true';
 resource_exists(?PROVIDERS_PATH) -> 'true';
+resource_exists(?REFRESH_PATH) -> 'true';
 resource_exists(?TOKENINFO_PATH) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> boolean().
@@ -168,6 +172,7 @@ authorize_nouns(_, ?CALLBACK_PATH,         ?HTTP_PUT,   [{<<"auth">>, _}]) -> 't
 authorize_nouns(C, ?KEYS_PATH,             ?HTTP_GET,   [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
 authorize_nouns(_, ?LINKS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?PROVIDERS_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_, ?REFRESH_PATH,          ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(C, _, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
@@ -294,7 +299,21 @@ validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
 
 %% validating /auth/keys
 validate_path(Context, ?KEYS_PATH, ?HTTP_GET) ->
-    keys_summary(Context).
+    keys_summary(Context);
+
+%% validating /auth/refresh
+validate_path(Context, ?REFRESH_PATH, ?HTTP_POST) ->
+    cb_context:put_reqid(Context),
+    AuthDoc = kz_doc:public_fields(cb_context:auth_doc(Context)),
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc),
+    OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, AuthDoc),
+    Doc = kz_json:from_list([{<<"account_id">>, AccountId}
+                            ,{<<"owner_id">>, OwnerId}
+                            ]),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_doc/2, Doc}
+                       ]).
 
 -spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 %% validating /auth/apps/{app_id}
@@ -391,6 +410,9 @@ put(Context, ?KEYS_PATH, _KeyId) ->
     Context.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, ?REFRESH_PATH) ->
+    cb_context:put_reqid(Context),
+    crossbar_auth:create_auth_token(Context, ?MODULE);
 post(Context, ?TOKENINFO_PATH) ->
     Context.
 
