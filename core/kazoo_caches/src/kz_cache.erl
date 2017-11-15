@@ -384,10 +384,20 @@ wait_for_key_local(Srv, Key, Timeout) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> {'ok', state()}.
+-spec init([atom() | kz_timeout() | kz_proplist()]) -> {'ok', state()}.
 init([Name, ExpirePeriod, Props]) ->
     kz_util:put_callid(Name),
+    init(Name, ExpirePeriod, Props, props:get_value('origin_bindings', Props)).
+
+-spec init(atom(), kz_timeout(), kz_proplist(), api_list()) -> {'ok', state()}.
+init(Name, ExpirePeriod, Props, 'undefined') ->
+    init(Name, ExpirePeriod, Props);
+init(Name, ExpirePeriod, Props, _Bindings) ->
     kapi_conf:declare_exchanges(),
+    init(Name, ExpirePeriod, Props).
+
+-spec init(atom(), kz_timeout(), kz_proplist()) -> {'ok', state()}.
+init(Name, ExpirePeriod, Props) ->
 
     Tab = ets:new(Name
                  ,['set', 'public', 'named_table', {'keypos', #cache_obj.key}]
