@@ -821,4 +821,4 @@ publish_check_sync(MsgId, Req) ->
     publish_check_sync([{<<"Msg-ID">>, MsgId} | Req]).
 
 publish_check_sync(Req) ->
-    kz_amqp_worker:cast(Req, fun kapi_switch:publish_check_sync/1).
+    kz_amqp_worker:cast(Req, fun kapi_switch:publish_notify/1).

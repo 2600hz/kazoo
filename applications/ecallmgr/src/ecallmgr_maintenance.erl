@@ -535,9 +535,9 @@ show_calls() ->
 
 -spec check_sync(text(), text()) -> 'ok'.
 check_sync(Username, Realm) ->
-    ecallmgr_fs_notify:check_sync(kz_term:to_binary(Username)
-                                 ,kz_term:to_binary(Realm)
-                                 ).
+    ecallmgr_fs_notify:notify(kz_term:to_binary(Username)
+                             ,kz_term:to_binary(Realm)
+                             ).
 
 -spec add_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', any()}.
 add_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->

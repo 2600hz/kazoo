@@ -11,8 +11,8 @@
 -export([reload_acls/1, reload_acls_v/1]).
 -export([reload_gateways/1, reload_gateways_v/1]).
 -export([fs_xml_flush/1, fs_xml_flush_v/1]).
--export([check_sync/1, check_sync_v/1
-        ,check_sync_realm/1, check_sync_username/1
+-export([notify/1, notify_v/1
+        ,notify_realm/1, notify_username/1
         ]).
 -export([fs_command/1, fs_command_v/1]).
 -export([fs_reply/1, fs_reply_v/1]).
@@ -23,7 +23,7 @@
 -export([publish_reload_acls/0]).
 -export([publish_reload_gateways/0]).
 -export([publish_fs_xml_flush/1]).
--export([publish_check_sync/1, publish_check_sync/2]).
+-export([publish_notify/1, publish_notify/2]).
 -export([publish_command/1, publish_command/2]).
 -export([publish_reply/2]).
 
@@ -59,14 +59,14 @@
 -define(FS_XML_FLUSH_TYPES, []).
 -define(FS_XML_FLUSH_KEY, <<"switch.fs_xml_flush">>).
 
--define(CHECK_SYNC_HEADERS, [<<"Username">>, <<"Realm">>]).
--define(OPTIONAL_CHECK_SYNC_HEADERS, []).
--define(CHECK_SYNC_VALUES, [{<<"Event-Category">>, <<"switch_event">>}
-                           ,{<<"Event-Name">>, <<"check_sync">>}
-                           ]).
--define(CHECK_SYNC_TYPES, []).
--define(CHECK_SYNC_KEY(Realm, Username)
-       ,kz_binary:join([<<"switch.check_sync">>
+-define(NOTIFY_HEADERS, [<<"Username">>, <<"Realm">>]).
+-define(OPTIONAL_NOTIFY_HEADERS, []).
+-define(NOTIFY_VALUES, [{<<"Event-Category">>, <<"switch_event">>}
+                       ,{<<"Event-Name">>, <<"notify">>}
+                       ]).
+-define(NOTIFY_TYPES, []).
+-define(NOTIFY_KEY(Realm, Username)
+       ,kz_binary:join([<<"switch.notify">>
                        ,amqp_util:encode(Realm)
                        ,amqp_util:encode(Username)
                        ]
@@ -143,21 +143,21 @@ fs_xml_flush_v(Prop) when is_list(Prop) ->
 fs_xml_flush_v(JObj) ->
     fs_xml_flush_v(kz_json:to_proplist(JObj)).
 
-%% Request a check_sync
--spec check_sync(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-check_sync(Prop) when is_list(Prop) ->
-    case check_sync_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?CHECK_SYNC_HEADERS, ?OPTIONAL_CHECK_SYNC_HEADERS);
-        'false' -> {'error', "Proplist failed validation for switch event check_sync req"}
+%% Request that fs send a NOTIFY message
+-spec notify(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+notify(Prop) when is_list(Prop) ->
+    case notify_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?NOTIFY_HEADERS, ?OPTIONAL_NOTIFY_HEADERS);
+        'false' -> {'error', "Proplist failed validation for switch event notify req"}
     end;
-check_sync(JObj) ->
-    check_sync(kz_json:to_proplist(JObj)).
+notify(JObj) ->
+    notify(kz_json:to_proplist(JObj)).
 
--spec check_sync_v(api_terms()) -> boolean().
-check_sync_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?CHECK_SYNC_HEADERS, ?CHECK_SYNC_VALUES, ?CHECK_SYNC_TYPES);
-check_sync_v(JObj) ->
-    check_sync_v(kz_json:to_proplist(JObj)).
+-spec notify_v(api_terms()) -> boolean().
+notify_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?NOTIFY_HEADERS, ?NOTIFY_VALUES, ?NOTIFY_TYPES);
+notify_v(JObj) ->
+    notify_v(kz_json:to_proplist(JObj)).
 
 %% Request a fs command
 -spec fs_command(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -206,10 +206,10 @@ bind_to_q(Q, ['reload_gateways'|T], Props) ->
 bind_to_q(Q, ['fs_xml_flush'|T], Props) ->
     'ok' = amqp_util:bind_q_to_exchange(Q, ?FS_XML_FLUSH_KEY, ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
-bind_to_q(Q, ['check_sync'|T], Props) ->
+bind_to_q(Q, ['notify'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
-    'ok' = amqp_util:bind_q_to_exchange(Q, ?CHECK_SYNC_KEY(Realm, Username), ?SWITCH_EXCHANGE),
+    'ok' = amqp_util:bind_q_to_exchange(Q, ?NOTIFY_KEY(Realm, Username), ?SWITCH_EXCHANGE),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['command'|T], Props) ->
     Node = props:get_value('node', Props, <<"*">>),
@@ -232,10 +232,10 @@ unbind_q_from(Q, ['reload_gateways'|T], Props) ->
 unbind_q_from(Q, ['fs_xml_flush'|T], Props) ->
     'ok' = amqp_util:unbind_q_from_exchange(Q, ?FS_XML_FLUSH_KEY, ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
-unbind_q_from(Q, ['check_sync'|T], Props) ->
+unbind_q_from(Q, ['notify'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
-    'ok' = amqp_util:unbind_q_from_exchange(Q, ?CHECK_SYNC_KEY(Realm, Username), ?SWITCH_EXCHANGE),
+    'ok' = amqp_util:unbind_q_from_exchange(Q, ?NOTIFY_KEY(Realm, Username), ?SWITCH_EXCHANGE),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['command'|T], Props) ->
     Node = props:get_value('node', Props, <<"*">>),
@@ -272,36 +272,36 @@ publish_fs_xml_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_XML_FLUSH_VALUES, fun fs_xml_flush/1),
     amqp_util:basic_publish(?SWITCH_EXCHANGE, ?FS_XML_FLUSH_KEY, Payload, ContentType).
 
--spec publish_check_sync(api_terms()) -> 'ok'.
--spec publish_check_sync(api_terms(), binary()) -> 'ok'.
-publish_check_sync(JObj) ->
-    publish_check_sync(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_check_sync(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CHECK_SYNC_VALUES, fun check_sync/1),
+-spec publish_notify(api_terms()) -> 'ok'.
+-spec publish_notify(api_terms(), binary()) -> 'ok'.
+publish_notify(JObj) ->
+    publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_notify(Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun notify/1),
 
-    Realm = check_sync_realm(Req),
-    Username = check_sync_username(Req),
+    Realm = notify_realm(Req),
+    Username = notify_username(Req),
 
     amqp_util:basic_publish(?SWITCH_EXCHANGE
-                           ,?CHECK_SYNC_KEY(Realm, Username)
+                           ,?NOTIFY_KEY(Realm, Username)
                            ,Payload
                            ,ContentType
                            ).
 
--spec check_sync_realm(api_terms()) -> api_binary().
-check_sync_realm(Props) when is_list(Props) ->
-    check_sync_value(Props, <<"Realm">>, fun props:get_value/2);
-check_sync_realm(JObj) ->
-    check_sync_value(JObj, <<"Realm">>, fun kz_json:get_value/2).
+-spec notify_realm(api_terms()) -> api_binary().
+notify_realm(Props) when is_list(Props) ->
+    notify_value(Props, <<"Realm">>, fun props:get_value/2);
+notify_realm(JObj) ->
+    notify_value(JObj, <<"Realm">>, fun kz_json:get_value/2).
 
--spec check_sync_username(api_terms()) -> api_binary().
-check_sync_username(Props) when is_list(Props) ->
-    check_sync_value(Props, <<"Username">>, fun props:get_value/2);
-check_sync_username(JObj) ->
-    check_sync_value(JObj, <<"Username">>, fun kz_json:get_value/2).
+-spec notify_username(api_terms()) -> api_binary().
+notify_username(Props) when is_list(Props) ->
+    notify_value(Props, <<"Username">>, fun props:get_value/2);
+notify_username(JObj) ->
+    notify_value(JObj, <<"Username">>, fun kz_json:get_value/2).
 
--spec check_sync_value(api_terms(), ne_binary(), fun()) -> api_binary().
-check_sync_value(API, Key, Get) ->
+-spec notify_value(api_terms(), ne_binary(), fun()) -> api_binary().
+notify_value(API, Key, Get) ->
     Get(Key, API).
 
 -spec publish_command(api_terms()) -> 'ok'.

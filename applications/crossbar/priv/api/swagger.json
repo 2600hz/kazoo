@@ -20933,34 +20933,6 @@
             ],
             "type": "object"
         },
-        "kapi.switch.check_sync": {
-            "description": "AMQP API for switch.check_sync",
-            "properties": {
-                "Event-Category": {
-                    "enum": [
-                        "switch_event"
-                    ],
-                    "type": "string"
-                },
-                "Event-Name": {
-                    "enum": [
-                        "check_sync"
-                    ],
-                    "type": "string"
-                },
-                "Realm": {
-                    "type": "string"
-                },
-                "Username": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Realm",
-                "Username"
-            ],
-            "type": "object"
-        },
         "kapi.switch.fs_command": {
             "description": "AMQP API for switch.fs_command",
             "properties": {
@@ -21055,6 +21027,34 @@
                 }
             },
             "required": [
+                "Username"
+            ],
+            "type": "object"
+        },
+        "kapi.switch.notify": {
+            "description": "AMQP API for switch.notify",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "switch_event"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "notify"
+                    ],
+                    "type": "string"
+                },
+                "Realm": {
+                    "type": "string"
+                },
+                "Username": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Realm",
                 "Username"
             ],
             "type": "object"
