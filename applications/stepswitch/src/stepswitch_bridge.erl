@@ -302,7 +302,7 @@ maybe_bridge(#state{endpoints=Endpoints
             kapi_dialplan:publish_command(ControlQ
                                          ,build_bridge(State, Number, Name)
                                          ),
-            lager:debug("sent bridge command to ~s", [ControlQ])
+            lager:debug("sent bridge command to ~p", [ControlQ])
     end.
 
 -spec maybe_bridge_emergency(state()) -> 'ok'.
