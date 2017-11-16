@@ -209,18 +209,18 @@ sort_tables(Ts) ->
 
 -spec table_size(ets:tid()) -> integer().
 table_size(T) ->
-    words_to_bytes(ets:info(T, 'memory')).
-
-words_to_bytes(Words) ->
-    Words * erlang:system_info('wordsize').
+    kz_term:words_to_bytes(ets:info(T, 'memory')).
 
 -spec print_table({ets:tab(), integer()}) -> 'ok'.
 print_table({T, Mem}) ->
-    io:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
+    io:format("  ~-25s: ~6s~n", [kz_term:to_list(ets:info(T, 'name'))
+                                ,kz_util:pretty_print_bytes(Mem, 'truncated')
+                                ]).
 
 -spec log_table({ets:tab(), integer()}, file:name_all()) -> 'ok'.
 log_table({T, Mem}, Filename) ->
-    Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]),
+    Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_term:to_list(ets:info(T, 'name'))
+                                            , kz_util:pretty_print_bytes(Mem, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec mem_info() -> 'ok'.
