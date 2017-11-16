@@ -238,7 +238,7 @@
                               ,{<<"Fail-On-Single-Reject">>, <<"fail_on_single_reject">>}
                               ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
                               ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}
-                              ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
+                              ,{<<"Fax-Enabled">>, <<"fax_enable_t38">>}
                               ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
                               ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
                               ,{<<"Fax-Timezone">>, <<"fax_timezone">>}
