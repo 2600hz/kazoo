@@ -11,7 +11,7 @@
 
 -export([start_link/1, start_link/2]).
 -export([presence_probe/2]).
--export([check_sync_api/2, check_sync/2]).
+-export([notify_api/2, notify/3]).
 -export([mwi_update/2]).
 -export([register_overwrite/2]).
 -export([init/1
@@ -36,7 +36,7 @@
                                                  ]}
                                 ,{'probe_type', <<"presence">>}
                                 ]}
-                  ,{'switch', [{'restrict_to', ['check_sync']}]}
+                  ,{'switch', [{'restrict_to', ['notify']}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'presence_probe'}
                      ,[{<<"presence">>, <<"probe">>}]
@@ -47,8 +47,8 @@
                     ,{{?MODULE, 'register_overwrite'}
                      ,[{<<"presence">>, <<"register_overwrite">>}]
                      }
-                    ,{{?MODULE, 'check_sync_api'}
-                     ,[{<<"switch_event">>, <<"check_sync">>}]
+                    ,{{?MODULE, 'notify_api'}
+                     ,[{<<"switch_event">>, <<"notify">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
@@ -102,31 +102,34 @@ resp_to_probe(State, User, Realm) ->
                      ],
     kz_amqp_worker:cast(PresenceUpdate, fun kapi_presence:publish_update/1).
 
--spec check_sync_api(kz_json:object(), kz_proplist()) -> 'ok'.
-check_sync_api(JObj, _Props) ->
-    'true' = kapi_switch:check_sync_v(JObj),
+-spec notify_api(kz_json:object(), kz_proplist()) -> 'ok'.
+notify_api(JObj, _Props) ->
+    'true' = kapi_switch:notify_v(JObj),
     kz_util:put_callid(JObj),
-    check_sync(kapi_switch:check_sync_username(JObj), kapi_switch:check_sync_realm(JObj)).
+    notify(kapi_switch:notify_username(JObj)
+          ,kapi_switch:notify_realm(JObj)
+          ,kz_json:get_ne_binary_value(<<"Event">>, JObj)
+          ).
 
--spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
-check_sync(Username, Realm) ->
+-spec notify(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+notify(Username, Realm, Event) ->
     lager:info("looking up registration information for ~s@~s", [Username, Realm]),
     case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->
-            lager:warning("failed to find contact ~s@~s, not sending check-sync", [Username, Realm]);
+            lager:warning("failed to find contact ~s@~s, not sending NOTIFY", [Username, Realm]);
         {'ok', Registration} ->
             Contact = kz_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
             [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
-            lager:info("calling check sync on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
+            lager:info("sending NOTIFY on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
             case ensure_contact_user(Contact, Username, Realm) of
                 'undefined' ->
                     lager:error("invalid contact ~p: ~p", [Contact, Registration]);
-                Valid -> send_check_sync(Node, Username, Realm, Valid)
+                Valid -> send_notify(Node, Username, Realm, Event, Valid)
             end
     end.
 
--spec send_check_sync(atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_check_sync(Node, Username, Realm, Contact) ->
+-spec send_notify(atom(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_notify(Node, Username, Realm, Event, Contact) ->
     AOR = To = From = kzsip_uri:ruri(#uri{user=Username, domain=Realm}),
     SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
@@ -134,10 +137,10 @@ send_check_sync(Node, Username, Realm, Contact) ->
               ,{"extra-headers", SIPHeaders}
               ,{"to-uri", To}
               ,{"from-uri", From}
-              ,{"event-string", "check-sync"}
+              ,{"event-string", Event}
               ],
     Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-    lager:info("send check-sync to '~s@~s' via ~s: ~p", [Username, Realm, Node, Resp]).
+    lager:info("send NOTIFY with Event '~s' to '~s@~s' via ~s: ~p", [Event, Username, Realm, Node, Resp]).
 
 -spec mwi_update(kz_json:object(), kz_proplist()) -> no_return().
 mwi_update(JObj, Props) ->

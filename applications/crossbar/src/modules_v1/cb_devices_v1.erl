@@ -13,14 +13,14 @@
 -module(cb_devices_v1).
 
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1
-        ,resource_exists/0, resource_exists/1
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
         ,billing/1
         ,authenticate/1
         ,authorize/1
-        ,validate/1, validate/2
-        ,put/1
-        ,post/2
+        ,validate/1, validate/2, validate/3
+        ,put/1, put/2
+        ,post/2, post/3
         ,delete/2
         ,lookup_regs/1
         ]).
@@ -28,6 +28,7 @@
 -include("crossbar.hrl").
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
+-define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
@@ -67,6 +68,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
@@ -74,7 +76,10 @@ allowed_methods() ->
 allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
+
+allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -86,9 +91,11 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -143,6 +150,7 @@ authorize(_Nouns, _Verb) -> 'false'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_devices(Context, cb_context:req_verb(Context)).
 
@@ -156,12 +164,17 @@ validate(Context, ?STATUS_PATH_TOKEN) ->
 validate(Context, DeviceId) ->
     validate_device(Context, DeviceId, cb_context:req_verb(Context)).
 
+validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    load_device(DeviceId, Context).
+
 validate_device(Context, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     load_device_status(Context);
 validate_device(Context, DeviceId, ?HTTP_GET) ->
     load_device(DeviceId, Context);
 validate_device(Context, DeviceId, ?HTTP_POST) ->
     validate_request(DeviceId, Context);
+validate_device(Context, DeviceId, ?HTTP_PUT) ->
+    validate_action(Context, DeviceId, cb_context:req_value(Context, <<"action">>));
 validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
@@ -184,12 +197,24 @@ post(Context, DeviceId) ->
             error_used_mac_address(Context)
     end.
 
+-spec post(cb_context:context(), path_token(), path_token()) ->
+                  cb_context:context().
+post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    lager:debug("publishing check_sync for ~s", [DeviceId]),
+    Context1 = cb_context:store(Context, 'sync', 'force'),
+    _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
+    crossbar_util:response_202(<<"sync request sent">>, Context).
+
 -spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device('undefined', Context1),
     _ = kz_util:spawn(fun provisioner_util:maybe_provision/1, [Context1]),
     Context1.
+
+put(Context, DeviceId) ->
+    put_action(Context, DeviceId, cb_context:req_value(Context, <<"action">>)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
@@ -246,6 +271,25 @@ validate_request('undefined', Context) ->
     check_mac_address('undefined', Context);
 validate_request(DeviceId, Context) ->
     prepare_outbound_flags(DeviceId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Validate payloads for actions on a device
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_action(cb_context:context(), ne_binary(), api_binary()) ->
+                             cb_context:context().
+validate_action(Context, DeviceId, <<"notify">>) ->
+    Context1 = cb_context:validate_request_data(<<"devices_notify">>, Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_device(DeviceId, Context);
+        _ -> Context1
+    end;
+validate_action(Context, _, 'undefined') ->
+    crossbar_util:response_400(<<"action required">>, kz_json:new(), Context);
+validate_action(Context, _, _) ->
+    crossbar_util:response_400(<<"invalid action">>, kz_json:new(), Context).
 
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->
@@ -583,3 +627,24 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
         {'error', 'not_found'} -> 'false'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Perform actions on a device
+%% @end
+%%--------------------------------------------------------------------
+-spec put_action(cb_context:context(), ne_binary(), api_binary()) ->
+                        cb_context:context().
+put_action(Context, DeviceId, <<"notify">>) ->
+    lager:debug("publishing NOTIFY for ~s", [DeviceId]),
+    Username = kz_device:sip_username(cb_context:doc(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Req = [{<<"Event">>, cb_context:req_value(Context, [<<"data">>, <<"event">>])}
+          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"Realm">>, Realm}
+          ,{<<"Username">>, Username}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kapi_switch:publish_notify(Req),
+    crossbar_util:response_202(<<"NOTIFY sent">>, Context).
