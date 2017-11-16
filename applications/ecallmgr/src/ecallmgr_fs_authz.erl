@@ -383,25 +383,25 @@ maybe_update_callee_id(JObj, Acc) ->
     end.
 
 -spec authz_req(kz_json:object()) -> kz_term:proplist().
-authz_req(Props) ->
-    AccountId = kz_evt_freeswitch:account_id(Props),
-    props:filter_undefined(
-      [{<<"Call-ID">>, kz_evt_freeswitch:call_id(Props)}
-      ,{<<"To">>, kz_json:get_ne_binary_value(<<"To">>, Props)}
-      ,{<<"From">>, kz_json:get_ne_binary_value(<<"From">>, Props)}
-      ,{<<"Request">>, kz_json:get_ne_binary_value(<<"Request">>, Props)}
-      ,{<<"Call-Direction">>, kz_evt_freeswitch:call_direction(Props)}
-      ,{<<"Other-Leg-Call-ID">>, kz_evt_freeswitch:other_leg_call_id(Props)}
+authz_req(JObj) ->
+    AccountId = kz_evt_freeswitch:account_id(JObj),
+    JObj:filter_undefined(
+      [{<<"Call-ID">>, kz_evt_freeswitch:call_id(JObj)}
+      ,{<<"To">>, kz_json:get_ne_binary_value(<<"To">>, JObj)}
+      ,{<<"From">>, kz_json:get_ne_binary_value(<<"From">>, JObj)}
+      ,{<<"Request">>, kz_json:get_ne_binary_value(<<"Request">>, JObj)}
+      ,{<<"Call-Direction">>, kz_evt_freeswitch:call_direction(JObj)}
+      ,{<<"Other-Leg-Call-ID">>, kz_evt_freeswitch:other_leg_call_id(JObj)}
       ,{<<"Caller-ID-Name">>
-       ,kz_evt_freeswitch:caller_id_name(Props, kapps_call:unknown_caller_id_name(AccountId))
+       ,kz_evt_freeswitch:caller_id_name(JObj, kapps_call:unknown_caller_id_name(AccountId))
        }
       ,{<<"Caller-ID-Number">>
-       ,kz_evt_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))
+       ,kz_evt_freeswitch:caller_id_number(JObj, kz_privacy:anonymous_caller_id_number(AccountId))
        }
-      ,{<<"From-Network-Addr">>, kz_evt_freeswitch:from_network_ip(Props)}
-      ,{<<"From-Network-Port">>, kz_evt_freeswitch:from_network_port(Props)}
-      ,{<<"Custom-Channel-Vars">>, kz_evt_freeswitch:ccvs(Props)}
-      ,{<<"Custom-Application-Vars">>, kz_evt_freeswitch:cavs(Props)}
+      ,{<<"From-Network-Addr">>, kz_evt_freeswitch:from_network_ip(JObj)}
+      ,{<<"From-Network-Port">>, kz_evt_freeswitch:from_network_port(JObj)}
+      ,{<<"Custom-Channel-Vars">>, kz_evt_freeswitch:ccvs(JObj)}
+      ,{<<"Custom-Application-Vars">>, kz_evt_freeswitch:cavs(JObj)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
