@@ -273,7 +273,7 @@ cast(Name, Request) -> gen_server:cast(Name, {'$client_cast', Request}).
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
     _P = kz_util:spawn(
            fun() ->
-                   kz_util:put_callid(?MODULE),
+                   _ = kz_util:put_callid(?MODULE),
                    timer:sleep(Wait),
                    gen_server:cast(Name, Request)
            end),
