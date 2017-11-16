@@ -385,7 +385,7 @@ maybe_update_callee_id(JObj, Acc) ->
 -spec authz_req(kz_json:object()) -> kz_term:proplist().
 authz_req(JObj) ->
     AccountId = kz_evt_freeswitch:account_id(JObj),
-    JObj:filter_undefined(
+    filter_undefined(
       [{<<"Call-ID">>, kz_evt_freeswitch:call_id(JObj)}
       ,{<<"To">>, kz_json:get_ne_binary_value(<<"To">>, JObj)}
       ,{<<"From">>, kz_json:get_ne_binary_value(<<"From">>, JObj)}
