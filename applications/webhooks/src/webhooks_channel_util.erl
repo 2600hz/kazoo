@@ -8,6 +8,10 @@
 -export([handle_event/2]).
 -export([maybe_handle_channel_event/3]).
 
+-ifdef(TEST).
+-export([is_fireable_hook/2]).
+-endif.
+
 -include("webhooks.hrl").
 
 -spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -29,7 +33,32 @@ maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),
     case webhooks_util:find_webhooks(HookEvent, AccountId) of
         [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
-        Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
+        Hooks ->
+            maybe_fire_event(AccountId, HookEvent, JObj, Hooks)
+    end.
+
+-spec maybe_fire_event(ne_binary(), ne_binary(), kz_json:object(), webhooks()) -> 'ok'.
+maybe_fire_event(AccountId, HookEvent, JObj, Hooks) ->
+    FireAbleHooks = fireable_hooks(JObj, Hooks),
+    webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), FireAbleHooks).
+
+-spec fireable_hooks(kz_json:object(), webhooks()) -> webhooks().
+fireable_hooks(JObj, Hooks) ->
+    [Hook || #webhook{}=Hook <- Hooks,
+             is_fireable_hook(JObj, Hook)
+    ].
+
+-spec is_fireable_hook(kz_json:object(), webhook()) -> boolean().
+is_fireable_hook(_JObj, #webhook{include_loopback='true'}) -> 'true';
+is_fireable_hook(JObj, #webhook{include_loopback='false'
+                               ,id=_Id, hook_id=_HookId
+                               }) ->
+    lager:debug("evt: ~s", [kz_json:encode(JObj)]),
+    case kz_json:is_false(<<"Channel-Is-Loopback">>, JObj, 'true') of
+        'true' -> 'true';
+        'false' ->
+            lager:debug("channel is loopback, filtering hook ~s", [_Id]),
+            'false'
     end.
 
 -spec hook_event_name(ne_binary()) -> ne_binary().
@@ -85,11 +114,13 @@ base_hook_event(JObj, AccountId, Acc) ->
       ,{<<"caller_id_name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
       ,{<<"caller_id_number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
       ,{<<"custom_channel_vars">>, non_reserved_ccvs(JObj)}
+      ,{<<"custom_application_vars">>, cavs(JObj)}
       ,{<<"emergency_resource_used">>, kz_term:is_true(ccv(JObj, <<"Emergency-Resource">>))}
       ,{<<"from">>, kz_json:get_value(<<"From">>, JObj)}
       ,{<<"inception">>, kz_json:get_value(<<"Inception">>, JObj)}
       ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
       ,{<<"local_resource_used">>, (not WasGlobal)}
+      ,{<<"is_internal_leg">>, kz_json:is_true(<<"Channel-Is-Loopback">>, JObj)}
       ,{<<"other_leg_call_id">>, kz_call_event:other_leg_call_id(JObj)}
       ,{<<"owner_id">>, kz_call_event:owner_id(JObj)}
       ,{<<"request">>, kz_json:get_value(<<"Request">>, JObj)}
@@ -121,3 +152,9 @@ non_reserved_ccvs(JObj) ->
 non_reserved_ccvs(_CCVs, 'undefined') -> 'undefined';
 non_reserved_ccvs(CCVs, Keys) ->
     kz_json:filter(fun({K, _}) -> not lists:member(K, Keys) end, CCVs).
+
+
+-spec cavs(kz_json:object()) ->
+                  api_object().
+cavs(JObj) ->
+    kz_call_event:custom_application_vars(JObj).

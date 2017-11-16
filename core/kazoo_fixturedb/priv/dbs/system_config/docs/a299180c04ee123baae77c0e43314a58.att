@@ -1,0 +1,23 @@
+                Account Zone Change
+
+
+Your account '{{accout.name}}' zone has been changed.
+
+
+=== Zones Change Details ===
+
+{% for key, value in zones %}
+{{key}}: {{value}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

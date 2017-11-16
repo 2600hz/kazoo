@@ -182,7 +182,8 @@ unbind([_|_]=Bindings, Module, Fun, Payload) ->
     _ = [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings],
     'ok';
 unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
-    kazoo_bindings:unbind(Binding, Module, Fun, Payload).
+    _ = kazoo_bindings:unbind(Binding, Module, Fun, Payload),
+    'ok'.
 
 -spec flush() -> 'ok'.
 flush() ->
@@ -213,7 +214,7 @@ is_task_module(_) -> 'false'.
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing tasks bindings"),
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lists:foreach(fun init_mod/1, ?TASKS).
 
 init_mod(ModuleName) ->

@@ -10,6 +10,6 @@ $(ESCRIPT):
 	@$(REBAR) compile escriptize
 
 clean-escript:
-	@$(REBAR) clean
+	@rm -f $(ESCRIPT)
 
 include $(ROOT)/make/kz.mk

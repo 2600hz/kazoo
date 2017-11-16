@@ -10,7 +10,6 @@
 
 -export([autoload_modules/0, autoload_modules/1
         ,set_autoload_modules/1, set_default_autoload_modules/1
-        ,reserved_ccv_keys/0
 
         ,flush/0
         ]).
@@ -55,7 +54,3 @@ set_autoload_modules(Modules) ->
 -spec set_default_autoload_modules(ne_binaries() | atoms()) -> {'ok', kz_json:object()}.
 set_default_autoload_modules(Modules) ->
     kapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, Modules).
-
--spec reserved_ccv_keys() -> ne_binaries().
-reserved_ccv_keys() ->
-    kapps_config:get_ne_binaries(<<"call_command">>, <<"reserved_ccv_keys">>, ?DEFAULT_CCV_KEYS).

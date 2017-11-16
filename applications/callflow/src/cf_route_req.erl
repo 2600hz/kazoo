@@ -194,6 +194,7 @@ send_route_response(Flow, JObj, Call) ->
              ,{<<"Pre-Park">>, pre_park_action(Call)}
              ,{<<"From-Realm">>, kz_account:fetch_realm(AccountId)}
              ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+             ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(JObj),

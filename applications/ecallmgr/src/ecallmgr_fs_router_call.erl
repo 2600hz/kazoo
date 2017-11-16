@@ -220,7 +220,7 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
         kz_json:set_values([{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
                            ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
                            ]
-                          ,kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
+                          ,kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
                           ),
     _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
     _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),

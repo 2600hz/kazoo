@@ -360,7 +360,7 @@ count() -> ets:info(?MODULE, 'size').
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new ecallmgr registrar"),
     _ = ets:new(?MODULE, ['set', 'protected', 'named_table', {'keypos', #registration.id}]),
@@ -420,11 +420,11 @@ handle_cast({'delete_registration'
     ets:delete(?MODULE, Id),
     {'noreply', State};
 handle_cast('flush', State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = ets:delete_all_objects(?MODULE),
     {'noreply', State};
 handle_cast({'flush', Realm}, State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     R = kz_term:to_lower_binary(Realm),
     MatchSpec = [{#registration{realm = '$1'
                                ,account_realm = '$2'
@@ -440,18 +440,18 @@ handle_cast({'flush', Realm}, State) ->
     ecallmgr_fs_nodes:flush(),
     {'noreply', State};
 handle_cast({'flush', Username, Realm}, State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = ets:delete(?MODULE, registration_id(Username, Realm)),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{queue=Q}=State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     kapi_registration:publish_sync(kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)),
     {'noreply', State};
 handle_cast(_Msg, State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -466,16 +466,16 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('expire', State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = expire_objects(),
     _ = erlang:send_after(2 * ?MILLISECONDS_IN_SECOND, self(), 'expire'),
     {'noreply', State};
 handle_info(?REGISTER_SUCCESS_MSG(Node, Props), State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = kz_util:spawn(fun handle_fs_reg/2, [Node, Props]),
     {'noreply', State};
 handle_info(_Info, State) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
@@ -504,7 +504,7 @@ handle_event(_JObj, #state{started=Started}) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), any()) -> 'ok'.
 terminate(_Reason, _) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:debug("ecallmgr registrar ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
@@ -517,7 +517,7 @@ terminate(_Reason, _) ->
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {'ok', State}.
 
 %%%===================================================================
@@ -850,7 +850,7 @@ create_registration(JObj) ->
 
 -spec augment_registration(registration(), kz_json:object()) -> registration().
 augment_registration(Reg, JObj) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     AccountId = kz_json:find(<<"Account-ID">>
                             ,[JObj, CCVs]
                             ,Reg#registration.account_id
@@ -1037,7 +1037,7 @@ update_from_authn_response(#registration{username=Username
                                         ,realm=Realm
                                         }=Reg
                           ,JObj) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     AccountId = kz_json:get_value(<<"Account-ID">>, CCVs),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     AuthorizingId = kz_json:get_value(<<"Authorizing-ID">>, CCVs),

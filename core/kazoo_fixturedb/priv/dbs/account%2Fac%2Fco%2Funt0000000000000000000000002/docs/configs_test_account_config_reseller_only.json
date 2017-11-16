@@ -1,0 +1,12 @@
+{
+    "_id": "configs_test_account_config_reseller_only",
+    "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000002",
+    "pvt_account_id": "account0000000000000000000000002",
+    "pvt_created": 63668324118,
+    "pvt_modified": 63668324118,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "account_config",
+    "reseller_only": "reseller_only",
+    "system_ne_only": ""
+}

@@ -39,12 +39,12 @@
 
 -spec init() -> 'ok'.
 init() ->
-    crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     'ok'.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 authorize(Context, Verb, [{?KZ_ACCOUNTS_DB, []}]) ->

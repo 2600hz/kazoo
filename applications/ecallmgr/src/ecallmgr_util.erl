@@ -23,8 +23,12 @@
 -export([get_expires/1]).
 -export([get_interface_list/1, get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
--export([custom_channel_vars/1]).
--export([conference_channel_vars/1]).
+
+-export([custom_channel_vars/1
+        ,custom_application_vars/1
+        ,conference_channel_vars/1
+        ]).
+
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
 -export([build_bridge_string/1, build_bridge_string/2]).
@@ -253,19 +257,24 @@ get_sip_from(Props, _) ->
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request(kz_proplist()) -> ne_binary().
 get_sip_request(Props) ->
-    [User | _] = binary:split(
-                   props:get_first_defined(
-                     [<<"Hunt-Destination-Number">>
-                     ,<<"variable_sip_req_uri">>
-                     ,<<"variable_sip_loopback_req_uri">>
-                     ,<<"Caller-Destination-Number">>
-                     ,<<"variable_sip_to_user">>
-                     ], Props, <<"nouser">>), <<"@">>, ['global']),
+    U = props:get_first_defined([<<"Hunt-Destination-Number">>
+                                ,<<"variable_sip_req_uri">>
+                                ,<<"variable_sip_loopback_req_uri">>
+                                ,<<"Caller-Destination-Number">>
+                                ,<<"variable_sip_to_user">>
+                                ]
+                               ,Props
+                               ,<<"nouser">>
+                               ),
+    [User | _] = binary:split(U, <<"@">>, ['global']),
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                     ,<<"variable_sip_auth_realm">>
                                     ,<<"variable_sip_to_host">>
                                     ,<<"variable_sip_req_host">>
-                                    ], Props, ?DEFAULT_REALM),
+                                    ]
+                                   ,Props
+                                   ,?DEFAULT_REALM
+                                   ),
     <<User/binary, "@", Realm/binary>>.
 
 -spec get_orig_ip(kz_proplist()) -> api_binary().
@@ -347,44 +356,72 @@ channel_vars_sort(ChannelVars) ->
 -spec channel_var_sort(tuple(), tuple()) -> boolean().
 channel_var_sort({A, _}, {B, _}) -> A =< B.
 
-custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+custom_channel_vars_fold({?GET_CCV(Key), V}, Acc) ->
     [{Key, V} | Acc];
-custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
     [{Key, V} | Acc];
-custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+custom_channel_vars_fold({?GET_CCV_HEADER(Key), V}, Acc) ->
     case props:is_defined(Key, Acc) of
         'true' -> Acc;
         'false' -> [{Key, V} | Acc]
     end;
 custom_channel_vars_fold(_, Acc) -> Acc.
 
+-spec custom_application_vars(kzd_freeswitch:data()) -> kz_proplist().
+-spec custom_application_vars(kz_proplist(), kz_proplist()) -> kz_proplist().
+-spec custom_application_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
+custom_application_vars(Props) ->
+    lists:map(fun application_var_map/1, custom_application_vars(Props, [])).
+
+custom_application_vars(Props, Initial) ->
+    CCVs = lists:foldl(fun custom_application_vars_fold/2, Initial, Props),
+    maybe_update_referred_ccv(Props, application_vars_sort(CCVs)).
+
+-spec application_vars_sort(kz_proplist()) -> kz_proplist().
+application_vars_sort(ApplicationVars) ->
+    lists:usort(fun application_var_sort/2, ApplicationVars).
+
+-spec application_var_sort(tuple(), tuple()) -> boolean().
+application_var_sort({A, _}, {B, _}) -> A =< B.
+
+custom_application_vars_fold({?GET_CAV(Key), V}, Acc) ->
+    [{Key, V} | Acc];
+custom_application_vars_fold({?CAV(Key), V}, Acc) ->
+    [{Key, V} | Acc];
+custom_application_vars_fold({?GET_CAV_HEADER(Key), V}, Acc) ->
+    case props:is_defined(Key, Acc) of
+        'true' -> Acc;
+        'false' -> [{Key, V} | Acc]
+    end;
+custom_application_vars_fold(_, Acc) -> Acc.
+
+-spec application_var_map({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary() | ne_binaries()}.
+application_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
+    {Key, binary:split(Serialized, <<"|:">>, ['global'])};
+application_var_map({Key, Other}) -> {Key, Other}.
+
 -spec maybe_update_referred_ccv(kz_proplist(), kz_proplist()) -> kz_proplist().
 maybe_update_referred_ccv(Props, CCVs) ->
-    update_referred_by_ccv(
-      props:get_value(<<"variable_sip_h_Referred-By">>, Props)
-                          ,update_referred_to_ccv(
-                             props:get_value(<<"variable_sip_refer_to">>, Props)
-                                                 ,CCVs
-                            )
-     ).
+    ReferTo = props:get_value(<<"variable_sip_refer_to">>, Props),
+    update_referred_by_ccv(props:get_value(<<"variable_sip_h_Referred-By">>, Props)
+                          ,update_referred_to_ccv(ReferTo, CCVs)
+                          ).
 
 -spec update_referred_by_ccv(api_binary(), kz_proplist()) -> kz_proplist().
 update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
 update_referred_by_ccv(ReferredBy, CCVs) ->
-    props:set_value(
-      <<"Referred-By">>
+    props:set_value(<<"Referred-By">>
                    ,kz_http_util:urldecode(ReferredBy)
                    ,CCVs
-     ).
+                   ).
 
 -spec update_referred_to_ccv(api_binary(), kz_proplist()) -> kz_proplist().
 update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
 update_referred_to_ccv(ReferredTo, CCVs) ->
-    props:set_value(
-      <<"Referred-To">>
+    props:set_value(<<"Referred-To">>
                    ,kz_http_util:urldecode(ReferredTo)
                    ,CCVs
-     ).
+                   ).
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
@@ -534,17 +571,18 @@ get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
                    ,kz_term:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
                    ]);
-get_fs_kv(<<?CHANNEL_VAR_PREFIX, Key/binary>>, Val, UUID) ->
+get_fs_kv(?CCV(Key), Val, UUID) ->
     get_fs_kv(Key, Val, UUID);
 get_fs_kv(Key, Val, _) ->
     list_to_binary([get_fs_key(Key), "=", maybe_sanitize_fs_value(Key, Val)]).
 
 -spec get_fs_key(ne_binary()) -> binary().
-get_fs_key(<<?CHANNEL_VAR_PREFIX, Key/binary>>) -> get_fs_key(Key);
+get_fs_key(?CCV(Key)) -> get_fs_key(Key);
+get_fs_key(?CAV(_)=CAV) -> CAV;
 get_fs_key(<<"X-", _/binary>>=Key) -> <<"sip_h_", Key/binary>>;
 get_fs_key(Key) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-        'false' -> <<?CHANNEL_VAR_PREFIX, Key/binary>>;
+        'false' -> ?CCV(Key);
         {_, Prefix} -> Prefix
     end.
 
@@ -574,7 +612,7 @@ get_fs_key_and_value(<<"ringback">>=Key, Value, _UUID) ->
     [{<<"ringback">>, maybe_sanitize_fs_value(Key, Value)}
     ,{<<"transfer_ringback">>, maybe_sanitize_fs_value(<<"transfer_ringback">>, Value)}
     ];
-get_fs_key_and_value(<<?CHANNEL_VAR_PREFIX, Key/binary>>, Val, UUID) ->
+get_fs_key_and_value(?CCV(Key), Val, UUID) ->
     get_fs_key_and_value(Key, Val, UUID);
 get_fs_key_and_value(Key, Val, _UUID)
   when is_binary(Val);
@@ -747,7 +785,7 @@ maybe_apply_call_waiting(Endpoints) ->
 
 -spec call_waiting_map(kz_json:object()) -> kz_json:object().
 call_waiting_map(Endpoint) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"Call-Waiting-Disabled">>, CCVs) of
         'false' -> Endpoint;
         'true' ->
@@ -1285,7 +1323,7 @@ normalize_custom_sip_header_name(A) -> A.
 is_custom_sip_header({<<"P-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"X-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"sip_h_", _/binary>>, _}) -> 'true';
-is_custom_sip_header({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, _/binary>>, _}) -> 'false';
+is_custom_sip_header({?GET_CCV_HEADER(_), _}) -> 'false';
 is_custom_sip_header({<<"variable_sip_h_", _/binary>>, _}) -> 'true';
 is_custom_sip_header(_Header) -> 'false'.
 

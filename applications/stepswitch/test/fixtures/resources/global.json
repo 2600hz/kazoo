@@ -1,0 +1,113 @@
+[
+    {
+        "_id": "resource000000000000000000000001",
+        "classifiers": {
+            "did_us": {
+                "enabled": true,
+                "prefix": "",
+                "suffix": ""
+            },
+            "toll_us": {
+                "enabled": true,
+                "prefix": "+1",
+                "suffix": ""
+            },
+            "tollfree_us": {
+                "enabled": true,
+                "prefix": "+1",
+                "suffix": ""
+            }
+        },
+        "emergency": false,
+        "enabled": true,
+        "flags": [
+            "fax",
+            "testing"
+        ],
+        "format_from_uri": false,
+        "formatters": {},
+        "from_uri_realm": "resource001.2600hz.local",
+        "gateways": [
+            {
+                "bypass_media": false,
+                "caller_id_type": "external",
+                "codecs": [
+                    "PCMU"
+                ],
+                "custom_sip_headers": {
+                    "in": {
+                        "x-gateway-inbound": "foo"
+                    },
+                    "out": {
+                        "x-gateway-outbound": "bar"
+                    },
+                    "x-gateway-header": "baz",
+                    "x-legacy-header": "Hz"
+                },
+                "custom_sip_interface": "sipinterface_2",
+                "enabled": true,
+                "endpoint_type": "sip",
+                "force_port": false,
+                "format_from_uri": false,
+                "from_uri_realm": "gateway001.resource001.2600hz.local",
+                "invite_format": "route",
+                "invite_parameters": {
+                    "dynamic": [
+                        "custom_channel_vars.tns_cic",
+                        {
+                            "key": "custom_channel_vars.account_id",
+                            "tag": "account_id"
+                        },
+                        {
+                            "key": "custom_sip_headers.x_auth_ip",
+                            "tag": "source_ip"
+                        },
+                        {
+                            "key": "zone",
+                            "tag": "zone"
+                        }
+                    ],
+                    "static": [
+                        "npid"
+                    ]
+                },
+                "password": "gateway001resource001password",
+                "port": 5060,
+                "prefix": "9999#",
+                "privacy_mode": "sip",
+                "progress_timeout": 8,
+                "realm": "carrier.2600hz.local",
+                "route": "+14158867900@2600hz.local",
+                "server": "127.0.0.1",
+                "suffix": "#9999",
+                "username": "gateway001resource001username"
+            }
+        ],
+        "grace_period": 5,
+        "media": {
+            "audio": {
+                "codecs": []
+            },
+            "bypass_media": false,
+            "fax_option": false,
+            "video": {
+                "codecs": []
+            }
+        },
+        "name": "Resource001",
+        "pvt_account_db": "offnet",
+        "pvt_auth_account_id": "account0000000000000000000000001",
+        "pvt_auth_user_id": "user0000000000000000000000000001",
+        "pvt_created": 63672379293,
+        "pvt_is_authenticated": true,
+        "pvt_modified": 63673255750,
+        "pvt_request_id": "request0000000000000000000000001",
+        "pvt_type": "resource",
+        "pvt_vsn": "1",
+        "require_flags": false,
+        "rules": [
+            "^\\+1((?:844)\\d{7})$"
+        ],
+        "weight_cost": 1
+    }
+]

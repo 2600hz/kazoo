@@ -27,6 +27,7 @@ DEPS = amqp_client \
 	jiffy \
 	lager \
 	lager_syslog \
+	meck \
 	nklib \
 	plists \
 	poolboy \
@@ -56,6 +57,7 @@ dep_eiconv = git https://github.com/zotonic/eiconv
 dep_escalus = git https://github.com/esl/escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5
 dep_exml = git https://github.com/paulgray/exml 2.2.1
 dep_jiffy = git https://github.com/fenollp/jiffy patch-1  ## See https://github.com/davisp/jiffy/pull/152
+dep_meck = git https://github.com/eproxus/meck
 dep_nklib = git https://github.com/NetComposer/nklib
 dep_plists = hex 1.0.0
 

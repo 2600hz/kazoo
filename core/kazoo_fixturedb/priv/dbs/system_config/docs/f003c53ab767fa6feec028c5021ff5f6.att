@@ -1,0 +1,28 @@
+                Denied Emergency Call
+
+Account '{{account.name}}' attempted an emergency service call
+but the call was blocked because the Emergency Caller ID or/and
+the Emergency address was not configured!
+
+
+=== Emergency Call Details ===
+
+    Call-ID: {{call.call_id}}
+    Emergency Caller ID:
+        - Name: {{call.emergency_caller_id_name}}
+        - Number: {{call.emergency_caller_id_number}}
+    External Caller ID:
+        - Name: {{call.outbound_caller_id_name}}
+        - Number: {{call.outbound_caller_id_number}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

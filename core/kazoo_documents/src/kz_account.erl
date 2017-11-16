@@ -163,13 +163,9 @@ fetch(Account, 'account') ->
 fetch(AccountId, 'accounts') ->
     open_cache_doc(?KZ_ACCOUNTS_DB, AccountId).
 
--ifdef(TEST).
-open_cache_doc(_, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    kz_json:fixture(?APP, <<"fixtures/account/", AccountId/binary, ".json">>).
--else.
+-spec open_cache_doc(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
 open_cache_doc(Db, AccountId) ->
     kz_datamgr:open_cache_doc(Db, AccountId, [{cache_failures,false}]).
--endif.
 
 %%--------------------------------------------------------------------
 %% @public

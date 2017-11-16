@@ -7,7 +7,7 @@
             "type": "string"
         },
         "Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Error-Message": {
             "type": "string"

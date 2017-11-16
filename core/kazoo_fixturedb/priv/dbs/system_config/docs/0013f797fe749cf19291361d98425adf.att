@@ -1,0 +1,17 @@
+				Dear {{user.first_name}} {{user.last_name}}.
+
+
+Here are some news that we have selected for you.
+
+Best regards,
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

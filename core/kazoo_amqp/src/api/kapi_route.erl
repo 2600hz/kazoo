@@ -296,7 +296,9 @@ account_id(API) when is_list(API) ->
 account_id(API) ->
     kz_json:get_first_defined([<<"Account-ID">>
                               ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                              ], API).
+                              ]
+                             ,API
+                             ).
 
 -spec resource_type(api_terms()) -> ne_binary().
 resource_type(ApiProp) when is_list(ApiProp) ->

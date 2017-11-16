@@ -293,7 +293,10 @@ route_resp_xml(<<"park">>, _Routes, JObj, Props) ->
             ,route_resp_transfer_ringback(JObj)
             ,route_resp_pre_park_action(JObj)
             ,maybe_start_dtmf_action(Props)
-             | route_resp_ccvs(JObj) ++ unset_custom_sip_headers(Props) ++ [action_el(<<"park">>)]
+             | route_resp_ccvs(JObj)
+             ++ route_resp_cavs(JObj)
+             ++ unset_custom_sip_headers(Props)
+             ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
     Context = kz_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
@@ -404,15 +407,29 @@ route_resp_ringback(JObj) ->
 
 -spec route_resp_ccvs(kz_json:object()) -> xml_els().
 route_resp_ccvs(JObj) ->
-    case kz_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
+    case kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj) of
         'undefined' -> [];
-        CCVs -> [action_el(<<"kz_multiset">>, route_ccvs_list(kz_json:to_proplist(CCVs)) )]
+        CCVs -> [action_el(<<"kz_multiset">>, route_ccvs_list(kz_json:to_proplist(CCVs)))]
+    end.
+
+-spec route_resp_cavs(kz_json:object()) -> xml_els().
+route_resp_cavs(JObj) ->
+    case kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj) of
+        'undefined' -> [];
+        CAVs -> [action_el(<<"kz_multiset">>, route_cavs_list(kz_json:to_proplist(CAVs)))]
     end.
 
 -spec route_ccvs_list(kz_proplist()) -> ne_binary().
 route_ccvs_list(CCVs) ->
     L = [kz_term:to_list(ecallmgr_util:get_fs_kv(K, V))
          || {K, V} <- CCVs
+        ],
+    <<"^^|", (kz_term:to_binary(string:join(L, "|")))/binary>>.
+
+-spec route_cavs_list(kz_proplist()) -> ne_binary().
+route_cavs_list(CAVs) ->
+    L = [kz_term:to_list(ecallmgr_util:get_fs_kv(?CAV(K), V))
+         || {K, V} <- CAVs
         ],
     <<"^^|", (kz_term:to_binary(string:join(L, "|")))/binary>>.
 

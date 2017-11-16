@@ -1,0 +1,184 @@
+{
+    "_attachments": {
+        "template.text/html": {
+            "content_type": "text/html",
+            "digest": "md5-iXioAlAIJ6jthF9W10NtjQ==",
+            "length": 8221,
+            "revpos": 172,
+            "stub": true
+        },
+        "template.text/plain": {
+            "content_type": "text/plain",
+            "digest": "md5-az/xGvCADCIRWHUEdSDO9w==",
+            "length": 675,
+            "revpos": 171,
+            "stub": true
+        }
+    },
+    "_id": "notification.deregister",
+    "_rev": "173-a894146c9f90821d4f2df9a1c524a00b",
+    "bcc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "category": "registration",
+    "cc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "friendly_name": "Deregister Notice",
+    "from": "no-reply@example.com",
+    "macros": {
+        "account.id": {
+            "description": "Account ID",
+            "friendly_name": "Account ID",
+            "i18n_label": "account_id"
+        },
+        "account.language": {
+            "description": "Account Language",
+            "friendly_name": "Account Language",
+            "i18n_label": "account_language"
+        },
+        "account.name": {
+            "description": "Name of the account",
+            "friendly_name": "Account Name",
+            "i18n_label": "account_name"
+        },
+        "account.parent_id": {
+            "description": "Parent Account ID",
+            "friendly_name": "Parent Account ID",
+            "i18n_label": "account_parent_id"
+        },
+        "account.parent_name": {
+            "description": "Parent Account Name",
+            "friendly_name": "Parent Account Name",
+            "i18n_label": "account_parent_name"
+        },
+        "account.parent_realm": {
+            "description": "Parent Account Realm",
+            "friendly_name": "Parent Account Realm",
+            "i18n_label": "account_parent_realm"
+        },
+        "account.realm": {
+            "description": "SIP Realm of the account",
+            "friendly_name": "Account Realm",
+            "i18n_label": "account_realm"
+        },
+        "account.timezone": {
+            "description": "Account Timezone",
+            "friendly_name": "Account Timezone",
+            "i18n_label": "account_timezone"
+        },
+        "last_registration.authorizing_id": {
+            "description": "Authorizing ID",
+            "friendly_name": "Authorizing ID",
+            "i18n_label": "last_registration_authorizing_id"
+        },
+        "last_registration.call_id": {
+            "description": "SIP Call ID",
+            "friendly_name": "SIP Call ID",
+            "i18n_label": "last_registration_call_id"
+        },
+        "last_registration.contact": {
+            "description": "SIP Contact",
+            "friendly_name": "SIP Contact",
+            "i18n_label": "last_registration_contact"
+        },
+        "last_registration.expires": {
+            "description": "Expires",
+            "friendly_name": "Expires",
+            "i18n_label": "last_registration_expires"
+        },
+        "last_registration.from_host": {
+            "description": "SIP From Host",
+            "friendly_name": "SIP From Host",
+            "i18n_label": "last_registration_from_host"
+        },
+        "last_registration.from_user": {
+            "description": "SIP From User",
+            "friendly_name": "SIP From User",
+            "i18n_label": "last_registration_from_user"
+        },
+        "last_registration.network_ip": {
+            "description": "Network IP",
+            "friendly_name": "Network IP",
+            "i18n_label": "last_registration_network_ip"
+        },
+        "last_registration.network_port": {
+            "description": "Network Port",
+            "friendly_name": "Network Port",
+            "i18n_label": "last_registration_network_port"
+        },
+        "last_registration.presence_hosts": {
+            "description": "Presence Hosts",
+            "friendly_name": "Presence Hosts",
+            "i18n_label": "last_registration_presence_hosts"
+        },
+        "last_registration.profile_name": {
+            "description": "Profile Name",
+            "friendly_name": "Profile Name",
+            "i18n_label": "last_registration_profile_name"
+        },
+        "last_registration.rpid": {
+            "description": "SIP RPID",
+            "friendly_name": "SIP RPID",
+            "i18n_label": "last_registration_rpid"
+        },
+        "last_registration.status": {
+            "description": "Status",
+            "friendly_name": "Status",
+            "i18n_label": "last_registration_status"
+        },
+        "last_registration.to_host": {
+            "description": "SIP To Host",
+            "friendly_name": "SIP To Host",
+            "i18n_label": "last_registration_to_host"
+        },
+        "last_registration.to_user": {
+            "description": "SIP To User",
+            "friendly_name": "SIP To User",
+            "i18n_label": "last_registration_to_user"
+        },
+        "last_registration.user_agent": {
+            "description": "SIP User Agent",
+            "friendly_name": "SIP User Agent",
+            "i18n_label": "last_registration_user_agent"
+        },
+        "last_registration.username": {
+            "description": "SIP username",
+            "friendly_name": "SIP Username",
+            "i18n_label": "last_registration_username"
+        },
+        "system.encoded_hostname": {
+            "description": "Hostname of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Hostname",
+            "i18n_label": "system_encoded_hostname"
+        },
+        "system.encoded_node": {
+            "description": "Node name of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Node",
+            "i18n_label": "system_encoded_node"
+        },
+        "system.hostname": {
+            "description": "Hostname of system generating the email",
+            "friendly_name": "Hostname",
+            "i18n_label": "system_hostname"
+        },
+        "system.node": {
+            "description": "Node name of system generating the email",
+            "friendly_name": "Node",
+            "i18n_label": "system_node"
+        }
+    },
+    "pvt_account_db": "system_config",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63675350016,
+    "pvt_document_hash": "4afe0ab335643aa9a6bb7bfc6fe87f66",
+    "pvt_modified": 63675350016,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "notification",
+    "subject": "Loss of Registration for '{{last_registration.username}}'",
+    "to": {
+        "type": "admins"
+    }
+}

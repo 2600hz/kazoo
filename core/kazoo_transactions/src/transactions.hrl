@@ -20,17 +20,5 @@
 -define(A_SUB_USER_ID, <<"sub_user_b26d94e175cb6bf60624769">>).
 -endif.
 
--ifdef(TEST).
--define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
--else.
--define(LOG_ERROR(F,A), lager:error(F,A)).
--define(LOG_WARN(F,A), lager:warning(F,A)).
--define(LOG_DEBUG(F,A), lager:debug(F,A)).
--define(LOG_DEBUG(F), lager:debug(F)).
--endif.
-
 -define(TRANSACTIONS_HRL, 'true').
 -endif.

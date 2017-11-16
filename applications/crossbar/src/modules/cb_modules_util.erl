@@ -12,7 +12,7 @@
         ,update_mwi/2
         ,get_devices_owned_by/2
         ,maybe_originate_quickcall/1
-        ,ccvs_from_context/1
+        ,cavs_from_context/1
 
         ,attachment_name/2
         ,parse_media_type/1
@@ -30,6 +30,8 @@
         ,log_assignment_updates/1
 
         ,normalize_media_upload/5
+
+        ,get_request_action/1
         ]).
 
 -include("crossbar.hrl").
@@ -67,7 +69,7 @@ send_mwi_update(BoxId, AccountId) ->
     BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
 
     _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    {New, Saved} = kvm_messages:count_none_deleted(AccountId, BoxId),
+    {New, Saved} = kvm_messages:count_non_deleted(AccountId, BoxId),
     _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),
     lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, AccountId, New, Saved]).
 
@@ -213,43 +215,21 @@ aleg_cid(Number, Call) ->
                ],
     kapps_call:exec(Routines, Call).
 
--spec ccvs_from_context(cb_context:context()) -> kz_proplist().
-ccvs_from_context(Context) ->
+-spec cavs_from_context(cb_context:context()) -> kz_proplist().
+cavs_from_context(Context) ->
     ReqData = cb_context:req_data(Context),
     QueryString = cb_context:query_string(Context),
-    ccvs_from_request(ReqData, QueryString).
+    cavs_from_request(ReqData, QueryString).
 
--spec ccvs_from_request(api_object(), api_object()) -> kz_proplist().
-ccvs_from_request('undefined', 'undefined') -> [];
-ccvs_from_request('undefined', QueryString) ->
-    ccvs_from_request(QueryString);
-ccvs_from_request(ReqData, 'undefined') ->
-    ccvs_from_request(kz_json:get_json_value(<<"custom_channel_vars">>, ReqData));
-ccvs_from_request(ReqData, QueryString) ->
-    CCVs = kz_json:get_json_value(<<"custom_channel_vars">>, ReqData, kz_json:new()),
-    ccvs_from_request(kz_json:merge(CCVs, QueryString)).
-
--spec ccvs_from_request(kz_json:object()) -> kz_proplist().
-ccvs_from_request(CCVs) ->
-    lager:debug("extracting CCVs from ~p", [CCVs]),
-    {ReqCCVs, _} =
-        kz_json:foldl(fun ccv_from_request/3
-                     ,{[], crossbar_config:reserved_ccv_keys()}
-                     ,CCVs
-                     ),
-    ReqCCVs.
-
-ccv_from_request(Key, Value, {Acc, Keys}) ->
-    case is_private_ccv(Key, Keys) of
-        'true' -> {Acc, Keys};
-        'false' ->
-            lager:debug("adding ccv ~s:~p", [Key, Value]),
-            {[{Key, Value} | Acc], Keys}
-    end.
-
--spec is_private_ccv(ne_binary(), ne_binaries()) -> boolean().
-is_private_ccv(Key, Keys) ->
-    lists:member(Key, Keys).
+-spec cavs_from_request(api_object(), api_object()) -> kz_proplist().
+cavs_from_request('undefined', 'undefined') -> [];
+cavs_from_request('undefined', QueryString) ->
+    kapps_call_util:filter_ccvs(QueryString);
+cavs_from_request(ReqData, 'undefined') ->
+    kapps_call_util:filter_ccvs(kz_json:get_json_value(<<"custom_application_vars">>, ReqData));
+cavs_from_request(ReqData, QueryString) ->
+    CAVs = kz_json:get_json_value(<<"custom_application_vars">>, ReqData, kz_json:new()),
+    kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
 
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
@@ -260,8 +240,10 @@ originate_quickcall(Endpoints, Call, Context) ->
            ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
-            | ccvs_from_context(Context)
            ],
+
+    CAVs = cavs_from_context(Context),
+
     MsgId = case kz_term:is_empty(cb_context:req_id(Context)) of
                 'true' -> kz_binary:rand_hex(16);
                 'false' -> cb_context:req_id(Context)
@@ -294,6 +276,7 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
           ,{<<"Continue-On-Fail">>, 'false'}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+          ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
           ,{<<"Export-Custom-Channel-Vars">>, [ <<"Account-ID">>
                                               , <<"Retain-CID">>
                                               , <<"Authorizing-ID">>
@@ -705,3 +688,14 @@ handle_normalized_upload(Context, FileJObj, ToExt, {'error', _R}) ->
     UpdatedDoc = kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context)),
     UpdatedContext = cb_context:set_doc(Context, UpdatedDoc),
     {UpdatedContext, FileJObj}.
+
+%% Before, we used cb_context:req_value/2 which searched "data" then the envelope
+%% but we want "action" on the envelope to be respected for these PUTs against
+%% /channels or /conferences, so we reverse the order here (just in case people are
+%% only putting "action" in "data"
+-spec get_request_action(cb_context:context()) -> api_ne_binary().
+get_request_action(Context) ->
+    kz_json:find(<<"action">>, [cb_context:req_json(Context)
+                               ,cb_context:req_data(Context)
+                               ]
+                ).

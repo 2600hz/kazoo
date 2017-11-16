@@ -79,11 +79,53 @@ handle_req(JObj, 'true') ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
         'false' -> teletype_util:notification_disabled(DataJObj, id());
-        'true' -> do_handle_req(DataJObj)
+        'true' -> process_req(DataJObj)
     end.
 
--spec do_handle_req(kz_json:object()) -> template_response().
-do_handle_req(DataJObj) ->
+-spec process_req(kz_json:object()) -> template_response().
+process_req(DataJObj) ->
+    {ReqData, Macros} = macros(DataJObj, 'true'),
+
+    %% Load templates
+    RenderedTemplates = teletype_templates:render(id(), Macros, ReqData),
+
+    AccountId = kapi_notifications:account_id(ReqData),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
+    Subject0 = kz_json:find(<<"subject">>, [ReqData, TemplateMetaJObj], subject()),
+    Subject = teletype_util:render_subject(Subject0, Macros),
+    Emails = teletype_util:find_addresses(ReqData, TemplateMetaJObj, id()),
+
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
+        'ok' -> teletype_util:notification_completed(id());
+        {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
+    end.
+
+-spec macros(kz_json:object()) -> kz_proplist().
+macros(DataJObj) ->
+    macros(DataJObj, 'false').
+
+-spec macros(kz_json:object(), boolean()) -> {kz_json:object(), kz_proplist()} | kz_proplist().
+macros(DataJObj, 'true') ->
+    ReqData = get_user_doc(DataJObj),
+    {ReqData, create_macros(ReqData)};
+macros(DataJObj, 'false') ->
+    ReqData = get_user_doc(DataJObj),
+    create_macros(ReqData).
+
+-spec create_macros(kz_json:object()) -> kz_proplist().
+create_macros(DataJObj) ->
+    UserDoc = kz_json:get_value(<<"user">>, DataJObj, kz_json:new()),
+    UserParams = case kz_json:get_value(<<"password">>, UserDoc) of
+                     'undefined' -> teletype_util:user_params(UserDoc);
+                     Password -> [{<<"password">>, Password}|teletype_util:user_params(UserDoc)]
+                 end,
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"user">>, UserParams}
+    ].
+
+-spec get_user_doc(kz_json:object()) -> kz_json:object().
+get_user_doc(DataJObj) ->
     UserId = kz_json:get_value(<<"user_id">>, DataJObj),
     {'ok', UserJObj} = teletype_util:open_doc(<<"user">>, UserId, DataJObj),
     Password = kz_json:get_value(<<"password">>, DataJObj),
@@ -94,31 +136,6 @@ do_handle_req(DataJObj) ->
     ReqData = kz_json:set_values(Values, DataJObj),
 
     case teletype_util:is_preview(DataJObj) of
-        'false' -> process_req(ReqData);
-        'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData))
+        'false' -> ReqData;
+        'true' -> kz_json:merge_jobjs(DataJObj, ReqData)
     end.
-
--spec process_req(kz_json:object()) -> template_response().
-process_req(DataJObj) ->
-    Macros = macros(DataJObj),
-
-    %% Load templates
-    RenderedTemplates = teletype_templates:render(id(), Macros, DataJObj),
-
-    AccountId = kapi_notifications:account_id(DataJObj),
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(id(), AccountId),
-    Subject0 = kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], subject()),
-    Subject = teletype_util:render_subject(Subject0, Macros),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, id()),
-
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
-        'ok' -> teletype_util:notification_completed(id());
-        {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
-    end.
-
--spec macros(kz_json:object()) -> kz_proplist().
-macros(DataJObj) ->
-    [{<<"system">>, teletype_util:system_params()}
-    ,{<<"account">>, teletype_util:account_params(DataJObj)}
-    ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
-    ].

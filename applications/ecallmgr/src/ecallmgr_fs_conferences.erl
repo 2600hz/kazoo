@@ -324,7 +324,7 @@ is_moderator(#participant{conference_channel_vars=Vars}) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:info("starting FreeSWITCH conferences tracker"),
     _ = ets:new(?CONFERENCES_TBL, ['set', 'protected', 'named_table', {'keypos', #conference.uuid}]),
@@ -520,6 +520,7 @@ participant_from_props(Props, Node) ->
                 ,caller_id_number = kzd_freeswitch:caller_id_number(Props)
                 ,caller_id_name = kzd_freeswitch:caller_id_name(Props)
                 ,custom_channel_vars = ecallmgr_util:custom_channel_vars(Props)
+                ,custom_application_vars = ecallmgr_util:custom_application_vars(Props)
                 ,conference_channel_vars = ecallmgr_util:conference_channel_vars(Props)
                 }.
 
@@ -543,18 +544,20 @@ participant_to_props(#participant{uuid=UUID
                                  ,caller_id_number=CallerIDNumber
                                  ,custom_channel_vars=CCVs
                                  ,conference_channel_vars=ConfVars
+                                 ,custom_application_vars=CAVs
                                  }) ->
     props:filter_undefined(
       [{<<"Call-ID">>, UUID}
-      ,{<<"Conference-Name">>, ConfName}
-      ,{<<"Conference-UUID">>, ConfUUID}
-      ,{<<"Switch-Hostname">>, Node}
-      ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
-      ,{<<"Join-Time">>, JoinTime}
       ,{<<"Caller-ID-Name">>, CallerIDName}
       ,{<<"Caller-ID-Number">>, CallerIDNumber}
-      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Conference-Channel-Vars">>, kz_json:from_list(ConfVars)}
+      ,{<<"Conference-Name">>, ConfName}
+      ,{<<"Conference-UUID">>, ConfUUID}
+      ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Join-Time">>, JoinTime}
+      ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
+      ,{<<"Switch-Hostname">>, Node}
       ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().

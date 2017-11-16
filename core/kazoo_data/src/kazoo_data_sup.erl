@@ -29,9 +29,7 @@
 -define(CHILDREN, [?WORKER('kazoo_data_init')
                   ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                   ,?CACHE_ARGS(?KAZOO_DATA_PLAN_CACHE, ?DP_CACHE_PROPS)
-                  ,?SUPER('kz_dataconnection_sup')
-                  ,?WORKER('kz_dataconnections')
-                  ,?WORKER('kazoo_data_bootstrap')
+                  ,?SUPER('kazoo_data_link_sup')
                   ,?WORKER('kz_data_tracing')
                   ,?WORKER('kz_data_maint_listener')
                   ]).

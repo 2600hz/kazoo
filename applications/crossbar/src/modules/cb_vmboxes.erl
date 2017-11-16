@@ -66,7 +66,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"*.finish_request.post.vmboxes">>, ?MODULE, 'finish_request'),
     ok.
 
 %%--------------------------------------------------------------------
@@ -705,32 +704,32 @@ validate_patch(Context, DocId)->
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
     Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
-    AccountMsgCounts = kvm_messages:count(cb_context:account_id(Context)),
-    RspData = merge_summary_results(cb_context:doc(Context1), AccountMsgCounts),
+    CountMap = kvm_messages:count(cb_context:account_id(Context)),
+    RspData = add_counts_to_summary_results(cb_context:doc(Context1), CountMap),
     cb_context:set_resp_data(cb_context:set_doc(Context1, RspData), RspData).
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec merge_summary_results(kz_json:objects(), kz_json:object()) -> kz_json:objects().
-merge_summary_results(BoxSummary, AccountMsgCounts) ->
-    MergeFun = fun(JObj, Acc) ->
-                       [merge_summary_fold(JObj, AccountMsgCounts) | Acc]
+-spec add_counts_to_summary_results(kz_json:objects(), map()) -> kz_json:objects().
+add_counts_to_summary_results(BoxSummaries, CountMap) ->
+    MergeFun = fun(BoxSummary, Acc) ->
+                       [merge_summary_fold(BoxSummary, CountMap) | Acc]
                end,
-    lists:foldl(MergeFun, [], BoxSummary).
+    lists:foldl(MergeFun, [], BoxSummaries).
 
--spec merge_summary_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
-merge_summary_fold(JObj, AccountMsgCounts) ->
-    BoxId = kz_json:get_value(<<"id">>, JObj),
-    case kz_json:get_value(BoxId, AccountMsgCounts) of
+-spec merge_summary_fold(kz_json:object(), map()) -> kz_json:object().
+merge_summary_fold(BoxSummary, CountMap) ->
+    BoxId = kz_json:get_value(<<"id">>, BoxSummary),
+    case maps:get(BoxId, CountMap, 'undefined') of
         'undefined' ->
-            JObj;
-        J ->
-            BCount = kz_json:get_integer_value(?VM_KEY_MESSAGES, JObj, 0),
-            New = kz_json:get_integer_value(?VM_FOLDER_NEW, J, 0),
-            Saved = kz_json:get_integer_value(?VM_FOLDER_SAVED, J, 0),
-            kz_json:set_value(?VM_KEY_MESSAGES, BCount + New + Saved, JObj)
+            BoxSummary;
+        BoxCountMap ->
+            MsgsArrayCount = kz_json:get_integer_value(?VM_KEY_MESSAGES, BoxSummary, 0),
+            New = maps:get(?VM_FOLDER_NEW, BoxCountMap, 0),
+            Saved = maps:get(?VM_FOLDER_SAVED, BoxCountMap, 0),
+            kz_json:set_value(?VM_KEY_MESSAGES, MsgsArrayCount + New + Saved, BoxSummary)
     end.
 
 %%--------------------------------------------------------------------

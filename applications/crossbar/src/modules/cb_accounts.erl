@@ -501,7 +501,10 @@ validate_request(AccountId, Context) ->
                    ,fun validate_account_schema/2
                    ,fun disallow_direct_clients/2
                    ],
-    lists:foldl(fun(F, C) -> F(AccountId, C) end, Context, ValidateFuns).
+    lists:foldl(fun(F, C) -> F(AccountId, C) end
+               ,Context
+               ,ValidateFuns
+               ).
 
 -spec ensure_account_has_realm(api_binary(), cb_context:context()) -> cb_context:context().
 ensure_account_has_realm(_AccountId, Context) ->
@@ -1509,7 +1512,7 @@ notify_new_account(Context) ->
 
 notify_new_account(_Context, 'undefined') -> 'ok';
 notify_new_account(Context, _AuthDoc) ->
-    cb_context:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     JObj = cb_context:doc(Context),
     lager:debug("triggering new account notification for ~s", [cb_context:account_id(Context)]),
     Notify = [{<<"Account-Name">>, kz_account:name(JObj)}

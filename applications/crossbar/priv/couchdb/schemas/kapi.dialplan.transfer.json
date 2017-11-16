@@ -19,7 +19,7 @@
             "type": "string"
         },
         "Custom-Channel-Vars": {
-            "type": "string"
+            "type": "object"
         },
         "Event-Category": {
             "enum": [

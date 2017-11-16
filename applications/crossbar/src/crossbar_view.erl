@@ -948,10 +948,11 @@ apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
 %%--------------------------------------------------------------------
 -spec apply_chunked_mapper(chunked_mapper_fun(), load_params(), kz_json:objects(), ne_binary()) ->
                                   chunked_mapper_ret().
-apply_chunked_mapper('undefined', #{context := Context
+apply_chunked_mapper('undefined', #{cowboy_req := Req
+                                   ,context := Context
                                    ,chunk_response_type := 'json'
                                    }, JObjs, _) ->
-    {JObjs, Context};
+    {JObjs, {Req, Context}};
 apply_chunked_mapper(Mapper, #{cowboy_req := Req
                               ,context := Context
                               }, JObjs, _)

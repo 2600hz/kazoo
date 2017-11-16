@@ -75,7 +75,7 @@ start_link(Node, Options) ->
 -spec init([node() | kz_proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:info("starting new fs conference event listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     ecallmgr_fs_conferences:sync_node(Node),
@@ -202,7 +202,7 @@ handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
 
 -spec process_event(ne_binary(), kzd_freeswitch:data(), atom()) -> any().
 process_event(<<"conference-create">>, Props, Node) ->
-    ecallmgr_fs_conferences:create(Props, Node),
+    _ = ecallmgr_fs_conferences:create(Props, Node),
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     ecallmgr_conference_sup:start_conference_control(Node, ConferenceId, UUID);
@@ -235,10 +235,13 @@ process_event(Action, Props, _Node) ->
 
 update_participant(Props) ->
     ConferenceVars = ecallmgr_util:conference_channel_vars(Props),
-    CustomVars = ecallmgr_util:custom_channel_vars(Props),
+    ChanVars = ecallmgr_util:custom_channel_vars(Props),
+    AppVars = ecallmgr_util:custom_application_vars(Props),
+
     UUID = kzd_freeswitch:call_id(Props),
     Update = [{#participant.conference_channel_vars, ConferenceVars}
-             ,{#participant.custom_channel_vars, CustomVars}
+             ,{#participant.custom_channel_vars, ChanVars}
+             ,{#participant.custom_application_vars, AppVars}
              ],
     ecallmgr_fs_conferences:participant_update(UUID, Update).
 
@@ -271,18 +274,21 @@ publish_event(Event) ->
 
 conference_event(Action, Conference, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CAVs = ecallmgr_util:custom_application_vars(Props),
     ConfVars = ecallmgr_util:conference_channel_vars(Props),
+
     props:filter_undefined(
-      [{<<"Event">>, Action}
-      ,{<<"Account-ID">>, Conference#conference.account_id}
-      ,{<<"Conference-ID">>, props:get_value(<<"Conference-Name">>, Props)}
-      ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+      [{<<"Account-ID">>, Conference#conference.account_id}
       ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
-      ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props)}
       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
       ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
-      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Conference-Channel-Vars">>, kz_json:from_list(ConfVars)}
+      ,{<<"Conference-ID">>, props:get_value(<<"Conference-Name">>, Props)}
+      ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Event">>, Action}
+      ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+      ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

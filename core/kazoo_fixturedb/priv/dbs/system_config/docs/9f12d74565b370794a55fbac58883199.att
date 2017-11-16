@@ -1,0 +1,17 @@
+                Port Request Comment
+
+Comment on your port request "{{port_request.name}}" of account '{{account.name}}'.
+
+{% firstof user.first_name user.last_name %} commented at {{port_request.comment.timestamp.local|date:"l, F j, Y \\a\\t H:i"}}:
+{{port_request.comment.content}}
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

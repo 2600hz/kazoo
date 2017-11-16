@@ -38,7 +38,9 @@ start_link() ->
 start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_KAPPS].
 
--spec start_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
+-spec start_app(atom() | nonempty_string() | ne_binary()) ->
+                       {'ok', atoms()} |
+                       {'error', any()}.
 start_app(App) when is_atom(App) ->
     case application:ensure_all_started(App) of
         {'ok', _}=OK ->
@@ -113,7 +115,7 @@ running_apps_list() ->
 
 -spec initialize_kapps() -> 'ok'.
 initialize_kapps() ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     kz_datamgr:db_exists(?KZ_ACCOUNTS_DB)
         orelse kapps_maintenance:refresh(),
     kapps_config:migrate(),

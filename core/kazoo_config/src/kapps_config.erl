@@ -811,10 +811,15 @@ get_category(Category) ->
     get_category(Category, 'true').
 
 -ifdef(TEST).
-get_category(?TEST_CAT, _) ->
-    {'ok', kapps_config_util:fixture("test_cat_system")};
-get_category(?TEST_CAT_EMPTY, _) ->
-    {'ok', kz_json:new()};
+get_category(Category, _)
+  when Category =:= <<"test_account_config">>;
+       Category =:= <<"test_account_config_sub_empty">>;
+       Category =:= <<"test_account_config_reseller_only">>;
+       Category =:= <<"test_account_config_reseller_system">>;
+       Category =:= <<"test_account_config_system_empty">>;
+       Category =:= <<"test_account_config_system_only">>;
+       Category =:= <<"no_cat_please">> ->
+    kz_datamgr:open_doc(?KZ_CONFIG_DB, Category);
 get_category(_, _) ->
     {'error', 'not_found'}.
 -else.
@@ -832,7 +837,7 @@ get_category(Category, 'false') ->
 %%  exist and will move per-node settings if they exist.
 %%  In the event that both the source and destination exist but
 %%  have different values it will not make any change.  The parameter
-%%  is only removed from the source after a successsful save of the
+%%  is only removed from the source after a successful save of the
 %%  the destination.
 %% @end
 %%--------------------------------------------------------------------

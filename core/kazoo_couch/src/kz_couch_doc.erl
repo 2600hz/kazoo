@@ -83,7 +83,7 @@ ensure_saved(#server{}=Conn, DbName, Doc, Opts) ->
     do_ensure_saved(Db, Doc, Opts).
 
 -spec del_doc(server(), ne_binary(), kz_json:object(), kz_proplist()) ->
-                     {'ok', kz_json:objects()} |
+                     {'ok', kz_json:object()} |
                      couchbeam_error().
 del_doc(#server{}=Conn, DbName, Doc, Options) ->
     Db = get_db(Conn, DbName),
@@ -219,7 +219,7 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     end.
 
 -spec copy_attachments(server(), copy_doc(), {kz_json:json_terms(), kz_json:path()}) ->
-                              {'ok', ne_binary()} |
+                              {'ok', kz_json:object()} |
                               {'error', any()}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
     #kz_copy_doc{dest_dbname = DestDbName

@@ -1,0 +1,30 @@
+                Device Expired Registration
+
+
+Device "{{last_registration.username}}" in account '{{account.name}}'
+lost its registration.
+
+    This may be due to a network connectivity issue,
+    power outage, or misconfiguration.
+    Please check the device.
+
+
+=== Last Registration Details ====
+
+    Device ID: {{last_registration.authorizing_id}}
+    Account ID: {{account.id}}
+    Account Realm: {{account.realm}}
+    User Agent: {{last_registration.user_agent}}
+    Contact: {{last_registration.contact}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

@@ -172,9 +172,9 @@ handle_cast(_Msg, State) ->
 handle_info('local_extension_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
 handle_info('local_extension_timeout', #state{response_queue=ResponseQ
-                                             ,resource_req=JObj
+                                             ,resource_req=OffnetJObj
                                              }=State) ->
-    kapi_offnet_resource:publish_resp(ResponseQ, local_extension_timeout(JObj)),
+    kapi_offnet_resource:publish_resp(ResponseQ, local_extension_timeout(OffnetJObj)),
     {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled info: ~p", [_Info]),
@@ -263,33 +263,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec outbound_flags(kz_json:object()) -> api_binary().
-outbound_flags(JObj) ->
-    case kapi_offnet_resource:flags(JObj) of
+-spec outbound_flags(kapi_offnet_resource:req()) -> api_binary().
+outbound_flags(OffnetJObj) ->
+    case kapi_offnet_resource:flags(OffnetJObj) of
         [] -> 'undefined';
         Flags -> kz_binary:join(Flags, <<"|">>)
     end.
 
 -spec build_local_extension(state()) -> kz_proplist().
 build_local_extension(#state{number_props=Props
-                            ,resource_req=JObj
+                            ,resource_req=OffnetJObj
                             ,queue=Q
                             }) ->
-    {CIDName, CIDNum} = local_extension_caller_id(JObj),
+    {CIDName, CIDNum} = local_extension_caller_id(OffnetJObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = knm_number_options:number(Props),
     AccountId = knm_number_options:account_id(Props),
-    OriginalAccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    OriginalAccountId = kapi_offnet_resource:account_id(OffnetJObj),
     ResellerId = kz_services:find_reseller_id(OriginalAccountId),
-    {CEDNum, CEDName} = local_extension_callee_id(JObj, Number),
+    {CEDNum, CEDName} = local_extension_callee_id(OffnetJObj, Number),
     Realm = get_account_realm(AccountId),
     FromRealm = get_account_realm(OriginalAccountId),
     FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
-    CCVsOrig = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetJObj, kz_json:new()),
+    CAVs = kapi_offnet_resource:custom_application_vars(OffnetJObj),
+
     CCVs = kz_json:set_values(props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
                                                      ,{<<"Account-ID">>, OriginalAccountId}
                                                      ,{<<"Reseller-ID">>, ResellerId}
-                                                     ,{<<"Outbound-Flags">>, outbound_flags(JObj)}
+                                                     ,{<<"Outbound-Flags">>, outbound_flags(OffnetJObj)}
                                                      ])
                              ,CCVsOrig
                              ),
@@ -325,26 +327,27 @@ build_local_extension(#state{number_props=Props
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
-      ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-      ,{<<"Endpoints">>, [Endpoint]}
-      ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+      ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetJObj)}
+      ,{<<"Caller-ID-Name">>, CIDName}
+      ,{<<"Caller-ID-Number">>, CIDNum}
+      ,{<<"Custom-Application-Vars">>, CAVs}
       ,{<<"Custom-Channel-Vars">>, CCVs}
+      ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+      ,{<<"Endpoints">>, [Endpoint]}
+      ,{<<"Loopback-Bowout">>, <<"false">>}
+      ,{<<"Media">>, <<"process">>}
       ,{<<"Outbound-Callee-ID-Name">>, CEDName}
       ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
       ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-      ,{<<"Caller-ID-Name">>, CIDName}
-      ,{<<"Caller-ID-Number">>, CIDNum}
       ,{<<"Simplify-Loopback">>, <<"false">>}
-      ,{<<"Loopback-Bowout">>, <<"false">>}
-      ,{<<"Media">>, <<"process">>}
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec get_account_realm(ne_binary()) -> ne_binary().
 get_account_realm(AccountId) ->
     case kz_account:fetch_realm(AccountId) of
-        undefined -> AccountId;
+        'undefined' -> AccountId;
         Realm -> Realm
     end.
 

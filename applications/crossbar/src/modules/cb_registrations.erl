@@ -195,7 +195,9 @@ merge_response(JObj, Regs) ->
     lists:foldl(fun(J, R) ->
                         case kz_json:get_ne_value(<<"Contact">>, J) of
                             'undefined' -> R;
-                            Contact -> dict:store(Contact, J, R)
+                            Contact ->
+                                Username = kz_json:get_binary_value(<<"Username">>, J, <<>>),
+                                dict:store(<<Username/binary, Contact/binary>>, J, R)
                         end
                 end, Regs, kz_json:get_value(<<"Fields">>, JObj, [])).
 

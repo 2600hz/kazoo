@@ -1,0 +1,2 @@
+view_name, view_options, view_file_name
+maintenance/listing_by_type, [{key,<<"user">>},include_docs], maintenance+listing_by_type-ba9ee0020a95e519332f16eacf0a3324.json

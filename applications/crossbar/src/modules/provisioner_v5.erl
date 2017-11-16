@@ -421,7 +421,7 @@ get_feature_key(<<"line">>=Type, _Value, Brand, Family, _AccountId, Assoc) ->
       ]).
 
 -spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
-get_line_key(<<"yealink">>, _) -> <<"0">>;
+get_line_key(<<"yealink">>, _) -> <<"1">>;
 get_line_key(_, _) -> 'undefined'.
 
 -spec get_feature_key_type(kz_json:object(), ne_binary(), binary(), binary()) -> api_object().

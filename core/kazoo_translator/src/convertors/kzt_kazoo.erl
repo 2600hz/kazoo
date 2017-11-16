@@ -30,11 +30,12 @@ exec(Call, FlowJObj) ->
 
 -spec resume_callflow(kapps_call:call(), kz_json:object()) -> usurp_return().
 resume_callflow(Call, FlowJObj) ->
-    Prop = [{<<"Call">>, kapps_call:to_json(Call)}
-           ,{<<"Flow">>, FlowJObj}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    kapi_callflow:publish_resume(Prop),
+    Event = [{<<"Event-Name">>, <<"CHANNEL_PIVOT">>}
+            ,{<<"Application-Data">>, kz_json:encode(FlowJObj)}
+            ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    'ok' = kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
     {'usurp', Call}.
 
 -spec parse_cmds(ne_binary()) ->

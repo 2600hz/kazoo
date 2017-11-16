@@ -1,0 +1,199 @@
+{
+    "_attachments": {
+        "template.text/html": {
+            "content_type": "text/html",
+            "digest": "md5-xeIb7lyiyQ8VxRkvc7YQ2Q==",
+            "length": 14493,
+            "revpos": 174,
+            "stub": true
+        },
+        "template.text/plain": {
+            "content_type": "text/plain",
+            "digest": "md5-FiFafEBNAInR6TZU8/9NkA==",
+            "length": 992,
+            "revpos": 173,
+            "stub": true
+        }
+    },
+    "_id": "notification.port_request_admin",
+    "_rev": "175-3ac1a14f76cc22d12f42a4c79801c98a",
+    "bcc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "category": "system",
+    "cc": {
+        "email_addresses": [],
+        "type": "specified"
+    },
+    "friendly_name": "Admin Port Request",
+    "from": "no-reply@example.com",
+    "macros": {
+        "account.id": {
+            "description": "Account ID",
+            "friendly_name": "Account ID",
+            "i18n_label": "account_id"
+        },
+        "account.language": {
+            "description": "Account Language",
+            "friendly_name": "Account Language",
+            "i18n_label": "account_language"
+        },
+        "account.name": {
+            "description": "Name of the account",
+            "friendly_name": "Account Name",
+            "i18n_label": "account_name"
+        },
+        "account.parent_id": {
+            "description": "Parent Account ID",
+            "friendly_name": "Parent Account ID",
+            "i18n_label": "account_parent_id"
+        },
+        "account.parent_name": {
+            "description": "Parent Account Name",
+            "friendly_name": "Parent Account Name",
+            "i18n_label": "account_parent_name"
+        },
+        "account.parent_realm": {
+            "description": "Parent Account Realm",
+            "friendly_name": "Parent Account Realm",
+            "i18n_label": "account_parent_realm"
+        },
+        "account.realm": {
+            "description": "SIP Realm of the account",
+            "friendly_name": "Account Realm",
+            "i18n_label": "account_realm"
+        },
+        "account.timezone": {
+            "description": "Account Timezone",
+            "friendly_name": "Account Timezone",
+            "i18n_label": "account_timezone"
+        },
+        "port_request.bill_address": {
+            "description": "Address on the bill",
+            "friendly_name": "Bill Address",
+            "i18n_label": "bill_address"
+        },
+        "port_request.bill_locality": {
+            "description": "City on the bill",
+            "friendly_name": "Bill Locality",
+            "i18n_label": "bill_locality"
+        },
+        "port_request.bill_name": {
+            "description": "Name on the bill",
+            "friendly_name": "Bill Name",
+            "i18n_label": "bill_name"
+        },
+        "port_request.bill_postal_code": {
+            "description": "Postal Code on the bill",
+            "friendly_name": "Bill Postal Code",
+            "i18n_label": "bill_postal_code"
+        },
+        "port_request.bill_region": {
+            "description": "Region on the bill",
+            "friendly_name": "Bill Region",
+            "i18n_label": "bill_region"
+        },
+        "port_request.comment.content": {
+            "description": "Comment Text",
+            "friendly_name": "Comment Text",
+            "i18n_label": "comment.content"
+        },
+        "port_request.comment.timestamp.local": {
+            "description": "Comment Local Timestamp",
+            "friendly_name": "Comment UTC Timestamp",
+            "i18n_label": "comment.timestamp_local"
+        },
+        "port_request.comment.timestamp.timezone": {
+            "description": "Comment Timestamp Local Timezone",
+            "friendly_name": "Comment Local Timestamp",
+            "i18n_label": "comment.timestamp_timezone"
+        },
+        "port_request.comment.timestamp.utc": {
+            "description": "Comment UTC Timestamp",
+            "friendly_name": "Comment UTC Timestamp",
+            "i18n_label": "comment.timestamp_utc"
+        },
+        "port_request.customser_contact": {
+            "description": "Customser Email",
+            "friendly_name": "Customser Email",
+            "i18n_label": "customser_contact"
+        },
+        "port_request.id": {
+            "description": "Port Request Id",
+            "friendly_name": "Port Request Id",
+            "i18n_label": "id"
+        },
+        "port_request.name": {
+            "description": "Name",
+            "friendly_name": "Name",
+            "i18n_label": "name"
+        },
+        "port_request.numbers": {
+            "description": "Numbers",
+            "friendly_name": "Numbers",
+            "i18n_label": "numbers"
+        },
+        "port_request.port_scheduled_date.local": {
+            "description": "Local Scheduled Date",
+            "friendly_name": "Local Scheduled Date",
+            "i18n_label": "port_scheduled_date_local"
+        },
+        "port_request.port_scheduled_date.timezone": {
+            "description": "Scheduled Date Local Timezone",
+            "friendly_name": "Scheduled Date Timezone",
+            "i18n_label": "port_scheduled_date_timezone"
+        },
+        "port_request.port_scheduled_date.utc": {
+            "description": "UTC Scheduled Date",
+            "friendly_name": "UTC Scheduled Date",
+            "i18n_label": "port_scheduled_date_utc"
+        },
+        "port_request.port_state": {
+            "description": "State of Port Request",
+            "friendly_name": "State of Port Request",
+            "i18n_label": "port_state"
+        },
+        "port_request.requested_port_date": {
+            "description": "Requested Port Date",
+            "friendly_name": "Requested Port Date",
+            "i18n_label": "requested_port_date"
+        },
+        "port_request.service_provider": {
+            "description": "Service Provider",
+            "friendly_name": "Service Provider",
+            "i18n_label": "service_provider"
+        },
+        "system.encoded_hostname": {
+            "description": "Hostname of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Hostname",
+            "i18n_label": "system_encoded_hostname"
+        },
+        "system.encoded_node": {
+            "description": "Node name of system generating the email, encoded to not reveal the real value",
+            "friendly_name": "Encoded Node",
+            "i18n_label": "system_encoded_node"
+        },
+        "system.hostname": {
+            "description": "Hostname of system generating the email",
+            "friendly_name": "Hostname",
+            "i18n_label": "system_hostname"
+        },
+        "system.node": {
+            "description": "Node name of system generating the email",
+            "friendly_name": "Node",
+            "i18n_label": "system_node"
+        }
+    },
+    "pvt_account_db": "system_config",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63675350017,
+    "pvt_document_hash": "c13154225f62f0656d730dae2f617761",
+    "pvt_modified": 63675350017,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "notification",
+    "subject": "Number port request for account '{{account.name}}' (Details)",
+    "to": {
+        "type": "original"
+    }
+}

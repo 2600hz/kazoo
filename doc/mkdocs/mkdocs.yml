@@ -221,7 +221,9 @@ pages:
         - 'Send DTMF': 'applications/callflow/doc/send_dtmf.md'
         - 'Flush DTMF': 'applications/callflow/doc/flush_dtmf.md'
     - 'Intercom': 'applications/callflow/doc/intercom.md'
-    - 'Set Call Variable': 'applications/callflow/doc/set_variable.md'
+    - 'Set Call Variable(s)':
+        - 'applications/callflow/doc/set_variable.md'
+        - 'applications/callflow/doc/set_variables.md'
     - 'Intercept':
         - 'Action': 'applications/callflow/doc/intercept.md'
         - 'Feature Code': 'applications/callflow/doc/intercept_feature.md'
@@ -391,6 +393,7 @@ pages:
     - 'core/kazoo/doc/README.md'
   - 'Kazoo Speech':
       - 'core/kazoo_speech/doc/README.md'
+      - 'core/kazoo_speech/doc/ispeech.md'
   - 'Kazoo MODB':
     - 'core/kazoo_modb/doc/README.md'
   - 'Kazoo CouchDB':
@@ -418,6 +421,8 @@ pages:
     - 'core/kazoo_proper/doc/rates.md'
   - 'Kazoo Performance Testing':
       - 'core/kazoo_perf/doc/maintenance.md'
+  - 'Kazoo Test FixtureDB':
+      - 'core/kazoo_fixturedb/doc/README.md'
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'

@@ -1,0 +1,23 @@
+                Low Credit Alert
+
+
+Your account {{account.name}} has less than {{threshold}}
+of credit remaining!
+
+Current balance is now {{current_balance}}
+
+
+    If the account runs out of credit it will not be able
+    to make or receive per-minute calls.
+
+
+
+=== Account Information ===
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

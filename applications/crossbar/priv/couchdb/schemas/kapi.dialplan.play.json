@@ -12,6 +12,9 @@
         "Call-ID": {
             "type": "string"
         },
+        "Endless-Playback": {
+            "type": "boolean"
+        },
         "Event-Category": {
             "enum": [
                 "call"

@@ -19,13 +19,13 @@ Key | Description | Type | Default | Required
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean()` | `true` | `false`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean()` | `true` | `false`
 `call_forward` | The device call forward parameters | `object()` |   | `false`
-`call_recording` |   | `object()` |   | `false`
+`call_recording` |   | [#/definitions/call_recording](#call_recording) |   | `false`
 `call_restriction` | Device level call restrictions for each available number classification | `object()` | `{}` | `false`
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
-`caller_id` | The device caller ID parameters | `object()` | `{}` | `false`
+`caller_id` | The device caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false`
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false`
 `contact_list` | Contect List Parameters | `object()` | `{}` | `false`
-`dial_plan` | A list of rules used to modify dialed numbers | `object()` | `{}` | `false`
+`dial_plan` | A list of rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false`
 `directories` | Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller. | `object()` |   | `false`
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean()` |   | `false`
 `do_not_disturb` | DND Parameters | `object()` |   | `false`
@@ -63,7 +63,7 @@ Key | Description | Type | Default | Required
 `password` | The GUI login password | `string()` |   | `false`
 `presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false`
 `priv_level` | The privilege level of the user | `string('user' | 'admin')` | `user` | `false`
-`profile` | User's profile data | `object()` | `{}` | `false`
+`profile` | User's profile data | [#/definitions/profile](#profile) |   | `false`
 `pronounced_name.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
 `pronounced_name` | Name pronounced by user to introduce himself to conference members | `object()` |   | `false`
 `require_password_update` | UI flag that the user should update their password. | `boolean()` | `false` | `false`

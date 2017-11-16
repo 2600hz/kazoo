@@ -84,18 +84,9 @@
                                                  {'error', any()}.
 fetch(Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
-    open_cache_doc(AccountDb, DeviceId);
+    kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{cache_failures,false}]);
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
-
--ifdef(TEST).
-open_cache_doc(?MATCH_ACCOUNT_ENCODED(_), DeviceId) ->
-    kz_json:fixture(?APP, <<"fixtures/device/", DeviceId/binary, ".json">>).
--else.
-open_cache_doc(AccountDb, DeviceId) ->
-    kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{cache_failures,false}]).
--endif.
-
 
 -spec new() -> doc().
 new() ->

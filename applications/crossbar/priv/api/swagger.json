@@ -359,12 +359,10 @@
                     "description": "call recording configuration",
                     "properties": {
                         "account": {
-                            "$ref": "#/definitions/call_recording",
-                            "type": "object"
+                            "$ref": "#/definitions/call_recording"
                         },
                         "endpoint": {
-                            "$ref": "#/definitions/call_recording",
-                            "type": "object"
+                            "$ref": "#/definitions/call_recording"
                         }
                     },
                     "type": "object"
@@ -392,15 +390,11 @@
                 },
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
-                    "default": {},
-                    "description": "The account default caller ID parameters",
-                    "type": "object"
+                    "description": "The account default caller ID parameters"
                 },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
-                    "default": {},
-                    "description": "A list of default rules used to modify dialed numbers",
-                    "type": "object"
+                    "description": "A list of default rules used to modify dialed numbers"
                 },
                 "do_not_disturb": {
                     "properties": {
@@ -417,8 +411,7 @@
                     "type": "boolean"
                 },
                 "formatters": {
-                    "$ref": "#/definitions/formatters",
-                    "type": "object"
+                    "$ref": "#/definitions/formatters"
                 },
                 "language": {
                     "description": "The language for this account",
@@ -2255,9 +2248,35 @@
                     "description": "Whether to answer an unanswered call",
                     "type": "boolean"
                 },
+                "endless_playback": {
+                    "default": false,
+                    "description": "Loop the media continuously",
+                    "type": "boolean"
+                },
                 "id": {
                     "description": "Media ID or URL of the media to play",
                     "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 }
             },
             "type": "object"
@@ -2788,6 +2807,24 @@
                     "type": "string"
                 }
             },
+            "type": "object"
+        },
+        "callflows.set_variables": {
+            "description": "Validator for the set_variables callflow's data object",
+            "properties": {
+                "custom_application_vars": {
+                    "default": {},
+                    "description": "Key-value pairs to set as custom_application_vars on the channel",
+                    "type": "object"
+                },
+                "export": {
+                    "description": "When true the provided custom_application_vars are set on the channel and any channel bridged to it later",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "custom_application_vars"
+            ],
             "type": "object"
         },
         "callflows.skel": {
@@ -3477,6 +3514,35 @@
             },
             "type": "object"
         },
+        "conferences.dial": {
+            "description": "Schema for conference dial API command",
+            "properties": {
+                "caller_id_name": {
+                    "description": "Caller ID Name to use when dialing out to endpoints",
+                    "type": "string"
+                },
+                "caller_id_number": {
+                    "description": "Caller ID Number to use when dialing out to endpoints",
+                    "type": "string"
+                },
+                "endpoints": {
+                    "items": {
+                        "description": "Device or User IDs, DIDs or extensions, SIP URIs",
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "timeout": {
+                    "description": "How long to try to reach the endpoint(s)",
+                    "minimum": 1,
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "endpoints"
+            ]
+        },
         "connectivity": {
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
             "properties": {
@@ -3790,8 +3856,7 @@
                     "type": "object"
                 },
                 "call_recording": {
-                    "$ref": "#/definitions/call_recording",
-                    "type": "object"
+                    "$ref": "#/definitions/call_recording"
                 },
                 "call_restriction": {
                     "additionalProperties": {
@@ -3816,9 +3881,7 @@
                 },
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
-                    "default": {},
-                    "description": "The device caller ID parameters",
-                    "type": "object"
+                    "description": "The device caller ID parameters"
                 },
                 "contact_list": {
                     "default": {},
@@ -3837,9 +3900,7 @@
                 },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
-                    "default": {},
-                    "description": "A list of rules used to modify dialed numbers",
-                    "type": "object"
+                    "description": "A list of rules used to modify dialed numbers"
                 },
                 "do_not_disturb": {
                     "description": "DND Parameters",
@@ -3862,8 +3923,7 @@
                     "type": "boolean"
                 },
                 "formatters": {
-                    "$ref": "#/definitions/formatters",
-                    "type": "object"
+                    "$ref": "#/definitions/formatters"
                 },
                 "language": {
                     "description": "The language for the device",
@@ -6963,6 +7023,9 @@
                 "Caller-ID-Number": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -7272,6 +7335,9 @@
                 "Call-ID": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -7406,6 +7472,9 @@
                 },
                 "Control-Queue": {
                     "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -8144,6 +8213,12 @@
                 "Conference-ID": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
                 "Endpoints": {
                     "items": {
                         "$ref": "#/definitions/kapi.dialplan.bridge_endpoint",
@@ -8163,6 +8238,12 @@
                         "command"
                     ],
                     "type": "string"
+                },
+                "Outbound-Call-ID": {
+                    "type": "string"
+                },
+                "Timeout": {
+                    "type": "integer"
                 }
             },
             "required": [
@@ -8260,13 +8341,13 @@
                     "type": "string"
                 },
                 "Conference-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Conference-ID": {
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event": {
                     "type": "string"
@@ -8458,7 +8539,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Energy-Level": {
                     "type": "string"
@@ -9510,6 +9591,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -9648,6 +9732,9 @@
                 "Bypass-Media": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -9735,11 +9822,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -10201,7 +10291,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Error-Message": {
                     "type": "string"
@@ -10240,7 +10330,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -10544,7 +10634,7 @@
                     "type": "string"
                 },
                 "Media-Macros": {
-                    "type": "string"
+                    "type": "object"
                 }
             },
             "required": [
@@ -10811,6 +10901,9 @@
                 },
                 "Call-ID": {
                     "type": "string"
+                },
+                "Endless-Playback": {
+                    "type": "boolean"
                 },
                 "Event-Category": {
                     "enum": [
@@ -11737,6 +11830,9 @@
                 "Call-ID": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Call-Vars": {
                     "type": "object"
                 },
@@ -12465,7 +12561,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -13531,7 +13627,8 @@
                 "Action": {
                     "enum": [
                         "refresh_database",
-                        "refresh_views"
+                        "refresh_views",
+                        "clean_services"
                     ],
                     "type": "string"
                 },
@@ -15319,7 +15416,6 @@
             },
             "required": [
                 "Account-ID",
-                "Password",
                 "User-ID"
             ],
             "type": "object"
@@ -15566,6 +15662,9 @@
                     "type": "string"
                 },
                 "Cc": {
+                    "type": "string"
+                },
+                "Comments": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -16260,7 +16359,8 @@
             },
             "required": [
                 "Account-ID",
-                "Audit-Log"
+                "Audit-Log",
+                "Time-Stamp"
             ],
             "type": "object"
         },
@@ -17068,6 +17168,9 @@
                 },
                 "Control-Queue": {
                     "type": "string"
+                },
+                "Custom-Appliction-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -18462,7 +18565,7 @@
                     "type": "string"
                 },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Event-Category": {
                     "enum": [
@@ -18612,11 +18715,14 @@
                 "Continue-On-Fail": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Dial-Endpoint-Method": {
                     "type": "string"
@@ -18666,7 +18772,7 @@
                     "type": "string"
                 },
                 "Export-Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -18830,6 +18936,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -18892,7 +19001,7 @@
                     "type": "string"
                 },
                 "Export-Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Fail-On-Single-Reject": {
                     "type": "string"
@@ -18993,6 +19102,9 @@
                 "Bypass-Media": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -19045,11 +19157,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -19246,11 +19361,17 @@
                 "Control-Queue": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Appliction-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "DTMF-Digit": {
                     "type": "string"
@@ -19486,11 +19607,14 @@
                 "Control-Queue": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "DTMF-Digit": {
                     "type": "string"
@@ -19713,11 +19837,14 @@
                     },
                     "type": "object"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
                 "Custom-Routing-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
                     "type": "object"
@@ -19837,6 +19964,9 @@
                 "Application-Data": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -19936,6 +20066,9 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Custom-Channel-Vars": {
                     "type": "object"
@@ -20319,6 +20452,9 @@
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -20523,11 +20659,14 @@
                 "Codecs": {
                     "type": "string"
                 },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Custom-Channel-Vars": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Custom-SIP-Headers": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -21974,6 +22113,19 @@
         "metaflows.callflow": {
             "description": "Run a callflow on an active call",
             "properties": {
+                "captures": {
+                    "description": "Callflow extension",
+                    "type": "string"
+                },
+                "collected": {
+                    "description": "Callflow extension",
+                    "type": "string"
+                },
+                "flow": {
+                    "$ref": "#/definitions/callflows.action",
+                    "description": "include the flow you'd like to run (Pivot without the HTTP interaction)",
+                    "type": "object"
+                },
                 "id": {
                     "description": "The callflow ID to run",
                     "type": "string"
@@ -22082,6 +22234,50 @@
                     "type": "string"
                 }
             },
+            "type": "object"
+        },
+        "metaflows.pivot": {
+            "description": "Validator for the Pivot metaflow element",
+            "properties": {
+                "cdr_url": {
+                    "description": "Optional URL to send the CDR to at the end of the call",
+                    "pattern": "^https?://",
+                    "type": "string"
+                },
+                "debug": {
+                    "default": false,
+                    "description": "Store debug logs related to processing this Pivot call",
+                    "type": "boolean"
+                },
+                "method": {
+                    "default": "get",
+                    "description": "What HTTP verb to send the request(s) with",
+                    "enum": [
+                        "get",
+                        "post",
+                        "GET",
+                        "POST"
+                    ],
+                    "type": "string"
+                },
+                "req_format": {
+                    "default": "kazoo",
+                    "description": "What format of Pivot will the your server respond with",
+                    "enum": [
+                        "kazoo",
+                        "twiml"
+                    ],
+                    "type": "string"
+                },
+                "voice_url": {
+                    "description": "What URL to request the initial Pivot callflow",
+                    "pattern": "^https?://",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "voice_url"
+            ],
             "type": "object"
         },
         "metaflows.play": {
@@ -23922,6 +24118,14 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "flat_rate_blacklist": {
+                    "description": "Regex for determining if a number should not be eligible for flat-rate trunking",
+                    "type": "string"
+                },
+                "flat_rate_whitelist": {
+                    "description": "Regex for determining if the number is eligible for flat-rate trunking",
+                    "type": "string"
                 },
                 "format_from_uri": {
                     "description": "When set to true requests to this resource will have a re-formated SIP From Header",
@@ -25787,6 +25991,12 @@
                     "description": "crossbar maximum upload size",
                     "type": "integer"
                 },
+                "maximum_chunk_size": {
+                    "default": 50,
+                    "description": "crossbar maximum_chunk_size",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "maximum_range": {
                     "default": 2682000,
                     "description": "crossbar maximum range",
@@ -27376,6 +27586,11 @@
                     "default": "^\\+1\\d{10}$",
                     "description": "jonny5 flat rate whitelist",
                     "type": "string"
+                },
+                "resource_flat_rate_lookup": {
+                    "default": false,
+                    "description": "lookup flat rate regexes per resource",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -30560,8 +30775,7 @@
                     "type": "object"
                 },
                 "call_recording": {
-                    "$ref": "#/definitions/call_recording",
-                    "type": "object"
+                    "$ref": "#/definitions/call_recording"
                 },
                 "call_restriction": {
                     "additionalProperties": {
@@ -30586,9 +30800,7 @@
                 },
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
-                    "default": {},
-                    "description": "The device caller ID parameters",
-                    "type": "object"
+                    "description": "The device caller ID parameters"
                 },
                 "contact_list": {
                     "default": {},
@@ -30603,9 +30815,7 @@
                 },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
-                    "default": {},
-                    "description": "A list of rules used to modify dialed numbers",
-                    "type": "object"
+                    "description": "A list of rules used to modify dialed numbers"
                 },
                 "directories": {
                     "description": "Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller.",
@@ -30838,9 +31048,7 @@
                 },
                 "profile": {
                     "$ref": "#/definitions/profile",
-                    "default": {},
-                    "description": "User's profile data",
-                    "type": "object"
+                    "description": "User's profile data"
                 },
                 "pronounced_name": {
                     "description": "Name pronounced by user to introduce himself to conference members",
@@ -31149,6 +31357,11 @@
                         "post"
                     ],
                     "type": "string"
+                },
+                "include_internal_legs": {
+                    "default": true,
+                    "description": "Whether to filter out call legs that are internal to the system (loopback)",
+                    "type": "boolean"
                 },
                 "include_subaccounts": {
                     "description": "Should the webhook be fired for subaccount events.",

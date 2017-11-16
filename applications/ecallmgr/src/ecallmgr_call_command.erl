@@ -525,19 +525,14 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
     case kapi_dialplan:set_v(JObj) of
         'false' -> {'error', <<"set failed to execute as JObj did not validate">>};
         'true' ->
-            ChannelVars = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
-            CallVars = kz_json:to_proplist(kz_json:get_value(<<"Custom-Call-Vars">>, JObj, kz_json:new())),
+            ChannelVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
+            CallVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Call-Vars">>, JObj, kz_json:new())),
+            AppVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new())),
+
             props:filter_undefined(
-              [{<<"kz_multiset">>, case ChannelVars of
-                                       [] -> 'undefined';
-                                       _ -> ecallmgr_util:multi_set_args(Node, UUID, ChannelVars)
-                                   end
-               }
-              ,{<<"kz_export">>, case CallVars of
-                                     [] -> 'undefined';
-                                     _ -> ecallmgr_util:multi_set_args(Node, UUID, CallVars)
-                                 end
-               }
+              [{<<"kz_multiset">>, maybe_multi_set(Node, UUID, ChannelVars)}
+              ,{<<"kz_multiset">>, maybe_multi_set(Node, UUID, [{?CAV(K), V} || {K, V} <- AppVars])}
+              ,{<<"kz_export">>, maybe_multi_set(Node, UUID, CallVars)}
               ])
     end;
 
@@ -600,22 +595,21 @@ get_fs_app(Node, UUID, JObj, <<"media_macro">>) ->
     case kapi_dialplan:media_macro_v(JObj) of
         'false' -> {'error', <<"media macro failed to execute as JObj did not validate">>};
         'true' ->
-            KVs = kz_json:foldr(
-                    fun(K, Macro, Acc) ->
-                            Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
-                            Result = list_to_binary(["file_string://", kz_binary:join(Paths, <<"!">>)]),
-                            [{K, Result} | Acc]
-                    end,[], kz_json:get_value(<<"Media-Macros">>, JObj)),
+            KVs = kz_json:foldr(fun(K, Macro, Acc) ->
+                                        [{K, media_macro_to_file_string(Macro)} | Acc]
+                                end
+                               ,[]
+                               ,kz_json:get_json_value(<<"Media-Macros">>, JObj)
+                               ),
             {<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, KVs, <<"|">>)}
     end;
 
-get_fs_app(Node, UUID, JObj, <<"play_macro">>) ->
+get_fs_app(_Node, _UUID, JObj, <<"play_macro">>) ->
     case kapi_dialplan:play_macro_v(JObj) of
         'false' -> {'error', <<"play macro failed to execute as JObj did not validate">>};
         'true' ->
             Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
-            Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
-            Result = list_to_binary(["file_string://", kz_binary:join(Paths, <<"!">>)]),
+            Result = media_macro_to_file_string(Macro),
             {<<"playback">>, Result}
     end;
 
@@ -628,6 +622,16 @@ get_fs_app(_Node, UUID, JObj, <<"sound_touch">>) ->
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
+
+-spec media_macro_to_file_string(ne_binaries()) -> ne_binary().
+media_macro_to_file_string(Macro) ->
+    Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
+    list_to_binary(["file_string://", kz_binary:join(Paths, <<"!">>)]).
+
+
+-spec maybe_multi_set(atom(), ne_binary(), kz_proplist()) -> api_binary().
+maybe_multi_set(_Node, _UUID, []) -> 'undefined';
+maybe_multi_set(Node, UUID, Vars) -> ecallmgr_util:multi_set_args(Node, UUID, Vars).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1168,7 +1172,8 @@ send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
         end,
 
     BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, <<"store">>),
-    ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
+    ChanProps = maybe_add_ccvs(BaseProps, ChannelProps),
+    ApiProps = maybe_add_cavs(ChanProps, ChannelProps),
     kz_amqp_worker:cast(ApiProps, fun kapi_call:publish_event/1);
 send_store_call_event(Node, UUID, MediaTransResults) ->
     send_store_call_event(Node, UUID, {MediaTransResults, 'undefined'}).
@@ -1179,6 +1184,17 @@ maybe_add_ccvs(BaseProps, ChannelProps) ->
         [] -> BaseProps;
         CustomProp ->
             props:set_value(<<"Custom-Channel-Vars">>
+                           ,kz_json:from_list(CustomProp)
+                           ,BaseProps
+                           )
+    end.
+
+-spec maybe_add_cavs(kz_proplist(), kz_proplist()) -> kz_proplist().
+maybe_add_cavs(BaseProps, ChannelProps) ->
+    case ecallmgr_util:custom_application_vars(ChannelProps) of
+        [] -> BaseProps;
+        CustomProp ->
+            props:set_value(<<"Custom-Application-Vars">>
                            ,kz_json:from_list(CustomProp)
                            ,BaseProps
                            )
@@ -1402,8 +1418,15 @@ play_app(UUID, JObj) ->
     F = ecallmgr_util:media_path(MediaName, 'new', UUID, JObj),
     %% if Leg is set, use uuid_broadcast; otherwise use playback
     case ecallmgr_fs_channel:is_bridged(UUID) of
-        'false' -> {<<"playback">>, F};
+        'false' -> {playback_app(JObj), F};
         'true' -> play_bridged(UUID, JObj, F)
+    end.
+
+-spec playback_app(kz_json:object()) -> ne_binary().
+playback_app(JObj) ->
+    case kz_json:is_true(<<"Endless-Playback">>, JObj, 'false') of
+        'true' -> <<"endless_playback">>;
+        'false' -> <<"playback">>
     end.
 
 -spec play_bridged(ne_binary(), kz_json:object(), ne_binary()) -> fs_app().
@@ -1443,9 +1466,10 @@ play_vars(Node, UUID, JObj) ->
 %%--------------------------------------------------------------------
 -spec get_terminators(api_binary() | ne_binaries() | kz_json:object()) ->
                              {ne_binary(), ne_binary()} | 'undefined'.
-get_terminators('undefined') -> 'undefined';
+get_terminators('undefined') -> {<<"playback_terminators">>, <<"none">>};
 get_terminators(Ts) when is_binary(Ts) -> get_terminators([Ts]);
-get_terminators([_|_]=Ts) ->
+get_terminators([]) -> {<<"playback_terminators">>, <<"none">>};
+get_terminators(Ts) when is_list(Ts) ->
     case Ts =:= get('$prior_terminators') of
         'true' -> 'undefined';
         'false' ->

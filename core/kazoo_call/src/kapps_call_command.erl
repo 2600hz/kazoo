@@ -43,7 +43,7 @@
         ,hangup/1, hangup/2
         ,break/1
         ,queued_hangup/1
-        ,set/3, set_terminators/2
+        ,set/3, set/4, set_terminators/2
         ,fetch/1, fetch/2
         ]).
 -export([echo/1]).
@@ -69,9 +69,9 @@
 -export([soft_hold/1, soft_hold/2
         ,soft_hold_command/2, soft_hold_command/4, soft_hold_command/5
         ]).
--export([play/2, play/3, play/4
-        ,play_command/2, play_command/3, play_command/4
-        ,b_play/2, b_play/3, b_play/4
+-export([play/2, play/3, play/4, play/5
+        ,play_command/2, play_command/3, play_command/4, play_command/5
+        ,b_play/2, b_play/3, b_play/4, b_play/5
         ]).
 -export([prompt/2, prompt/3]).
 
@@ -300,6 +300,8 @@ presence(State, PresenceId, CallId, 'undefined', 'undefined') ->
                 ,{<<"From-User">>, User}
                 ,{<<"From-Realm">>, Realm}
                 ,{<<"To">>, <<"sip:", PresenceId/binary>>}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -313,6 +315,8 @@ presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
                 ,{<<"From-User">>, User}
                 ,{<<"From-Realm">>, Realm}
                 ,{<<"To">>, TargetURI}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -326,6 +330,8 @@ presence(State, PresenceId, CallId, TargetURI, Call) ->
                 ,{<<"From-User">>, User}
                 ,{<<"From-Realm">>, Realm}
                 ,{<<"To">>, TargetURI}
+                ,{<<"To-User">>, User}
+                ,{<<"To-Realm">>, Realm}
                 ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
                 ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
                 ,{<<"State">>, State}
@@ -768,18 +774,23 @@ recv_dtmf_command(DTMFs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set(api_object(), api_object(), kapps_call:call()) -> 'ok'.
-set('undefined', CallVars, Call) -> set(kz_json:new(), CallVars, Call);
-set(ChannelVars, 'undefined', Call) -> set(ChannelVars, kz_json:new(), Call);
+-spec set(api_object(), api_object(), api_object(), kapps_call:call()) -> 'ok'.
 set(ChannelVars, CallVars, Call) ->
+    set(ChannelVars, CallVars, 'undefined', Call).
+
+set('undefined', CallVars, AppVars, Call) -> set(kz_json:new(), CallVars, AppVars, Call);
+set(ChannelVars, 'undefined', AppVars, Call) -> set(ChannelVars, kz_json:new(), AppVars, Call);
+set(ChannelVars, CallVars, AppVars, Call) ->
     case kz_json:is_empty(ChannelVars)
         andalso kz_json:is_empty(CallVars)
     of
         'true' -> 'ok';
         'false' ->
             Command = [{<<"Application-Name">>, <<"set">>}
-                      ,{<<"Insert-At">>, <<"now">>}
-                      ,{<<"Custom-Channel-Vars">>, ChannelVars}
+                      ,{<<"Custom-Application-Vars">>, AppVars}
                       ,{<<"Custom-Call-Vars">>, CallVars}
+                      ,{<<"Custom-Channel-Vars">>, ChannelVars}
+                      ,{<<"Insert-At">>, <<"now">>}
                       ],
             send_command(Command, Call)
     end.
@@ -1350,12 +1361,16 @@ b_prompt(Prompt, Lang, Call) ->
                   ne_binary().
 -spec play(ne_binary(), api_binaries(), api_binary(), kapps_call:call()) ->
                   ne_binary().
+-spec play(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call()) ->
+                  ne_binary().
 
 -spec play_command(ne_binary(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
 -spec play_command(ne_binary(), api_binaries(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
 -spec play_command(ne_binary(), api_binaries(), api_binary(), kapps_call:call() | ne_binary()) ->
+                          kz_json:object().
+-spec play_command(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call() | ne_binary()) ->
                           kz_json:object().
 
 -spec b_play(ne_binary(), kapps_call:call()) ->
@@ -1364,21 +1379,29 @@ b_prompt(Prompt, Lang, Call) ->
                     kapps_api_std_return().
 -spec b_play(ne_binary(), api_binaries(), api_binary(), kapps_call:call()) ->
                     kapps_api_std_return().
+-spec b_play(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call()) ->
+                    kapps_api_std_return().
 
 play_command(Media, Call) ->
     play_command(Media, ?ANY_DIGIT, Call).
+
 play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
-play_command(Media, Terminators, Leg, CallId=?NE_BINARY) ->
+
+play_command(Media, Terminators, Leg, Call) ->
+    play_command(Media, Terminators, Leg, 'false', Call).
+
+play_command(Media, Terminators, Leg, Endless, CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"play">>}
       ,{<<"Media-Name">>, Media}
       ,{<<"Terminators">>, play_terminators(Terminators)}
       ,{<<"Leg">>, play_leg(Leg)}
       ,{<<"Call-ID">>, CallId}
+      ,{<<"Endless-Playback">>, Endless}
       ]);
-play_command(Media, Terminators, Leg, Call) ->
-    play_command(Media, Terminators, Leg, kapps_call:call_id(Call)).
+play_command(Media, Terminators, Leg, Endless, Call) ->
+    play_command(Media, Terminators, Leg, Endless, kapps_call:call_id(Call)).
 
 -spec play_terminators(api_binaries()) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
@@ -1392,12 +1415,14 @@ play(Media, Call) -> play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
     play(Media, Terminators, 'undefined', Call).
 play(Media, Terminators, Leg, Call) ->
+    play(Media, Terminators, Leg, 'false', Call).
+play(Media, Terminators, Leg, Endless, Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                                   ,{<<"Msg-ID">>, NoopId}
                                   ])
-               ,play_command(Media, Terminators, Leg, Call)
+               ,play_command(Media, Terminators, Leg, Endless, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
               ,{<<"Commands">>, Commands}
@@ -1410,7 +1435,9 @@ b_play(Media, Call) ->
 b_play(Media, Terminators, Call) ->
     b_play(Media, Terminators, 'undefined', Call).
 b_play(Media, Terminators, Leg, Call) ->
-    wait_for_noop(Call, play(Media, Terminators, Leg, Call)).
+    b_play(Media, Terminators, Leg, 'false', Call).
+b_play(Media, Terminators, Leg, Endless, Call) ->
+    wait_for_noop(Call, play(Media, Terminators, Leg, Endless, Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1470,7 +1497,9 @@ tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
       ]).
 
+-spec tts_terminators(api_ne_binaries()) -> api_ne_binaries().
 tts_terminators('undefined') -> ?ANY_DIGIT;
+tts_terminators([]) -> 'undefined';
 tts_terminators(Terminators) -> Terminators.
 
 tts_voice('undefined') -> kazoo_tts:default_voice();

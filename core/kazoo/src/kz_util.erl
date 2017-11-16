@@ -112,14 +112,6 @@ log_stacktrace(Fmt, Args) ->
     ST = erlang:get_stacktrace(),
     log_stacktrace(ST, Fmt, Args).
 
--ifdef(TEST).
--define(LOG_ERROR(F), io:format(user, "ERROR ~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
--define(LOG_ERROR(F,A), io:format(user, "ERROR ~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--else.
--define(LOG_ERROR(F,A), lager:error(F,A)).
--define(LOG_ERROR(F), lager:error(F)).
--endif.
-
 log_stacktrace(ST, Fmt, Args) ->
     ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
     _ = [log_stacktrace_mfa(M, F, A, Info)
@@ -629,14 +621,15 @@ try_load_module(Name) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) ->
-                        api_binary().
+-spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) -> 'ok'.
 put_callid(?NE_BINARY = CallId) ->
-    lager:md([{'callid', CallId}]),
-    erlang:put('callid', CallId);
+    _ = lager:md([{'callid', CallId}]),
+    _ = erlang:put('callid', CallId),
+    'ok';
 put_callid(Atom) when is_atom(Atom) ->
-    lager:md([{'callid', Atom}]),
-    erlang:put('callid', Atom);
+    _ = lager:md([{'callid', Atom}]),
+    _ = erlang:put('callid', Atom),
+    'ok';
 put_callid(APITerm) ->
     put_callid(find_callid(APITerm)).
 
@@ -653,7 +646,7 @@ find_callid(APITerm) ->
 find_callid(APITerm, GetFun) ->
     GetFun([?KEY_LOG_ID, ?KEY_API_CALL_ID, ?KEY_MSG_ID]
           ,APITerm
-          ,?LOG_SYSTEM_ID
+          ,?DEFAULT_LOG_SYSTEM_ID
           ).
 
 %% @public

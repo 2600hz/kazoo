@@ -85,7 +85,8 @@ compile_master_renderers(TemplateId) ->
     _ = [build_renderer(TemplateId, ContentType, Template)
          || {ContentType, Template} <- fetch_master_attachments(TemplateId)
         ],
-    lager:debug("built master renderers for ~s", [TemplateId]).
+    %% ?LOG_DEBUG("built master renderer modules for ~s", [TemplateId]).
+    lager:debug("built master renderer modules for ~s", [TemplateId]).
 
 -spec build_renderer(ne_binary(), ne_binary(), binary()) -> 'ok'.
 build_renderer(TemplateId, ContentType, Template) ->
@@ -93,7 +94,7 @@ build_renderer(TemplateId, ContentType, Template) ->
     case kz_template:compile(Template, ModuleName,[{'auto_escape', 'false'}]) of
         {'ok', _} -> 'ok';
         {'error', _E} ->
-            lager:debug("failed to render '~s': ~p", [TemplateId, _E]),
+            ?LOG_DEBUG("failed to render '~s': ~p", [TemplateId, _E]),
             throw({'error', 'failed_template', ModuleName})
     end.
 
@@ -181,7 +182,8 @@ templates_source(_TemplateId, 'undefined') ->
 templates_source(_TemplateId, ?KZ_CONFIG_DB) ->
     ?KZ_CONFIG_DB;
 templates_source(TemplateId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    ?LOG_DEBUG("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
+    %% ?LOG_DEBUG("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
+    lager:debug("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
     ResellerId = teletype_util:find_reseller_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
@@ -201,12 +203,6 @@ templates_source(TemplateId, AccountId, AccountId) ->
         {'error', _E} -> 'undefined'
     end;
 templates_source(TemplateId, AccountId, ResellerId) ->
-    bypass_templates_source(TemplateId, AccountId, ResellerId).
-
--ifdef(TEST).
-bypass_templates_source(?NE_BINARY, ?MATCH_ACCOUNT_RAW(_), ?MATCH_ACCOUNT_RAW(_)) -> ?KZ_CONFIG_DB.
--else.
-bypass_templates_source(TemplateId, AccountId, ResellerId) ->
     case fetch_notification(TemplateId, AccountId) of
         {'error', 'not_found'} ->
             parent_templates_source(TemplateId, AccountId, ResellerId);
@@ -214,7 +210,6 @@ bypass_templates_source(TemplateId, AccountId, ResellerId) ->
             templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template);
         {'error', _E} -> 'undefined'
     end.
--endif.
 
 -spec templates_source_has_attachments(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
                                               api_binary().
@@ -268,7 +263,7 @@ render_masters(TemplateId, Macros) ->
     ].
 
 master_content_types(TemplateId) ->
-    case from_system_config(TemplateId) of
+    case fetch_notification(TemplateId, ?KZ_CONFIG_DB) of
         {'ok', NotificationJObj} ->
             [kz_json:get_ne_binary_value(<<"content_type">>, AttachmentJObj)
              || {_,AttachmentJObj} <- kz_json:to_proplist(kz_doc:attachments(NotificationJObj))
@@ -277,18 +272,6 @@ master_content_types(TemplateId) ->
             lager:warning("failed to find master notification ~s", [TemplateId]),
             []
     end.
-
--ifdef(TEST).
-from_system_config(?NE_BINARY=TemplateId) ->
-    JObj = kz_json:from_list(lists:keymap(fun kz_term:to_binary/1, 1, params(TemplateId))),
-    FakeAttachments = kz_json:from_list_recursive(
-                        [{<<"template.text/html">>, [{<<"content_type">>, <<"text/html">>}]}
-                        ,{<<"template.text/plain">>, [{<<"content_type">>, <<"text/plain">>}]}
-                        ]),
-    {ok, kz_json:set_value(<<"_attachments">>, FakeAttachments, JObj)}.
--else.
-from_system_config(TemplateId) -> fetch_notification(TemplateId, ?KZ_CONFIG_DB).
--endif.
 
 -spec render_master(ne_binary(), ne_binary(), macros()) -> ne_binary().
 render_master(?NE_BINARY=TemplateId, ?NE_BINARY=ContentType, Macros) ->
@@ -402,7 +385,7 @@ update(TemplateJObj, Params) ->
     case update_from_params(TemplateJObj, Params) of
         {'false', _} -> lager:debug("no updates to template");
         {'true', UpdatedTemplateJObj} ->
-            lager:debug("template has updates to save"),
+            ?LOG_DEBUG("template has updates to save"),
             save(UpdatedTemplateJObj)
     end.
 
@@ -610,12 +593,12 @@ update_attachment(Contents, {IsUpdated, TemplateJObj}=Acc, ContentType, Id, ANam
     lager:debug("attachment ~s doesn't exist for ~s", [AName, Id]),
     case save_attachment(Id, AName, ContentType, Contents) of
         {'ok', AttachmentJObj} ->
-            lager:debug("saved attachment: ~p", [AttachmentJObj]),
+            ?LOG_DEBUG("saved attachment: ~p", [AttachmentJObj]),
             {'ok', UpdatedJObj} = kz_datamgr:open_doc(?KZ_CONFIG_DB, Id),
             Merged = kz_json:merge_jobjs(UpdatedJObj, TemplateJObj),
             {IsUpdated, Merged};
         {'error', _E} ->
-            lager:debug("failed to save attachment ~s: ~p", [AName, _E]),
+            ?LOG_DEBUG("failed to save attachment ~s: ~p", [AName, _E]),
             Acc
     end.
 

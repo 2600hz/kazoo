@@ -6,7 +6,8 @@
         "Action": {
             "enum": [
                 "refresh_database",
-                "refresh_views"
+                "refresh_views",
+                "clean_services"
             ],
             "type": "string"
         },

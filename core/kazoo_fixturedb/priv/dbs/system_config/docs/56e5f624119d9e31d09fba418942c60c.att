@@ -1,0 +1,23 @@
+                Port Request Schecduled
+
+Your number port request "{{port_request.name}}" of account '{{account.name}}' has been scheduled
+to happen on {{port_request.port_scheduled_date.local|date:"l, F j, Y H:i"}}
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

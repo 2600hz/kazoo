@@ -424,16 +424,6 @@
                }])
            }])
        ).
-
--define(LOG_ERROR(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_WARN(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F,A), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F), ?debugFmt("~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
--else.
--define(LOG_ERROR(F,A), lager:error(F,A)).
--define(LOG_WARN(F,A), lager:warning(F,A)).
--define(LOG_DEBUG(F,A), lager:debug(F,A)).
--define(LOG_DEBUG(F), lager:debug(F)).
 -endif.
 
 -define(KNM_HRL, 'true').

@@ -94,18 +94,18 @@ in_kazoo(SUPName, M, F, As) ->
     lager:notice("~s result: ~p", [?MODULE, R]),
     R.
 
--spec print_result(any(), boolean()) -> ok.
-print_result(Result, true) ->
+-spec print_result(any(), boolean()) -> 'ok'.
+print_result(Result, 'true') ->
     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
     try stdout("Result: ~s", [String])
     catch
-        erro:badarg -> stdout("Result: ~p", [String])
+        'error':'badarg' -> stdout("Result: ~p", [String])
     end;
-print_result(Result, false) ->
+print_result(Result, 'false') ->
     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
     try stdout("~s", [String])
     catch
-        erro:badarg -> stdout("~p", [String])
+        'error':'badarg' -> stdout("~p", [String])
     end.
 
 -spec get_target(kz_proplist(), boolean()) -> atom().

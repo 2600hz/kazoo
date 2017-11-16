@@ -99,6 +99,7 @@
                  ,loopback_other_leg :: api_binary() | '_'
                  ,callflow_id :: api_binary() | '_'
                  ,is_onhold = 'false' :: boolean() | '_'
+                 ,cavs :: kz_proplist() | '_' | 'undefined'
                  }).
 
 -type channel() :: #channel{}.
@@ -141,6 +142,7 @@
                      ,caller_id_number :: api_ne_binary() | '_'
                      ,conference_channel_vars = [] :: kz_proplist() | '_'
                      ,custom_channel_vars = [] :: kz_proplist() | '_'
+                     ,custom_application_vars = [] :: kz_proplist() | '_'
                      }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
@@ -176,6 +178,7 @@
 %% When an event occurs, we include all prefixed vars in the API
 %% message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
+-define(APPLICATION_VAR_PREFIX, "cav_").
 
 -define(CCV(Key), <<?CHANNEL_VAR_PREFIX, Key/binary>>).
 -define(GET_CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
@@ -184,6 +187,11 @@
 -define(GET_CUSTOM_HEADER(Key), <<"variable_sip_h_X-", Key/binary>>).
 -define(CUSTOM_HEADER(Key), <<"sip_h_X-", Key/binary>>).
 -define(GET_VAR(Key), <<"variable_", Key/binary>>).
+
+-define(CAV(Key), <<?APPLICATION_VAR_PREFIX, Key/binary>>).
+-define(GET_CAV(Key), <<"variable_", ?APPLICATION_VAR_PREFIX, Key/binary>>).
+-define(SET_CAV(Key, Value), <<?APPLICATION_VAR_PREFIX, Key/binary, "=", Value/binary>>).
+-define(GET_CAV_HEADER(Key), <<"variable_sip_h_X-", ?APPLICATION_VAR_PREFIX, Key/binary>>).
 
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
 
@@ -194,127 +202,121 @@
 %% standard CHANNEL_VAR_PREFIX prefix [{AMQP-Header, FS-var-name}] so
 %% FS-var-name of "foo_var" would become "foo_var=foo_val" in the
 %% channel/call string
--define(SPECIAL_CHANNEL_VARS, [{<<"Auto-Answer">>, <<"sip_auto_answer">>}
-                              ,{<<"Auto-Answer-Suppress-Notify">>, <<"sip_auto_answer_suppress_notify">>}
-                              ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
-                              ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
-                              ,{<<"Outbound-Caller-ID-Number">>,<<"origination_caller_id_number">>}
-                              ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
-                              ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
-                              ,{<<"Auth-User">>, <<"sip_auth_username">>}
+-define(SPECIAL_CHANNEL_VARS, [{<<"Alert-Info">>, <<"alert_info">>}
                               ,{<<"Auth-Password">>, <<"sip_auth_password">>}
                               ,{<<"Auth-Realm">>, <<"sip_auth_realm">>}
-                              ,{<<"Caller-ID-Name">>, <<"effective_caller_id_name">>}
-                              ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
+                              ,{<<"Auth-User">>, <<"sip_auth_username">>}
+                              ,{<<"Auto-Answer">>, <<"sip_auto_answer">>}
+                              ,{<<"Auto-Answer-Suppress-Notify">>, <<"sip_auto_answer_suppress_notify">>}
+                              ,{<<"Bridge-Execute-On-Answer">>, <<"execute_on_answer">>}
+                              ,{<<"Bridge-Generate-Comfort-Noise">>,<<"bridge_generate_comfort_noise">>}
+                              ,{<<"Bypass-Media">>, <<"bypass_media_after_bridge">>}
                               ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
                               ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
                               ,{<<"Caller-Callee-ID-Name">>, <<"caller_callee_id_name">>}
                               ,{<<"Caller-Callee-ID-Number">>, <<"caller_callee_id_number">>}
                               ,{<<"Caller-Caller-ID-Name">>, <<"caller_caller_id_name">>}
                               ,{<<"Caller-Caller-ID-Number">>, <<"caller_caller_id_number">>}
-
-                              ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
-                              ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
-                              ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
-                              ,{<<"Fail-On-Single-Reject">>, <<"fail_on_single_reject">>}
-                              ,{<<"failure_causes">>, <<"failure_causes">>}
-                              ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
-                              ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
-                              ,{<<"Endpoint-Delay">>, <<"leg_delay_start">>}
-                              ,{<<"Ignore-Forward">>, <<"outbound_redirect_fatal">>}
-                              ,{<<"Overwrite-Channel-Vars">>, <<"local_var_clobber">>}
+                              ,{<<"Caller-ID-Name">>, <<"effective_caller_id_name">>}
+                              ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
+                              ,{<<"Conference-Entry-Sound">>, <<"conference_enter_sound">>}
+                              ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
+                              ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
                               ,{<<"Confirm-File">>, <<"group_confirm_file">>}
                               ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
-                              ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
-                              ,{<<"Alert-Info">>, <<"alert_info">>}
-                              ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
-                              ,{<<"Presence-ID">>, <<"presence_id">>}
-                              ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
-                              ,{<<"Bypass-Media">>, <<"bypass_media_after_bridge">>}
-                              ,{<<"Bridge-Generate-Comfort-Noise">>,<<"bridge_generate_comfort_noise">>}
-                              ,{<<"Origination-UUID">>, <<"origination_uuid">>}
-                              ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
+                              ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
+                              ,{<<"Default-Language">>, <<"default_language">>}
+                              ,{<<"Diversions">>, <<"sip_h_Diversion">>}
+                              ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
                               ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
-                              ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
-
-                              ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
-                              ,{<<"Simplify-Loopback">>, <<"loopback_bowout_on_execute">>}
-
-                              ,{<<"SIP-Invite-Domain">>, <<"sip_invite_domain">>}
-                              ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
-
-                              ,{<<"Secure-RTP">>, <<"rtp_secure_media">>}
-                              ,{<<"RTP-Secure-Media">>, <<"rtp_secure_media">>}
-                              ,{<<"RTP-Secure-Media-Confirmed">>, <<"rtp_secure_media_confirmed">>}
-                              ,{<<"RTP-Secure-Audio-Confirmed">>, <<"rtp_secure_media_confirmed_audio">>}
-                              ,{<<"RTP-Secure-Video-Confirmed">>, <<"rtp_secure_media_confirmed_video">>}
-
-                              ,{<<"Secure-ZRTP">>, <<"zrtp_secure_media">>}
-                              ,{<<"ZRTP-Secure-Media">>, <<"zrtp_secure_media">>}
-                              ,{<<"ZRTP-Secure-Media-Confirmed">>, <<"zrtp_secure_media_confirmed">>}
-                              ,{<<"ZRTP-Secure-Audio-Confirmed">>, <<"zrtp_secure_media_confirmed_audio">>}
-                              ,{<<"ZRTP-Secure-Video-Confirmed">>, <<"zrtp_secure_media_confirmed_video">>}
-                              ,{<<"ZRTP-Enrollment">>, <<"zrtp_enrollment">>}
-
-                              ,{<<"Ignore-Completed-Elsewhere">>, <<"ignore_completed_elsewhere">>}
-                              ,{<<"tts_engine">>, <<"tts_engine">>}
-                              ,{<<"tts_voice">>, <<"tts_voice">>}
-                              ,{<<"playback_terminators">>, <<"playback_terminators">>}
-                              ,{<<"record_waste_resources">>, <<"record_waste_resources">>}
-                              ,{<<"record_sample_rate">>, <<"record_sample_rate">>}
-                              ,{<<"Record-Sample-Rate">>, <<"record_sample_rate">>}
-                              ,{<<"recording_follow_transfer">>, <<"recording_follow_transfer">>}
-                              ,{<<"recording_follow_attxfer">>, <<"recording_follow_attxfer">>}
-                              ,{<<"Record-Min-Sec">>, <<"record_min_sec">>}
-                              ,{<<"record_min_sec">>, <<"record_min_sec">>}
-
-                              ,{<<"enable_file_write_buffering">>, <<"enable_file_write_buffering">>}
-                              ,{<<"RECORD_APPEND">>, <<"RECORD_APPEND">>}
-                              ,{<<"fax_enable_t38_request">>, <<"fax_enable_t38_request">>}
-                              ,{<<"fax_enable_t38">>, <<"fax_enable_t38">>}
                               ,{<<"Enable-T38-Fax">>, <<"fax_enable_t38">>}
                               ,{<<"Enable-T38-Fax-Request">>, <<"fax_enable_t38_request">>}
                               ,{<<"Enable-T38-Passthrough">>, <<"t38_passthru">>}
-                              ,{<<"execute_on_answer">>, <<"execute_on_answer">>}
-                              ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
-                              ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
-                              ,{<<"Fax-Timezone">>, <<"fax_timezone">>}
-                              ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
-                              ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
-                              ,{<<"Park-After-Pickup">>, <<"park_after_bridge">>}
-                              ,{<<"park_after_pickup">>, <<"park_after_bridge">>}
-                              ,{<<"Transfer-After-Pickup">>, <<"transfer_after_bridge">>}
-                              ,{<<"Hangup-After-Pickup">>, <<"hangup_after_bridge">>}
-                              ,{<<"hangup_after_pickup">>, <<"hangup_after_bridge">>}
-                              ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
-                              ,{<<"continue_on_cancel">>, <<"continue_on_cancel">>}
-                              ,{<<"Unbridged-Only">>, <<"intercept_unbridged_only">>}
-                              ,{<<"intercept_unbridged_only">>, <<"intercept_unbridged_only">>}
-                              ,{<<"Unanswered-Only">>, <<"intercept_unanswered_only">>}
-                              ,{<<"intercept_unanswered_only">>, <<"intercept_unanswered_only">>}
-                              ,{<<"conference_member_nospeak_relational">>, <<"conference_member_nospeak_relational">>}
-                              ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
-                              ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}
+                              ,{<<"Endpoint-Delay">>, <<"leg_delay_start">>}
+                              ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
+                              ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
+                              ,{<<"Fail-On-Single-Reject">>, <<"fail_on_single_reject">>}
                               ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
-                              ,{<<"default_language">>, <<"default_language">>}
-                              ,{<<"Default-Language">>, <<"default_language">>}
-                              ,{<<"RECORD_STEREO">>, <<"RECORD_STEREO">>}
-                              ,{<<"RECORD_SOFTWARE">>, <<"RECORD_SOFTWARE">>}
+                              ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}
+                              ,{<<"Fax-Enabled">>, <<"fax_enable_t38">>}
+                              ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
+                              ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
+                              ,{<<"Fax-Timezone">>, <<"fax_timezone">>}
                               ,{<<"From-URI">>, <<"sip_from_uri">>}
-                              ,{<<"To-URI">>, <<"sip_to_uri">>}
-                              ,{<<"Request-URI">>, <<"sip_req_uri">>}
-                              ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
-                              ,{<<"Loopback-Export">>, <<"loopback_export">>}
+                              ,{<<"Hangup-After-Pickup">>, <<"hangup_after_bridge">>}
                               ,{<<"Hold-Media">>, <<"hold_music">>}
-                              ,{<<"Diversions">>, <<"sip_h_Diversion">>}
-                              ,{<<"Bridge-Execute-On-Answer">>, <<"execute_on_answer">>}
+                              ,{<<"Ignore-Completed-Elsewhere">>, <<"ignore_completed_elsewhere">>}
+                              ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
+                              ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
+                              ,{<<"Ignore-Forward">>, <<"outbound_redirect_fatal">>}
+                              ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
+                              ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
+                              ,{<<"Loopback-Export">>, <<"loopback_export">>}
+                              ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
+                              ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
-                              ,{<<"Conference-Entry-Sound">>, <<"conference_enter_sound">>}
-                              ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
+                              ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
+                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"Origination-UUID">>, <<"origination_uuid">>}
+                              ,{<<"Outbound-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
+                              ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
+                              ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
+                              ,{<<"Outbound-Caller-ID-Number">>,<<"origination_caller_id_number">>}
+                              ,{<<"Overwrite-Channel-Vars">>, <<"local_var_clobber">>}
+                              ,{<<"Park-After-Pickup">>, <<"park_after_bridge">>}
+                              ,{<<"Presence-ID">>, <<"presence_id">>}
+                              ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
+                              ,{<<"RECORD_APPEND">>, <<"RECORD_APPEND">>}
+                              ,{<<"RECORD_SOFTWARE">>, <<"RECORD_SOFTWARE">>}
+                              ,{<<"RECORD_STEREO">>, <<"RECORD_STEREO">>}
+                              ,{<<"RTCP-MUX">>, <<"rtcp_mux">>}
+                              ,{<<"RTP-Secure-Audio-Confirmed">>, <<"rtp_secure_media_confirmed_audio">>}
+                              ,{<<"RTP-Secure-Media">>, <<"rtp_secure_media">>}
+                              ,{<<"RTP-Secure-Media-Confirmed">>, <<"rtp_secure_media_confirmed">>}
+                              ,{<<"RTP-Secure-Video-Confirmed">>, <<"rtp_secure_media_confirmed_video">>}
+                              ,{<<"Record-Min-Sec">>, <<"record_min_sec">>}
+                              ,{<<"Record-Sample-Rate">>, <<"record_sample_rate">>}
+                              ,{<<"Request-URI">>, <<"sip_req_uri">>}
+                              ,{<<"SIP-Invite-Domain">>, <<"sip_invite_domain">>}
                               ,{<<"SIP-Refer-To">>, <<"sip_refer_to">>}
                               ,{<<"SIP-Referred-By">>, <<"sip_h_Referred-By">>}
-                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_id">>}
-                              ,{<<"RTCP-MUX">>, <<"rtcp_mux">>}
+                              ,{<<"Secure-RTP">>, <<"rtp_secure_media">>}
+                              ,{<<"Secure-ZRTP">>, <<"zrtp_secure_media">>}
+                              ,{<<"Simplify-Loopback">>, <<"loopback_bowout_on_execute">>}
+                              ,{<<"To-URI">>, <<"sip_to_uri">>}
+                              ,{<<"Transfer-After-Pickup">>, <<"transfer_after_bridge">>}
+                              ,{<<"Unanswered-Only">>, <<"intercept_unanswered_only">>}
+                              ,{<<"Unbridged-Only">>, <<"intercept_unbridged_only">>}
+                              ,{<<"ZRTP-Enrollment">>, <<"zrtp_enrollment">>}
+                              ,{<<"ZRTP-Secure-Audio-Confirmed">>, <<"zrtp_secure_media_confirmed_audio">>}
+                              ,{<<"ZRTP-Secure-Media">>, <<"zrtp_secure_media">>}
+                              ,{<<"ZRTP-Secure-Media-Confirmed">>, <<"zrtp_secure_media_confirmed">>}
+                              ,{<<"ZRTP-Secure-Video-Confirmed">>, <<"zrtp_secure_media_confirmed_video">>}
+                              ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
+                              ,{<<"conference_member_nospeak_relational">>, <<"conference_member_nospeak_relational">>}
+                              ,{<<"continue_on_cancel">>, <<"continue_on_cancel">>}
+                              ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
+                              ,{<<"default_language">>, <<"default_language">>}
+                              ,{<<"enable_file_write_buffering">>, <<"enable_file_write_buffering">>}
+                              ,{<<"execute_on_answer">>, <<"execute_on_answer">>}
+                              ,{<<"failure_causes">>, <<"failure_causes">>}
+                              ,{<<"fax_enable_t38">>, <<"fax_enable_t38">>}
+                              ,{<<"fax_enable_t38_request">>, <<"fax_enable_t38_request">>}
+                              ,{<<"hangup_after_pickup">>, <<"hangup_after_bridge">>}
+                              ,{<<"intercept_unanswered_only">>, <<"intercept_unanswered_only">>}
+                              ,{<<"intercept_unbridged_only">>, <<"intercept_unbridged_only">>}
+                              ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
+                              ,{<<"park_after_pickup">>, <<"park_after_bridge">>}
+                              ,{<<"playback_terminators">>, <<"playback_terminators">>}
+                              ,{<<"record_min_sec">>, <<"record_min_sec">>}
+                              ,{<<"record_sample_rate">>, <<"record_sample_rate">>}
+                              ,{<<"record_waste_resources">>, <<"record_waste_resources">>}
+                              ,{<<"recording_follow_attxfer">>, <<"recording_follow_attxfer">>}
+                              ,{<<"recording_follow_transfer">>, <<"recording_follow_transfer">>}
+                              ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
+                              ,{<<"tts_engine">>, <<"tts_engine">>}
+                              ,{<<"tts_voice">>, <<"tts_voice">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}] Dialplan-related

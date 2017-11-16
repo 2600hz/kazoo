@@ -168,7 +168,7 @@
                     ,resp_headers = [] :: kz_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
                     ,resp_envelope = kz_json:new() :: kz_json:object()
                     ,start = os:timestamp() :: kz_now()
-                    ,req_id = ?LOG_SYSTEM_ID :: ne_binary()
+                    ,req_id = ?DEFAULT_LOG_SYSTEM_ID :: ne_binary()
                     ,storage = [] :: kz_proplist()
                     ,raw_host = <<>> :: binary()
                     ,port = 8000 :: integer()

@@ -80,7 +80,7 @@ continuous(Srv) -> gen_server:call(Srv, 'continuous').
                       {'stop', any()}.
 init([Db, Id, Attachment, CallId]) ->
     case kz_term:is_empty(CallId) of
-        'true' -> kz_util:put_callid(?LOG_SYSTEM_ID);
+        'true' -> kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID);
         'false' -> kz_util:put_callid(CallId)
     end,
     maybe_start_file_cache(Db, Id, Attachment).

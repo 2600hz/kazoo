@@ -495,7 +495,8 @@ handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
     {'noreply', State#state{call=kapps_call:set_call_id(NewCallId, Call)}};
 handle_cast({'add_event_listener', {Mod, Args}}, #state{call=Call}=State) ->
-    cf_util:start_event_listener(Call, Mod, Args),
+    _EvtL = cf_util:start_event_listener(Call, Mod, Args),
+    lager:debug("started event listener: ~p", [_EvtL]),
     {'noreply', State};
 handle_cast('initialize', #state{call=Call}=State) ->
     log_call_information(Call),
@@ -611,6 +612,8 @@ handle_event(JObj, #state{cf_module_pid=PidRef
             handle_channel_replaced(Call, JObj, Notify);
         {{<<"call_event">>, <<"CHANNEL_BRIDGE">>}, _} ->
             handle_channel_bridged(Self, Notify, JObj, Call);
+        {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
+            handle_channel_pivoted(Self, PidRef, JObj, Call);
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             handle_usurp(Self, Call, JObj);
         {{<<"error">>, _}, _} ->
@@ -785,7 +788,7 @@ send_command(Command, ControlQ, CallId) ->
     Props = Command ++ [{<<"Call-ID">>, CallId}
                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                        ],
-    kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
+    kz_amqp_worker:cast(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
 -spec add_server_id(ne_binary(), api_terms()) -> api_terms().
 add_server_id(Q, API) when is_list(API) ->
@@ -887,3 +890,19 @@ hangup_call(Call) ->
           ,{<<"Insert-At">>, <<"tail">>}
           ],
     send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
+
+-spec handle_channel_pivoted(server_ref(), api_pid_ref(), kz_call_event:doc(), kapps_call:call()) -> 'ok'.
+handle_channel_pivoted(Self, PidRef, JObj, Call) ->
+    case kz_json:get_ne_binary_value(<<"Application-Data">>, JObj) of
+        'undefined' -> lager:info("no app data to pivot");
+        FlowBin ->
+            _ = maybe_stop_action(PidRef),
+            lager:debug("pivoting to ~s", [FlowBin]),
+            cf_util:flush_control_queue(Call),
+            continue_with_flow(kz_json:decode(FlowBin), Self)
+    end.
+
+-spec maybe_stop_action(api_pid_ref()) -> 'ok'.
+maybe_stop_action({Pid, _Ref}) ->
+    exit(Pid, 'normal');
+maybe_stop_action('undefined') -> 'ok'.

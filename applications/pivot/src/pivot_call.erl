@@ -585,7 +585,7 @@ maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
 
 -spec debug_error(kapps_call:call(), [jesse_error:error_reason()], binary()) -> 'ok'.
 debug_error(Call, Errors, RespBody) ->
-    JObj = lists:foldl(fun error_to_jobj/2, kz_json:new(), Errors),
+    JObj = kz_json_schema:errors_to_jobj(Errors),
     store_debug(Call
                ,kz_json:from_list([{<<"schema_errors">>, JObj}
                                   ,{<<"resp_body">>, RespBody}
@@ -602,11 +602,6 @@ debug_json_error(Call, Msg, Before, After, RespBody) ->
                               }
                              ]),
     store_debug(Call, JObj).
-
--spec error_to_jobj(jesse_error:error_reason(), kz_json:object()) -> kz_json:object().
-error_to_jobj(Error, Errors) ->
-    {_Code, _Message, JObj} = kz_json_schema:error_to_jobj(Error),
-    kz_json:merge_jobjs(JObj, Errors).
 
 -spec store_debug(kapps_call:call(), kz_proplist() | kz_json:object()) -> 'ok'.
 store_debug(Call, Doc) when is_list(Doc) ->

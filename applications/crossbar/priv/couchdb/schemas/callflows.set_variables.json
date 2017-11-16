@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.set_variables",
+    "description": "Validator for the set_variables callflow's data object",
+    "properties": {
+        "custom_application_vars": {
+            "default": {},
+            "description": "Key-value pairs to set as custom_application_vars on the channel",
+            "patternProperties": {
+                "[a-zA-Z0-9\\-_]+": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "export": {
+            "description": "When true the provided custom_application_vars are set on the channel and any channel bridged to it later",
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "custom_application_vars"
+    ],
+    "type": "object"
+}

@@ -239,7 +239,8 @@ validate_action(Context, CallId) ->
     Ctx = read(Context, CallId),
     case cb_context:has_errors(Ctx) of
         'true' -> Ctx;
-        'false' -> validate_action(Ctx, CallId, cb_context:req_value(Context, <<"action">>))
+        'false' ->
+            validate_action(Ctx, CallId, cb_modules_util:get_request_action(Context))
     end.
 
 validate_action(Context, _UUID, <<"metaflow">>) ->

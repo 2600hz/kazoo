@@ -1,0 +1,42 @@
+{
+    "Account-ID": "account0000000000000000000000003",
+    "App-Name": "crossbar",
+    "App-Version": "4.0.0",
+    "Audit-Log": {
+        "audit": {
+            "account0000000000000000000000003": {
+                "account_name": "Sub-Sub Account",
+                "diff_quantities": {
+                    "devices": {
+                        "sip_device": 1
+                    }
+                }
+            }
+        },
+        "authenticating_user": {
+            "account_id": "account0000000000000000000000003",
+            "account_name": "Sub-Sub Account",
+            "auth_user_id": "user0000000000000000000000000003",
+            "created": 63636183145,
+            "language": "fr-FR",
+            "realm": "paustu8.sip.2600hz.local",
+            "timezone": "Europe/Paris"
+        },
+        "pvt_created": 63667033675,
+        "pvt_modified": 63667033675,
+        "pvt_node": "kazoo_apps@example.com",
+        "pvt_type": "audit_log",
+        "tree": [
+            "account0000000000000000000000001",
+            "account0000000000000000000000002",
+            "account0000000000000000000000003"
+        ]
+    },
+    "Event-Category": "notification",
+    "Event-Name": "service_added",
+    "Msg-ID": "dab6c2826c1d2fa3",
+    "Node": "kazoo_apps@example.com",
+    "Server-ID": "kazoo_apps@example.com-<0.797.0>-51857161",
+    "System-Log-ID": "dab6c2826c1d2fa3",
+    "Time-Stamp": 63667531037
+}

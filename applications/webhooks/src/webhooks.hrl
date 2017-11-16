@@ -18,6 +18,7 @@
                  ,retries = 3 :: hook_retries() | '_'
                  ,account_id :: api_ne_binary() | '_' | '$1'
                  ,include_subaccounts = 'false' :: boolean() | '_' | '$3'
+                 ,include_loopback = 'true' :: boolean() | '_'
                  ,custom_data :: api_object() | '_'
                  ,modifiers :: api_object() | '_'
                  }).

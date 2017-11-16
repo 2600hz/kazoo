@@ -333,7 +333,7 @@ put(Context) ->
     of
         {'ok', TaskJObj} ->
             TaskId = kz_json:get_value([<<"_read_only">>, <<"id">>], TaskJObj),
-            save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
+            _ = save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
             crossbar_util:response(TaskJObj, Context);
         {'error', 'unknown_category_action'=Reason} ->
             crossbar_util:response_bad_identifier(Reason, Context);

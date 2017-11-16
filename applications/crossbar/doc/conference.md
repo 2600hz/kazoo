@@ -54,7 +54,7 @@ Key | Description | Type | Default | Required
 
 ```shell
 curl -v -X PUT \
-    -d '{"data": {"action": {CONFERENCE_ACTION}}}' \
+    -d '{"action": "{CONFERENCE_ACTION}", "data": {"ACTION":"DATA"}}' \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
@@ -64,15 +64,50 @@ curl -v -X PUT \
  `lock` | Lock the conference; no new participants may join
  `unlock` | Unlock the conference; new participants may join
  `dial` | Dial an endpoint (user/device/DID)
+ `play` | Play media to the conference (all participants)
 
 ##### Dialing an endpoint
 
 Sometimes you want to dial out from a conference to an endpoint (versus waiting for the caller to dial into the conference). Similar to how the `group` callflow works, you can include device and user IDs; unlike groups, you can include DIDs as well (similar to quickcall/click2call).
 
+###### Schema
+
+Schema for conference dial API command
+
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false`
+`caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
+`endpoints.[]` |   | `string()` |   | `true`
+`endpoints` |   | `array(string())` |   | `true`
+`timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
+
+###### Examples
+
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
+        ,"data":{
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "caller_id_name":"Conference XYZ",
+            "caller_id_number":"5551212"
+        }
+    }
+}
+```
+
+As when making [quickcalls](./quickcall.md), you can include `custom_application_vars`:
+
+```json
+{
+    "action":"dial"
+    ,"data":{
+        ,"custom_application_vars":{
+            "foo":"bar"
+        }
         "data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
             "caller_id_name":"Conference XYZ",
@@ -82,24 +117,61 @@ Sometimes you want to dial out from a conference to an endpoint (versus waiting 
 }
 ```
 
-A full example:
-
-```shell
-curl -v -X PUT -H "X-Auth-Token: $AUTH_TOKEN" "http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}" -d'{"data":{"action":"dial","data":{"endpoints":["{DEVICE_ID}"]}}}'
-```
+You can also include the outbound call id you'd like the leg to use:
 
 ```json
 {
-    "auth_token": "{AUTH_TOKEN}",
-    "data": "dialing endpoints",
-    "node": "{NODE}",
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success",
-    "timestamp": "{TIMESTAMP}",
-    "version": "4.2.2"
+    "action":"dial"
+    ,"data":{
+        ,"custom_application_vars":{
+            "foo":"bar"
+        }
+        "data":{
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "caller_id_name":"Conference XYZ",
+            "caller_id_number":"5551212",
+            "outbound_call_id":"xyz-abc"
+        }
+    }
 }
 ```
+
+##### Dialing out to a dynamic conference
+
+Sometimes you want to create ad-hoc conferences and put a participant in there. You can `PUT` a conference and the endpoints to dial out to create a temporary conference. The `{CONFERENCE_ID}` you supply will be used to name the conference and any conference schema parameters in the request will be used when creating the conference. For example:
+
+```json
+{
+    "action":"dial"
+    ,"data":{
+        "data":{
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "caller_id_name":"Conference XYZ",
+            "caller_id_number":"5551212",
+            "play_entry_tone": true,
+            "play_exit_tone": true,
+            "play_name": false
+        }
+    }
+}
+```
+
+These properties will be merged into a "default" conference document and then executed the same as if the conference was preconfigured.
+
+##### Playing media to a conference
+
+Playing a media file to everyone in a conference:
+
+```json
+{
+    action":"play"
+    ,"data"{
+        "data":{"media_id":"{MEDIA_ID}"}
+    }
+}
+```
+
+`{MEDIA_ID}` can be a pre-uploaded media ID or a URL to fetch media from.
 
 #### Perform an action on participants
 
@@ -182,6 +254,21 @@ curl -v -X PUT \
  `deaf` | Stop sending conference audio to the participant
  `undeaf` | Start sending conference audio to the participant
  `kick` | Kick the participant from the conference
+ `play` | Play media to a single participant
+
+##### Playing media to a conference
+
+Playing a media file to everyone in a conference:
+
+```json
+{"data"{
+    "action":"play",
+    "data":{"media_id":"{MEDIA_ID}"}
+ }
+}
+```
+
+`{MEDIA_ID}` can be a pre-uploaded media ID or a URL to fetch media from.
 
 #### List of conferences example
 

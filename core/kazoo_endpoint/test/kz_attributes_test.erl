@@ -8,6 +8,7 @@
 -module(kz_attributes_test).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(NEW_CF_FLAGS, [fun(C) -> kapps_call:set_account_id(<<"account0000000000000000000000002">>, C) end
                       ,fun(C) -> kapps_call:set_authorizing_id(<<"device00000000000000000000000002">>, C) end
@@ -23,7 +24,38 @@
                       ,fun(C) -> kapps_call:set_authorizing_id(<<"trunkstore0000000000000000000002">>, C) end
                       ]).
 
-get_flags_callflow_test_() ->
+kz_attributes_test_() ->
+    {setup
+    ,fun setup_db/0
+    ,fun terminate_db/1
+    ,fun(_ReturnOfSetup) ->
+             [test_get_flags_callflow()
+             ,test_get_flags_trunkstore()
+             ,test_process_dynamic_flags()
+             ]
+     end
+    }.
+
+setup_db() ->
+    ?LOG_DEBUG(":: Starting Kazoo FixtureDB"),
+    {ok, _} = application:ensure_all_started(kazoo_config),
+    {ok, Pid} = kazoo_data_link_sup:start_link(),
+    Pid.
+
+terminate_db(Pid) ->
+    _DataLink = erlang:exit(Pid, normal),
+    Ref = monitor(process, Pid),
+    receive
+        {'DOWN', Ref, process, Pid, _Reason} ->
+            _KConfig = application:stop(kazoo_config),
+            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: ~p kazoo_config: ~p", [_DataLink, _KConfig])
+    after 1000 ->
+            _KConfig = application:stop(kazoo_config),
+            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: timeout kazoo_config: ~p", [_KConfig])
+    end.
+
+
+test_get_flags_callflow() ->
     Call = kapps_call_test:create_callflow_call(),
     ExpectedOld = [<<"user_old_static_flag">>
                   ,<<"device_old_static_flag">>
@@ -53,7 +85,7 @@ get_flags_callflow_test_() ->
      }
     ].
 
-get_flags_trunkstore_test_() ->
+test_get_flags_trunkstore() ->
     Call = kapps_call_test:create_trunkstore_call(),
     ExpectedOld = [<<"account_old_static_flag">>],
     ExpectedNew = [<<"local">>
@@ -67,7 +99,7 @@ get_flags_trunkstore_test_() ->
      }
     ].
 
-process_dynamic_flags_test_() ->
+test_process_dynamic_flags() ->
     Call = kapps_call_test:create_callflow_call(),
     [{"verify that dynamic CCVs can be fetched and are converted to binary"
      ,?_assertEqual([<<"device">>], kz_attributes:process_dynamic_flags([<<"custom_channel_vars.authorizing_type">>], Call))

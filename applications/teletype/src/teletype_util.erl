@@ -47,8 +47,6 @@
 
         ,maybe_get_attachments/1
         ,fetch_attachment_from_url/1
-
-        ,template_config_cat/1
         ]).
 
 -include("teletype.hrl").
@@ -68,7 +66,7 @@
 send_email(Emails, Subject, RenderedTemplates) ->
     send_email(Emails, Subject, RenderedTemplates, []).
 send_email(Emails, Subject, RenderedTemplates, Attachments) ->
-    lager:debug("emails: ~p", [Emails]),
+    ?LOG_DEBUG("emails: ~p", [Emails]),
     To = props:get_value(<<"to">>, Emails),
     From = props:get_value(<<"from">>, Emails),
     Email = {<<"multipart">>
@@ -353,21 +351,11 @@ user_params(UserJObj) ->
     Ks = [{<<"first_name">>, fun kzd_user:first_name/1}
          ,{<<"last_name">>, fun kzd_user:last_name/1}
          ,{<<"email">>, fun kzd_user:email/1}
-         ,{<<"timezone">>, fun timezone/1}
+         ,{<<"timezone">>, fun kzd_user:timezone/1}
          ],
     props:filter_undefined(
       [{Key, Fun(UserJObj)} || {Key, Fun} <- Ks]
      ).
-
--spec timezone(kzd_user:doc()) -> api_ne_binary().
--ifdef(TEST).
-timezone(UserJObj) ->
-    ?AN_ACCOUNT_ID = kz_doc:account_id(UserJObj),
-    {ok,AccountJObj} = kz_json:fixture(?APP, "an_account.json"),
-    kz_account:timezone(AccountJObj).
--else.
-timezone(UserJObj) -> kzd_user:timezone(UserJObj).
--endif.
 
 -spec account_params(kz_json:object()) -> kz_proplist().
 account_params(DataJObj) ->
@@ -383,7 +371,7 @@ account_params(DataJObj) ->
 -spec find_account_params(api_binary()) -> kz_proplist().
 find_account_params('undefined') -> [];
 find_account_params(AccountId) ->
-    case fetch_account_for_params(AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} ->
             props:filter_undefined(
               [{<<"name">>, kz_account:name(AccountJObj)}
@@ -398,21 +386,13 @@ find_account_params(AccountId) ->
             []
     end.
 
--ifdef(TEST).
-fetch_account_for_params(?AN_ACCOUNT_ID) -> kz_json:fixture(?APP, "an_account.json");
-fetch_account_for_params(?A_MASTER_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_master_account.json");
-fetch_account_for_params(?MATCH_ACCOUNT_RAW(_)) -> {error, testing_too_hard}.
--else.
-fetch_account_for_params(AccountId) -> kz_account:fetch(AccountId).
--endif.
-
 -spec maybe_add_parent_params(ne_binary(), kz_json:object()) -> kz_proplist().
 maybe_add_parent_params(AccountId, AccountJObj) ->
     case kz_account:parent_account_id(AccountJObj) of
         'undefined' -> [];
         AccountId -> [];
         ParentAccountId ->
-            {'ok', ParentAccountJObj} = fetch_account_for_params(ParentAccountId),
+            {'ok', ParentAccountJObj} = kz_account:fetch(ParentAccountId),
             [{<<"parent_name">>, kz_account:name(ParentAccountJObj)}
             ,{<<"parent_realm">>, kz_account:realm(ParentAccountJObj)}
             ,{<<"parent_id">>, kz_account:id(ParentAccountJObj)}
@@ -476,7 +456,7 @@ send_update(DataJObj, Status, Message, Metadata) ->
 
 -spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary(), api_object()) -> 'ok'.
 send_update('undefined', _, _, _, _) ->
-    lager:debug("no response queue available, not publishing update");
+    ?LOG_DEBUG("no response queue available, not publishing update");
 send_update(RespQ, MsgId, Status, Msg, Metadata) ->
     Prop = props:filter_undefined(
              [{<<"Status">>, Status}
@@ -485,6 +465,7 @@ send_update(RespQ, MsgId, Status, Msg, Metadata) ->
              ,{<<"Metadata">>, Metadata}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    %% ?LOG_DEBUG("notification update (~s) sending to ~s", [Status, RespQ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
     kz_amqp_worker:cast(Prop, fun(P) -> kapi_notifications:publish_notify_update(RespQ, P) end).
 
@@ -531,7 +512,7 @@ query_account_for_admin_emails(<<_/binary>> = AccountId) ->
         {'ok', []} -> [];
         {'ok', Users} -> extract_admin_emails(Users);
         {'error', _E} ->
-            lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
+            ?LOG_DEBUG("failed to find users in ~s: ~p", [AccountId, _E]),
             []
     end.
 
@@ -543,12 +524,7 @@ extract_admin_emails(Users) ->
     ].
 
 -spec find_reseller_id(ne_binary()) -> ne_binary().
--ifdef(TEST).
-find_reseller_id(?AN_ACCOUNT_ID) -> ?A_MASTER_ACCOUNT_ID;
-find_reseller_id(?MATCH_ACCOUNT_RAW(_)) -> <<"you_are_testing_too_far">>.
--else.
 find_reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
--endif.
 
 -spec find_account_admin(api_binary()) -> api_object().
 -spec find_account_admin(ne_binary(), ne_binary()) -> 'undefined' | kzd_user:doc().
@@ -566,7 +542,11 @@ find_account_admin(AccountId, ResellerId) ->
 
 -spec query_for_account_admin(ne_binary()) -> 'undefined' | kzd_user:doc().
 query_for_account_admin(AccountId) ->
-    case account_users(AccountId) of
+    AccountDb = kz_util:format_account_db(AccountId),
+    ViewOptions = [{'key', <<"user">>}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', []} -> 'undefined';
         {'ok', Users} ->
             case filter_for_admins(Users) of
@@ -577,20 +557,6 @@ query_for_account_admin(AccountId) ->
             ?LOG_DEBUG("failed to find users in ~s: ~p", [AccountId, _E]),
             'undefined'
     end.
-
--ifdef(TEST).
-account_users(?AN_ACCOUNT_ID) ->
-    {ok,UserJObj0} = kz_json:fixture(?APP, "an_account_user.json"),
-    UserJObj = kzd_user:set_priv_level(<<"admin">>, UserJObj0),
-    {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
--else.
-account_users(AccountId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    ViewOptions = [{'key', <<"user">>}
-                  ,'include_docs'
-                  ],
-    kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions).
--endif.
 
 -spec filter_for_admins(kz_json:objects()) -> kzd_user:docs().
 filter_for_admins(Users) ->
@@ -707,15 +673,19 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
                 ).
 
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
+    %% ?LOG_DEBUG("email type for '~s' not defined in template, checking just the key", [Key]),
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
     {Key, find_first_defined_address(Key, [Key], [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
+    %% ?LOG_DEBUG("checking template for '~s' email addresses", [Key]),
     lager:debug("checking template for '~s' email addresses", [Key]),
     {Key, find_first_defined_address(Key, [[Key, <<"email_addresses">>], Key], [TemplateMetaJObj, DataJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
+    %% ?LOG_DEBUG("checking data for '~s' email address(es)", [Key]),
     lager:debug("checking data for '~s' email address(es)", [Key]),
     {Key, find_first_defined_address(Key, [Key, [Key, <<"email_addresses">>]], [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
+    %% ?LOG_DEBUG("looking for admin emails for '~s'", [Key]),
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
@@ -753,7 +723,7 @@ check_address_value(JObj) ->
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case find_account_rep_email(kapi_notifications:account_id(DataJObj)) of
         'undefined' ->
-            lager:debug("didn't find account rep for '~s'", [Key]),
+            ?LOG_DEBUG("didn't find account rep for '~s'", [Key]),
             admin_emails_from_system_template(ConfigCat, Key);
         Emails -> Emails
     end.
@@ -771,7 +741,7 @@ admin_emails_from_system_template(ConfigCat, Key, JObj) ->
         'undefined' ->
             case check_address_value(kz_json:get_ne_value(Key, JObj)) of
                 'undefined' ->
-                    lager:debug("no default in ~s for default_~s", [ConfigCat, Key]),
+                    ?LOG_DEBUG("no default in ~s for default_~s", [ConfigCat, Key]),
                     'undefined';
                 Emails -> Emails
             end;
@@ -837,8 +807,8 @@ is_preview(DataJObj) ->
       kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
      ).
 
-%% make timestamp ready to proccess by "date" filter in ErlyDTL
-%% returns a prop list with local, utc time and timezone
+%% make timestamp ready to process by "date" filter in ErlyDTL
+%% returns a prop list with local, UTC time and timezone
 -spec fix_timestamp(gregorian_seconds() | api_ne_binary()) -> kz_proplist().
 fix_timestamp(Timestamp) ->
     fix_timestamp(Timestamp, <<"UTC">>).
@@ -988,7 +958,3 @@ attachment_from_url_result(Headers, Body) ->
                    FileDisposition -> FileDisposition
                end,
     {CT, Filename, Body}.
-
--spec template_config_cat(ne_binary()) -> ne_binary().
-template_config_cat(TemplateId=?NE_BINARY) ->
-    ?TEMPLATE_CONFIG_CAT(TemplateId).
