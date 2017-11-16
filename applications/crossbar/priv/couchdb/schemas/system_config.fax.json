@@ -27,7 +27,10 @@
             ],
             "description": "fax allowed content types",
             "items": {
-                "type": ["string", "object"]
+                "type": [
+                    "string",
+                    "object"
+                ]
             },
             "type": "array"
         },

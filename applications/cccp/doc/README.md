@@ -19,7 +19,7 @@ And for business processes automation:
 Options:
 - activate/deactivate pin/cid (no need to delete it)
 - caller's CID based on configured user_id
-- retain initial caller's CID 
+- retain initial caller's CID
 - concurent calls quantity contriol per user_id
 - announcement to a_leg callee on over API calls
 

@@ -38,6 +38,11 @@
             "description": "Override the SIP Username",
             "type": "string"
         },
+        "strategy": {
+            "default": "simultaneous",
+            "description": "",
+            "type": "string"
+        },
         "suppress_clid": {
             "description": "Suppress sending caller ID",
             "type": "boolean"
