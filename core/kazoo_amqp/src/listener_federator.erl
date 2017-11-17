@@ -149,8 +149,8 @@ handle_event(JObj, BasicDeliver, #state{parent=Parent
                                        ,self_binary=Self
                                        ,zone=Zone
                                        }) ->
-    lager:debug("relaying federated ~s event ~s from ~s to ~p with consumer pid ~p",
-                [kz_api:event_category(JObj), kz_api:event_name(JObj), Zone, Parent, Self]
+    lager:debug("relaying federated ~s event (~p) ~s from ~s to ~p with consumer pid ~p",
+                [kz_api:event_category(JObj), kz_api:msg_id(JObj), kz_api:event_name(JObj), Zone, Parent, Self]
                ),
     RemoteServerId = <<"consumer://"
                        ,(Self)/binary, "/"

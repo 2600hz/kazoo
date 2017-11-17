@@ -148,6 +148,16 @@ publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
                          )
     end.
 
+-spec extract_msg_id(binary()) -> binary().
+extract_msg_id(Msg) ->
+    case binary:split(Msg, <<"Msg-ID\":\"">>) of
+        [_First, Last] ->
+            [MsgId, _] = binary:split(Last, <<"\",">>),
+            MsgId;
+        _AnyOther ->
+            <<"undefined">>
+    end.
+
 -spec basic_publish(kz_amqp_assignment() | {'error', 'no_channel'}, basic_publish(), amqp_msg()) -> 'ok'.
 basic_publish(#kz_amqp_assignment{channel=Channel
                                  ,broker=_Broker
@@ -159,8 +169,9 @@ basic_publish(#kz_amqp_assignment{channel=Channel
   when is_pid(Channel) ->
     assert_valid_amqp_method(BasicPub),
     _ = amqp_channel:call(Channel, BasicPub, AmqpMsg),
-    lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
-               ,[_Exchange, _Broker, _RK, Channel]
+    MsgId = extract_msg_id(AmqpMsg#'amqp_msg'.payload),
+    lager:debug("published(~s) to ~s(~s) exchange (routing key ~s) via ~p"
+               ,[MsgId, _Exchange, _Broker, _RK, Channel]
                );
 basic_publish({'error', 'no_channel'}
              ,#'basic.publish'{exchange=_Exchange
