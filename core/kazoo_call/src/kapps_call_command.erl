@@ -783,6 +783,7 @@ set(ChannelVars, 'undefined', AppVars, Call) -> set(ChannelVars, kz_json:new(), 
 set(ChannelVars, CallVars, AppVars, Call) ->
     case kz_json:is_empty(ChannelVars)
         andalso kz_json:is_empty(CallVars)
+        andalso kz_json:is_empty(AppVars)
     of
         'true' -> 'ok';
         'false' ->
