@@ -22,7 +22,7 @@ include_loopback_test_() ->
             ,{?IS_NOT_LOOPBACK_CHANNEL_EVT, ?INC_LOOPBACK_HOOK, 'true'}
             ,{?IS_NOT_LOOPBACK_CHANNEL_EVT, ?FILTER_LOOPBACK_HOOK, 'true'}
             ],
-    [{test_name(JObj)
+    [{test_name(JObj, Hook)
      ,?_assertEqual(Include
                    ,webhooks_channel_util:is_fireable_hook(JObj, Hook)
                    )
@@ -30,6 +30,6 @@ include_loopback_test_() ->
      || {JObj, Hook, Include} <- Tests
     ].
 
-test_name(JObj) ->
+test_name(JObj, #webhook{include_loopback=Include}) ->
     {[V|_], [K|_]} = kz_json:get_values(JObj),
-    iolist_to_binary([K, " = ", kz_term:to_list(V)]).
+    iolist_to_binary(["include: ", kz_term:to_list(Include), ": ", K, " = ", kz_term:to_list(V)]).

@@ -59,7 +59,7 @@ is_fireable_hook(JObj, #webhook{include_loopback='false'
     of
         'false' -> 'true';
         'true' ->
-            ?LOG_DEBUG("channel is loopback, filtering hook ~s", [_Id]),
+            lager:debug("channel is loopback, filtering hook ~s", [_Id]),
             'false'
     end.
 
