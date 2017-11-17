@@ -34,24 +34,24 @@
 -define(DEFAULT_STEREO_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_stereo_sample_rate">>, 16000)).
 
 -type fs_app() :: {ne_binary(), binary() | 'noop'} |
-                  {ne_binary(), ne_binary(), atom()}.
+                 {ne_binary(), ne_binary(), atom()}.
 -type fs_apps() :: [fs_app()].
 
 -type fs_api_ret()       :: {'ok', binary()} |
-                            {'error', 'badarg'} |
-                            'timeout'.
+                           {'error', 'badarg'} |
+                           'timeout'.
 -type fs_sendmsg_ret()   :: 'ok' |
-                            {'error', 'badarg' | 'badmem' | 'nosession'} |
-                            'timeout'.
+                           {'error', 'badarg' | 'badmem' | 'nosession'} |
+                           'timeout'.
 -type fs_sendevent_ret() :: 'ok' |
-                            {'error', 'badarg' | 'badmem'} |
-                            'timeout'.
+                           {'error', 'badarg' | 'badmem'} |
+                           'timeout'.
 -type fs_bind_ret()      :: 'ok' |
-                            {'error', 'badarg' | 'badmem'} |
-                            'timeout'.
+                           {'error', 'badarg' | 'badmem'} |
+                           'timeout'.
 -type fs_handlecall_ret() :: 'ok' |
-                             {'error', 'badarg' | 'session_attach_failed' | 'badsession' | 'baduuid'} |
-                             'timeout'.
+                            {'error', 'badarg' | 'session_attach_failed' | 'badsession' | 'baduuid'} |
+                            'timeout'.
 
 -record(sip_subscription, {key :: api_binary() | '_'
                           ,to :: api_binary() | '$1' | '_'
@@ -169,9 +169,9 @@
 -define(SETTINGS_FILE, [code:priv_dir(?APP), "/settings.config"]).
 
 -define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.\n"
-                                 "{'fs_cmds', [{'load', \"mod_sofia\"}\n"
-                                 "            ,{'reloadacl', \"\"}\n"
-                                 "            ]}.\n"
+                                "{'fs_cmds', [{'load', \"mod_sofia\"}\n"
+                                "            ,{'reloadacl', \"\"}\n"
+                                "            ]}.\n"
                                >>).
 
 %% We pass Application custom channel variables with our own prefix
@@ -256,9 +256,9 @@
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
                               ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
-                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"Origination-Call-ID">>, <<"origination_uuid">>}
                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
-                              ,{<<"Outbound-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"Outbound-Call-ID">>, <<"origination_uuid">>}
                               ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
                               ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
                               ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
