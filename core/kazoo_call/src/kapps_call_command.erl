@@ -2887,7 +2887,7 @@ get_outbound_t38_settings(CarrierFlag, 'undefined') ->
 get_outbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
     get_outbound_t38_settings(CarrierFlag, kz_term:is_true(CallerFlag));
 get_outbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2899,7 +2899,7 @@ get_outbound_t38_settings('true', 'false') ->
     ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
 get_outbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2940,7 +2940,7 @@ get_inbound_t38_settings(CarrierFlag, 'undefined') ->
 get_inbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
     get_inbound_t38_settings(CarrierFlag, kz_term:is_true(CallerFlag));
 get_inbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2958,7 +2958,7 @@ get_inbound_t38_settings('true', 'undefined') ->
     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ];
 get_inbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
