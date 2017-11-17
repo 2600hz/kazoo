@@ -490,8 +490,12 @@ get_channel_vars(JObj) -> get_channel_vars(kz_json:to_proplist(JObj)).
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
     kz_json:foldl(fun get_channel_vars_fold/3, Vars, JObj);
 
+get_channel_vars({<<"Custom-Application-Vars">>, JObj}, Vars) ->
+    kz_json:foldl(fun get_application_vars_fold/3, Vars, JObj);
+
 get_channel_vars({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
     kz_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
+
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
                     ,"='", kz_term:to_list(Username), "'"
@@ -624,6 +628,12 @@ get_channel_vars_fold(K, V, Acc) ->
             Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
             [encode_fs_val(Prefix, Val) | Acc]
     end.
+
+-spec get_application_vars_fold(kz_json:key(), kz_json:json_term(), iolist()) -> iolist().
+get_application_vars_fold(K, V, Acc) ->
+    [list_to_binary([?APPLICATION_VAR_PREFIX, kz_term:to_list(K), "='", kz_term:to_list(V), "'"])
+     | Acc
+    ].
 
 -spec codec_mappings(ne_binary()) -> ne_binary().
 codec_mappings(<<"G722_32">>) ->
