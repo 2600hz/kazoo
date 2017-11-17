@@ -44,22 +44,28 @@ maybe_fire_event(AccountId, HookEvent, JObj, Hooks) ->
 
 -spec fireable_hooks(kz_json:object(), webhooks()) -> webhooks().
 fireable_hooks(JObj, Hooks) ->
+    lager:debug("evt: ~s", [kz_json:encode(JObj)]),
     [Hook || #webhook{}=Hook <- Hooks,
-             is_fireable_hook(JObj, Hook)
+            is_fireable_hook(JObj, Hook)
     ].
 
 -spec is_fireable_hook(kz_json:object(), webhook()) -> boolean().
 is_fireable_hook(_JObj, #webhook{include_loopback='true'}) -> 'true';
 is_fireable_hook(JObj, #webhook{include_loopback='false'
-                               ,id=_Id, hook_id=_HookId
+                               ,id=_Id
                                }) ->
-    lager:debug("evt: ~s", [kz_json:encode(JObj)]),
-    case kz_json:is_false(<<"Channel-Is-Loopback">>, JObj, 'true') of
-        'true' -> 'true';
-        'false' ->
-            lager:debug("channel is loopback, filtering hook ~s", [_Id]),
+    case is_loopback_channel_name(kz_call_event:channel_name(JObj))
+        orelse kz_json:is_true(<<"Channel-Is-Loopback">>, JObj, 'false')
+    of
+        'false' -> 'true';
+        'true' ->
+            ?LOG_DEBUG("channel is loopback, filtering hook ~s", [_Id]),
             'false'
     end.
+
+-spec is_loopback_channel_name(api_ne_binary()) -> boolean().
+is_loopback_channel_name(<<"loopback/", _/binary>>=_N) -> 'true';
+is_loopback_channel_name(_N) -> 'false'.
 
 -spec hook_event_name(ne_binary()) -> ne_binary().
 hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
