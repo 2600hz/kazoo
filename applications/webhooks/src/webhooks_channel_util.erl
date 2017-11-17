@@ -44,7 +44,6 @@ maybe_fire_event(AccountId, HookEvent, JObj, Hooks) ->
 
 -spec fireable_hooks(kz_json:object(), webhooks()) -> webhooks().
 fireable_hooks(JObj, Hooks) ->
-    lager:debug("evt: ~s", [kz_json:encode(JObj)]),
     [Hook || #webhook{}=Hook <- Hooks,
             is_fireable_hook(JObj, Hook)
     ].
