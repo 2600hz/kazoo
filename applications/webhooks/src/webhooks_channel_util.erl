@@ -45,7 +45,7 @@ maybe_fire_event(AccountId, HookEvent, JObj, Hooks) ->
 -spec fireable_hooks(kz_json:object(), webhooks()) -> webhooks().
 fireable_hooks(JObj, Hooks) ->
     [Hook || #webhook{}=Hook <- Hooks,
-            is_fireable_hook(JObj, Hook)
+             is_fireable_hook(JObj, Hook)
     ].
 
 -spec is_fireable_hook(kz_json:object(), webhook()) -> boolean().
