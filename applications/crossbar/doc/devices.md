@@ -162,7 +162,7 @@ Key | Description | Type | Default | Required
 
 ##### endpoint.media
 
-Schema for a user
+Schema for endpoint media options
 
 
 Key | Description | Type | Default | Required

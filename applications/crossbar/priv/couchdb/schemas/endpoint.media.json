@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "users",
-    "description": "Schema for a user",
+    "_id": "endpoint.media",
+    "description": "Schema for endpoint media options",
     "properties": {
         "audio": {
             "default": {},

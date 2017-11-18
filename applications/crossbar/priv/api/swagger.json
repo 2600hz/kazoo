@@ -4242,7 +4242,7 @@
             }
         },
         "endpoint.media": {
-            "description": "Schema for a user",
+            "description": "Schema for endpoint media options",
             "properties": {
                 "audio": {
                     "default": {},
