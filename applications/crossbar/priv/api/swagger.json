@@ -426,7 +426,7 @@
                     "properties": {
                         "media_id": {
                             "description": "The ID of a media object that should be used as the default music on hold",
-                            "maxLength": 128,
+                            "maxLength": 2048,
                             "type": "string"
                         }
                     },
@@ -3939,128 +3939,8 @@
                     "type": "string"
                 },
                 "media": {
-                    "default": {},
-                    "description": "The device media parameters",
-                    "properties": {
-                        "audio": {
-                            "default": {},
-                            "description": "The audio media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [
-                                        "PCMU"
-                                    ],
-                                    "description": "A list of audio codecs the device supports",
-                                    "items": {
-                                        "enum": [
-                                            "OPUS",
-                                            "CELT@32000h",
-                                            "G7221@32000h",
-                                            "G7221@16000h",
-                                            "G722",
-                                            "speex@32000h",
-                                            "speex@16000h",
-                                            "PCMU",
-                                            "PCMA",
-                                            "G729",
-                                            "GSM",
-                                            "CELT@48000h",
-                                            "CELT@64000h",
-                                            "G722_16",
-                                            "G722_32",
-                                            "CELT_48",
-                                            "CELT_64",
-                                            "Speex",
-                                            "speex"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "bypass_media": {
-                            "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
-                            "enum": [
-                                true,
-                                false,
-                                "auto"
-                            ],
-                            "type": [
-                                "boolean",
-                                "string"
-                            ]
-                        },
-                        "encryption": {
-                            "default": {},
-                            "description": "Encryption Parameters",
-                            "properties": {
-                                "enforce_security": {
-                                    "default": false,
-                                    "description": "Is Encryption Enabled?",
-                                    "type": "boolean"
-                                },
-                                "methods": {
-                                    "default": [],
-                                    "description": "Supported Encryption Types",
-                                    "items": {
-                                        "enum": [
-                                            "zrtp",
-                                            "srtp"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "fax_option": {
-                            "description": "Is T.38 Supported?",
-                            "type": "boolean"
-                        },
-                        "ignore_early_media": {
-                            "description": "The option to determine if early media from the device should always be ignored",
-                            "type": "boolean"
-                        },
-                        "progress_timeout": {
-                            "description": "The progress timeout to apply to the device (seconds)",
-                            "type": "integer"
-                        },
-                        "rtcp_mux": {
-                            "description": "RTCP protocol messages mixed with RTP data",
-                            "type": "boolean"
-                        },
-                        "video": {
-                            "default": {},
-                            "description": "The video media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [],
-                                    "description": "A list of video codecs the device supports",
-                                    "items": {
-                                        "enum": [
-                                            "VP8",
-                                            "H264",
-                                            "H263",
-                                            "H261"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "webrtc": {
-                            "description": "If true forces a webrtc compatible SDP on the INVITE.",
-                            "type": "boolean"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/endpoint.media",
+                    "description": "Configure audio/video/etc media options for this device"
                 },
                 "metaflows": {
                     "$ref": "#/definitions/metaflows",
@@ -4072,7 +3952,7 @@
                     "properties": {
                         "media_id": {
                             "description": "The ID of a media object that should be used as the music on hold",
-                            "maxLength": 128,
+                            "maxLength": 2048,
                             "type": "string"
                         }
                     },
@@ -4360,6 +4240,118 @@
                     "type": "object"
                 }
             }
+        },
+        "endpoint.media": {
+            "description": "Schema for a user",
+            "properties": {
+                "audio": {
+                    "default": {},
+                    "description": "The audio media parameters",
+                    "properties": {
+                        "codecs": {
+                            "description": "A list of audio codecs the device supports",
+                            "items": {
+                                "enum": [
+                                    "OPUS",
+                                    "CELT@32000h",
+                                    "G7221@32000h",
+                                    "G7221@16000h",
+                                    "G722",
+                                    "speex@32000h",
+                                    "speex@16000h",
+                                    "PCMU",
+                                    "PCMA",
+                                    "G729",
+                                    "GSM",
+                                    "CELT@48000h",
+                                    "CELT@64000h",
+                                    "G722_16",
+                                    "G722_32",
+                                    "CELT_48",
+                                    "CELT_64",
+                                    "Speex",
+                                    "speex"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array",
+                            "uniqueItems": true
+                        }
+                    },
+                    "type": "object"
+                },
+                "bypass_media": {
+                    "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
+                    "enum": [
+                        true,
+                        false,
+                        "auto"
+                    ],
+                    "type": [
+                        "boolean",
+                        "string"
+                    ]
+                },
+                "encryption": {
+                    "default": {},
+                    "description": "Encryption Parameters",
+                    "properties": {
+                        "enforce_security": {
+                            "default": false,
+                            "description": "Is Encryption Enabled?",
+                            "type": "boolean"
+                        },
+                        "methods": {
+                            "default": [],
+                            "description": "Supported Encryption Types",
+                            "items": {
+                                "enum": [
+                                    "zrtp",
+                                    "srtp"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "type": "object"
+                },
+                "fax_option": {
+                    "description": "Is T.38 Supported?",
+                    "type": "boolean"
+                },
+                "ignore_early_media": {
+                    "description": "The option to determine if early media from the device should always be ignored",
+                    "type": "boolean"
+                },
+                "progress_timeout": {
+                    "description": "The progress timeout to apply to the device (seconds)",
+                    "type": "integer"
+                },
+                "video": {
+                    "default": {},
+                    "description": "The video media parameters",
+                    "properties": {
+                        "codecs": {
+                            "default": [],
+                            "description": "A list of video codecs the device supports",
+                            "items": {
+                                "enum": [
+                                    "H261",
+                                    "H263",
+                                    "H264",
+                                    "VP8"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array",
+                            "uniqueItems": true
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
         },
         "faxbox": {
             "description": "FaxBoxes allow configuration of individual fax virtual machines",
@@ -30913,117 +30905,8 @@
                     "type": "string"
                 },
                 "media": {
-                    "default": {},
-                    "description": "The device media parameters",
-                    "properties": {
-                        "audio": {
-                            "default": {},
-                            "description": "The audio media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "description": "A list of audio codecs the device supports",
-                                    "items": {
-                                        "enum": [
-                                            "OPUS",
-                                            "CELT@32000h",
-                                            "G7221@32000h",
-                                            "G7221@16000h",
-                                            "G722",
-                                            "speex@32000h",
-                                            "speex@16000h",
-                                            "PCMU",
-                                            "PCMA",
-                                            "G729",
-                                            "GSM",
-                                            "CELT@48000h",
-                                            "CELT@64000h",
-                                            "G722_16",
-                                            "G722_32",
-                                            "CELT_48",
-                                            "CELT_64",
-                                            "Speex",
-                                            "speex"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "bypass_media": {
-                            "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
-                            "enum": [
-                                true,
-                                false,
-                                "auto"
-                            ],
-                            "type": [
-                                "boolean",
-                                "string"
-                            ]
-                        },
-                        "encryption": {
-                            "default": {},
-                            "description": "Encryption Parameters",
-                            "properties": {
-                                "enforce_security": {
-                                    "default": false,
-                                    "description": "Is Encryption Enabled?",
-                                    "type": "boolean"
-                                },
-                                "methods": {
-                                    "default": [],
-                                    "description": "Supported Encryption Types",
-                                    "items": {
-                                        "enum": [
-                                            "zrtp",
-                                            "srtp"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "fax_option": {
-                            "description": "Is T.38 Supported?",
-                            "type": "boolean"
-                        },
-                        "ignore_early_media": {
-                            "description": "The option to determine if early media from the device should always be ignored",
-                            "type": "boolean"
-                        },
-                        "progress_timeout": {
-                            "description": "The progress timeout to apply to the device (seconds)",
-                            "type": "integer"
-                        },
-                        "video": {
-                            "default": {},
-                            "description": "The video media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [],
-                                    "description": "A list of video codecs the device supports",
-                                    "items": {
-                                        "enum": [
-                                            "H261",
-                                            "H263",
-                                            "H264",
-                                            "VP8"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/endpoint.media",
+                    "description": "Configure audio/video/etc media options for this user"
                 },
                 "metaflows": {
                     "$ref": "#/definitions/metaflows",
