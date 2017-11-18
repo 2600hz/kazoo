@@ -31,7 +31,7 @@ Key | Description | Type | Default | Required
 `formatters` |   | [#/definitions/formatters](#formatters) |   | `false`
 `language` | The language for this account | `string()` |   | `false`
 `metaflows` |   | [#/definitions/metaflows](#metaflows) |   | `false`
-`music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..128)` |   | `false`
+`music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..2048)` |   | `false`
 `music_on_hold` | The default music on hold parameters | `object()` | `{}` | `false`
 `name` | A friendly name for the account | `string(1..128)` |   | `true`
 `org` | Full legal name of the organization | `string()` |   | `false`
