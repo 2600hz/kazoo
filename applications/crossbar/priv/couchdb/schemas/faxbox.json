@@ -38,7 +38,7 @@
         },
         "media": {
             "default": {},
-            "description": "The device media parameters",
+            "description": "The faxbox media parameters",
             "properties": {
                 "fax_option": {
                     "description": "Is T.38 Supported?",

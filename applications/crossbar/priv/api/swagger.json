@@ -2570,6 +2570,7 @@
                 },
                 "media": {
                     "description": "Optional media file to play before responding with the hangup code/cause",
+                    "maxLength": 2048,
                     "type": "string"
                 },
                 "message": {
@@ -4249,7 +4250,7 @@
                     "description": "The audio media parameters",
                     "properties": {
                         "codecs": {
-                            "description": "A list of audio codecs the device supports",
+                            "description": "A list of audio codecs the endpoint supports",
                             "items": {
                                 "enum": [
                                     "OPUS",
@@ -4321,11 +4322,11 @@
                     "type": "boolean"
                 },
                 "ignore_early_media": {
-                    "description": "The option to determine if early media from the device should always be ignored",
+                    "description": "The option to determine if early media from the endpoint should always be ignored",
                     "type": "boolean"
                 },
                 "progress_timeout": {
-                    "description": "The progress timeout to apply to the device (seconds)",
+                    "description": "The progress timeout to apply to the endpoint (seconds)",
                     "type": "integer"
                 },
                 "video": {
@@ -4334,7 +4335,7 @@
                     "properties": {
                         "codecs": {
                             "default": [],
-                            "description": "A list of video codecs the device supports",
+                            "description": "A list of video codecs the endpoint supports",
                             "items": {
                                 "enum": [
                                     "H261",
@@ -4391,7 +4392,7 @@
                 },
                 "media": {
                     "default": {},
-                    "description": "The device media parameters",
+                    "description": "The faxbox media parameters",
                     "properties": {
                         "fax_option": {
                             "description": "Is T.38 Supported?",
@@ -24364,80 +24365,8 @@
                     "type": "integer"
                 },
                 "media": {
-                    "default": {},
-                    "description": "The default resouce media parameters applied if not present to all specified gateways",
-                    "properties": {
-                        "audio": {
-                            "default": {},
-                            "description": "The default audio media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [
-                                        "PCMU"
-                                    ],
-                                    "description": "A list of default codecs to use",
-                                    "items": {
-                                        "enum": [
-                                            "OPUS",
-                                            "CELT@32000h",
-                                            "G7221@32000h",
-                                            "G7221@16000h",
-                                            "G722",
-                                            "speex@32000h",
-                                            "speex@16000h",
-                                            "PCMU",
-                                            "PCMA",
-                                            "G729",
-                                            "GSM",
-                                            "CELT@48000h",
-                                            "CELT@64000h",
-                                            "G722_16",
-                                            "G722_32",
-                                            "CELT_48",
-                                            "CELT_64",
-                                            "Speex",
-                                            "speex"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "bypass_media": {
-                            "description": "Default bypass media mode",
-                            "type": "boolean"
-                        },
-                        "fax_option": {
-                            "description": "Is T.38 Supported?",
-                            "type": "boolean"
-                        },
-                        "video": {
-                            "default": {},
-                            "description": "The default video media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [],
-                                    "description": "A list of default codecs to use",
-                                    "items": {
-                                        "enum": [
-                                            "H261",
-                                            "H263",
-                                            "H264",
-                                            "VP8"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/endpoint.media",
+                    "description": "Media options for resources"
                 },
                 "name": {
                     "description": "A friendly name for the resource",

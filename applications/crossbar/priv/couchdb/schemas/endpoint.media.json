@@ -8,7 +8,7 @@
             "description": "The audio media parameters",
             "properties": {
                 "codecs": {
-                    "description": "A list of audio codecs the device supports",
+                    "description": "A list of audio codecs the endpoint supports",
                     "items": {
                         "enum": [
                             "OPUS",
@@ -80,11 +80,11 @@
             "type": "boolean"
         },
         "ignore_early_media": {
-            "description": "The option to determine if early media from the device should always be ignored",
+            "description": "The option to determine if early media from the endpoint should always be ignored",
             "type": "boolean"
         },
         "progress_timeout": {
-            "description": "The progress timeout to apply to the device (seconds)",
+            "description": "The progress timeout to apply to the endpoint (seconds)",
             "type": "integer"
         },
         "video": {
@@ -93,7 +93,7 @@
             "properties": {
                 "codecs": {
                     "default": [],
-                    "description": "A list of video codecs the device supports",
+                    "description": "A list of video codecs the endpoint supports",
                     "items": {
                         "enum": [
                             "H261",
