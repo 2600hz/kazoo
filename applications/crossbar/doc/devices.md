@@ -36,25 +36,9 @@ Key | Description | Type | Default | Required
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false`
 `formatters` |   | [#/definitions/formatters](#formatters) |   | `false`
 `language` | The language for the device | `string()` |   | `false`
-`media.audio.codecs.[]` |   | `string()` |   | `false`
-`media.audio.codecs` | A list of audio codecs the device supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` | `["PCMU"]` | `false`
-`media.audio` | The audio media parameters | `object()` | `{}` | `false`
-`media.bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false`
-`media.encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false`
-`media.encryption.methods.[]` |   | `string()` |   | `false`
-`media.encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false`
-`media.encryption` | Encryption Parameters | `object()` | `{}` | `false`
-`media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
-`media.ignore_early_media` | The option to determine if early media from the device should always be ignored | `boolean()` |   | `false`
-`media.progress_timeout` | The progress timeout to apply to the device (seconds) | `integer()` |   | `false`
-`media.rtcp_mux` | RTCP protocol messages mixed with RTP data | `boolean()` |   | `false`
-`media.video.codecs.[]` |   | `string()` |   | `false`
-`media.video.codecs` | A list of video codecs the device supports | `array(string('VP8' | 'H264' | 'H263' | 'H261'))` | `[]` | `false`
-`media.video` | The video media parameters | `object()` | `{}` | `false`
-`media.webrtc` | If true forces a webrtc compatible SDP on the INVITE. | `boolean()` |   | `false`
-`media` | The device media parameters | `object()` | `{}` | `false`
+`media` | Configure audio/video/etc media options for this device | [#/definitions/endpoint.media](#endpointmedia) |   | `false`
 `metaflows` | The device metaflow parameters | [#/definitions/metaflows](#metaflows) |   | `false`
-`music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
+`music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..2048)` |   | `false`
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object()` | `{}` | `false`
 `mwi_unsolicitated_updates` | When true enables unsolicitated mwi notifications | `boolean()` | `true` | `false`
 `name` | A friendly name for the device | `string(1..128)` |   | `true`
@@ -175,6 +159,28 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `system.[]` |   | `string()` |   | `false`
 `system` | List of system dial plans | `array(string())` |   | `false`
+
+##### endpoint.media
+
+Schema for endpoint media options
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`audio.codecs.[]` |   | `string()` |   | `false`
+`audio.codecs` | A list of audio codecs the endpoint supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false`
+`audio` | The audio media parameters | `object()` | `{}` | `false`
+`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false`
+`encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false`
+`encryption.methods.[]` |   | `string()` |   | `false`
+`encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false`
+`encryption` | Encryption Parameters | `object()` | `{}` | `false`
+`fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
+`ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `boolean()` |   | `false`
+`progress_timeout` | The progress timeout to apply to the endpoint (seconds) | `integer()` |   | `false`
+`video.codecs.[]` |   | `string()` |   | `false`
+`video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false`
+`video` | The video media parameters | `object()` | `{}` | `false`
 
 ##### formatters
 

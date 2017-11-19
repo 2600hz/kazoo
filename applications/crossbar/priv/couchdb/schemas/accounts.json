@@ -75,7 +75,7 @@
             "properties": {
                 "media_id": {
                     "description": "The ID of a media object that should be used as the default music on hold",
-                    "maxLength": 128,
+                    "maxLength": 2048,
                     "type": "string"
                 }
             },
