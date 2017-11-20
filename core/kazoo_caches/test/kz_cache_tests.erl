@@ -30,7 +30,7 @@ wait_for_key_local_existing() ->
 
     _WriterPid = spawn_monitor(fun() -> writer_job(Key, Value, Timeout) end),
 
-    ?assertEqual({'ok', Value}, kz_cache:wait_for_key_local(?MODULE, Key, Timeout)).
+    ?_assertEqual({'ok', Value}, kz_cache:wait_for_key_local(?MODULE, Key, Timeout)).
 
 wait_for_key_local_mid_stream() ->
     Timeout = rand:uniform(1000)+1000,
@@ -39,13 +39,13 @@ wait_for_key_local_mid_stream() ->
 
     _WriterPid = spawn_monitor(fun() -> writer_job(Key, Value, Timeout) end),
 
-    ?assertEqual({'ok', Value}, kz_cache:wait_for_key_local(?MODULE, Key, Timeout)).
+    ?_assertEqual({'ok', Value}, kz_cache:wait_for_key_local(?MODULE, Key, Timeout)).
 
 wait_for_key_local_timeout() ->
     Timeout = 1000,
     Key = kz_binary:rand_hex(5),
 
-    ?assertEqual({'error', 'timeout'}, kz_cache:wait_for_key_local(?MODULE, Key, Timeout)).
+    ?_assertEqual({'error', 'timeout'}, kz_cache:wait_for_key_local(?MODULE, Key, Timeout)).
 
 writer_job(Key, Value, Timeout) ->
     timer:sleep(Timeout div 2),
