@@ -1013,7 +1013,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
                 ,{<<"Application-Name">>, <<"fax">>}
                 ,{<<"Timeout">>,ETimeout}
                 ,{<<"Application-Data">>, get_proxy_url(JobId)}
-                ,{<<"Outbound-Call-ID">>, CallId}
+                ,{<<"Origination-Call-ID">>, CallId}
                 ,{<<"Bypass-E164">>, kz_json:is_true(<<"bypass_e164">>, JObj)}
                 ,{<<"Fax-T38-Enabled">>, false}
                  | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
