@@ -355,10 +355,6 @@ display_cache_obj(#cache_obj{key=Key
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT).
 
--ifdef(TEST).
-wait_for_key_local(_, _, _) ->
-    {error, timeout}.
--else.
 wait_for_key_local(Srv, Key, Timeout) ->
     WaitFor = Timeout + 100,
     {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}, WaitFor),
@@ -369,7 +365,6 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {_, Ref, _} -> {'error', 'timeout'}
     after WaitFor -> {'error', 'timeout'}
     end.
--endif.
 
 %%%===================================================================
 %%% gen_server callbacks
