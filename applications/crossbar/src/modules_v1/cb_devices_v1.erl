@@ -13,14 +13,14 @@
 -module(cb_devices_v1).
 
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1
-        ,resource_exists/0, resource_exists/1
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
         ,billing/1
         ,authenticate/1
         ,authorize/1
-        ,validate/1, validate/2
+        ,validate/1, validate/2, validate/3
         ,put/1
-        ,post/2
+        ,post/2, post/3
         ,delete/2
         ,lookup_regs/1
         ]).
@@ -28,6 +28,7 @@
 -include("crossbar.hrl").
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
+-define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
@@ -67,6 +68,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
@@ -75,6 +77,9 @@ allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -86,9 +91,11 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -143,6 +150,7 @@ authorize(_Nouns, _Verb) -> 'false'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_devices(Context, cb_context:req_verb(Context)).
 
@@ -155,6 +163,9 @@ validate(Context, ?STATUS_PATH_TOKEN) ->
     validate_device(Context, ?STATUS_PATH_TOKEN, cb_context:req_verb(Context));
 validate(Context, DeviceId) ->
     validate_device(Context, DeviceId, cb_context:req_verb(Context)).
+
+validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    load_device(DeviceId, Context).
 
 validate_device(Context, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     load_device_status(Context);
@@ -183,6 +194,14 @@ post(Context, DeviceId) ->
         'false' ->
             error_used_mac_address(Context)
     end.
+
+-spec post(cb_context:context(), path_token(), path_token()) ->
+                  cb_context:context().
+post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    lager:debug("publishing check_sync for ~s", [DeviceId]),
+    Context1 = cb_context:store(Context, 'sync', 'force'),
+    _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
+    crossbar_util:response_202(<<"sync request sent">>, Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
