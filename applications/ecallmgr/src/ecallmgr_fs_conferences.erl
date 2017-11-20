@@ -203,33 +203,49 @@ handle_dial_req(JObj, _Props) ->
     ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
     lager:info("dialing out from conference ~s", [ConferenceId]),
     case node(ConferenceId) of
+        {'error', 'not_local'} ->
+            lager:info("conference dial isn't local to us, ignoring");
         {'error', 'not_found'} ->
-            lager:info("conference ~s not started, dialing out to start it", [ConferenceId]),
-            start_conference(JObj, ConferenceId);
+            maybe_start_conference(JObj, ConferenceId);
         {'ok', ConferenceNode} ->
             lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
             {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(ConferenceNode, ConferenceId, JObj),
             lager:info("starting dial resulted in ~s", [_Resp])
     end.
 
--spec start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
-start_conference(JObj, ConferenceId) ->
-    Node = find_node(kz_json:get_ne_binary_value(<<"Target-Call-ID">>, JObj)),
-    lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, Node]),
-    {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(Node, ConferenceId, JObj),
-    lager:info("starting dial resulted in ~s", [_Resp]).
+-spec maybe_start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
+maybe_start_conference(JObj, ConferenceId) ->
+    case find_media_server(kz_json:get_ne_binary_value(<<"Target-Call-ID">>, JObj), kz_api:node(JObj)) of
+        'undefined' -> lager:info("no node found for the dial command, ignoring");
+        MediaServer ->
+            lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, MediaServer]),
+            {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(MediaServer, ConferenceId, JObj),
+            lager:info("starting dial resulted in ~s", [_Resp])
+    end.
 
--spec find_node(api_ne_binary()) -> atom().
-find_node('undefined') ->
-    [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
-    Node;
-find_node(TargetCallId) ->
+-spec find_media_server(api_ne_binary(), ne_binary()) -> atom().
+find_media_server('undefined', IssuerNode) ->
+    IssuerNodeInfo = kz_nodes:node_to_json(IssuerNode),
+    MyZone = kz_config:zone('binary'),
+
+    case kz_json:get_ne_binary_value(<<"zone">>, IssuerNodeInfo) of
+        MyZone -> choose_random_media_server();
+        _IssuerZone ->
+            lager:info("issuer ~s is in zone ~s, ignoring request", [IssuerNode, _IssuerZone]),
+            'undefined'
+    end;
+find_media_server(TargetCallId, IssuerNode) ->
     case ecallmgr_fs_channel:node(TargetCallId) of
         {'ok', Node} -> Node;
         {'error', 'not_found'} ->
             lager:info("failed to find node of target call-id ~s", [TargetCallId]),
-            find_node('undefined')
+            find_media_server('undefined', IssuerNode)
     end.
+
+-spec choose_random_media_server() -> atom().
+choose_random_media_server() ->
+    [Server|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
+    Server.
 
 -spec handle_search_conference(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
 handle_search_conference(JObj, _Props, Name) ->
