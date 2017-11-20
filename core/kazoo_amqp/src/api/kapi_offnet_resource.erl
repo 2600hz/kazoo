@@ -93,27 +93,24 @@
        ,[?KEY_ACCOUNT_ID
         ,?KEY_ACCOUNT_REALM
         ,?KEY_APPLICATION_DATA
-        ,?KEY_B_LEG_EVENTS
         ,?KEY_BODY
         ,?KEY_BYPASS_E164
+        ,?KEY_B_LEG_EVENTS
         ,?KEY_CALL_ID
         ,?KEY_CALL_ID
-        ,?KEY_CONTROL_QUEUE
-        ,?KEY_CCVS
         ,?KEY_CAVS
-        ,?KEY_REQUESTOR_CCVS
+        ,?KEY_CCVS
+        ,?KEY_CONTROL_QUEUE
         ,?KEY_CSHS
-        ,?KEY_REQUESTOR_CSHS
-        ,?KEY_E_CALLER_ID_NAME
-        ,?KEY_E_CALLER_ID_NUMBER
         ,?KEY_ENABLE_T38
-        ,?KEY_ENABLE_T38_REQUEST
         ,?KEY_ENABLE_T38_GATEWAY
         ,?KEY_ENABLE_T38_PASSTHROUGH
+        ,?KEY_ENABLE_T38_REQUEST
+        ,?KEY_E_CALLER_ID_NAME
+        ,?KEY_E_CALLER_ID_NUMBER
         ,?KEY_FAX_IDENTITY_NAME
         ,?KEY_FAX_IDENTITY_NUMBER
         ,?KEY_FAX_TIMEZONE
-        ,?KEY_T38_ENABLED
         ,?KEY_FLAGS
         ,?KEY_FORCE_FAX
         ,?KEY_FORCE_OUTBOUND
@@ -127,11 +124,15 @@
         ,?KEY_MEDIA
         ,?KEY_MESSAGE_ID
         ,?KEY_MODE
-        ,?KEY_OUTBOUND_CALL_ID
+        ,?KEY_ORIGINATION_CALL_ID
         ,?KEY_OUTBOUND_CALLER_ID_NAME
         ,?KEY_OUTBOUND_CALLER_ID_NUMBER
+        ,?KEY_OUTBOUND_CALL_ID
         ,?KEY_PRESENCE_ID
+        ,?KEY_REQUESTOR_CCVS
+        ,?KEY_REQUESTOR_CSHS
         ,?KEY_RINGBACK
+        ,?KEY_T38_ENABLED
         ,?KEY_TIMEOUT
         ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
