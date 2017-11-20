@@ -537,6 +537,7 @@ show_calls() ->
 check_sync(Username, Realm) ->
     ecallmgr_fs_notify:notify(kz_term:to_binary(Username)
                              ,kz_term:to_binary(Realm)
+                             ,<<"check-sync">>
                              ).
 
 -spec add_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', any()}.

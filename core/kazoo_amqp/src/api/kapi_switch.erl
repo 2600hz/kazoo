@@ -59,7 +59,7 @@
 -define(FS_XML_FLUSH_TYPES, []).
 -define(FS_XML_FLUSH_KEY, <<"switch.fs_xml_flush">>).
 
--define(NOTIFY_HEADERS, [<<"Username">>, <<"Realm">>]).
+-define(NOTIFY_HEADERS, [<<"Username">>, <<"Realm">>, <<"Event">>]).
 -define(OPTIONAL_NOTIFY_HEADERS, []).
 -define(NOTIFY_VALUES, [{<<"Event-Category">>, <<"switch_event">>}
                        ,{<<"Event-Name">>, <<"notify">>}

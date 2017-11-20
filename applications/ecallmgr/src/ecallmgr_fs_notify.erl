@@ -11,7 +11,7 @@
 
 -export([start_link/1, start_link/2]).
 -export([presence_probe/2]).
--export([notify_api/2, notify/2]).
+-export([notify_api/2, notify/3]).
 -export([mwi_update/2]).
 -export([register_overwrite/2]).
 -export([init/1
@@ -106,10 +106,13 @@ resp_to_probe(State, User, Realm) ->
 notify_api(JObj, _Props) ->
     'true' = kapi_switch:notify_v(JObj),
     kz_util:put_callid(JObj),
-    notify(kapi_switch:notify_username(JObj), kapi_switch:notify_realm(JObj)).
+    notify(kapi_switch:notify_username(JObj)
+          ,kapi_switch:notify_realm(JObj)
+          ,kz_json:get_ne_binary_value(<<"Event">>, JObj)
+          ).
 
--spec notify(ne_binary(), ne_binary()) -> 'ok'.
-notify(Username, Realm) ->
+-spec notify(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+notify(Username, Realm, Event) ->
     lager:info("looking up registration information for ~s@~s", [Username, Realm]),
     case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->
@@ -117,16 +120,16 @@ notify(Username, Realm) ->
         {'ok', Registration} ->
             Contact = kz_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
             [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
-            lager:info("calling check sync on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
+            lager:info("sending NOTIFY on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
             case ensure_contact_user(Contact, Username, Realm) of
                 'undefined' ->
                     lager:error("invalid contact ~p: ~p", [Contact, Registration]);
-                Valid -> send_notify(Node, Username, Realm, Valid)
+                Valid -> send_notify(Node, Username, Realm, Event, Valid)
             end
     end.
 
--spec send_notify(atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_notify(Node, Username, Realm, Contact) ->
+-spec send_notify(atom(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_notify(Node, Username, Realm, Event, Contact) ->
     AOR = To = From = kzsip_uri:ruri(#uri{user=Username, domain=Realm}),
     SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
@@ -134,7 +137,7 @@ send_notify(Node, Username, Realm, Contact) ->
               ,{"extra-headers", SIPHeaders}
               ,{"to-uri", To}
               ,{"from-uri", From}
-              ,{"event-string", "check-sync"}
+              ,{"event-string", Event}
               ],
     Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
     lager:info("send NOTIFY to '~s@~s' via ~s: ~p", [Username, Realm, Node, Resp]).

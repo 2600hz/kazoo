@@ -3,6 +3,9 @@
     "_id": "kapi.switch.notify",
     "description": "AMQP API for switch.notify",
     "properties": {
+        "Event": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "switch_event"

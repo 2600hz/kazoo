@@ -808,7 +808,8 @@ send_check_sync(_Username, 'undefined', _MsgId) ->
     lager:warning("did not send check sync: realm is undefined");
 send_check_sync(Username, Realm, MsgId) ->
     lager:debug("sending check sync for ~s @ ~s", [Username, Realm]),
-    publish_check_sync(MsgId, [{<<"Realm">>, Realm}
+    publish_check_sync(MsgId, [{<<"Event">>, <<"check-sync">>}
+                              ,{<<"Realm">>, Realm}
                               ,{<<"Username">>, Username}
                                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                               ]).

@@ -346,7 +346,8 @@ flush_registrations(Context) ->
 flush_registration('undefined', _Realm) ->
     lager:debug("did not flush registration: username is undefined");
 flush_registration(Username, <<_/binary>> = Realm) ->
-    FlushCmd = [{<<"Realm">>, Realm}
+    FlushCmd = [{<<"Event">>, <<"check-sync">>}
+               ,{<<"Realm">>, Realm}
                ,{<<"Username">>, Username}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
