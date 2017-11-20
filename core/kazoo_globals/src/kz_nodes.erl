@@ -30,7 +30,9 @@
 -export([local_zone/0]).
 -export([whapp_zones/1, whapp_zone_count/1]).
 -export([globals_scope/0]).
--export([node_encoded/0]).
+-export([node_encoded/0
+        ,node_to_json/1
+        ]).
 
 -export([init/1
         ,handle_call/3
@@ -42,10 +44,10 @@
         ]).
 
 -type request_info() :: {'app', atom()} |
-                        {'media_servers', [{ne_binary(), kz_json:object()}]} |
-                        {'channels', non_neg_integer()} |
-                        {'registrations', non_neg_integer()} |
-                        {'info', whapp_info()}.
+                       {'media_servers', [{ne_binary(), kz_json:object()}]} |
+                       {'channels', non_neg_integer()} |
+                       {'registrations', non_neg_integer()} |
+                       {'info', whapp_info()}.
 -type request_acc() :: [request_info()].
 
 -export_type([request_acc/0]).
@@ -126,6 +128,29 @@ is_up(Node) ->
         [] -> 'false';
         [_] -> 'true'
     end.
+
+-spec node_to_json(text() | kz_node()) -> kz_json:object().
+node_to_json(NodeName) when is_atom(NodeName) ->
+    [#kz_node{}=Node] = ets:lookup(?MODULE, NodeName),
+    node_to_json(Node);
+node_to_json(#kz_node{node=NodeName
+                     ,zone=Zone
+                     ,kapps=Kapps
+                     ,media_servers=MediaServers
+                     ,version=Version
+                     ,channels=Channels
+                     ,registrations=Regs
+                     }) ->
+    kz_json:from_list([{<<"node">>, kz_term:to_binary(NodeName)}
+                      ,{<<"zone">>, kz_term:to_binary(Zone)}
+                      ,{<<"kapps">>, [K || {K, _} <- Kapps]}
+                      ,{<<"media_servers">>, [K || {K, _} <- MediaServers]}
+                      ,{<<"version">>, Version}
+                      ,{<<"channels">>, Channels}
+                      ,{<<"registrations">>, Regs}
+                      ]);
+node_to_json(NodeName) ->
+    node_to_json(kz_term:to_atom(NodeName)).
 
 -spec globals_scope() -> integer().
 globals_scope() ->
@@ -520,8 +545,8 @@ init([]) ->
                                          ]),
     lager:debug("monitoring nodes"),
     Version = <<(kz_util:kazoo_version())/binary
-                ," - "
-                ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
+               ," - "
+               ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
               >>,
     State = #state{tab = Tab
                   ,zone = get_zone()
