@@ -256,7 +256,7 @@
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
                               ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
-                              ,{<<"Origination-Call-ID">>, <<"origination_uuid">>}
+                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_uuid">>}
                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                               ,{<<"Outbound-Call-ID">>, <<"origination_uuid">>}
                               ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
