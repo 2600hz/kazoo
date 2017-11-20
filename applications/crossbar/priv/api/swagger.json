@@ -4147,6 +4147,19 @@
             ],
             "type": "object"
         },
+        "devices.notify": {
+            "description": "Schema for CrossBar devices notify API",
+            "properties": {
+                "event": {
+                    "description": "Event header value for SIP NOTIFY",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "event"
+            ],
+            "type": "object"
+        },
         "dialplans": {
             "description": "Permit local dialing by converting the dialed number to a routable form",
             "properties": {
@@ -34568,6 +34581,37 @@
                 "responses": {
                     "200": {
                         "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/notify": {
+            "post": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "devices",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devices"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/DEVICE_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    },
+                    "202": {
+                        "description": "Notice that the NOTIFY has been sent"
                     }
                 }
             }
