@@ -171,6 +171,9 @@
             ],
             "type": "string"
         },
+        "Origination-Call-ID": {
+            "type": "string"
+        },
         "Outbound-Call-ID": {
             "type": "string"
         },

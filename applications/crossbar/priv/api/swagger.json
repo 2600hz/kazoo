@@ -3543,6 +3543,10 @@
                     "minItems": 1,
                     "type": "array"
                 },
+                "target_call_id": {
+                    "description": "Existing UUID to use as a hint for where to start the conference",
+                    "type": "string"
+                },
                 "timeout": {
                     "description": "How long to try to reach the endpoint(s)",
                     "minimum": 1,
@@ -8264,6 +8268,9 @@
                     "type": "string"
                 },
                 "Outbound-Call-ID": {
+                    "type": "string"
+                },
+                "Target-Call-ID": {
                     "type": "string"
                 },
                 "Timeout": {
@@ -17294,6 +17301,9 @@
                         "listen",
                         "whisper"
                     ],
+                    "type": "string"
+                },
+                "Origination-Call-ID": {
                     "type": "string"
                 },
                 "Outbound-Call-ID": {
