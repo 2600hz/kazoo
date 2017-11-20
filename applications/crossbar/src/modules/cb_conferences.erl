@@ -416,12 +416,13 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     Conference = cb_context:doc(Context),
     CAVs = kz_json:from_list(cb_modules_util:cavs_from_context(Context)),
     Command = [{<<"Application-Name">>, <<"dial">>}
-              ,{<<"Endpoints">>, ToDial}
               ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
               ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)}
-              ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
-              ,{<<"Custom-Application-Vars">>, CAVs}
               ,{<<"Conference-ID">>, ConferenceId}
+              ,{<<"Custom-Application-Vars">>, CAVs}
+              ,{<<"Endpoints">>, ToDial}
+              ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
+              ,{<<"Target-Call-ID">>, kz_json:get_ne_binary_value(<<"target_call_id">>, Data)}
               ,{<<"Timeout">>, kz_json:get_integer_value(<<"timeout">>, Data)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],

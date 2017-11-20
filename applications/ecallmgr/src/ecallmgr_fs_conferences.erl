@@ -214,10 +214,22 @@ handle_dial_req(JObj, _Props) ->
 
 -spec start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
 start_conference(JObj, ConferenceId) ->
-    [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
+    Node = find_node(kz_json:get_ne_binary_value(<<"Target-Call-ID">>, JObj)),
     lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, Node]),
     {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(Node, ConferenceId, JObj),
     lager:info("starting dial resulted in ~s", [_Resp]).
+
+-spec find_node(api_ne_binary()) -> atom().
+find_node('undefined') ->
+    [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
+    Node;
+find_node(TargetCallId) ->
+    case ecallmgr_fs_channel:node(TargetCallId) of
+        {'ok', Node} -> Node;
+        {'error', 'not_found'} ->
+            lager:info("failed to find node of target call-id ~s", [TargetCallId]),
+            find_node('undefined')
+    end.
 
 -spec handle_search_conference(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
 handle_search_conference(JObj, _Props, Name) ->

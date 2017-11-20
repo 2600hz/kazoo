@@ -334,6 +334,7 @@
                                ,<<"Custom-Channel-Vars">>
                                ,<<"Custom-Application-Vars">>
                                ,<<"Outbound-Call-ID">>
+                               ,<<"Target-Call-ID">>
                                ,<<"Timeout">>
                                ]).
 -define(DIAL_VALUES, [{<<"Event-Category">>, <<"conference">>}
