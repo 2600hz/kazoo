@@ -44,10 +44,10 @@
         ]).
 
 -type request_info() :: {'app', atom()} |
-                       {'media_servers', [{ne_binary(), kz_json:object()}]} |
-                       {'channels', non_neg_integer()} |
-                       {'registrations', non_neg_integer()} |
-                       {'info', whapp_info()}.
+                        {'media_servers', [{ne_binary(), kz_json:object()}]} |
+                        {'channels', non_neg_integer()} |
+                        {'registrations', non_neg_integer()} |
+                        {'info', whapp_info()}.
 -type request_acc() :: [request_info()].
 
 -export_type([request_acc/0]).
@@ -545,8 +545,8 @@ init([]) ->
                                          ]),
     lager:debug("monitoring nodes"),
     Version = <<(kz_util:kazoo_version())/binary
-               ," - "
-               ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
+                ," - "
+                ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
               >>,
     State = #state{tab = Tab
                   ,zone = get_zone()

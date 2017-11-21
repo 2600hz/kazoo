@@ -203,8 +203,6 @@ handle_dial_req(JObj, _Props) ->
     ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
     lager:info("dialing out from conference ~s", [ConferenceId]),
     case node(ConferenceId) of
-        {'error', 'not_local'} ->
-            lager:info("conference dial isn't local to us, ignoring");
         {'error', 'not_found'} ->
             maybe_start_conference(JObj, ConferenceId);
         {'ok', ConferenceNode} ->
