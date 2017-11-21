@@ -10,6 +10,7 @@
 -behaviour(application).
 
 -include("doodle.hrl").
+-define(ACCOUNT_CRAWLER_BINDING, <<"tasks.account_crawler">>).
 
 -export([start/2, stop/1]).
 
@@ -30,7 +31,7 @@ start(_Type, _Args) ->
         JObj -> kapps_config:set(?CONFIG_CAT, <<"reschedule">>, JObj)
     end,
     lager:debug("Start listening for tasks.account_crawler trigger"),
-    _ = kazoo_bindings:bind(<<"tasks.account_crawler">>,
+    _ = kazoo_bindings:bind(?ACCOUNT_CRAWLER_BINDING,
                             'doodle_maintenance',
                             'start_check_sms_by_account'),
     doodle_sup:start_link().
@@ -41,6 +42,9 @@ start(_Type, _Args) ->
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = kazoo_bindings:unbind(?ACCOUNT_CRAWLER_BINDING,
+                              'doodle_maintenance',
+                              'start_check_sms_by_account'),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.

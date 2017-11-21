@@ -209,5 +209,5 @@ check_then_process_account(AccountId, {'error', _R}) ->
 -spec process_account(ne_binary(), kz_account:doc()) -> 'ok'.
 process_account(AccountId, AccountJObj) ->
     lager:debug("account crawler processing account ~s", [AccountId]),
-    _ = tasks_bindings:map(<<"tasks.account_crawler">>, [AccountId, AccountJObj]),
+    _ = tasks_bindings:pmap(<<"tasks.account_crawler">>, [AccountId, AccountJObj]),
     'ok'.
