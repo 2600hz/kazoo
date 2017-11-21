@@ -45,7 +45,7 @@
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#eaeaea" width="80%" style="background-color:#eaeaea;border-radius:5px;">
                             <tr>
                                 <td style="padding:.9em;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-radius:5px;">
-                                    <p style="margin:0;padding:0;font-size:.7em;font-family:'Open Sans',sans-serif;color:#555555;"><b>{% firstof user.first_name user.last_name %}</b> commented at {{port_request.comment.timestamp.local|date:"l, F j, Y \\a\\t H:i"}}:</p>
+                                    <p style="margin:0;padding:0;font-size:.7em;font-family:'Open Sans',sans-serif;color:#555555;"><b>{{user.first_name}} {{user.last_name}}</b> commented on {{port_request.comment.date.local|date:"l, F j, Y \\a\\t H:i"}}:</p>
                                     <p style="margin:0;padding:0">{{port_request.comment.content}}</p>
                                 </td>
                             </tr>
