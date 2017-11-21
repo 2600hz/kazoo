@@ -78,8 +78,7 @@ map(Routing, Payload) ->
     kazoo_bindings:map(Routing, Payload).
 
 -spec pmap(ne_binary(), payload()) -> map_results().
--spec pmap(ne_binary(), payload(), kazoo_bindings:kz_rt_options()) ->
-    map_results().
+-spec pmap(ne_binary(), payload(), kazoo_bindings:kz_rt_options()) -> map_results().
 pmap(Routing, Payload) ->
     kazoo_bindings:pmap(Routing, Payload).
 
