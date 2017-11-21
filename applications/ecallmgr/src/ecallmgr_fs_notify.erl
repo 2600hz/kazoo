@@ -140,7 +140,7 @@ send_notify(Node, Username, Realm, Event, Contact) ->
               ,{"event-string", Event}
               ],
     Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-    lager:info("send NOTIFY to '~s@~s' via ~s: ~p", [Username, Realm, Node, Resp]).
+    lager:info("send NOTIFY with Event '~s' to '~s@~s' via ~s: ~p", [Event, Username, Realm, Node, Resp]).
 
 -spec mwi_update(kz_json:object(), kz_proplist()) -> no_return().
 mwi_update(JObj, Props) ->
