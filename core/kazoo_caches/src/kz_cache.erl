@@ -765,6 +765,7 @@ maybe_exec_flush_callbacks(Tab) ->
 
     exec_flush_callbacks(Tab, MatchSpec).
 
+-spec exec_flush_callbacks(ets:tab(), ets:match_spec()) -> 'ok'.
 exec_flush_callbacks(Tab, MatchSpec) ->
     _ = [kz_util:spawn(Callback, [K, V, 'flush'])
          || {Callback, K, V} <- ets:select(Tab, MatchSpec),
@@ -803,13 +804,16 @@ maybe_exec_timeout_callbacks(#state{monitor_tab=MonitorTab}=State, MonitorRef) -
     exec_timeout_callbacks(MonitorTab, MatchSpec),
     State#state{has_monitors=has_monitors(MonitorTab)}.
 
+-spec exec_timeout_callbacks(ets:tab(), ets:match_spec()) -> 'ok'.
 exec_timeout_callbacks(Tab, MatchSpec) ->
-    _ = [exec_timeout_callback(Tab, Callback)
+    _ = [exec_timeout_callback(Tab, list_to_tuple(Callback))
          || Callback <- ets:select(Tab, MatchSpec)
         ],
     'ok'.
 
-exec_timeout_callback(Tab, [Key, Value, Callback]) when is_function(Callback, 3) ->
+-spec exec_timeout_callback(ets:tab(), {any(), reference(), fun()}) -> 'true'.
+exec_timeout_callback(Tab, {Key, Value, Callback}) when is_function(Callback, 3),
+                                                        is_reference(Value) ->
     lager:debug("timing out monitor for ~p ~p", [Key, Value]),
     kz_util:spawn(Callback, [Key, Value, 'timeout']),
     delete_monitor_callbacks(Tab, Key).

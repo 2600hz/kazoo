@@ -167,8 +167,8 @@ unitfy_seconds(Seconds) ->
     D = Seconds div ?SECONDS_IN_DAY,
     [kz_term:to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
--spec decr_timeout(kz_timeout(), kz_now()) -> kz_timeout().
--spec decr_timeout(kz_timeout(), kz_now(), kz_now()) -> kz_timeout().
+-spec decr_timeout(kz_timeout(), kz_now() | gregorian_seconds()) -> kz_timeout().
+-spec decr_timeout(kz_timeout(), kz_now() | gregorian_seconds(), kz_now() | gregorian_seconds()) -> kz_timeout().
 decr_timeout('infinity', _) -> 'infinity';
 decr_timeout(Timeout, {_Mega, _S, _Micro}=Start) when is_integer(Timeout) ->
     decr_timeout(Timeout, Start, now());
