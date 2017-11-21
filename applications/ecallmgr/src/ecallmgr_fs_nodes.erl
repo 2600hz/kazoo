@@ -759,6 +759,12 @@ start_node_stats(#node{}) ->
 
 -spec start_preconfigured_servers() -> 'ok'.
 start_preconfigured_servers() ->
+    start_preconfigured_servers(0).
+
+-spec start_preconfigured_servers(integer()) -> 'ok'.
+start_preconfigured_servers(5) ->
+    lager:info("no preconfigured servers available and default not available.");
+start_preconfigured_servers(Try) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     case get_configured_nodes() of
         Nodes when is_list(Nodes) ->
@@ -768,7 +774,7 @@ start_preconfigured_servers() ->
                 'ok' -> 'ok';
                 _ ->
                     timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-                    start_preconfigured_servers()
+                    start_preconfigured_servers(Try + 1)
             end
     end.
 
