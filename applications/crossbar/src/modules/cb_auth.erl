@@ -32,7 +32,6 @@
 -define(PROVIDERS_PATH, <<"providers">>).
 -define(KEYS_PATH, <<"keys">>).
 -define(WHITELABEL_PATH, <<"whitelabel">>).
--define(REFRESH_PATH, <<"refresh">>).
 
 -define(LINKS_VIEW, <<"users/list_linked_users">>).
 -define(PROVIDERS_VIEW, <<"providers/list_by_type">>).
@@ -79,7 +78,6 @@ allowed_methods(?CALLBACK_PATH) -> [?HTTP_PUT];
 allowed_methods(?KEYS_PATH) -> [?HTTP_GET];
 allowed_methods(?LINKS_PATH) -> [?HTTP_GET];
 allowed_methods(?PROVIDERS_PATH) -> [?HTTP_GET];
-allowed_methods(?REFRESH_PATH) -> [?HTTP_POST];
 allowed_methods(?TOKENINFO_PATH) -> [?HTTP_GET, ?HTTP_POST].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
@@ -106,7 +104,6 @@ resource_exists(?CALLBACK_PATH) -> 'true';
 resource_exists(?KEYS_PATH) -> 'true';
 resource_exists(?LINKS_PATH) -> 'true';
 resource_exists(?PROVIDERS_PATH) -> 'true';
-resource_exists(?REFRESH_PATH) -> 'true';
 resource_exists(?TOKENINFO_PATH) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> boolean().
@@ -154,7 +151,7 @@ authorize(Context, PathToken, Id) ->
 
 %% authorize /auth
 -spec authorize_nouns(cb_context:context(), req_verb(), req_nouns()) -> boolean().
-authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
+authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}]) -> authorize_action(C, cb_context:req_value(C, <<"action">>));
 authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}, {<<"accounts">>, _}]) -> cb_context:is_account_admin(C);
 authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}, {<<"users">>, [UserId]}, {<<"accounts">>, [AccountId]}]) ->
     cb_context:is_account_admin(C)
@@ -172,7 +169,6 @@ authorize_nouns(_, ?CALLBACK_PATH,         ?HTTP_PUT,   [{<<"auth">>, _}]) -> 't
 authorize_nouns(C, ?KEYS_PATH,             ?HTTP_GET,   [{<<"auth">>, _}]) -> cb_context:is_account_admin(C);
 authorize_nouns(_, ?LINKS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?PROVIDERS_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_, ?REFRESH_PATH,          ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(C, _, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
@@ -191,6 +187,11 @@ authorize_nouns(_, ?PROVIDERS_PATH, _Id,           ?HTTP_GET,    [{<<"auth">>, _
 authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_POST,   [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(C, _, _, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
+
+-spec authorize_action(cb_context:context(), kz_json:api_json_term()) -> boolean().
+authorize_action(C, <<"reset_signature_secret">>) -> cb_context:is_superduper_admin(C);
+authorize_action(_, <<"refresh_token">>) -> 'true';
+authorize_action(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -246,6 +247,12 @@ validate_action(Context, <<"reset_signature_secret">>, ?HTTP_PUT) ->
         [{<<"auth">>, _}] -> reset_system_identity_secret(Context);
         _ -> reset_identity_secret(Context)
     end;
+validate_action(Context, <<"refresh_token">>, ?HTTP_PUT) ->
+    Doc = kz_json:from_list([{<<"account_id">>, cb_context:auth_account_id(Context)}
+                            ,{<<"owner_id">>, cb_context:auth_user_id(Context)}
+                            ]),
+    Context1 = cb_context:set_doc(Context, Doc),
+    crossbar_auth:create_auth_token(Context1, ?MODULE);
 validate_action(Context, _Action, _Method) ->
     lager:debug("unknown action ~s on ~s", [_Action, _Method]),
     cb_context:add_system_error(<<"action required">>, Context).
@@ -299,21 +306,7 @@ validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
 
 %% validating /auth/keys
 validate_path(Context, ?KEYS_PATH, ?HTTP_GET) ->
-    keys_summary(Context);
-
-%% validating /auth/refresh
-validate_path(Context, ?REFRESH_PATH, ?HTTP_POST) ->
-    cb_context:put_reqid(Context),
-    AuthDoc = kz_doc:public_fields(cb_context:auth_doc(Context)),
-    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc),
-    OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, AuthDoc),
-    Doc = kz_json:from_list([{<<"account_id">>, AccountId}
-                            ,{<<"owner_id">>, OwnerId}
-                            ]),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_doc/2, Doc}
-                       ]).
+    keys_summary(Context).
 
 -spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 %% validating /auth/apps/{app_id}
@@ -410,9 +403,6 @@ put(Context, ?KEYS_PATH, _KeyId) ->
     Context.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, ?REFRESH_PATH) ->
-    cb_context:put_reqid(Context),
-    crossbar_auth:create_auth_token(Context, ?MODULE);
 post(Context, ?TOKENINFO_PATH) ->
     Context.
 
