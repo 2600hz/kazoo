@@ -291,7 +291,7 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Msg-ID">>, MsgId}
       ,{<<"Originate-Immediate">>, kz_json:get_value(<<"Originate-Immediate">>, OffnetReq)}
       ,{<<"Origination-Call-ID">>, kz_json:get_value(<<"Origination-Call-ID">>, OffnetReq)}
-      ,{<<"Outbound-Call-ID">>, kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+      ,{<<"Outbound-Call-ID">>, kz_json:get_first_defined([<<"Origination-Call-ID">>, <<"Outbound-Call-ID">>], OffnetReq)}
       ,{<<"Outbound-Callee-ID-Name">>, kz_json:get_value(<<"Outbound-Callee-ID-Name">>, OffnetReq)}
       ,{<<"Outbound-Callee-ID-Number">>, kz_json:get_value(<<"Outbound-Callee-ID-Number">>, OffnetReq)}
       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
