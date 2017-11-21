@@ -283,13 +283,9 @@ dump_local(Srv, ShowValue) ->
     'ok'.
 
 -spec dump_table(ets:tab(), boolean()) -> 'ok'.
--ifdef(TEST).
-dump_table(_Tab, _) ->
-    'ok'.
--else.
 dump_table(Tab, ShowValue) ->
     Now = kz_time:now_s(),
-    io:format("Table ~p~n", [ets:info(Tab, 'name')]),
+    io:format('user', "Table ~p~n", [ets:info(Tab, 'name')]),
     _ = [display_cache_obj(CacheObj, ShowValue, Now)
          || CacheObj <- ets:match_object(Tab, #cache_obj{_ = '_'})
         ],
@@ -306,37 +302,37 @@ display_cache_obj(#cache_obj{key=Key
                  ,ShowValue
                  ,Now
                  ) ->
-    io:format("Key: ~300p~n", [Key]),
-    io:format("Expires: ~30p~n", [Expires]),
+    io:format('user', "Key: ~300p~n", [Key]),
+    io:format('user', "Expires: ~30p~n", [Expires]),
     case is_number(Expires) of
         'true' ->
-            io:format("Remaining: ~30p~n", [(Timestamp
-                                             + Expires)
-                                            - Now
-                                           ]);
+            io:format('user', "Remaining: ~30p~n", [(Timestamp + Expires) - Now]);
         'false' -> 'ok'
     end,
-    io:format("Origin: ~300p~n", [Origin]),
-    io:format("Callback: ~s~n", [Callback =/= 'undefined']),
+    io:format('user', "Origin: ~300p~n", [Origin]),
+    io:format('user', "Callback: ~s~n", [Callback =/= 'undefined']),
     case ShowValue of
-        'true' -> io:format("Value: ~p~n", [Value]);
+        'true' -> io:format('user', "Value: ~p~n", [Value]);
         'false' -> 'ok'
     end,
-    io:format("~n", []).
--endif.
+    io:format('user', "~n", []).
 
 -spec wait_for_key_local(atom(), any()) -> {'ok', any()} |
                                            {'error', 'timeout'}.
--spec wait_for_key_local(atom(), any(), kz_timeout()) ->
+-spec wait_for_key_local(atom(), any(), pos_integer()) ->
                                 {'ok', any()} |
                                 {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT).
 
-wait_for_key_local(Srv, Key, Timeout) ->
+wait_for_key_local(Srv, Key, Timeout) when is_integer(Timeout) ->
     WaitFor = Timeout + 100,
     {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}, WaitFor),
-    lager:debug("waiting for message with ref ~p", [Ref]),
+    wait_for_response(Ref, WaitFor).
+
+-spec wait_for_response(reference(), kz_timeout()) -> {'ok', any()} |
+                                                      {'error', 'timeout'}.
+wait_for_response(Ref, WaitFor) ->
     receive
         {'exists', Ref, Value} -> {'ok', Value};
         {'store', Ref, Value} -> {'ok', Value};
@@ -373,7 +369,6 @@ init(Name, ExpirePeriod, Props, _Bindings) ->
 
 -spec init(atom(), kz_timeout(), kz_proplist()) -> {'ok', state()}.
 init(Name, ExpirePeriod, Props) ->
-
     Tab = ets:new(Name
                  ,['set', 'public', 'named_table', {'keypos', #cache_obj.key}]
                  ),
