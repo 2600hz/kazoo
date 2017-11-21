@@ -15,13 +15,9 @@
 
 -include("teletype.hrl").
 
--spec is_comment_private(any()) -> boolean().
-is_comment_private('undefined') -> 'false';
-is_comment_private([]) -> 'false';
-is_comment_private([_|_]=Comments) ->
-    is_comment_private(lists:last(Comments));
-is_comment_private(Comment) ->
-    kz_json:is_true(<<"superduper_comment">>, Comment, 'false').
+-spec is_comment_private(kz_json:object()) -> boolean().
+is_comment_private(DataJObj) ->
+    kz_json:is_true([<<"comment">>, <<"superduper_comment">>], DataJObj, 'false').
 
 -spec get_attachments(kz_json:object()) -> attachments().
 -spec get_attachments(kz_json:object(), boolean()) -> attachments().
@@ -75,9 +71,9 @@ get_emails(ReqData, AccountId, 'false') ->
     PortReqEmail = get_port_req_email(ReqData),
 
     case {ResellerEmail, AdminEmails} of
-        {'undefined', 'undefined'} -> PortReqEmail;
-        {'undefined', [_|_]} -> AdminEmails ++ PortReqEmail;
-        {ResellerEmail, _} -> [ResellerEmail] ++ PortReqEmail
+        {'undefined', 'undefined'} -> lists:usort(PortReqEmail);
+        {'undefined', [_|_]} -> lists:usort(AdminEmails ++ PortReqEmail);
+        {ResellerEmail, _} -> lists:usort([ResellerEmail] ++ PortReqEmail)
     end.
 
 -spec find_reseller_port_email(api_binary()) -> api_binary().
@@ -90,8 +86,10 @@ find_reseller_port_email(AccountId) ->
 
 -spec get_port_req_email(kz_json:object()) -> binaries().
 get_port_req_email(ReqData) ->
-    Key = [<<"port_request">>, <<"customer_contact">>],
-    case kz_json:get_value(Key, ReqData) of
+    Keys = [[<<"port_request">>, <<"customer_contact">>]
+           ,[<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>]
+           ],
+    case kz_json:get_first_defined(Keys, ReqData) of
         <<_/binary>> =Email -> [Email];
         [_|_]=Emails -> Emails;
         _ -> []
@@ -190,4 +188,4 @@ fix_scheduled_date(JObj, _DataJObj) ->
 
 -spec fix_ui_metadata(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_ui_metadata(JObj, _DataJObj) ->
-    kz_json:delete_key(<<"ui_metadata">>, JObj).
+    kz_json:delete_keys([<<"ui_metadata">>, <<"ui_flags">>], JObj).
