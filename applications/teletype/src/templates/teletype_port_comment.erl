@@ -125,7 +125,7 @@ user_data(DataJObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     teletype_util:user_params(teletype_util:find_account_admin(AccountId));
 user_data(DataJObj, 'false') ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    UserId = props:get_value(<<"user_id">>, kz_json:get_value([<<"port_request">>, <<"comment">>], DataJObj)),
+    AccountId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"account_id">>], DataJObj),
+    UserId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"user_id">>], DataJObj),
     {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
     teletype_util:user_params(UserJObj).

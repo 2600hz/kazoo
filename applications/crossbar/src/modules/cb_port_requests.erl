@@ -1121,7 +1121,7 @@ maybe_send_port_comment_notification(Context, Id) ->
     case has_new_comment(DbDocComments, ReqDataComments) of
         'false' -> lager:debug("no new comments in ~s, ignoring", [Id]);
         'true' ->
-            try send_port_comment_notification(Context, Id, ReqDataComments) of
+            try send_port_comment_notification(Context, Id, lists:last(ReqDataComments)) of
                 _ -> lager:debug("port comment notification sent")
             catch
                 _E:_R ->
@@ -1201,15 +1201,22 @@ revert_patch(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_comment_notification(cb_context:context(), ne_binary(), kz_json:objects()) -> 'ok'.
-send_port_comment_notification(Context, Id, NewComments) ->
+-spec send_port_comment_notification(cb_context:context(), ne_binary(), kz_json:object()) -> 'ok'.
+send_port_comment_notification(Context, Id, NewComment) ->
+    Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
+            ,{<<"account_id">>, cb_context:auth_account_id(Context)}
+            ],
+    Comment = kz_json:set_values(Props, NewComment),
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
-          ,{<<"Comments">>, NewComments}
+          ,{<<"Comment">>, Comment}
           ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
+    lager:debug("sending port request notification for new comment by user ~s in account ~s"
+               ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context)]
+               ),
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).
 
 %%--------------------------------------------------------------------

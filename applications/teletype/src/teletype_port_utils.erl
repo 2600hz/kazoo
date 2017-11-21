@@ -135,19 +135,16 @@ fix_billing_fold(Key, Value, Acc) ->
 
 -spec fix_comments(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_comments(JObj, DataJObj) ->
-    case kz_json:get_list_value(<<"comments">>, DataJObj, []) of
-        [] -> kz_json:delete_key(<<"comments">>, JObj);
-        Comments ->
-            LastComment = lists:last(Comments),
-
-            Timestamp = kz_json:get_integer_value(<<"timestamp">>, LastComment),
+    case kz_json:get_json_value(<<"comment">>, DataJObj) of
+        'undefined' -> kz_json:delete_key(<<"comments">>, JObj);
+        Comment ->
+            Timestamp = kz_json:get_integer_value(<<"timestamp">>, Comment),
             Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, DataJObj)),
-            Comment = kz_json:set_values([{<<"date">>, Date}
-                                         ,{<<"timestamp">>, kz_json:get_value(<<"local">>, Date)} %% backward compatibility
-                                         ], LastComment),
-
+            Props = [{<<"date">>, Date}
+                    ,{<<"timestamp">>, kz_json:get_value(<<"local">>, Date)} %% backward compatibility
+                    ],
             kz_json:set_value(<<"comment">>
-                             ,kz_json:to_proplist(Comment)
+                             ,kz_json:set_values(Props, Comment)
                              ,kz_json:delete_key(<<"comments">>, JObj)
                              )
     end.
