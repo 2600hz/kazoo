@@ -2800,8 +2800,8 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             {Result, JObj};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>}
           when CallFetchId =:= MsgFetchId
-          andalso BridgeHangupCause =/= <<"PICKED_OFF">>
-          ->
+               andalso BridgeHangupCause =/= <<"PICKED_OFF">>
+               ->
             %% TODO: reduce log level if no issue is found with
             %%    basing the Result on Disposition
             lager:info("bridge channel execute completed with result ~s(~s)", [Disposition, Result]),
@@ -2809,7 +2809,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             {Result, JObj};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>}
           when CallFetchId =:= MsgFetchId
-          ->
+               ->
             CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             lager:debug("channel bridged to ~s", [CallId]),
             case is_function(Fun, 1) of
