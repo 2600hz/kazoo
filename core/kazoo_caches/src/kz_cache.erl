@@ -275,7 +275,7 @@ dump_local(Srv, ShowValue) when not is_atom(Srv) ->
 dump_local(Srv, ShowValue) when not is_boolean(ShowValue) ->
     dump_local(Srv, kz_term:to_boolean(ShowValue));
 dump_local(Srv, ShowValue) ->
-    {PointerTab, MonitorTab} = gen_server:call(Srv, {'tables'}),
+    {'tables', PointerTab, MonitorTab} = gen_server:call(Srv, {'tables'}),
 
     _ = [dump_table(Tab, ShowValue)
          || Tab <- [Srv, PointerTab, MonitorTab]
@@ -434,7 +434,7 @@ monitor_response_fun(Pid, Ref) ->
 handle_call({'tables'}, _From, #state{pointer_tab=PointerTab
                                      ,monitor_tab=MonitorTab
                                      }=State) ->
-    {'reply', {PointerTab, MonitorTab}, State};
+    {'reply', {'tables', PointerTab, MonitorTab}, State};
 handle_call({'wait_for_key', Key, Timeout}
            ,{Pid, _}
            ,#state{tab=Tab
