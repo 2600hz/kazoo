@@ -454,6 +454,7 @@ handle_call({'wait_for_key', Key, Timeout}
                                  ,callback=monitor_response_fun(Pid, Ref)
                                  },
             ets:insert(MonitorTab, CacheObj),
+            _ = start_monitor_expire_timer(Timeout, Ref),
             {'reply', {'ok', Ref}, State#state{has_monitors='true'}}
     end;
 handle_call('stop', _From, State) ->
@@ -592,6 +593,10 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
     _Expired > 0
         andalso lager:debug("expired ~p objects", [_Expired]),
     {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
+handle_info({'timeout', _Ref, {?MONITOR_EXPIRE_MSG, MonitorRef}}
+           ,#state{has_monitors='true'}=State
+           ) ->
+    {'noreply', maybe_exec_timeout_callbacks(State, MonitorRef)};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -649,7 +654,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--ifndef(TEST).
 -spec get_props_expires(kz_proplist()) -> kz_timeout().
 get_props_expires(Props) ->
     case props:get_value('expires', Props) of
@@ -669,7 +673,6 @@ get_props_callback(Props) ->
 
 -spec get_props_origin(kz_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
--endif.
 
 -spec expire_objects(ets:tab(), [ets:tab()]) -> non_neg_integer().
 -spec expire_objects(ets:tab(), [ets:tab()], list()) -> non_neg_integer().
@@ -759,6 +762,10 @@ maybe_exec_flush_callbacks(Tab) ->
          ,[{'=/=', '$3', 'undefined'}]
          ,[{{'$3', '$1', '$2'}}]
          }],
+
+    exec_flush_callbacks(Tab, MatchSpec).
+
+exec_flush_callbacks(Tab, MatchSpec) ->
     _ = [kz_util:spawn(Callback, [K, V, 'flush'])
          || {Callback, K, V} <- ets:select(Tab, MatchSpec),
             is_function(Callback, 3)
@@ -783,6 +790,30 @@ maybe_exec_store_callbacks(#state{monitor_tab=MonitorTab}=State, Key, Value) ->
         end,
     State#state{has_monitors=has_monitors(MonitorTab)}.
 
+-spec maybe_exec_timeout_callbacks(state(), reference()) -> state().
+maybe_exec_timeout_callbacks(#state{monitor_tab=MonitorTab}=State, MonitorRef) ->
+    MatchSpec = [{#cache_obj{key = '$1'
+                            ,callback = '$2'
+                            ,value = '$3'
+                            ,_ = '_'
+                            }
+                 ,[{'=:=', {'const', MonitorRef}, '$3'}]
+                 ,[['$1', '$3', '$2']]
+                 }],
+    exec_timeout_callbacks(MonitorTab, MatchSpec),
+    State#state{has_monitors=has_monitors(MonitorTab)}.
+
+exec_timeout_callbacks(Tab, MatchSpec) ->
+    _ = [exec_timeout_callback(Tab, Callback)
+         || Callback <- ets:select(Tab, MatchSpec)
+        ],
+    'ok'.
+
+exec_timeout_callback(Tab, [Key, Value, Callback]) when is_function(Callback, 3) ->
+    lager:debug("timing out monitor for ~p ~p", [Key, Value]),
+    kz_util:spawn(Callback, [Key, Value, 'timeout']),
+    delete_monitor_callbacks(Tab, Key).
+
 -spec has_monitors(ets:tab()) -> boolean().
 has_monitors(MonitorTab) ->
     ets:info(MonitorTab, 'size') > 0.
@@ -800,6 +831,10 @@ delete_monitor_callbacks(MonitorTab, Key) ->
 -spec start_expire_period_timer(pos_integer()) -> reference().
 start_expire_period_timer(ExpirePeriod) ->
     erlang:start_timer(ExpirePeriod, self(), ?EXPIRE_PERIOD_MSG).
+
+-spec start_monitor_expire_timer(pos_integer(), reference()) -> reference().
+start_monitor_expire_timer(Timeout, Ref) ->
+    erlang:start_timer(Timeout, self(), {?MONITOR_EXPIRE_MSG, Ref}).
 
 -spec insert_origin_pointers('undefined' | origin_tuple() | origin_tuples()
                             ,cache_obj(), ets:tab()) -> 'ok'.
