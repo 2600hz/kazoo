@@ -86,6 +86,19 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/290ac723eb6e73dd4a0adcd77785e04e/auth
 ```
 
+#### Request a new token while current token is still valid
+
+> **Note:** This will fail if your password or User Signature Secret is reset.
+
+> PUT /v2/auth
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{ "action": "refresh_token", "data": {} }'
+    http://{SERVER}:8000/v2/auth
+```
+
 ##### To Reset a User Signature Secret
 
 > PUT /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/auth
@@ -142,16 +155,6 @@ curl -v -X GET \
   "status": "success",
   "auth_token": "{AUTH_TOKEN}"
 }
-```
-
-#### Request a new token while current token is still valid
-
-> POST /v2/auth/refresh
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/refresh
 ```
 
 #### List SSO Provider
