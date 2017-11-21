@@ -50,6 +50,9 @@
 -define(EXPIRES, ?SECONDS_IN_HOUR).
 -define(EXPIRE_PERIOD, 10 * ?MILLISECONDS_IN_SECOND).
 -define(EXPIRE_PERIOD_MSG, 'expire_cache_objects').
+
+-define(MONITOR_EXPIRE_MSG, 'monitor_cleanup').
+
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
 -define(NOTIFY_KEY(Key), {'monitor_key', Key}).
@@ -179,10 +182,6 @@ wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
--ifdef(TEST).
-store_local(_, _, _, _) ->
-    'ok'.
--else.
 store_local(Srv, K, V, Props) when is_atom(Srv) ->
     case whereis(Srv) of
         'undefined' ->
@@ -196,7 +195,6 @@ store_local(Srv, K, V, Props) when is_pid(Srv) ->
                                              ,callback=get_props_callback(Props)
                                              ,origin=get_props_origin(Props)
                                              }}).
--endif.
 
 -spec peek_local(atom(), any()) -> {'ok', any()} |
                                    {'error', 'not_found'}.
@@ -226,21 +224,12 @@ erase_local(Srv, K) ->
     end.
 
 -spec flush_local(text() | atom()) -> 'ok'.
--ifdef(TEST).
-flush_local(_) ->
-    'ok'.
--else.
 flush_local(Srv) when not is_atom(Srv) ->
     flush_local(kz_term:to_atom(Srv));
 flush_local(Srv) ->
     gen_server:cast(Srv, {'flush'}).
--endif.
 
 -spec fetch_keys_local(atom()) -> list().
--ifdef(TEST).
-fetch_keys_local(_) ->
-    [].
--else.
 fetch_keys_local(Srv) ->
     MatchSpec = [{#cache_obj{key = '$1'
                             ,_ = '_'
@@ -249,14 +238,9 @@ fetch_keys_local(Srv) ->
                  ,['$1']
                  }],
     ets:select(Srv, MatchSpec).
--endif.
 
 -spec filter_erase_local(atom(), fun((any(), any()) -> boolean())) ->
                                 non_neg_integer().
--ifdef(TEST).
-filter_erase_local(_, _) ->
-    0.
--else.
 filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V}, Count) ->
                       case Pred(K, V) of
@@ -268,13 +252,8 @@ filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
              ,0
              ,Srv
              ).
--endif.
 
 -spec filter_local(atom(), fun((any(), any()) -> boolean())) -> [{any(), any()}].
--ifdef(TEST).
-filter_local(_, _) ->
-    [].
--else.
 filter_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V}, Acc) ->
                       case Pred(K, V) of
@@ -286,7 +265,6 @@ filter_local(Srv, Pred) when is_function(Pred, 2) ->
              ,[]
              ,Srv
              ).
--endif.
 
 -spec dump_local(text()) -> 'ok'.
 dump_local(Srv) -> dump_local(Srv, 'false').
@@ -297,7 +275,7 @@ dump_local(Srv, ShowValue) when not is_atom(Srv) ->
 dump_local(Srv, ShowValue) when not is_boolean(ShowValue) ->
     dump_local(Srv, kz_term:to_boolean(ShowValue));
 dump_local(Srv, ShowValue) ->
-    {PointerTab, MonitorTab} = gen_listener:call(Srv, {'tables'}),
+    {PointerTab, MonitorTab} = gen_server:call(Srv, {'tables'}),
 
     _ = [dump_table(Tab, ShowValue)
          || Tab <- [Srv, PointerTab, MonitorTab]
