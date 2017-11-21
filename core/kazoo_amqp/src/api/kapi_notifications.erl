@@ -426,7 +426,7 @@
 -define(PORTED_TYPES, []).
 
 %% Notify Ported Request
--define(PORT_COMMENT_HEADERS, [<<"Account-ID">>, <<"Comments">>]).
+-define(PORT_COMMENT_HEADERS, [<<"Account-ID">>, <<"Comment">>]).
 -define(OPTIONAL_PORT_COMMENT_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
                                        ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
                                             | ?DEFAULT_OPTIONAL_HEADERS

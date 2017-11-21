@@ -120,9 +120,9 @@
 
 -define(PORT_REQUEST_MACROS
        ,[?MACRO_VALUE(<<"port_request.comment.content">>, <<"comment.content">>, <<"Comment Text">>, <<"Comment Text">>)
-        ,?MACRO_VALUE(<<"port_request.comment.timestamp.local">>, <<"comment.timestamp_local">>, <<"Comment UTC Timestamp">>, <<"Comment Local Timestamp">>)
-        ,?MACRO_VALUE(<<"port_request.comment.timestamp.utc">>, <<"comment.timestamp_utc">>, <<"Comment UTC Timestamp">>, <<"Comment UTC Timestamp">>)
-        ,?MACRO_VALUE(<<"port_request.comment.timestamp.timezone">>, <<"comment.timestamp_timezone">>, <<"Comment Local Timestamp">>, <<"Comment Timestamp Local Timezone">>)
+        ,?MACRO_VALUE(<<"port_request.comment.date.local">>, <<"comment.date_local">>, <<"Comment Local Timestamp">>, <<"Comment Local Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.comment.date.utc">>, <<"comment.date_utc">>, <<"Comment UTC Timestamp">>, <<"Comment UTC Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.comment.date.timezone">>, <<"comment.date_timezone">>, <<"Comment Local Timestamp">>, <<"Comment Timestamp Local Timezone">>)
         ,?MACRO_VALUE(<<"port_request.customser_contact">>, <<"customser_contact">>, <<"Customser Email">>, <<"Customser Email">>)
         ,?MACRO_VALUE(<<"port_request.bill_name">>, <<"bill_name">>, <<"Bill Name">>, <<"Name on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_address">>, <<"bill_address">>, <<"Bill Address">>, <<"Address on the bill">>)
@@ -137,7 +137,9 @@
         ,?MACRO_VALUE(<<"port_request.port_scheduled_date.utc">>, <<"port_scheduled_date_utc">>, <<"UTC Scheduled Date">>, <<"UTC Scheduled Date">>)
         ,?MACRO_VALUE(<<"port_request.port_scheduled_date.timezone">>, <<"port_scheduled_date_timezone">>, <<"Scheduled Date Timezone">>, <<"Scheduled Date Local Timezone">>)
         ,?MACRO_VALUE(<<"port_request.service_provider">>, <<"service_provider">>, <<"Service Provider">>, <<"Service Provider">>)
-        ,?MACRO_VALUE(<<"port_request.requested_port_date">>, <<"requested_port_date">>, <<"Requested Port Date">>, <<"Requested Port Date">>)
+        ,?MACRO_VALUE(<<"port_request.requested_port_date.local">>, <<"requested_port_date_local">>, <<"Local Requested Port Date">>, <<"Local Requested Port Date">>)
+        ,?MACRO_VALUE(<<"port_request.requested_port_date.utc">>, <<"requested_port_date_utc">>, <<"UTC Requested Port Date">>, <<"UTC Requested Port Date">>)
+        ,?MACRO_VALUE(<<"port_request.requested_port_date.timezone">>, <<"requested_port_date_timezone">>, <<"Requested Port Date Timezone">>, <<"Requested Port Date Local Timezone">>)
         ]).
 
 -define(TRANSACTION_MACROS
