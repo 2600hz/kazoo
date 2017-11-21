@@ -21,7 +21,7 @@
         "Cc": {
             "type": "string"
         },
-        "Comments": {
+        "Comment": {
             "type": "string"
         },
         "Event-Category": {
