@@ -206,7 +206,7 @@ post(Context, DeviceId) ->
 post(Context, DeviceId, ?NOTIFY_PATH_TOKEN) ->
     lager:debug("publishing NOTIFY for ~s", [DeviceId]),
     Username = kz_device:sip_username(cb_context:doc(Context)),
-    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
     Req = [{<<"Event">>, cb_context:req_value(Context, <<"event">>)}
           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
           ,{<<"Realm">>, Realm}
