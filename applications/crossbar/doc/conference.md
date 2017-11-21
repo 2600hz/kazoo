@@ -82,6 +82,7 @@ Key | Description | Type | Default | Required
 `caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
 `endpoints.[]` |   | `string()` |   | `true`
 `endpoints` |   | `array(string())` |   | `true`
+`target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false`
 `timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
 
 ###### Examples
