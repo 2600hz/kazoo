@@ -73,7 +73,7 @@ If you feel that an account or a user secret is compromised, use this API to res
 
 > **Caution:** Resetting signature secret will invalidate user's issued token! In other words if the user is already login, it will be logout from the system and can't make any further request until login again.
 
-> **Note:** Only an account admin or the user himself can reset a user's secret!
+> **Note:** Only the user or an account admin can reset the user's secret.
 
 ##### To Reset an Account Signature Secret
 
