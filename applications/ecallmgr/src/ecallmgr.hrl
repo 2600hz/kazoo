@@ -561,6 +561,11 @@
          )
        ).
 
+-define(NODE_MODULES_KEY(R), [<<"configuration">>
+                             ,R
+                             ,<<"modules">>
+                             ]).
+
 -define(NODE_MODULES,
         [<<"node">>
         ,<<"monitor">>

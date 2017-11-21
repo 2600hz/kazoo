@@ -33,8 +33,6 @@
 -define(NODE_WORKER, ?NODE_CHILD_TYPE(<<"worker">>)).
 -define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
 
--define(NODE_MODULES_KEY(R), [<<"configuration">>, R, <<"modules">>]).
-
 %%==============================================================================
 %% API functions
 %%==============================================================================
