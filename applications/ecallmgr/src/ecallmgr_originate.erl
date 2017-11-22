@@ -616,16 +616,8 @@ update_uuid(OldUUID, NewUUID) ->
 -spec create_uuid(kz_json:object(), atom()) -> created_uuid().
 -spec create_uuid(kz_json:object(), kz_json:object(), atom()) -> created_uuid().
 
-create_uuid(Node) ->
-    case freeswitch:api(Node, 'create_uuid', " ") of
-        {'ok', UUID} ->
-            kz_util:put_callid(UUID),
-            lager:debug("FS generated our uuid: ~s", [UUID]),
-            {'fs', UUID};
-        {'error', _E} ->
-            lager:debug("unable to get a uuid from ~s: ~p", [Node, _E]),
-            {'fs', kz_util:rand_hex_binary(18)}
-    end.
+create_uuid(_Node) ->
+    {'fs', kz_util:rand_hex_binary(18)}.
 
 create_uuid(JObj, Node) ->
     case kz_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
