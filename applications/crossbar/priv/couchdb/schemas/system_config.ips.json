@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.ips",
+    "description": "Schema for ips system_config",
+    "properties": {
+        "zone_name_map": {
+            "default": {},
+            "description": "ips zone_name_map",
+            "type": "object"
+        }
+    },
+    "type": "object"
+}

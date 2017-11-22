@@ -27499,6 +27499,17 @@
             },
             "type": "object"
         },
+        "system_config.ips": {
+            "description": "Schema for ips system_config",
+            "properties": {
+                "zone_name_map": {
+                    "default": {},
+                    "description": "ips zone_name_map",
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
         "system_config.jonny5": {
             "description": "Schema for jonny5 system_config",
             "properties": {
@@ -29732,6 +29743,11 @@
                     "default": "stepswitch_resources",
                     "description": "stepswitch route by",
                     "type": "string"
+                },
+                "use_first_dedicated_proxy_only": {
+                    "default": true,
+                    "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usally local to the call).",
+                    "type": "boolean"
                 }
             },
             "type": "object"

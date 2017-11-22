@@ -950,7 +950,9 @@ fetch_local_resources(AccountId, JObjs) ->
 -spec fetch_account_dedicated_proxies(api_binary()) -> kz_proplist().
 fetch_account_dedicated_proxies('undefined') -> [];
 fetch_account_dedicated_proxies(AccountId) ->
+    UseSingle = kapps_config:get_is_true(?SS_CONFIG_CAT, <<"use_first_dedicated_proxy_only">>, 'true'),
     case kz_ips:assigned(AccountId) of
+        {'ok', [IP|_]} when UseSingle -> [build_account_dedicated_proxy(IP)];
         {'ok', IPS} -> [build_account_dedicated_proxy(IP) || IP <- IPS];
         _ -> []
     end.
