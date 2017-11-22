@@ -206,10 +206,47 @@ handle_dial_req(JObj, _Props) ->
         {'error', 'not_found'} ->
             maybe_start_conference(JObj, ConferenceId);
         {'ok', ConferenceNode} ->
-            lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
-            {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(ConferenceNode, ConferenceId, JObj),
-            lager:info("starting dial resulted in ~s", [_Resp])
+            exec_dial(ConferenceNode, ConferenceId, JObj)
     end.
+
+-spec exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
+exec_dial(ConferenceNode, ConferenceId, JObj) ->
+    lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
+    try ecallmgr_conference_command:exec_cmd(ConferenceNode, ConferenceId, JObj) of
+        {'ok', Resp} ->
+            lager:info("starting dial resulted in ~s", [Resp]),
+            send_success_resp(JObj, Resp)
+    catch
+        'throw':{'msg', E} ->
+            send_error_resp(JObj, E)
+    end.
+
+-spec send_success_resp(kapi_conference:doc(), ne_binary()) -> 'ok'.
+send_success_resp(JObj, Resp) ->
+    JobId =
+        case re:run(Resp, <<"([\\w-]{36})">>, ['ungreedy', {'capture', 'all_but_first', 'binary'}]) of
+            {'match', [UUID|_]} -> UUID;
+            _ -> 'undefined'
+        end,
+
+    publish_resp(JObj, [{<<"Job-ID">>, JobId}
+                       ,{<<"Message">>, <<"dialing endpoints">>}
+                       ,{<<"Status">>, <<"success">>}
+                       ]).
+
+-spec send_error_resp(kapi_conference:doc(), ne_binary()) -> 'ok'.
+send_error_resp(JObj, Error) ->
+    publish_resp(JObj, [{<<"Status">>, <<"error">>}
+                       ,{<<"Message">>, Error}
+                       ]).
+
+-spec publish_resp(kapi_conference:doc(), kz_proplist()) -> 'ok'.
+publish_resp(JObj, BaseResp) ->
+    Resp = BaseResp
+        ++ [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    kz_amqp_worker:cast(Resp, fun(P) -> kapi_conference:publish_dial_resp(kz_api:server_id(JObj), P) end).
 
 -spec maybe_start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
 maybe_start_conference(JObj, ConferenceId) ->
@@ -217,8 +254,7 @@ maybe_start_conference(JObj, ConferenceId) ->
         'undefined' -> lager:info("no node found for the dial command, ignoring");
         MediaServer ->
             lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, MediaServer]),
-            {'ok', _Resp} = ecallmgr_conference_command:exec_cmd(MediaServer, ConferenceId, JObj),
-            lager:info("starting dial resulted in ~s", [_Resp])
+            exec_dial(MediaServer, ConferenceId, JObj)
     end.
 
 -spec find_media_server(api_ne_binary(), ne_binary()) -> atom().

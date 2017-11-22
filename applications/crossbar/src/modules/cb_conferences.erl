@@ -407,14 +407,17 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
     case build_endpoints_to_dial(Context, ConferenceId, Endpoints) of
         [] -> error_no_endpoints(Context);
         ToDial ->
-            exec_dial_endpoints(Context, ConferenceId, Data, ToDial),
-            crossbar_util:response_202(<<"dialing endpoints">>, Context)
+            Resp = exec_dial_endpoints(Context, ConferenceId, Data, ToDial),
+            crossbar_util:response_202(Resp, Context)
     end.
 
--spec exec_dial_endpoints(cb_context:context(), path_token(), kz_json:object(), kz_json:objects()) -> 'ok'.
+-spec exec_dial_endpoints(cb_context:context(), path_token(), kz_json:object(), kz_json:objects()) ->
+                                 kz_json:object().
 exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     Conference = cb_context:doc(Context),
     CAVs = kz_json:from_list(cb_modules_util:cavs_from_context(Context)),
+    Timeout = kz_json:get_integer_value(<<"timeout">>, Data),
+
     Command = [{<<"Application-Name">>, <<"dial">>}
               ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
               ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)}
@@ -423,10 +426,22 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
               ,{<<"Endpoints">>, ToDial}
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
               ,{<<"Target-Call-ID">>, kz_json:get_ne_binary_value(<<"target_call_id">>, Data)}
-              ,{<<"Timeout">>, kz_json:get_integer_value(<<"timeout">>, Data)}
+              ,{<<"Timeout">>, Timeout}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    'ok' = kz_amqp_worker:cast(Command, fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end).
+    case kz_amqp_worker:call(Command
+                            ,fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end
+                            ,fun kapi_conference:dial_resp_v/1
+                            )
+    of
+        {'ok', Resp} ->
+            kz_json:normalize(kz_api:remove_defaults(Resp));
+        {'error', _E} ->
+            lager:info("failed to hear back about the dial: ~p", [_E]),
+            kz_json:from_list([{<<"status">>, <<"error">>}
+                              ,{<<"message">>, <<"conference dial failed to find a media server">>}
+                              ])
+    end.
 
 -spec build_endpoints_to_dial(cb_context:context(), path_token(), ne_binaries()) ->
                                      kz_json:objects().

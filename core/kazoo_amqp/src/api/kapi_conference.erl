@@ -41,7 +41,9 @@
         ,config_resp/1, config_resp_v/1
         ]).
 -export([play_macro_req/1, play_macro_req_v/1]).
--export([dial/1, dial_v/1]).
+-export([dial/1, dial_v/1
+        ,dial_resp/1, dial_resp_v/1
+        ]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
@@ -76,6 +78,7 @@
 -export([publish_config_req/1, publish_config_req/2
         ,publish_config_resp/2, publish_config_resp/3
         ,publish_dial/2, publish_dial/3
+        ,publish_dial_resp/2, publish_dial_resp/3
         ]).
 
 -include_lib("amqp_util.hrl").
@@ -349,6 +352,17 @@
                     ,{<<"Timeout">>, fun is_integer/1}
                     ]).
 
+-define(DIAL_RESP_HEADERS, [<<"Status">>]).
+-define(OPTIONAL_DIAL_RESP_HEADERS, [<<"Job-ID">>, <<"Message">>]).
+-define(DIAL_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"dial_resp">>}
+                          ,{<<"Status">>, [<<"success">>, <<"error">>]}
+                          ]).
+-define(DIAL_RESP_TYPES, [{<<"Job-ID">>, fun is_binary/1}
+                         ,{<<"Message">>, fun is_binary/1}
+                         ]).
+
 %% Conference Participants Event
 -define(PARTICIPANT_EVENT_HEADERS, [<<"Event">>
                                    ,<<"Call-ID">>
@@ -438,6 +452,7 @@
                         ,{<<"participant_volume_in">>, ?PARTICIPANT_VOLUME_IN_VALUES, fun participant_volume_in/1}
                         ,{<<"participant_volume_out">>, ?PARTICIPANT_VOLUME_OUT_VALUES, fun participant_volume_out/1}
                         ,{<<"dial">>, ?DIAL_VALUES, fun dial/1}
+                        ,{<<"dial_resp">>, ?DIAL_RESP_VALUES, fun dial_resp/1}
                         ,{<<"tones">>, ?CONF_TONES_REQ_VALUES, fun tones/1}
                         ,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun say/1}
                         ,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun tts/1}
@@ -1034,6 +1049,19 @@ dial_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DIAL_HEADERS, ?DIAL_VALUES, ?DIAL_TYPES);
 dial_v(JObj) -> dial_v(kz_json:to_proplist(JObj)).
 
+-spec dial_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+dial_resp(Prop) when is_list(Prop) ->
+    case dial_resp_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?DIAL_RESP_HEADERS, ?OPTIONAL_DIAL_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for dial_resp"}
+    end;
+dial_resp(JObj) -> dial_resp(kz_json:to_proplist(JObj)).
+
+-spec dial_resp_v(api_terms()) -> boolean().
+dial_resp_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?DIAL_RESP_HEADERS, ?DIAL_RESP_VALUES, ?DIAL_RESP_TYPES);
+dial_resp_v(JObj) -> dial_resp_v(kz_json:to_proplist(JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Bind a queue to the conference exchange
@@ -1550,3 +1578,11 @@ publish_dial(ConferenceId, JObj) ->
 publish_dial(ConferenceId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIAL_VALUES, fun dial/1),
     amqp_util:conference_publish(Payload, 'discovery', ConferenceId, [], ContentType).
+
+-spec publish_dial_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_dial_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_dial_resp(Queue, JObj) ->
+    publish_dial_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_dial_resp(Queue, Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIAL_RESP_VALUES, fun dial_resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
