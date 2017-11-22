@@ -231,7 +231,7 @@ browse_dbs_for_triggers(Ref) ->
 
 -spec cleanup_pass(ne_binary()) -> boolean().
 cleanup_pass(Db) ->
-    tasks_bindings:map(db_to_trigger(Db), Db),
+    _ = tasks_bindings:map(db_to_trigger(Db), Db),
     erlang:garbage_collect(self()).
 
 -spec db_to_trigger(ne_binary()) -> ne_binary().
