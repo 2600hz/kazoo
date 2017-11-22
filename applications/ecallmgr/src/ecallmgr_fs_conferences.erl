@@ -271,7 +271,7 @@ find_media_server_from_statuses(TargetCallId, IssuerNode, [Status|Statuses]) ->
     end.
 
 -spec query_cluster_for_call(ne_binary()) -> {'ok', kz_json:objects()} |
-                                            {'error', any()}.
+                                             {'error', any()}.
 query_cluster_for_call(CallId) ->
     Req = [{<<"Call-ID">>, CallId}
           ,{<<"Fields">>, <<"all">>}
