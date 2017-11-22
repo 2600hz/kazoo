@@ -184,9 +184,9 @@ copy_from_system_to_account(AccountDb, Id) ->
 -spec renderer_status() -> 'no_return'.
 renderer_status() ->
     Workers = [{Pid, process_info(Pid, 'message_queue_len')}
-               || {_, Pid, _, _} <- gen_server:call(teletype_sup:render_farm_name(), 'get_all_workers')
+               || {_, Pid, _, _} <- gen_server:call(teletype_farms_sup:render_farm_name(), 'get_all_workers')
               ],
-    {StateName, TotalWorkers, TotalOverflow, TotalInUse} = poolboy:status(teletype_sup:render_farm_name()),
+    {StateName, TotalWorkers, TotalOverflow, TotalInUse} = poolboy:status(teletype_farms_sup:render_farm_name()),
     io:format("Renderer Pool~n", []),
     io:format("  State           : ~s~n", [StateName]),
     io:format("  Total Workers   : ~p~n", [TotalWorkers]),
