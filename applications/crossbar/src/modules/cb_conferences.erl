@@ -416,7 +416,7 @@ dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
 exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     Conference = cb_context:doc(Context),
     CAVs = kz_json:from_list(cb_modules_util:cavs_from_context(Context)),
-    Timeout = kz_json:get_integer_value(<<"timeout">>, Data),
+    Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S),
 
     Command = [{<<"Application-Name">>, <<"dial">>}
               ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
@@ -427,11 +427,13 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
               ,{<<"Target-Call-ID">>, kz_json:get_ne_binary_value(<<"target_call_id">>, Data)}
               ,{<<"Timeout">>, Timeout}
+              ,{<<"Msg-ID">>, cb_context:req_id(Context)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call(Command
                             ,fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end
                             ,fun kapi_conference:dial_resp_v/1
+                            ,Timeout * ?MILLISECONDS_IN_SECOND
                             )
     of
         {'ok', Resp} ->
