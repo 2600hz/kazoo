@@ -1577,7 +1577,7 @@ publish_dial(ConferenceId, JObj) ->
     publish_dial(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_dial(ConferenceId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIAL_VALUES, fun dial/1),
-    amqp_util:conference_publish(Payload, 'discovery', ConferenceId, [], ContentType).
+    amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 -spec publish_dial_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_dial_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
