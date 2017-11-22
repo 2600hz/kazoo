@@ -239,6 +239,7 @@ find_media_server(TargetCallId, IssuerNode) ->
             lager:info("failed to find node of target call-id ~s, querying cluster", [TargetCallId]),
             case query_cluster_for_call(TargetCallId) of
                 {'ok', StatusJObjs} ->
+                    lager:debug("statuses: ~p", [StatusJObjs]),
                     find_media_server_from_statuses(TargetCallId, IssuerNode, StatusJObjs);
                 _E ->
                     lager:info("failed to query for ~s: ~p", [TargetCallId, _E]),
@@ -259,7 +260,11 @@ find_media_server_from_statuses(TargetCallId, IssuerNode, [Status|Statuses]) ->
                              ,ecallmgr_fs_nodes:connected()
                              )
             of
-                [] -> find_media_server_from_statuses(TargetCallId, IssuerNode, Statuses);
+                [] ->
+                    lager:info("media server ~s is not managed by us, not starting conference"
+                              ,[MediaServer]
+                              ),
+                    'undefined';
                 [MS] ->
                     lager:info("media server ~s is managed by us!", [MediaServer]),
                     MS
