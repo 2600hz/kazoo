@@ -29,9 +29,8 @@
 -export([participant_get/1]).
 -export([sync_node/1]).
 -export([flush_node/1]).
--export([handle_search_req/2
-        ,handle_dial_req/2
-        ]).
+-export([handle_search_req/2]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -61,9 +60,6 @@
 
 -define(RESPONDERS, [{{?MODULE, 'handle_search_req'}
                      ,[{<<"conference">>, <<"search_req">>}]
-                     }
-                    ,{{?MODULE, 'handle_dial_req'}
-                     ,[{<<"conference">>, <<"command">>}]
                      }
                     ]).
 -define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}
@@ -196,134 +192,6 @@ handle_search_req(JObj, Props) ->
         'undefined' -> handle_search_account(JObj, Props);
         ConferenceId -> handle_search_conference(JObj, Props, ConferenceId)
     end.
-
--spec handle_dial_req(kapi_conference:doc(), kz_proplist()) -> 'ok'.
-handle_dial_req(JObj, _Props) ->
-    'true' = kapi_conference:dial_v(JObj),
-    ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
-    lager:info("dialing out from conference ~s", [ConferenceId]),
-    case node(ConferenceId) of
-        {'error', 'not_found'} ->
-            maybe_start_conference(JObj, ConferenceId);
-        {'ok', ConferenceNode} ->
-            exec_dial(ConferenceNode, ConferenceId, JObj)
-    end.
-
--spec exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
-exec_dial(ConferenceNode, ConferenceId, JObj) ->
-    lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
-    try ecallmgr_conference_command:exec_cmd(ConferenceNode, ConferenceId, JObj) of
-        {'ok', Resp} ->
-            lager:info("starting dial resulted in ~s", [Resp]),
-            send_success_resp(JObj, Resp)
-    catch
-        'throw':{'msg', E} ->
-            send_error_resp(JObj, E)
-    end.
-
--spec send_success_resp(kapi_conference:doc(), ne_binary()) -> 'ok'.
-send_success_resp(JObj, Resp) ->
-    JobId =
-        case re:run(Resp, <<"([\\w-]{36})">>, ['ungreedy', {'capture', 'all_but_first', 'binary'}]) of
-            {'match', [UUID|_]} -> UUID;
-            _ -> 'undefined'
-        end,
-
-    publish_resp(JObj, [{<<"Job-ID">>, JobId}
-                       ,{<<"Message">>, <<"dialing endpoints">>}
-                       ,{<<"Status">>, <<"success">>}
-                       ]).
-
--spec send_error_resp(kapi_conference:doc(), ne_binary()) -> 'ok'.
-send_error_resp(JObj, Error) ->
-    publish_resp(JObj, [{<<"Status">>, <<"error">>}
-                       ,{<<"Message">>, Error}
-                       ]).
-
--spec publish_resp(kapi_conference:doc(), kz_proplist()) -> 'ok'.
-publish_resp(JObj, BaseResp) ->
-    Resp = BaseResp
-        ++ [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    kz_amqp_worker:cast(Resp, fun(P) -> kapi_conference:publish_dial_resp(kz_api:server_id(JObj), P) end).
-
--spec maybe_start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
-maybe_start_conference(JObj, ConferenceId) ->
-    case find_media_server(kz_json:get_ne_binary_value(<<"Target-Call-ID">>, JObj), kz_api:node(JObj)) of
-        'undefined' -> lager:info("no node found for the dial command, ignoring");
-        MediaServer ->
-            lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, MediaServer]),
-            exec_dial(MediaServer, ConferenceId, JObj)
-    end.
-
--spec find_media_server(api_ne_binary(), ne_binary()) -> atom().
-find_media_server('undefined', IssuerNode) ->
-    IssuerNodeInfo = kz_nodes:node_to_json(IssuerNode),
-    MyZone = kz_config:zone('binary'),
-
-    case kz_json:get_ne_binary_value(<<"zone">>, IssuerNodeInfo) of
-        MyZone -> choose_random_media_server();
-        _IssuerZone ->
-            lager:info("issuer ~s is in zone ~s, ignoring request", [IssuerNode, _IssuerZone]),
-            'undefined'
-    end;
-find_media_server(TargetCallId, IssuerNode) ->
-    case ecallmgr_fs_channel:node(TargetCallId) of
-        {'ok', Node} -> Node;
-        {'error', 'not_found'} ->
-            lager:info("failed to find node of target call-id ~s, querying cluster", [TargetCallId]),
-            case query_cluster_for_call(TargetCallId) of
-                {'ok', StatusJObjs} ->
-                    find_media_server_from_statuses(TargetCallId, IssuerNode, StatusJObjs);
-                _E ->
-                    lager:info("failed to query for ~s: ~p", [TargetCallId, _E]),
-                    find_media_server('undefined', IssuerNode)
-            end
-    end.
-
--spec find_media_server_from_statuses(ne_binary(), ne_binary(), kz_json:objects()) -> atom().
-find_media_server_from_statuses(TargetCallId, IssuerNode, []) ->
-    lager:info("no one has record of ~s", [TargetCallId]),
-    find_media_server('undefined', IssuerNode);
-find_media_server_from_statuses(TargetCallId, IssuerNode, [Status|Statuses]) ->
-    case kz_json:get_ne_binary_value([<<"Channels">>, TargetCallId, <<"Media-Node">>], Status) of
-        'undefined' -> find_media_server_from_statuses(TargetCallId, IssuerNode, Statuses);
-        MediaServer ->
-            lager:info("found ~s on ~s", [TargetCallId, MediaServer]),
-            case lists:filter(fun(MS) -> kz_term:to_binary(MS) =:= MediaServer end
-                             ,ecallmgr_fs_nodes:connected()
-                             )
-            of
-                [] ->
-                    lager:info("media server ~s is not managed by us, not starting conference"
-                              ,[MediaServer]
-                              ),
-                    'undefined';
-                [MS] ->
-                    lager:info("media server ~s is managed by us!", [MediaServer]),
-                    MS
-            end
-    end.
-
--spec query_cluster_for_call(ne_binary()) -> {'ok', kz_json:objects()} |
-                                             {'error', any()}.
-query_cluster_for_call(CallId) ->
-    Req = [{<<"Call-ID">>, CallId}
-          ,{<<"Fields">>, <<"all">>}
-          ,{<<"Active-Only">>, 'true'}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-
-    kz_amqp_worker:call_collect(Req
-                               ,fun kapi_call:publish_query_channels_req/1
-                               ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
-                               ).
-
--spec choose_random_media_server() -> atom().
-choose_random_media_server() ->
-    [Server|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
-    Server.
 
 -spec handle_search_conference(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
 handle_search_conference(JObj, _Props, Name) ->
