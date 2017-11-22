@@ -236,9 +236,49 @@ find_media_server(TargetCallId, IssuerNode) ->
     case ecallmgr_fs_channel:node(TargetCallId) of
         {'ok', Node} -> Node;
         {'error', 'not_found'} ->
-            lager:info("failed to find node of target call-id ~s", [TargetCallId]),
-            find_media_server('undefined', IssuerNode)
+            lager:info("failed to find node of target call-id ~s, querying cluster", [TargetCallId]),
+            case query_cluster_for_call(TargetCallId) of
+                {'ok', StatusJObjs} ->
+                    find_media_server_from_statuses(TargetCallId, IssuerNode, StatusJObjs);
+                _E ->
+                    lager:info("failed to query for ~s: ~p", [TargetCallId, _E]),
+                    find_media_server('undefined', IssuerNode)
+            end
     end.
+
+-spec find_media_server_from_statuses(ne_binary(), ne_binary(), kz_json:objects()) -> atom().
+find_media_server_from_statuses(TargetCallId, IssuerNode, []) ->
+    lager:info("no one has record of ~s", [TargetCallId]),
+    find_media_server('undefined', IssuerNode);
+find_media_server_from_statuses(TargetCallId, IssuerNode, [Status|Statuses]) ->
+    case kz_json:get_ne_binary_value([<<"Channels">>, TargetCallId, <<"Media-Node">>], Status) of
+        'undefined' -> find_media_server_from_statuses(TargetCallId, IssuerNode, Statuses);
+        MediaServer ->
+            lager:info("found ~s on ~s", [TargetCallId, MediaServer]),
+            case lists:filter(fun(MS) -> kz_term:to_binary(MS) =:= MediaServer end
+                             ,ecallmgr_fs_nodes:connected()
+                             )
+            of
+                [] -> find_media_server_from_statuses(TargetCallId, IssuerNode, Statuses);
+                [MS] ->
+                    lager:info("media server ~s is managed by us!", [MediaServer]),
+                    MS
+            end
+    end.
+
+-spec query_cluster_for_call(ne_binary()) -> {'ok', kz_json:objects()} |
+                                            {'error', any()}.
+query_cluster_for_call(CallId) ->
+    Req = [{<<"Call-ID">>, CallId}
+          ,{<<"Fields">>, <<"all">>}
+          ,{<<"Active-Only">>, 'true'}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    kz_amqp_worker:call_collect(Req
+                               ,fun kapi_call:publish_query_channels_req/1
+                               ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
+                               ).
 
 -spec choose_random_media_server() -> atom().
 choose_random_media_server() ->
