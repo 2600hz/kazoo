@@ -417,6 +417,7 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     Conference = cb_context:doc(Context),
     CAVs = kz_json:from_list(cb_modules_util:cavs_from_context(Context)),
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S),
+    TargetCallId = kz_json:get_ne_binary_value(<<"target_call_id">>, Data),
 
     Command = [{<<"Application-Name">>, <<"dial">>}
               ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
@@ -425,24 +426,53 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
               ,{<<"Custom-Application-Vars">>, CAVs}
               ,{<<"Endpoints">>, ToDial}
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
-              ,{<<"Target-Call-ID">>, kz_json:get_ne_binary_value(<<"target_call_id">>, Data)}
+              ,{<<"Target-Call-ID">>, TargetCallId}
               ,{<<"Timeout">>, Timeout}
               ,{<<"Msg-ID">>, cb_context:req_id(Context)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call(Command
-                            ,fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end
+                            ,fun(P) -> kapi_conference:publish_dial(zone(TargetCallId), P) end
                             ,fun kapi_conference:dial_resp_v/1
                             ,Timeout * ?MILLISECONDS_IN_SECOND
                             )
     of
         {'ok', Resp} ->
             kz_json:normalize(kz_api:remove_defaults(Resp));
+        {'error', 'timeout'} ->
+            kz_json:from_list([{<<"status">>, <<"error">>}
+                              ,{<<"message">>, <<"timed out trying to dial endpoints">>}
+                              ]);
         {'error', _E} ->
             lager:info("failed to hear back about the dial: ~p", [_E]),
             kz_json:from_list([{<<"status">>, <<"error">>}
                               ,{<<"message">>, <<"conference dial failed to find a media server">>}
                               ])
+    end.
+
+-spec zone(api_ne_binary()) -> ne_binary().
+zone('undefined') ->
+    kz_config:zone('binary');
+zone(TargetCallId) ->
+    Req = [{<<"Call-ID">>, TargetCallId}
+          ,{<<"Fields">>, <<"all">>}
+          ,{<<"Active-Only">>, 'true'}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_call:publish_query_channels_req/1
+                                    ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
+                                    )
+    of
+        {'ok', [Resp|_]} ->
+            NodeInfo = kz_nodes:node_to_json(kz_api:node(Resp)),
+            Zone = kz_json:get_ne_binary_value(<<"zone">>, NodeInfo),
+            lager:info("got back channel resp, using target ~s zone ~s", [TargetCallId, Zone]),
+            Zone;
+        _E ->
+            lager:info("target ~s not found, using local zone: ~p", [_E]),
+            kz_config:zone('binary')
     end.
 
 -spec build_endpoints_to_dial(cb_context:context(), path_token(), ne_binaries()) ->
