@@ -21,7 +21,7 @@
                      ,[{<<"conference">>, <<"command">>}]
                      }
                     ]).
--define(BINDINGS, [{'conference', [{'restrict_to', [{'command', <<"*">>}]}
+-define(BINDINGS, [{'conference', [{'restrict_to', [{'command', kz_config:zone('binary')}]}
                                   ,'federate'
                                   ]}
                   ]).
@@ -155,7 +155,7 @@ code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 handle_dial_req(JObj, _Props) ->
     'true' = kapi_conference:dial_v(JObj),
     ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
-    case node(ConferenceId) of
+    case ecallmgr_fs_conferences:node(ConferenceId) of
         {'error', 'not_found'} ->
             maybe_start_conference(JObj, ConferenceId);
         {'ok', ConferenceNode} ->
