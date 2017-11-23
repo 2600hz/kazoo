@@ -20,7 +20,7 @@
         ,authenticate/1
         ,authorize/1
         ,validate/1, validate/2, validate/3
-        ,put/1
+        ,put/1, put/2
         ,post/2, post/3
         ,patch/2
         ,delete/2
@@ -30,7 +30,6 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
--define(NOTIFY_PATH_TOKEN, <<"notify">>).
 -define(STATUS_PATH_TOKEN, <<"status">>).
 -define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
 
@@ -89,10 +88,8 @@ allowed_methods() ->
 allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_DeviceId) ->
-    [?HTTP_GET, ?HTTP_PATCH, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_PATCH, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
 
-allowed_methods(_DeviceId, ?NOTIFY_PATH_TOKEN) ->
-    [?HTTP_POST];
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 
@@ -110,7 +107,6 @@ allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
 
 resource_exists() -> 'true'.
 resource_exists(_DeviceId) -> 'true'.
-resource_exists(_DeviceId, ?NOTIFY_PATH_TOKEN) -> 'true';
 resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -229,14 +225,14 @@ validate_device(Context, DeviceId, ?HTTP_POST) ->
     validate_request(DeviceId, Context);
 validate_device(Context, DeviceId, ?HTTP_PATCH) ->
     validate_patch(Context, DeviceId);
+validate_device(Context, DeviceId, ?HTTP_PUT) ->
+    validate_action(Context, DeviceId, cb_context:req_value(Context, <<"action">>));
 validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
 validate_patch(Context, DeviceId) ->
     crossbar_doc:patch_and_validate(DeviceId, Context, fun validate_request/2).
 
-validate(Context, DeviceId, ?NOTIFY_PATH_TOKEN) ->
-    validate_notify(DeviceId, Context);
 validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     load_device(DeviceId, Context).
 
@@ -285,18 +281,6 @@ filter_null_fields(_) -> 'true'.
 
 -spec post(cb_context:context(), path_token(), path_token()) ->
                   cb_context:context().
-post(Context, DeviceId, ?NOTIFY_PATH_TOKEN) ->
-    lager:debug("publishing NOTIFY for ~s", [DeviceId]),
-    Username = kz_device:sip_username(cb_context:doc(Context)),
-    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
-    Req = [{<<"Event">>, cb_context:req_value(Context, <<"event">>)}
-          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-          ,{<<"Realm">>, Realm}
-          ,{<<"Username">>, Username}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    kapi_switch:publish_notify(Req),
-    crossbar_util:response_202(<<"NOTIFY sent">>, Context);
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
     Context1 = cb_context:store(Context, 'sync', 'force'),
@@ -308,6 +292,7 @@ patch(Context, Id) ->
     post(Context, Id).
 
 -spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     Callback =
         fun() ->
@@ -317,6 +302,9 @@ put(Context) ->
                 maybe_add_mobile_mdn(Context1)
         end,
     crossbar_services:maybe_dry_run(Context, Callback).
+
+put(Context, DeviceId) ->
+    put_action(Context, DeviceId, cb_context:req_value(Context, <<"action">>)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
@@ -382,16 +370,21 @@ validate_request(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Validate request to send a custom SIP NOTIFY to the device
+%% Validate payloads for actions on a device
 %% @end
 %%--------------------------------------------------------------------
--spec validate_notify(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_notify(DeviceId, Context) ->
-    Context1 = cb_context:validate_request_data(<<"devices.notify">>, Context),
+-spec validate_action(cb_context:context(), ne_binary(), api_binary()) ->
+                             cb_context:context().
+validate_action(Context, DeviceId, <<"notify">>) ->
+    Context1 = cb_context:validate_request_data(<<"devices_notify">>, Context),
     case cb_context:resp_status(Context1) of
         'success' -> load_device(DeviceId, Context);
         _ -> Context1
-    end.
+    end;
+validate_action(Context, _, 'undefined') ->
+    crossbar_util:response_400(<<"action required">>, kz_json:new(), Context);
+validate_action(Context, _, _) ->
+    crossbar_util:response_400(<<"invalid action">>, kz_json:new(), Context).
 
 -spec maybe_check_mdn(api_binary(), cb_context:context()) -> cb_context:context().
 maybe_check_mdn(DeviceId, Context) ->
@@ -825,6 +818,26 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Perform actions on a device
+%% @end
+%%--------------------------------------------------------------------
+-spec put_action(cb_context:context(), ne_binary(), api_binary()) ->
+                        cb_context:context().
+put_action(Context, DeviceId, <<"notify">>) ->
+    lager:debug("publishing NOTIFY for ~s", [DeviceId]),
+    Username = kz_device:sip_username(cb_context:doc(Context)),
+    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Req = [{<<"Event">>, cb_context:req_value(Context, [<<"data">>, <<"event">>])}
+          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"Realm">>, Realm}
+          ,{<<"Username">>, Username}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kapi_switch:publish_notify(Req),
+    crossbar_util:response_202(<<"NOTIFY sent">>, Context).
 
 %%--------------------------------------------------------------------
 %% @private
