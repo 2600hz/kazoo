@@ -262,6 +262,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 ```
 
+#### Create
+
+> PUT /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+```
+
 #### Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
@@ -310,15 +320,5 @@ curl -v -X GET \
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
-```
-
-#### Change
-
-> POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/notify
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/notify
 ```
 

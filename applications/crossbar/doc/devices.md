@@ -563,6 +563,31 @@ curl -v -X PATCH \
 }
 ```
 
+#### Send a SIP NOTIFY to a device
+
+Kazoo will generate the NOTIFY packet if the device is registered.
+
+PUT body options:
+
+Key | Type | Description
+--- | ---- | -----------
+`action` | `'notify'` | Perform the 'notify' action
+`data.event` | `string()` | The value of the Event header in the NOTIFY packet
+`data` | `object()` | Parameters for the action
+
+> PUT /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"action": "notify",
+         "data": {
+           "event": "event"
+         }
+        }' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/notify
+```
 
 #### Fetch registration statuses of all devices
 
@@ -611,28 +636,6 @@ curl -v -X POST \
     "revision": "{REVISION}",
     "status": "success"
 }
-```
-
-#### Send a SIP NOTIFY to a device
-
-Kazoo will generate the NOTIFY packet if the device is registered.
-
-POST body options:
-
-Key | Type | Description
---- | ---- | -----------
-`event` | `string()` | The value of the Event header in the NOTIFY packet
-
-> POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/notify
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d '{"data":{
-        "event": "event",
-        }}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/notify
 ```
 
 #### Quickcalls

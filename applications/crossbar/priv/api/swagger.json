@@ -4147,16 +4147,25 @@
             ],
             "type": "object"
         },
-        "devices.notify": {
+        "devices_notify": {
             "description": "Schema for CrossBar devices notify API",
             "properties": {
-                "event": {
-                    "description": "Event header value for SIP NOTIFY",
-                    "type": "string"
+                "data": {
+                    "description": "Action-specific parameters",
+                    "properties": {
+                        "event": {
+                            "description": "Event header value for SIP NOTIFY",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "event"
+                    ],
+                    "type": "object"
                 }
             },
             "required": [
-                "event"
+                "data"
             ],
             "type": "object"
         },
@@ -34583,10 +34592,8 @@
                         "description": "request succeeded"
                     }
                 }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/notify": {
-            "post": {
+            },
+            "put": {
                 "parameters": [
                     {
                         "in": "body",
@@ -34611,7 +34618,7 @@
                         "description": "request succeeded"
                     },
                     "202": {
-                        "description": "Notice that the NOTIFY has been sent"
+                        "description": "action was accepted (for asynchronous actions)"
                     }
                 }
             }
