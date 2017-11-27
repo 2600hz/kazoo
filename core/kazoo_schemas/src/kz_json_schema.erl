@@ -904,6 +904,7 @@ fix_js_types(JObj, ValidationErrors) ->
 maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, {WasFixed, JObj}) ->
     case kz_json:get_value(<<"type">>, SchemaJObj) of
         <<"integer">> -> maybe_fix_js_integer(Key, Value, WasFixed, JObj);
+        <<"number">> -> maybe_fix_js_number(Key, Value, WasFixed, JObj);
         <<"boolean">> -> maybe_fix_js_boolean(Key, Value, WasFixed, JObj);
         _Type -> {WasFixed, JObj}
     end;
@@ -930,6 +931,17 @@ maybe_fix_js_boolean(Key, Value, WasFixed, JObj) ->
     catch
         _E:_R ->
             lager:debug("error converting ~p to boolean ~p: ~p", [Value, _E, _R]),
+            {WasFixed, JObj}
+    end.
+
+-spec maybe_fix_js_number(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
+                                  {boolean(), kz_json:object()}.
+maybe_fix_js_number(Key, Value, WasFixed, JObj) ->
+    try kz_term:to_number(Value) of
+        V -> {'true', kz_json:set_value(maybe_fix_index(Key), V, JObj)}
+    catch
+        _E:_R ->
+            lager:debug("error converting ~p to number ~p: ~p", [Value, _E, _R]),
             {WasFixed, JObj}
     end.
 
