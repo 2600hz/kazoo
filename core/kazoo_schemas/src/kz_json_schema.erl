@@ -911,7 +911,7 @@ maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, {WasFi
 maybe_fix_js_type(_, Acc) -> Acc.
 
 -spec maybe_fix_js_integer(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
-                                  {boolean(), kz_json:object()}.
+                               {boolean(), kz_json:object()}.
 maybe_fix_js_integer(Key, Value, WasFixed, JObj) ->
     try kz_term:to_integer(Value) of
         V ->
@@ -923,7 +923,7 @@ maybe_fix_js_integer(Key, Value, WasFixed, JObj) ->
     end.
 
 -spec maybe_fix_js_boolean(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
-                                  {boolean(), kz_json:object()}.
+                               {boolean(), kz_json:object()}.
 maybe_fix_js_boolean(Key, Value, WasFixed, JObj) ->
     try kz_term:to_boolean(Value) of
         V ->
@@ -935,7 +935,7 @@ maybe_fix_js_boolean(Key, Value, WasFixed, JObj) ->
     end.
 
 -spec maybe_fix_js_number(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
-                                  {boolean(), kz_json:object()}.
+                               {boolean(), kz_json:object()}.
 maybe_fix_js_number(Key, Value, WasFixed, JObj) ->
     try kz_term:to_number(Value) of
         V -> {'true', kz_json:set_value(maybe_fix_index(Key), V, JObj)}
