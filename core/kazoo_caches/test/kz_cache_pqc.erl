@@ -5,6 +5,7 @@
 -ifdef(PROPER).
 
 -include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
@@ -18,6 +19,7 @@
 
         ,correct/0
         ,correct_parallel/0
+        ,run_counterexample/0, run_counterexample/1
         ]).
 
 -define(SERVER, ?MODULE).
@@ -26,6 +28,49 @@
                ,now_ms = 0 :: pos_integer()
                }).
 
+%% proper_test_() ->
+%%     {"Runs kz_cache PropEr tests"
+%%     ,[{"sequential testing"
+%%       ,?assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}]))
+%%       }
+%%      ,{"parallel testing"
+%%       ,?assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}]))
+%%       }
+%%      ]
+%%     }.
+
+run_counterexample() ->
+    run_counterexample(proper:counterexample()).
+
+run_counterexample('undefined') -> 'undefined';
+run_counterexample([SeqSteps]) ->
+    run_counterexample(SeqSteps, initial_state()).
+
+run_counterexample(SeqSteps, State) ->
+    kz_util:put_callid(?MODULE),
+    kz_cache:stop_local(?SERVER),
+    {'ok', P} = kz_cache:start_link(?SERVER),
+
+    try lists:foldl(fun transition_if/2
+                   ,{1, State}
+                   ,SeqSteps
+                   )
+    catch
+        'throw':T -> T
+    after
+        kz_cache:stop_local(P)
+    end.
+
+transition_if({'set', _Var, Call}, {Step, State}) ->
+    {'call', M, F, As} = Call,
+    Resp = erlang:apply(M, F, As),
+    case postcondition(State, Call, Resp) of
+        'true' -> {Step+1, next_state(State, Resp, Call)};
+        'false' ->
+            io:format("failed on step ~p~n", [Step]),
+            throw({'failed_postcondition', State, Call, Resp})
+    end.
+
 correct() ->
     ?FORALL(Cmds
            ,commands(?MODULE)
@@ -33,7 +78,7 @@ correct() ->
                begin
                    kz_util:put_callid(?MODULE),
                    kz_cache:stop_local(?SERVER),
-                   {'ok', P} = kz_cache:start_link(?SERVER, [{'origin_bindings', [[]]}]),
+                   {'ok', P} = kz_cache:start_link(?SERVER),
                    {History, State, Result} = run_commands(?MODULE, Cmds),
                    kz_cache:stop_local(P),
                    ?WHENFAIL(io:format("Final State of ~p: ~p\nFailing Cmds: ~p\n"
@@ -50,7 +95,7 @@ correct_parallel() ->
            ,parallel_commands(?MODULE),
             begin
                 kz_cache:stop_local(?SERVER),
-                {'ok', P} = kz_cache:start_link(?SERVER, [{'origin_bindings', [[]]}]),
+                {'ok', P} = kz_cache:start_link(?SERVER),
                 {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
                 kz_cache:stop_local(P),
                 ?WHENFAIL(io:format("Failing Cmds: ~p\nS: ~p\nP: ~p\n"
@@ -70,6 +115,7 @@ command(#state{}=_Model) ->
               ,{1, {'call', 'kz_cache', 'peek_local', [?SERVER, key()]}}
               ,{1, {'call', 'kz_cache', 'fetch_local', [?SERVER, key()]}}
               ,{5, {'call', 'kz_cache', 'erase_local', [?SERVER, key()]}}
+              ,{1, {'call', 'kz_cache', 'wait_for_key_local', [?SERVER, key(), range(1000,2000)]}}
               ,{2, {'call', 'timer', 'sleep', [range(1000,15000)]}}
               ]).
 
@@ -111,6 +157,16 @@ next_state(#state{cache=Cache}=Model, _V
             Model;
         {'value', _Old, Cache1} ->
             Model#state{cache=Cache1}
+    end;
+next_state(#state{cache=Cache}=Model
+          ,V
+          ,{'call', 'kz_cache', 'wait_for_key_local', [?SERVER, Key, Timeout]}
+          ) ->
+    case lists:keysearch(Key, #cache_obj.key, Cache) of
+        'false' ->
+            next_state(Model, V, {'call', 'timer', 'sleep', [Timeout]});
+        {'value', _Old} ->
+            Model
     end;
 next_state(#state{cache=Cache
                  ,now_ms=ThenMs
@@ -163,6 +219,18 @@ postcondition(#state{cache=Cache}
         'false' -> 'true';
         {'value', _} -> 'false'
     end;
+postcondition(#state{cache=Cache}
+             ,{'call', 'kz_cache', 'wait_for_key_local', [?SERVER, Key, _Timeout]}
+             ,Result
+             ) ->
+    case lists:keysearch(Key, #cache_obj.key, Cache) of
+        'false' ->
+            %% io:format("cache key ~p not found: ~p~n", [Key, Result]),
+            {'error', 'timeout'} =:= Result;
+        {'value', #cache_obj{value=Value}} ->
+            %% io:format("cache key ~p found (~p): ~p~n", [Key, Value, Result]),
+            {'ok', Value} =:= Result
+    end;
 postcondition(#state{}
              ,{'call', 'kz_cache', 'erase_local', [?SERVER, _Key]}
              ,'ok'
@@ -180,7 +248,7 @@ maybe_expire(#cache_obj{expires=Expiry
             ,NewCache
             ,NowMs
             ) ->
-    case (Expiry*1000) + TStamp of
+    case (Expiry*?MILLISECONDS_IN_SECOND) + TStamp of
         Expired when Expired < NowMs ->
             NewCache;
         _Expires ->

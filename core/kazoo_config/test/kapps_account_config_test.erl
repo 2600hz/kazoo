@@ -40,29 +40,25 @@ setup() ->
     ?LOG_DEBUG(":: Setting up Kazoo FixtureDB"),
 
     {ok, _} = application:ensure_all_started(kazoo_config),
+    {ok, CachesPid} = kazoo_caches_sup:start_link(),
     {ok, LinkPid} = kazoo_data_link_sup:start_link(),
 
     {ok, SubConfig} = get_fixture(?SUB_ACCOUNT_ID, ?TEST_CAT),
     {ok, ResellerOnly} = get_fixture(?RESELLER_ACCOUNT_ID, ?RESELLER_ONLY),
 
     #{pid => LinkPid
+     ,caches_pid => CachesPid
      ,sub_config => SubConfig
      ,reseller_only_config => ResellerOnly
      ,system_config => get_fixture_value(<<"default">>, ?KZ_CONFIG_DB, ?TEST_CAT)
      ,system_only => get_fixture_value(<<"default">>, ?KZ_CONFIG_DB, ?SYSTEM_ONLY)
      }.
 
-cleanup(#{ pid := LinkPid}) ->
-    _DataLink = erlang:exit(LinkPid, normal),
-    Ref = monitor(process, LinkPid),
-    receive
-        {'DOWN', Ref, process, LinkPid, _Reason} ->
-            _KConfig = application:stop(kazoo_config),
-            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: ~p kazoo_config: ~p", [_DataLink, _KConfig])
-    after 1000 ->
-            _KConfig = application:stop(kazoo_config),
-            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: timeout kazoo_config: ~p", [_KConfig])
-    end.
+cleanup(#{ pid := LinkPid, caches_pid := CachesPid}) ->
+    _ = erlang:exit(LinkPid, normal),
+    _ = erlang:exit(CachesPid, normal),
+    _ = application:stop(kazoo_config),
+    ?LOG_DEBUG(":: Stopped Kazoo FixtureDB").
 
 test_get_ne_binary(_) ->
     [{"Testing get_ne_binary account config"
