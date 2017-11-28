@@ -131,25 +131,9 @@ cnam_flush() ->
 %%--------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
-    kapi_maintenance:refresh_database(?RESOURCES_DB),
-    kapi_maintenance:refresh_views(?RESOURCES_DB),
-
-    case catch kz_datamgr:all_docs(?RESOURCES_DB, ['include_docs']) of
-        {'error', _} -> 'ok';
-        {'EXIT', _E} ->
-            lager:debug("failure looking up all docs in ~s: ~p", [?RESOURCES_DB, _E]);
-        {'ok', JObjs} ->
-            _ = kz_datamgr:del_docs(?RESOURCES_DB
-                                   ,[Doc
-                                     || JObj <- JObjs,
-                                        begin
-                                            Doc = kz_json:get_value(<<"doc">>, JObj),
-                                            kz_doc:type(Doc) =:= <<"route">>
-                                        end
-                                    ]),
-            'ok'
-    end.
+    Views = kapps_util:get_views_json('stepswitch', "views"),
+    kapps_util:update_views(?RESOURCES_DB, Views, 'false'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
