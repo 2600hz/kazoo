@@ -29,6 +29,10 @@
         ,delete/2
         ]).
 
+-ifdef(TEST).
+-export([build_valid_endpoints/3]).
+-endif.
+
 -include("crossbar.hrl").
 
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
@@ -393,22 +397,22 @@ media_id_required(Context) ->
 dial(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"dial">>);
 dial(Context, ConferenceId, Data) ->
-    case kz_json_schema:validate(<<"conferences.dial">>, Data) of
-        {'ok', ValidData} ->
-            dial_endpoints(Context, ConferenceId, ValidData, kz_json:get_list_value(<<"endpoints">>, Data));
-        {'error', Errors} ->
-            lager:info("dial data failed to validate"),
-            cb_context:failed(Context, Errors)
+    case build_valid_endpoints(Context, ConferenceId, Data) of
+        {Context1, []} -> error_no_endpoints(Context1);
+        {Context1, Endpoints} ->
+            Resp = exec_dial_endpoints(Context1, ConferenceId, Data, Endpoints),
+            crossbar_util:response_202(Resp, Context1)
     end.
 
--spec dial_endpoints(cb_context:context(), path_token(), kz_json:object(), ne_binaries()) ->
-                            cb_context:context().
-dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
-    case build_endpoints_to_dial(Context, ConferenceId, Endpoints) of
-        [] -> error_no_endpoints(Context);
-        ToDial ->
-            Resp = exec_dial_endpoints(Context, ConferenceId, Data, ToDial),
-            crossbar_util:response_202(Resp, Context)
+-spec build_valid_endpoints(cb_context:context(), ne_binary(), kz_json:object()) ->
+                                   {cb_context:context(), kz_json:objects()}.
+build_valid_endpoints(Context, ConferenceId, Data) ->
+    case kz_json_schema:validate(<<"conferences.dial">>, Data) of
+        {'ok', ValidData} ->
+            build_endpoints_to_dial(Context, ConferenceId, kz_json:get_list_value(<<"endpoints">>, ValidData));
+        {'error', Errors} ->
+            lager:info("dial data failed to validate"),
+            {cb_context:failed(Context, Errors), []}
     end.
 
 -spec exec_dial_endpoints(cb_context:context(), path_token(), kz_json:object(), kz_json:objects()) ->
