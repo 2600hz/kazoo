@@ -500,12 +500,12 @@ create_call(Context, ConferenceId) ->
     Routines =
         [{F, V}
          || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
-                    ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
-                    ,{fun kapps_call:set_resource_type/2, <<"audio">>}
-                    ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
-                    ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
-                    ],
-           'undefined' =/= V
+                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+                      ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
+                      ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
+                      ],
+            'undefined' =/= V
         ],
     kapps_call:exec(Routines, kapps_call:new()).
 
@@ -525,7 +525,7 @@ build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call, Context, Element}) 
             {Endpoints, Call, Context, Element+1}
     end;
 build_endpoint(Number, {Endpoints, Call, Context, Element}=Acc) ->
-    case knm_util:is_reconcilable(Number) of
+    case knm_converters:is_reconcilable(Number) of
         'true' -> build_number_endpoint(Number, Acc);
         'false' ->
             {Endpoints, Call
@@ -633,22 +633,22 @@ add_not_found_error(Context, Id, Index) ->
 handle_participants_action(Context, ConferenceId, Action=?MUTE) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
-                                            andalso kz_json:is_true(<<"Speak">>, P)
+                                             andalso kz_json:is_true(<<"Speak">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?UNMUTE) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
-                                            andalso kz_json:is_false(<<"Speak">>, P)
+                                             andalso kz_json:is_false(<<"Speak">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?DEAF) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
-                                            andalso kz_json:is_true(<<"Hear">>, P)
+                                             andalso kz_json:is_true(<<"Hear">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?UNDEAF) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
-                                            andalso kz_json:is_false(<<"Hear">>, P)
+                                             andalso kz_json:is_false(<<"Hear">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?KICK) ->
     handle_participants_action(Context, ConferenceId, Action, fun kz_term:always_true/1);
