@@ -22,7 +22,6 @@
                   ,?SUPER('cccp_callback_sup')
                   ,?WORKER('cccp_listener')
                   ,?WORKER('cccp_shared_listener')
-                  ,?WORKER('cccp_maint_listener')
                   ]).
 
 %% ===================================================================
