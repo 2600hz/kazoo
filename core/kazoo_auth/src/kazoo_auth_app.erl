@@ -19,6 +19,9 @@
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
+    _ = kazoo_auth_maintenance:refresh(),
+    _ = kazoo_auth_maintenance:register_common_providers(),
+    _ = kazoo_auth_maintenance:ensure_secret(),
     kazoo_auth_sup:start_link().
 
 %%--------------------------------------------------------------------
