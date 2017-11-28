@@ -7,6 +7,9 @@
 
 -include("kazoo_speech.hrl").
 
+-define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
+-define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
+
 -spec default_url() -> ne_binary().
 default_url() ->
     kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_url">>, <<"http://api.ispeech.org/api/json">>).
@@ -15,48 +18,36 @@ default_url() ->
 default_api_key() ->
     kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>).
 
+-spec default_preferred_content_type() -> ne_binary().
+default_preferred_content_type() ->
+    PreferredContentType = kapps_config:get_binary(?MOD_CONFIG_CAT
+                                                  ,<<"asr_preferred_content_type">>
+                                                  ,?DEFAULT_ASR_CONTENT_TYPE
+                                                  ),
+    validate_content_type(PreferredContentType).
+
+-spec validate_content_type(binary()) -> ne_binary().
+validate_content_type(ContentType) ->
+    case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
+        'true' -> ContentType;
+        'false' ->
+            lager:debug("content-type ~s is not supported by ispeech", [ContentType]),
+            ?DEFAULT_ASR_CONTENT_TYPE
+    end.
+
 -spec freeform(binary(), ne_binary(), ne_binary(), kz_proplist()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options) ->
-    BaseUrl = default_url(),
-    lager:debug("sending request to ~s", [BaseUrl]),
-    Props = [{<<"apikey">>, default_api_key()}
-            ,{<<"action">>, <<"recognize">>}
-            ,{<<"freeform">>, <<"1">>}
-            ,{<<"content-type">>, ContentType}
-            ,{<<"output">>, <<"json">>}
-            ,{<<"locale">>, Locale}
-            ,{<<"audio">>, base64:encode(Content)}
-            ],
-    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
-    Body = kz_http_util:props_to_querystring(Props),
-    lager:debug("asr req body: ~s", [Body]),
+    case maybe_convert_content(Content, ContentType) of
+        {'error', _}=E -> E;
+        {Content1, ContentType1} -> exec_freeform(Content1, ContentType1, Locale, Options)
+    end.
 
-    handle_response(make_request(BaseUrl, Headers, Body, Options)).
-
--spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist()) -> provider_return().
-commands(Bin, Commands, ContentType, Locale, Opts) ->
-    BaseUrl = default_url(),
-
-    Commands1 = kz_binary:join(Commands, <<"|">>),
-
-    lager:debug("sending request to ~s", [BaseUrl]),
-
-    Props = [{<<"apikey">>, default_api_key()}
-            ,{<<"action">>, <<"recognize">>}
-            ,{<<"alias">>, <<"command1|YESNOMAYBE">>}
-            ,{<<"YESNOMAYBE">>, Commands1}
-            ,{<<"command1">>, <<"say %YESNOMAYBE%">>}
-            ,{<<"content-type">>, ContentType}
-            ,{<<"output">>, <<"json">>}
-            ,{<<"locale">>, Locale}
-            ,{<<"audio">>, base64:encode(Bin)}
-            ],
-    Headers = [{"Content-Type", "application/json"}],
-
-    Body = kz_json:encode(kz_json:from_list(Props)),
-    lager:debug("req body: ~s", [Body]),
-
-    handle_response(make_request(BaseUrl, Headers, Body, Opts)).
+-spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist()) -> asr_resp().
+commands(Content, Commands, ContentType, Locale, Options) ->
+    case maybe_convert_content(Content, ContentType) of
+        {'error', _}=E -> E;
+        {Content1, ContentType1} -> exec_commands(Content1, Commands, ContentType1, Locale, Options)
+    end.
 
 -spec make_request(ne_binary(), kz_proplist(), iolist(), kz_proplist()) -> kz_http:ret().
 make_request(BaseUrl, Headers, Body, Opts) ->
@@ -84,3 +75,78 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
     lager:debug("asr of media failed with code ~p", [_Code]),
     lager:debug("resp: ~s", [Content2]),
     {'error', 'asr_provider_failure', kz_json:decode(Content2)}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Send a freeform ASR request to iSpeech
+%% @end
+%%--------------------------------------------------------------------
+-spec exec_freeform(binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+                           asr_resp().
+exec_freeform(Content, ContentType, Locale, Options) ->
+    BaseUrl = default_url(),
+    lager:debug("sending request to ~s", [BaseUrl]),
+    Props = [{<<"apikey">>, default_api_key()}
+            ,{<<"action">>, <<"recognize">>}
+            ,{<<"freeform">>, <<"1">>}
+            ,{<<"content-type">>, ContentType}
+            ,{<<"output">>, <<"json">>}
+            ,{<<"locale">>, Locale}
+            ,{<<"audio">>, base64:encode(Content)}
+            ],
+    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    Body = kz_http_util:props_to_querystring(Props),
+    lager:debug("asr req body: ~s", [Body]),
+
+    handle_response(make_request(BaseUrl, Headers, Body, Options)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Send a command list ASR request to iSpeech
+%% @end
+%%--------------------------------------------------------------------
+-spec exec_commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist()) ->
+                           asr_resp().
+exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
+    BaseUrl = default_url(),
+
+    Commands1 = kz_binary:join(Commands, <<"|">>),
+
+    lager:debug("sending request to ~s", [BaseUrl]),
+
+    Props = [{<<"apikey">>, default_api_key()}
+            ,{<<"action">>, <<"recognize">>}
+            ,{<<"alias">>, <<"command1|YESNOMAYBE">>}
+            ,{<<"YESNOMAYBE">>, Commands1}
+            ,{<<"command1">>, <<"say %YESNOMAYBE%">>}
+            ,{<<"content-type">>, ContentType}
+            ,{<<"output">>, <<"json">>}
+            ,{<<"locale">>, Locale}
+            ,{<<"audio">>, base64:encode(Bin)}
+            ],
+    Headers = [{"Content-Type", "application/json"}],
+
+    Body = kz_json:encode(kz_json:from_list(Props)),
+    lager:debug("req body: ~s", [Body]),
+
+    handle_response(make_request(BaseUrl, Headers, Body, Opts)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert audio file/content-type if initial format not supported
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_convert_content(binary(), ne_binary()) -> conversion_return().
+maybe_convert_content(Content, ContentType) ->
+    case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
+        'true' -> {Content, ContentType};
+        'false' ->
+            ConvertTo = default_preferred_content_type(),
+            case kazoo_asr_util:convert_content(Content, ContentType, ConvertTo) of
+                'error' -> {'error', 'unsupported_content_type'};
+                Converted -> {Converted, ConvertTo}
+            end
+    end.
