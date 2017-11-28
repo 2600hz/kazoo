@@ -474,23 +474,8 @@ is_account_deleted(AccountId) ->
 refresh_views(AccountMODb) ->
     lager:debug("refresh views on modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    Views = get_modb_views(),
-    _ = kapps_util:update_views(EncodedMODb, Views, 'true'),
+    kz_datamgr:refresh_views(EncodedMODb),
     'ok'.
-
--spec get_modb_views() -> kz_proplist().
-get_modb_views() ->
-    case get('account_modb_views') of
-        'undefined' ->
-            Views = fetch_modb_views(),
-            put('account_modb_views', Views),
-            Views;
-        Views -> Views
-    end.
-
--spec fetch_modb_views() -> [{ne_binary(), kz_json:object()}].
-fetch_modb_views() ->
-    kapps_util:get_views_json(?MODULE, "views").
 
 %%--------------------------------------------------------------------
 %% @private
