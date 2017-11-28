@@ -13,7 +13,7 @@
 -export([max_bulk_insert/0
         ,max_bulk_read/0
         ]).
-
+-export([init_dbs/0]).
 %% format
 -export([format_error/1]).
 
@@ -119,7 +119,7 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME(DbName) ->
     try
         {'ok', Bin} = file:read_file(Path),
         JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
-        ensure_saved(DbName, JObj)
+        maybe_update_doc(DbName, JObj)
     catch
         _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("bad match: ~p", [Reason]),
@@ -176,7 +176,7 @@ revise_views_from_folder(DbName, App) ->
 -spec revise_docs_from_folder(ne_binary(), atom(), ne_binary() | nonempty_string(), boolean()) -> 'ok'.
 
 revise_docs_from_folder(DbName, App, Folder) ->
-    revise_docs_from_folder(DbName, App, Folder, 'true').
+    revise_docs_from_folder(DbName, App, Folder, 'false').
 
 revise_docs_from_folder(DbName, App, Folder, Sleep) ->
     case code:priv_dir(App) of
@@ -194,14 +194,26 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     try
         {'ok', Bin} = file:read_file(H),
         JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
+        _ = maybe_update_doc(DbName, JObj),
         Sleep
             andalso timer:sleep(250),
-        _ = ensure_saved(DbName, JObj),
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
         _:_ ->
             kz_util:log_stacktrace(),
             do_revise_docs_from_folder(DbName, Sleep, T)
+    end.
+
+maybe_update_doc(DbName, JObj) ->
+    case should_update(DbName, JObj) of
+        true -> ensure_saved(DbName, JObj);
+        false -> {'ok', JObj}
+    end.
+
+should_update(DbName, JObj) ->
+    case open_doc(DbName, kz_doc:id(JObj)) of
+        {'ok', Doc} -> not kz_json:are_equal(JObj, kz_doc:delete_revision(Doc));
+        _ -> true
     end.
 
 %%--------------------------------------------------------------------
@@ -389,8 +401,10 @@ db_view_update(DbName, Views) ->
     db_view_update(DbName, Views, 'false').
 
 db_view_update(DbName, Views0, Remove) when ?VALID_DBNAME(DbName) ->
-    Views = lists:keymap(fun maybe_adapt_multilines/1, 2, Views0),
-    kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove);
+    case lists:keymap(fun maybe_adapt_multilines/1, 2, Views0) of
+        [] -> 'true';
+        Views ->  kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove)
+    end;
 db_view_update(DbName, Views, Remove) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_view_update(Db, Views, Remove);
@@ -1473,3 +1487,13 @@ add_doc_type_from_view(View, Options) ->
             [{'doc_type', DocType} | Options];
         _ -> Options
     end.
+
+-spec init_dbs() -> boolean().
+init_dbs() ->
+    case db_exists(?KZ_ACCOUNTS_DB) of
+        'true' -> 'false';
+        'false' -> [db_create(DbName) || DbName <- ?KZ_SYSTEM_DBS],
+                   kz_datamgr:revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>),
+                   'true'
+    end.
+
