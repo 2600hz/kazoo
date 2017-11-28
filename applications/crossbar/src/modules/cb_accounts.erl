@@ -1412,9 +1412,9 @@ set_trial_expires(JObj) ->
 
 -spec load_initial_views(cb_context:context()) -> 'ok'.
 load_initial_views(Context)->
-     kz_datamgr:refresh_views(cb_context:account_db(Context)),
-     _ = kazoo_number_manager_maintenance:update_number_services_view(cb_context:account_db(Context)),
-     'ok'.
+    kz_datamgr:refresh_views(cb_context:account_db(Context)),
+    _ = kazoo_number_manager_maintenance:update_number_services_view(cb_context:account_db(Context)),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private

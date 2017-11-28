@@ -1510,7 +1510,7 @@ init_dbs() ->
 register_views(Classification, Views) ->
     App = kz_util:calling_app(),
     register_views(Classification, kz_term:to_atom(App, 'true'), Views).
-    
+
 
 -spec register_views(ne_binary() | db_classification(), atom(), views_listing()) -> 'ok'.
 register_views(_Classification, _App, []) -> 'ok';
