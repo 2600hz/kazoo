@@ -7,6 +7,8 @@ eunit: kze-test
 
 test: kze-test
 
+compile-test: kze-test
+
 kze-test:
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_number_manager/
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_sip/
