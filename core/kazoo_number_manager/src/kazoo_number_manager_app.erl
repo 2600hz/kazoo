@@ -10,7 +10,7 @@
 -module(kazoo_number_manager_app).
 -behaviour(application).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include("knm.hrl").
 
 %% Application callbacks
 -export([start/2, stop/1]).
@@ -21,6 +21,7 @@
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
     declare_exchanges(),
+    kz_datamgr:register_view('numbers', ?APP, "views/numbers.json"),
     kazoo_number_manager_sup:start_link().
 
 -spec stop(any()) -> any().
