@@ -478,10 +478,11 @@ zone(TargetCallId) ->
 -spec build_endpoints_to_dial(cb_context:context(), path_token(), ne_binaries()) ->
                                      kz_json:objects().
 build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
-    {ToDial, _} = lists:foldl(fun build_endpoint/2
-                             ,{[], create_call(Context, ConferenceId)}
-                             ,Endpoints
-                             ),
+    {ToDial, _Call, _Context, _Element} =
+        lists:foldl(fun build_endpoint/2
+                   ,{[], create_call(Context, ConferenceId), Context, 1}
+                   ,Endpoints
+                   ),
     ToDial.
 
 -spec error_no_endpoints(cb_context:context()) -> cb_context:context().
@@ -499,31 +500,50 @@ create_call(Context, ConferenceId) ->
     Routines =
         [{F, V}
          || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
-                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
-                      ,{fun kapps_call:set_resource_type/2, <<"audio">>}
-                      ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
-                      ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
-                      ],
-            'undefined' =/= V
+                    ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+                    ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+                    ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
+                    ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
+                    ],
+           'undefined' =/= V
         ],
     kapps_call:exec(Routines, kapps_call:new()).
 
--type build_acc() :: {kz_json:objects(), kapps_call:call()}.
+-type build_acc() :: {kz_json:objects(), kapps_call:call(), cb_context:context(), pos_integer()}.
 -spec build_endpoint(ne_binary(), build_acc()) -> build_acc().
-build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call}) ->
+build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call, Context, Element}) ->
     lager:info("building SIP endpoint ~s", [URI]),
     Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                  ,{<<"Route">>, URI}
                                  ]),
-    {[Endpoint | Endpoints], Call};
-build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
+    {[Endpoint | Endpoints], Call, Context, Element+1};
+build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call, Context, Element}) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), EndpointId) of
-        {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call});
+        {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call, Context, Element});
         {'error', _E} ->
             lager:info("failed to build endpoint ~s: ~p", [EndpointId, _E]),
-            {Endpoints, Call}
+            {Endpoints, Call, Context, Element+1}
     end;
-build_endpoint(Number, {Endpoints, Call}) ->
+build_endpoint(Number, {Endpoints, Call, Context, Element}=Acc) ->
+    case knm_util:is_reconcilable(Number) of
+        'true' -> build_number_endpoint(Number, Acc);
+        'false' ->
+            {Endpoints, Call
+            ,add_not_endpoint_error(Context, Element)
+            ,Element+1
+            }
+    end.
+
+-spec add_not_endpoint_error(cb_context:context(), pos_integer()) -> cb_context:context().
+add_not_endpoint_error(Context, Element) ->
+    cb_context:add_validation_error([<<"data">>, <<"endpoints">>, Element]
+                                   ,<<"enum">>
+                                   ,kz_json:from_list([{<<"message">>, <<"Value not a number, device or user ID, or SIP endpoint">>}])
+                                   ,Context
+                                   ).
+
+-spec build_number_endpoint(ne_binary(), build_acc()) -> build_acc().
+build_number_endpoint(Number, {Endpoints, Call, Context, Element}) ->
     AccountRealm = kapps_call:account_realm(Call),
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  Number}
@@ -542,7 +562,7 @@ build_endpoint(Number, {Endpoints, Call}) ->
                ],
 
     lager:info("adding number ~s endpoint", [Number]),
-    {[kz_json:from_list(Endpoint) | Endpoints], Call}.
+    {[kz_json:from_list(Endpoint) | Endpoints], Call, Context, Element+1}.
 
 -spec build_endpoint_from_doc(kz_json:object(), build_acc()) -> build_acc().
 build_endpoint_from_doc(Endpoint, Acc) ->
@@ -557,29 +577,54 @@ build_endpoint_from_doc(Endpoint, Acc) ->
     end.
 
 -spec build_endpoint_from_doc(kz_json:object(), build_acc(), ne_binary()) -> build_acc().
-build_endpoint_from_doc(Device, {Endpoints, Call}, <<"device">>) ->
+build_endpoint_from_doc(Device, {Endpoints, Call, Context, Element}, <<"device">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     case kz_endpoint:build(Device, Properties, Call) of
-        {'ok', Legs} -> {Endpoints ++ Legs, Call};
+        {'ok', Legs} -> {Endpoints ++ Legs, Call, Context, Element+1};
         {'error', _E} ->
             lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Device), _E]),
-            {Endpoints, Call}
+            {Endpoints, Call, add_not_found_error(Context, Device, Element), Element+1}
     end;
-build_endpoint_from_doc(User, {Endpoints, Call}, <<"user">>) ->
+build_endpoint_from_doc(User, {Endpoints, Call, Context, Element}, <<"user">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
-    Legs = lists:foldr(fun(EndpointId, Acc) ->
-                               case kz_endpoint:build(EndpointId, Properties, Call) of
-                                   {'ok', Endpoint} -> Endpoint ++ Acc;
-                                   {'error', _E} -> Acc
-                               end
-                       end
-                      ,Endpoints
-                      ,kz_attributes:owned_by(kz_doc:id(User), <<"device">>, Call)
-                      ),
-    {Legs, Call};
-build_endpoint_from_doc(_Endpoint, Acc, _Type) ->
-    lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(_Endpoint)]),
-    Acc.
+    case lists:foldr(fun(EndpointId, Acc) ->
+                             case kz_endpoint:build(EndpointId, Properties, Call) of
+                                 {'ok', Endpoint} -> Endpoint ++ Acc;
+                                 {'error', _E} -> Acc
+                             end
+                     end
+                    ,[]
+                    ,kz_attributes:owned_by(kz_doc:id(User), <<"device">>, Call)
+                    )
+    of
+        [] ->
+            lager:info("no endpoints found for user ~s", [kz_doc:id(User)]),
+            {Endpoints, Call, add_no_devices_error(Context, kz_doc:id(User), Element), Element+1};
+        Legs ->
+            {Legs++Endpoints, Call, Context, Element+1}
+    end;
+build_endpoint_from_doc(Endpoint, {Endpoints, Call, Context, Element}, _Type) ->
+    lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(Endpoint)]),
+    {Endpoints, Call, add_not_found_error(Context, kz_doc:id(Endpoint), Element), Element+1}.
+
+-spec add_no_devices_error(cb_context:context(), ne_binary(), pos_integer()) -> cb_context:context().
+add_no_devices_error(Context, UserId, Element) ->
+    cb_context:add_validation_error([<<"data">>, <<"endpoints">>, Element]
+                                   ,<<"minItems">>
+                                   ,kz_json:from_list([{<<"message">>, <<"user ", UserId/binary, " failed to resolve to route-able destinations">>}
+                                                      ,{<<"target">>, 1}
+                                                      ])
+                                   ,Context
+                                   ).
+
+
+-spec add_not_found_error(cb_context:context(), ne_binary(), pos_integer()) -> cb_context:context().
+add_not_found_error(Context, Id, Index) ->
+    cb_context:add_validation_error([<<"data">>, <<"participants">>, Index]
+                                   ,<<"not_found">>
+                                   ,kz_json:from_list([{<<"message">>, <<"ID ", Id/binary, " not found">>}])
+                                   ,Context
+                                   ).
 
 %%%===================================================================
 %%% Participant Actions
@@ -588,22 +633,22 @@ build_endpoint_from_doc(_Endpoint, Acc, _Type) ->
 handle_participants_action(Context, ConferenceId, Action=?MUTE) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
-                                             andalso kz_json:is_true(<<"Speak">>, P)
+                                            andalso kz_json:is_true(<<"Speak">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?UNMUTE) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
-                                             andalso kz_json:is_false(<<"Speak">>, P)
+                                            andalso kz_json:is_false(<<"Speak">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?DEAF) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
-                                             andalso kz_json:is_true(<<"Hear">>, P)
+                                            andalso kz_json:is_true(<<"Hear">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?UNDEAF) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
-                                             andalso kz_json:is_false(<<"Hear">>, P)
+                                            andalso kz_json:is_false(<<"Hear">>, P)
                                end);
 handle_participants_action(Context, ConferenceId, Action=?KICK) ->
     handle_participants_action(Context, ConferenceId, Action, fun kz_term:always_true/1);
