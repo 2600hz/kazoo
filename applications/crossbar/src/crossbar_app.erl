@@ -25,6 +25,7 @@ start(_StartType, _StartArgs) ->
     declare_exchanges(),
     _ = kapps_maintenance:bind('migrate', 'crossbar_maintenance', 'migrate'),
     _ = kapps_maintenance:bind({'refresh_account', <<"*">>}, 'crossbar_util', 'descendants_count'),
+    _ = kz_util:spawn(fun crossbar_maintenance:db_init/0),
     crossbar_sup:start_link().
 
 %%--------------------------------------------------------------------

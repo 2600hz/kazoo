@@ -47,6 +47,8 @@
 
 -export([does_schema_exist/1]).
 
+-export([db_init/0]).
+
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
 
@@ -1182,3 +1184,23 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
               || SShot <- filelib:wildcard(kz_term:to_list(PathToScreenshotsFolder) ++ "/*.png")
              ],
     update_screenshots(AppId, MA, SShots).
+
+-spec db_init() -> 'ok'.
+db_init() ->
+    kz_datamgr:suppress_change_notice(),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, ?APP, <<"views/system_configs.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, ?APP, "account/media.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, ?APP, <<"views/resources.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, ?APP, <<"views/port_requests.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, ?APP, <<"views/acdc.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_CCCPS_DB, ?APP, <<"views/cccps.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, ?APP, "views/token_auth.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_ALERTS_DB, ?APP, "views/alerts.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, ?APP, "views/pending_notify.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, ?APP, <<"views/webhooks.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, ?APP, <<"views/resources.json">>),
+    _ = kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, "schemas"),
+    _ = kz_datamgr:register_view('ratedeck', 'crossbar', "views/rates.json"),
+    kz_datamgr:enable_change_notice(),
+    lager:debug("database views updated").
