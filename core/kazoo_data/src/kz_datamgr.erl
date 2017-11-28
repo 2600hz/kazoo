@@ -87,8 +87,8 @@
         ,change_notice/0
         ]).
 
--export([register_view/2
-        ,register_views/2
+-export([register_view/2, register_view/3
+        ,register_views/2,register_views/3
         ,refresh_views/1
         ,register_views_from_folder/1
         ,register_views_from_folder/2
@@ -1506,22 +1506,34 @@ init_dbs() ->
     kz_datamgr:revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>),
     Result.
 
-
 -spec register_views(ne_binary() | db_classification(), views_listing()) -> 'ok'.
-register_views(_Classification, []) -> 'ok';
-register_views(Classification, [View | Other]) ->
-    _ = register_view(Classification, View),
-    register_views(Classification, Other).
+register_views(Classification, Views) ->
+    App = kz_util:calling_app(),
+    register_views(Classification, kz_term:to_atom(App, 'true'), Views).
+    
+
+-spec register_views(ne_binary() | db_classification(), atom(), views_listing()) -> 'ok'.
+register_views(_Classification, _App, []) -> 'ok';
+register_views(Classification, App, [View | Other]) ->
+    _ = register_view(Classification, App, View),
+    register_views(Classification, App, Other).
 
 -spec register_view(ne_binary() | db_classification(), view_listing()) ->
                            {'ok', kz_json:object()} |
                            data_error().
-register_view(Classification, {<<"_design/", Name/binary>>, View}) ->
+register_view(Classification, View) ->
     App = kz_util:calling_app(),
-    Version = kz_util:application_version(kz_term:to_atom(App, 'true')),
-    DocId = <<(kz_term:to_binary(Classification))/binary, "-", App/binary, "-", Name/binary>>,
+    register_view(Classification, kz_term:to_atom(App, 'true'), View).
+
+-spec register_view(ne_binary() | db_classification(), atom(), view_listing()) ->
+                           {'ok', kz_json:object()} |
+                           data_error().
+register_view(Classification, App, {<<"_design/", Name/binary>>, View}) ->
+    Version = kz_util:application_version(App),
+    AppName = kz_term:to_binary(App),
+    DocId = <<(kz_term:to_binary(Classification))/binary, "-", AppName/binary, "-", Name/binary>>,
     Update = [{<<"View">>, View}],
-    Create = [{<<"Application">>, App}
+    Create = [{<<"Application">>, AppName}
              ,{<<"Version">>, Version}
              ,{<<"Classification">>, kz_term:to_binary(Classification)}
              ,{<<"Name">>, Name}
@@ -1540,7 +1552,7 @@ register_views_from_folder(Classification, App) ->
 -spec register_views_from_folder(ne_binary() | db_classification(), atom(), ne_binary() | nonempty_string()) -> 'ok'.
 register_views_from_folder(Classification, App, Folder) ->
     Views = kzs_util:get_views_json(App, Folder),
-    register_views(Classification, Views).
+    register_views(Classification, App, Views).
 
 -spec refresh_views(ne_binary()) -> boolean() | {'error', 'invalid_db_name'}.
 refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
