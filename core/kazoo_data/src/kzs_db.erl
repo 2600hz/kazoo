@@ -217,7 +217,8 @@ add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling
         andalso delete_views(Server, Db, Delete, CurrentViews),
     Corrected > 0
         orelse Changed > 0
-        orelse (length(Add) > 0 andalso length(Conflicts) < length(Add)).
+        orelse (length(Add) > 0
+                andalso length(Conflicts) < length(Add)).
 
 -spec add_views(map(), ne_binary(), ne_binaries(), views_listing()) -> api_ne_binaries().
 add_views(Server, Db, Add, NewViews) ->

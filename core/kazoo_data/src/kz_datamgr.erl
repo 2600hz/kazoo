@@ -1503,7 +1503,7 @@ init_dbs() ->
                  'false' -> [db_create(DbName) || DbName <- ?KZ_SYSTEM_DBS],
                             'true'
              end,
-    kz_datamgr:revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>),
+    revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>),
     Result.
 
 -spec register_views(ne_binary() | db_classification(), views_listing()) -> 'ok'.
