@@ -26,6 +26,7 @@
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
+    kz_datamgr:register_views_from_folder('modb'),
     acdc_sup:start_link().
 
 %%--------------------------------------------------------------------
