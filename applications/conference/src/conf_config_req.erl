@@ -23,7 +23,7 @@ handle_request(<<"Conference">>, JObj) ->
     %% NOTE: if this is not an internal page or default
     %%   conf_participant:send_conference_command will ensure
     %%   the profile name of the call command to enter the
-    %%   conference is formated {accountid}_{conferenceid}.
+    %%   conference is formatted {accountid}_{conferenceid}.
     %%   Therefore, when the profile request comes in this
     %%   for conference established by this app
     %%   request_profile_name will return this format.
