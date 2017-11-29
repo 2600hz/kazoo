@@ -131,7 +131,7 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
         'true' ->
             Affects = kz_json:get_binary_value(<<"Affects">>, JObj, <<"all">>),
             Args = case kz_json:get_binary_value(<<"Participant-ID">>, JObj) of
-                       undefined -> Affects;
+                       'undefined' -> Affects;
                        Participant -> list_to_binary([Affects, " ", Participant])
                    end,
             {<<"stop">>, Args}

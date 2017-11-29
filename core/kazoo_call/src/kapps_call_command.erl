@@ -1187,8 +1187,8 @@ unbridge(Call, Leg, Insert) ->
     send_command(Command, Call).
 
 -spec unbridge_command(kapps_call:call()) -> kz_proplist().
--spec unbridge_command(kapps_call:call(), ne_binary()) -> kz_proplist().
--spec unbridge_command(kapps_call:call(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec unbridge_command(kapps_call:call(), api_ne_binary()) -> kz_proplist().
+-spec unbridge_command(kapps_call:call(), api_ne_binary(), ne_binary()) -> kz_proplist().
 unbridge_command(Call) ->
     unbridge_command(Call, <<"Both">>).
 unbridge_command(Call, Leg) ->
