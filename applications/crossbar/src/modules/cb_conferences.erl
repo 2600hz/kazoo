@@ -435,8 +435,10 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
               ,{<<"Msg-ID">>, cb_context:req_id(Context)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
+
+    Zone = zone(TargetCallId),
     case kz_amqp_worker:call(Command
-                            ,fun(P) -> kapi_conference:publish_dial(zone(TargetCallId), P) end
+                            ,fun(P) -> kapi_conference:publish_dial(Zone, P) end
                             ,fun kapi_conference:dial_resp_v/1
                             ,Timeout * ?MILLISECONDS_IN_SECOND
                             )
@@ -471,7 +473,7 @@ zone(TargetCallId) ->
     of
         {'ok', [Resp|_]} ->
             NodeInfo = kz_nodes:node_to_json(kz_api:node(Resp)),
-            Zone = kz_json:get_ne_binary_value(<<"zone">>, NodeInfo),
+            Zone = kz_json:get_ne_binary_value(<<"zone">>, NodeInfo, kz_config:zone('binary')),
             lager:info("got back channel resp, using target ~s zone ~s", [TargetCallId, Zone]),
             Zone;
         _E ->
@@ -820,7 +822,7 @@ find_conference_details(JObjs) ->
 %%%===================================================================
 %%% Utility functions
 %%%===================================================================
--spec conference(ne_binary()) -> kz_json:object().
+-spec conference(ne_binary()) -> kapps_conference:conference().
 conference(ConferenceId) ->
     kapps_conference:set_id(ConferenceId, kapps_conference:new()).
 

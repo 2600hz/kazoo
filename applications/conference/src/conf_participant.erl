@@ -503,7 +503,8 @@ get_account_realm(Call) ->
 name_pronounced_headers('undefined') -> [];
 name_pronounced_headers({_, AccountId, MediaId}) ->
     [{<<"X-Conf-Values-Pronounced-Name-Account-ID">>, AccountId}
-    ,{<<"X-Conf-Values-Pronounced-Name-Media-ID">>, MediaId}].
+    ,{<<"X-Conf-Values-Pronounced-Name-Media-ID">>, MediaId}
+    ].
 
 -spec send_conference_command(kapps_conference:conference(), kapps_call:call()) -> 'ok'.
 send_conference_command(Conference, Call) ->
