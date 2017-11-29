@@ -1174,8 +1174,8 @@ b_bridge_wait(Timeout, Call) ->
     wait_for_bridge((kz_term:to_integer(Timeout) * ?MILLISECONDS_IN_SECOND) + ?EXTRA_BRIDGE_TIMEOUT , Call).
 
 -spec unbridge(kapps_call:call()) -> 'ok'.
--spec unbridge(kapps_call:call(), ne_binary()) -> 'ok'.
--spec unbridge(kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+-spec unbridge(kapps_call:call(), api_ne_binary()) -> 'ok'.
+-spec unbridge(kapps_call:call(), api_ne_binary(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
     Command = unbridge_command(Call),
     send_command(Command, Call).
