@@ -1685,7 +1685,7 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
              ]),
     Props = [KV || {K,_V} = KV <- CCVs,
                    lists:member(K, CCVList)
-            ]  ++ Vars,
+            ] ++ Vars,
     [Export | Exports] = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'set'),
     Arg = [Export, [[",", Exported] || Exported <- Exports] ],
     {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, transfer_context(JObj)])};

@@ -344,6 +344,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
     end,
     {'reply', [{'call_event_consumers', Consumers}]}.
 
+-spec handle_channel_pivot(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_channel_pivot(JObj, Call) ->
     case kz_json:get_ne_binary_value(<<"Application-Data">>, JObj) of
         'undefined' -> lager:info("no app data to pivot");

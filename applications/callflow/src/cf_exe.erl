@@ -868,8 +868,8 @@ handle_error(CallId, Notify, JObj) ->
 -spec relay_message(pids(), kz_json:object()) -> 'ok'.
 relay_message(Notify, Message) ->
     _ = [kapps_call_command:relay_event(Pid, Message)
-         || Pid <- Notify
-                ,is_pid(Pid)
+         || Pid <- Notify,
+            is_pid(Pid)
         ],
     'ok'.
 
