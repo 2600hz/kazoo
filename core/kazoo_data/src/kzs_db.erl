@@ -252,7 +252,8 @@ should_update(_Id, _, undefined) ->
 should_update(_Id, NewView, OldView) ->
     case kz_json:are_equal(kz_doc:delete_revision(NewView), kz_doc:delete_revision(OldView)) of
         true ->
-            lager:debug("view ~s does not require update", [_Id]),
+            _ = kz_datamgr:change_notice()
+                andalso lager:debug("view ~s does not require update", [_Id]),
             false;
         false ->
             lager:debug("staging update of view ~s with rev ~s", [_Id, kz_doc:revision(OldView)]),

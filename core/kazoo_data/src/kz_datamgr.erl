@@ -940,22 +940,34 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 -spec update_doc(ne_binary(), docid(), update_props(), kz_proplist()) ->
                         {'ok', kz_json:object()} |
                         data_error().
+-spec update_doc(ne_binary(), docid(), update_props(), kz_proplist(), kz_proplist()) ->
+                        {'ok', kz_json:object()} |
+                        data_error().
 
 update_doc(DbName, Id, UpdateProps) ->
     update_doc(DbName, Id, UpdateProps, []).
 
-update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
-                                                      is_list(CreateProps) ->
+update_doc(DbName, Id, UpdateProps, CreateProps) ->
+    update_doc(DbName, Id, UpdateProps, CreateProps, []).
+
+update_doc(DbName, Id, UpdateProps, CreateProps, ExtraUpdateProps)
+  when is_list(UpdateProps),
+       is_list(CreateProps),
+       is_list(ExtraUpdateProps) ->
     case open_doc(DbName, Id) of
         {'error', 'not_found'} ->
-            JObj = kz_json:from_list(lists:append([[{<<"_id">>, Id} | CreateProps], UpdateProps])),
+            JObj = kz_json:from_list([{<<"_id">>, Id}]
+                                     ++ CreateProps
+                                     ++ UpdateProps
+                                     ++ ExtraUpdateProps
+                                    ),
             save_doc(DbName, JObj);
         {'error', _}=E -> E;
         {'ok', JObj}=OK ->
             UpdatedJObj = kz_json:set_values(UpdateProps, JObj),
             case kz_json:are_equal(JObj, UpdatedJObj) of
                 'true' -> OK;
-                'false' -> save_doc(DbName, UpdatedJObj)
+                'false' -> save_doc(DbName, kz_json:set_values(ExtraUpdateProps, UpdatedJObj))
             end
     end.
 
@@ -1339,7 +1351,7 @@ get_result_docs(DbName, DesignDoc, Keys) ->
               ,{'keys', Keys}
               ],
     case get_results(DbName, DesignDoc, Options) of
-        {'ok', []} -> {'error', 'not_found'};
+        {'ok', []} -> {'error', 'no_results'};
         {'ok', Results} -> {'ok', [kz_json:get_json_value(<<"doc">>, Result) || Result <- Results]};
         {'error', _}=E -> E
     end.
@@ -1532,14 +1544,14 @@ register_view(Classification, App, {<<"_design/", Name/binary>>, View}) ->
     Version = kz_util:application_version(App),
     AppName = kz_term:to_binary(App),
     DocId = <<(kz_term:to_binary(Classification))/binary, "-", AppName/binary, "-", Name/binary>>,
-    Update = [{<<"View">>, View}],
-    Create = [{<<"Application">>, AppName}
-             ,{<<"Version">>, Version}
-             ,{<<"Classification">>, kz_term:to_binary(Classification)}
-             ,{<<"Name">>, Name}
+    Update = [{<<"view_definition">>, View}],
+    ExtraUpdate = [{<<"version">>, Version}],
+    Create = [{<<"application">>, AppName}
+             ,{<<"classification">>, kz_term:to_binary(Classification)}
+             ,{<<"name">>, Name}
              ,{<<"pvt_type">>, <<"view_definition">>}
              ],
-    update_doc(?KZ_DATA_DB, DocId, Update, Create);
+    update_doc(?KZ_DATA_DB, DocId, Update, Create, ExtraUpdate);
 register_view(Classification, App, ViewName) ->
     register_view(Classification, App, kzs_util:get_view_json(App, ViewName)).
 
@@ -1561,9 +1573,13 @@ refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     suppress_change_notice(),
     Classification = kzs_util:db_classification(DbName),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
-    {'ok', JObjs} = get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]),
-    Views = [{kz_doc:id(View), View} || View <- [kz_json:get_json_value(<<"View">>, JObj) || JObj <- JObjs]],
-    Updated = db_view_update(DbName, Views),
+    Updated = case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]) of
+                  {'error', 'no_results'} -> 'false';
+                  {'ok', JObjs} ->
+                      ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
+                      Views = [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs],
+                      db_view_update(DbName, Views)
+              end,
     _ = case Updated of
             'true' -> lager:debug("~s:~s views updated", [Classification, DbName]),
                       kzs_publish:publish_db(DbName, 'edited');
