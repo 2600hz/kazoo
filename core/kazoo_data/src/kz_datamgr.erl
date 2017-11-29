@@ -1578,7 +1578,8 @@ refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
                   {'ok', JObjs} ->
                       ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
                       Views = [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs],
-                      db_view_update(DbName, Views)
+                      Database = kz_util:uri_encode(kz_util:uri_decode(DbName)),
+                      db_view_update(Database, Views)
               end,
     _ = case Updated of
             'true' -> lager:debug("~s:~s views updated", [Classification, DbName]),
