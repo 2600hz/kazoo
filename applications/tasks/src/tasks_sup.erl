@@ -29,7 +29,6 @@
                   ,?WORKER('kz_service_sync')
                    %% Standalone tasks
                   ,?WORKER('kz_notify_resend')
-                  ,?WORKER('tasks_maint_listener')
                   ]).
 
 %% ===================================================================
