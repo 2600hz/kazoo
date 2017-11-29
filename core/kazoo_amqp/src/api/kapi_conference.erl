@@ -1573,11 +1573,11 @@ publish_config_resp(Queue, Req, ContentType) ->
 %%--------------------------------------------------------------------
 -spec publish_dial(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_dial(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_dial(ConferenceId, JObj) ->
-    publish_dial(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_dial(ConferenceId, Req, ContentType) ->
+publish_dial(Zone, JObj) ->
+    publish_dial(Zone, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_dial(Zone, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIAL_VALUES, fun dial/1),
-    amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
+    amqp_util:conference_publish(Payload, 'command', Zone, [], ContentType).
 
 -spec publish_dial_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_dial_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

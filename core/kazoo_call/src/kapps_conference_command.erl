@@ -220,7 +220,7 @@ participant_volume_out(ParticipantId, VolumeOut,Conference) ->
 -spec dial(kz_json:objects(), kapps_conference:conference()) -> 'ok'.
 -spec dial(kz_json:objects(), api_ne_binary(), kapps_conference:conference()) -> 'ok'.
 -spec dial(kz_json:objects(), api_ne_binary(), api_ne_binary(), kapps_conference:conference()) -> 'ok'.
--spec dial(kz_json:objects(), api_ne_binary(), api_ne_binary(), api_object(), kapps_conference:conference()) -> 'ok'.
+-spec dial(kz_json:objects(), api_ne_binary(), api_ne_binary(), api_object(), kapps_conference:conference() | ne_binary()) -> 'ok'.
 dial(Endpoints, Conference) when is_list(Endpoints) ->
     dial(Endpoints, 'undefined', 'undefined', Conference).
 
