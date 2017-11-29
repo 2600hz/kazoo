@@ -1574,7 +1574,7 @@ refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     Classification = kzs_util:db_classification(DbName),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
     Updated = case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]) of
-                  {'error', 'no_results'} -> 'false';
+                  {'error', _} -> 'false';
                   {'ok', JObjs} ->
                       ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
                       Views = [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs],

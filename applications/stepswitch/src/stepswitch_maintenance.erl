@@ -169,13 +169,13 @@ pretty_print_number_props([{Key, Value}|Props]) ->
 %%--------------------------------------------------------------------
 -spec reload_resources() -> 'ok'.
 reload_resources() ->
-    stepswitch_resources:fetch_global_resources(),
+    _ = stepswitch_resources:fetch_global_resources(),
     'ok'.
 
 -spec reload_resources(ne_binary()) -> 'ok'.
 reload_resources(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    stepswitch_resources:fetch_local_resources(AccountId),
+    _ = stepswitch_resources:fetch_local_resources(AccountId),
     'ok'.
 
 %%--------------------------------------------------------------------
