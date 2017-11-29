@@ -222,7 +222,7 @@ handle_call({'get_discovery_event'}, _, #participant{discovery_event=DE}=P) ->
 handle_call({'get_call'}, _, #participant{call=Call}=P) ->
     {'reply', {'ok', Call}, P};
 handle_call({'state'}, _, Participant) ->
-    {reply, Participant, Participant};
+    {'reply', Participant, Participant};
 handle_call(_Request, _, P) ->
     {'reply', {'error', 'unimplemented'}, P}.
 
@@ -239,6 +239,8 @@ handle_call(_Request, _, P) ->
 -spec handle_cast(any(), participant()) -> handle_cast_ret_state(participant()).
 handle_cast('hungup', Participant) ->
     {'stop', {'shutdown', 'hungup'}, Participant};
+handle_cast('pivoted', Participant) ->
+    {'stop', 'normal', Participant};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
                                                                 ,call=Call
                                                                 }=P) ->
@@ -350,12 +352,15 @@ handle_channel_pivot(JObj, Call) ->
         'undefined' -> lager:info("no app data to pivot");
         FlowBin ->
             lager:info("recv channel pivot with flow ~s", [FlowBin]),
+            unbridge_from_conference(Call),
 
             Req = [{<<"Flow">>, kz_json:decode(FlowBin)}
                   ,{<<"Call">>, kapps_call:to_json(Call)}
                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ],
-            kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1)
+            kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1),
+            lager:info("stopping the conf participant"),
+            gen_listener:cast(self(), 'pivoted')
     end.
 
 %%--------------------------------------------------------------------
@@ -455,8 +460,7 @@ notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
             kz_amqp_worker:cast(Resp, Publisher)
     end.
 
-
--spec bridge_to_conference(ne_binary(), kapps_conference:conference(), kapps_call:call(), conf_pronounced_name:name_pronounced()) -> ok.
+-spec bridge_to_conference(ne_binary(), kapps_conference:conference(), kapps_call:call(), conf_pronounced_name:name_pronounced()) -> 'ok'.
 bridge_to_conference(Route, Conference, Call, Name) ->
     lager:debug("bridging to conference running at '~s'", [Route]),
     Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
@@ -484,10 +488,14 @@ bridge_to_conference(Route, Conference, Call, Name) ->
               ],
     kapps_call_command:send_command(Command, Call).
 
+-spec unbridge_from_conference(kapps_call:call()) -> 'ok'.
+unbridge_from_conference(Call) ->
+    kapps_call_command:unbridge(Call, 'undefined').
+
 -spec get_account_realm(kapps_call:call()) -> ne_binary().
 get_account_realm(Call) ->
     case kz_account:fetch_realm(kapps_call:account_id(Call)) of
-        undefined -> <<"unknown">>;
+        'undefined' -> <<"unknown">>;
         Realm -> Realm
     end.
 
