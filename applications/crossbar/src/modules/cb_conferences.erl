@@ -482,14 +482,14 @@ zone(TargetCallId) ->
     end.
 
 -spec build_endpoints_to_dial(cb_context:context(), path_token(), ne_binaries()) ->
-                                     kz_json:objects().
+                                     {cb_context:context(), kz_json:objects()}.
 build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
-    {ToDial, _Call, _Context, _Element} =
+    {ToDial, _Call, Context1, _Element} =
         lists:foldl(fun build_endpoint/2
                    ,{[], create_call(Context, ConferenceId), Context, 1}
                    ,Endpoints
                    ),
-    ToDial.
+    {Context1, ToDial}.
 
 -spec error_no_endpoints(cb_context:context()) -> cb_context:context().
 error_no_endpoints(Context) ->
