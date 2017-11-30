@@ -8,7 +8,10 @@
 -define(TTS_API_KEY, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)).
 -define(TMP_PATH, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"temporary_storage_path">>, <<"/tmp">>)).
 
--type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
+-type conversion_return() :: {binary(), ne_binary()} |
+                             {'error', 'unsupported_content_type'}.
+
+-type provider_errors() :: 'invalid_voice' | 'unknown_provider' | 'unsupported_content_type'.
 -type provider_return() :: {'error', provider_errors()} |
                            kz_http:ret().
 

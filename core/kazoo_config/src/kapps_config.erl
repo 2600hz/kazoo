@@ -979,6 +979,9 @@ get_category(Category, 'false') ->
         ,{{<<"media">>, <<"tts_cache">>}
          ,{<<"speech">>, <<"tts_cache">>}
          }
+        ,{{<<"speech">>, <<"asr_prefered_content_type">>}
+         ,{<<"speech">>, <<"asr_preferred_content_type">>}
+         }
 
         ,{{<<"callflow">>, [<<"voicemail">>, <<"vm_message_foraward_type">>]}
          ,{<<"callflow">>, [<<"voicemail">>, <<"vm_message_forward_type">>]}
