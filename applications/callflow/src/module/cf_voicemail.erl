@@ -82,7 +82,7 @@
 
 -define(DEFAULT_FORWARD_TYPE
        ,kapps_config:get_ne_binary(?CF_CONFIG_CAT
-                                  ,[?KEY_VOICEMAIL, <<"vm_message_foraward_type">>]
+                                  ,[?KEY_VOICEMAIL, <<"vm_message_forward_type">>]
                                   ,<<"only_forward">>
                                   )).
 
