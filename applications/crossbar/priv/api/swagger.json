@@ -25534,6 +25534,11 @@
                             "default": "only_forward",
                             "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
                             "type": "string"
+                        },
+                        "vm_message_forward_type": {
+                            "default": "only_forward",
+                            "description": "callflow voicemail vm_message_forward_type",
+                            "type": "string"
                         }
                     },
                     "type": "object"
