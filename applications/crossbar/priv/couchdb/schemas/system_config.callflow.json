@@ -150,9 +150,13 @@
                     "description": "callflow save after notify",
                     "type": "boolean"
                 },
-                "vm_message_foraward_type": {
+                "vm_message_forward_type": {
                     "default": "only_forward",
                     "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
+                    "enum": [
+                        "only_forward",
+                        "prepend_forward"
+                    ],
                     "type": "string"
                 }
             },
