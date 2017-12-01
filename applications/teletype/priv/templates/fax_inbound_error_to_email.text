@@ -4,7 +4,7 @@ Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
 {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %}) tried to
 send a fax document to {% if fax.box_name %}your faxbox {{fax.box_name}}{% else %}you{% endif %},
-but unfortunatly it was unsuccessful.
+but unfortunately it was unsuccessful.
 
 Here are some more details on what went wrong during transmission.
 
