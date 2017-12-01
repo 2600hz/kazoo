@@ -203,8 +203,8 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
 
 -spec exec_loopbacks(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
                             ['undefined' |
-                             {'ok', ne_binary()} |
-                             {'error', ne_binary()}
+                             {ne_binary(), {'ok', ne_binary()}} |
+                             {ne_binary(), {'error', ne_binary()}}
                             ].
 exec_loopbacks(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no loopbacks to dial out to"),
@@ -225,6 +225,8 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
             OutboundCallId ->
                 {OutboundCallId, <<"lb-aleg-", OutboundCallId/binary>>}
         end,
+    catch(gproc:reg(?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, LoopbackId))),
+    catch(gproc:reg(?LOOPBACK_BOWOUT_REG(LoopbackId))),
     Resp = exec_endpoints(ConferenceNode
                          ,ConferenceId
                          ,kz_json:delete_key(<<"Outbound-Call-ID">>, JObj)
@@ -234,7 +236,7 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                             ,Loopback
                                             )
                          ),
-    {ConferenceNode, ConferenceId, JObj, [Resp | Resps]}.
+    {ConferenceNode, ConferenceId, JObj, [{LoopbackId, Resp} | Resps]}.
 
 -spec success_resp(ne_binary()) -> kz_json:object().
 success_resp(Resp) ->
@@ -255,16 +257,64 @@ error_resp(Error) ->
                       ]).
 
 handle_responses(JObj, Responses) ->
-    BaseResponse = [handle_response(Response)
+    BaseResponse = [handle_response(JObj, Response)
                     || Response <- Responses,
                        'undefined' =/= Response
                    ],
+
     publish_resp(JObj, BaseResponse).
 
-handle_response({'ok', Success}) ->
+handle_response(_JObj, {'ok', Success}) ->
     success_resp(Success);
-handle_response({'error', Error}) ->
-    error_resp(Error).
+handle_response(_JObj, {'error', Error}) ->
+    error_resp(Error);
+handle_response(JObj, {LoopbackCallId, Resp}) ->
+    case wait_for_bowout(LoopbackCallId, kz_json:get_integer_value(<<"Timeout">>, JObj)) of
+        'ok' -> handle_response(JObj, Resp);
+        {'ok', Resp} -> success_resp(Resp);
+        {'error', E} -> error_resp(E)
+    end.
+
+wait_for_bowout(LoopbackCallId, Timeout) ->
+    Start = os:timestamp(),
+    receive
+        {'event', [LoopbackCallId | Props]} ->
+            handle_event(LoopbackCallId, Timeout, Start, Props);
+        ?LOOPBACK_BOWOUT_MSG(_Node, Props) ->
+            handle_bowout(LoopbackCallId, Props)
+    after Timeout ->
+            {'error', <<"Internal error starting dial for ", LoopbackCallId/binary>>}
+    end.
+
+handle_event(LoopbackCallId, Timeout, Start, Props) ->
+    case props:get_first_defined([<<"Event-Subclass">>, <<"Event-Name">>], Props) of
+        <<"CHANNEL_DESTROY">> ->
+            handle_loopback_destroy(LoopbackCallId, kzd_freeswitch:hangup_cause(Props));
+        _Evt ->
+            lager:debug("ignoring event ~s for ~s", [_Evt, LoopbackCallId]),
+            wait_for_bowout(LoopbackCallId, kz_time:decr_timeout(Timeout, Start))
+    end.
+
+handle_loopback_destroy(_LoopbackCallId, <<"NORMAL_UNSPECIFIED">>) ->
+    lager:debug("~s went down", [_LoopbackCallId]);
+handle_loopback_destroy(_LoopbackCallId, HangupCause) ->
+    lager:info("~s went down with ~s", [_LoopbackCallId, HangupCause]),
+    {'error', <<"failed to start call: ", HangupCause/binary>>}.
+
+handle_bowout(LoopbackId, Props) ->
+    case {props:get_value(?RESIGNING_UUID, Props)
+         ,props:get_value(?ACQUIRED_UUID, Props)
+         }
+    of
+        {LoopbackId, LoopbackId} ->
+            lager:debug("call id after bowout remains the same"),
+            LoopbackId;
+        {LoopbackId, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
+            {'ok', <<"dial resulted in call id ", AcquiringUUID/binary>>};
+        {_UUID, _AcquiringUUID} ->
+            lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
+            LoopbackId
+    end.
 
 -spec publish_resp(kapi_conference:doc(), kz_proplist()) -> 'ok'.
 publish_resp(JObj, BaseResp) ->
