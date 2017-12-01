@@ -192,6 +192,7 @@ init(Node, CallId) ->
                  ,call_id=CallId
                  ,ref=kz_binary:rand_hex(12)
                  }}.
+
 -spec register_event_process(atom(), ne_binary()) -> 'ok' | {'error', any()}.
 register_event_process(Node, CallId) ->
     try gproc:reg(?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)) of
