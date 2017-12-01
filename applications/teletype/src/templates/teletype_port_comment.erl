@@ -25,7 +25,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"New comment for port request'{{port_request.name}}'">>).
+-define(TEMPLATE_SUBJECT, <<"New comment for port request '{{port_request.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Comment">>).
 
