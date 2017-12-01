@@ -25,7 +25,12 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config', 'participant']}]}
+-define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config'
+                                                   ,{'command', kz_config:zone('binary')}
+                                                   ]
+                                   }
+                                  ]
+                   }
                   ,{'authn', []}
                   ,{'self', []}
                   ]).
