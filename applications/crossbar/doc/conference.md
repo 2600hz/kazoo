@@ -43,6 +43,12 @@ Key | Description | Type | Default | Required
 `play_name` | Do we need to announce new conference members? | `boolean()` | `false` | `false`
 `play_welcome` | Whether to play the welcome prompt | `boolean()` |   | `false`
 `profile` | The XML profile name used to configure the conference | `string()` |   | `false`
+
+
+
+#### Development not complete on the below ####
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
 `require_moderator` | does the conference require a moderator | `boolean()` |   | `false`
 `wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false`
 
@@ -245,6 +251,15 @@ curl -v -X PUT \
     -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
+```
+
+When performing actions on participants, it's best practice to add a random string to the end of the call to ensure the request is viewed as 'unique'. For example:
+
+```shell
+curl -v -X PUT \
+    -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}?random={RANDOM_BIT}
 ```
 
  Action | Description
