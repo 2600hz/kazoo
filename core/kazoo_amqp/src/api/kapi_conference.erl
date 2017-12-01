@@ -14,6 +14,8 @@
 -export([search_resp/1, search_resp_v/1]).
 -export([discovery_req/1, discovery_req_v/1]).
 -export([discovery_resp/1, discovery_resp_v/1]).
+
+-export([add_participant/1, add_participant_v/1]).
 -export([deaf_participant/1, deaf_participant_v/1]).
 -export([participant_energy/1, participant_energy_v/1]).
 -export([kick/1, kick_v/1]).
@@ -52,6 +54,8 @@
 -export([publish_search_resp/2, publish_search_resp/3]).
 -export([publish_discovery_req/1, publish_discovery_req/2]).
 -export([publish_discovery_resp/2, publish_discovery_resp/3]).
+
+-export([publish_add_participant/2, publish_add_participant/3]).
 -export([publish_deaf_participant/2, publish_deaf_participant/3]).
 -export([publish_participant_energy/2, publish_participant_energy/3]).
 -export([publish_kick/2, publish_kick/3]).
@@ -128,6 +132,16 @@
                                ,{<<"Event-Name">>, <<"discovery_resp">>}
                                ]).
 -define(DISCOVERY_RESP_TYPES, []).
+
+-define(ADD_PARTICIPANT_HEADERS, [<<"Call-ID">>
+                                 ,<<"Conference-ID">>
+                                 ,<<"Control-Queue">>
+                                 ]).
+-define(OPTIONAL_ADD_PARTICIPANT_HEADERS, []).
+-define(ADD_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                ,{<<"Event-Name">>, <<"add_participant">>}
+                                ]).
+-define(ADD_PARTICIPANT_TYPES, []).
 
 %% Conference Deaf
 -define(DEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
@@ -346,7 +360,11 @@
                      ]).
 -define(DIAL_TYPES, [{<<"Caller-ID-Name">>, fun is_binary/1}
                     ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                    ,{<<"Endpoints">>, fun kz_json:are_json_objects/1}
+                    ,{<<"Endpoints">>, fun(Es) ->
+                                               kz_term:is_ne_list(Es)
+                                                   andalso kz_json:are_json_objects(Es)
+                                       end
+                     }
                     ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                     ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                     ,{<<"Timeout">>, fun is_integer/1}
@@ -603,6 +621,24 @@ discovery_resp(JObj) -> discovery_resp(kz_json:to_proplist(JObj)).
 discovery_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DISCOVERY_RESP_HEADERS, ?DISCOVERY_RESP_VALUES, ?DISCOVERY_RESP_TYPES);
 discovery_resp_v(JObj) -> discovery_resp_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec add_participant(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+add_participant(Prop) when is_list(Prop) ->
+    case add_participant_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?ADD_PARTICIPANT_HEADERS, ?OPTIONAL_ADD_PARTICIPANT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for add participant"}
+    end;
+add_participant(JObj) -> add_participant(kz_json:to_proplist(JObj)).
+
+-spec add_participant_v(api_terms()) -> boolean().
+add_participant_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?ADD_PARTICIPANT_HEADERS, ?ADD_PARTICIPANT_VALUES, ?ADD_PARTICIPANT_TYPES);
+add_participant_v(JObj) -> add_participant_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -1201,6 +1237,19 @@ publish_discovery_resp(Q, JObj) ->
 publish_discovery_resp(Q, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DISCOVERY_RESP_VALUES, fun discovery_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_add_participant(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_add_participant(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_add_participant(ConferenceId, JObj) ->
+    publish_add_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_add_participant(ConferenceId, Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ADD_PARTICIPANT_VALUES, fun add_participant/1),
+    amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc
