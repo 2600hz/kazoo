@@ -159,42 +159,112 @@ handle_dial_req(JObj, _Props) ->
         {'error', 'not_found'} ->
             maybe_start_conference(JObj, ConferenceId);
         {'ok', ConferenceNode} ->
-            exec_dial(ConferenceNode, ConferenceId, JObj)
+            maybe_exec_dial(ConferenceNode, ConferenceId, JObj)
     end.
 
--spec exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
-exec_dial(ConferenceNode, ConferenceId, JObj) ->
+-spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
+maybe_exec_dial(ConferenceNode, ConferenceId, JObj) ->
+    {Loopbacks, Endpoints} = lists:splitwith(fun is_loopback/1, kz_json:get_list_value(<<"Endpoints">>, JObj, [])),
+
+    maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks).
+
+-spec is_loopback(kz_json:object()) -> boolean().
+is_loopback(Endpoint) ->
+    <<"loopback">> =:= kz_json:get_ne_binary_value(<<"Invite-Format">>, Endpoint).
+
+maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
-    try ecallmgr_conference_command:exec_cmd(ConferenceNode, ConferenceId, JObj) of
-        {'ok', Resp} ->
-            lager:info("starting dial resulted in ~s", [Resp]),
-            send_success_resp(JObj, Resp);
+
+    EPResp = exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints),
+    LBResps = exec_loopbacks(ConferenceNode, ConferenceId, JObj, Loopbacks),
+
+    handle_responses(JObj, [EPResp | LBResps]).
+
+-spec exec_endpoints(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
+                            'undefined' |
+                            {'ok', ne_binary()} |
+                            {'error', ne_binary()}.
+exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
+    lager:debug("no endpoints to dial out to"),
+    'undefined';
+exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
+    try ecallmgr_conference_command:dial(ConferenceNode, ConferenceId, JObj, Endpoints) of
+        {'ok', _Resp}=OK ->
+            lager:info("starting dial resulted in ~s", [_Resp]),
+            OK;
         _E ->
             lager:info("failed to exec: ~p", [_E]),
-            send_error_resp(JObj, <<"unknown failure">>)
+            {'error', <<"unknown failure">>}
     catch
         'throw':{'msg', E} ->
-            send_error_resp(JObj, E)
+            lager:info("failed to exec: ~p", [E]),
+            {'error', E}
     end.
 
--spec send_success_resp(kapi_conference:doc(), ne_binary()) -> 'ok'.
-send_success_resp(JObj, Resp) ->
+-spec exec_loopbacks(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
+                            ['undefined' |
+                             {'ok', ne_binary()} |
+                             {'error', ne_binary()}
+                            ].
+exec_loopbacks(_ConferenceNode, _ConferenceId, _JObj, []) ->
+    lager:debug("no loopbacks to dial out to"),
+    [];
+exec_loopbacks(ConferenceNode, ConferenceId, JObj, Loopbacks) ->
+    {_, _, _, Resps} =
+        lists:foldl(fun exec_loopback/2
+                   ,{ConferenceNode, ConferenceId, JObj, []}
+                   ,Loopbacks
+                   ),
+    Resps.
+
+exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
+    {OutboundId, LoopbackId} =
+        case kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, JObj) of
+            'undefined' ->
+                {'undefined', <<"lb-aleg-", (kz_binary:rand_hex(8))/binary>>};
+            OutboundCallId ->
+                {OutboundCallId, <<"lb-aleg-", OutboundCallId/binary>>}
+        end,
+    Resp = exec_endpoints(ConferenceNode
+                         ,ConferenceId
+                         ,kz_json:delete_key(<<"Outbound-Call-ID">>, JObj)
+                         ,kz_json:set_values([{<<"Outbound-Call-ID">>, LoopbackId}
+                                             ,{[<<"Custom-Channel-Vars">>, <<"Outbound-Call-ID">>], OutboundId}
+                                             ]
+                                            ,Loopback
+                                            )
+                         ),
+    {ConferenceNode, ConferenceId, JObj, [Resp | Resps]}.
+
+-spec success_resp(ne_binary()) -> kz_json:object().
+success_resp(Resp) ->
     JobId =
         case re:run(Resp, <<"([\\w-]{36})">>, ['ungreedy', {'capture', 'all_but_first', 'binary'}]) of
             {'match', [UUID|_]} -> UUID;
             _ -> 'undefined'
         end,
+    kz_json:from_list([{<<"Job-ID">>, JobId}
+                      ,{<<"Message">>, <<"dialing endpoints">>}
+                      ,{<<"Status">>, <<"success">>}
+                      ]).
 
-    publish_resp(JObj, [{<<"Job-ID">>, JobId}
-                       ,{<<"Message">>, <<"dialing endpoints">>}
-                       ,{<<"Status">>, <<"success">>}
-                       ]).
+-spec error_resp(ne_binary()) -> 'ok'.
+error_resp(Error) ->
+    kz_json:from_list([{<<"Status">>, <<"error">>}
+                      ,{<<"Message">>, Error}
+                      ]).
 
--spec send_error_resp(kapi_conference:doc(), ne_binary()) -> 'ok'.
-send_error_resp(JObj, Error) ->
-    publish_resp(JObj, [{<<"Status">>, <<"error">>}
-                       ,{<<"Message">>, Error}
-                       ]).
+handle_responses(JObj, Responses) ->
+    BaseResponse = [handle_response(Response)
+                    || Response <- Responses,
+                       'undefined' =/= Response
+                   ],
+    publish_resp(JObj, BaseResponse).
+
+handle_response({'ok', Success}) ->
+    success_resp(Success);
+handle_response({'error', Error}) ->
+    error_resp(Error).
 
 -spec publish_resp(kapi_conference:doc(), kz_proplist()) -> 'ok'.
 publish_resp(JObj, BaseResp) ->
@@ -211,7 +281,7 @@ maybe_start_conference(JObj, ConferenceId) ->
         'undefined' -> lager:info("no node found for the dial command, ignoring");
         MediaServer ->
             lager:info("starting conference ~s on ~s and dialing out", [ConferenceId, MediaServer]),
-            exec_dial(MediaServer, ConferenceId, JObj)
+            maybe_exec_dial(MediaServer, ConferenceId, JObj)
     end.
 
 -spec find_media_server(api_ne_binary(), ne_binary()) -> atom().
