@@ -7,9 +7,9 @@
 %%%-------------------------------------------------------------------
 -module(conf_discovery_req).
 
--include("conference.hrl").
-
 -export([handle_req/2]).
+
+-include("conference.hrl").
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Options) ->
