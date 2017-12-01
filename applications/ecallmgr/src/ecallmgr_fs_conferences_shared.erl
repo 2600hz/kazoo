@@ -29,6 +29,9 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
+-define(LB_ALEG_PREFIX, "lb-aleg-").
+
+
 -type state() :: 'ok'.
 
 %%%===================================================================
@@ -175,30 +178,45 @@ is_loopback(Endpoint) ->
 maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
 
-    EPResp = exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints),
+    EPResps = exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints),
     LBResps = exec_loopbacks(ConferenceNode, ConferenceId, JObj, Loopbacks),
 
-    handle_responses(JObj, [EPResp | LBResps]).
+    handle_responses(JObj, EPResps ++ LBResps).
 
 -spec exec_endpoints(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
-                            'undefined' |
-                            {'ok', ne_binary()} |
-                            {'error', ne_binary()}.
+                            [{'ok', ne_binary()} |
+                             {'error', ne_binary()}
+                            ].
 exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no endpoints to dial out to"),
-    'undefined';
+    [];
 exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
-    try ecallmgr_conference_command:dial(ConferenceNode, ConferenceId, JObj, Endpoints) of
+    {_, _, _, Resps} =
+        lists:foldl(fun exec_endpoint/2
+                   ,{ConferenceNode, ConferenceId, JObj, []}
+                   ,Endpoints
+                   ),
+    Resps.
+
+exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
+    EndpointId = kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, Endpoint, kz_binary:rand_hex(8)),
+    try ecallmgr_conference_command:dial(ConferenceNode
+                                        ,ConferenceId
+                                        ,JObj
+                                        ,kz_json:insert_value(<<"Outbound-Call-ID">>, EndpointId, Endpoint)
+                                        )
+    of
         {'ok', _Resp}=OK ->
             lager:info("starting dial resulted in ~s", [_Resp]),
-            OK;
+            add_participant(ConferenceId, EndpointId),
+            [{EndpointId, OK} | Resps];
         _E ->
             lager:info("failed to exec: ~p", [_E]),
-            {'error', <<"unknown failure">>}
+            [{'error', <<"unknown failure">>} | Resps]
     catch
         'throw':{'msg', E} ->
             lager:info("failed to exec: ~p", [E]),
-            {'error', E}
+            [{'error', E} | Resps]
     end.
 
 -spec exec_loopbacks(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
@@ -221,9 +239,9 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
     {OutboundId, LoopbackId} =
         case kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, JObj) of
             'undefined' ->
-                {'undefined', <<"lb-aleg-", (kz_binary:rand_hex(8))/binary>>};
+                {'undefined', <<?LB_ALEG_PREFIX, (kz_binary:rand_hex(8))/binary>>};
             OutboundCallId ->
-                {OutboundCallId, <<"lb-aleg-", OutboundCallId/binary>>}
+                {OutboundCallId, <<?LB_ALEG_PREFIX, OutboundCallId/binary>>}
         end,
     catch(gproc:reg(?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, LoopbackId))),
     catch(gproc:reg(?LOOPBACK_BOWOUT_REG(LoopbackId))),
@@ -275,6 +293,7 @@ handle_response(JObj, {LoopbackCallId, Resp}) ->
         {'error', E} -> error_resp(E)
     end.
 
+wait_for_bowout(<<?LB_ALEG_PREFIX, _/binary>>, _Timeout) -> 'ok';
 wait_for_bowout(LoopbackCallId, Timeout) ->
     Start = os:timestamp(),
     receive
@@ -315,6 +334,13 @@ handle_bowout(LoopbackId, Props) ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
             LoopbackId
     end.
+
+add_participant(ConferenceId, EndpointId) ->
+    Req = [{<<"Conference-ID">>, ConferenceId}
+          ,{<<"Call-ID">>, EndpointId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req, fun(P) -> kapi_conference:publish_add_participant(kz_config:zone('binary'), P) end).
 
 -spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
 publish_resp(JObj, BaseResps) ->
