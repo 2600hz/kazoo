@@ -444,7 +444,7 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     case kz_amqp_worker:call(Command
                             ,fun(P) -> kapi_conference:publish_dial(Zone, P) end
                             ,fun kapi_conference:dial_resp_v/1
-                            ,Timeout * ?MILLISECONDS_IN_SECOND
+                            ,(Timeout * ?MILLISECONDS_IN_SECOND) * length(ToDial)
                             )
     of
         {'ok', Resp} ->
