@@ -1245,11 +1245,11 @@ publish_discovery_resp(Q, Req, ContentType) ->
 %%--------------------------------------------------------------------
 -spec publish_add_participant(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_add_participant(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_add_participant(ConferenceId, JObj) ->
-    publish_add_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_add_participant(ConferenceId, Req, ContentType) ->
+publish_add_participant(Zone, JObj) ->
+    publish_add_participant(Zone, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_add_participant(Zone, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ADD_PARTICIPANT_VALUES, fun add_participant/1),
-    amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
+    amqp_util:conference_publish(Payload, 'command', Zone, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc
