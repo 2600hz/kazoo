@@ -257,12 +257,12 @@ error_resp(Error) ->
                       ]).
 
 handle_responses(JObj, Responses) ->
-    BaseResponse = [handle_response(JObj, Response)
-                    || Response <- Responses,
-                       'undefined' =/= Response
-                   ],
+    BaseResponses = [handle_response(JObj, Response)
+                     || Response <- Responses,
+                        'undefined' =/= Response
+                    ],
 
-    publish_resp(JObj, BaseResponse).
+    publish_resp(JObj, BaseResponses).
 
 handle_response(_JObj, {'ok', Success}) ->
     success_resp(Success);
@@ -316,13 +316,15 @@ handle_bowout(LoopbackId, Props) ->
             LoopbackId
     end.
 
--spec publish_resp(kapi_conference:doc(), kz_proplist()) -> 'ok'.
-publish_resp(JObj, BaseResp) ->
-    Resp = BaseResp
+-spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
+publish_resp(JObj, BaseResps) ->
+    Resp = BaseResps
         ++ [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    kz_amqp_worker:cast(Resp, fun(P) -> kapi_conference:publish_dial_resp(kz_api:server_id(JObj), P) end).
+    kz_amqp_worker:cast(Resp
+                       ,fun(P) -> kapi_conference:publish_dial_resp(kz_api:server_id(JObj), P) end
+                       ).
 
 -spec maybe_start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
 maybe_start_conference(JObj, ConferenceId) ->
