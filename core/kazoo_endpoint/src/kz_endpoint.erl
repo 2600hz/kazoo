@@ -140,7 +140,7 @@ endpoint_type_as(Type) -> Type.
                                     {'error', any()}.
 check_endpoint_enabled(JObj, EndpointId, AccountDb, EndpointType) ->
     case {kz_doc:is_soft_deleted(JObj)
-            orelse kz_doc:is_deleted(JObj)
+          orelse kz_doc:is_deleted(JObj)
          ,is_endpoint_enabled(JObj, EndpointType)
          }
     of
@@ -162,7 +162,7 @@ is_endpoint_enabled(JObj, <<"user">>) ->
 is_endpoint_enabled(JObj, <<"device">>) ->
     kz_device:enabled(JObj);
 is_endpoint_enabled(JObj, _) ->
-    kz_json:is_true(<<"enabled">>, JObj).
+    kz_json:is_true(<<"enabled">>, JObj, 'true').
 
 -spec cache_store_endpoint(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
                                   {'ok', kz_json:object()}.
