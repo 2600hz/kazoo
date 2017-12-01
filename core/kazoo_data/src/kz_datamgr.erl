@@ -1571,7 +1571,7 @@ register_views_from_folder(Classification, App, Folder) ->
 -spec refresh_views(ne_binary()) -> boolean() | {'error', 'invalid_db_name'}.
 refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     suppress_change_notice(),
-    Classification = kzs_util:db_classification(DbName),
+    Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
     Updated = case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]) of
                   {'error', _} -> 'false';
