@@ -400,8 +400,12 @@ dial(Context, ConferenceId, Data) ->
     case build_valid_endpoints(Context, ConferenceId, Data) of
         {Context1, []} -> error_no_endpoints(Context1);
         {Context1, Endpoints} ->
-            Resp = exec_dial_endpoints(Context1, ConferenceId, Data, Endpoints),
-            crossbar_util:response_202(Resp, Context1)
+            case cb_context:has_errors(Context1) of
+                'true' -> Context1;
+                'false' ->
+                    Resp = exec_dial_endpoints(Context1, ConferenceId, Data, Endpoints),
+                    crossbar_util:response_202(Resp, Context1)
+            end
     end.
 
 -spec build_valid_endpoints(cb_context:context(), ne_binary(), kz_json:object()) ->
