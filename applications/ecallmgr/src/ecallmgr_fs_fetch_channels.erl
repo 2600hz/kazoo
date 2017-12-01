@@ -21,22 +21,23 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kazoo_bindings:bind(<<"fetch.channels.*">>, ?MODULE, 'channel_req'),
+    kazoo_bindings:bind(<<"fetch.channels.*.channel_req">>, ?MODULE, 'channel_req'),
     'ok'.
 
 
 -spec channel_req(map()) -> 'ok'.
 channel_req(#{node := Node, fetch_id := FetchId, payload := JObj}) ->
-    UUID = kzd_fetch:call_id(JObj),
-    ForUUID = kz_json:get_value(<<"refer-for-channel-id">>, JObj),
+    ToUser = kz_json:get_value(<<"refer-to-user">>, JObj),
+    TargetUUID = kz_json:get_ne_binary_value(<<"replaces-call-id">>, JObj),
+    ForUUID = kz_json:get_ne_binary_value(<<"refer-for-channel-id">>, JObj),
     {'ok', ForChannel} = ecallmgr_fs_channel:fetch(ForUUID, 'proplist'),
-    case ecallmgr_fs_channel:fetch_channel(UUID) of
+    case ecallmgr_fs_channel:fetch_channel(TargetUUID) of
         'undefined' -> channel_not_found(Node, FetchId);
         Channel ->
             [Uri] = kzsip_uri:uris(props:get_value(<<"switch_url">>, Channel)),
             URL = kzsip_uri:ruri(
-                    #uri{user= kz_json:get_value(<<"refer-to-user">>, JObj)
-                        ,domain= props:get_value(<<"realm">>, Channel)
+                    #uri{user=ToUser
+                        ,domain=props:get_value(<<"realm">>, Channel)
                         ,opts=[{<<"fs_path">>, kzsip_uri:ruri(Uri#uri{user= <<>>})}]
                         }),
             build_channel_resp(FetchId, JObj, Node, URL, ForChannel, ecallmgr_fs_channel:channel_ccvs(Channel))
@@ -57,11 +58,13 @@ build_channel_resp(FetchId, JObj, Node, URL, Channel, ChannelVars) ->
     try_channel_resp(FetchId, Node, Resp).
 
 -spec channel_resp_dialprefix(kz_json:object(), kz_proplist(), kz_proplist()) -> ne_binary().
-channel_resp_dialprefix(JObj, Channel, ChannelVars) ->
+channel_resp_dialprefix(JObj, _Channel, ChannelVars) ->
+    CallId = kz_binary:rand_hex(16),
     Props = props:filter_undefined(
               [{<<"sip_invite_domain">>, props:get_value(<<"Realm">>, ChannelVars)}
-              ,{<<"sip_h_X-Core-UUID">>, kz_json:get_value(<<"Core-UUID">>, JObj)}
-              ,{<<"sip_h_X-ecallmgr_", ?CALL_INTERACTION_ID>>, props:get_value(<<"interaction_id">>, Channel)}
+              ,{<<"sip_origination_call_id">>, CallId}
+              ,{<<"sip_h_X-ecallmgr_Core-UUID">>, kz_json:get_value(<<"Core-UUID">>, JObj)}
+              ,{<<"sip_h_X-ecallmgr_", ?CALL_INTERACTION_ID>>, props:get_value(<<"Call-Interaction-ID">>, ChannelVars)}
               ,{<<"sip_h_X-ecallmgr_replaces-call-id">>, kz_json:get_value(<<"replaces-call-id">>, JObj)}
               ,{<<"sip_h_X-ecallmgr_refer-from-channel-id">>, kz_json:get_value(<<"refer-from-channel-id">>, JObj)}
               ,{<<"sip_h_X-ecallmgr_refer-for-channel-id">>, kz_json:get_value(<<"refer-for-channel-id">>, JObj)}
