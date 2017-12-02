@@ -586,6 +586,14 @@ Takes the provided Erlang files, finds their .beam and syncs those to the remote
 -   `BEAM_PATH`: Where on the Host to put the beam files
 
 
+## sync\_to\_release.bash
+
+Useful in conjunction with `sync_to_remove`. Takes .beam files in a directory and moves them into a release, into the proper application ebin, and reloads them in the default VMs
+
+-   `BEAMS`: Path to beam files, defaults to `/tmp/beams/*.beam`
+-   `DEST`: Path to the release's lib/ directory, defaults to `/opt/kazoo/lib`
+
+
 ## update-the-types.sh
 
 Used to search the code looking for deprecated Erlang functions and types and replace them with the newer versions as appropriate
