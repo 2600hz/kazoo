@@ -8089,6 +8089,38 @@
             ],
             "type": "object"
         },
+        "kapi.conference.add_participant": {
+            "description": "AMQP API for conference.add_participant",
+            "properties": {
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Conference-ID": {
+                    "type": "string"
+                },
+                "Control-Queue": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "conference"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "add_participant"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call-ID",
+                "Conference-ID",
+                "Control-Queue"
+            ],
+            "type": "object"
+        },
         "kapi.conference.conference_error": {
             "description": "AMQP API for conference.conference_error",
             "properties": {

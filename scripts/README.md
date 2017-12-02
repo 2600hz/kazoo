@@ -573,7 +573,7 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > POST /v2/whitelabel/domains
 
 
-## sync\_to\_remote.bash
+## `sync_to_remote.bash`
 
 ```bash
 HOST="server.com" ERL_FILES="path/to/source.erl" BEAM_PATH="/tmp/beams" ./scripts/sync_to_remote.bash
@@ -585,10 +585,9 @@ Takes the provided Erlang files, finds their .beam and syncs those to the remote
 -   `HOST`: The Host to use for the scp command
 -   `BEAM_PATH`: Where on the Host to put the beam files
 
+## `sync_to_release.bash`
 
-## sync\_to\_release.bash
-
-Useful in conjunction with `sync_to_remove`. Takes .beam files in a directory and moves them into a release, into the proper application ebin, and reloads them in the default VMs
+Useful in conjunction with `sync_to_remote`. Takes .beam files in a directory and moves them into a release, into the proper application ebin, and reloads them in the default VMs
 
 -   `BEAMS`: Path to beam files, defaults to `/tmp/beams/*.beam`
 -   `DEST`: Path to the release's lib/ directory, defaults to `/opt/kazoo/lib`
