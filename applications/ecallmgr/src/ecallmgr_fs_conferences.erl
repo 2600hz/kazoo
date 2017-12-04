@@ -12,6 +12,7 @@
 -export([start_link/0]).
 -export([summary/0
         ,summary/1
+        ,count/0
         ]).
 -export([details/0
         ,details/1
@@ -91,6 +92,9 @@ start_link() ->
 summary() ->
     MatchSpec = [{#conference{_ = '_'}, [], ['$_']}],
     print_summary(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
+
+-spec count() -> non_neg_integer().
+count() -> ets:info(?CONFERENCES_TBL, 'size').
 
 -spec summary(text()) -> 'ok'.
 summary(Node) when not is_atom(Node) ->
