@@ -198,13 +198,18 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
                    ),
     Resps.
 
+-type exec_acc() :: {atom(), ne_binary(), kz_json:object(), [{ne_binary(), kz_proplist()}]}.
+
+-spec exec_endpoint(kz_json:object(), exec_acc()) -> exec_acc().
 exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
     EndpointCallId = kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, Endpoint, kz_binary:rand_hex(8)),
-    EndpointId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
+    EndpointId = kz_json:get_first_defined([<<"Endpoint-ID">>
+                                           ,[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
                                            ,<<"Route">>
                                            ]
                                           ,Endpoint
                                           ),
+    lager:debug("endpoint ~s: ~p", [EndpointId, Endpoint]),
 
     try ecallmgr_conference_command:dial(ConferenceNode
                                         ,ConferenceId
@@ -265,28 +270,28 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                          ),
     {ConferenceNode, ConferenceId, JObj, [{LoopbackId, Resp} | Resps]}.
 
--spec success_resp(ne_binary(), ne_binary()) -> kz_json:object().
-success_resp(CallId, Resp) ->
+-spec success_resp(ne_binary(), ne_binary()) -> kz_proplist().
+success_resp(EndpointId, Resp) ->
     JobId =
         case re:run(Resp, <<"([\\w-]{36})">>, ['ungreedy', {'capture', 'all_but_first', 'binary'}]) of
             {'match', [UUID|_]} -> UUID;
             _ -> 'undefined'
         end,
-    kz_json:from_list([{<<"Job-ID">>, JobId}
-                      ,{<<"Message">>, <<"dialing endpoints">>}
-                      ,{<<"Status">>, <<"success">>}
-                      ,{<<"Call-ID">>, CallId}
-                      ]).
+    [{<<"Job-ID">>, JobId}
+    ,{<<"Message">>, <<"dialing endpoints">>}
+    ,{<<"Status">>, <<"success">>}
+    ,{<<"Endpoint-ID">>, EndpointId}
+    ].
 
--spec error_resp(ne_binary(), ne_binary()) -> 'ok'.
-error_resp(CallId, Error) ->
-    kz_json:from_list([{<<"Status">>, <<"error">>}
-                      ,{<<"Message">>, Error}
-                      ,{<<"Call-ID">>, CallId}
-                      ]).
+-spec error_resp(ne_binary(), ne_binary()) -> kz_proplist().
+error_resp(EndpointId, Error) ->
+    [{<<"Status">>, <<"error">>}
+    ,{<<"Message">>, Error}
+    ,{<<"Endpoint-ID">>, EndpointId}
+    ].
 
 handle_responses(JObj, Responses) ->
-    BaseResponses = [handle_response(JObj, Response)
+    BaseResponses = [kz_json:from_list(handle_response(JObj, Response))
                      || Response <- Responses,
                         'undefined' =/= Response
                     ],
@@ -294,14 +299,16 @@ handle_responses(JObj, Responses) ->
     publish_resp(JObj, BaseResponses).
 
 handle_response(JObj, {LoopbackCallId, Resp}) ->
-    Status =
+    BuiltResp =
         case wait_for_bowout(LoopbackCallId, kz_json:get_integer_value(<<"Timeout">>, JObj)) of
-            'ok' -> handle_response(JObj, Resp);
-            {'ok', Resp} -> success_resp(LoopbackCallId, Resp);
-            {'error', E} -> error_resp(LoopbackCallId, E)
+            'ok' -> Resp;
+            {'ok', DialResp} -> props:set_value(<<"Message">>, DialResp, Resp);
+            {'error', 'timeout'} -> props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
+            {'error', E} -> props:set_value(<<"Message">>, E, Resp)
         end,
-    kz_json:set_value(<<"Endpoint-Call-ID">>, LoopbackCallId, Status);
-handle_response(_JObj, Response) -> Response.
+    [{<<"Call-ID">>, LoopbackCallId}
+     |BuiltResp
+    ].
 
 wait_for_bowout(<<?LB_ALEG_PREFIX, _/binary>>, _Timeout) -> 'ok';
 wait_for_bowout(LoopbackCallId, Timeout) ->
@@ -312,7 +319,7 @@ wait_for_bowout(LoopbackCallId, Timeout) ->
         ?LOOPBACK_BOWOUT_MSG(_Node, Props) ->
             handle_bowout(LoopbackCallId, Props)
     after Timeout ->
-            {'error', <<"Internal error starting dial for ", LoopbackCallId/binary>>}
+            {'error', 'timeout'}
     end.
 
 handle_event(LoopbackCallId, Timeout, Start, Props) ->
