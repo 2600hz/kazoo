@@ -209,17 +209,17 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
         {'ok', _Resp}=OK ->
             lager:info("starting dial resulted in ~s", [_Resp]),
             add_participant(ConferenceId, EndpointId),
-            [{EndpointId, OK} | Resps];
+            {ConferenceNode, ConferenceId, JObj, [{EndpointId, OK} | Resps]};
         _E ->
             lager:info("failed to exec: ~p", [_E]),
-            [{'error', <<"unknown failure">>} | Resps]
+            {ConferenceNode, ConferenceId, JObj, [{'error', <<"unknown failure">>} | Resps]}
     catch
         'throw':{'msg', E} ->
             lager:info("failed to exec: ~p", [E]),
-            [{'error', E} | Resps];
+            {ConferenceNode, ConferenceId, JObj, [{'error', E} | Resps]};
         'throw':Msg when is_binary(Msg) ->
             lager:info("failed to exec: ~s", [Msg]),
-            [{'error', Msg} | Resps]
+            {ConferenceNode, ConferenceId, JObj, [{'error', Msg} | Resps]}
     end.
 
 -spec exec_loopbacks(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
@@ -347,8 +347,8 @@ add_participant(ConferenceId, EndpointId) ->
 
 -spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
 publish_resp(JObj, BaseResps) ->
-    Resp = BaseResps
-        ++ [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+    Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+           ,{<<"Endpoint-Responses">>, BaseResps}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kz_amqp_worker:cast(Resp
