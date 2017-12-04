@@ -210,7 +210,7 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
 
 -spec exec_endpoint(kz_json:object(), exec_acc()) -> exec_acc().
 exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
-    EndpointCallId = kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, Endpoint, kz_binary:rand_hex(8)),
+    EndpointCallId = kz_json:find(<<"Outbound-Call-ID">>, [Endpoint, JObj], kz_binary:rand_hex(16)),
     EndpointId = kz_json:get_first_defined([<<"Endpoint-ID">>
                                            ,[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
                                            ,<<"Route">>
