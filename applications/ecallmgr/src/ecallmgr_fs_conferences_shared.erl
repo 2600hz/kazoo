@@ -199,27 +199,33 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
     Resps.
 
 exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
-    EndpointId = kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, Endpoint, kz_binary:rand_hex(8)),
+    EndpointCallId = kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, Endpoint, kz_binary:rand_hex(8)),
+    EndpointId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
+                                           ,<<"Route">>
+                                           ]
+                                          ,Endpoint
+                                          ),
+
     try ecallmgr_conference_command:dial(ConferenceNode
                                         ,ConferenceId
                                         ,JObj
-                                        ,kz_json:insert_value(<<"Outbound-Call-ID">>, EndpointId, Endpoint)
+                                        ,kz_json:insert_value(<<"Outbound-Call-ID">>, EndpointCallId, Endpoint)
                                         )
     of
-        {'ok', _Resp}=OK ->
-            lager:info("starting dial resulted in ~s", [_Resp]),
-            add_participant(ConferenceId, EndpointId),
-            {ConferenceNode, ConferenceId, JObj, [{EndpointId, OK} | Resps]};
+        {'ok', Resp} ->
+            lager:info("starting dial resulted in ~s", [Resp]),
+            add_participant(ConferenceId, EndpointCallId),
+            {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, success_resp(EndpointId, Resp)} | Resps]};
         _E ->
             lager:info("failed to exec: ~p", [_E]),
-            {ConferenceNode, ConferenceId, JObj, [{'error', <<"unknown failure">>} | Resps]}
+            {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, <<"unknown failure">>)} | Resps]}
     catch
         'throw':{'msg', E} ->
             lager:info("failed to exec: ~p", [E]),
-            {ConferenceNode, ConferenceId, JObj, [{'error', E} | Resps]};
+            {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, E)} | Resps]};
         'throw':Msg when is_binary(Msg) ->
             lager:info("failed to exec: ~s", [Msg]),
-            {ConferenceNode, ConferenceId, JObj, [{'error', Msg} | Resps]}
+            {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, Msg)} | Resps]}
     end.
 
 -spec exec_loopbacks(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
@@ -259,8 +265,8 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                          ),
     {ConferenceNode, ConferenceId, JObj, [{LoopbackId, Resp} | Resps]}.
 
--spec success_resp(ne_binary()) -> kz_json:object().
-success_resp(Resp) ->
+-spec success_resp(ne_binary(), ne_binary()) -> kz_json:object().
+success_resp(CallId, Resp) ->
     JobId =
         case re:run(Resp, <<"([\\w-]{36})">>, ['ungreedy', {'capture', 'all_but_first', 'binary'}]) of
             {'match', [UUID|_]} -> UUID;
@@ -269,12 +275,14 @@ success_resp(Resp) ->
     kz_json:from_list([{<<"Job-ID">>, JobId}
                       ,{<<"Message">>, <<"dialing endpoints">>}
                       ,{<<"Status">>, <<"success">>}
+                      ,{<<"Call-ID">>, CallId}
                       ]).
 
--spec error_resp(ne_binary()) -> 'ok'.
-error_resp(Error) ->
+-spec error_resp(ne_binary(), ne_binary()) -> 'ok'.
+error_resp(CallId, Error) ->
     kz_json:from_list([{<<"Status">>, <<"error">>}
                       ,{<<"Message">>, Error}
+                      ,{<<"Call-ID">>, CallId}
                       ]).
 
 handle_responses(JObj, Responses) ->
@@ -285,16 +293,15 @@ handle_responses(JObj, Responses) ->
 
     publish_resp(JObj, BaseResponses).
 
-handle_response(_JObj, {'ok', Success}) ->
-    success_resp(Success);
-handle_response(_JObj, {'error', Error}) ->
-    error_resp(Error);
 handle_response(JObj, {LoopbackCallId, Resp}) ->
-    case wait_for_bowout(LoopbackCallId, kz_json:get_integer_value(<<"Timeout">>, JObj)) of
-        'ok' -> handle_response(JObj, Resp);
-        {'ok', Resp} -> success_resp(Resp);
-        {'error', E} -> error_resp(E)
-    end.
+    Status =
+        case wait_for_bowout(LoopbackCallId, kz_json:get_integer_value(<<"Timeout">>, JObj)) of
+            'ok' -> handle_response(JObj, Resp);
+            {'ok', Resp} -> success_resp(LoopbackCallId, Resp);
+            {'error', E} -> error_resp(LoopbackCallId, E)
+        end,
+    kz_json:set_value(<<"Endpoint-Call-ID">>, LoopbackCallId, Status);
+handle_response(_JObj, Response) -> Response.
 
 wait_for_bowout(<<?LB_ALEG_PREFIX, _/binary>>, _Timeout) -> 'ok';
 wait_for_bowout(LoopbackCallId, Timeout) ->
