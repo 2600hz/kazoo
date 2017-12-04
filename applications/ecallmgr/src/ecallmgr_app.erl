@@ -41,6 +41,7 @@ request(Acc) ->
               ],
     [{'media_servers', Servers}
     ,{'channels', ecallmgr_fs_channels:count()}
+    ,{'conferences', ecallmgr_fs_conferences:count()}
     ,{'registrations', ecallmgr_registrar:count()}
      | Acc
     ].

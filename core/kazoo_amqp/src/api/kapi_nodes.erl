@@ -19,6 +19,7 @@
 %% Advertise message
 -define(ADVERTISE_HEADERS, [<<"Expires">>]).
 -define(OPTIONAL_ADVERTISE_HEADERS, [<<"Channels">>
+                                    ,<<"Conferences">>
                                     ,<<"Globals">>
                                     ,<<"Media-Servers">>
                                     ,<<"Node-Info">>
