@@ -9,12 +9,12 @@ function sync {
         existing=$3
 
         ebin=$(dirname $existing)
-        htoload=$(basename $basename .beam)
+        hotload=$(basename $basename .beam)
 
         echo "mv $file $ebin/$basename"
         mv -f $file $ebin/$basename
 
-        echo "hotloading"
+        echo "hotloading $hotload"
         sup kazoo_maintenance hotload $hotload
         sup -necallmgr kazoo_maintenance hotload $hotload
 }
