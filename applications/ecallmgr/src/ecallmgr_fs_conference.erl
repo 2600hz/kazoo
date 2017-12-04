@@ -249,7 +249,7 @@ maybe_publish_event(<<"conference-destroy">>, _, _, _) -> 'ok';
 maybe_publish_event(Action, Props, Node, EventsToPublish) ->
     case lists:member(Action, EventsToPublish) of
         'true' -> publish_event(Action, Props, Node);
-        'false' -> lager:debug("not publishing conference event : ~s", [Action])
+        'false' -> lager:debug("not publishing conference event : ~s ~p", [Action, Props])
     end.
 
 publish_event(Action, Props, Node) ->

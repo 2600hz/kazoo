@@ -163,6 +163,12 @@ handle_dial_req(JObj, _Props) ->
             maybe_start_conference(JObj, ConferenceId);
         {'ok', ConferenceNode} ->
             maybe_exec_dial(ConferenceNode, ConferenceId, JObj)
+    end,
+    clear_mailbox().
+
+clear_mailbox() ->
+    receive Msg -> lager:debug("msg: ~p", [Msg]), clear_mailbox()
+    after 0 -> 'ok'
     end.
 
 -spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
@@ -191,6 +197,8 @@ exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no endpoints to dial out to"),
     [];
 exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
+    catch gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(ConferenceNode, <<"conference::maintenance">>)}),
+    lager:debug("bound for conference events from ~s", [ConferenceNode]),
     {_, _, _, Resps} =
         lists:foldl(fun exec_endpoint/2
                    ,{ConferenceNode, ConferenceId, JObj, []}
@@ -209,7 +217,7 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                            ]
                                           ,Endpoint
                                           ),
-    lager:debug("endpoint ~s: ~p", [EndpointId, Endpoint]),
+    lager:debug("endpoint ~s(~s): ~p", [EndpointId, EndpointCallId, Endpoint]),
 
     try ecallmgr_conference_command:dial(ConferenceNode
                                         ,ConferenceId
@@ -327,7 +335,7 @@ handle_event(LoopbackCallId, Timeout, Start, Props) ->
         <<"CHANNEL_DESTROY">> ->
             handle_loopback_destroy(LoopbackCallId, kzd_freeswitch:hangup_cause(Props));
         _Evt ->
-            lager:debug("ignoring event ~s for ~s", [_Evt, LoopbackCallId]),
+            lager:debug("ignoring event ~s for ~s: ~p", [_Evt, LoopbackCallId, Props]),
             wait_for_bowout(LoopbackCallId, kz_time:decr_timeout(Timeout, Start))
     end.
 
@@ -346,6 +354,7 @@ handle_bowout(LoopbackId, Props) ->
             lager:debug("call id after bowout remains the same"),
             LoopbackId;
         {LoopbackId, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
+            lager:debug("~s acquired as ~s", [LoopbackId, AcquiringUUID]),
             {'ok', <<"dial resulted in call id ", AcquiringUUID/binary>>};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
