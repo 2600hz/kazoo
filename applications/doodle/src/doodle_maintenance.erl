@@ -120,7 +120,7 @@ check_pending_sms_for_offnet_delivery(AccountId) ->
 replay_sms(AccountId, JObjs) ->
     lager:debug("starting sms offnet delivery for account ~s", [AccountId]),
     F = fun (JObj) ->
-                doodle_util:replay_sms(AccountId, kz_doc:id(JObj)),
+                _ = doodle_util:replay_sms(AccountId, kz_doc:id(JObj)),
                 timer:sleep(200)
         end,
     lists:foreach(F, JObjs).

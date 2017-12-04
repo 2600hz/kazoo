@@ -49,7 +49,7 @@ render(Renderer, TemplateId, _Template, _TemplateData, 0) ->
 
 render(Renderer, TemplateId, Template, TemplateData, Tries) ->
     Start = kz_time:now_s(),
-    PoolStatus = poolboy:status(teletype_sup:render_farm_name()),
+    PoolStatus = poolboy:status(teletype_farms_sup:render_farm_name()),
     %% ?LOG_INFO("starting render of ~p", [TemplateId]),
     lager:info("starting render of ~p", [TemplateId]),
     case do_render(Renderer, TemplateId, Template, TemplateData) of
@@ -59,7 +59,7 @@ render(Renderer, TemplateId, Template, TemplateData, Tries) ->
         GoodReturn ->
             %% LOG_INFO("render completed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
             lager:info("render completed in ~p, pool: ~p", [kz_time:now_s() - Start, PoolStatus]),
-            poolboy:checkin(teletype_sup:render_farm_name(), Renderer),
+            poolboy:checkin(teletype_farms_sup:render_farm_name(), Renderer),
             GoodReturn
     end.
 
@@ -83,7 +83,7 @@ next_renderer() ->
     next_renderer(?MILLISECONDS_IN_SECOND).
 
 next_renderer(BackoffMs) ->
-    Farm = teletype_sup:render_farm_name(),
+    Farm = teletype_farms_sup:render_farm_name(),
     try poolboy:checkout(Farm, false, 2 * ?MILLISECONDS_IN_SECOND) of
         'full' ->
             ?LOG_CRITICAL("render farm pool is full! waiting ~bms", [BackoffMs]),

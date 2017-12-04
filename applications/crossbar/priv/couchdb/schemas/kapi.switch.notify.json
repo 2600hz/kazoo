@@ -1,8 +1,11 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.switch.check_sync",
-    "description": "AMQP API for switch.check_sync",
+    "_id": "kapi.switch.notify",
+    "description": "AMQP API for switch.notify",
     "properties": {
+        "Event": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "switch_event"
@@ -11,7 +14,7 @@
         },
         "Event-Name": {
             "enum": [
-                "check_sync"
+                "notify"
             ],
             "type": "string"
         },

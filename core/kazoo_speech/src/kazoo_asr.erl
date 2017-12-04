@@ -50,7 +50,7 @@ freeform(Content, ContentType, Locale, Options, ASRProvider) ->
 -spec commands(ne_binary(), ne_binaries(), ne_binary()) -> asr_resp().
 -spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary()) -> asr_resp().
 -spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist()) -> asr_resp().
--spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist(), ne_binary()) -> provider_return().
+-spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist(), ne_binary()) -> asr_resp().
 commands(Bin, Commands) ->
     commands(Bin, Commands, default_mime_type()).
 commands(Bin, Commands, ContentType) ->

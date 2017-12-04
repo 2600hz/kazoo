@@ -27,6 +27,7 @@
         ,unbind/3, unbind/4
         ,apply/2, apply/3
         ,map/2
+        ,pmap/2, pmap/3
         ,fold/2
         ,flush/0, flush/1
         ,filter/1
@@ -75,6 +76,14 @@ apply(API, Action, Args) ->
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     kazoo_bindings:map(Routing, Payload).
+
+-spec pmap(ne_binary(), payload()) -> map_results().
+-spec pmap(ne_binary(), payload(), kazoo_bindings:kz_rt_options()) -> map_results().
+pmap(Routing, Payload) ->
+    kazoo_bindings:pmap(Routing, Payload).
+
+pmap(Routing, Payload, Options) ->
+    kazoo_bindings:pmap(Routing, Payload, Options).
 
 %%--------------------------------------------------------------------
 %% @public

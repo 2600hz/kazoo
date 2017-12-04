@@ -27,6 +27,7 @@
 -define(PIVOT_REQ_HEADERS, [<<"Call">>, <<"Voice-URI">>]).
 -define(OPTIONAL_PIVOT_REQ_HEADERS, [<<"CDR-URI">>
                                     ,<<"Request-Format">>
+                                    ,<<"Request-Body-Format">>
                                     ,<<"HTTP-Method">>
                                     ,<<"Debug">>
                                     ]).

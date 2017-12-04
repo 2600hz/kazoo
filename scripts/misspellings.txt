@@ -156,6 +156,7 @@ reference|referance refrence
 relevant|relevent revelant
 religious|religous religius
 repetition|repitition
+response|reponse
 restaurant|restarant restaraunt
 rhyme|rime
 rhythm|rythm rythem
@@ -177,6 +178,7 @@ tomorrow|tommorow tommorrow
 twelfth|twelth
 tyranny|tyrany
 underrate|underate
+unfortunatly|unfortunately
 until|untill
 upholstery|upholstry
 usable|usible
@@ -192,3 +194,5 @@ withhold|withold
 writing|writting writeing
 search|seacrh
 useful|usefull
+formatted|formated
+sent|sended

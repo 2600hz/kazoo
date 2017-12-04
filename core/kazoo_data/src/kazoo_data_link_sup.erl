@@ -17,7 +17,27 @@
         ,init/1
         ]).
 
--define(CHILDREN, [?SUPER('kz_dataconnection_sup')
+-ifdef(TEST).
+
+-define(CACHE_PROPS, []).
+-define(DP_CACHE_PROPS, []).
+
+-else.
+
+-define(ORIGIN_BINDINGS, [[]
+                         ]).
+
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
+
+-define(DP_ORIGIN_BINDINGS, [[{'db', ?KZ_DATA_DB}]]).
+-define(DP_CACHE_PROPS, [{'origin_bindings', ?DP_ORIGIN_BINDINGS}]).
+
+-endif.
+
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?CACHE_ARGS(?KAZOO_DATA_PLAN_CACHE, ?DP_CACHE_PROPS)
+                  ,?SUPER('kz_dataconnection_sup')
                   ,?WORKER('kz_dataconnections')
                   ,?WORKER('kazoo_data_bootstrap')
                   ]).

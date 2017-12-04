@@ -15,7 +15,6 @@
         ,authorize/1, authorize/2, authorize/3
         ,validate/1, validate/2, validate/3
         ,put/2
-        ,to_json/1
         ]).
 
 -include("crossbar.hrl").
@@ -48,19 +47,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authorize.ledgers">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.ledgers">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.get.ledgers">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"*.to_json.get.ledgers">>, ?MODULE, 'to_json'),
     _ = crossbar_bindings:bind(<<"*.execute.put.ledgers">>, ?MODULE, 'put').
-
--spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
-to_json({Req, Context}) ->
-    to_json({Req, Context}, cb_context:req_nouns(Context)).
-
--spec to_json(cb_cowboy_payload(), req_noun()) -> cb_cowboy_payload().
-to_json(Payload, [{<<"ledgers">>, [?AVAILABLE]}|_]) -> Payload;
-to_json(Payload, [{<<"ledgers">>, [?CREDIT]}|_]) -> Payload;
-to_json(Payload, [{<<"ledgers">>, [?DEBIT]}|_]) -> Payload;
-to_json(Payload, [{<<"ledgers">>, [Id]}|_]) -> read_ledger(Payload, Id);
-to_json(Payload, _) -> Payload.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -180,7 +167,12 @@ validate(Context, ?AVAILABLE) ->
               ],
     cb_context:setters(Context, Setters);
 validate(Context, Id) ->
-    validate_ledger(Context, Id, cb_context:req_verb(Context)).
+    ViewOptions = [{'is_chunked', 'true'}
+                  ,{'range_keymap', Id}
+                  ,{'mapper', fun normalize_view_results/3}
+                  ,'include_docs'
+                  ],
+    crossbar_view:load_modb(Context, ?LEDGER_VIEW, ViewOptions).
 
 validate(Context, Ledger, Id) ->
     validate_ledger_doc(Context, Ledger, Id, cb_context:req_verb(Context)).
@@ -211,13 +203,6 @@ put(Context, ?DEBIT) ->
 -spec validate_ledgers(cb_context:context(), http_method()) -> cb_context:context().
 validate_ledgers(Context, ?HTTP_GET) ->
     read_ledgers(Context).
-
--spec validate_ledger(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_ledger(Context, _Id, ?HTTP_GET) ->
-    case crossbar_view:time_range(Context) of
-        {_StartTime, _EndTime} -> cb_context:set_resp_status(Context, 'success');
-        Ctx -> Ctx
-    end.
 
 -spec validate_ledger_doc(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 validate_ledger_doc(Context, Ledger, Id, ?HTTP_GET) ->
@@ -333,21 +318,6 @@ maybe_convert_units(_, Value) -> Value.
 %%
 %% @end
 %%--------------------------------------------------------------------
-
--define(MAX_CHUNK_SIZE, kapps_config:get_pos_integer(?CONFIG_CAT, <<"maximum_chunk_size">>, 50)).
-
--spec read_ledger(cb_cowboy_payload(), ne_binary()) -> cb_context:context().
-read_ledger({Req, Context}, Ledger) ->
-    ViewOptions = [{'range_keymap', Ledger}
-                  ,{'mapper', fun normalize_view_results/3}
-                  ,{'is_chunked', 'true'}
-                  ,{'chunk_size', ?MAX_CHUNK_SIZE}
-                  ,{'cowboy_req', Req}
-                  ,{'chunk_response_type', 'json'}
-                  ,'include_docs'
-                  ],
-    crossbar_view:load_modb(Context, ?LEDGER_VIEW, ViewOptions).
-
 -spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(Context, JObj, Acc) ->

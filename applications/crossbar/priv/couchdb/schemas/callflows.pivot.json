@@ -24,6 +24,15 @@
             ],
             "type": "string"
         },
+        "req_body_format": {
+            "default": "form",
+            "description": "What format should the request body have",
+            "enum": [
+                "form",
+                "json"
+            ],
+            "type": "string"
+        },
         "req_format": {
             "default": "kazoo",
             "description": "What format of Pivot will the your server respond with",

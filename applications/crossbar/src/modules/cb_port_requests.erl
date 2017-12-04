@@ -648,6 +648,7 @@ load_summary(Context, {IsRanged, Opts}) ->
     Context1 = cb_context:set_should_paginate(Context, 'false'),
     Options = [{'mapper', fun normalize_view_results/2}
               ,{'databases', [?KZ_PORT_REQUESTS_DB]}
+              ,{'unchunkable', 'true'}
               ,'include_docs'
                | Opts
               ],

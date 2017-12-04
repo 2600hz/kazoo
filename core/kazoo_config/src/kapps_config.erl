@@ -52,7 +52,7 @@
 -export([migrate/0]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
--type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
+-type config_key() :: ne_binary() | nonempty_string() | atom() | ne_binaries().
 
 -type update_option() :: {'node_specific', boolean()} |
                          {'pvt_fields', api_object()}.
@@ -979,6 +979,13 @@ get_category(Category, 'false') ->
         ,{{<<"media">>, <<"tts_cache">>}
          ,{<<"speech">>, <<"tts_cache">>}
          }
+        ,{{<<"speech">>, <<"asr_prefered_content_type">>}
+         ,{<<"speech">>, <<"asr_preferred_content_type">>}
+         }
+
+        ,{{<<"callflow">>, [<<"voicemail">>, <<"vm_message_foraward_type">>]}
+         ,{<<"callflow">>, [<<"voicemail">>, <<"vm_message_forward_type">>]}
+         }
         ]).
 
 -spec migrate() -> 'ok'.
@@ -1098,5 +1105,7 @@ remove_config_setting([{Id, Node, Setting} | Keys], JObj, Removed) ->
 
 -spec config_setting_key(ne_binary(), config_key()) -> ne_binaries().
 %% NOTE: to support nested keys, update this merge function
+config_setting_key(Node, [_|_]=Setting) ->
+    [Node | Setting];
 config_setting_key(Node, Setting) ->
     [Node, Setting].

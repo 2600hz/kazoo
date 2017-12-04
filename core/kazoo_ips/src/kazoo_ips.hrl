@@ -8,5 +8,7 @@
 -define(ASSIGNED, <<"assigned">>).
 -define(PVT_TYPE, <<"dedicated_ip">>).
 
+-define(CONFIG_CAT, <<"ips">>).
+
 -define(KAZOO_IPS_HRL, 'true').
 -endif.

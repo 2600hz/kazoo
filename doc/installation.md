@@ -39,7 +39,7 @@ Kazoo 4 targets Erlang 19+. There are a couple ways to install Erlang:
 
     I prefer to use a tool like [kerl](https://github.com/kerl/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
 
-    ```shell
+```shell
     curl -O https://raw.githubusercontent.com/kerl/kerl/master/kerl
     chmod +x kerl
     mv kerl /usr/bin
@@ -47,7 +47,7 @@ Kazoo 4 targets Erlang 19+. There are a couple ways to install Erlang:
     kerl build 19.3 19.3 # this takes a while
     kerl install 19.3 /usr/local/otp-19.3
     . /usr/local/otp-19.3/activate
-    ```
+```
 
 2.  Erlang Solutions
 
