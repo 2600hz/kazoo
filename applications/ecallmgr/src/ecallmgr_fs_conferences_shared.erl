@@ -168,7 +168,7 @@ handle_dial_req(JObj, _Props) ->
 
 clear_mailbox() ->
     receive Msg -> lager:debug("msg: ~p", [Msg]), clear_mailbox()
-    after 0 -> 'ok'
+    after 1990 -> lager:debug("mailbox is empty")
     end.
 
 -spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
@@ -299,6 +299,7 @@ error_resp(EndpointId, Error) ->
     ].
 
 handle_responses(JObj, Responses) ->
+    lager:debug("handling responses ~p", [Responses]),
     BaseResponses = [kz_json:from_list(handle_response(JObj, Response))
                      || Response <- Responses,
                         'undefined' =/= Response
