@@ -370,15 +370,18 @@
                     ,{<<"Timeout">>, fun is_integer/1}
                     ]).
 
--define(DIAL_RESP_HEADERS, [<<"Status">>]).
--define(OPTIONAL_DIAL_RESP_HEADERS, [<<"Job-ID">>, <<"Message">>]).
+-define(DIAL_RESP_HEADERS, [<<"Endpoint-Responses">>]).
+-define(OPTIONAL_DIAL_RESP_HEADERS, []).
 -define(DIAL_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"dial_resp">>}
-                          ,{<<"Status">>, [<<"success">>, <<"error">>]}
                           ]).
--define(DIAL_RESP_TYPES, [{<<"Job-ID">>, fun is_binary/1}
-                         ,{<<"Message">>, fun is_binary/1}
+-define(DIAL_RESP_TYPES, [{<<"Endpoint-Responses">>
+                          ,fun(Es) ->
+                                   kz_term:is_ne_list(Es)
+                                       andalso kz_json:are_json_objects(Es)
+                           end
+                          }
                          ]).
 
 %% Conference Participants Event
