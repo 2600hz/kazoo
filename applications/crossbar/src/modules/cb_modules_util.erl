@@ -33,6 +33,8 @@
         ,log_assignment_updates/1
 
         ,normalize_media_upload/5
+
+        ,normalize_alpha_num_name/1
         ]).
 
 -include("crossbar.hrl").
@@ -734,3 +736,13 @@ handle_normalized_upload(Context, FileJObj, ToExt, {'error', _R}) ->
     UpdatedDoc = kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context)),
     UpdatedContext = cb_context:set_doc(Context, UpdatedDoc),
     {UpdatedContext, FileJObj}.
+
+-spec normalize_alpha_num_name(cb_context:context()) -> cb_context:context().
+normalize_alpha_num_name(Context) ->
+    Doc = cb_context:doc(Context),
+    Name = re:replace(kz_term:to_lower_binary(kz_json:get_value(<<"name">>, Doc))
+                     ,<<"[^a-z0-9]">>
+                     ,<<>>
+                     ,[global, {return, binary}]
+                     ),
+    cb_context:set_doc(Context, kz_json:set_value(<<"pvt_alphanum_name">>, Name, Doc)).
