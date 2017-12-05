@@ -163,7 +163,8 @@ handle_dial_req(JObj, _Props) ->
             maybe_start_conference(JObj, ConferenceId);
         {'ok', ConferenceNode} ->
             maybe_exec_dial(ConferenceNode, ConferenceId, JObj)
-    end.
+    end,
+    lager:debug("finished dialing").
 
 -spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
 maybe_exec_dial(ConferenceNode, ConferenceId, JObj) ->
@@ -320,7 +321,6 @@ handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
     props:insert_value(<<"Call-ID">>, LoopbackCallId, BuiltResp).
 
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
-    lager:debug("waiting ~p for ~s and ~s", [Timeout, LoopbackALeg, LoopbackBLeg]),
     Start = kz_time:now_s(),
     receive
         {'event', [LoopbackALeg | Props]} ->
@@ -355,7 +355,6 @@ handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, Start, Props)
          }
     of
         {'undefined', 'undefined'} ->
-            lager:debug("~s created", [LoopbackALeg]),
             wait_for_bowout(LoopbackALeg, 'undefined', kz_time:decr_timeout(Timeout, Start));
         {'undefined', LoopbackBLeg} ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
@@ -392,12 +391,13 @@ handle_bowout(LoopbackALeg, _LoopbackBLeg, Props) ->
             {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>}
     end.
 
+-spec register_for_events(atom(), ne_binary()) -> 'ok'.
 register_for_events(ConferenceNode, EndpointCallId) ->
-    _G = [(catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(ConferenceNode, EndpointCallId)}))
-         ,(catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, EndpointCallId)}))
-         ,(catch gproc:reg({'p', 'l', ?LOOPBACK_BOWOUT_REG(EndpointCallId)}))
-         ],
-    lager:debug("gproc: ~p", [_G]).
+    _ = [(catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(ConferenceNode, EndpointCallId)}))
+        ,(catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, EndpointCallId)}))
+        ,(catch gproc:reg({'p', 'l', ?LOOPBACK_BOWOUT_REG(EndpointCallId)}))
+        ],
+    'ok'.
 
 -spec start_call_handlers(atom(), kz_json:object(), ne_binary()) -> api_ne_binary().
 start_call_handlers(Node, JObj, CallId) ->
