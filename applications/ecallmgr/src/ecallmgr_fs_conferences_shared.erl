@@ -181,24 +181,25 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj) ->
 is_loopback(Endpoint) ->
     <<"loopback">> =:= kz_json:get_ne_binary_value(<<"Invite-Format">>, Endpoint).
 
+-spec maybe_exec_dial(atom(), ne_binary(), kz_json:object(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
+    _G = (catch gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(ConferenceNode, <<"conference::maintenance">>)})),
+
+    lager:debug("bound for conference events from ~s: ~p", [ConferenceNode, _G]),
 
     EPResps = exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints),
     LBResps = exec_loopbacks(ConferenceNode, ConferenceId, JObj, Loopbacks),
 
     handle_responses(JObj, EPResps ++ LBResps).
 
+-type exec_responses() :: [{ne_binary(), kz_proplist()}].
 -spec exec_endpoints(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
-                            [{'ok', ne_binary()} |
-                             {'error', ne_binary()}
-                            ].
+                            exec_responses().
 exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no endpoints to dial out to"),
     [];
 exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
-    catch gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(ConferenceNode, <<"conference::maintenance">>)}),
-    lager:debug("bound for conference events from ~s", [ConferenceNode]),
     {_, _, _, Resps} =
         lists:foldl(fun exec_endpoint/2
                    ,{ConferenceNode, ConferenceId, JObj, []}
@@ -206,7 +207,7 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
                    ),
     Resps.
 
--type exec_acc() :: {atom(), ne_binary(), kz_json:object(), [{ne_binary(), kz_proplist()}]}.
+-type exec_acc() :: {atom(), ne_binary(), kz_json:object(), exec_responses()}.
 
 -spec exec_endpoint(kz_json:object(), exec_acc()) -> exec_acc().
 exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
@@ -218,6 +219,11 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                           ,Endpoint
                                           ),
     lager:debug("endpoint ~s(~s): ~p", [EndpointId, EndpointCallId, Endpoint]),
+    _G = [(catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(ConferenceNode, EndpointCallId)}))
+         ,(catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, EndpointCallId)}))
+         ,(catch gproc:reg({'p', 'l', ?LOOPBACK_BOWOUT_REG(EndpointCallId)}))
+         ],
+    lager:debug("gproc: ~p", [_G]),
 
     try ecallmgr_conference_command:dial(ConferenceNode
                                         ,ConferenceId
@@ -242,10 +248,7 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
     end.
 
 -spec exec_loopbacks(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
-                            ['undefined' |
-                             {ne_binary(), {'ok', ne_binary()}} |
-                             {ne_binary(), {'error', ne_binary()}}
-                            ].
+                            exec_responses().
 exec_loopbacks(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no loopbacks to dial out to"),
     [];
@@ -257,26 +260,21 @@ exec_loopbacks(ConferenceNode, ConferenceId, JObj, Loopbacks) ->
                    ),
     Resps.
 
+-spec exec_loopback(kz_json:object(), exec_acc()) -> exec_acc().
 exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
     {OutboundId, LoopbackId} =
-        case kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, JObj) of
+        case kz_json:find(<<"Outbound-Call-ID">>, [Loopback, JObj]) of
             'undefined' ->
-                {'undefined', <<?LB_ALEG_PREFIX, (kz_binary:rand_hex(8))/binary>>};
+                {'undefined', <<?LB_ALEG_PREFIX, (kz_binary:rand_hex(12))/binary>>};
             OutboundCallId ->
                 {OutboundCallId, <<?LB_ALEG_PREFIX, OutboundCallId/binary>>}
         end,
-    catch(gproc:reg(?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, LoopbackId))),
-    catch(gproc:reg(?LOOPBACK_BOWOUT_REG(LoopbackId))),
-    Resp = exec_endpoints(ConferenceNode
-                         ,ConferenceId
-                         ,kz_json:delete_key(<<"Outbound-Call-ID">>, JObj)
-                         ,kz_json:set_values([{<<"Outbound-Call-ID">>, LoopbackId}
-                                             ,{[<<"Custom-Channel-Vars">>, <<"Outbound-Call-ID">>], OutboundId}
-                                             ]
-                                            ,Loopback
-                                            )
-                         ),
-    {ConferenceNode, ConferenceId, JObj, [{LoopbackId, Resp} | Resps]}.
+    Endpoint = kz_json:set_values([{<<"Outbound-Call-ID">>, LoopbackId}
+                                  ,{[<<"Custom-Channel-Vars">>, <<"Outbound-Call-ID">>], OutboundId}
+                                  ]
+                                 ,Loopback
+                                 ),
+    exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, kz_json:delete_key(<<"Outbound-Call-ID">>, JObj), Resps}).
 
 -spec success_resp(ne_binary(), ne_binary()) -> kz_proplist().
 success_resp(EndpointId, Resp) ->
@@ -309,7 +307,7 @@ handle_responses(JObj, Responses) ->
 
 handle_response(JObj, {LoopbackCallId, Resp}) ->
     BuiltResp =
-        case wait_for_bowout(LoopbackCallId, kz_json:get_integer_value(<<"Timeout">>, JObj)) of
+        case wait_for_bowout(LoopbackCallId, kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND) of
             'ok' -> Resp;
             {'ok', DialResp} -> props:set_value(<<"Message">>, DialResp, Resp);
             {'error', 'timeout'} -> props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
@@ -319,8 +317,8 @@ handle_response(JObj, {LoopbackCallId, Resp}) ->
      |BuiltResp
     ].
 
-wait_for_bowout(<<?LB_ALEG_PREFIX, _/binary>>, _Timeout) -> 'ok';
 wait_for_bowout(LoopbackCallId, Timeout) ->
+    lager:debug("waiting ~p for ~s", [Timeout, LoopbackCallId]),
     Start = os:timestamp(),
     receive
         {'event', [LoopbackCallId | Props]} ->
