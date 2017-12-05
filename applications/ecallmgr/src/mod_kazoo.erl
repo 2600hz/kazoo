@@ -46,8 +46,6 @@
 -export([sync_channel/2]).
 -export([no_legacy/1]).
 
--export([sync_channel/2]).
-
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
