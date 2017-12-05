@@ -298,7 +298,7 @@ multi_search(Context, Type, [_|Props], Acc) ->
 %%--------------------------------------------------------------------
 -spec maybe_normalize_value(ne_binary(), ne_binary()) -> ne_binary().
 maybe_normalize_value(<<"account">>, Value) ->
-    kz_term:to_lower_binary(Value);
+    cb_modules_util:normalize_alpha_num_name(Value);
 maybe_normalize_value(_, Value) ->
     Value.
 
