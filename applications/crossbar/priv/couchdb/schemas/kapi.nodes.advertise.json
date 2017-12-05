@@ -6,6 +6,9 @@
         "Channels": {
             "type": "string"
         },
+        "Conferences": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "nodes"
