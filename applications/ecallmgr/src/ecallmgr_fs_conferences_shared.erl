@@ -167,7 +167,7 @@ handle_dial_req(JObj, _Props) ->
     clear_mailbox().
 
 clear_mailbox() ->
-    receive Msg -> lager:debug("msg: ~p", [Msg]), clear_mailbox()
+    receive Msg -> lager:debug("mb msg: ~p", [Msg]), clear_mailbox()
     after 1990 -> lager:debug("mailbox is empty")
     end.
 
@@ -310,15 +310,20 @@ handle_response(JObj, {LoopbackCallId, Resp}) ->
         of
             'ok' -> Resp;
             {'ok', DialResp} -> props:set_value(<<"Message">>, DialResp, Resp);
-            {'error', 'timeout'} -> props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
+            {'ok', CallId, DialResp} ->
+                props:set_values([{<<"Message">>, DialResp}
+                                 ,{<<"Call-ID">>, CallId}
+                                 ]
+                                ,Resp
+                                );
+            {'error', 'timeout'} ->
+                props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
             {'error', E} -> props:set_value(<<"Message">>, E, Resp)
         end,
-    [{<<"Call-ID">>, LoopbackCallId}
-     |BuiltResp
-    ].
+    props:insert_value(<<"Call-ID">>, LoopbackCallId, BuiltResp).
 
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
-    lager:debug("waiting ~p for ~s", [Timeout, LoopbackALeg]),
+    lager:debug("waiting ~p for ~s and ~s", [Timeout, LoopbackALeg, LoopbackBLeg]),
     Start = kz_time:now_s(),
     receive
         {'event', [LoopbackALeg | Props]} ->
@@ -339,6 +344,8 @@ handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
     of
         {LoopbackALeg, <<"CHANNEL_DESTROY">>} ->
             handle_loopback_destroy(LoopbackALeg, kzd_freeswitch:hangup_cause(Props));
+        {LoopbackBLeg, <<"CHANNEL_DESTROY">>} ->
+            handle_loopback_destroy(LoopbackBLeg, kzd_freeswitch:hangup_cause(Props));
         {LoopbackALeg, <<"CHANNEL_CREATE">>} ->
             handle_create(LoopbackALeg, Timeout, Start, Props);
         {_CallId, _Evt} ->
@@ -346,7 +353,7 @@ handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
             wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
     end.
 
-handle_create(LoopbackALeg, Timeout, Start, Props) ->
+handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, Start, Props) ->
     case {kzd_freeswitch:other_leg_call_id(Props)
          ,kzd_freeswitch:loopback_other_leg(Props)
          }
@@ -362,7 +369,10 @@ handle_create(LoopbackALeg, Timeout, Start, Props) ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
             wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
-    end.
+    end;
+handle_create(ALeg, _Timeout, _Start, _Props) ->
+    lager:debug("dial started to ~s", [ALeg]),
+    {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>}.
 
 handle_loopback_destroy(_LoopbackALeg, <<"NORMAL_UNSPECIFIED">>) ->
     lager:debug("~s went down", [_LoopbackALeg]);
@@ -377,13 +387,13 @@ handle_bowout(LoopbackALeg, _LoopbackBLeg, Props) ->
     of
         {LoopbackId, LoopbackId} ->
             lager:debug("call id after bowout remains the same"),
-            {'ok', <<"dial resulted in call id ", LoopbackId/binary>>};
+            {'ok', LoopbackId, <<"dial resulted in call id ", LoopbackId/binary>>};
         {LoopbackId, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("~s acquired as ~s", [LoopbackId, AcquiringUUID]),
-            {'ok', <<"dial resulted in call id ", AcquiringUUID/binary>>};
+            {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
-            {'ok', <<"dial resulted in call id ", LoopbackALeg/binary>>}
+            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>}
     end.
 
 register_for_events(ConferenceNode, EndpointCallId) ->
