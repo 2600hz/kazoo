@@ -171,6 +171,25 @@ Sometimes you want to create ad-hoc conferences and put a participant in there. 
 
 These properties will be merged into a "default" conference document and then executed the same as if the conference was preconfigured.
 
+##### The API response
+
+```json
+{
+    "data": {
+        "endpoint_responses": [
+            {
+                "call_id": "522bb682-da03-11e7-8ce9-5364ba916f96",
+                "endpoint_id": "{ENDPOINT_FROM_REQUEST}",
+                "job_id": "137b1e9e-d9fb-11e7-8cad-5364ba916f96",
+                "message": "dial resulted in call id 522bb682-da03-11e7-8ce9-5364ba916f96",
+                "status": "success"
+            }
+        ]
+    }
+    ,...
+}
+```
+
 ##### Playing media to a conference
 
 Playing a media file to everyone in a conference:
