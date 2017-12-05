@@ -196,7 +196,15 @@ handle_conference_error(JObj, Props) ->
 init([Call]) ->
     process_flag('trap_exit', 'true'),
     kapps_call:put_callid(Call),
+    _ = start_sanity_check_timer(),
     {'ok', #participant{call=Call}}.
+
+-spec start_sanity_check_timer() -> reference().
+-spec start_sanity_check_timer(pos_integer()) -> reference().
+start_sanity_check_timer() ->
+    start_sanity_check_timer(kapps_config:get_integer(?CONFIG_CAT, <<"participant_sanity_check_ms">>, ?MILLISECONDS_IN_MINUTE)).
+start_sanity_check_timer(Timeout) ->
+    erlang:send_after(Timeout, self(), 'sanity_check').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -319,7 +327,16 @@ handle_info({'EXIT', Consumer, _R}, #participant{call_event_consumers=Consumers}
     lager:debug("call event consumer ~p died: ~p", [Consumer, _R]),
     Cs = [C || C <- Consumers, C =/= Consumer],
     {'noreply', P#participant{call_event_consumers=Cs}, 'hibernate'};
+handle_info('sanity_check', #participant{call=Call}=State) ->
+    _ = case kapps_call_command:b_channel_status(Call) of
+            {'ok', _} -> start_sanity_check_timer();
+            {'error', 'not_found'} ->
+                lager:info("channel not found, going down"),
+                gen_listener:cast(self(), 'hungup')
+        end,
+    {'noreply', State};
 handle_info(_Msg, Participant) ->
+    lager:debug("unhandled message ~p", [_Msg]),
     {'noreply', Participant}.
 
 %%--------------------------------------------------------------------
