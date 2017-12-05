@@ -406,7 +406,9 @@ start_call_handlers(Node, JObj, CallId) ->
     CCVs = kz_json:new(),
 
     _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
+    lager:debug("started event listener ~p", [_Evt]),
     CtlPid = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
+    lager:debug("started control listener ~p", [CtlPid]),
 
     get_control_queue(CtlPid).
 
@@ -414,14 +416,18 @@ start_call_handlers(Node, JObj, CallId) ->
 get_control_queue(CtlPid) ->
     try ecallmgr_call_control:queue_name(CtlPid) of
         'undefined' ->
+            lager:debug("no control queue yet for ~p", [CtlPid]),
             timer:sleep(?MILLISECONDS_IN_SECOND),
             get_control_queue(CtlPid);
-        CtlQueue -> CtlQueue
+        CtlQueue ->
+            lager:dbug("got control queue ~s", [CtlQueue]),
+            CtlQueue
     catch
         'exit':{'timeout', {_M, _F, _A}} ->
             lager:info("control proc ~p timed out getting control queue"),
             'undefined';
         _E:_R ->
+            lager:debug("failed to get queue ~s: ~p", [_E, _R]),
             timer:sleep(?MILLISECONDS_IN_SECOND),
             get_control_queue(CtlPid)
     end.

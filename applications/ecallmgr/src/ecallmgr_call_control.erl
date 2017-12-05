@@ -152,9 +152,9 @@ hostname(Srv) ->
     [_, Hostname] = binary:split(kz_term:to_binary(Node), <<"@">>),
     Hostname.
 
--spec queue_name(pid() | 'undefined') -> api_binary().
-queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv);
-queue_name(_) -> 'undefined'.
+-spec queue_name(api_pid()) -> api_ne_binary().
+queue_name('undefined') -> 'undefined';
+queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv).
 
 -spec other_legs(pid()) -> ne_binaries().
 other_legs(Srv) ->
