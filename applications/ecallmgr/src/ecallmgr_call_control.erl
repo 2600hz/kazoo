@@ -91,8 +91,8 @@
                ,sanity_check_tref :: api_reference()
                ,msg_id :: api_binary()
                ,fetch_id :: api_binary()
-               ,controller_q :: api_binary()
-               ,control_q :: api_binary()
+               ,controller_q :: api_ne_binary()
+               ,control_q :: api_ne_binary()
                ,initial_ccvs :: kz_json:object()
                ,node_down_tref :: api_reference()
                }).
@@ -110,7 +110,8 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), ne_binary(), api_binary(), api_binary(), kz_json:object()) -> startlink_ret().
+-spec start_link(atom(), ne_binary(), api_ne_binary(), api_ne_binary(), kz_json:object()) ->
+                        startlink_ret().
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
@@ -130,7 +131,8 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ]
-                           ,[Node, CallId, FetchId, ControllerQ, CCVs]).
+                           ,[Node, CallId, FetchId, ControllerQ, CCVs]
+                           ).
 
 -spec stop(pid()) -> 'ok'.
 stop(Srv) ->
@@ -264,22 +266,12 @@ handle_cast({'event_execute_complete', CallId, AppName, JObj}
     {'noreply', handle_execute_complete(AppName, JObj, State)};
 handle_cast({'event_execute_complete', _, _, _}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener', {'created_queue', _}}
-           ,#state{controller_q='undefined'}=State
-           ) ->
-    lager:debug("call control got created_queue but controller is undefined"),
-    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{control_q=Q}};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
            ,#state{controller_q='undefined'}=State
            ) ->
     lager:debug("call control got is_consuming but controller is undefined"),
-    {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
-           ,#state{control_q='undefined'}=State
-           ) ->
-    lager:debug("call control got is_consuming but control_q is undefined"),
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     call_control_ready(State),

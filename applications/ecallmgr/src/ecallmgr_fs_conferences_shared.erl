@@ -163,12 +163,6 @@ handle_dial_req(JObj, _Props) ->
             maybe_start_conference(JObj, ConferenceId);
         {'ok', ConferenceNode} ->
             maybe_exec_dial(ConferenceNode, ConferenceId, JObj)
-    end,
-    clear_mailbox().
-
-clear_mailbox() ->
-    receive Msg -> lager:debug("mb msg: ~p", [Msg]), clear_mailbox()
-    after 1990 -> lager:debug("mailbox is empty")
     end.
 
 -spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
@@ -191,9 +185,10 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     EPResps = exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints),
     LBResps = exec_loopbacks(ConferenceNode, ConferenceId, JObj, Loopbacks),
 
-    handle_responses(JObj, EPResps ++ LBResps).
+    handle_responses(ConferenceNode, JObj, EPResps ++ LBResps).
 
--type exec_responses() :: [{ne_binary(), kz_proplist()}].
+-type exec_response() :: {ne_binary(), kz_proplist()}.
+-type exec_responses() :: [exec_responses()].
 -spec exec_endpoints(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
                             exec_responses().
 exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
@@ -229,7 +224,6 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
     of
         {'ok', Resp} ->
             lager:info("starting dial resulted in ~s", [Resp]),
-            add_participant(ConferenceId, EndpointCallId),
             {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, success_resp(EndpointId, Resp)} | Resps]};
         _E ->
             lager:info("failed to exec: ~p", [_E]),
@@ -292,16 +286,18 @@ error_resp(EndpointId, Error) ->
     ,{<<"Endpoint-ID">>, EndpointId}
     ].
 
-handle_responses(JObj, Responses) ->
+-spec handle_responses(atom(), kz_json:object(), exec_responses()) -> 'ok'.
+handle_responses(ConferenceNode, JObj, Responses) ->
     lager:debug("handling responses ~p", [Responses]),
-    BaseResponses = [kz_json:from_list(handle_response(JObj, Response))
+    BaseResponses = [kz_json:from_list(handle_response(ConferenceNode, JObj, Response))
                      || Response <- Responses,
                         'undefined' =/= Response
                     ],
 
     publish_resp(JObj, BaseResponses).
 
-handle_response(JObj, {LoopbackCallId, Resp}) ->
+-spec handle_response(atom(), kz_json:object(), exec_response()) -> kz_proplist().
+handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
     BuiltResp =
         case wait_for_bowout(LoopbackCallId
                             ,'undefined'
@@ -311,6 +307,8 @@ handle_response(JObj, {LoopbackCallId, Resp}) ->
             'ok' -> Resp;
             {'ok', DialResp} -> props:set_value(<<"Message">>, DialResp, Resp);
             {'ok', CallId, DialResp} ->
+                ControlQueue = start_call_handlers(ConferenceNode, JObj, CallId),
+                add_participant(JObj, CallId, ControlQueue),
                 props:set_values([{<<"Message">>, DialResp}
                                  ,{<<"Call-ID">>, CallId}
                                  ]
@@ -349,7 +347,6 @@ handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
         {LoopbackALeg, <<"CHANNEL_CREATE">>} ->
             handle_create(LoopbackALeg, Timeout, Start, Props);
         {_CallId, _Evt} ->
-            lager:debug("ignoring event ~s for ~s: ~p", [_Evt, _CallId, Props]),
             wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
     end.
 
@@ -403,9 +400,39 @@ register_for_events(ConferenceNode, EndpointCallId) ->
          ],
     lager:debug("gproc: ~p", [_G]).
 
-add_participant(ConferenceId, EndpointId) ->
-    Req = [{<<"Conference-ID">>, ConferenceId}
+-spec start_call_handlers(atom(), kz_json:object(), ne_binary()) -> api_ne_binary().
+start_call_handlers(Node, JObj, CallId) ->
+    FetchId = kz_api:msg_id(JObj),
+    CCVs = kz_json:new(),
+
+    _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
+    CtlPid = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
+
+    get_control_queue(CtlPid).
+
+-spec get_control_queue(pid()) -> api_ne_binary().
+get_control_queue(CtlPid) ->
+    try ecallmgr_call_control:queue_name(CtlPid) of
+        'undefined' ->
+            timer:sleep(?MILLISECONDS_IN_SECOND),
+            get_control_queue(CtlPid);
+        CtlQueue -> CtlQueue
+    catch
+        'exit':{'timeout', {_M, _F, _A}} ->
+            lager:info("control proc ~p timed out getting control queue"),
+            'undefined';
+        _E:_R ->
+            timer:sleep(?MILLISECONDS_IN_SECOND),
+            get_control_queue(CtlPid)
+    end.
+
+-spec add_participant(kz_json:object(), ne_binary(), api_ne_binary()) -> 'ok'.
+add_participant(_JObj, _EndpointId, 'undefined') ->
+    lager:info("not adding participant, no control queue");
+add_participant(JObj, EndpointId, ControlQueue) ->
+    Req = [{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj)}
           ,{<<"Call-ID">>, EndpointId}
+          ,{<<"Control-Queue">>, ControlQueue}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun(P) -> kapi_conference:publish_add_participant(kz_config:zone('binary'), P) end).
