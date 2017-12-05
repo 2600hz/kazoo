@@ -49,6 +49,8 @@
 
 -define(PUT_ACTION, <<"action">>).
 
+-define(MIN_DIGITS_FOR_DID, 5).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -535,7 +537,9 @@ build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call, Context, Element}) 
             {Endpoints, Call, Context, Element+1}
     end;
 build_endpoint(Number, {Endpoints, Call, Context, Element}=Acc) ->
-    case knm_converters:is_reconcilable(Number) of
+    case knm_converters:is_reconcilable(Number)
+        orelse byte_size(Number) < ?MIN_DIGITS_FOR_DID
+    of
         'true' -> build_number_endpoint(Number, Acc);
         'false' ->
             {Endpoints, Call
