@@ -307,8 +307,7 @@ handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
             'ok' -> Resp;
             {'ok', DialResp} -> props:set_value(<<"Message">>, DialResp, Resp);
             {'ok', CallId, DialResp} ->
-                ControlQueue = start_call_handlers(ConferenceNode, JObj, CallId),
-                add_participant(JObj, CallId, ControlQueue),
+                _ = (catch add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId))),
                 props:set_values([{<<"Message">>, DialResp}
                                  ,{<<"Call-ID">>, CallId}
                                  ]
@@ -407,27 +406,34 @@ start_call_handlers(Node, JObj, CallId) ->
 
     _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
     lager:debug("started event listener ~p", [_Evt]),
-    CtlPid = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
+    {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
     lager:debug("started control listener ~p", [CtlPid]),
 
     get_control_queue(CtlPid).
 
 -spec get_control_queue(pid()) -> api_ne_binary().
 get_control_queue(CtlPid) ->
-    try ecallmgr_call_control:queue_name(CtlPid) of
+    try erlang:is_process_alive(CtlPid)
+             andalso ecallmgr_call_control:queue_name(CtlPid)
+    of
+        'false' ->
+            lager:debug("control proc has disappeared"),
+            'undefined';
         'undefined' ->
             lager:debug("no control queue yet for ~p", [CtlPid]),
             timer:sleep(?MILLISECONDS_IN_SECOND),
             get_control_queue(CtlPid);
         CtlQueue ->
-            lager:dbug("got control queue ~s", [CtlQueue]),
+            lager:debug("got control queue ~s", [CtlQueue]),
             CtlQueue
     catch
         'exit':{'timeout', {_M, _F, _A}} ->
             lager:info("control proc ~p timed out getting control queue"),
             'undefined';
         _E:_R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("failed to get queue ~s: ~p", [_E, _R]),
+            kz_util:log_stacktrace(ST),
             timer:sleep(?MILLISECONDS_IN_SECOND),
             get_control_queue(CtlPid)
     end.
@@ -441,6 +447,7 @@ add_participant(JObj, EndpointId, ControlQueue) ->
           ,{<<"Control-Queue">>, ControlQueue}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
+    lager:debug("adding participant for ~s", [EndpointId]),
     kz_amqp_worker:cast(Req, fun(P) -> kapi_conference:publish_add_participant(kz_config:zone('binary'), P) end).
 
 -spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
