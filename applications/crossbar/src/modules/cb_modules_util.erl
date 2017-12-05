@@ -34,7 +34,7 @@
 
         ,normalize_media_upload/5
 
-        ,normalize_alpha_num_name/1
+        ,normalize_alphanum_name/1
         ]).
 
 -include("crossbar.hrl").
@@ -737,12 +737,12 @@ handle_normalized_upload(Context, FileJObj, ToExt, {'error', _R}) ->
     UpdatedContext = cb_context:set_doc(Context, UpdatedDoc),
     {UpdatedContext, FileJObj}.
 
--spec normalize_alpha_num_name(api_ne_binary() | cb_context:context()) -> cb_context:context() | api_binary().
-normalize_alpha_num_name('undefined') ->
+-spec normalize_alphanum_name(api_binary() | cb_context:context()) -> cb_context:context() | api_binary().
+normalize_alphanum_name('undefined') ->
     'undefined';
-normalize_alpha_num_name(?NE_BINARY=Name) ->
+normalize_alphanum_name(Name) when is_binary(Name) ->
     re:replace(kz_term:to_lower_binary(Name), <<"[^a-z0-9]">>, <<>>, [global, {return, binary}]);
-normalize_alpha_num_name(Context) ->
+normalize_alphanum_name(Context) ->
     Doc = cb_context:doc(Context),
     Name = kz_json:get_ne_binary_value(<<"name">>, Doc),
-    cb_context:set_doc(Context, kz_json:set_value(<<"pvt_alphanum_name">>, normalize_alpha_num_name(Name), Doc)).
+    cb_context:set_doc(Context, kz_json:set_value(<<"pvt_alphanum_name">>, normalize_alphanum_name(Name), Doc)).

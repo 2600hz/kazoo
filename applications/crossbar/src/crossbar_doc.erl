@@ -54,6 +54,7 @@
                   ,fun add_pvt_modified/2
                   ,fun add_pvt_request_id/2
                   ,fun add_pvt_auth/2
+                  ,fun add_pvt_alphanum_name/2
                   ]).
 
 -define(PAGINATION_PAGE_SIZE
@@ -1247,6 +1248,27 @@ add_pvt_auth(JObj, Context) ->
                        ]),
             kz_json:set_values(Values, JObj)
     end.
+
+-spec add_pvt_alphanum_name(kz_json:object(), cb_context:context()) -> kz_json:object().
+add_pvt_alphanum_name(JObj, Context) ->
+    add_pvt_alphanum_name(JObj, Context, kz_json:get_value(<<"name">>, JObj), kz_doc:type(JObj)).
+
+-spec add_pvt_alphanum_name(kz_json:object(), cb_context:context(), api_binary(), ne_binary()) -> kz_json:object().
+add_pvt_alphanum_name(JObj, _, 'undefined', <<"user">>) ->
+    Name = case {kz_json:get_ne_binary_value(<<"first_name">>, JObj)
+                ,kz_json:get_ne_binary_value(<<"last_name">>, JObj)
+                }
+           of
+               {'undefined', 'undefined'} -> 'undefined';
+               {'undefined', LastName} -> LastName;
+               {FirstName, 'undefined'} -> FirstName;
+               {FirstName, LastName} -> <<FirstName/binary, LastName/binary>>
+           end,
+    kz_json:set_value(<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name), JObj);
+add_pvt_alphanum_name(JObj, _, 'undefined', _) ->
+    JObj;
+add_pvt_alphanum_name(JObj, _, Name, _) ->
+    kz_json:set_value(<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name), JObj).
 
 %%--------------------------------------------------------------------
 %% @private
