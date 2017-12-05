@@ -212,18 +212,14 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
 -spec exec_endpoint(kz_json:object(), exec_acc()) -> exec_acc().
 exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
     EndpointCallId = kz_json:find(<<"Outbound-Call-ID">>, [Endpoint, JObj], kz_binary:rand_hex(16)),
-    EndpointId = kz_json:get_first_defined([<<"Endpoint-ID">>
+    EndpointId = kz_json:get_first_defined([<<"Route">>
+                                           ,<<"Endpoint-ID">>
                                            ,[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
-                                           ,<<"Route">>
                                            ]
                                           ,Endpoint
                                           ),
     lager:debug("endpoint ~s(~s): ~p", [EndpointId, EndpointCallId, Endpoint]),
-    _G = [(catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(ConferenceNode, EndpointCallId)}))
-         ,(catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, EndpointCallId)}))
-         ,(catch gproc:reg({'p', 'l', ?LOOPBACK_BOWOUT_REG(EndpointCallId)}))
-         ],
-    lager:debug("gproc: ~p", [_G]),
+    register_for_events(ConferenceNode, EndpointCallId),
 
     try ecallmgr_conference_command:dial(ConferenceNode
                                         ,ConferenceId
@@ -307,7 +303,11 @@ handle_responses(JObj, Responses) ->
 
 handle_response(JObj, {LoopbackCallId, Resp}) ->
     BuiltResp =
-        case wait_for_bowout(LoopbackCallId, kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND) of
+        case wait_for_bowout(LoopbackCallId
+                            ,'undefined'
+                            ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
+                            )
+        of
             'ok' -> Resp;
             {'ok', DialResp} -> props:set_value(<<"Message">>, DialResp, Resp);
             {'error', 'timeout'} -> props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
@@ -317,48 +317,81 @@ handle_response(JObj, {LoopbackCallId, Resp}) ->
      |BuiltResp
     ].
 
-wait_for_bowout(LoopbackCallId, Timeout) ->
-    lager:debug("waiting ~p for ~s", [Timeout, LoopbackCallId]),
-    Start = os:timestamp(),
+wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
+    lager:debug("waiting ~p for ~s", [Timeout, LoopbackALeg]),
+    Start = kz_time:now_s(),
     receive
-        {'event', [LoopbackCallId | Props]} ->
-            handle_event(LoopbackCallId, Timeout, Start, Props);
+        {'event', [LoopbackALeg | Props]} ->
+            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
+        {'event', [LoopbackBLeg | Props]} ->
+            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
         ?LOOPBACK_BOWOUT_MSG(_Node, Props) ->
-            handle_bowout(LoopbackCallId, Props)
+            handle_bowout(LoopbackALeg, LoopbackBLeg, Props)
     after Timeout ->
+            lager:info("timed out waiting for ~s", [LoopbackALeg]),
             {'error', 'timeout'}
     end.
 
-handle_event(LoopbackCallId, Timeout, Start, Props) ->
-    case props:get_first_defined([<<"Event-Subclass">>, <<"Event-Name">>], Props) of
-        <<"CHANNEL_DESTROY">> ->
-            handle_loopback_destroy(LoopbackCallId, kzd_freeswitch:hangup_cause(Props));
-        _Evt ->
-            lager:debug("ignoring event ~s for ~s: ~p", [_Evt, LoopbackCallId, Props]),
-            wait_for_bowout(LoopbackCallId, kz_time:decr_timeout(Timeout, Start))
+handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
+    case {kzd_freeswitch:call_id(Props)
+         ,kzd_freeswitch:event_name(Props)
+         }
+    of
+        {LoopbackALeg, <<"CHANNEL_DESTROY">>} ->
+            handle_loopback_destroy(LoopbackALeg, kzd_freeswitch:hangup_cause(Props));
+        {LoopbackALeg, <<"CHANNEL_CREATE">>} ->
+            handle_create(LoopbackALeg, Timeout, Start, Props);
+        {_CallId, _Evt} ->
+            lager:debug("ignoring event ~s for ~s: ~p", [_Evt, _CallId, Props]),
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
     end.
 
-handle_loopback_destroy(_LoopbackCallId, <<"NORMAL_UNSPECIFIED">>) ->
-    lager:debug("~s went down", [_LoopbackCallId]);
-handle_loopback_destroy(_LoopbackCallId, HangupCause) ->
-    lager:info("~s went down with ~s", [_LoopbackCallId, HangupCause]),
+handle_create(LoopbackALeg, Timeout, Start, Props) ->
+    case {kzd_freeswitch:other_leg_call_id(Props)
+         ,kzd_freeswitch:loopback_other_leg(Props)
+         }
+    of
+        {'undefined', 'undefined'} ->
+            lager:debug("~s created", [LoopbackALeg]),
+            wait_for_bowout(LoopbackALeg, 'undefined', kz_time:decr_timeout(Timeout, Start));
+        {'undefined', LoopbackBLeg} ->
+            lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
+            register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start));
+        {LoopbackBLeg, _} ->
+            lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
+            register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
+    end.
+
+handle_loopback_destroy(_LoopbackALeg, <<"NORMAL_UNSPECIFIED">>) ->
+    lager:debug("~s went down", [_LoopbackALeg]);
+handle_loopback_destroy(_LoopbackALeg, HangupCause) ->
+    lager:info("~s went down with ~s", [_LoopbackALeg, HangupCause]),
     {'error', <<"failed to start call: ", HangupCause/binary>>}.
 
-handle_bowout(LoopbackId, Props) ->
+handle_bowout(LoopbackALeg, _LoopbackBLeg, Props) ->
     case {props:get_value(?RESIGNING_UUID, Props)
          ,props:get_value(?ACQUIRED_UUID, Props)
          }
     of
         {LoopbackId, LoopbackId} ->
             lager:debug("call id after bowout remains the same"),
-            LoopbackId;
+            {'ok', <<"dial resulted in call id ", LoopbackId/binary>>};
         {LoopbackId, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("~s acquired as ~s", [LoopbackId, AcquiringUUID]),
             {'ok', <<"dial resulted in call id ", AcquiringUUID/binary>>};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
-            LoopbackId
+            {'ok', <<"dial resulted in call id ", LoopbackALeg/binary>>}
     end.
+
+register_for_events(ConferenceNode, EndpointCallId) ->
+    _G = [(catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(ConferenceNode, EndpointCallId)}))
+         ,(catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, EndpointCallId)}))
+         ,(catch gproc:reg({'p', 'l', ?LOOPBACK_BOWOUT_REG(EndpointCallId)}))
+         ],
+    lager:debug("gproc: ~p", [_G]).
 
 add_participant(ConferenceId, EndpointId) ->
     Req = [{<<"Conference-ID">>, ConferenceId}
