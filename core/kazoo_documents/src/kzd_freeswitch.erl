@@ -50,6 +50,7 @@
         ,fetch_uuid/1
         ,fetch_winning_pid/1
         ,switch_url/1, switch_uri/1
+        ,switch_nodename/1
         ]).
 
 -include("kz_documents.hrl").
@@ -459,24 +460,28 @@ fetch_winning_pid(Props) ->
 -spec switch_url(data()) -> api_binary().
 switch_url(Props) ->
     case props:get_first_defined([<<"Switch-URL">>, <<"variable_Switch-URL">>], Props) of
-        undefined -> props:get_first_defined([<<"variable_sofia_profile_url">>
-                                             ,<<"sofia_profile_url">>
-                                             ],Props);
+        'undefined' -> props:get_first_defined([<<"variable_sofia_profile_url">>
+                                               ,<<"sofia_profile_url">>
+                                               ],Props);
         SwitchURL -> SwitchURL
     end.
 
 -spec switch_uri(data()) -> api_binary().
 switch_uri(Props) ->
     case props:get_first_defined([<<"Switch-URI">>, <<"variable_Switch-URI">>], Props) of
-        undefined -> case switch_url(Props) of
-                         undefined -> undefined;
-                         SwitchURL -> case binary:split(SwitchURL, <<"@">>) of
-                                          [_, SwitchURIHost] -> <<"sip:", SwitchURIHost/binary>>;
-                                          _Else -> undefined
-                                      end
-                     end;
+        'undefined' -> case switch_url(Props) of
+                           'undefined' -> 'undefined';
+                           SwitchURL -> case binary:split(SwitchURL, <<"@">>) of
+                                            [_, SwitchURIHost] -> <<"sip:", SwitchURIHost/binary>>;
+                                            _Else -> 'undefined'
+                                        end
+                       end;
         SwitchURI -> SwitchURI
     end.
+
+-spec switch_nodename(data()) -> atom().
+switch_nodename(Props) ->
+    props:get_atom_value(<<"Switch-Nodename">>, Props).
 
 -spec hostname(data()) -> api_ne_binary().
 -spec hostname(data(), Default) -> ne_binary() | Default.
