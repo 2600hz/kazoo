@@ -309,15 +309,6 @@ maybe_normalize_value(_, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_start_key(cb_context:context(), ne_binary(), ne_binary()) -> ne_binaries().
-get_start_key(Context, <<"account">>=Type, Value) ->
-    StartKey = cb_context:req_value(Context, <<"start_key">>, Value),
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            AuthId = cb_context:auth_account_id(Context),
-            [AuthId, Type, StartKey];
-        AccountId ->
-            [AccountId, Type, StartKey]
-    end;
 get_start_key(Context, Type, Value) ->
     StartKey = cb_context:req_value(Context, <<"start_key">>, Value),
     case cb_context:account_id(Context) of
@@ -335,14 +326,6 @@ get_start_key(Context, Type, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_end_key(cb_context:context(), ne_binary(), binary()) -> ne_binaries().
-get_end_key(Context, <<"account">>=Type, Value) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            AuthId = cb_context:auth_account_id(Context),
-            [AuthId, Type, next_binary_key(Value)];
-        AccountId ->
-            [AccountId, Type, next_binary_key(Value)]
-    end;
 get_end_key(Context, Type, Value) ->
     case cb_context:account_id(Context) of
         'undefined' ->
