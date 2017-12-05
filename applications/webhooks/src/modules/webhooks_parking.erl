@@ -61,7 +61,7 @@ bindings_and_responders() ->
 handle(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    maybe_send_event(AccountId, format(JObj, AccountId)).
+    maybe_send_event(AccountId, format(JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -81,8 +81,9 @@ maybe_send_event(AccountId, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format(kz_json:object(), ne_binary()) -> kz_json:object().
-format(JObj, AccountId) ->
+-spec format(kz_json:object()) -> kz_json:object().
+format(JObj) ->
+    AccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     JObj1 = kz_json:set_value(<<"Account-ID">>, AccountId, JObj),
     RemoveKeys = [
                   <<"Node">>
