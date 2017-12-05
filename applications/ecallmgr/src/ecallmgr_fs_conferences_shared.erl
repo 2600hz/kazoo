@@ -380,11 +380,11 @@ handle_bowout(LoopbackALeg, _LoopbackBLeg, Props) ->
          ,props:get_value(?ACQUIRED_UUID, Props)
          }
     of
-        {LoopbackId, LoopbackId} ->
+        {LoopbackALeg, LoopbackALeg} ->
             lager:debug("call id after bowout remains the same"),
-            {'ok', LoopbackId, <<"dial resulted in call id ", LoopbackId/binary>>};
-        {LoopbackId, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
-            lager:debug("~s acquired as ~s", [LoopbackId, AcquiringUUID]),
+            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>};
+        {LoopbackALeg, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
+            lager:debug("~s acquired as ~s", [LoopbackALeg, AcquiringUUID]),
             {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
