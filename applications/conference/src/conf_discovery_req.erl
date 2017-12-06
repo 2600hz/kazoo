@@ -249,7 +249,7 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
     SwitchHostname = kapps_call:switch_hostname(Call),
     lager:debug("participant switch nodename ~p", [SwitchHostname]),
 
-    case kz_json:get_value(<<"Switch-Hostname">>, JObj) of
+    case kz_json:get_first_defined([<<"Switch-Hostname">>, <<"Media-Server">>], JObj) of
         SwitchHostname ->
             lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
             conf_participant:join_local(Srv);
