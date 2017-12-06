@@ -179,9 +179,7 @@ is_loopback(Endpoint) ->
 -spec maybe_exec_dial(atom(), ne_binary(), kz_json:object(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
-    _G = (catch gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(ConferenceNode, <<"conference::maintenance">>)})),
-
-    lager:debug("bound for conference events from ~s: ~p", [ConferenceNode, _G]),
+    _ = (catch gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(ConferenceNode, <<"conference::maintenance">>)})),
 
     EPResps = exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints),
     LBResps = exec_loopbacks(ConferenceNode, ConferenceId, JObj, Loopbacks),
@@ -205,6 +203,12 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
 
 -type exec_acc() :: {atom(), ne_binary(), kz_json:object(), exec_responses()}.
 
+update_endpoint(Endpoint, EndpointCallId) ->
+    Updates = [{fun kz_json:insert_value/3, <<"Outbound-Call-ID">>, EndpointCallId}
+              ,{fun kz_json:set_value/3, [<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], node()}
+              ],
+    lists:foldl(fun({F, K, V}, JObj) -> F(K, V, JObj) end, Endpoint, Updates).
+
 -spec exec_endpoint(kz_json:object(), exec_acc()) -> exec_acc().
 exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
     EndpointCallId = kz_json:find(<<"Outbound-Call-ID">>, [Endpoint, JObj], kz_binary:rand_hex(16)),
@@ -214,13 +218,13 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                            ]
                                           ,Endpoint
                                           ),
-    lager:debug("endpoint ~s(~s): ~p", [EndpointId, EndpointCallId, Endpoint]),
+    lager:debug("endpoint ~s(~s): ~p", [EndpointId, EndpointCallId]),
     register_for_events(ConferenceNode, EndpointCallId),
 
     try ecallmgr_conference_command:dial(ConferenceNode
                                         ,ConferenceId
                                         ,JObj
-                                        ,kz_json:insert_value(<<"Outbound-Call-ID">>, EndpointCallId, Endpoint)
+                                        ,update_endpoint(Endpoint, EndpointCallId)
                                         )
     of
         {'ok', Resp} ->
@@ -327,8 +331,11 @@ wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
             handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
         {'event', [LoopbackBLeg | Props]} ->
             handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
-        ?LOOPBACK_BOWOUT_MSG(_Node, Props) ->
-            handle_bowout(LoopbackALeg, LoopbackBLeg, Props)
+        ?LOOPBACK_BOWOUT_MSG(_Node, Props) when is_list(Props) ->
+            handle_bowout(LoopbackALeg, LoopbackBLeg, Props);
+        _Msg ->
+            lager:debug("waiting: ~p", [_Msg]),
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
     after Timeout ->
             lager:info("timed out waiting for ~s", [LoopbackALeg]),
             {'error', 'timeout'}
