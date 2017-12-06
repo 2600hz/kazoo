@@ -112,7 +112,7 @@ set_type(L, Type) ->
 %%--------------------------------------------------------------------
 -spec amount(ledger()) -> number().
 amount(Ledger) ->
-    kz_json:get_number_value(?AMOUNT, Ledger).
+    kz_json:get_number_value(?AMOUNT, Ledger, 0).
 
 -spec set_amount(ledger(), number()) -> ledger().
 set_amount(L, Amount) ->
