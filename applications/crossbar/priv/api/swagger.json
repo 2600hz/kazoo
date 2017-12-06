@@ -8092,6 +8092,9 @@
         "kapi.conference.add_participant": {
             "description": "AMQP API for conference.add_participant",
             "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
                 "Call-ID": {
                     "type": "string"
                 },
@@ -8258,6 +8261,9 @@
         "kapi.conference.dial": {
             "description": "AMQP API for conference.dial",
             "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
                 "Application-Name": {
                     "enum": [
                         "dial"
@@ -24233,7 +24239,7 @@
                     "type": "string"
                 },
                 "format_from_uri": {
-                    "description": "When set to true requests to this resource will have a re-formatted SIP From Header",
+                    "description": "When set to true requests to this resource will have a re-formated SIP From Header",
                     "type": "boolean"
                 },
                 "formatters": {
@@ -24342,7 +24348,7 @@
                                 "type": "boolean"
                             },
                             "format_from_uri": {
-                                "description": "When set to true requests to this resource gateway will have a re-formatted SIP From Header",
+                                "description": "When set to true requests to this resource gateway will have a re-formated SIP From Header",
                                 "type": "boolean"
                             },
                             "from_uri_realm": {

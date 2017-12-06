@@ -3,6 +3,9 @@
     "_id": "kapi.conference.add_participant",
     "description": "AMQP API for conference.add_participant",
     "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
         "Call-ID": {
             "type": "string"
         },
