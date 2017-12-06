@@ -293,7 +293,6 @@ error_resp(EndpointId, Error) ->
 
 -spec handle_responses(atom(), kz_json:object(), exec_responses()) -> 'ok'.
 handle_responses(ConferenceNode, JObj, Responses) ->
-    lager:debug("handling responses ~p", [Responses]),
     BaseResponses = [kz_json:from_list(handle_response(ConferenceNode, JObj, Response))
                      || Response <- Responses,
                         'undefined' =/= Response
@@ -409,9 +408,7 @@ start_call_handlers(Node, JObj, CallId) ->
     CCVs = kz_json:new(),
 
     _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
-    lager:debug("started event listener ~p", [_Evt]),
     {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
-    lager:debug("started control listener ~p", [CtlPid]),
 
     get_control_queue(CtlPid).
 
