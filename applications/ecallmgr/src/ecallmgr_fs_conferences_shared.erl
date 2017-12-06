@@ -218,7 +218,7 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                            ]
                                           ,Endpoint
                                           ),
-    lager:debug("endpoint ~s(~s): ~p", [EndpointId, EndpointCallId]),
+    lager:debug("endpoint ~s(~s)", [EndpointId, EndpointCallId]),
     register_for_events(ConferenceNode, EndpointCallId),
 
     try ecallmgr_conference_command:dial(ConferenceNode
