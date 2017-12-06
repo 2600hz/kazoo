@@ -452,7 +452,7 @@ add_participant(JObj, EndpointId, ControlQueue, EventProps) ->
                              ,{<<"Call-ID">>, EndpointId}
                              ,{<<"Control-Queue">>, ControlQueue}
                              ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
-                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                              | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)
                              ]
                             ,EventJObj
                             ),
