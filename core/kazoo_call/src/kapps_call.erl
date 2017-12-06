@@ -926,7 +926,14 @@ set_account_db(<<_/binary>> = AccountDb, #kapps_call{}=Call) ->
                                                                        ,account_id=AccountId
                                                                        }).
 
--spec account_db(call()) -> api_binary().
+-spec account_db(call()) -> api_ne_binary().
+account_db(#kapps_call{account_db='undefined'
+                      ,account_id='undefined'
+                      }) -> 'undefined';
+account_db(#kapps_call{account_db='undefined'
+                       ,account_id=AccountId
+                      }) ->
+    kz_util:format_account_db(AccountId);
 account_db(#kapps_call{account_db=AccountDb}) ->
     AccountDb.
 
