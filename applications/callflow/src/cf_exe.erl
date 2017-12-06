@@ -689,8 +689,8 @@ launch_cf_module(#state{call=Call
                        ,flow=Flow
                        ,cf_module_pid=OldPidRef
                        }=State) ->
-    Module = <<"cf_", (kz_json:get_value(<<"module">>, Flow))/binary>>,
-    Data = kz_json:get_value(<<"data">>, Flow, kz_json:new()),
+    Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
+    Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
 
     {PidRef, Action} =
         case maybe_start_cf_module(Module, Data, Call) of
@@ -709,7 +709,7 @@ launch_cf_module(#state{call=Call
                ,call=kapps_call:exec(Routines, Call)
                }.
 
--spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
+-spec maybe_start_cf_module(ne_binary(), kz_json:object(), kapps_call:call()) ->
                                    {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
@@ -737,7 +737,7 @@ cf_module_not_found(Call) ->
 %% point 'handle' having set the callid on the new process first
 %% @end
 %%--------------------------------------------------------------------
--spec spawn_cf_module(CFModule, list(), kapps_call:call()) ->
+-spec spawn_cf_module(CFModule, kz_json:object(), kapps_call:call()) ->
                              {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
@@ -746,7 +746,7 @@ spawn_cf_module(CFModule, Data, Call) ->
     }.
 
 %% @private
--spec cf_module_task(atom(), list(), kapps_call:call(), pid()) -> any().
+-spec cf_module_task(atom(), kz_json:object(), kapps_call:call(), pid()) -> any().
 cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
     kz_util:put_callid(kapps_call:call_id_direct(Call)),
