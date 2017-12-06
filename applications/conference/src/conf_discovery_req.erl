@@ -37,10 +37,9 @@ maybe_welcome_to_conference(Call, Srv, DiscoveryJObj) ->
 welcome_to_conference(Call, Srv, DiscoveryJObj) ->
     case kz_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
         'undefined' -> kapps_call_command:prompt(<<"conf-welcome">>, Call);
-        Media -> kapps_call_command:play(
-                   kz_media_util:media_path(Media, kapps_call:account_id(Call))
+        Media -> kapps_call_command:play(kz_media_util:media_path(Media, kapps_call:account_id(Call))
                                         ,Call
-                  )
+                                        )
     end,
     maybe_collect_conference_id(Call, Srv, DiscoveryJObj).
 
