@@ -103,11 +103,7 @@ validate(Context) ->
 
 validate(Context, ?MULTI) ->
     Type = cb_context:req_value(Context, <<"t">>),
-    Ctx = case cb_context:account_id(Context) of
-              'undefined' -> cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB);
-              _AccountId -> Context
-          end,
-    validate_multi(Ctx, Type).
+    validate_multi(Context, Type).
 
 %%%===================================================================
 %%% Internal functions
@@ -166,6 +162,8 @@ validate_search(Context, Type, Query, Value) ->
 validate_multi(Context, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}]),
     cb_context:add_validation_error(<<"t">>, <<"required">>, Message, Context);
+validate_multi(Context, <<"account">>=Type) ->
+    validate_multi(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type);
 validate_multi(Context, Type) ->
     case kz_json:to_proplist(cb_context:query_string(Context)) of
         [_|_]=Props -> validate_multi(Context, Type, Props);
@@ -309,15 +307,10 @@ maybe_normalize_value(_, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_start_key(cb_context:context(), ne_binary(), ne_binary()) -> ne_binaries().
+get_start_key(Context, <<"account">>=Type, Value) ->
+    [cb_context:auth_account_id(Context), Type, cb_context:req_value(Context, <<"start_key">>, Value)];
 get_start_key(Context, Type, Value) ->
-    StartKey = cb_context:req_value(Context, <<"start_key">>, Value),
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            AuthId = cb_context:auth_account_id(Context),
-            [AuthId, Type, StartKey];
-        _ ->
-            [Type, StartKey]
-    end.
+    [Type, cb_context:req_value(Context, <<"start_key">>, Value)].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -326,14 +319,10 @@ get_start_key(Context, Type, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_end_key(cb_context:context(), ne_binary(), binary()) -> ne_binaries().
-get_end_key(Context, Type, Value) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            AuthId = cb_context:auth_account_id(Context),
-            [AuthId, Type, next_binary_key(Value)];
-        _AccountId ->
-            [Type, next_binary_key(Value)]
-    end.
+get_end_key(Context, <<"account">>=Type, Value) ->
+    [cb_context:auth_account_id(Context), Type, next_binary_key(Value)];
+get_end_key(_, Type, Value) ->
+    [Type, next_binary_key(Value)].
 
 %%--------------------------------------------------------------------
 %% @private
