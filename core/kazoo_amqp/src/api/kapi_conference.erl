@@ -87,6 +87,7 @@
 
 -include_lib("amqp_util.hrl").
 -include("kapi_dialplan.hrl").
+-include("kapi_call.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
@@ -137,7 +138,9 @@
                                  ,<<"Conference-ID">>
                                  ,<<"Control-Queue">>
                                  ]).
--define(OPTIONAL_ADD_PARTICIPANT_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_ADD_PARTICIPANT_HEADERS, [<<"Account-ID">>
+                                               | ?OPTIONAL_CALL_EVENT_HEADERS
+                                          ]).
 -define(ADD_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                 ,{<<"Event-Name">>, <<"add_participant">>}
                                 ]).
