@@ -48,7 +48,7 @@
                 "  if (doc.pvt_deleted)",
                 "    return;",
                 "  for (i in doc.pvt_tree) {",
-                "    emit([doc.pvt_tree[i], doc.pvt_type, doc.realm], {",
+                "    emit([doc.pvt_tree[i], doc.pvt_type, doc.realm.toLowerCase().replace(/[^a-z0-9]/g, '')], {",
                 "      'id': doc._id,",
                 "      'descendants_count': doc.descendants_count || 0,",
                 "      'name': doc.name,",
