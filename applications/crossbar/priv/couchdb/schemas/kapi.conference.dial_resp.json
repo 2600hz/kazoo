@@ -9,6 +9,9 @@
             ],
             "type": "string"
         },
+        "Endpoint-Responses": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "conference"
@@ -20,23 +23,10 @@
                 "command"
             ],
             "type": "string"
-        },
-        "Job-ID": {
-            "type": "string"
-        },
-        "Message": {
-            "type": "string"
-        },
-        "Status": {
-            "enum": [
-                "success",
-                "error"
-            ],
-            "type": "string"
         }
     },
     "required": [
-        "Status"
+        "Endpoint-Responses"
     ],
     "type": "object"
 }

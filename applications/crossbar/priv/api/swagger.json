@@ -8325,6 +8325,9 @@
                     ],
                     "type": "string"
                 },
+                "Endpoint-Responses": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "conference"
@@ -8336,23 +8339,10 @@
                         "command"
                     ],
                     "type": "string"
-                },
-                "Job-ID": {
-                    "type": "string"
-                },
-                "Message": {
-                    "type": "string"
-                },
-                "Status": {
-                    "enum": [
-                        "success",
-                        "error"
-                    ],
-                    "type": "string"
                 }
             },
             "required": [
-                "Status"
+                "Endpoint-Responses"
             ],
             "type": "object"
         },
@@ -14242,6 +14232,9 @@
             "description": "AMQP API for nodes.advertise",
             "properties": {
                 "Channels": {
+                    "type": "string"
+                },
+                "Conferences": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -24240,7 +24233,7 @@
                     "type": "string"
                 },
                 "format_from_uri": {
-                    "description": "When set to true requests to this resource will have a re-formatted SIP From Header",
+                    "description": "When set to true requests to this resource will have a re-formated SIP From Header",
                     "type": "boolean"
                 },
                 "formatters": {
@@ -24349,7 +24342,7 @@
                                 "type": "boolean"
                             },
                             "format_from_uri": {
-                                "description": "When set to true requests to this resource gateway will have a re-formatted SIP From Header",
+                                "description": "When set to true requests to this resource gateway will have a re-formated SIP From Header",
                                 "type": "boolean"
                             },
                             "from_uri_realm": {
@@ -25912,6 +25905,11 @@
                 "number_timeout": {
                     "default": 5000,
                     "description": "conferences number timeout",
+                    "type": "integer"
+                },
+                "participant_sanity_check_ms": {
+                    "default": 60000,
+                    "description": "conferences participant_sanity_check_ms",
                     "type": "integer"
                 },
                 "pin_timeout": {
