@@ -33,7 +33,7 @@
                 "      'name': doc.name,",
                 "      'numbers': doc.numbers",
                 "    });",
-                "  if (doc.name) {",
+                "  } if (doc.name) {",
                 "    emit([doc.pvt_type, doc.name.toLowerCase().replace(/[^a-z0-9]/g, '')], {",
                 "      'id': doc._id,",
                 "      'name': doc.name,",
