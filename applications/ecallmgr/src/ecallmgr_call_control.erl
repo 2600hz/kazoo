@@ -200,7 +200,6 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
 
-    _ = gproc:reg({'p', 'l', 'call_control'}),
     _ = bind_to_events(Node, CallId),
 
     _ = reg_for_call_related_events(CallId),
@@ -654,6 +653,7 @@ forward_queue(#state{call_id = CallId
 %%--------------------------------------------------------------------
 -spec handle_sofia_replaced(ne_binary(), state()) -> state().
 handle_sofia_replaced(<<_/binary>> = CallId, #state{call_id=CallId}=State) ->
+    lager:debug("call id hasn't changed, no replacement necessary"),
     State;
 handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
                                                        ,node=Node
@@ -1190,9 +1190,9 @@ get_keep_alive_ref(#state{keep_alive_ref=TRef
 -spec bind_to_events(atom(), ne_binary()) -> 'true'.
 bind_to_events(Node, CallId) ->
     lager:debug("binding to call ~s events on node ~s", [CallId, Node]),
-    'true' = gproc:reg({'p', 'l', {'call_event', Node, CallId}}),
-    'true' = gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}),
-    'true' = gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}}).
+    'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
+    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_CREATE">>)}),
+    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DESTROY">>)}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1203,9 +1203,9 @@ bind_to_events(Node, CallId) ->
 -spec unbind_from_events(atom(), ne_binary()) -> 'true'.
 unbind_from_events(Node, CallId) ->
     lager:debug("unbinding from call ~s events on node ~s", [CallId, Node]),
-    _ = (catch gproc:unreg({'p', 'l', {'call_event', Node, CallId}})),
-    _ = (catch gproc:unreg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}})),
-    _ = (catch gproc:unreg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}})),
+    _ = (catch gproc:unreg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)})),
+    _ = (catch gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_CREATE">>)})),
+    _ = (catch gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DESTROY">>)})),
     'true'.
 
 -spec reg_for_call_related_events(ne_binary()) -> 'ok'.
