@@ -342,6 +342,15 @@ handle_info('sanity_check', #participant{call=Call}=State) ->
                 gen_listener:cast(self(), 'hungup')
         end,
     {'noreply', State};
+handle_info({'hungup', CallId}, #participant{call=Call}=Participant) ->
+    case kapps_call:call_id(Call) of
+        CallId ->
+            lager:debug("recv hungup for matching call id ~s", [CallId]),
+            {'stop', {'shutdown', 'hungup'}, Participant};
+        _NewCallId ->
+            lager:debug("recv hungup for old call id ~s, ignoring", [CallId]),
+            {'noreply', Participant}
+    end;
 handle_info(_Msg, Participant) ->
     lager:debug("unhandled message ~p", [_Msg]),
     {'noreply', Participant}.
@@ -363,7 +372,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
     of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             lager:debug("received channel hangup event, terminate"),
-            gen_listener:cast(Srv, 'hungup');
+            erlang:send_after(3 * ?MILLISECONDS_IN_SECOND, Srv, {'hungup', CallId});
         {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
             handle_channel_pivot(JObj, Call);
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, CallId} ->
