@@ -10807,6 +10807,9 @@
                     ],
                     "type": "string"
                 },
+                "Hangup-Cause": {
+                    "type": "string"
+                },
                 "Insert-At": {
                     "enum": [
                         "head",
