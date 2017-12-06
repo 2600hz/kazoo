@@ -239,7 +239,6 @@ build_load_range_params(Context, View, Options) ->
                 {StartTime, EndTime} ->
                     {StartKey, EndKey} = ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime),
                     Params = LoadMap#{end_time => EndTime
-                                     ,has_qs_filter => HasQSFilter
                                      ,mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
                                      ,start_key => StartKey
                                      ,start_time => StartTime
