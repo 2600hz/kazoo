@@ -158,7 +158,6 @@ non_reserved_ccvs(_CCVs, 'undefined') -> 'undefined';
 non_reserved_ccvs(CCVs, Keys) ->
     kz_json:filter(fun({K, _}) -> not lists:member(K, Keys) end, CCVs).
 
-
 -spec cavs(kz_json:object()) ->
                   api_object().
 cavs(JObj) ->
