@@ -407,7 +407,7 @@ start_call_handlers(Node, JObj, CallId) ->
     FetchId = kz_api:msg_id(JObj),
     CCVs = kz_json:new(),
 
-    _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
+    _ = kz_util:spawn(fun ecallmgr_call_sup:start_event_process/2, [Node, CallId]),
     {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
 
     get_control_queue(CtlPid).
