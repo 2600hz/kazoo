@@ -18,7 +18,7 @@
 -export([continue/1, continue/2]).
 -export([continue_with_flow/2]).
 -export([branch/2]).
--export([stop/1]).
+-export([stop/1, stop/2]).
 -export([hard_stop/1]).
 -export([transfer/1]).
 -export([control_usurped/1]).
@@ -172,11 +172,15 @@ remove_termination_handler(Call, {_,_,_}=Handler) ->
     remove_termination_handler(kapps_call:kvs_fetch('consumer_pid', Call), Handler).
 
 -spec stop(kapps_call:call() | pid()) -> 'ok'.
-stop(Srv) when is_pid(Srv) ->
-    gen_listener:cast(Srv, 'stop');
-stop(Call) ->
+-spec stop(kapps_call:call() | pid(), api_ne_binary()) -> 'ok'.
+stop(Srv) ->
+    stop(Srv, 'undefined').
+
+stop(Srv, Cause) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {'stop', Cause});
+stop(Call, Cause) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
-    stop(Srv).
+    stop(Srv, Cause).
 
 -spec hard_stop(kapps_call:call() | pid()) -> 'ok'.
 hard_stop(Srv) when is_pid(Srv) ->
@@ -445,9 +449,14 @@ handle_cast({'continue', Key}, #state{flow=Flow
         NewFlow ->
             {'noreply', launch_cf_module(State#state{flow=NewFlow})}
     end;
-handle_cast('stop', #state{flows=[]}=State) ->
+handle_cast({'stop', 'undefined'}, #state{flows=[]}=State) ->
     {'stop', 'normal', State};
-handle_cast('stop', #state{flows=[Flow|Flows]}=State) ->
+handle_cast({'stop', Cause}, #state{flows=[]
+                                   ,call=Call
+                                   }=State) ->
+    hangup_call(Call, Cause),
+    {'noreply', State};
+handle_cast({'stop', _Cause}, #state{flows=[Flow|Flows]}=State) ->
     {'noreply', launch_cf_module(State#state{flow=Flow, flows=Flows})};
 handle_cast('hard_stop', State) ->
     {'stop', 'normal', State};
@@ -683,7 +692,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec launch_cf_module(state()) -> state().
 launch_cf_module(#state{flow=?EMPTY_JSON_OBJECT}=State) ->
     lager:debug("no flow left to launch, maybe stopping"),
-    gen_listener:cast(self(), 'stop'),
+    stop(self()),
     State;
 launch_cf_module(#state{call=Call
                        ,flow=Flow
@@ -883,10 +892,14 @@ get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
 -spec hangup_call(kapps_call:call()) -> 'ok'.
+-spec hangup_call(kapps_call:call(), api_ne_binary()) -> 'ok'.
 hangup_call(Call) ->
+    hangup_call(Call, 'undefined').
+hangup_call(Call, Cause) ->
     Cmd = [{<<"Event-Name">>, <<"command">>}
           ,{<<"Event-Category">>, <<"call">>}
           ,{<<"Application-Name">>, <<"hangup">>}
+          ,{<<"Hangup-Cause">>, Cause}
           ,{<<"Insert-At">>, <<"tail">>}
           ],
     send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).

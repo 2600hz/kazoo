@@ -377,13 +377,17 @@
 %% Hangup
 %% Include the Other-Leg-Call-ID to only hangup the other leg
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>, <<"Other-Leg-Only">>]).
+-define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>
+                                     ,<<"Other-Leg-Only">>
+                                     ,<<"Hangup-Cause">>
+                                     ]).
 -define(HANGUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
                            ,{<<"Application-Name">>, <<"hangup">>}
                            ,?INSERT_AT_TUPLE
                            ]).
 -define(HANGUP_REQ_TYPES, [{<<"Other-Leg-Only">>, fun kz_term:is_boolean/1}
+                          ,{<<"Hangup-Cause">>, fun is_binary/1}
                           ]).
 
 %% Hold

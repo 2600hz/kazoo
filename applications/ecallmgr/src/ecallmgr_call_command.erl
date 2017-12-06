@@ -120,7 +120,7 @@ get_fs_app(_Node, _UUID, JObj, <<"playstop">>) ->
 
 get_fs_app(_Node, _UUID, JObj, <<"hangup">>) ->
     case kz_json:is_true(<<"Other-Leg-Only">>, JObj, 'false') of
-        'false' -> {<<"hangup">>, <<>>};
+        'false' -> {<<"hangup">>, kz_json:get_ne_binary_value(<<"Hangup-Cause">>, JObj, <<>>)};
         'true' ->  {<<"unbridge">>, <<>>}
     end;
 
