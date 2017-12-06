@@ -249,8 +249,10 @@ handle_cast('hungup', Participant) ->
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast('pivoted', Participant) ->
     {'stop', 'normal', Participant};
-handle_cast({'channel_replaced', NewCallId}, #participant{call=Call}=Participant) ->
-    kapps_call:put_callid(NewCallId),
+handle_cast({'channel_replaced', NewCallId}
+           ,#participant{call=Call}=Participant
+           ) ->
+    kz_util:put_callid(NewCallId),
     NewCall = kapps_call:set_call_id(NewCallId, Call),
     lager:info("updated call to use ~s instead", [NewCallId]),
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
@@ -372,7 +374,8 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
     of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             lager:debug("received channel hangup event, maybe terminating"),
-            erlang:send_after(3 * ?MILLISECONDS_IN_SECOND, Srv, {'hungup', CallId});
+            _Ref = erlang:send_after(3 * ?MILLISECONDS_IN_SECOND, Srv, {'hungup', CallId}),
+            'ok';
         {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
             handle_channel_pivot(JObj, Call);
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, CallId} ->

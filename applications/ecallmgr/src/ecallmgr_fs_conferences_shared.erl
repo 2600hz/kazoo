@@ -187,7 +187,7 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     handle_responses(ConferenceNode, JObj, EPResps ++ LBResps).
 
 -type exec_response() :: {ne_binary(), kz_proplist()}.
--type exec_responses() :: [exec_responses()].
+-type exec_responses() :: [exec_response()].
 -spec exec_endpoints(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
                             exec_responses().
 exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
@@ -294,8 +294,7 @@ error_resp(EndpointId, Error) ->
 -spec handle_responses(atom(), kz_json:object(), exec_responses()) -> 'ok'.
 handle_responses(ConferenceNode, JObj, Responses) ->
     BaseResponses = [kz_json:from_list(handle_response(ConferenceNode, JObj, Response))
-                     || Response <- Responses,
-                        'undefined' =/= Response
+                     || Response <- Responses
                     ],
 
     publish_resp(JObj, BaseResponses).
@@ -331,7 +330,7 @@ wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
         {'event', [LoopbackBLeg | Props]} ->
             handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
         ?LOOPBACK_BOWOUT_MSG(_Node, Props) when is_list(Props) ->
-            handle_bowout(LoopbackALeg, LoopbackBLeg, Props)
+            handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props)
     after Timeout ->
             lager:info("timed out waiting for ~s", [LoopbackALeg]),
             {'error', 'timeout'}
