@@ -118,10 +118,7 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     maybe_send_call_event(UUID, EventName, Props, Node);
 maybe_send_event(<<"loopback::bowout">> = EventName, _UUID, Props, Node) ->
     ResigningUUID = props:get_value(?RESIGNING_UUID, Props),
-    _AcquiringUUID = props:get_value(?ACQUIRED_UUID, Props),
     kz_util:put_callid(ResigningUUID),
-
-    lager:debug("bowout for '~s', resigning ~s acquiring ~s", [_UUID, ResigningUUID, _AcquiringUUID]),
 
     send_event(EventName, ResigningUUID, Props, Node);
 maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
