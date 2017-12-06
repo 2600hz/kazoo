@@ -377,7 +377,7 @@ handle_loopback_destroy(_LoopbackALeg, HangupCause) ->
     lager:info("~s went down with ~s", [_LoopbackALeg, HangupCause]),
     {'error', <<"failed to start call: ", HangupCause/binary>>}.
 
-handle_bowout(LoopbackALeg, _LoopbackBLeg, Props) ->
+handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
     case {props:get_value(?RESIGNING_UUID, Props)
          ,props:get_value(?ACQUIRED_UUID, Props)
          }
@@ -390,7 +390,8 @@ handle_bowout(LoopbackALeg, _LoopbackBLeg, Props) ->
             {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
-            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>}
+            lager:debug("~p", [Props]),
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
     end.
 
 -spec register_for_events(atom(), ne_binary()) -> 'ok'.
