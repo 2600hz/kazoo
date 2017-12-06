@@ -529,13 +529,14 @@ handle_bridge_failure(Cause, Code, Call) ->
 -spec send_default_response(ne_binary(), kapps_call:call()) -> 'ok'.
 send_default_response(Cause, Call) ->
     case cf_exe:wildcard_is_empty(Call) of
-        'false' -> 'ok';
+        'false' -> lager:debug("non-empty wildcard; not sending ~s", [Cause]);
         'true' ->
             case kz_call_response:send_default(Call, Cause) of
-                {'error', 'no_response'} -> 'ok';
+                {'error', 'no_response'} ->
+                    lager:debug("failed to send default response for ~s", [Cause]);
                 {'ok', NoopId} ->
                     _ = kapps_call_command:wait_for_noop(Call, NoopId),
-                    'ok'
+                    lager:debug("sent default response for ~s (~s)", [Cause, NoopId])
             end
     end.
 

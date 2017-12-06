@@ -383,7 +383,7 @@ handle_call({'attempt', Key}, _From, #state{flow=Flow}=State) ->
             {'reply', Reply, launch_cf_module(State#state{flow = NewFlow})}
     end;
 handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
-    case kz_json:get_value([<<"children">>, <<"_">>], Flow) of
+    case kz_json:get_json_value([<<"children">>, <<"_">>], Flow) of
         'undefined' -> {'reply', 'true', State};
         ChildFlow -> {'reply', kz_json:is_empty(ChildFlow), State}
     end;
