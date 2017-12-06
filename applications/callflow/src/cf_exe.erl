@@ -121,7 +121,7 @@ update_call(Call, Routines) ->
 
 -spec continue(kapps_call:call() | pid()) -> 'ok'.
 -spec continue(ne_binary(), kapps_call:call() | pid()) -> 'ok'.
-continue(Srv) -> continue(<<"_">>, Srv).
+continue(Srv) -> continue(?DEFAULT_CHILD_KEY, Srv).
 
 continue(Key, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'continue', Key});
@@ -145,7 +145,7 @@ branch(Flow, Call) ->
 
 -spec next(kapps_call:call() | pid()) -> api_object().
 -spec next(ne_binary(), kapps_call:call() | pid()) -> api_object().
-next(Srv) -> next(<<"_">>, Srv).
+next(Srv) -> next(?DEFAULT_CHILD_KEY, Srv).
 
 next(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'next', Key});
@@ -283,7 +283,7 @@ get_all_branch_keys(Call) ->
 -spec attempt(ne_binary(), kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
-attempt(Srv) -> attempt(<<"_">>, Srv).
+attempt(Srv) -> attempt(?DEFAULT_CHILD_KEY, Srv).
 
 attempt(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'attempt', Key});
@@ -365,7 +365,7 @@ handle_call('control_queue_name', _From, #state{call=Call}=State) ->
     {'reply', kapps_call:control_queue_direct(Call), State};
 handle_call('get_branch_keys', _From, #state{flow = Flow}=State) ->
     Children = kz_json:get_value(<<"children">>, Flow, kz_json:new()),
-    Reply = {'branch_keys', lists:delete(<<"_">>, kz_json:get_keys(Children))},
+    Reply = {'branch_keys', lists:delete(?DEFAULT_CHILD_KEY, kz_json:get_keys(Children))},
     {'reply', Reply, State};
 handle_call({'get_branch_keys', 'all'}, _From, #state{flow = Flow}=State) ->
     Children = kz_json:get_value(<<"children">>, Flow, kz_json:new()),
@@ -383,14 +383,14 @@ handle_call({'attempt', Key}, _From, #state{flow=Flow}=State) ->
             {'reply', Reply, launch_cf_module(State#state{flow = NewFlow})}
     end;
 handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
-    case kz_json:get_json_value([<<"children">>, <<"_">>], Flow) of
+    case kz_json:get_json_value([<<"children">>, ?DEFAULT_CHILD_KEY], Flow) of
         'undefined' -> {'reply', 'true', State};
         ChildFlow -> {'reply', kz_json:is_empty(ChildFlow), State}
     end;
 handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
     {'reply'
     ,kz_json:get_first_defined([[<<"children">>, Key]
-                               ,[<<"children">>, <<"_">>]
+                               ,[<<"children">>, ?DEFAULT_CHILD_KEY]
                                ]
                               ,Flow
                               )
@@ -433,7 +433,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
     lager:info("continuing to child '~s'", [Key]),
 
     case kz_json:get_value([<<"children">>, Key], Flow) of
-        'undefined' when Key =:= <<"_">> ->
+        'undefined' when Key =:= ?DEFAULT_CHILD_KEY ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
             maybe_run_destory_handlers(Call, kz_json:new(), Handlers),
             stop(self()),
@@ -472,7 +472,7 @@ handle_cast({'branch', NewFlow}, #state{flow=Flow
                                        ,branch_count=BC
                                        }=State) ->
     lager:info("callflow has been branched"),
-    case kz_json:get_ne_value([<<"children">>, <<"_">>], Flow) of
+    case kz_json:get_ne_value([<<"children">>, ?DEFAULT_CHILD_KEY], Flow) of
         'undefined' ->
             {'noreply', launch_cf_module(State#state{flow=NewFlow
                                                     ,branch_count=BC-1
