@@ -28,6 +28,7 @@
         ]).
 -export([nixevent/2]).
 -export([sendevent/3
+        ,sendevent/5
         ,sendevent_custom/3
         ]).
 -export([sendmsg/3]).
@@ -109,7 +110,19 @@ event(Node, Events, Timeout) -> ?FS_MODULE:event(Node, Events, Timeout).
 nixevent(Node, Event) -> ?FS_MODULE:nixevent(Node, Event).
 
 -spec sendevent(atom(), atom(), list()) -> 'ok'.
-sendevent(Node, EventName, Headers) -> ?FS_MODULE:sendevent(Node, EventName, Headers).
+-spec sendevent(atom(), atom(), list(), api_binary(), api_binary()) -> 'ok'.
+sendevent(Node, EventName, Headers) ->
+    sendevent(Node, EventName, Headers, 'undefined', 'undefined').
+
+sendevent(Node, EventName, Headers, 'undefined', _) ->
+    ?FS_MODULE:sendevent(Node, EventName, Headers);
+sendevent(Node, EventName, Headers, Body, ContentType) ->
+    Headers1 = [{"body", Body}
+               ,{"content-length", kz_term:to_list(byte_size(Body))}
+               ,{"content-type", ContentType}
+                | Headers
+               ],
+    ?FS_MODULE:sendevent(Node, EventName, Headers1).
 
 -spec sendevent_custom(atom(), atom(), list()) -> 'ok'.
 sendevent_custom(Node, SubClassName, Headers) -> ?FS_MODULE:sendevent_custom(Node, SubClassName, Headers).

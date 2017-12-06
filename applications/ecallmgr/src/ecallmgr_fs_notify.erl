@@ -106,13 +106,18 @@ resp_to_probe(State, User, Realm) ->
 notify_api(JObj, _Props) ->
     'true' = kapi_switch:notify_v(JObj),
     kz_util:put_callid(JObj),
-    notify(kapi_switch:notify_username(JObj)
-          ,kapi_switch:notify_realm(JObj)
-          ,kz_json:get_ne_binary_value(<<"Event">>, JObj)
-          ).
+    maybe_send_notify(kapi_switch:notify_username(JObj)
+                     ,kapi_switch:notify_realm(JObj)
+                     ,JObj
+                     ).
 
 -spec notify(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 notify(Username, Realm, Event) ->
+    JObj = kz_json:from_list([{<<"Event">>, Event}]),
+    maybe_send_notify(Username, Realm, JObj).
+
+-spec maybe_send_notify(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+maybe_send_notify(Username, Realm, JObj) ->
     lager:info("looking up registration information for ~s@~s", [Username, Realm]),
     case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->
@@ -124,14 +129,15 @@ notify(Username, Realm, Event) ->
             case ensure_contact_user(Contact, Username, Realm) of
                 'undefined' ->
                     lager:error("invalid contact ~p: ~p", [Contact, Registration]);
-                Valid -> send_notify(Node, Username, Realm, Event, Valid)
+                Valid -> send_notify(Node, Username, Realm, JObj, Valid)
             end
     end.
 
--spec send_notify(atom(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_notify(Node, Username, Realm, Event, Contact) ->
+-spec send_notify(atom(), ne_binary(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+send_notify(Node, Username, Realm, JObj, Contact) ->
     AOR = To = From = kzsip_uri:ruri(#uri{user=Username, domain=Realm}),
     SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
+    Event = kz_json:get_ne_binary_value(<<"Event">>, JObj),
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
               ,{"contact-uri", Contact}
               ,{"extra-headers", SIPHeaders}
@@ -139,8 +145,11 @@ send_notify(Node, Username, Realm, Event, Contact) ->
               ,{"from-uri", From}
               ,{"event-string", Event}
               ],
-    Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-    lager:info("send NOTIFY with Event '~s' to '~s@~s' via ~s: ~p", [Event, Username, Realm, Node, Resp]).
+    Body = kz_json:get_binary_value(<<"Body">>, JObj),
+    ContentType = kz_json:get_binary_value(<<"Content-Type">>, JObj),
+    Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers, Body, ContentType),
+    lager:info("send NOTIFY with Event '~s' (has body? ~w) to '~s@~s' via ~s: ~p"
+              ,[Event, (Body =/= 'undefined'), Username, Realm, Node, Resp]).
 
 -spec mwi_update(kz_json:object(), kz_proplist()) -> no_return().
 mwi_update(JObj, Props) ->
