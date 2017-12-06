@@ -367,11 +367,11 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
                                }) ->
     CallId = kapps_call:call_id(Call),
     case {kz_util:get_event_type(JObj)
-         ,kz_json:get_value(<<"Call-ID">>, JObj)
+         ,kz_call_event:call_id(JObj)
          }
     of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            lager:debug("received channel hangup event, terminate"),
+            lager:debug("received channel hangup event, maybe terminating"),
             erlang:send_after(3 * ?MILLISECONDS_IN_SECOND, Srv, {'hungup', CallId});
         {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
             handle_channel_pivot(JObj, Call);
