@@ -41,6 +41,7 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
+
     'ok' = kapi_offnet_resource:publish_req(build_offnet_request(Data, Call)),
     case wait_for_stepswitch(Call) of
         {<<"SUCCESS">>, _} ->
