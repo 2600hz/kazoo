@@ -227,9 +227,9 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                         ,update_endpoint(Endpoint, EndpointCallId)
                                         )
     of
-        {'ok', Resp} ->
-            lager:info("starting dial resulted in ~s", [Resp]),
-            {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, success_resp(EndpointId, Resp)} | Resps]};
+        {'ok', _Resp} ->
+            lager:info("starting dial resulted in ~s", [_Resp]),
+            {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, success_resp(EndpointId)} | Resps]};
         _E ->
             lager:info("failed to exec: ~p", [_E]),
             {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, <<"unknown failure">>)} | Resps]}
@@ -271,15 +271,9 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                  ),
     exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, kz_json:delete_key(<<"Outbound-Call-ID">>, JObj), Resps}).
 
--spec success_resp(ne_binary(), ne_binary()) -> kz_proplist().
-success_resp(EndpointId, Resp) ->
-    JobId =
-        case re:run(Resp, <<"([\\w-]{36})">>, ['ungreedy', {'capture', 'all_but_first', 'binary'}]) of
-            {'match', [UUID|_]} -> UUID;
-            _ -> 'undefined'
-        end,
-    [{<<"Job-ID">>, JobId}
-    ,{<<"Message">>, <<"dialing endpoints">>}
+-spec success_resp(ne_binary()) -> kz_proplist().
+success_resp(EndpointId) ->
+    [{<<"Message">>, <<"dialing endpoints">>}
     ,{<<"Status">>, <<"success">>}
     ,{<<"Endpoint-ID">>, EndpointId}
     ].
@@ -317,14 +311,22 @@ handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
                                 );
             {'error', 'timeout'} ->
                 props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
-            {'error', E} -> props:set_value(<<"Message">>, E, Resp)
+            {'error', HangupCause, E} ->
+                props:set_values([{<<"Status">>, <<"error">>}
+                                 ,{<<"Hangup-Cause">>, HangupCause}
+                                 ,{<<"Message">>, E}
+                                 ,{<<"Call-ID">>, 'null'}
+                                 ]
+                                ,Resp
+                                )
         end,
     props:insert_value(<<"Call-ID">>, LoopbackCallId, BuiltResp).
 
 -spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer()) ->
                              'ok' |
                              {'ok', ne_binary(), ne_binary(), kzd_freeswitch:data()} |
-                             {'error', 'timeout' | ne_binary()}.
+                             {'error', 'timeout'} |
+                             {'error', ne_binary(), ne_binary()}.
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
     Start = kz_time:now_s(),
     receive
@@ -378,7 +380,7 @@ handle_loopback_destroy(_LoopbackALeg, <<"NORMAL_UNSPECIFIED">>) ->
     lager:debug("~s went down", [_LoopbackALeg]);
 handle_loopback_destroy(_LoopbackALeg, HangupCause) ->
     lager:info("~s went down with ~s", [_LoopbackALeg, HangupCause]),
-    {'error', <<"failed to start call: ", HangupCause/binary>>}.
+    {'error', HangupCause, <<"failed to start call: ", HangupCause/binary>>}.
 
 handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
     case {props:get_value(?RESIGNING_UUID, Props)
