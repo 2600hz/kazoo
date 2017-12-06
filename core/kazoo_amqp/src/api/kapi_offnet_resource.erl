@@ -355,7 +355,7 @@ jobj_to_req(JObj) -> ?REQ_TYPE(JObj).
 -spec req_to_jobj(req()) -> kz_json:object().
 req_to_jobj(?REQ_TYPE(JObj)) -> JObj.
 
--spec put_callid(req()) -> api_binary().
+-spec put_callid(req()) -> 'ok'.
 put_callid(?REQ_TYPE(JObj)) ->
     kz_util:put_callid(JObj).
 

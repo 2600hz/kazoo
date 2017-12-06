@@ -152,7 +152,7 @@
                     ,callee_id_name :: api_binary()                     %% The callee name
                     ,callee_id_number :: api_binary()                   %% The callee number
                     ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                    ,switch_hostname :: api_binary()                    %% The switch hostname (as reported by the switch)
+                    ,switch_hostname :: api_ne_binary()                    %% The switch hostname (as reported by the switch)
                     ,switch_url :: api_binary()                         %% The switch url
                     ,switch_uri :: api_binary()                         %% The switch uri
                     ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
