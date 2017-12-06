@@ -157,10 +157,10 @@ record_call(Node, UUID, Args) ->
 -spec maybe_export_vars(atom(), ne_binary(), kz_proplist()) -> kz_proplist().
 maybe_export_vars(Node, UUID, Props) ->
     lists:foldl(fun({<<"Hold-Media">> = K, V}, Acc) ->
-                        export(Node, UUID, [{K, V}]),
+                        _ = export(Node, UUID, [{K, V}]),
                         Acc;
                    ({<<"ringback">> = K, V}, Acc) ->
-                        export(Node, UUID, [{K, V}]),
+                        _ = export(Node, UUID, [{K, V}]),
                         Acc;
                    (KV, Acc) -> [KV| Acc]
                 end, [], Props).

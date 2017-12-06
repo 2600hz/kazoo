@@ -899,9 +899,9 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
             lager:debug("API is skipping control usurp")
     end,
 
-    ecallmgr_fs_command:set(Node, UUID, build_set_args(SetApi, JObj) ++ Exports),
-    ecallmgr_fs_command:set(Node, UUID, Exports),
-    ecallmgr_fs_command:set(Node, Target, Exports),
+    _ = ecallmgr_fs_command:set(Node, UUID, build_set_args(SetApi, JObj) ++ Exports),
+    _ = ecallmgr_fs_command:set(Node, UUID, Exports),
+    _ = ecallmgr_fs_command:set(Node, Target, Exports),
 
     {Command, Target}.
 
@@ -936,8 +936,8 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
                        ),
     lager:debug("published ~p for ~s~n", [ControlUsurp, Target]),
 
-    ecallmgr_fs_command:set(Node, UUID, build_set_args(SetApi, JObj)),
-    ecallmgr_fs_command:export(Node, UUID, Exports),
+    _ = ecallmgr_fs_command:set(Node, UUID, build_set_args(SetApi, JObj)),
+    _ = ecallmgr_fs_command:export(Node, UUID, Exports),
     {<<"eavesdrop">>, Target}.
 
 -type set_headers() :: kz_proplist() | [{ne_binary(), api_binary(), ne_binary()},...].
@@ -983,21 +983,21 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             maybe_start_conference_on_our_node(ChanNode, UUID, JObj);
         {'ok', ChanNode} ->
             lager:debug("channel is on same node as conference"),
-            ecallmgr_fs_command:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
-            maybe_set_nospeak_flags(ChanNode, UUID, JObj),
+            _ = ecallmgr_fs_command:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
+            _ = maybe_set_nospeak_flags(ChanNode, UUID, JObj),
             {<<"conference">>, Cmd};
         {'ok', ConfNode} ->
             lager:debug("channel is on node ~s, conference is on ~s, moving channel", [ChanNode, ConfNode]),
             'true' = ecallmgr_channel_move:move(UUID, ChanNode, ConfNode),
             lager:debug("channel has moved to ~s", [ConfNode]),
-            maybe_set_nospeak_flags(ConfNode, UUID, JObj),
-            ecallmgr_fs_command:export(ConfNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
+            _ = maybe_set_nospeak_flags(ConfNode, UUID, JObj),
+            _ = ecallmgr_fs_command:export(ConfNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
             {<<"conference">>, Cmd, ConfNode}
     end;
 
 get_conference_app(ChanNode, UUID, JObj, 'false') ->
     {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
-    maybe_set_nospeak_flags(ChanNode, UUID, JObj),
+    _ = maybe_set_nospeak_flags(ChanNode, UUID, JObj),
     %% ecallmgr_fs_command:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
 
@@ -1014,7 +1014,7 @@ maybe_start_conference_on_our_node(ChanNode, UUID, JObj) ->
     case wait_for_conference(ConfName) of
         {'ok', ChanNode} ->
             lager:debug("conference has started on ~s", [ChanNode]),
-            maybe_set_nospeak_flags(ChanNode, UUID, JObj),
+            _ = maybe_set_nospeak_flags(ChanNode, UUID, JObj),
             {<<"conference">>, 'noop'};
         {'ok', OtherNode} ->
             lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
@@ -1022,11 +1022,11 @@ maybe_start_conference_on_our_node(ChanNode, UUID, JObj) ->
     end.
 
 maybe_set_nospeak_flags(Node, UUID, JObj) ->
-    case kz_json:is_true(<<"Member-Nospeak">>, JObj) of
-        'false' -> 'ok';
-        'true' ->
-            ecallmgr_fs_command:set(Node, UUID, [{<<"conference_member_nospeak_relational">>, <<"true">>}])
-    end,
+    _ = case kz_json:is_true(<<"Member-Nospeak">>, JObj) of
+            'false' -> 'ok';
+            'true' ->
+                ecallmgr_fs_command:set(Node, UUID, [{<<"conference_member_nospeak_relational">>, <<"true">>}])
+        end,
     case kz_json:is_true(<<"Nospeak-Check">>, JObj) of
         'false' -> 'ok';
         'true' ->
@@ -1095,7 +1095,7 @@ stream_over_http(Node, UUID, File, 'put'=Method, 'store_vm'=Type, JObj) ->
 stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = kz_json:get_ne_binary_value(<<"Media-Transfer-Destination">>, JObj),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-    ecallmgr_fs_command:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
+    _ = ecallmgr_fs_command:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
     Args = <<Url/binary, " ", File/binary>>,
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
     SendAlert = kz_json:is_true(<<"Suppress-Error-Report">>, JObj, 'false'),

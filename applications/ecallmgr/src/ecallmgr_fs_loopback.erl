@@ -35,7 +35,7 @@ filter('true', Node, UUID, Props, Update) ->
             UpdateCCVs = [{<<?CHANNEL_VAR_PREFIX, ?LOOPBACK_FILTERED>>, <<"true">>} | LoopBackCCVs],
             {Clear, Filtered} = lists:foldl(fun filter_props/2, {[], []}, Props),
             Funs = fun() ->
-                           ecallmgr_fs_command:unset(Node, UUID, Clear),
+                           _ = ecallmgr_fs_command:unset(Node, UUID, Clear),
                            ecallmgr_fs_command:set(Node, UUID, UpdateCCVs)
                    end,
             maybe_update_ccvs(Update, Funs, updated_props(Filtered, UpdateCCVs))
@@ -44,7 +44,7 @@ filter('true', Node, UUID, Props, Update) ->
 -spec updated_props(kz_proplist(), kz_proplist()) -> kz_proplist().
 updated_props(Filtered, New0) ->
     New = [{ecallmgr_util:get_fs_key(K), V} || {K, V} <- New0],
-    New ++ [ {<<"variable_", K/binary>>, V} || {K, V} <- New] ++ Filtered.
+    New ++ [{<<"variable_", K/binary>>, V} || {K, V} <- New] ++ Filtered.
 
 -spec maybe_update_ccvs(boolean(), fun(), kz_proplist()) -> kz_proplist().
 maybe_update_ccvs('false', _Fun, Filtered) -> Filtered;

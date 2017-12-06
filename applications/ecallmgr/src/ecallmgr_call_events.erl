@@ -587,8 +587,8 @@ maybe_manual_bowout(Node, Props) ->
 maybe_manual_bowout(Node, <<"att_xfer">>, <<"originator">>, UUID) ->
     case ecallmgr_fs_channel:fetch(UUID,  'record') of
         {'ok', #channel{loopback_other_leg=OtherLeg, is_loopback='true'}} ->
-            freeswitch:api(Node, 'uuid_setvar', <<UUID/binary, " ", "loopback_bowout true">>),
-            freeswitch:api(Node, 'uuid_setvar', <<OtherLeg/binary, " ", "loopback_bowout true">>),
+            _ = freeswitch:api(Node, 'uuid_setvar', <<UUID/binary, " ", "loopback_bowout true">>),
+            _ = freeswitch:api(Node, 'uuid_setvar', <<OtherLeg/binary, " ", "loopback_bowout true">>),
             'ok';
         _ -> 'ok'
     end;

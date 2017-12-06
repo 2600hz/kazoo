@@ -878,7 +878,7 @@ insert_command(#state{node=Node
     end;
 insert_command(#state{node=Node, call_id=CallId}, 'flush', JObj) ->
     lager:debug("received control queue flush command, clearing all waiting commands"),
-    freeswitch:api(Node, 'uuid_break', <<CallId/binary, " all">>),
+    _ = freeswitch:api(Node, 'uuid_break', <<CallId/binary, " all">>),
     self() ! {'force_queue_advance', CallId},
     insert_command_into_queue(queue:new(), 'tail', JObj);
 insert_command(#state{command_q=CommandQ}, 'head', JObj) ->
@@ -1211,8 +1211,8 @@ handle_replaced(Props, #state{fetch_id=FetchId
                     OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
                     CDR = kz_json:get_value(<<"interaction_id">>, Channel),
                     kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
-                    ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
-                    ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    _ = ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    _ = ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
                     {'noreply', handle_sofia_replaced(ReplacedBy, State)};
                 _Else ->
                     lager:debug("channel replaced was not handled : ~p", [_Else]),

@@ -897,7 +897,7 @@ maybe_update_interaction_id(Props, Node, _) ->
             case fetch(CallId) of
                 {'ok', Channel} ->
                     OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
-                    ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    _ = ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
                     'ok';
                 _ -> 'ok'
             end
