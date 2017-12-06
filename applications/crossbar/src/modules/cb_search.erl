@@ -120,7 +120,9 @@ validate(Context, ?MULTI) ->
 -spec validate_search(cb_context:context(), ne_binary(), ne_binary(), api_binary()) ->
                              cb_context:context().
 validate_search(Context, 'undefined') ->
-    Message = kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}]),
+    Message = kz_json:from_list([{<<"message">>, <<"search needs a document type to search on">>}
+                                ,{<<"target">>, ?SEARCHABLE}
+                                ]),
     cb_context:add_validation_error(<<"t">>, <<"required">>, Message, Context);
 validate_search(Context, <<"account">>=Type) ->
     validate_search(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type, cb_context:req_value(Context, <<"q">>));
@@ -128,7 +130,7 @@ validate_search(Context, Type) ->
     validate_search(Context, Type, cb_context:req_value(Context, <<"q">>)).
 
 validate_search(Context, _Type, 'undefined') ->
-    NeedViewMsg = kz_json:from_list([{<<"message">>, <<"Search needs a view to search in">>}
+    NeedViewMsg = kz_json:from_list([{<<"message">>, <<"search needs a view to search in">>}
                                     ,{<<"target">>, available_query_options(cb_context:account_db(Context))}
                                     ]),
     cb_context:add_validation_error(<<"q">>, <<"required">>, NeedViewMsg, Context);
@@ -142,7 +144,7 @@ validate_search(Context, Type, Query) ->
     end.
 
 validate_search(Context, _Type, _Query, 'undefined') ->
-    Message = kz_json:from_list([{<<"message">>, <<"Search needs a value to search with">>}]),
+    Message = kz_json:from_list([{<<"message">>, <<"search needs a value to search with">>}]),
     cb_context:add_validation_error(<<"v">>, <<"required">>, Message, Context);
 validate_search(Context, Type, Query, <<_/binary>> = Value) ->
     fix_envelope(search(Context, Type, Query, Value));
@@ -158,27 +160,21 @@ validate_search(Context, Type, Query, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_multi(cb_context:context(), api_binary()) -> cb_context:context().
--spec validate_multi(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 validate_multi(Context, 'undefined') ->
-    Message = kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}]),
+    Message = kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}
+                                ,{<<"target">>, ?SEARCHABLE}
+                                ]),
     cb_context:add_validation_error(<<"t">>, <<"required">>, Message, Context);
 validate_multi(Context, <<"account">>=Type) ->
-    validate_multi(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type);
+    validate_multi(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type, kz_json:to_proplist(cb_context:query_string(Context)));
 validate_multi(Context, Type) ->
-    case kz_json:to_proplist(cb_context:query_string(Context)) of
-        [_|_]=Props -> validate_multi(Context, Type, Props);
-        _Other ->
-            Message = kz_json:from_list([{<<"message">>, <<"Multi Search needs something to search like a doc type">>}
-                                        ,{<<"target">>, ?SEARCHABLE}
-                                        ]),
-            cb_context:add_validation_error(<<"multi">>, <<"enum">>, Message, Context)
-    end.
+    validate_multi(Type, kz_json:to_proplist(cb_context:query_string(Context))).
 
-validate_multi(Context, Type, Props) ->
-    QueryOptions = available_query_options(cb_context:account_db(Context)),
-    Context1 = validate_query(Context, QueryOptions, Props),
+-spec validate_multi(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+validate_multi(Context, Type, Query) ->
+    Context1 = validate_query(Context, Query),
     case cb_context:resp_status(Context1) of
-        'success' -> multi_search(Context1, Type, Props);
+        'success' -> multi_search(Context1, Type, Query);
         _Status -> Context1
     end.
 
@@ -193,8 +189,15 @@ validate_query(Context, Query) ->
     QueryOptions = available_query_options(cb_context:account_db(Context)),
     validate_query(Context, QueryOptions, Query).
 
-validate_query(Context, _Available, []) ->
-    cb_context:set_resp_status(Context, 'success');
+validate_query(Context, Available, []) ->
+    case cb_context:resp_status(Context) of
+        'success' -> Context;
+        _ ->
+            Message = kz_json:from_list([{<<"message">>, <<"multi search needs some values to search with">>}
+                                        ,{<<"target">>, Available}
+                                        ]),
+            cb_context:add_validation_error(<<"multi">>, <<"enum">>, Message, Context)
+    end;
 validate_query(Context, Available, [{<<"by_", Query/binary>>, _}|Props]) ->
     Context1 = validate_query(Context, Available, Query),
     case cb_context:resp_status(Context1) of
@@ -208,8 +211,7 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
     case lists:member(Query, Available) of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
-            Message = kz_json:from_list([{<<"message">>, <<"Value not found in enumerated list of values">>}
-                                        ,{<<"target">>, Available}
+            Message = kz_json:from_list([{<<"message">>, <<"value not found in enumerated list of values">>}
                                         ,{<<"cause">>, Query}
                                         ]),
             cb_context:add_validation_error(<<"q">>, <<"enum">>, Message, Context)
@@ -220,7 +222,7 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec available_query_options(ne_binary()) -> ne_binaries().
+-spec available_query_options(api_ne_binary()) -> ne_binaries().
 available_query_options(AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, <<"_design/search">>) of
         {'ok', JObj} ->
