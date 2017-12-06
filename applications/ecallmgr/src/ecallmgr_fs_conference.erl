@@ -214,7 +214,7 @@ process_event(<<"conference-destroy">>= Action, Props, Node) ->
             ecallmgr_fs_conferences:destroy(UUID),
             ecallmgr_conference_sup:stop_conference_control(Node, ConferenceId, UUID);
         {'error', 'not_found'} ->
-            lager:debug("received conference destroy for non-existant conference ~s", [UUID])
+            lager:debug("received conference destroy for nonexistent conference ~s", [UUID])
     end;
 
 process_event(<<"add-member">>, Props, Node) ->
@@ -256,7 +256,7 @@ publish_event(Action, Props, Node) ->
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     case ecallmgr_fs_conferences:conference(UUID) of
         {'ok', #conference{}=Conference} -> publish_event(Action, Conference, Props, Node);
-        {'error', 'not_found'} -> lager:debug("not publishing conference event ~s for non-existant ~s ", [Action, UUID])
+        {'error', 'not_found'} -> lager:debug("not publishing conference event ~s for nonexistent ~s ", [Action, UUID])
     end.
 
 publish_event(Action, #conference{handling_locally=IsLocal} = Conference, Props, _Node) ->
