@@ -429,16 +429,17 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S),
     TargetCallId = kz_json:get_ne_binary_value(<<"target_call_id">>, Data),
 
-    Command = [{<<"Application-Name">>, <<"dial">>}
+    Command = [{<<"Account-ID">>, cb_context:account_id(Context)}
+              ,{<<"Application-Name">>, <<"dial">>}
               ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
               ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)}
               ,{<<"Conference-ID">>, ConferenceId}
               ,{<<"Custom-Application-Vars">>, CAVs}
               ,{<<"Endpoints">>, ToDial}
+              ,{<<"Msg-ID">>, cb_context:req_id(Context)}
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
               ,{<<"Target-Call-ID">>, TargetCallId}
               ,{<<"Timeout">>, Timeout}
-              ,{<<"Msg-ID">>, cb_context:req_id(Context)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
 

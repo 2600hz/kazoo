@@ -446,6 +446,7 @@ add_participant(JObj, EndpointId, ControlQueue) ->
     Req = [{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj)}
           ,{<<"Call-ID">>, EndpointId}
           ,{<<"Control-Queue">>, ControlQueue}
+          ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("adding participant for ~s", [EndpointId]),

@@ -137,7 +137,7 @@
                                  ,<<"Conference-ID">>
                                  ,<<"Control-Queue">>
                                  ]).
--define(OPTIONAL_ADD_PARTICIPANT_HEADERS, []).
+-define(OPTIONAL_ADD_PARTICIPANT_HEADERS, [<<"Account-ID">>]).
 -define(ADD_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                 ,{<<"Event-Name">>, <<"add_participant">>}
                                 ]).
@@ -346,7 +346,8 @@
                       ,<<"Conference-ID">>
                       ,<<"Application-Name">>
                       ]).
--define(OPTIONAL_DIAL_HEADERS, [<<"Caller-ID-Name">>
+-define(OPTIONAL_DIAL_HEADERS, [<<"Account-ID">>
+                               ,<<"Caller-ID-Name">>
                                ,<<"Caller-ID-Number">>
                                ,<<"Custom-Channel-Vars">>
                                ,<<"Custom-Application-Vars">>
