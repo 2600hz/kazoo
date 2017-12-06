@@ -332,10 +332,7 @@ wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
         {'event', [LoopbackBLeg | Props]} ->
             handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
         ?LOOPBACK_BOWOUT_MSG(_Node, Props) when is_list(Props) ->
-            handle_bowout(LoopbackALeg, LoopbackBLeg, Props);
-        _Msg ->
-            lager:debug("waiting: ~p", [_Msg]),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
+            handle_bowout(LoopbackALeg, LoopbackBLeg, Props)
     after Timeout ->
             lager:info("timed out waiting for ~s", [LoopbackALeg]),
             {'error', 'timeout'}
