@@ -25,7 +25,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"New comment for port request'{{port_request.name}}'">>).
+-define(TEMPLATE_SUBJECT, <<"New comment for port request '{{port_request.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Comment">>).
 
@@ -76,17 +76,14 @@ process_req(DataJObj) ->
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
     ReqData = kz_json:set_value(<<"port_request">>
-                               ,teletype_port_utils:fix_port_request_data(PortReqJObj)
+                               ,teletype_port_utils:fix_port_request_data(PortReqJObj, DataJObj)
                                ,DataJObj
                                ),
 
     case teletype_util:is_preview(DataJObj) of
         'false' ->
-            Comments = kz_json:get_value(<<"comments">>, PortReqJObj),
             handle_port_request(
-              teletype_port_utils:fix_email(ReqData
-                                           ,teletype_port_utils:is_comment_private(Comments)
-                                           )
+              teletype_port_utils:fix_email(ReqData, teletype_port_utils:is_comment_private(DataJObj))
              );
         'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
@@ -113,8 +110,7 @@ handle_port_request(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' ->
             teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} ->
@@ -130,7 +126,7 @@ user_data(DataJObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     teletype_util:user_params(teletype_util:find_account_admin(AccountId));
 user_data(DataJObj, 'false') ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    UserId = props:get_value(<<"user_id">>, kz_json:get_value([<<"port_request">>, <<"comment">>], DataJObj)),
+    AccountId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"account_id">>], DataJObj),
+    UserId = kz_json:get_value([<<"port_request">>, <<"comment">>, <<"user_id">>], DataJObj),
     {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
     teletype_util:user_params(UserJObj).

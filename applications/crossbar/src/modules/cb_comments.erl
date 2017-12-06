@@ -110,9 +110,9 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-    validate_comments(get_ressource(Context), cb_context:req_verb(Context)).
+    validate_comments(set_resource(Context), cb_context:req_verb(Context)).
 validate(Context, Id) ->
-    validate_comment(get_ressource(Context), Id, cb_context:req_verb(Context)).
+    validate_comment(set_resource(Context), Id, cb_context:req_verb(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -173,9 +173,9 @@ delete(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec finish_request(cb_context:context()) -> 'ok'.
 finish_request(Context) ->
-    {Type, _} = cb_context:fetch(Context, 'ressource'),
+    Resource = cb_context:fetch(Context, 'resource'),
     Verb = cb_context:req_verb(Context),
-    finish_req(Context, Type, Verb).
+    finish_req(Context, Resource, Verb).
 
 %%%===================================================================
 %%% Internal functions
@@ -186,13 +186,13 @@ finish_request(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_ressource(cb_context:context()) -> cb_context:context().
--spec get_ressource(cb_context:context(), req_nouns()) -> cb_context:context().
-get_ressource(Context) ->
-    get_ressource(Context, cb_context:req_nouns(Context)).
+-spec set_resource(cb_context:context()) -> cb_context:context().
+-spec set_resource(cb_context:context(), req_nouns()) -> cb_context:context().
+set_resource(Context) ->
+    set_resource(Context, cb_context:req_nouns(Context)).
 
-get_ressource(Context, [{?COMMENTS, _}, Data | _]) ->
-    cb_context:store(Context, 'ressource', Data).
+set_resource(Context, [{?COMMENTS, _}, Data | _]) ->
+    cb_context:store(Context, 'resource', Data).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -314,11 +314,13 @@ remove(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec finish_req(cb_context:context(), path_token(), http_method()) -> 'ok'.
-finish_req(Context, <<"port_requests">>, ?HTTP_PUT) ->
-    send_port_comment_notification(Context);
-finish_req(Context, <<"port_requests">>, ?HTTP_POST) ->
-    send_port_comment_notification(Context);
+-spec finish_req(cb_context:context(), path_token() | 'undefined', http_method()) -> 'ok'.
+finish_req(_, 'undefined', _) ->
+    'ok';
+finish_req(Context, {<<"port_requests">>, [PortReqId]}, ?HTTP_PUT) ->
+    send_port_comment_notification(Context, PortReqId);
+finish_req(Context, {<<"port_requests">>, [PortReqId]}, ?HTTP_POST) ->
+    send_port_comment_notification(Context, PortReqId);
 finish_req(_Context, _Type, _Verb) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -353,7 +355,7 @@ check_comment_number(Context, Id) ->
 -spec load_doc(cb_context:context(), ne_binary(), ne_binaries()) ->
                       cb_context:context().
 load_doc(Context) ->
-    {Type, Id} = cb_context:fetch(Context, 'ressource'),
+    {Type, Id} = cb_context:fetch(Context, 'resource'),
     load_doc(Context, Type, Id).
 
 load_doc(Context, <<"port_requests">>, [Id]) ->
@@ -406,18 +408,21 @@ id_to_number(Id) -> kz_term:to_integer(Id) + 1.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_comment_notification(cb_context:context()) -> 'ok'.
 -spec send_port_comment_notification(cb_context:context(), ne_binary()) -> 'ok'.
-send_port_comment_notification(Context) ->
-    ReqNouns = cb_context:req_nouns(Context),
-    [PortReqId] = props:get_value(<<"port_requests">>, ReqNouns),
-    send_port_comment_notification(Context, PortReqId).
+send_port_comment_notification(Context, PortReqId) ->
+    Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
+            ,{<<"account_id">>, cb_context:auth_account_id(Context)}
+            ],
+    Comment = kz_json:set_values(Props, lists:last(kz_json:get_value(?COMMENTS, cb_context:req_data(Context), []))),
 
-send_port_comment_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
-          ,{<<"Port-Request-ID">>, Id}
+          ,{<<"Port-Request-ID">>, PortReqId}
+          ,{<<"Comment">>, Comment}
           ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
+    lager:debug("sending port request notification for new comment by user ~s in account ~s"
+               ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context)]
+               ),
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).

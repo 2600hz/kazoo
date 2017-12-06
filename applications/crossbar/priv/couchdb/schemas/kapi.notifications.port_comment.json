@@ -21,6 +21,9 @@
         "Cc": {
             "type": "string"
         },
+        "Comment": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "notification"
