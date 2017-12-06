@@ -22,7 +22,7 @@
 -define(QUERY_TPL, <<"search/search_by_">>).
 -define(MULTI, <<"multi">>).
 
--define(SEARCHABLE, [<<"account">>, <<"user">>, <<"callflow">>, <<"devices">>]).
+-define(SEARCHABLE, [<<"account">>, <<"user">>, <<"callflow">>, <<"device">>]).
 -define(ACCOUNT_QUERY_OPTIONS, [<<"name">>, <<"number">>, <<"name_and_number">>]).
 -define(ACCOUNTS_QUERY_OPTIONS, [<<"name">>, <<"realm">>, <<"id">>]).
 
@@ -144,7 +144,7 @@ validate_search(Context, Type, Query) ->
     end.
 
 validate_search(Context, _Type, _Query, 'undefined') ->
-    Message = kz_json:from_list([{<<"message">>, <<"search needs a value to search with">>}]),
+    Message = kz_json:from_list([{<<"message">>, <<"search needs a value to search for">>}]),
     cb_context:add_validation_error(<<"v">>, <<"required">>, Message, Context);
 validate_search(Context, Type, Query, <<_/binary>> = Value) ->
     fix_envelope(search(Context, Type, Query, Value));
@@ -193,7 +193,7 @@ validate_query(Context, Available, []) ->
     case cb_context:resp_status(Context) of
         'success' -> Context;
         _ ->
-            Message = kz_json:from_list([{<<"message">>, <<"multi search needs some values to search with">>}
+            Message = kz_json:from_list([{<<"message">>, <<"multi search needs some values to search for">>}
                                         ,{<<"target">>, Available}
                                         ]),
             cb_context:add_validation_error(<<"multi">>, <<"enum">>, Message, Context)
