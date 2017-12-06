@@ -56,18 +56,20 @@ usage_keys(Usages) ->
                   )
      ).
 
+usage_keys({'props', 'get_atom_value', Key, _VarName, _Default}, Acc) ->
+    [Key | Acc];
 usage_keys({'props', 'get_value', Key, _VarName, _Default}, Acc) ->
-    [Key |Acc];
+    [Key | Acc];
 usage_keys({'props', 'get_integer_value', Key, _VarName, _Default}, Acc) ->
-    [Key |Acc];
+    [Key | Acc];
 usage_keys({'props', 'get_binary_value', Key, _VarName, _Default}, Acc) ->
-    [Key |Acc];
+    [Key | Acc];
 usage_keys({'props', 'get_ne_binary_value', Key, _VarName, _Default}, Acc) ->
-    [Key |Acc];
+    [Key | Acc];
 usage_keys({'props', 'get_is_true', Key, _VarName, _Default}, Acc) ->
-    [Key |Acc];
+    [Key | Acc];
 usage_keys({'props', 'is_true', Key, _VarName, _Default}, Acc) ->
-    [Key |Acc];
+    [Key | Acc];
 usage_keys({'props', 'get_first_defined', Keys, _VarName, _Default}, Acc) ->
     Keys ++ Acc;
 usage_keys({'props', 'delete_keys', Keys, _VarName, _Default}, Acc) ->
