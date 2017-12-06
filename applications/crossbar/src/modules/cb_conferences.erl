@@ -484,7 +484,9 @@ zone(TargetCallId) ->
             lager:info("got back channel resp, using target ~s zone ~s", [TargetCallId, Zone]),
             Zone;
         _E ->
-            lager:info("target ~s not found, using local zone: ~p", [_E]),
+            lager:info("target ~s not found (~p), using local zone: ~p"
+                      ,[TargetCallId, _E, kz_config:zone('binary')]
+                      ),
             kz_config:zone('binary')
     end.
 
