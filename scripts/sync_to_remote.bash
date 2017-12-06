@@ -2,6 +2,12 @@
 
 ## copies changed files (the beam code) to a host/path
 
+## Usage:
+## ./sync_to_remote.bash
+##   Syncs all files that diff from origni/master
+## ERL_FILES=$(git diff --name-only origin/{BRANCH} *.erl) HOST="{SERVER}" ./scripts/sync_to_remote.bash
+##   Sync any unpushed changes to HOST
+
 pushd $(dirname $0) > /dev/null
 
 cd $(pwd -P)/..
