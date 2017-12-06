@@ -199,6 +199,12 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     kz_util:put_callid(CallId),
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
+
+    _ = gproc:reg({'p', 'l', 'call_control'}),
+    _ = bind_to_events(Node, CallId),
+
+    _ = reg_for_call_related_events(CallId),
+
     {'ok', #state{node=Node
                  ,call_id=CallId
                  ,command_q=queue:new()
@@ -243,12 +249,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast('init', #state{node=Node
-                          ,call_id=CallId
-                          }=State) ->
-    gproc:reg({'p', 'l', 'call_control'}),
-    reg_for_call_related_events(CallId),
-    bind_to_events(Node, CallId),
+handle_cast('init', State) ->
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
     {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast('stop', State) ->
@@ -470,12 +471,34 @@ call_control_ready(#state{call_id=CallId
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_channel_destroyed(state()) -> state().
 -spec handle_channel_destroyed(kz_json:object(), state()) -> state().
-handle_channel_destroyed(_,  #state{sanity_check_tref=SCTRef
-                                   ,current_app=CurrentApp
-                                   ,current_cmd=CurrentCmd
-                                   ,call_id=CallId
-                                   }=State) ->
+handle_channel_destroyed(JObj, State) ->
+    case kz_json:is_true(<<"Channel-Is-Loopback">>, JObj, 'false') of
+        'false' -> handle_channel_destroyed(State);
+        'true' -> handle_loopback_destroyed(JObj, State)
+    end.
+
+-spec handle_loopback_destroyed(kz_json:object(), state()) -> state().
+handle_loopback_destroyed(JObj, State) ->
+    case {kz_call_event:hangup_cause(JObj)
+         ,kz_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj)
+         }
+    of
+        {<<"NORMAL_UNSPECIFIED">>, 'true'} ->
+            lager:debug("our loopback has ended but we may not have recv the bowout"),
+            State;
+        {_Cause, _Bowout} ->
+            lager:debug("our loopback has ended with ~s(bowout ~s); treating as done"),
+            handle_channel_destroyed(State)
+    end.
+
+handle_channel_destroyed(#state{sanity_check_tref=SCTRef
+                               ,current_app=CurrentApp
+                               ,current_cmd=CurrentCmd
+                               ,call_id=CallId
+                               }=State
+                        ) ->
     lager:debug("our channel has been destroyed, executing any post-hangup commands"),
     %% if our sanity check timer is running stop it, it will always return false
     %% now that the channel is gone
