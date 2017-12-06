@@ -249,6 +249,13 @@ handle_cast('hungup', Participant) ->
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast('pivoted', Participant) ->
     {'stop', 'normal', Participant};
+handle_cast({'channel_replaced', NewCallId}, #participant{call=Call}=Participant) ->
+    kapps_call:put_callid(NewCallId),
+    NewCall = kapps_call:set_call_id(NewCallId, Call),
+    lager:info("updated call to use ~s instead", [NewCallId]),
+    gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
+    {'noreply', Participant#participant{call=NewCall}};
+
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
                                                                 ,call=Call
                                                                 }=P) ->
@@ -359,9 +366,17 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
             gen_listener:cast(Srv, 'hungup');
         {{<<"call_event">>, <<"CHANNEL_PIVOT">>}, CallId} ->
             handle_channel_pivot(JObj, Call);
+        {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, CallId} ->
+            handle_channel_replaced(JObj, Srv);
         {_, _} -> 'ok'
     end,
     {'reply', [{'call_event_consumers', Consumers}]}.
+
+-spec handle_channel_replaced(kz_json:object(), server_ref()) -> 'ok'.
+handle_channel_replaced(JObj, Srv) ->
+    NewCallId = kz_call_event:replaced_by(JObj),
+    lager:info("channel has been replaced with ~s", [NewCallId]),
+    gen_listener:cast(Srv, {'channel_replaced', NewCallId}).
 
 -spec handle_channel_pivot(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_channel_pivot(JObj, Call) ->
