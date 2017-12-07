@@ -147,7 +147,7 @@ validate_search(Context, _Type, _Query, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"search needs a value to search for">>}]),
     cb_context:add_validation_error(<<"v">>, <<"required">>, Message, Context);
 validate_search(Context, Type, Query, <<_/binary>> = Value) ->
-    fix_envelope(search(Context, Type, Query, Value));
+    search(Context, Type, Query, Value, []);
 validate_search(Context, Type, Query, Value) ->
     case kz_term:is_true(Value) of
         'true' -> validate_search(Context, Type, Query, <<>>);
@@ -253,15 +253,17 @@ format_query_option(Name) -> Name.
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec search(cb_context:context(), ne_binary(), ne_binary(), binary()) -> cb_context:context().
-search(Context, Type, Query, Val) ->
+-spec search(cb_context:context(), ne_binary(), ne_binary(), binary(), kz_proplist()) -> cb_context:context().
+search(Context, Type, Query, Val, Opts) ->
     ViewName = <<?QUERY_TPL/binary, Query/binary>>,
     Value = maybe_normalize_value(Type, Val),
-    ViewOptions =
+    Options =
         [{'startkey', get_start_key(Context, Type, Value)}
         ,{'endkey', get_end_key(Context, Type, Value)}
+        ,{'mapper', crossbar_view:map_value_fun()}
+         | Opts
         ],
-    crossbar_doc:load_view(ViewName, ViewOptions, Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ViewName, Options).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -279,7 +281,7 @@ multi_search(Context, Type, Props) ->
 multi_search(Context, _Type, [], Acc) ->
     cb_context:set_resp_data(Context, Acc);
 multi_search(Context, Type, [{<<"by_", Query/binary>>, Val}|Props], Acc) ->
-    Context1 = search(Context, Type, Query, Val),
+    Context1 = search(Context, Type, Query, Val, [{'unchunkable', 'true'}]),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = cb_context:resp_data(Context1),
@@ -338,58 +340,3 @@ next_binary_key(<<>>) ->
 next_binary_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec fix_envelope(cb_context:context()) -> cb_context:context().
-fix_envelope(Context) ->
-    fix_envelope(Context, cb_context:resp_status(Context)).
-
--spec fix_envelope(cb_context:context(), crossbar_status()) -> cb_context:context().
-fix_envelope(Context, 'success') ->
-    RespContext = cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context))),
-    RespEnvelope = lists:foldl(fun fix_envelope_fold/2
-                              ,cb_context:resp_envelope(Context)
-                              ,[<<"start_key">>, <<"next_start_key">>]
-                              ),
-
-    cb_context:set_resp_envelope(RespContext, RespEnvelope);
-fix_envelope(Context, _) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec fix_envelope_fold(binary(), kz_json:object()) -> kz_json:object().
-fix_envelope_fold(Key, JObj) ->
-    case fix_start_key(kz_json:get_value(Key, JObj)) of
-        'undefined' -> kz_json:delete_key(Key, JObj);
-        V -> kz_json:set_value(Key, V, JObj)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec fix_start_key(api_binaries()) -> api_binary().
-fix_start_key('undefined') -> 'undefined';
-fix_start_key([_ , StartKey]) -> StartKey;
-fix_start_key([_ , _, StartKey]) -> StartKey.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].

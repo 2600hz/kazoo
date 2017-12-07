@@ -965,16 +965,10 @@ maybe_set_teletype_as_default(Context, AccountDb, AccountJObj) ->
         _Pref -> set_teletype_as_default(Context, AccountDb, AccountJObj)
     end.
 
-<<<<<<< HEAD
 -spec set_teletype_as_default(cb_context:context(), ne_binary(), kz_json:object()) -> 'ok'.
 set_teletype_as_default(Context, AccountDb, AccountJObj) ->
     JObj = kz_account:set_notification_preference(AccountJObj, <<"teletype">>),
     case kz_datamgr:save_doc(AccountDb, crossbar_doc:update_pvt_parameters(JObj, Context)) of
-=======
--spec note_notification_preference(ne_binary(), kz_json:object()) -> 'ok'.
-note_notification_preference(AccountDb, AccountJObj) ->
-    case kz_datamgr:save_doc(AccountDb, kz_account:set_notification_preference(AccountJObj, <<"teletype">>)) of
->>>>>>> 6a30a80bf0... KAZOO-5704: add pvt_alphanum_name for every doc that has name field
         {'ok', UpdatedAccountJObj} ->
             _ = cb_accounts:replicate_account_definition(UpdatedAccountJObj),
             lager:debug("updated pref for account");
@@ -982,8 +976,7 @@ note_notification_preference(AccountDb, AccountJObj) ->
             lager:debug("failed to note preference: ~p", [_E])
     end.
 
--spec migrate_template_attachments(cb_context:context(), ne_binary(), api_object()) ->
-                                          cb_context:context().
+-spec migrate_template_attachments(cb_context:context(), ne_binary(), api_object()) -> cb_context:context().
 migrate_template_attachments(Context, _Id, 'undefined') ->
     lager:debug("no attachments to migrate for ~s", [_Id]),
     Context;
