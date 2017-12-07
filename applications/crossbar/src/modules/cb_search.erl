@@ -168,7 +168,7 @@ validate_multi(Context, 'undefined') ->
 validate_multi(Context, <<"account">>=Type) ->
     validate_multi(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type, kz_json:to_proplist(cb_context:query_string(Context)));
 validate_multi(Context, Type) ->
-    validate_multi(Type, kz_json:to_proplist(cb_context:query_string(Context))).
+    validate_multi(Context, Type, kz_json:to_proplist(cb_context:query_string(Context))).
 
 -spec validate_multi(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 validate_multi(Context, Type, Query) ->
@@ -183,7 +183,7 @@ validate_multi(Context, Type, Query) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_query(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_query(cb_context:context(), kz_proplist() | ne_binary()) -> cb_context:context().
 -spec validate_query(cb_context:context(), kz_proplist(), kz_proplist() | ne_binary()) -> cb_context:context().
 validate_query(Context, Query) ->
     QueryOptions = available_query_options(cb_context:account_db(Context)),
