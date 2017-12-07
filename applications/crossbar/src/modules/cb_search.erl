@@ -170,7 +170,7 @@ validate_multi(Context, <<"account">>=Type) ->
 validate_multi(Context, Type) ->
     validate_multi(Type, kz_json:to_proplist(cb_context:query_string(Context))).
 
--spec validate_multi(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+-spec validate_multi(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 validate_multi(Context, Type, Query) ->
     Context1 = validate_query(Context, Query),
     case cb_context:resp_status(Context1) of

@@ -71,7 +71,7 @@ curl -v -X GET \
 ```json
 {
     "page_size": 1,
-    "start_key": "nat",
+    "start_key": "g2wAAAADbQAAACA2MTM0Y2M5YWE0M2ZmYWVlM2UzZjBjOWE4NDExM2Q2ZW0AAAAHYWNjb3VudG0AAAAHbmF0ZmZmMGo",
     "data": [
         {
             "id": "a391d64a083b99232f6d2633c47432e3",
