@@ -133,7 +133,7 @@ fixture_shell:
 		erl -name fixturedb -s reloader "$$@"
 
 DIALYZER ?= dialyzer
-DIZLYZER += --statistics --no_native
+DIALYZER += --statistics --no_native
 PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl

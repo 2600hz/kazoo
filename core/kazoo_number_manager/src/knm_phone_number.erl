@@ -530,7 +530,7 @@ delete(T=#{todo := PNs, options := Options}) ->
                                 ])
     end.
 
--spec log_permanent_deletion(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
+-spec log_permanent_deletion(knm_numbers:collection()) -> knm_numbers:collection().
 log_permanent_deletion(T=#{todo := PNs}) ->
     F = fun (_PN) -> ?LOG_DEBUG("deleting permanently ~s", [number(_PN)]) end,
     lists:foreach(F, PNs),
