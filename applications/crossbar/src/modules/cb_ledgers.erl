@@ -211,7 +211,7 @@ credit_or_debit(Context, Action) ->
 
     Props =
         props:filter_undefined(
-          [{<<"amount">>, kz_json:get_value(<<"amount">>, ReqData)}
+          [{<<"amount">>, kz_json:get_value(<<"amount">>, ReqData, 0)}
           ,{<<"description">>, kz_json:get_value(<<"description">>, ReqData)}
           ,{<<"period_start">>, kz_json:get_value([<<"period">>, <<"start">>], ReqData)}
           ,{<<"period_end">>, kz_json:get_value([<<"period">>, <<"end">>], ReqData)}
@@ -295,6 +295,7 @@ summary_to_dollars(LedgersJObj) ->
         ])).
 
 -spec maybe_convert_units(ne_binary(), kz_transaction:units() | T) -> kz_transaction:dollars() | T when T::any().
+maybe_convert_units(<<"amount">>, 'undefined') -> 0;
 maybe_convert_units(<<"amount">>, Units) -> wht_util:units_to_dollars(Units);
 maybe_convert_units(_, Value) -> Value.
 
