@@ -21,9 +21,9 @@
                 "  }",
                 "  emit([doc.pvt_type, name], {",
                 "    'id': doc._id,",
+                "    'first_name': first_name,",
+                "    'last_name': last_name,",
                 "    'name': name",
-                "    'first_name': first_name",
-                "    'last_name': last_name",
                 "  });",
                 "}"
             ]
@@ -58,8 +58,8 @@
                 "    last_name = doc.last_name.toLowerCase().replace(/[^a-z0-9]/g, '');",
                 "    emit([doc.pvt_type, first_name + last_name], {",
                 "      'id': doc._id,",
-                "      'first_name': first_name",
-                "      'last_name': last_name",
+                "      'first_name': first_name,",
+                "      'last_name': last_name,",
                 "      'numbers': doc.numbers",
                 "    });",
                 "  }",
