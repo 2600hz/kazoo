@@ -27,6 +27,8 @@
 -define(APP_VERSION, <<"4.0.0">> ).
 -define(CF_CONFIG_CAT, ?APP_NAME).
 
+-define(DEFAULT_CHILD_KEY, <<"_">>).
+
 -define(RECORDED_NAME_KEY, [<<"media">>, <<"name">>]).
 -define(CF_RECORDING_ID_KEY, <<"Recording-ID">>).
 

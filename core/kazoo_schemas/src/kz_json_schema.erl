@@ -182,8 +182,14 @@ maybe_default(Key, Default, JObj) ->
 validate(SchemaJObj, DataJObj) ->
     validate(SchemaJObj, DataJObj, ?DEFAULT_OPTIONS).
 
+-ifdef(TEST).
+-define(DEFAULT_LOADER, fun fload/1).
+-else.
+-define(DEFAULT_LOADER, fun load/1).
+-endif.
+
 validate(<<_/binary>> = Schema, DataJObj, Options) ->
-    Fun = props:get_value('schema_loader_fun', Options, fun load/1),
+    Fun = props:get_value('schema_loader_fun', Options, ?DEFAULT_LOADER),
     {'ok', SchemaJObj} = Fun(Schema),
     validate(SchemaJObj, DataJObj, Options);
 validate(SchemaJObj, DataJObj, Options0) when is_list(Options0) ->

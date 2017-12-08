@@ -192,6 +192,7 @@ init(Node, CallId) ->
                  ,call_id=CallId
                  ,ref=kz_binary:rand_hex(12)
                  }}.
+
 -spec register_event_process(atom(), ne_binary()) -> 'ok' | {'error', any()}.
 register_event_process(Node, CallId) ->
     try gproc:reg(?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)) of
@@ -586,8 +587,8 @@ maybe_manual_bowout(Node, Props) ->
 maybe_manual_bowout(Node, <<"att_xfer">>, <<"originator">>, UUID) ->
     case ecallmgr_fs_channel:fetch(UUID,  'record') of
         {'ok', #channel{loopback_other_leg=OtherLeg, is_loopback='true'}} ->
-            freeswitch:api(Node, 'uuid_setvar', <<UUID/binary, " ", "loopback_bowout true">>),
-            freeswitch:api(Node, 'uuid_setvar', <<OtherLeg/binary, " ", "loopback_bowout true">>),
+            _ = freeswitch:api(Node, 'uuid_setvar', <<UUID/binary, " ", "loopback_bowout true">>),
+            _ = freeswitch:api(Node, 'uuid_setvar', <<OtherLeg/binary, " ", "loopback_bowout true">>),
             'ok';
         _ -> 'ok'
     end;
@@ -669,8 +670,8 @@ generic_call_event_props(Props) ->
     ,{<<"Channel-Is-Loopback">>, get_is_loopback(props:get_value(<<"variable_is_loopback">>, Props))}
     ,{<<"Channel-Loopback-Bowout">>, props:get_is_true(<<"variable_loopback_bowout">>, Props)}
     ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_is_true(<<"variable_loopback_bowout_on_execute">>, Props)}
-    ,{<<"Channel-Loopback-Leg">>, props:get_value(<<"variable_loopback_leg">>, Props)}
-    ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
+    ,{<<"Channel-Loopback-Leg">>, kzd_freeswitch:loopback_leg_name(Props)}
+    ,{<<"Channel-Loopback-Other-Leg-ID">>, kzd_freeswitch:loopback_other_leg(Props)}
     ,{<<"Channel-Moving">>, get_channel_moving(Props)}
     ,{<<"Channel-Name">>, props:get_value(<<"Channel-Name">>, Props)}
     ,{<<"Channel-State">>, get_channel_state(Props)}
@@ -679,7 +680,7 @@ generic_call_event_props(Props) ->
     ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
     ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
     ,{<<"Hangup-Code">>, get_hangup_code(Props)}
-    ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+    ,{<<"Media-Server">>, kzd_freeswitch:hostname(Props)}
     ,{<<"Msg-ID">>, kz_term:to_binary(FSTimestamp)}
     ,{<<"Origination-Call-ID">>, kzd_freeswitch:origination_call_id(Props)}
     ,{<<"Other-Leg-Call-ID">>, get_other_leg(Props)}
@@ -687,13 +688,14 @@ generic_call_event_props(Props) ->
     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
-    ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
+    ,{<<"Presence-ID">>, kzd_freeswitch:presence_id(Props)}
     ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
     ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
     ,{<<"Replaced-By">>, props:get_first_defined([<<"att_xfer_replaced_by">>, ?ACQUIRED_UUID], Props)}
-    ,{<<"Switch-Nodename">>, props:get_value(<<"Switch-Nodename">>, Props)}
-    ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
-    ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
+    ,{<<"Switch-Hostname">>, kzd_freeswitch:hostname(Props)}
+    ,{<<"Switch-Nodename">>, kzd_freeswitch:switch_nodename(Props)}
+    ,{<<"Switch-URI">>, kzd_freeswitch:switch_uri(Props)}
+    ,{<<"Switch-URL">>, kzd_freeswitch:switch_url(Props)}
     ,{<<"Timestamp">>, NormalizedFSTimestamp}
     ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
     ,{<<"Transfer-History">>, get_transfer_history(Props)}

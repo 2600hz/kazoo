@@ -3543,6 +3543,10 @@
                     "minItems": 1,
                     "type": "array"
                 },
+                "target_call_id": {
+                    "description": "Existing UUID to use as a hint for where to start the conference",
+                    "type": "string"
+                },
                 "timeout": {
                     "description": "How long to try to reach the endpoint(s)",
                     "minimum": 1,
@@ -8085,6 +8089,257 @@
             ],
             "type": "object"
         },
+        "kapi.conference.add_participant": {
+            "description": "AMQP API for conference.add_participant",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Application-Data": {
+                    "type": "string"
+                },
+                "Application-Event": {
+                    "type": "string"
+                },
+                "Application-Name": {
+                    "type": "string"
+                },
+                "Application-Response": {
+                    "type": "string"
+                },
+                "Billing-Seconds": {
+                    "type": "string"
+                },
+                "Call-Direction": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Callee-ID-Name": {
+                    "type": "string"
+                },
+                "Callee-ID-Number": {
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Channel-Call-State": {
+                    "type": "string"
+                },
+                "Channel-Created-Time": {
+                    "type": "integer"
+                },
+                "Channel-Debug": {
+                    "type": "string"
+                },
+                "Channel-Is-Loopback": {
+                    "type": "string"
+                },
+                "Channel-Loopback-Bowout": {
+                    "type": "string"
+                },
+                "Channel-Loopback-Bowout-Execute": {
+                    "type": "string"
+                },
+                "Channel-Loopback-Leg": {
+                    "type": "string"
+                },
+                "Channel-Loopback-Other-Leg-ID": {
+                    "type": "string"
+                },
+                "Channel-Moving": {
+                    "type": "string"
+                },
+                "Channel-Name": {
+                    "type": "string"
+                },
+                "Channel-State": {
+                    "type": "string"
+                },
+                "Conference-Config": {
+                    "type": "string"
+                },
+                "Conference-ID": {
+                    "type": "string"
+                },
+                "Conference-Name": {
+                    "type": "string"
+                },
+                "Control-Queue": {
+                    "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "DTMF-Digit": {
+                    "type": "string"
+                },
+                "DTMF-Duration": {
+                    "type": "string"
+                },
+                "Detected-Tone": {
+                    "type": "string"
+                },
+                "Digits-Dialed": {
+                    "type": "string"
+                },
+                "Disposition": {
+                    "type": "string"
+                },
+                "Duration-Seconds": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "conference"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "add_participant"
+                    ],
+                    "type": "string"
+                },
+                "Fax-Info": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "From-Tag": {
+                    "type": "string"
+                },
+                "From-Uri": {
+                    "type": "string"
+                },
+                "Hangup-Cause": {
+                    "type": "string"
+                },
+                "Hangup-Code": {
+                    "type": "string"
+                },
+                "Interaction-ID": {
+                    "type": "string"
+                },
+                "Intercepted-By": {
+                    "type": "string"
+                },
+                "Length": {
+                    "type": "string"
+                },
+                "Local-SDP": {
+                    "type": "string"
+                },
+                "Media-Server": {
+                    "type": "string"
+                },
+                "Origination-Call-ID": {
+                    "type": "string"
+                },
+                "Other-Leg-Call-ID": {
+                    "type": "string"
+                },
+                "Other-Leg-Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Other-Leg-Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Other-Leg-Destination-Number": {
+                    "type": "string"
+                },
+                "Other-Leg-Direction": {
+                    "type": "string"
+                },
+                "Parking-Slot": {
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Raw-Application-Data": {
+                    "type": "string"
+                },
+                "Raw-Application-Name": {
+                    "type": "string"
+                },
+                "Remote-SDP": {
+                    "type": "string"
+                },
+                "Replaced-By": {
+                    "type": "string"
+                },
+                "Request": {
+                    "type": "string"
+                },
+                "Ringing-Seconds": {
+                    "type": "string"
+                },
+                "Silence-Terminated": {
+                    "type": "string"
+                },
+                "Switch-Hostname": {
+                    "type": "string"
+                },
+                "Switch-Nodename": {
+                    "type": "string"
+                },
+                "Switch-URI": {
+                    "type": "string"
+                },
+                "Switch-URL": {
+                    "type": "string"
+                },
+                "Target-Call-ID": {
+                    "type": "string"
+                },
+                "Terminator": {
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                },
+                "To-Tag": {
+                    "type": "string"
+                },
+                "To-Uri": {
+                    "type": "string"
+                },
+                "Transfer-History": {
+                    "type": "string"
+                },
+                "Transfer-To": {
+                    "type": "string"
+                },
+                "Transfer-Type": {
+                    "type": "string"
+                },
+                "User-Agent": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call-ID",
+                "Conference-ID",
+                "Control-Queue"
+            ],
+            "type": "object"
+        },
         "kapi.conference.conference_error": {
             "description": "AMQP API for conference.conference_error",
             "properties": {
@@ -8222,6 +8477,9 @@
         "kapi.conference.dial": {
             "description": "AMQP API for conference.dial",
             "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
                 "Application-Name": {
                     "enum": [
                         "dial"
@@ -8266,6 +8524,9 @@
                 "Outbound-Call-ID": {
                     "type": "string"
                 },
+                "Target-Call-ID": {
+                    "type": "string"
+                },
                 "Timeout": {
                     "type": "integer"
                 }
@@ -8274,6 +8535,36 @@
                 "Application-Name",
                 "Conference-ID",
                 "Endpoints"
+            ],
+            "type": "object"
+        },
+        "kapi.conference.dial_resp": {
+            "description": "AMQP API for conference.dial_resp",
+            "properties": {
+                "Application-Name": {
+                    "enum": [
+                        "dial_resp"
+                    ],
+                    "type": "string"
+                },
+                "Endpoint-Responses": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "conference"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Endpoint-Responses"
             ],
             "type": "object"
         },
@@ -10514,6 +10805,9 @@
                     "enum": [
                         "command"
                     ],
+                    "type": "string"
+                },
+                "Hangup-Cause": {
                     "type": "string"
                 },
                 "Insert-At": {
@@ -14165,6 +14459,9 @@
                 "Channels": {
                     "type": "string"
                 },
+                "Conferences": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "nodes"
@@ -17294,6 +17591,9 @@
                         "listen",
                         "whisper"
                     ],
+                    "type": "string"
+                },
+                "Origination-Call-ID": {
                     "type": "string"
                 },
                 "Outbound-Call-ID": {
@@ -25830,6 +26130,11 @@
                 "number_timeout": {
                     "default": 5000,
                     "description": "conferences number timeout",
+                    "type": "integer"
+                },
+                "participant_sanity_check_ms": {
+                    "default": 60000,
+                    "description": "conferences participant_sanity_check_ms",
                     "type": "integer"
                 },
                 "pin_timeout": {

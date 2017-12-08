@@ -19,6 +19,10 @@
             "minItems": 1,
             "type": "array"
         },
+        "target_call_id": {
+            "description": "Existing UUID to use as a hint for where to start the conference",
+            "type": "string"
+        },
         "timeout": {
             "description": "How long to try to reach the endpoint(s)",
             "minimum": 1,

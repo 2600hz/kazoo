@@ -3,6 +3,9 @@
     "_id": "kapi.conference.dial",
     "description": "AMQP API for conference.dial",
     "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
         "Application-Name": {
             "enum": [
                 "dial"
@@ -45,6 +48,9 @@
             "type": "string"
         },
         "Outbound-Call-ID": {
+            "type": "string"
+        },
+        "Target-Call-ID": {
             "type": "string"
         },
         "Timeout": {

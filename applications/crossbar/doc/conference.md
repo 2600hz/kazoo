@@ -82,7 +82,20 @@ Key | Description | Type | Default | Required
 `caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
 `endpoints.[]` |   | `string()` |   | `true`
 `endpoints` |   | `array(string())` |   | `true`
+`target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false`
 `timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
+
+
+
+###### Endpoints
+
+Dial-able endpoints are
+1. Devices (by device id)
+2. Users (by user id)
+3. Phone Numbers
+4. SIP URIs (`sip:user@realm`)
+
+Note: Phone numbers will involve some internal legs being generated (loopback legs) to process the number as if it was a call coming in for the desired number. This means billing and limits will be applied just the same as if a user dialed the number from their device.
 
 ###### Examples
 
@@ -91,7 +104,7 @@ Key | Description | Type | Default | Required
     "action":"dial"
     ,"data":{
         ,"data":{
-            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212"
         }
@@ -109,7 +122,7 @@ As when making [quickcalls](./quickcall.md), you can include `custom_application
             "foo":"bar"
         }
         "data":{
-            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212"
         }
@@ -127,7 +140,7 @@ You can also include the outbound call id you'd like the leg to use:
             "foo":"bar"
         }
         "data":{
-            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212",
             "outbound_call_id":"xyz-abc"
@@ -145,7 +158,7 @@ Sometimes you want to create ad-hoc conferences and put a participant in there. 
     "action":"dial"
     ,"data":{
         "data":{
-            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212",
             "play_entry_tone": true,
@@ -157,6 +170,25 @@ Sometimes you want to create ad-hoc conferences and put a participant in there. 
 ```
 
 These properties will be merged into a "default" conference document and then executed the same as if the conference was preconfigured.
+
+##### The API response
+
+```json
+{
+    "data": {
+        "endpoint_responses": [
+            {
+                "call_id": "522bb682-da03-11e7-8ce9-5364ba916f96",
+                "endpoint_id": "{ENDPOINT_FROM_REQUEST}",
+                "job_id": "137b1e9e-d9fb-11e7-8cad-5364ba916f96",
+                "message": "dial resulted in call id 522bb682-da03-11e7-8ce9-5364ba916f96",
+                "status": "success"
+            }
+        ]
+    }
+    ,...
+}
+```
 
 ##### Playing media to a conference
 

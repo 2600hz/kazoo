@@ -29,6 +29,10 @@
         ,delete/2
         ]).
 
+-ifdef(TEST).
+-export([build_valid_endpoints/3]).
+-endif.
+
 -include("crossbar.hrl").
 
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
@@ -44,6 +48,8 @@
 -define(PLAY, <<"play">>).
 
 -define(PUT_ACTION, <<"action">>).
+
+-define(MIN_DIGITS_FOR_DID, 5).
 
 %%%===================================================================
 %%% API
@@ -393,48 +399,106 @@ media_id_required(Context) ->
 dial(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"dial">>);
 dial(Context, ConferenceId, Data) ->
+    case build_valid_endpoints(Context, ConferenceId, Data) of
+        {Context1, []} -> error_no_endpoints(Context1);
+        {Context1, Endpoints} ->
+            case cb_context:has_errors(Context1) of
+                'true' -> Context1;
+                'false' ->
+                    Resp = exec_dial_endpoints(Context1, ConferenceId, Data, Endpoints),
+                    crossbar_util:response_202(Resp, Context1)
+            end
+    end.
+
+-spec build_valid_endpoints(cb_context:context(), ne_binary(), kz_json:object()) ->
+                                   {cb_context:context(), kz_json:objects()}.
+build_valid_endpoints(Context, ConferenceId, Data) ->
     case kz_json_schema:validate(<<"conferences.dial">>, Data) of
         {'ok', ValidData} ->
-            dial_endpoints(Context, ConferenceId, ValidData, kz_json:get_list_value(<<"endpoints">>, Data));
+            build_endpoints_to_dial(Context, ConferenceId, kz_json:get_list_value(<<"endpoints">>, ValidData));
         {'error', Errors} ->
             lager:info("dial data failed to validate"),
-            cb_context:failed(Context, Errors)
+            {cb_context:failed(Context, Errors), []}
     end.
 
--spec dial_endpoints(cb_context:context(), path_token(), kz_json:object(), ne_binaries()) ->
-                            cb_context:context().
-dial_endpoints(Context, ConferenceId, Data, Endpoints) ->
-    case build_endpoints_to_dial(Context, ConferenceId, Endpoints) of
-        [] -> error_no_endpoints(Context);
-        ToDial ->
-            exec_dial_endpoints(Context, ConferenceId, Data, ToDial),
-            crossbar_util:response_202(<<"dialing endpoints">>, Context)
-    end.
-
--spec exec_dial_endpoints(cb_context:context(), path_token(), kz_json:object(), kz_json:objects()) -> 'ok'.
+-spec exec_dial_endpoints(cb_context:context(), path_token(), kz_json:object(), kz_json:objects()) ->
+                                 kz_json:object().
 exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     Conference = cb_context:doc(Context),
     CAVs = kz_json:from_list(cb_modules_util:cavs_from_context(Context)),
-    Command = [{<<"Application-Name">>, <<"dial">>}
-              ,{<<"Endpoints">>, ToDial}
+    Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S),
+    TargetCallId = kz_json:get_ne_binary_value(<<"target_call_id">>, Data),
+
+    Command = [{<<"Account-ID">>, cb_context:account_id(Context)}
+              ,{<<"Application-Name">>, <<"dial">>}
               ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference))}
               ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Data)}
-              ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
-              ,{<<"Custom-Application-Vars">>, CAVs}
               ,{<<"Conference-ID">>, ConferenceId}
-              ,{<<"Timeout">>, kz_json:get_integer_value(<<"timeout">>, Data)}
+              ,{<<"Custom-Application-Vars">>, CAVs}
+              ,{<<"Endpoints">>, ToDial}
+              ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+              ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
+              ,{<<"Target-Call-ID">>, TargetCallId}
+              ,{<<"Timeout">>, Timeout}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    'ok' = kz_amqp_worker:cast(Command, fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end).
+
+    Zone = zone(TargetCallId),
+    case kz_amqp_worker:call(Command
+                            ,fun(P) -> kapi_conference:publish_dial(Zone, P) end
+                            ,fun kapi_conference:dial_resp_v/1
+                            ,(Timeout * ?MILLISECONDS_IN_SECOND) * length(ToDial)
+                            )
+    of
+        {'ok', Resp} ->
+            kz_json:normalize(kz_api:remove_defaults(Resp));
+        {'error', 'timeout'} ->
+            kz_json:from_list([{<<"status">>, <<"error">>}
+                              ,{<<"message">>, <<"timed out trying to dial endpoints">>}
+                              ]);
+        {'error', _E} ->
+            lager:info("failed to hear back about the dial: ~p", [_E]),
+            kz_json:from_list([{<<"status">>, <<"error">>}
+                              ,{<<"message">>, <<"conference dial failed to find a media server">>}
+                              ])
+    end.
+
+-spec zone(api_ne_binary()) -> ne_binary().
+zone('undefined') ->
+    kz_config:zone('binary');
+zone(TargetCallId) ->
+    Req = [{<<"Call-ID">>, TargetCallId}
+          ,{<<"Fields">>, <<"all">>}
+          ,{<<"Active-Only">>, 'true'}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_call:publish_query_channels_req/1
+                                    ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
+                                    )
+    of
+        {'ok', [Resp|_]} ->
+            NodeInfo = kz_nodes:node_to_json(kz_api:node(Resp)),
+            Zone = kz_json:get_ne_binary_value(<<"zone">>, NodeInfo, kz_config:zone('binary')),
+            lager:info("got back channel resp, using target ~s zone ~s", [TargetCallId, Zone]),
+            Zone;
+        _E ->
+            lager:info("target ~s not found (~p), using local zone: ~p"
+                      ,[TargetCallId, _E, kz_config:zone('binary')]
+                      ),
+            kz_config:zone('binary')
+    end.
 
 -spec build_endpoints_to_dial(cb_context:context(), path_token(), ne_binaries()) ->
-                                     kz_json:objects().
+                                     {cb_context:context(), kz_json:objects()}.
 build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
-    {ToDial, _} = lists:foldl(fun build_endpoint/2
-                             ,{[], create_call(Context, ConferenceId)}
-                             ,Endpoints
-                             ),
-    ToDial.
+    {ToDial, _Call, Context1, _Element} =
+        lists:foldl(fun build_endpoint/2
+                   ,{[], create_call(Context, ConferenceId), Context, 1}
+                   ,Endpoints
+                   ),
+    {Context1, ToDial}.
 
 -spec error_no_endpoints(cb_context:context()) -> cb_context:context().
 error_no_endpoints(Context) ->
@@ -460,22 +524,43 @@ create_call(Context, ConferenceId) ->
         ],
     kapps_call:exec(Routines, kapps_call:new()).
 
--type build_acc() :: {kz_json:objects(), kapps_call:call()}.
+-type build_acc() :: {kz_json:objects(), kapps_call:call(), cb_context:context(), pos_integer()}.
 -spec build_endpoint(ne_binary(), build_acc()) -> build_acc().
-build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call}) ->
+build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call, Context, Element}) ->
     lager:info("building SIP endpoint ~s", [URI]),
     Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                  ,{<<"Route">>, URI}
                                  ]),
-    {[Endpoint | Endpoints], Call};
-build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call}) ->
+    {[Endpoint | Endpoints], Call, Context, Element+1};
+build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call, Context, Element}) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), EndpointId) of
-        {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call});
+        {'ok', Endpoint} -> build_endpoint_from_doc(Endpoint, {Endpoints, Call, Context, Element});
         {'error', _E} ->
             lager:info("failed to build endpoint ~s: ~p", [EndpointId, _E]),
-            {Endpoints, Call}
+            {Endpoints, Call, Context, Element+1}
     end;
-build_endpoint(Number, {Endpoints, Call}) ->
+build_endpoint(Number, {Endpoints, Call, Context, Element}=Acc) ->
+    case knm_converters:is_reconcilable(Number)
+        orelse byte_size(Number) < ?MIN_DIGITS_FOR_DID
+    of
+        'true' -> build_number_endpoint(Number, Acc);
+        'false' ->
+            {Endpoints, Call
+            ,add_not_endpoint_error(Context, Element)
+            ,Element+1
+            }
+    end.
+
+-spec add_not_endpoint_error(cb_context:context(), pos_integer()) -> cb_context:context().
+add_not_endpoint_error(Context, Element) ->
+    cb_context:add_validation_error([<<"data">>, <<"endpoints">>, Element]
+                                   ,<<"enum">>
+                                   ,kz_json:from_list([{<<"message">>, <<"Value not a number, device or user ID, or SIP endpoint">>}])
+                                   ,Context
+                                   ).
+
+-spec build_number_endpoint(ne_binary(), build_acc()) -> build_acc().
+build_number_endpoint(Number, {Endpoints, Call, Context, Element}) ->
     AccountRealm = kapps_call:account_realm(Call),
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  Number}
@@ -494,7 +579,7 @@ build_endpoint(Number, {Endpoints, Call}) ->
                ],
 
     lager:info("adding number ~s endpoint", [Number]),
-    {[kz_json:from_list(Endpoint) | Endpoints], Call}.
+    {[kz_json:from_list(Endpoint) | Endpoints], Call, Context, Element+1}.
 
 -spec build_endpoint_from_doc(kz_json:object(), build_acc()) -> build_acc().
 build_endpoint_from_doc(Endpoint, Acc) ->
@@ -509,29 +594,54 @@ build_endpoint_from_doc(Endpoint, Acc) ->
     end.
 
 -spec build_endpoint_from_doc(kz_json:object(), build_acc(), ne_binary()) -> build_acc().
-build_endpoint_from_doc(Device, {Endpoints, Call}, <<"device">>) ->
+build_endpoint_from_doc(Device, {Endpoints, Call, Context, Element}, <<"device">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     case kz_endpoint:build(Device, Properties, Call) of
-        {'ok', Legs} -> {Endpoints ++ Legs, Call};
+        {'ok', Legs} -> {Endpoints ++ Legs, Call, Context, Element+1};
         {'error', _E} ->
             lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Device), _E]),
-            {Endpoints, Call}
+            {Endpoints, Call, add_not_found_error(Context, Device, Element), Element+1}
     end;
-build_endpoint_from_doc(User, {Endpoints, Call}, <<"user">>) ->
+build_endpoint_from_doc(User, {Endpoints, Call, Context, Element}, <<"user">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
-    Legs = lists:foldr(fun(EndpointId, Acc) ->
-                               case kz_endpoint:build(EndpointId, Properties, Call) of
-                                   {'ok', Endpoint} -> Endpoint ++ Acc;
-                                   {'error', _E} -> Acc
-                               end
-                       end
-                      ,Endpoints
-                      ,kz_attributes:owned_by(kz_doc:id(User), <<"device">>, Call)
-                      ),
-    {Legs, Call};
-build_endpoint_from_doc(_Endpoint, Acc, _Type) ->
-    lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(_Endpoint)]),
-    Acc.
+    case lists:foldr(fun(EndpointId, Acc) ->
+                             case kz_endpoint:build(EndpointId, Properties, Call) of
+                                 {'ok', Endpoint} -> Endpoint ++ Acc;
+                                 {'error', _E} -> Acc
+                             end
+                     end
+                    ,[]
+                    ,kz_attributes:owned_by(kz_doc:id(User), <<"device">>, Call)
+                    )
+    of
+        [] ->
+            lager:info("no endpoints found for user ~s", [kz_doc:id(User)]),
+            {Endpoints, Call, add_no_devices_error(Context, kz_doc:id(User), Element), Element+1};
+        Legs ->
+            {Legs++Endpoints, Call, Context, Element+1}
+    end;
+build_endpoint_from_doc(Endpoint, {Endpoints, Call, Context, Element}, _Type) ->
+    lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(Endpoint)]),
+    {Endpoints, Call, add_not_found_error(Context, kz_doc:id(Endpoint), Element), Element+1}.
+
+-spec add_no_devices_error(cb_context:context(), ne_binary(), pos_integer()) -> cb_context:context().
+add_no_devices_error(Context, UserId, Element) ->
+    cb_context:add_validation_error([<<"data">>, <<"endpoints">>, Element]
+                                   ,<<"minItems">>
+                                   ,kz_json:from_list([{<<"message">>, <<"user ", UserId/binary, " failed to resolve to route-able destinations">>}
+                                                      ,{<<"target">>, 1}
+                                                      ])
+                                   ,Context
+                                   ).
+
+
+-spec add_not_found_error(cb_context:context(), ne_binary(), pos_integer()) -> cb_context:context().
+add_not_found_error(Context, Id, Index) ->
+    cb_context:add_validation_error([<<"data">>, <<"participants">>, Index]
+                                   ,<<"not_found">>
+                                   ,kz_json:from_list([{<<"message">>, <<"ID ", Id/binary, " not found">>}])
+                                   ,Context
+                                   ).
 
 %%%===================================================================
 %%% Participant Actions
@@ -723,7 +833,7 @@ find_conference_details(JObjs) ->
 %%%===================================================================
 %%% Utility functions
 %%%===================================================================
--spec conference(ne_binary()) -> kz_json:object().
+-spec conference(ne_binary()) -> kapps_conference:conference().
 conference(ConferenceId) ->
     kapps_conference:set_id(ConferenceId, kapps_conference:new()).
 

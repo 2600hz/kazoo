@@ -393,6 +393,7 @@
                  ,ports = 0 :: non_neg_integer() | '_'
                  ,version :: api_binary() | '_'
                  ,channels = 0 :: non_neg_integer() | '_'
+                 ,conferences = 0 :: non_neg_integer() | '_'
                  ,registrations = 0 :: non_neg_integer() | '_'
                  ,globals = [] :: kz_proplist() | '$1' | '_'
                  ,node_info :: api_object() | '_'

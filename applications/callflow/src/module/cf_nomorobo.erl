@@ -129,7 +129,7 @@ nomorobo_branch(Score, [Lo|Keys]) ->
     branch_to_binary(nomorobo_branch(Score, Lo, Keys)).
 
 -spec branch_to_binary(integer()) -> ne_binary().
-branch_to_binary(-1) -> <<"_">>;
+branch_to_binary(-1) -> ?DEFAULT_CHILD_KEY;
 branch_to_binary(I) -> kz_term:to_binary(I).
 
 nomorobo_branch(_Score, Branch, []) -> Branch;
@@ -159,7 +159,7 @@ nomorobo_branches({'branch_keys', Keys}) ->
 
 nomorobo_branches([], Branches) ->
     lists:sort(Branches);
-nomorobo_branches([<<"_">>|Keys], Branches) ->
+nomorobo_branches([?DEFAULT_CHILD_KEY|Keys], Branches) ->
     nomorobo_branches(Keys, [-1 | Branches]);
 nomorobo_branches([Key|Keys], Branches) ->
     try kz_term:to_integer(Key) of

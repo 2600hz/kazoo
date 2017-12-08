@@ -152,7 +152,7 @@
                     ,callee_id_name :: api_binary()                     %% The callee name
                     ,callee_id_number :: api_binary()                   %% The callee number
                     ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                    ,switch_hostname :: api_binary()                    %% The switch hostname (as reported by the switch)
+                    ,switch_hostname :: api_ne_binary()                    %% The switch hostname (as reported by the switch)
                     ,switch_url :: api_binary()                         %% The switch url
                     ,switch_uri :: api_binary()                         %% The switch uri
                     ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
@@ -926,7 +926,14 @@ set_account_db(<<_/binary>> = AccountDb, #kapps_call{}=Call) ->
                                                                        ,account_id=AccountId
                                                                        }).
 
--spec account_db(call()) -> api_binary().
+-spec account_db(call()) -> api_ne_binary().
+account_db(#kapps_call{account_db='undefined'
+                      ,account_id='undefined'
+                      }) -> 'undefined';
+account_db(#kapps_call{account_db='undefined'
+                       ,account_id=AccountId
+                      }) ->
+    kz_util:format_account_db(AccountId);
 account_db(#kapps_call{account_db=AccountDb}) ->
     AccountDb.
 

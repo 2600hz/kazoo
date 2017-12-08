@@ -30,7 +30,9 @@
 -export([local_zone/0]).
 -export([whapp_zones/1, whapp_zone_count/1]).
 -export([globals_scope/0]).
--export([node_encoded/0]).
+-export([node_encoded/0
+        ,node_to_json/1
+        ]).
 
 -export([init/1
         ,handle_call/3
@@ -44,6 +46,7 @@
 -type request_info() :: {'app', atom()} |
                         {'media_servers', [{ne_binary(), kz_json:object()}]} |
                         {'channels', non_neg_integer()} |
+                        {'conferences', non_neg_integer()} |
                         {'registrations', non_neg_integer()} |
                         {'info', whapp_info()}.
 -type request_acc() :: [request_info()].
@@ -126,6 +129,31 @@ is_up(Node) ->
         [] -> 'false';
         [_] -> 'true'
     end.
+
+-spec node_to_json(text() | kz_node()) -> kz_json:object().
+node_to_json(NodeName) when is_atom(NodeName) ->
+    [#kz_node{}=Node] = ets:lookup(?MODULE, NodeName),
+    node_to_json(Node);
+node_to_json(#kz_node{node=NodeName
+                     ,zone=Zone
+                     ,kapps=Kapps
+                     ,media_servers=MediaServers
+                     ,version=Version
+                     ,channels=Channels
+                     ,conferences=Conferences
+                     ,registrations=Regs
+                     }) ->
+    kz_json:from_list([{<<"node">>, kz_term:to_binary(NodeName)}
+                      ,{<<"zone">>, kz_term:to_binary(Zone)}
+                      ,{<<"kapps">>, [K || {K, _} <- Kapps]}
+                      ,{<<"media_servers">>, [K || {K, _} <- MediaServers]}
+                      ,{<<"version">>, Version}
+                      ,{<<"channels">>, Channels}
+                      ,{<<"conferences">>, Conferences}
+                      ,{<<"registrations">>, Regs}
+                      ]);
+node_to_json(NodeName) ->
+    node_to_json(kz_term:to_atom(NodeName)).
 
 -spec globals_scope() -> integer().
 globals_scope() ->
@@ -380,6 +408,7 @@ format_presence_data(K, V, Acc) ->
 maybe_print_media_servers(#kz_node{media_servers=MediaServers
                                   ,registrations=Registrations
                                   ,channels=Channels
+                                  ,conferences=Conferences
                                   }) ->
     case lists:sort(MediaServers) of
         [] when Registrations =:= 0 -> 'ok';
@@ -387,6 +416,7 @@ maybe_print_media_servers(#kz_node{media_servers=MediaServers
             io:format(?SIMPLE_ROW_NUM, [<<"Registrations">>, Registrations]);
         [Server|Servers] ->
             io:format(?SIMPLE_ROW_NUM, [<<"Channels">>, Channels]),
+            io:format(?SIMPLE_ROW_NUM, [<<"Conferences">>, Conferences]),
             io:format(?SIMPLE_ROW_NUM, [<<"Registrations">>, Registrations]),
             print_media_server(Server, ?MEDIA_SERVERS_HEADER),
             lists:foreach(fun print_media_server/1, Servers)
@@ -757,10 +787,12 @@ request(Acc) ->
 -spec kapp_data(atom(), kz_node()) -> kz_node().
 kapp_data(App, Node) ->
     kapp_data(App, Node, kz_nodes_bindings:request(App)).
+
 kapp_data(App
          ,#kz_node{kapps=Kapps
                   ,media_servers=Servers
                   ,channels=Channels
+                  ,conferences=Conferences
                   ,registrations=Registrations
                   }=Node
          ,RequestAcc
@@ -768,6 +800,7 @@ kapp_data(App
     Node#kz_node{kapps=maybe_add_info(App, props:get_value('info', RequestAcc), Kapps)
                 ,media_servers=props:get_value('media_servers', RequestAcc, []) ++ Servers
                 ,channels=props:get_integer_value('channels', RequestAcc, 0) + Channels
+                ,conferences=props:get_integer_value('conferences', RequestAcc, 0) + Conferences
                 ,registrations=props:get_integer_value('registrations', RequestAcc, 0) + Registrations
                 }.
 
@@ -816,6 +849,7 @@ advertise_payload(#kz_node{expires=Expires
                           ,ports=Ports
                           ,version=Version
                           ,channels=Channels
+                          ,conferences=Conferences
                           ,registrations=Registrations
                           ,zone=Zone
                           ,globals=Globals
@@ -831,6 +865,7 @@ advertise_payload(#kz_node{expires=Expires
       ,{<<"Ports">>, Ports}
       ,{<<"Version">>, Version}
       ,{<<"Channels">>, Channels}
+      ,{<<"Conferences">>, Conferences}
       ,{<<"Registrations">>, Registrations}
       ,{<<"Zone">>, kz_term:to_binary(Zone)}
       ,{<<"Globals">>, kz_json:from_list(Globals)}
@@ -862,6 +897,7 @@ from_json(JObj, State) ->
             ,ports=kz_json:get_integer_value(<<"Ports">>, JObj, 0)
             ,version=kz_json:get_first_defined([<<"Version">>, <<"App-Version">>], JObj, <<"unknown">>)
             ,channels=kz_json:get_integer_value(<<"Channels">>, JObj, 0)
+            ,conferences=kz_json:get_integer_value(<<"Conferences">>, JObj, 0)
             ,registrations=kz_json:get_integer_value(<<"Registrations">>, JObj, 0)
             ,broker=get_amqp_broker(JObj)
             ,zone=get_zone(JObj, State)

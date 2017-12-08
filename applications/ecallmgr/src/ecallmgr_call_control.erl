@@ -91,8 +91,8 @@
                ,sanity_check_tref :: api_reference()
                ,msg_id :: api_binary()
                ,fetch_id :: api_binary()
-               ,controller_q :: api_binary()
-               ,control_q :: api_binary()
+               ,controller_q :: api_ne_binary()
+               ,control_q :: api_ne_binary()
                ,initial_ccvs :: kz_json:object()
                ,node_down_tref :: api_reference()
                }).
@@ -110,7 +110,8 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), ne_binary(), api_binary(), api_binary(), kz_json:object()) -> startlink_ret().
+-spec start_link(atom(), ne_binary(), api_ne_binary(), api_ne_binary(), kz_json:object()) ->
+                        startlink_ret().
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
@@ -130,7 +131,8 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ]
-                           ,[Node, CallId, FetchId, ControllerQ, CCVs]).
+                           ,[Node, CallId, FetchId, ControllerQ, CCVs]
+                           ).
 
 -spec stop(pid()) -> 'ok'.
 stop(Srv) ->
@@ -150,9 +152,9 @@ hostname(Srv) ->
     [_, Hostname] = binary:split(kz_term:to_binary(Node), <<"@">>),
     Hostname.
 
--spec queue_name(pid() | 'undefined') -> api_binary().
-queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv);
-queue_name(_) -> 'undefined'.
+-spec queue_name(api_pid()) -> api_ne_binary().
+queue_name('undefined') -> 'undefined';
+queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv).
 
 -spec other_legs(pid()) -> ne_binaries().
 other_legs(Srv) ->
@@ -197,6 +199,11 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     kz_util:put_callid(CallId),
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
+
+    _ = bind_to_events(Node, CallId),
+
+    _ = reg_for_call_related_events(CallId),
+
     {'ok', #state{node=Node
                  ,call_id=CallId
                  ,command_q=queue:new()
@@ -241,12 +248,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast('init', #state{node=Node
-                          ,call_id=CallId
-                          }=State) ->
-    gproc:reg({'p', 'l', 'call_control'}),
-    reg_for_call_related_events(CallId),
-    bind_to_events(Node, CallId),
+handle_cast('init', State) ->
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
     {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast('stop', State) ->
@@ -264,22 +266,12 @@ handle_cast({'event_execute_complete', CallId, AppName, JObj}
     {'noreply', handle_execute_complete(AppName, JObj, State)};
 handle_cast({'event_execute_complete', _, _, _}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener', {'created_queue', _}}
-           ,#state{controller_q='undefined'}=State
-           ) ->
-    lager:debug("call control got created_queue but controller is undefined"),
-    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{control_q=Q}};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
            ,#state{controller_q='undefined'}=State
            ) ->
     lager:debug("call control got is_consuming but controller is undefined"),
-    {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
-           ,#state{control_q='undefined'}=State
-           ) ->
-    lager:debug("call control got is_consuming but control_q is undefined"),
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     call_control_ready(State),
@@ -478,12 +470,34 @@ call_control_ready(#state{call_id=CallId
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_channel_destroyed(state()) -> state().
 -spec handle_channel_destroyed(kz_json:object(), state()) -> state().
-handle_channel_destroyed(_,  #state{sanity_check_tref=SCTRef
-                                   ,current_app=CurrentApp
-                                   ,current_cmd=CurrentCmd
-                                   ,call_id=CallId
-                                   }=State) ->
+handle_channel_destroyed(JObj, State) ->
+    case kz_json:is_true(<<"Channel-Is-Loopback">>, JObj, 'false') of
+        'false' -> handle_channel_destroyed(State);
+        'true' -> handle_loopback_destroyed(JObj, State)
+    end.
+
+-spec handle_loopback_destroyed(kz_json:object(), state()) -> state().
+handle_loopback_destroyed(JObj, State) ->
+    case {kz_call_event:hangup_cause(JObj)
+         ,kz_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj)
+         }
+    of
+        {<<"NORMAL_UNSPECIFIED">>, 'true'} ->
+            lager:debug("our loopback has ended but we may not have recv the bowout"),
+            State;
+        {_Cause, _Bowout} ->
+            lager:debug("our loopback has ended with ~s(bowout ~s); treating as done"),
+            handle_channel_destroyed(State)
+    end.
+
+handle_channel_destroyed(#state{sanity_check_tref=SCTRef
+                               ,current_app=CurrentApp
+                               ,current_cmd=CurrentCmd
+                               ,call_id=CallId
+                               }=State
+                        ) ->
     lager:debug("our channel has been destroyed, executing any post-hangup commands"),
     %% if our sanity check timer is running stop it, it will always return false
     %% now that the channel is gone
@@ -639,6 +653,7 @@ forward_queue(#state{call_id = CallId
 %%--------------------------------------------------------------------
 -spec handle_sofia_replaced(ne_binary(), state()) -> state().
 handle_sofia_replaced(<<_/binary>> = CallId, #state{call_id=CallId}=State) ->
+    lager:debug("call id hasn't changed, no replacement necessary"),
     State;
 handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
                                                        ,node=Node
@@ -886,7 +901,7 @@ insert_command(#state{node=Node
     end;
 insert_command(#state{node=Node, call_id=CallId}, 'flush', JObj) ->
     lager:debug("received control queue flush command, clearing all waiting commands"),
-    freeswitch:api(Node, 'uuid_break', <<CallId/binary, " all">>),
+    _ = freeswitch:api(Node, 'uuid_break', <<CallId/binary, " all">>),
     self() ! {'force_queue_advance', CallId},
     insert_command_into_queue(queue:new(), 'tail', JObj);
 insert_command(#state{command_q=CommandQ}, 'head', JObj) ->
@@ -1175,9 +1190,9 @@ get_keep_alive_ref(#state{keep_alive_ref=TRef
 -spec bind_to_events(atom(), ne_binary()) -> 'true'.
 bind_to_events(Node, CallId) ->
     lager:debug("binding to call ~s events on node ~s", [CallId, Node]),
-    'true' = gproc:reg({'p', 'l', {'call_event', Node, CallId}}),
-    'true' = gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}),
-    'true' = gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}}).
+    'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
+    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_CREATE">>)}),
+    'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DESTROY">>)}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1188,9 +1203,9 @@ bind_to_events(Node, CallId) ->
 -spec unbind_from_events(atom(), ne_binary()) -> 'true'.
 unbind_from_events(Node, CallId) ->
     lager:debug("unbinding from call ~s events on node ~s", [CallId, Node]),
-    _ = (catch gproc:unreg({'p', 'l', {'call_event', Node, CallId}})),
-    _ = (catch gproc:unreg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}})),
-    _ = (catch gproc:unreg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}})),
+    _ = (catch gproc:unreg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)})),
+    _ = (catch gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_CREATE">>)})),
+    _ = (catch gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DESTROY">>)})),
     'true'.
 
 -spec reg_for_call_related_events(ne_binary()) -> 'ok'.
@@ -1219,8 +1234,8 @@ handle_replaced(Props, #state{fetch_id=FetchId
                     OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
                     CDR = kz_json:get_value(<<"interaction_id">>, Channel),
                     kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
-                    ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
-                    ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    _ = ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    _ = ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
                     {'noreply', handle_sofia_replaced(ReplacedBy, State)};
                 _Else ->
                     lager:debug("channel replaced was not handled : ~p", [_Else]),

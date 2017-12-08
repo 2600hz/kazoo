@@ -15,7 +15,8 @@ usage() { echo 'Usage: eval $('"$0"' [-c {CREDENTIALS_HASH}] [-a {ACCOUNT_NAME}]
 
 function api_authenticate() {
     local C="$1"
-    local HOST="$4"
+    local HOST="$2"
+
     AUTH_RESP=$(curl -s -X PUT http://$HOST:8000/v2/api_auth -d "{\"data\":{\"api_key\":\"$C\"}}")
 
     STATUS=$(echo $AUTH_RESP | jq -r '.status')

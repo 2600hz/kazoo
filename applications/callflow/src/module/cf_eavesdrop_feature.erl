@@ -133,5 +133,5 @@ lookup_endpoint(Flow, <<"device">> = TargetType) ->
 lookup_endpoint(Flow, <<"user">> = TargetType) ->
     {'ok', kz_json:get_ne_binary_value([<<"data">>, <<"id">>], Flow), TargetType};
 lookup_endpoint(Flow, _TargetType) ->
-    Child = kz_json:get_json_value([<<"children">>, <<"_">>], Flow),
+    Child = kz_json:get_json_value([<<"children">>, ?DEFAULT_CHILD_KEY], Flow),
     lookup_endpoint(Child).

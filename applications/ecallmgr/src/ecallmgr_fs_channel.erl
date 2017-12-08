@@ -337,9 +337,11 @@ channel_ccvs([_|_]=Props) ->
 channel_ccvs(JObj) ->
     channel_ccvs(kz_json:to_proplist(JObj)).
 
--spec channel_cavs(channel()) -> kz_proplist().
+-spec channel_cavs(channel() | kz_proplist() | kz_json:object()) -> kz_proplist().
 channel_cavs(#channel{cavs='undefined'}) -> [];
-channel_cavs(#channel{cavs=CAVs}) -> CAVs.
+channel_cavs(#channel{cavs=CAVs}) -> CAVs;
+channel_cavs([_|_]=Props) -> props:get_value(<<"custom_application_vars">>, Props, []);
+channel_cavs(JObj) -> kz_json:get_list_value(<<"custom_application_vars">>, JObj, []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -895,7 +897,7 @@ maybe_update_interaction_id(Props, Node, _) ->
             case fetch(CallId) of
                 {'ok', Channel} ->
                     OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
-                    ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    _ = ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
                     'ok';
                 _ -> 'ok'
             end
