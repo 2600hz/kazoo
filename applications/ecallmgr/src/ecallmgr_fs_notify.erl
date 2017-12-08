@@ -138,16 +138,19 @@ send_notify(Node, Username, Realm, JObj, Contact) ->
     AOR = To = From = kzsip_uri:ruri(#uri{user=Username, domain=Realm}),
     SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
     Event = kz_json:get_ne_binary_value(<<"Event">>, JObj),
-    Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-              ,{"contact-uri", Contact}
-              ,{"extra-headers", SIPHeaders}
-              ,{"to-uri", To}
-              ,{"from-uri", From}
-              ,{"event-string", Event}
-              ],
-    Body = kz_json:get_binary_value(<<"Body">>, JObj),
-    ContentType = kz_json:get_binary_value(<<"Content-Type">>, JObj),
-    Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers, Body, ContentType),
+    Body = kz_json:get_ne_binary_value(<<"Body">>, JObj),
+    ContentType = kz_json:get_ne_binary_value(<<"Content-Type">>, JObj),
+    Headers = props:filter_undefined(
+                [{"body", Body}
+                ,{"contact-uri", Contact}
+                ,{"content-type", ContentType}
+                ,{"event-string", Event}
+                ,{"extra-headers", SIPHeaders}
+                ,{"from-uri", From}
+                ,{"profile", ?DEFAULT_FS_PROFILE}
+                ,{"to-uri", To}
+                ]),
+    Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
     lager:info("send NOTIFY with Event '~s' (has body? ~w) to '~s@~s' via ~s: ~p"
               ,[Event, (Body =/= 'undefined'), Username, Realm, Node, Resp]).
 
