@@ -339,7 +339,11 @@ channel_ccvs(JObj) ->
 
 -spec channel_cavs(channel()) -> kz_proplist().
 channel_cavs(#channel{cavs='undefined'}) -> [];
-channel_cavs(#channel{cavs=CAVs}) -> CAVs.
+channel_cavs(#channel{cavs=CAVs}) -> CAVs;
+channel_cavs([_|_]=Props) ->
+    props:get_value(<<"custom_application_vars">>, Props);
+channel_cavs(JObj) ->
+    channel_cavs(kz_json:to_proplist(JObj)).
 
 %%%===================================================================
 %%% gen_server callbacks
