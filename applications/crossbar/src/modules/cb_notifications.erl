@@ -1508,7 +1508,11 @@ list_templates_from_db(Db) ->
                ],
     case kz_datamgr:all_docs(Db, ViewOpts) of
         {'ok', Results} ->
-            [kz_doc:id(Result) || Result <- Results];
+            [Id
+             || Result <- Results,
+                Id <- [kz_doc:id(Result)],
+                'notification.skel' =/=  Id
+            ];
         {'error', _E} ->
             lager:debug("failed to query existing notifications: ~p~n", [_E]),
             []

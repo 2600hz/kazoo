@@ -71,7 +71,7 @@ handle_req(JObj, 'true') ->
 
 -spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
-    PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
+    PortReqId = kz_json:get_first_defined([<<"port_request_id">>, [<<"port">>, <<"port_id">>]], DataJObj),
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
     ReqData = kz_json:set_value(<<"port_request">>

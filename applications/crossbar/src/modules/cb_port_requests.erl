@@ -1211,7 +1211,6 @@ send_port_comment_notification(Context, Id, NewComment) ->
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
           ,{<<"Comment">>, Comment}
-          ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending port request notification for new comment by user ~s in account ~s"
@@ -1229,8 +1228,7 @@ send_port_unconfirmed_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
-          ,{<<"Version">>, cb_context:api_version(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | common_patch_notification_props(Context, cb_context:req_value(Context, ?REQ_TRANSITION))
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1).
 
@@ -1245,7 +1243,7 @@ send_port_request_notification(Context, Id) ->
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
           ,{<<"Version">>, cb_context:api_version(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | common_patch_notification_props(Context, cb_context:req_value(Context, ?REQ_TRANSITION))
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_request/1).
 
@@ -1259,8 +1257,7 @@ send_port_pending_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
-          ,{<<"Version">>, cb_context:api_version(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | common_patch_notification_props(Context, cb_context:req_value(Context, ?REQ_TRANSITION))
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_pending/1).
 
@@ -1274,7 +1271,7 @@ send_port_rejected_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | common_patch_notification_props(Context, cb_context:req_value(Context, ?REQ_TRANSITION))
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_rejected/1).
 
@@ -1288,7 +1285,7 @@ send_port_cancel_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | common_patch_notification_props(Context, cb_context:req_value(Context, ?REQ_TRANSITION))
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_cancel/1).
 
@@ -1302,7 +1299,7 @@ send_ported_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | common_patch_notification_props(Context, cb_context:req_value(Context, ?REQ_TRANSITION))
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_ported/1).
 
@@ -1316,9 +1313,22 @@ send_port_scheduled_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | common_patch_notification_props(Context, cb_context:req_value(Context, ?REQ_TRANSITION))
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_scheduled/1).
+
+-spec common_patch_notification_props(cb_context:context(), api_ne_binary()) -> kz_proplist().
+common_patch_notification_props(Context, ?NE_BINARY=Reason) ->
+    Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
+            ,{<<"account_id">>, cb_context:auth_account_id(Context)}
+            ,{<<"timestamp">>, kz_doc:modified(cb_context:doc(Context))}
+            ,{<<"content">>, Reason}
+            ],
+    [{<<"Reason">>, kz_json:from_list(Props)}
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ];
+common_patch_notification_props(_, _) ->
+    kz_api:default_headers(?APP_NAME, ?APP_VERSION).
 
 %%--------------------------------------------------------------------
 %% @private

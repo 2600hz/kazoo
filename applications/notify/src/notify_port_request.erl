@@ -179,7 +179,7 @@ find_numbers(NotifyJObj) ->
 
 -spec find_port_info(kz_json:object()) -> kz_json:object().
 find_port_info(NotifyJObj) ->
-    case kz_json:get_ne_value(<<"Port-Request-ID">>, NotifyJObj) of
+    case kz_json:get_first_defined([<<"Port-Request-ID">>, [<<"Port">>, <<"port_id">>]], NotifyJObj) of
         'undefined' -> NotifyJObj;
         PortRequestId ->
             Doc = find_port_doc(PortRequestId),

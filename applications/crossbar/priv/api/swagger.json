@@ -15964,6 +15964,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16120,6 +16123,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16198,6 +16204,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16272,6 +16281,9 @@
                 },
                 "Preview": {
                     "type": "string"
+                },
+                "Reason": {
+                    "type": "object"
                 },
                 "Reply-To": {
                     "type": "string"
@@ -16351,6 +16363,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16429,6 +16444,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16506,6 +16524,9 @@
                 },
                 "Preview": {
                     "type": "string"
+                },
+                "Reason": {
+                    "type": "object"
                 },
                 "Reply-To": {
                     "type": "string"
@@ -24482,7 +24503,7 @@
                     "type": "string"
                 },
                 "format_from_uri": {
-                    "description": "When set to true requests to this resource will have a re-formated SIP From Header",
+                    "description": "When set to true requests to this resource will have a re-formatted SIP From Header",
                     "type": "boolean"
                 },
                 "formatters": {
@@ -24591,7 +24612,7 @@
                                 "type": "boolean"
                             },
                             "format_from_uri": {
-                                "description": "When set to true requests to this resource gateway will have a re-formated SIP From Header",
+                                "description": "When set to true requests to this resource gateway will have a re-formatted SIP From Header",
                                 "type": "boolean"
                             },
                             "from_uri_realm": {

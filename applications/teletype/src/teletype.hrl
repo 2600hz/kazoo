@@ -138,6 +138,15 @@
         ,?MACRO_VALUE(<<"port_request.requested_port_date.local">>, <<"requested_port_date_local">>, <<"Local Requested Port Date">>, <<"Local Requested Port Date">>)
         ,?MACRO_VALUE(<<"port_request.requested_port_date.utc">>, <<"requested_port_date_utc">>, <<"UTC Requested Port Date">>, <<"UTC Requested Port Date">>)
         ,?MACRO_VALUE(<<"port_request.requested_port_date.timezone">>, <<"requested_port_date_timezone">>, <<"Requested Port Date Timezone">>, <<"Requested Port Date Local Timezone">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.content">>, <<"transition_reason.content">>, <<"Transition Reason Comment Text">>, <<"Transition Reason Comment Text">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.date.local">>, <<"transition_reason.date_local">>, <<"Transition Reason Comment Local Timestamp">>, <<"Transition Reason Comment Local Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.date.utc">>, <<"transition_reason.date_utc">>, <<"Transition Reason Comment UTC Timestamp">>, <<"Transition Reason Comment UTC Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.date.timezone">>, <<"transition_reason.date_timezone">>, <<"Transition Reason Comment Local Timestamp">>, <<"Transition Reason Comment Timestamp Local Timezone">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.first_name">>, <<"transition_reason.user_first_name">>, <<"Transition Commenter First Name">>, <<"First name of the transition commenter">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.last_name">>, <<"transition_reason.user_last_name">>, <<"Transition Commenter Last Name">>, <<"Last name of the transition commenter">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.email">>, <<"transition_reason.user_email">>, <<"Transition Commenter Email">>, <<"Email of the transition commenter">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.timezone">>, <<"transition_reason.user_timezone">>, <<"Transition Commenter Timezone">>, <<"Timezone of the transition commenter">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.username">>, <<"transition_reason.username">>, <<"Transition Commenter Username">>, <<"Username of transition commenter">>)
         ]).
 
 -define(TRANSACTION_MACROS
