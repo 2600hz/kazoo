@@ -6,7 +6,7 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   Pierre Fenoll
+%%%   Pierre Fenoll, Joe Black
 %%%-------------------------------------------------------------------
 -module(knm_voip_innovations).
 -behaviour(knm_gen_carrier).
@@ -371,7 +371,7 @@ soap_request(Action, Body) ->
               ,{"User-Agent", ?KNM_USER_AGENT}
               ,{"Content-Type", "text/xml;charset=UTF-8"}
               ],
-    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
+    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}, {versions, ['tlsv1.2']}]}
                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ,{'body_format', 'string'}
