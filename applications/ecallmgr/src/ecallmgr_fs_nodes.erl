@@ -632,7 +632,7 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
         {'error', _R}=E -> E;
         'ok' ->
             lager:notice("successfully connected to freeswitch node ~s", [NodeName]),
-             _ = freeswitch:no_legacy(Node),
+            _ = freeswitch:no_legacy(Node),
             call_control_fs_nodeup(NodeName),
             'ok'
     end.
