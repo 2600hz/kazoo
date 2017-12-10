@@ -118,8 +118,8 @@ check_result({'EXIT', {'error', 'failed_template',  ModuleName}}, {RoutingKey, M
     Reason = <<"failed_template: ", (kz_term:to_binary(ModuleName))/binary>>,
     {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
-check_result({'EXIT',{'error', 'template_error',  Reason}}, {RoutingKey, Map}) ->
-    Reason = <<"template_error: ", (kz_term:to_binary(Reason))/binary>>,
+check_result({'EXIT',{'error', 'template_error',  Error}}, {RoutingKey, Map}) ->
+    Reason = <<"template_error: ", (kz_term:to_binary(Error))/binary>>,
     {RoutingKey, maps:update_with('failed', update_with({RoutingKey, Reason}), [{RoutingKey, Reason}], Map)};
 
 check_result({'EXIT', {'function_clause', _ST}}, {RoutingKey, Map}) ->

@@ -18,6 +18,7 @@
         ,billing_seconds/1
         ,call_direction/1, call_direction/2
         ,call_id/1
+        ,channel_name/1
         ,custom_channel_var/2, custom_channel_var/3
         ,custom_channel_vars/1, custom_channel_vars/2
         ,custom_application_var/2, custom_application_var/3
@@ -76,6 +77,10 @@ other_leg_destination_number(JObj, Default) ->
 -spec replaced_by(doc()) -> api_binary().
 replaced_by(JObj) ->
     kz_json:get_ne_binary_value(<<"Replaced-By">>, JObj).
+
+-spec channel_name(doc()) -> api_ne_binary().
+channel_name(JObj) ->
+    kz_json:get_ne_binary_value(<<"Channel-Name">>, JObj).
 
 -spec custom_channel_vars(doc()) -> api_object().
 -spec custom_channel_vars(doc(), Default) -> kz_json:object() | Default.

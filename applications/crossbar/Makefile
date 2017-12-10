@@ -6,6 +6,13 @@ CLEAN_MOAR = clean-port-request-scheduled-schema
 
 all: compile
 
+eunit: cb-test
+
+test: cb-test
+
+cb-test:
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_endpoint/
+
 priv/couchdb/schemas/port_requests.to_scheduled.json:
 	@ERL_LIBS=$(ROOT)/deps/:$(ROOT)/core/:$(ROOT)/applications/ priv/port-request-scheduled-schema.escript
 

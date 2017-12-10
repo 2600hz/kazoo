@@ -82,6 +82,8 @@ Kazoo is configured to periodically (20s by default) look for accounts which are
 
 As an account grows in what's configued, a JSON object of these service items will be sent to the configured bookkeeper server, to be processed remotely. Depending on the response, Kazoo will mark the items as complete and the account as being in good standing or will either flag the account as no longer in good standing or rety the update (keep the account marked dirty) again later.
 
+NOTE: HTTP Bookkeeper will only send a JSON object if the account has an active service plan.  Kazoo will make no attempt to contact the remote HTTP bookkeeper if there is no active service plan.
+
 
 ## The Request
 

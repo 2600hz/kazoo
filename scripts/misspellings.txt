@@ -116,6 +116,7 @@ misspelt|mispelt
 necessary|neccessary necessery
 niece|neice
 neighbor|nieghbor
+nonexistent|non-existant non-existent inexistant
 noticeable|noticable
 occasion|occassion
 occasionally|occasionaly occassionally

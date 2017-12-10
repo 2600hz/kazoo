@@ -317,10 +317,10 @@ remove(Context, Id) ->
 -spec finish_req(cb_context:context(), path_token() | 'undefined', http_method()) -> 'ok'.
 finish_req(_, 'undefined', _) ->
     'ok';
-finish_req(Context, <<"port_requests">>, ?HTTP_PUT) ->
-    send_port_comment_notification(Context);
-finish_req(Context, <<"port_requests">>, ?HTTP_POST) ->
-    send_port_comment_notification(Context);
+finish_req(Context, {<<"port_requests">>, [PortReqId]}, ?HTTP_PUT) ->
+    send_port_comment_notification(Context, PortReqId);
+finish_req(Context, {<<"port_requests">>, [PortReqId]}, ?HTTP_POST) ->
+    send_port_comment_notification(Context, PortReqId);
 finish_req(_Context, _Type, _Verb) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -408,18 +408,21 @@ id_to_number(Id) -> kz_term:to_integer(Id) + 1.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_comment_notification(cb_context:context()) -> 'ok'.
-send_port_comment_notification(Context) ->
-    ReqNouns = cb_context:req_nouns(Context),
-    ReqData = cb_context:req_data(Context),
-    NewComments = kz_json:get_value(?COMMENTS, ReqData, []),
-    [PortReqId] = props:get_value(<<"port_requests">>, ReqNouns),
+-spec send_port_comment_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_port_comment_notification(Context, PortReqId) ->
+    Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
+            ,{<<"account_id">>, cb_context:auth_account_id(Context)}
+            ],
+    Comment = kz_json:set_values(Props, lists:last(kz_json:get_value(?COMMENTS, cb_context:req_data(Context), []))),
 
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, PortReqId}
-          ,{<<"Comments">>, NewComments}
+          ,{<<"Comment">>, Comment}
           ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
+    lager:debug("sending port request notification for new comment by user ~s in account ~s"
+               ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context)]
+               ),
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).

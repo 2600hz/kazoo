@@ -111,20 +111,20 @@ get(EndpointId, Call) ->
 
 -spec maybe_fetch_endpoint(ne_binary(), ne_binary()) ->
                                   {'ok', kz_json:object()} |
-                                  kz_datamgr:data_error().
+                                  {'error', any()}.
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case kz_device:fetch(AccountDb, EndpointId) of
         {'ok', JObj} ->
-            maybe_have_endpoint(JObj, EndpointId, AccountDb);
+            check_endpoint_type(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
             lager:info("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
             E
     end.
 
--spec maybe_have_endpoint(kz_json:object(), ne_binary(), ne_binary()) ->
+-spec check_endpoint_type(kz_json:object(), ne_binary(), ne_binary()) ->
                                  {'ok', kz_json:object()} |
-                                 {'error', 'not_device_nor_user'}.
-maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
+                                 {'error', any()}.
+check_endpoint_type(JObj, EndpointId, AccountDb) ->
     EndpointTypes = [<<"device">>, <<"user">>, <<"account">>],
     EndpointType = endpoint_type_as(kz_doc:type(JObj)),
     case lists:member(EndpointType, EndpointTypes) of
@@ -132,7 +132,7 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
             lager:info("endpoint module does not manage document type ~s", [EndpointType]),
             {'error', 'not_device_nor_user'};
         'true' ->
-            has_endpoint(JObj, EndpointId, AccountDb, EndpointType)
+            check_endpoint_enabled(JObj, EndpointId, AccountDb, EndpointType)
     end.
 
 -spec endpoint_type_as(api_binary()) -> api_binary().
@@ -140,9 +140,38 @@ endpoint_type_as(<<"click2call">>) -> <<"device">>;
 endpoint_type_as(<<"conference">>) -> <<"device">>;
 endpoint_type_as(Type) -> Type.
 
--spec has_endpoint(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
-                          {'ok', kz_json:object()}.
-has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
+-spec check_endpoint_enabled(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+                                    {'ok', kz_json:object()} |
+                                    {'error', any()}.
+check_endpoint_enabled(JObj, EndpointId, AccountDb, EndpointType) ->
+    case {kz_doc:is_soft_deleted(JObj)
+          orelse kz_doc:is_deleted(JObj)
+         ,is_endpoint_enabled(JObj, EndpointType)
+         }
+    of
+        {'true', _} ->
+            lager:info("not handling deleted endpoint ~s", [EndpointId]),
+            {'error', 'endpoint_deleted'};
+        {'false', 'false'} ->
+            lager:info("not handling disabled endpoint ~s", [EndpointId]),
+            {'error', 'endpoint_disabled'};
+        {'false', 'true'} ->
+            cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType)
+    end.
+
+-spec is_endpoint_enabled(kz_json:object(), ne_binary()) -> boolean().
+is_endpoint_enabled(JObj, <<"account">>) ->
+    kz_account:is_enabled(JObj);
+is_endpoint_enabled(JObj, <<"user">>) ->
+    kzd_user:is_enabled(JObj);
+is_endpoint_enabled(JObj, <<"device">>) ->
+    kz_device:enabled(JObj);
+is_endpoint_enabled(JObj, _) ->
+    kz_json:is_true(<<"enabled">>, JObj, 'true').
+
+-spec cache_store_endpoint(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+                                  {'ok', kz_json:object()}.
+cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
     Endpoint = kz_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
     catch kz_cache:store_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),

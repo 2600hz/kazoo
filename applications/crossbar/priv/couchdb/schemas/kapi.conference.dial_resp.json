@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.dial_resp",
+    "description": "AMQP API for conference.dial_resp",
+    "properties": {
+        "Application-Name": {
+            "enum": [
+                "dial_resp"
+            ],
+            "type": "string"
+        },
+        "Endpoint-Responses": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Endpoint-Responses"
+    ],
+    "type": "object"
+}

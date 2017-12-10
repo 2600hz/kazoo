@@ -23,7 +23,7 @@ handle_request(<<"Conference">>, JObj) ->
     %% NOTE: if this is not an internal page or default
     %%   conf_participant:send_conference_command will ensure
     %%   the profile name of the call command to enter the
-    %%   conference is formated {accountid}_{conferenceid}.
+    %%   conference is formatted {accountid}_{conferenceid}.
     %%   Therefore, when the profile request comes in this
     %%   for conference established by this app
     %%   request_profile_name will return this format.
@@ -101,11 +101,11 @@ fetch_controls_config(JObj, ConferenceId, ControlsName) ->
         [?PAGE_PROFILE_NAME = PageProfile, _] ->
             lager:debug("looking up page conference controls profile for ~s", [ConferenceId]),
             fetch_controls_config(JObj, ConferenceId, 'undefined', PageProfile);
-        [AccountId, ControlsType] ->
+        [?MATCH_ACCOUNT_RAW(AccountId), ControlsType] ->
             %% NOTE: ControlsType can be 'caller-controls' or 'moderator-controls'.
             %%   We expect these to be used internally as keys on the conference document
             %%   that specify the actual controls profile name to fetch (failing back to defaults).
-            lager:debug("looking up account conference controls profile for ~s", [ConferenceId]),
+            lager:debug("looking up account ~s conference controls profile for ~s", [AccountId, ConferenceId]),
             fetch_controls_config(JObj, ConferenceId, AccountId, ControlsType);
         _Else ->
             lager:debug("looking up interal conference controls profile for ~s", [ConferenceId]),
@@ -236,7 +236,7 @@ max_members_sound(Conference) ->
     end.
 
 -spec get_conference(ne_binary(), ne_binary()) -> kapps_conference:conference().
-get_conference(AccountId, ConferenceId) ->
+get_conference(?MATCH_ACCOUNT_RAW(AccountId), ConferenceId) ->
     case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConferenceId) of
         {'ok', JObj} -> kapps_conference:from_conference_doc(JObj);
         {'error', _} ->
@@ -244,15 +244,24 @@ get_conference(AccountId, ConferenceId) ->
                        ,{fun kapps_conference:set_id/2, ConferenceId}
                        ],
             kapps_conference:update(Routines, kapps_conference:new())
-    end.
+    end;
+get_conference(AccountId, ConferenceId) ->
+    lager:info("account id '~s' not valid, using new conference", [AccountId]),
+    Routines = [{fun kapps_conference:set_account_id/2, AccountId}
+               ,{fun kapps_conference:set_id/2, ConferenceId}
+               ],
+    kapps_conference:update(Routines, kapps_conference:new()).
 
 -spec get_control_profile(ne_binary()) -> kz_json:objects().
 get_control_profile(ProfileName) ->
     kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ProfileName], ?DEFAULT_CONTROLS).
 
 -spec get_control_profile(ne_binary(), ne_binary()) -> kz_json:objects().
-get_control_profile(AccountId, ProfileName) ->
-    kapps_account_config:get_global(AccountId, ?CONFIG_CAT, [<<"caller-controls">>, ProfileName], ?DEFAULT_CONTROLS).
+get_control_profile(?MATCH_ACCOUNT_RAW(AccountId), ProfileName) ->
+    kapps_account_config:get_global(AccountId, ?CONFIG_CAT, [<<"caller-controls">>, ProfileName], ?DEFAULT_CONTROLS);
+get_control_profile(_AccountId, ProfileName) ->
+    lager:info("account id '~s' not valid, getting system config instead"),
+    get_control_profile(ProfileName).
 
 -spec advertise(ne_binary()) -> api_object().
 -spec advertise(ne_binary(), api_object()) -> api_object().

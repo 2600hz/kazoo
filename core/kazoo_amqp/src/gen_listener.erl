@@ -214,7 +214,7 @@ start_link(Name, Module, Params, InitArgs, Options) when is_atom(Module),
                                                          ->
     gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], Options).
 
--spec queue_name(server_ref()) -> ne_binary().
+-spec queue_name(server_ref()) -> api_ne_binary().
 queue_name(Srv) -> gen_server:call(Srv, 'queue_name').
 
 -spec is_consuming(server_ref()) -> boolean().

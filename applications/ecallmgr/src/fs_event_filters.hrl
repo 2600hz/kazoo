@@ -94,10 +94,13 @@
         ,<<"sip_request_host">>
         ,<<"sip_to_host">>
         ,<<"sip_user_agent">>
+        ,<<"sofia_profile_url">>
         ,<<"status">>
         ,<<"technology">>
         ,<<"to_user">>
         ,<<"user">>
+        ,<<"variable_Switch-URI">>
+        ,<<"variable_Switch-URL">>
         ,<<"variable_billmsec">>
         ,<<"variable_billsec">>
         ,<<"variable_bridge_hangup_cause">>
@@ -184,6 +187,7 @@
         ,<<"variable_sip_to_user">>
         ,<<"variable_sip_user_agent">>
         ,<<"variable_sofia_profile_name">>
+        ,<<"variable_sofia_profile_url">>
         ,<<"variable_switch_r_sdp">>
         ,<<"variable_transfer_history">>
         ,<<"variable_transfer_to">>

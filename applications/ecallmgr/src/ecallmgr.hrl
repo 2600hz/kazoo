@@ -256,9 +256,9 @@
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
                               ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
-                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_uuid">>}
                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
-                              ,{<<"Outbound-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"Outbound-Call-ID">>, <<"origination_uuid">>}
                               ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
                               ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
                               ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}

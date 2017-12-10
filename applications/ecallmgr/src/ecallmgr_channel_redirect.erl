@@ -59,7 +59,7 @@ send_redirect(RedirectUrl, Contact, #channel{node=Node
                                             ,uuid=UUID
                                             ,answered=IsAnswered
                                             }) ->
-    ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectUrl}]),
+    _ = ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectUrl}]),
     ecallmgr_util:send_cmd(Node, UUID, redirect_app(IsAnswered), Contact).
 
 -spec redirect_app(boolean()) -> ne_binary().

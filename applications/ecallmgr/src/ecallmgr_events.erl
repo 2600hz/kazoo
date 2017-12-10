@@ -17,38 +17,38 @@ event(<<"CHANNEL_CREATE">> = EventName, UUID, EventProps, Node) ->
     process_event(EventName, UUID, Props, Node),
     maybe_send_event(EventName, UUID, Props, Node);
 event(<<"sofia::transferor">> = EventName, UUID, Props, Node) ->
-    case props:get_value(<<"variable_refer_uuid">>, Props) of
-        'undefined' -> 'ok';
-        ReferUUID ->
-            lager:debug("found refer uuid ~s for interaction caching", [ReferUUID]),
-            {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID),
-            CDR = kz_json:get_value(<<"interaction_id">>, Channel),
-            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, ReferUUID, CDR),
-            lager:debug("caching interaction id ~s for callid ~s", [CDR, ReferUUID]),
-            ecallmgr_fs_command:set(Node, ReferUUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
-    end,
+    _ = case props:get_value(<<"variable_refer_uuid">>, Props) of
+            'undefined' -> 'ok';
+            ReferUUID ->
+                lager:debug("found refer uuid ~s for interaction caching", [ReferUUID]),
+                {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID),
+                CDR = kz_json:get_value(<<"interaction_id">>, Channel),
+                kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, ReferUUID, CDR),
+                lager:debug("caching interaction id ~s for callid ~s", [CDR, ReferUUID]),
+                ecallmgr_fs_command:set(Node, ReferUUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
+        end,
     maybe_send_event(EventName, UUID, Props, Node),
     process_event(EventName, UUID, Props, Node);
 event(<<"sofia::intercepted">> = EventName, UUID, Props, Node) ->
     InterceptedBy = props:get_value(<<"intercepted_by">>, Props),
-    case ecallmgr_fs_channel:fetch(UUID, 'record') of
-        {'ok', #channel{interaction_id=InterAction
-                       ,direction=Direction
-                       }
-        } ->
-            lager:debug("sofia::intercepted: channel ~s Intercepted by ~s", [UUID, InterceptedBy]),
-            Vars = [{<<"Application-Logical-Direction">>, Direction}
-                   ,{<<?CALL_INTERACTION_ID>>, InterAction}
-                   ],
-            ecallmgr_fs_command:set(Node, InterceptedBy, Vars);
-        _ -> 'ok'
-    end,
+    _ = case ecallmgr_fs_channel:fetch(UUID, 'record') of
+            {'ok', #channel{interaction_id=InterAction
+                           ,direction=Direction
+                           }
+            } ->
+                lager:debug("sofia::intercepted: channel ~s Intercepted by ~s", [UUID, InterceptedBy]),
+                Vars = [{<<"Application-Logical-Direction">>, Direction}
+                       ,{<<?CALL_INTERACTION_ID>>, InterAction}
+                       ],
+                ecallmgr_fs_command:set(Node, InterceptedBy, Vars);
+            _ -> 'ok'
+        end,
     ChannelUUID = props:get_value(<<"Channel-Call-UUID">>, Props),
     Updates = props:filter_undefined(
                 [{<<"Caller-Callee-ID-Name">>, props:get_value(<<"Caller-Callee-ID-Name">>, Props)}
                 ,{<<"Caller-Callee-ID-Number">>, props:get_value(<<"Caller-Callee-ID-Number">>, Props)}
                 ]),
-    ecallmgr_fs_command:set(Node, ChannelUUID, Updates),
+    _ = ecallmgr_fs_command:set(Node, ChannelUUID, Updates),
     maybe_send_event(EventName, UUID, Props, Node),
     process_event(EventName, UUID, Props, Node);
 event(<<"CHANNEL_HOLD">> = EventName, UUID, Props, Node) ->
@@ -118,10 +118,7 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     maybe_send_call_event(UUID, EventName, Props, Node);
 maybe_send_event(<<"loopback::bowout">> = EventName, _UUID, Props, Node) ->
     ResigningUUID = props:get_value(?RESIGNING_UUID, Props),
-    _AcquiringUUID = props:get_value(?ACQUIRED_UUID, Props),
     kz_util:put_callid(ResigningUUID),
-
-    lager:debug("bowout for '~s', resigning ~s acquiring ~s", [_UUID, ResigningUUID, _AcquiringUUID]),
 
     send_event(EventName, ResigningUUID, Props, Node);
 maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->

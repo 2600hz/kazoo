@@ -77,7 +77,6 @@ get_magic_token_from_path([Path|Paths]) ->
 
 -spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.
 handle(Req, State) ->
-    lager:debug("default handler executing"),
     Headers = [{<<"Content-Type">>, <<"text/plain; charset=UTF-8">>}],
     {'ok', Bytes} = file:read_file(filename:join(code:priv_dir(?APP), "kazoo.txt")),
     {'ok', Req1} = cowboy_req:reply(200, Headers, Bytes, Req),

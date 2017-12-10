@@ -783,6 +783,7 @@ set(ChannelVars, 'undefined', AppVars, Call) -> set(ChannelVars, kz_json:new(), 
 set(ChannelVars, CallVars, AppVars, Call) ->
     case kz_json:is_empty(ChannelVars)
         andalso kz_json:is_empty(CallVars)
+        andalso kz_json:is_empty(AppVars)
     of
         'true' -> 'ok';
         'false' ->
@@ -1173,8 +1174,8 @@ b_bridge_wait(Timeout, Call) ->
     wait_for_bridge((kz_term:to_integer(Timeout) * ?MILLISECONDS_IN_SECOND) + ?EXTRA_BRIDGE_TIMEOUT , Call).
 
 -spec unbridge(kapps_call:call()) -> 'ok'.
--spec unbridge(kapps_call:call(), ne_binary()) -> 'ok'.
--spec unbridge(kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+-spec unbridge(kapps_call:call(), api_ne_binary()) -> 'ok'.
+-spec unbridge(kapps_call:call(), api_ne_binary(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
     Command = unbridge_command(Call),
     send_command(Command, Call).
@@ -1186,8 +1187,8 @@ unbridge(Call, Leg, Insert) ->
     send_command(Command, Call).
 
 -spec unbridge_command(kapps_call:call()) -> kz_proplist().
--spec unbridge_command(kapps_call:call(), ne_binary()) -> kz_proplist().
--spec unbridge_command(kapps_call:call(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec unbridge_command(kapps_call:call(), api_ne_binary()) -> kz_proplist().
+-spec unbridge_command(kapps_call:call(), api_ne_binary(), ne_binary()) -> kz_proplist().
 unbridge_command(Call) ->
     unbridge_command(Call, <<"Both">>).
 unbridge_command(Call, Leg) ->
@@ -2288,6 +2289,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
                                          ,noop_id=NoopId
                                          ,terminators=Terminators
                                          ,call=Call
+                                         ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
 -spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
@@ -2887,7 +2889,7 @@ get_outbound_t38_settings(CarrierFlag, 'undefined') ->
 get_outbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
     get_outbound_t38_settings(CarrierFlag, kz_term:is_true(CallerFlag));
 get_outbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2899,7 +2901,7 @@ get_outbound_t38_settings('true', 'false') ->
     ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
 get_outbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2940,7 +2942,7 @@ get_inbound_t38_settings(CarrierFlag, 'undefined') ->
 get_inbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
     get_inbound_t38_settings(CarrierFlag, kz_term:is_true(CallerFlag));
 get_inbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2958,7 +2960,7 @@ get_inbound_t38_settings('true', 'undefined') ->
     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ];
 get_inbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}

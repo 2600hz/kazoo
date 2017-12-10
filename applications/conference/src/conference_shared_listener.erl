@@ -25,13 +25,19 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config']}]}
+-define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config'
+                                                   ,{'command', kz_config:zone('binary')}
+                                                   ]
+                                   }
+                                  ]
+                   }
                   ,{'authn', []}
                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'conf_discovery_req', [{<<"conference">>, <<"discovery_req">>}]}
                     ,{'conf_config_req', [{<<"conference">>, <<"config_req">>}]}
                     ,{'conf_authn_req', [{<<"directory">>, <<"authn_req">>}]}
+                    ,{'conf_participant_req', [{<<"conference">>, <<"add_participant">>}]}
                     ]).
 -define(QUEUE_NAME, <<"conference_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).

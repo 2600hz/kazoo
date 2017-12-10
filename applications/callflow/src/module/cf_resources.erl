@@ -65,7 +65,7 @@ handle_bridge_failure(Cause, Code, Call) ->
         'ok' -> lager:debug("found bridge failure child");
         'not_found' ->
             cf_util:send_default_response(Cause, Call),
-            cf_exe:stop(Call)
+            cf_exe:stop(Call, Cause)
     end.
 
 %%--------------------------------------------------------------------
