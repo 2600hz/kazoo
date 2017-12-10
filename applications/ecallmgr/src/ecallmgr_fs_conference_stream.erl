@@ -81,8 +81,10 @@ process_event(Event, JObj, _Node) ->
 update_participant(JObj) ->
     ConferenceVars = kz_conference_event:conference_channel_vars(JObj),
     CustomVars = kz_conference_event:custom_channel_vars(JObj),
+    AppVars = kz_conference_event:custom_application_vars(JObj),
     UUID = kz_conference_event:call_id(JObj),
     Update = [{#participant.conference_channel_vars, ConferenceVars}
              ,{#participant.custom_channel_vars, CustomVars}
+             ,{#participant.custom_application_vars, AppVars}
              ],
     ecallmgr_fs_conferences:participant_update(UUID, Update).
