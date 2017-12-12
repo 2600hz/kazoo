@@ -163,7 +163,6 @@ load_last_data(Context, File) ->
                                         kz_term:to_lower_binary(
                                           filename:extension(BaseName)))
                  }
-                ,{<<"Content-Length">>, byte_size(AttachBin)}
                 ]}
               ]).
 

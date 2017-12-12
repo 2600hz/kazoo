@@ -746,7 +746,6 @@ update_response_with_attachment(Context, AttachmentId, JObj) ->
         crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"whitelabel">>), Context)
                                  ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
                                   ,{<<"Content-Type">>, kz_json:get_value([AttachmentId, <<"content_type">>], JObj)}
-                                  ,{<<"Content-Length">>, kz_json:get_value([AttachmentId, <<"length">>], JObj)}
                                   ]
        ), 'undefined'
      ).
