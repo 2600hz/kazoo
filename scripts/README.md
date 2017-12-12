@@ -230,7 +230,7 @@ done (warnings were emitted)
 
 ## dialyze-usage.bash
 
-Given a module name, such as 'props' or 'kz\_json', search core/applications for modules that make calls to the supplied module and dialyze those beam files looking for dialyzer complaints. You will likely see complaints unrelated to your supplied module - go ahead and fix those too if possilbe ;)
+Given a module name, such as 'props' or 'kz\_json', search core/applications for modules that make calls to the supplied module and dialyze those beam files looking for dialyzer complaints. You will likely see complaints unrelated to your supplied module - go ahead and fix those too if possible ;)
 
 The more heavily utilized the module is, the longer this will take to run!
 
