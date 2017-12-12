@@ -816,8 +816,7 @@ to_binary(Req, Context, 'undefined') ->
             Setters = [{fun cb_context:set_resp_data/2, Content}
                       ,{fun cb_context:set_resp_error_code/2, ErrorCode}
                       ,{fun cb_context:add_resp_headers/2
-                       ,[{<<"Content-Length">>, kz_term:to_binary(Length)}
-                        ,{<<"Content-Range">>, kz_term:to_binary(io_lib:fwrite("bytes ~B-~B/~B", [Start, End, FileLength]))}
+                       ,[{<<"Content-Range">>, kz_term:to_binary(io_lib:fwrite("bytes ~B-~B/~B", [Start, End, FileLength]))}
                         ,{<<"Accept-Ranges">>, <<"bytes">>}
                         ]
                        }
@@ -916,7 +915,6 @@ to_pdf(Req, Context, <<>>) ->
     to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, RespData) ->
     RespHeaders = [{<<"Content-Type">>, <<"application/pdf">>}
-                  ,{<<"Content-Length">>, erlang:size(RespData)}
                   ,{<<"Content-Disposition">>, <<"attachment; filename=\"file.pdf\"">>}
                    | cb_context:resp_headers(Context)
                   ],

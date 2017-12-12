@@ -436,7 +436,6 @@ register_cloud_printer(Context, FaxboxId) ->
     ContentLength = length(Body),
     Headers = [?GPC_PROXY_HEADER
               ,{"Content-Type",ContentType}
-              ,{'Content-Length', ContentLength}
               ],
     Url = kz_term:to_list(?GPC_URL_REGISTER),
     case kz_http:post(Url, Headers, Body) of
