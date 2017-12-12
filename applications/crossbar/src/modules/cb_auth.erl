@@ -554,7 +554,6 @@ set_public_key_response(Context, PublicKeyPem, <<"application/x-pem-file">>=CT) 
               ,{fun cb_context:add_resp_headers/2
                ,[{<<"Content-Type">>, CT}
                 ,{<<"Content-Disposition">>, <<"attachment; filename=public_key.pem">>}
-                ,{<<"Content-Length">>, erlang:size(PublicKeyPem)}
                 ]
                }
               ],

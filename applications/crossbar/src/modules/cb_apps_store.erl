@@ -647,7 +647,6 @@ add_attachment(Context, Id, Attachment, AttachBin) ->
     RespHeaders =
         [{<<"Content-Disposition">>, <<"attachment; filename=", Id/binary>>}
         ,{<<"Content-Type">>, kz_json:get_value(<<"content_type">>, Attachment)}
-        ,{<<"Content-Length">>, kz_json:get_value(<<"length">>, Attachment)}
         ],
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_data/2, AttachBin}

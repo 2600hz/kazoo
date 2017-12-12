@@ -433,10 +433,8 @@ register_cloud_printer(Context, FaxboxId) ->
     Boundary = <<"------", (kz_binary:rand_hex(16))/binary>>,
     Body = register_body(ResellerId, FaxboxId, Boundary),
     ContentType = kz_term:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
-    ContentLength = length(Body),
     Headers = [?GPC_PROXY_HEADER
               ,{"Content-Type",ContentType}
-              ,{'Content-Length', ContentLength}
               ],
     Url = kz_term:to_list(?GPC_URL_REGISTER),
     case kz_http:post(Url, Headers, Body) of
