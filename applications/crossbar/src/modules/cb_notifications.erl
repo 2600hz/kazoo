@@ -967,12 +967,7 @@ maybe_note_notification_preference(AccountDb, AccountJObj) ->
 
 -spec note_notification_preference(ne_binary(), kz_json:object()) -> 'ok'.
 note_notification_preference(AccountDb, AccountJObj) ->
-    case kz_datamgr:save_doc(AccountDb
-                            ,kz_account:set_notification_preference(AccountJObj
-                                                                   ,<<"teletype">>
-                                                                   )
-                            )
-    of
+    case kz_datamgr:save_doc(AccountDb, kz_account:set_notification_preference(AccountJObj, <<"teletype">>)) of
         {'ok', UpdatedAccountJObj} ->
             _ = cb_accounts:replicate_account_definition(UpdatedAccountJObj),
             lager:debug("updated pref for account");
@@ -1000,12 +995,8 @@ migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
             ContentType = kz_json:get_value(<<"content_type">>, AMeta),
             lager:debug("saving attachment for ~s(~s): ~s", [Id, AName, ContentType]),
             Opts = [{'content_type', kz_term:to_list(ContentType)}],
-            crossbar_doc:save_attachment(Id
-                                        ,attachment_name_by_content_type(ContentType)
-                                        ,Bin
-                                        ,Context
-                                        ,Opts
-                                        );
+            AttName = attachment_name_by_content_type(ContentType),
+            crossbar_doc:save_attachment(Id, AttName, Bin, Context, Opts);
         {'error', _E} ->
             lager:debug("failed to load attachment ~s for ~s: ~p", [AName, Id, _E]),
             Context

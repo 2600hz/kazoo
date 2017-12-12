@@ -22,7 +22,7 @@
 -define(QUERY_TPL, <<"search/search_by_">>).
 -define(MULTI, <<"multi">>).
 
--define(SEARCHABLE, [<<"account">>, <<"user">>, <<"callflow">>, <<"devices">>]).
+-define(SEARCHABLE, [<<"account">>, <<"user">>, <<"callflow">>, <<"device">>]).
 -define(ACCOUNT_QUERY_OPTIONS, [<<"name">>, <<"number">>, <<"name_and_number">>]).
 -define(ACCOUNTS_QUERY_OPTIONS, [<<"name">>, <<"realm">>, <<"id">>]).
 
@@ -103,11 +103,7 @@ validate(Context) ->
 
 validate(Context, ?MULTI) ->
     Type = cb_context:req_value(Context, <<"t">>),
-    Ctx = case cb_context:account_id(Context) of
-              'undefined' -> cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB);
-              _AccountId -> Context
-          end,
-    validate_multi(Ctx, Type).
+    validate_multi(Context, Type).
 
 %%%===================================================================
 %%% Internal functions
@@ -124,33 +120,20 @@ validate(Context, ?MULTI) ->
 -spec validate_search(cb_context:context(), ne_binary(), ne_binary(), api_binary()) ->
                              cb_context:context().
 validate_search(Context, 'undefined') ->
-    cb_context:add_validation_error(<<"t">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
-                                   ,Context
-                                   );
+    Message = kz_json:from_list([{<<"message">>, <<"search needs a document type to search on">>}
+                                ,{<<"target">>, ?SEARCHABLE}
+                                ]),
+    cb_context:add_validation_error(<<"t">>, <<"required">>, Message, Context);
 validate_search(Context, <<"account">>=Type) ->
-    validate_search(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
-                   ,Type
-                   ,cb_context:req_value(Context, <<"q">>)
-                   );
+    validate_search(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type, cb_context:req_value(Context, <<"q">>));
 validate_search(Context, Type) ->
     validate_search(Context, Type, cb_context:req_value(Context, <<"q">>)).
 
 validate_search(Context, _Type, 'undefined') ->
-    Context1 = cb_context:add_validation_error(<<"q">>
-                                              ,<<"required">>
-                                              ,kz_json:from_list([{<<"message">>, <<"Search needs a view to search in">>}])
-                                              ,Context
-                                              ),
-    cb_context:add_validation_error(<<"q">>
-                                   ,<<"enum">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Value not found in enumerated list of values">>}
-                                      ,{<<"target">>, query_options(cb_context:account_db(Context1))}
-                                      ])
-                                   ,Context1
-                                   );
+    NeedViewMsg = kz_json:from_list([{<<"message">>, <<"search needs a view to search in">>}
+                                    ,{<<"target">>, available_query_options(cb_context:account_db(Context))}
+                                    ]),
+    cb_context:add_validation_error(<<"q">>, <<"required">>, NeedViewMsg, Context);
 validate_search(Context, Type, Query) ->
     Context1 = validate_query(Context, Query),
     case cb_context:resp_status(Context1) of
@@ -161,13 +144,10 @@ validate_search(Context, Type, Query) ->
     end.
 
 validate_search(Context, _Type, _Query, 'undefined') ->
-    cb_context:add_validation_error(<<"v">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"Search needs a value to search with">>}])
-                                   ,Context
-                                   );
+    Message = kz_json:from_list([{<<"message">>, <<"search needs a value to search for">>}]),
+    cb_context:add_validation_error(<<"v">>, <<"required">>, Message, Context);
 validate_search(Context, Type, Query, <<_/binary>> = Value) ->
-    search(Context, Type, Query, Value);
+    fix_envelope(search(Context, Type, Query, Value));
 validate_search(Context, Type, Query, Value) ->
     case kz_term:is_true(Value) of
         'true' -> validate_search(Context, Type, Query, <<>>);
@@ -180,34 +160,22 @@ validate_search(Context, Type, Query, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_multi(cb_context:context(), api_binary()) -> cb_context:context().
--spec validate_multi(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 validate_multi(Context, 'undefined') ->
-    cb_context:add_validation_error(<<"t">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
-                                   ,Context
-                                   );
+    Message = kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}
+                                ,{<<"target">>, ?SEARCHABLE}
+                                ]),
+    cb_context:add_validation_error(<<"t">>, <<"required">>, Message, Context);
+validate_multi(Context, <<"account">>=Type) ->
+    validate_multi(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type, kz_json:to_proplist(cb_context:query_string(Context)));
 validate_multi(Context, Type) ->
-    case kz_json:to_proplist(cb_context:query_string(Context)) of
-        [_|_]=Props -> validate_multi(Context, Type, Props);
-        _Other ->
-            cb_context:add_validation_error(<<"multi">>
-                                           ,<<"enum">>
-                                           ,kz_json:from_list([{<<"message">>, <<"Multi Search needs something to search like a doc type">>}
-                                                              ,{<<"target">>, ?SEARCHABLE}
-                                                              ])
-                                           ,Context
-                                           )
-    end.
+    validate_multi(Context, Type, kz_json:to_proplist(cb_context:query_string(Context))).
 
-validate_multi(Context, Type, Props) ->
-    QueryOptions = query_options(cb_context:account_db(Context)),
-    Context1 = validate_query(Context, QueryOptions, Props),
+-spec validate_multi(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
+validate_multi(Context, Type, Query) ->
+    Context1 = validate_query(Context, Query),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            multi_search(Context1, Type, Props);
-        _Status ->
-            Context1
+        'success' -> multi_search(Context1, Type, Query);
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -215,38 +183,38 @@ validate_multi(Context, Type, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_query(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_query(cb_context:context(), kz_proplist() | ne_binary()) -> cb_context:context().
 -spec validate_query(cb_context:context(), kz_proplist(), kz_proplist() | ne_binary()) -> cb_context:context().
 validate_query(Context, Query) ->
-    QueryOptions = query_options(cb_context:account_db(Context)),
+    QueryOptions = available_query_options(cb_context:account_db(Context)),
     validate_query(Context, QueryOptions, Query).
 
-validate_query(Context, _Available, []) ->
-    cb_context:set_resp_status(Context, 'success');
+validate_query(Context, Available, []) ->
+    case cb_context:resp_status(Context) of
+        'success' -> Context;
+        _ ->
+            Message = kz_json:from_list([{<<"message">>, <<"multi search needs some values to search for">>}
+                                        ,{<<"target">>, Available}
+                                        ]),
+            cb_context:add_validation_error(<<"multi">>, <<"enum">>, Message, Context)
+    end;
 validate_query(Context, Available, [{<<"by_", Query/binary>>, _}|Props]) ->
     Context1 = validate_query(Context, Available, Query),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            validate_query(Context1, Available, Props);
-        _Status ->
-            Context1
+        'success' -> validate_query(Context1, Available, Props);
+        _Status -> Context1
     end;
 validate_query(Context, Available, [{Query, _}|Props]) ->
     lager:debug("ignoring query string ~s", [Query]),
     validate_query(Context, Available, Props);
 validate_query(Context, Available, Query) when is_binary(Query) ->
     case lists:member(Query, Available) of
-        'true' ->
-            cb_context:set_resp_status(Context, 'success');
+        'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
-            cb_context:add_validation_error(<<"q">>
-                                           ,<<"enum">>
-                                           ,kz_json:from_list([{<<"message">>, <<"Value not found in enumerated list of values">>}
-                                                              ,{<<"target">>, Available}
-                                                              ,{<<"cause">>, Query}
-                                                              ])
-                                           ,Context
-                                           )
+            Message = kz_json:from_list([{<<"message">>, <<"value not found in enumerated list of values">>}
+                                        ,{<<"cause">>, Query}
+                                        ]),
+            cb_context:add_validation_error(<<"q">>, <<"enum">>, Message, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -254,8 +222,8 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec query_options(ne_binary()) -> ne_binaries().
-query_options(AccountDb) ->
+-spec available_query_options(api_ne_binary()) -> ne_binaries().
+available_query_options(AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, <<"_design/search">>) of
         {'ok', JObj} ->
             format_query_options(kz_json:get_keys(<<"views">>, JObj));
@@ -292,15 +260,8 @@ search(Context, Type, Query, Val) ->
     ViewOptions =
         [{'startkey', get_start_key(Context, Type, Value)}
         ,{'endkey', get_end_key(Context, Type, Value)}
-        ,{'limit', crossbar_doc:pagination_page_size(Context)}
         ],
-    fix_envelope(
-      crossbar_doc:load_view(ViewName
-                            ,ViewOptions
-                            ,Context
-                            ,fun normalize_view_results/2
-                            )
-     ).
+    crossbar_doc:load_view(ViewName, ViewOptions, Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -318,18 +279,7 @@ multi_search(Context, Type, Props) ->
 multi_search(Context, _Type, [], Acc) ->
     cb_context:set_resp_data(Context, Acc);
 multi_search(Context, Type, [{<<"by_", Query/binary>>, Val}|Props], Acc) ->
-    ViewName = <<?QUERY_TPL/binary, Query/binary>>,
-    Value = maybe_normalize_value(Type, Val),
-    ViewOptions =
-        [{'startkey', get_start_key(Context, Type, Value)}
-        ,{'endkey', get_end_key(Context, Type, Value)}
-        ],
-    Context1 =
-        crossbar_doc:load_view(ViewName
-                              ,ViewOptions
-                              ,Context
-                              ,fun normalize_view_results/2
-                              ),
+    Context1 = search(Context, Type, Query, Val),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = cb_context:resp_data(Context1),
@@ -348,7 +298,7 @@ multi_search(Context, Type, [_|Props], Acc) ->
 %%--------------------------------------------------------------------
 -spec maybe_normalize_value(ne_binary(), ne_binary()) -> ne_binary().
 maybe_normalize_value(<<"account">>, Value) ->
-    kz_term:to_lower_binary(Value);
+    cb_modules_util:normalize_alphanum_name(Value);
 maybe_normalize_value(_, Value) ->
     Value.
 
@@ -360,23 +310,9 @@ maybe_normalize_value(_, Value) ->
 %%--------------------------------------------------------------------
 -spec get_start_key(cb_context:context(), ne_binary(), ne_binary()) -> ne_binaries().
 get_start_key(Context, <<"account">>=Type, Value) ->
-    StartKey = cb_context:req_value(Context, <<"start_key">>, Value),
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            AuthId = cb_context:auth_account_id(Context),
-            [AuthId, Type, StartKey];
-        AccountId ->
-            [AccountId, Type, StartKey]
-    end;
+    [cb_context:auth_account_id(Context), Type, cb_context:req_value(Context, <<"start_key">>, Value)];
 get_start_key(Context, Type, Value) ->
-    StartKey = cb_context:req_value(Context, <<"start_key">>, Value),
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            AuthId = cb_context:auth_account_id(Context),
-            [AuthId, Type, StartKey];
-        _ ->
-            [Type, StartKey]
-    end.
+    [Type, cb_context:req_value(Context, <<"start_key">>, Value)].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -386,21 +322,9 @@ get_start_key(Context, Type, Value) ->
 %%--------------------------------------------------------------------
 -spec get_end_key(cb_context:context(), ne_binary(), binary()) -> ne_binaries().
 get_end_key(Context, <<"account">>=Type, Value) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            AuthId = cb_context:auth_account_id(Context),
-            [AuthId, Type, next_binary_key(Value)];
-        AccountId ->
-            [AccountId, Type, next_binary_key(Value)]
-    end;
-get_end_key(Context, Type, Value) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            AuthId = cb_context:auth_account_id(Context),
-            [AuthId, Type, next_binary_key(Value)];
-        _AccountId ->
-            [Type, next_binary_key(Value)]
-    end.
+    [cb_context:auth_account_id(Context), Type, next_binary_key(Value)];
+get_end_key(_, Type, Value) ->
+    [Type, next_binary_key(Value)].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -422,13 +346,19 @@ next_binary_key(Bin) ->
 %%--------------------------------------------------------------------
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
+    fix_envelope(Context, cb_context:resp_status(Context)).
+
+-spec fix_envelope(cb_context:context(), crossbar_status()) -> cb_context:context().
+fix_envelope(Context, 'success') ->
     RespContext = cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context))),
     RespEnvelope = lists:foldl(fun fix_envelope_fold/2
                               ,cb_context:resp_envelope(Context)
                               ,[<<"start_key">>, <<"next_start_key">>]
                               ),
 
-    cb_context:set_resp_envelope(RespContext, RespEnvelope).
+    cb_context:set_resp_envelope(RespContext, RespEnvelope);
+fix_envelope(Context, _) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
