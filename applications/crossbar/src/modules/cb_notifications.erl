@@ -1041,7 +1041,6 @@ read_template(Context, Id, Accept) ->
               read_account_attachment(Context, AttachmentsDb, Id, AttachmentName)
                                        ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
                                         ,{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentName)}
-                                        ,{<<"Content-Length">>, kz_doc:attachment_length(Doc, AttachmentName)}
                                         ])
     end.
 

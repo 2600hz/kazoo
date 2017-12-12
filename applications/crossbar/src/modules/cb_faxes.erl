@@ -650,7 +650,6 @@ set_fax_binary(Context, AttachmentId) ->
                        ,{fun cb_context:add_resp_headers/2
                         ,[{<<"Content-Disposition">>, <<Disposition/binary, "; filename=", AttachmentId/binary>>}
                          ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-                         ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
                          ]
                         }
                        ]

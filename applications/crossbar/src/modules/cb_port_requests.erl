@@ -1069,7 +1069,6 @@ load_attachment(AttachmentId, Context) ->
     Headers =
         [{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
         ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-        ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
         ],
     cb_context:add_resp_headers(Context1, Headers).
 

@@ -30,7 +30,7 @@ Key | Description | Type | Default | Required
 `enabled` | Determines if the resource is currently enabled | `boolean()` | `true` | `false`
 `flags.[]` |   | `string()` |   | `false`
 `flags` | A list of flags that can be provided on the request and must match for the resource to be eligible | `array(string())` | `[]` | `false`
-`format_from_uri` | When set to true requests to this resource will have a re-formated SIP From Header | `boolean()` |   | `false`
+`format_from_uri` | When set to true requests to this resource will have a re-formatted SIP From Header | `boolean()` |   | `false`
 `formatters` |   | `object()` |   | `false`
 `from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string()` |   | `false`
 `gateways.[].bypass_media` | The resource gateway bypass media mode | `boolean()` |   | `false`
