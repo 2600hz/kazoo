@@ -846,7 +846,20 @@ get_category(Category, 'false') ->
 -type migrate_values() :: [migrate_value()].
 
 -define(CONFIG_MIGRATIONS
-       ,[{{<<"callflow">>, <<"default_emergency_cid_number">>}
+       ,[{{<<"reorder">>, <<"unknown-error-code">>}
+         ,{<<"reorder">>, [<<"unknown_number">>, <<"response_code">>]}
+         }
+        ,{{<<"reorder">>, <<"unknown-error-message">>}
+         ,{<<"reorder">>, [<<"unknown_number">>, <<"response_message">>]}
+         }
+        ,{{<<"reorder">>, <<"known-error-code">>}
+         ,{<<"reorder">>, [<<"known_number">>, <<"response_code">>]}
+         }
+        ,{{<<"reorder">>, <<"known-error-message">>}
+         ,{<<"reorder">>, [<<"known_number">>, <<"response_message">>]}
+         }
+
+        ,{{<<"callflow">>, <<"default_emergency_cid_number">>}
          ,{<<"stepswitch">>, <<"default_emergency_cid_number">>}
          }
         ,{{<<"callflow">>, <<"ensure_valid_emergency_number">>}
