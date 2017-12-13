@@ -8,25 +8,81 @@
             "description": "reorder assume inbound e164",
             "type": "boolean"
         },
-        "known-error-code": {
-            "default": "686",
-            "description": "reorder known-error-code",
-            "type": "string"
+        "known_number": {
+            "description": "setting for how to response if the number is known but unconfigured",
+            "properties": {
+                "action": {
+                    "default": "respond",
+                    "description": "the action to take for unconfigured numbers",
+                    "enum": [
+                        "respond",
+                        "transfer",
+                        "bridge"
+                    ],
+                    "type": "string"
+                },
+                "bridge_account_id": {
+                    "description": "the account id that the bridge_device_id belongs to",
+                    "type": "string"
+                },
+                "bridge_device_id": {
+                    "description": "the device id to bridge unconfigured numbers to",
+                    "type": "string"
+                },
+                "response_code": {
+                    "default": "686",
+                    "description": "reorder code for replies to unconfigured numbers",
+                    "type": "string"
+                },
+                "response_message": {
+                    "default": "PICNIC",
+                    "description": "reorder message for replies to unconfigured numbers",
+                    "type": "string"
+                },
+                "transfer_target": {
+                    "description": "on-net phone number to transfer unconfigured numbers to",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         },
-        "known-error-message": {
-            "default": "PEBCAK",
-            "description": "reorder known-error-message",
-            "type": "string"
-        },
-        "unknown-error-code": {
-            "default": "604",
-            "description": "reorder unknown-error-code",
-            "type": "string"
-        },
-        "unknown-error-message": {
-            "default": "Nope Nope Nope",
-            "description": "reorder unknown-error-message",
-            "type": "string"
+        "unknown_number": {
+            "description": "setting for how to response if the number is not in the numbers database",
+            "properties": {
+                "action": {
+                    "default": "respond",
+                    "description": "the action to take for unknown numbers",
+                    "enum": [
+                        "respond",
+                        "transfer",
+                        "bridge"
+                    ],
+                    "type": "string"
+                },
+                "bridge_account_id": {
+                    "description": "the account id that the bridge_device_id belongs to",
+                    "type": "string"
+                },
+                "bridge_device_id": {
+                    "description": "the device id to bridge unknown numbers to",
+                    "type": "string"
+                },
+                "response_code": {
+                    "default": "604",
+                    "description": "reorder code for replies to unknown numbers",
+                    "type": "string"
+                },
+                "response_message": {
+                    "default": "Nope Nope Nope",
+                    "description": "reorder message for replies to unknown numbers",
+                    "type": "string"
+                },
+                "transfer_target": {
+                    "description": "on-net phone number to transfer unknown numbers to",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         }
     },
     "type": "object"

@@ -255,7 +255,7 @@ route_resp_fold(RouteJObj, {Idx, Acc}, Channel) ->
     BPEl = action_el(<<"set">>, [<<"bypass_media=">>, should_bypass_media(RouteJObj)]),
     HangupEl = action_el(<<"set">>, <<"hangup_after_bridge=true">>),
     FailureEl = action_el(<<"set">>, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
-    BridgeEl = action_el(<<"set">>, [ChannelVars, Channel]),
+    BridgeEl = action_el(<<"bridge">>, [ChannelVars, Channel]),
 
     ConditionEl = condition_el([BPEl, HangupEl, FailureEl, BridgeEl]),
     ExtEl = extension_el([<<"match_">>, Idx+$0], <<"true">>, [ConditionEl]),
