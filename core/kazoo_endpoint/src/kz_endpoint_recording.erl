@@ -68,7 +68,8 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?SERVER
+    gen_listener:start_link({'local', ?SERVER}
+                           ,?MODULE
                            ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
                             ,{'queue_name', ?QUEUE_NAME}       % optional to include
@@ -84,21 +85,20 @@ get_response_media(JObj) ->
     {filename:dirname(Filename), filename:basename(Filename)}.
 
 -spec handle_call_event(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_call_event(JObj, Props) ->
+handle_call_event(JObj, _Props) ->
     kz_util:put_callid(JObj),
-    Pid = props:get_value('server', Props),
     case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"RECORD_START">>} ->
-            maybe_log_start_recording(Pid, JObj);
+            maybe_log_start_recording(JObj);
         {<<"call_event">>, <<"RECORD_STOP">>} ->
-            maybe_save_recording(Pid, JObj);
+            maybe_save_recording(JObj);
         {_Cat, _Evt} -> 'ok'
     end.
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:info("starting event listener for inbound endpoint record_call"),
-    {'ok', #{}}.
+    {'ok', #{recordings => #{}}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -129,22 +129,25 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-%% handle_cast({'record_start', JObj}, State) ->
-%%     kz_util:put_callid(JObj),
-%%     lager:debug("RECORD START : ~p", [JObj]),
-%%     {'noreply', State};
+handle_cast({'save_recording', EndpointId, DocId, CallId, JObj}, #{recordings := Recordings} = State) ->
+    case maps:get(DocId, Recordings, 'undefined') =:= EndpointId of
+        'true' ->
+            _ = kz_util:spawn(fun save_recording/4, [EndpointId, DocId, CallId, JObj]),
+            {'noreply', State#{recordings => maps:without([DocId], Recordings)}};
+        'false' ->
+            {'noreply', State}
+    end;
 
-%% handle_cast({'record_stop', JObj}, State) ->
-%%     lager:debug("received record_stop, storing recording : ~p", [JObj]),
-%%     gen_server:cast(self(), {'store_recording', init_from_jobj(JObj)}),
-%%     {'noreply', State};
+handle_cast({'log_start_recording', EndpointId, DocId, Media}, #{recordings := Recordings} = State) ->
+    case maps:get(DocId, Recordings, 'undefined') =:= EndpointId of
+        'true' -> lager:debug("endpoint ~s is being recorded in media ~s", [EndpointId, Media]);
+        'false' -> 'ok'
+    end,
+    {'noreply', State};
 
-%% handle_cast({'store_recording', #{store_attempted := 'false'}=Store}, State) ->
-%%     lager:debug("attempting to save recording"),
-%%     save_recording(Store),
-%%     {'noreply', State};
-%% handle_cast({'store_recording', #{store_attempted := 'true'}}, State) ->
-%%     {'noreply', State};
+handle_cast({'local_recording', EndpointId, DocId}, #{recordings := Recordings} = State) ->
+    lager:debug("registering recording doc ~s for endpoint ~s", [DocId, EndpointId]),
+    {'noreply', State#{recordings => Recordings#{DocId => EndpointId}}};
 
 handle_cast({'store_succeeded', #{}}, State) ->
     lager:debug("store succeeded"),
@@ -232,7 +235,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_timelimit(api_object() | integer()) -> pos_integer().
+-spec get_timelimit(api_integer()) -> pos_integer().
 get_timelimit('undefined') ->
     kz_media_util:max_recording_time_limit();
 get_timelimit(TL) when is_integer(TL) ->
@@ -241,9 +244,7 @@ get_timelimit(TL) when is_integer(TL) ->
         'true' -> TL;
         'false' when Max > 0 -> Max;
         'false' -> Max
-    end;
-get_timelimit(Data) ->
-    get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)).
+    end.
 
 -spec get_format(api_ne_binary()) -> ne_binary().
 get_format('undefined') -> kz_media_config:call_recording_extension();
@@ -472,7 +473,6 @@ record_call_command(EndpointId, Inception, Data, Call) ->
     SampleRate = kz_json:get_integer_value(<<"record_sample_rate">>, Data),
     DefaultRecordMinSec = kz_media_config:record_min_sec(),
     RecordMinSec = kz_json:get_integer_value(<<"record_min_sec">>, Data, DefaultRecordMinSec),
-                                                %    AccountId = kapps_call:account_id(Call),
     {Year, Month, _} = erlang:date(),
     CallId = kapps_call:call_id(Call),
     RecordingId = kz_binary:rand_hex(16),
@@ -494,43 +494,46 @@ record_call_command(EndpointId, Inception, Data, Call) ->
             ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
              | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
+    gen_listener:cast(?SERVER, {'local_recording', EndpointId, MediaDocId}),
     kz_json:from_list(Media).
 
-maybe_log_start_recording(Pid, JObj) ->
+maybe_log_start_recording(JObj) ->
     kz_util:put_callid(JObj),
     EndpointId = kz_call_event:custom_channel_var(JObj, ?MEDIA_RECORDING_ENDPOINT_ID),
-    maybe_log_start_recording(Pid, EndpointId, JObj).
+    maybe_log_start_recording(EndpointId, JObj).
 
-maybe_log_start_recording(_Pid, 'undefined', _JObj) -> 'ok';
-maybe_log_start_recording(_Pid, EndpointId, JObj) ->
+maybe_log_start_recording('undefined', _JObj) -> 'ok';
+maybe_log_start_recording(EndpointId, JObj) ->
+    DocId = kz_call_event:custom_channel_var(JObj, <<"Media-Recording-ID">>),
     {_Dir, Media} = get_response_media(JObj),
-    lager:debug("endpoint ~s is being recorded in media ~s", [EndpointId, Media]).
+    gen_listener:cast(?SERVER, {'log_start_recording', EndpointId, DocId, Media}).
 
-maybe_save_recording(Pid, JObj) ->
+maybe_save_recording(JObj) ->
     kz_util:put_callid(JObj),
     EndpointId = kz_call_event:custom_channel_var(JObj, ?MEDIA_RECORDING_ENDPOINT_ID),
-    maybe_save_recording(Pid, EndpointId, JObj).
+    maybe_save_recording(EndpointId, JObj).
 
-maybe_save_recording(_Pid, 'undefined', _JObj) -> 'ok';
-maybe_save_recording(_Pid, EndpointId, JObj) ->
+maybe_save_recording('undefined', _JObj) -> 'ok';
+maybe_save_recording(EndpointId, JObj) ->
+    CallId = kz_call_event:call_id(JObj),
+    DocId = kz_call_event:custom_channel_var(JObj, <<"Media-Recording-ID">>),
+    gen_listener:cast(?SERVER, {'save_recording', EndpointId, DocId, CallId, JObj}).
+
+save_recording(EndpointId, DocId, CallId, JObj) ->
+    {Year, Month, _} = erlang:date(),
     AccountId = kz_call_event:account_id(JObj),
+    AccountDb = kz_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     Media = {_, MediaId} = get_response_media(JObj),
     Ext = filename:extension(MediaId),
     lager:debug("saving recording media ~s for endpoint ~s in account ~s", [MediaId, EndpointId, AccountId]),
     {'ok', Endpoint} = kz_endpoint:get(EndpointId, AccountId),
     Inception = kz_call_event:custom_channel_var(JObj, <<"Media-Recording-Origin">>),
     Data = kz_json:get_json_value(?ENDPOINT_INBOUND_RECORDING(Inception), Endpoint),
-
-    {Year, Month, _} = erlang:date(),
-    AccountDb = kz_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
-    CallId = kz_call_event:call_id(JObj),
     CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), CallId),
-    DocId = kz_call_event:custom_channel_var(JObj, <<"Media-Recording-ID">>),
     InteractionId = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>),
     Url = kz_json:get_ne_binary_value(<<"url">>, Data),
     ShouldStore = should_store_recording(AccountId, Url),
     Verb = kz_json:get_atom_value(<<"method">>, Data, 'put'),
-
     Store = #{url => Url
              ,media => Media
              ,extension => Ext
