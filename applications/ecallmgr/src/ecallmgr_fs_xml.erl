@@ -546,6 +546,7 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
     case kz_term:to_integer(V) of
         TO when TO > 0 ->
             [<<"call_timeout=", (kz_term:to_binary(TO))/binary>>
+            ,<<"originate_timeout=", (kz_term:to_binary(TO))/binary>>
                  | Vars
             ];
         _Else -> Vars
