@@ -452,7 +452,7 @@ fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, Data) ->
     Cmd = [{<<"Request">>, <<"Controls">>}
           ,{<<"Profile">>, Profile}
           ,{<<"Controls">>, KZName}
-          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kz_amqp_worker:call(Cmd
                               ,fun kapi_conference:publish_config_req/1
