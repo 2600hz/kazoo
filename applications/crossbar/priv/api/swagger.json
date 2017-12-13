@@ -57,6 +57,16 @@
         "account_config.conferences": {
             "description": "Schema for conferences account_config",
             "properties": {
+                "controls": {
+                    "properties": {
+                        "default": {
+                            "description": "conferences controls default"
+                        },
+                        "page": {
+                            "description": "conferences controls page"
+                        }
+                    }
+                },
                 "entry_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
                     "description": "conferences entry tone",
@@ -3938,8 +3948,20 @@
                     "type": "array",
                     "uniqueItems": true
                 },
+                "controls": {
+                    "description": "controls",
+                    "type": "object"
+                },
+                "domain": {
+                    "description": "domain",
+                    "type": "string"
+                },
                 "focus": {
                     "description": "This is a read-only property indicating the media server hosting the conference",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Prompt language to play in the conference",
                     "type": "string"
                 },
                 "max_members_media": {
@@ -4063,7 +4085,11 @@
                     "type": "boolean"
                 },
                 "profile": {
-                    "description": "The XML profile name used to configure the conference",
+                    "description": "Profile configuration",
+                    "type": "object"
+                },
+                "profile_name": {
+                    "description": "conference profile name",
                     "type": "string"
                 },
                 "require_moderator": {
@@ -27303,6 +27329,16 @@
                 "bridge_username": {
                     "description": "conferences bridge username",
                     "type": "string"
+                },
+                "controls": {
+                    "properties": {
+                        "default": {
+                            "description": "conferences controls default"
+                        },
+                        "page": {
+                            "description": "conferences controls page"
+                        }
+                    }
                 },
                 "entry_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
