@@ -351,8 +351,8 @@ set_account_id(AccountId, Conference) when is_binary(AccountId) ->
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
--spec controls(conference(), ne_binary()) -> {ne_binary(), kz_json:object()}.
-controls(#kapps_conference{controls=Controls}, _) when Controls /= 'undefined' -> Controls;
+-spec controls(conference(), ne_binary()) -> kz_json:object().
+controls(#kapps_conference{controls=Controls}, _) when Controls =/= 'undefined' -> Controls;
 controls(#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME) ->
     kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME], ?DEFAULT_CONTROLS);
 controls(#kapps_conference{account_id=AccountId}=Conference, ?DEFAULT_PROFILE_NAME) ->

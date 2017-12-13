@@ -58,12 +58,12 @@ welcome_to_conference(Srv, Conference) ->
     Call = kapps_conference:call(Conference),
     %%case kapps_conference:welcome_media(Conference) of
     DiscoveryJObj = kapps_conference:discovery_request(Conference),
-    case kz_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
-        'undefined' -> kapps_call_command:prompt(<<"conf-welcome">>, Call);
-        Media -> kapps_call_command:play(kz_media_util:media_path(Media, kapps_call:account_id(Call))
-                                        ,Call
-                                        )
-    end,
+    _ = case kz_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
+            'undefined' -> kapps_call_command:prompt(<<"conf-welcome">>, Call);
+            Media -> kapps_call_command:play(kz_media_util:media_path(Media, kapps_call:account_id(Call))
+                                            ,Call
+                                            )
+        end,
     maybe_collect_conference_id(Srv, Conference).
 
 -spec maybe_collect_conference_id(pid(), kapps_conference:conference()) -> 'ok'.
@@ -71,16 +71,15 @@ maybe_collect_conference_id(Srv, Conference) ->
     case kapps_conference:id(Conference) of
         'undefined' -> collect_conference_id(Srv, Conference);
         _Else -> valid_conference_id(Srv, Conference, <<"none">>)
-
     end.
 
 -spec collect_conference_id(pid(), kapps_conference:conference()) ->
-                                   {'ok', kapps_conference:conference()} | 'ok'.
+                                   'ok'.
 collect_conference_id(Srv, Conference) ->
     collect_conference_id(Srv, Conference, 1).
 
 -spec collect_conference_id(pid(), kapps_conference:conference(), pos_integer()) ->
-                                   {'ok', kapps_conference:conference()} | 'ok'.
+                                   'ok'.
 collect_conference_id(Srv, Conference, Loop) when Loop > 3 ->
     lager:debug("caller has failed to provide a valid conference number to many times"),
     Call = kapps_conference:call(Conference),
@@ -97,7 +96,7 @@ collect_conference_id(Srv, Conference, Loop) ->
     end.
 
 -spec validate_collected_conference_id(pid(), kapps_conference:conference(), pos_integer(), binary()) ->
-                                              {'ok', kapps_conference:conference()} | 'ok'.
+                                              'ok'.
 validate_collected_conference_id(Srv, Conference, Loop, <<>>) ->
     Call = kapps_conference:call(Conference),
     _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
@@ -112,16 +111,14 @@ validate_collected_conference_id(Srv, Conference, Loop, Digits) ->
         {'ok', [JObj]} ->
             lager:debug("caller has entered a valid conference id, building object"),
             Doc = kz_json:get_value(<<"doc">>, JObj),
-            {'ok', valid_conference_id(Srv, kapps_conference:from_conference_doc(Doc, Conference), Digits)};
+            valid_conference_id(Srv, kapps_conference:from_conference_doc(Doc, Conference), Digits);
         _Else ->
             lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
             _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
             collect_conference_id(Srv, Conference, Loop + 1)
     end.
 
--spec valid_conference_id(pid(), kapps_conference:conference(), binary()) ->
-                                 {'ok', kapps_conference:conference()} |
-                                 {'error', any()}.
+-spec valid_conference_id(pid(), kapps_conference:conference(), binary()) -> 'ok'.
 valid_conference_id(Srv, Conference, Digits) ->
     JObj = kapps_conference:discovery_request(Conference),
     ModeratorNumbers = kz_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
