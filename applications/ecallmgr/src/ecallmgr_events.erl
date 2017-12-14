@@ -55,6 +55,10 @@ event(<<"CHANNEL_HOLD">> = EventName, UUID, Props, Node) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]});
 event(<<"CHANNEL_UNHOLD">> = EventName, UUID, Props, Node) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]});
+event(<<"RECORD_START">> = EventName, UUID, Props, Node) ->
+    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]});
+event(<<"RECORD_STOP">> = EventName, UUID, Props, Node) ->
+    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]});
 event(EventName, UUID, EventProps, Node) ->
     maybe_send_event(EventName, UUID, EventProps, Node),
     process_event(EventName, UUID, EventProps, Node).
