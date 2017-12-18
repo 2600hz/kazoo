@@ -90,7 +90,7 @@ above is performed.
 
 #### About System Configs
 
-You must be `super_duper_admin` to access this resource.
+You must be `superduper_admin` to access this resource. Also make sure that the system_configs crossbar module has been enabled. `sup crossbar_maintenance start_module cb_system_configs`.
 
 #### Schema
 
