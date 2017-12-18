@@ -640,10 +640,10 @@ try_load_module(Name) ->
 -spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) ->
                         api_binary().
 put_callid(?NE_BINARY = CallId) ->
-    lager:md([{'callid', CallId}]),
+    lager:md([{'callid', CallId}]++lager:md()),
     erlang:put('callid', CallId);
 put_callid(Atom) when is_atom(Atom) ->
-    lager:md([{'callid', Atom}]),
+    lager:md([{'callid', Atom}]++lager:md()),
     erlang:put('callid', Atom);
 put_callid(APITerm) ->
     put_callid(find_callid(APITerm)).
