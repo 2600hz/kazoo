@@ -27,9 +27,11 @@
 %%%-------------------------------------------------------------------
 -module(cf_camping_feature).
 
--include("callflow.hrl").
+-behaviour(gen_cf_action).
 
 -export([handle/2]).
+
+-include("callflow.hrl").
 
 -record(state, {callflow :: kz_json:object()
                ,is_no_match :: boolean()
@@ -93,7 +95,7 @@ check_target_type(#state{type = TargetType} = S) ->
 
 -spec get_channels(state(), kapps_call:call()) -> maybe_m(state()).
 get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
-    lager:debug("Exlpoing channels"),
+    lager:debug("exploring channels"),
     Usernames = case TargetType of
                     <<"device">> -> cf_util:sip_users_from_device_ids([TargetId], Call);
                     <<"user">> ->
