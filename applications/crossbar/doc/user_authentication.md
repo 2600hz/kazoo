@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required
 ```shell
 curl -v -X PUT \
     -H "Content-Type: application/json" \
-    -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME"}, "method":{MD5_OR_SHA1}}' \
+    -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME"}, "method":[md5|sha1]}' \
     http://{SERVER}:8000/v2/user_auth
 ```
 
