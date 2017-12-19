@@ -9,8 +9,8 @@
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
-%%-define(DEBUG(_Fmt, _Args), 'ok').
--define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+-define(DEBUG(_Fmt, _Args), 'ok').
+%%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
