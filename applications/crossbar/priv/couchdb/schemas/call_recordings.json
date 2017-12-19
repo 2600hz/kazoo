@@ -56,13 +56,15 @@
         },
         "duration": {
             "description": "duration",
+            "minimum": 0,
             "name": "duration",
-            "type": "non_neg_integer"
+            "type": "integer"
         },
         "duration_ms": {
             "description": "duration_ms",
+            "minimum": 0,
             "name": "duration_ms",
-            "type": "non_neg_integer"
+            "type": "integer"
         },
         "from": {
             "description": "from",
