@@ -145,11 +145,11 @@ handle(Data, Call) ->
                                ]),
     case Ok of
         {'Just', 'accepted'} ->
-            kapps_call_command:b_prompt(<<"camper-queue">>, Call),
+            _ = kapps_call_command:b_prompt(<<"camper-queue">>, Call),
             cf_exe:stop(Call);
         {'Just', 'connected'} -> 'ok';
         'Nothing' ->
-            kapps_call_command:b_prompt(<<"camper-deny">>, Call),
+            _ = kapps_call_command:b_prompt(<<"camper-deny">>, Call),
             cf_exe:stop(Call)
     end.
 

@@ -449,7 +449,8 @@ get_format(<<"mp4">> = MP4) -> MP4;
 get_format(<<"wav">> = WAV) -> WAV;
 get_format(_) -> get_format('undefined').
 
--spec store_recording_meta(state()) -> ne_binary() | {'error', any()}.
+-spec store_recording_meta(state()) -> {'ok', kz_json:object()} |
+                                       {'error', any()}.
 store_recording_meta(#state{call=Call
                            ,format=Ext
                            ,media={_, MediaName}
@@ -496,17 +497,18 @@ store_recording_meta(#state{call=Call
                      ]
                     ),
 
-    MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, Db, [{'type', <<"call_recording">>}]),
+    MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, Db, [{'type', kzd_call_recording:type()}]),
     case kazoo_modb:save_doc(Db, MediaDoc, [{'ensure_saved', 'true'}]) of
-        {'ok', Doc} -> kz_doc:revision(Doc);
+        {'ok', Doc} -> {'ok', Doc};
         {'error', _}= Err -> Err
     end.
 
--spec maybe_store_recording_meta(state()) -> ne_binary() | {'error', any()}.
+-spec maybe_store_recording_meta(state()) -> {'ok', kz_json:object()} |
+                                             {'error', any()}.
 maybe_store_recording_meta(#state{doc_db=Db
                                  ,doc_id=DocId
                                  }=State) ->
-    case kz_datamgr:lookup_doc_rev(Db, {<<"call_recording">>, DocId}) of
+    case kz_datamgr:open_cache_doc(Db, {kzd_call_recording:type(), DocId}) of
         {'ok', Rev} -> Rev;
         _ -> store_recording_meta(State)
     end.
@@ -518,20 +520,20 @@ get_media_name(Name, Ext) ->
         _ -> <<Name/binary, ".", Ext/binary>>
     end.
 
--spec store_url(state(), ne_binary()) -> ne_binary().
+-spec store_url(state(), kzd_call_recording:doc()) -> ne_binary().
 store_url(#state{doc_db=Db
                 ,doc_id=MediaId
                 ,media={_,MediaName}
                 ,format=_Ext
                 ,should_store={'true', 'local'}
-                }, _Rev) ->
-    kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName, []);
+                }, _MediaDoc) ->
+    kz_media_url:store(Db, {kzd_call_recording:type(), MediaId}, MediaName, []);
 store_url(#state{doc_db=Db
                 ,doc_id=MediaId
                 ,media={_,MediaName}
                 ,should_store={'true', 'other', Url}
                 ,verb=Verb
-                } = State, _Rev) ->
+                } = State, _MediaDoc) ->
     HandlerOpts = #{url => Url
                    ,verb => Verb
                    ,field_separator => <<>>
@@ -543,22 +545,27 @@ store_url(#state{doc_db=Db
                ,att_handler => {AttHandler, HandlerOpts}
                },
     Options = [{'plan_override', Handler}],
-    kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName, Options).
+    kz_media_url:store(Db, {kzd_call_recording:type(), MediaId}, MediaName, Options).
 
--spec handler_fields(ne_binary(), state()) -> kz_att_util:format_fields().
+-spec handler_fields(ne_binary(), state()) ->
+                            kz_att_util:format_fields().
 handler_fields(Url, State) ->
     {Protocol, _, _, _, _} = kz_http_util:urlsplit(Url),
     handler_fields_for_protocol(Protocol, Url, State).
 
--spec handler_fields_for_protocol(ne_binary(), ne_binary(), state()) -> kz_att_util:format_fields().
+-spec handler_fields_for_protocol(ne_binary(), ne_binary(), state()) ->
+                                         kz_att_util:format_fields().
 handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, #state{format=Ext}) ->
     [<<"call_recording_">>
     ,{'field', <<"call_id">>}
     ,<<".", Ext/binary>>
     ];
-handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=AccountId
-                                                             ,format=Ext
-                                                             }) ->
+handler_fields_for_protocol(<<"http", _/binary>>
+                           ,Url
+                           ,#state{account_id=AccountId
+                                  ,format=Ext
+                                  }
+                           ) ->
     {S1, S2} = check_url(Url),
     [<<S1/binary, "call_recording_">>
     ,{'field', <<"call_id">>}
@@ -581,6 +588,10 @@ handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=Account
     ,{'field', <<"owner_id">>}
     ,<<"&account_id=">>
     ,AccountId
+    ,<<"&start=">>
+    ,{'field', <<"start">>}
+    ,<<"&duration_ms=">>
+    ,{'field', <<"duration_ms">>}
     ].
 
 -spec check_url(ne_binary()) -> {binary(), ne_binary()}.
@@ -653,8 +664,8 @@ save_recording(#state{call=Call
         {'error', Err} ->
             lager:warning("error storing metadata : ~p", [Err]),
             gen_server:cast(self(), 'store_failed');
-        Rev ->
-            StoreUrl = fun()-> store_url(State, Rev) end,
+        {'ok', MediaDoc} ->
+            StoreUrl = fun()-> store_url(State, MediaDoc) end,
             store_recording(Media, StoreUrl, Call)
     end.
 

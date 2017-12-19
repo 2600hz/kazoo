@@ -973,13 +973,15 @@
                 },
                 "duration": {
                     "description": "duration",
+                    "minimum": 0,
                     "name": "duration",
-                    "type": "non_neg_integer"
+                    "type": "integer"
                 },
                 "duration_ms": {
                     "description": "duration_ms",
+                    "minimum": 0,
                     "name": "duration_ms",
-                    "type": "non_neg_integer"
+                    "type": "integer"
                 },
                 "from": {
                     "description": "from",
@@ -24780,7 +24782,7 @@
                     "type": "string"
                 },
                 "format_from_uri": {
-                    "description": "When set to true requests to this resource will have a re-formated SIP From Header",
+                    "description": "When set to true requests to this resource will have a re-formatted SIP From Header",
                     "type": "boolean"
                 },
                 "formatters": {
