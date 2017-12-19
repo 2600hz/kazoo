@@ -46,10 +46,12 @@ Key | Description | Type | Default | Required
 `require_moderator` | does the conference require a moderator | `boolean()` |   | `false`
 `wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false`
 
-#### Please Note ####
-Development not complete on:
-`require_moderator` and `wait_for_moderator`
 
+
+##### Keys under development
+
+- `require_moderator`
+- `wait_for_moderator`
 
 #### Perform an action on a conference
 
