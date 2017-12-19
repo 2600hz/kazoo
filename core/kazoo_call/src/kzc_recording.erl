@@ -468,38 +468,36 @@ store_recording_meta(#state{call=Call
     Start = Timestamp - Seconds,
 
     BaseMediaDoc = kz_json:from_list(
-                     props:filter_empty(
-                       [{<<"name">>, MediaName}
-                       ,{<<"description">>, <<"recording ", MediaName/binary>>}
-                       ,{<<"content_type">>, kz_mime:from_extension(Ext)}
-                       ,{<<"media_type">>, Ext}
-                       ,{<<"media_source">>, <<"recorded">>}
-                       ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
-                       ,{<<"from">>, kapps_call:from(Call)}
-                       ,{<<"to">>, kapps_call:to(Call)}
-                       ,{<<"request">>, kapps_call:request(Call)}
-                       ,{<<"direction">>, kapps_call:direction(Call)}
-                       ,{<<"start">>, Start}
-                       ,{<<"duration">>, Seconds}
-                       ,{<<"duration_ms">>, Length}
-                       ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
-                       ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
-                       ,{<<"callee_id_number">>, kapps_call:callee_id_number(Call)}
-                       ,{<<"callee_id_name">>, kapps_call:callee_id_name(Call)}
-                       ,{<<"call_id">>, CallId}
-                       ,{<<"owner_id">>, kapps_call:owner_id(Call)}
-                       ,{<<"url">>, Url}
-                       ,{<<"cdr_id">>, CdrId}
-                       ,{<<"interaction_id">>, InteractionId}
-                       ,{<<"_id">>, DocId}
-                       ,{<<"origin">>, Origin}
-                       ,{<<"custom_channel_vars">>, kz_call_event:custom_channel_vars(JObj)}
-                       ]
-                      )
+                     [{<<"name">>, MediaName}
+                     ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                     ,{<<"content_type">>, kz_mime:from_extension(Ext)}
+                     ,{<<"media_type">>, Ext}
+                     ,{<<"media_source">>, <<"recorded">>}
+                     ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
+                     ,{<<"from">>, kapps_call:from(Call)}
+                     ,{<<"to">>, kapps_call:to(Call)}
+                     ,{<<"request">>, kapps_call:request(Call)}
+                     ,{<<"direction">>, kapps_call:direction(Call)}
+                     ,{<<"start">>, Start}
+                     ,{<<"duration">>, Seconds}
+                     ,{<<"duration_ms">>, Length}
+                     ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
+                     ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
+                     ,{<<"callee_id_number">>, kapps_call:callee_id_number(Call)}
+                     ,{<<"callee_id_name">>, kapps_call:callee_id_name(Call)}
+                     ,{<<"call_id">>, CallId}
+                     ,{<<"owner_id">>, kapps_call:owner_id(Call)}
+                     ,{<<"url">>, Url}
+                     ,{<<"cdr_id">>, CdrId}
+                     ,{<<"interaction_id">>, InteractionId}
+                     ,{<<"_id">>, DocId}
+                     ,{<<"origin">>, Origin}
+                     ,{<<"custom_channel_vars">>, kz_call_event:custom_channel_vars(JObj)}
+                     ]
                     ),
 
     MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, Db, [{'type', <<"call_recording">>}]),
-    case kazoo_modb:save_doc(Db, MediaDoc, [{ensure_saved, true}]) of
+    case kazoo_modb:save_doc(Db, MediaDoc, [{'ensure_saved', 'true'}]) of
         {'ok', Doc} -> kz_doc:revision(Doc);
         {'error', _}= Err -> Err
     end.
@@ -547,16 +545,15 @@ store_url(#state{doc_db=Db
     Options = [{'plan_override', Handler}],
     kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName, Options).
 
--spec handler_fields(ne_binary(), state()) -> list().
+-spec handler_fields(ne_binary(), state()) -> kz_att_util:format_fields().
 handler_fields(Url, State) ->
     {Protocol, _, _, _, _} = kz_http_util:urlsplit(Url),
     handler_fields_for_protocol(Protocol, Url, State).
 
--spec handler_fields_for_protocol(ne_binary(), ne_binary(), state()) -> list().
-handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, #state{format=Ext
-                                                             }) ->
+-spec handler_fields_for_protocol(ne_binary(), ne_binary(), state()) -> kz_att_util:format_fields().
+handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, #state{format=Ext}) ->
     [<<"call_recording_">>
-    ,{field, <<"call_id">>}
+    ,{'field', <<"call_id">>}
     ,<<".", Ext/binary>>
     ];
 handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=AccountId
@@ -564,24 +561,24 @@ handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=Account
                                                              }) ->
     {S1, S2} = check_url(Url),
     [<<S1/binary, "call_recording_">>
-    ,{field, <<"call_id">>}
+    ,{'field', <<"call_id">>}
     ,<<".", Ext/binary>>
     ,<<S2/binary, "from=">>
-    ,{field, <<"from">>}
+    ,{'field', <<"from">>}
     ,<<"&to=">>
-    ,{field, <<"to">>}
+    ,{'field', <<"to">>}
     ,<<"&caller_id_name=">>
-    ,{field, <<"caller_id_name">>}
+    ,{'field', <<"caller_id_name">>}
     ,<<"&caller_id_number=">>
-    ,{field, <<"caller_id_number">>}
+    ,{'field', <<"caller_id_number">>}
     ,<<"&call_id=">>
-    ,{field, <<"call_id">>}
+    ,{'field', <<"call_id">>}
     ,<<"&cdr_id=">>
-    ,{field, <<"cdr_id">>}
+    ,{'field', <<"cdr_id">>}
     ,<<"&interaction_id=">>
-    ,{field, <<"interaction_id">>}
+    ,{'field', <<"interaction_id">>}
     ,<<"&owner_id=">>
-    ,{field, <<"owner_id">>}
+    ,{'field', <<"owner_id">>}
     ,<<"&account_id=">>
     ,AccountId
     ].
@@ -595,7 +592,7 @@ check_url(Url) ->
 
 -spec check_url_query(ne_binary()) -> binary().
 check_url_query(Query) ->
-    check_url_param(lists:last(binary:split(Query, <<"&">>, [global]))).
+    check_url_param(lists:last(binary:split(Query, <<"&">>, ['global']))).
 
 -spec check_url_param(ne_binary()) -> binary().
 check_url_param(Param) ->
@@ -649,7 +646,9 @@ should_store_recording() ->
 save_recording(#state{media={_, MediaName}}, 'false') ->
     lager:info("not configured to store recording ~s", [MediaName]),
     gen_server:cast(self(), 'stop');
-save_recording(#state{call=Call, media=Media}=State, _) ->
+save_recording(#state{call=Call
+                     ,media=Media
+                     }=State, _) ->
     case maybe_store_recording_meta(State) of
         {'error', Err} ->
             lager:warning("error storing metadata : ~p", [Err]),
