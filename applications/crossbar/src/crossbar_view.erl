@@ -203,6 +203,7 @@ build_load_params(Context, View, Options) ->
             Params = LoadMap#{mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
                              ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
                              ,has_qs_filter => HasQSFilter
+                             ,start_key => StartKey
                              },
             maybe_set_start_end_keys(Params, StartKey, EndKey);
         Ctx -> Ctx
@@ -234,6 +235,7 @@ build_load_range_params(Context, View, Options) ->
                                      ,start_time => StartTime
                                      ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
                                      ,has_qs_filter => HasQSFilter
+                                     ,start_key => StartKey
                                      },
                     maybe_set_start_end_keys(Params, StartKey, EndKey);
                 Ctx -> Ctx
