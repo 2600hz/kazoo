@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "call_recording",
+    "_id": "call_recordings",
     "additionalProperties": false,
     "description": "endpoint recording settings",
     "properties": {
