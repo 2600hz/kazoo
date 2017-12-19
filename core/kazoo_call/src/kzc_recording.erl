@@ -71,7 +71,7 @@
                ,retries = 0               :: non_neg_integer()
                ,verb = 'put'              :: atom()
                ,account_id                :: api_ne_binary()
-               ,event = 'undefined'       :: api_object()
+               ,event = 'undefined'       :: kz_call_event:doc() | 'undefined'
                ,origin                    :: api_ne_binary()
                }).
 -type state() :: #state{}.
@@ -254,7 +254,7 @@ handle_cast('stop_recording', #state{media={_, MediaName}
 handle_cast('stop_recording', #state{is_recording='false'}=State) ->
     lager:debug("received stop recording and we're not recording, exiting"),
     {'stop', 'normal', State};
-handle_cast({'record_stop', {_, MediaName}=Media, FS, JObj},
+handle_cast({'record_stop', {_, MediaName}=Media, FS, EventJObj},
             #state{media={_, MediaName}
                   ,is_recording='true'
                   ,stop_received='false'
@@ -266,7 +266,7 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS, JObj},
     {'noreply', State#state{media=Media
                            ,call=Call1
                            ,stop_received='true'
-                           ,event=JObj
+                           ,event=EventJObj
                            }};
 handle_cast({'record_stop', {_, MediaName}, _FS, _JObj}, #state{media={_, MediaName}
                                                                ,is_recording='false'
@@ -458,12 +458,12 @@ store_recording_meta(#state{call=Call
                            ,cdr_id=CdrId
                            ,interaction_id=InteractionId
                            ,url=Url
-                           ,event=JObj
+                           ,event=EventJObj
                            ,origin=Origin
                            }) ->
     CallId = kapps_call:call_id(Call),
-    Timestamp = kz_call_event:timestamp(JObj),
-    Length = kz_call_event:recording_length(JObj),
+    Timestamp = kz_call_event:timestamp(EventJObj),
+    Length = kz_call_event:recording_length(EventJObj),
     Seconds = Length div ?MILLISECONDS_IN_SECOND,
     Start = Timestamp - Seconds,
 
@@ -492,7 +492,7 @@ store_recording_meta(#state{call=Call
                      ,{<<"interaction_id">>, InteractionId}
                      ,{<<"_id">>, DocId}
                      ,{<<"origin">>, Origin}
-                     ,{<<"custom_channel_vars">>, kz_call_event:custom_channel_vars(JObj)}
+                     ,{<<"custom_channel_vars">>, kz_call_event:custom_channel_vars(EventJObj)}
                      ]
                     ),
 
