@@ -223,9 +223,10 @@
 -type audio_macro_prompts() :: [audio_macro_prompt()].
 -export_type([audio_macro_prompt/0
              ,audio_macro_prompts/0
+             ,store_fun/0
              ]).
 
--type store_fun() :: fun(() -> ne_binary()).
+-type store_fun() :: ne_binary() | fun(() -> ne_binary()).
 
 -define(CONFIG_CAT, <<"call_command">>).
 
@@ -3102,30 +3103,30 @@ wait_for_unparked_call(Call, Timeout) ->
             end
     end.
 
--spec store_file_args(ne_binary(), ne_binary() | store_fun()) -> kz_proplist().
+-spec store_file_args(ne_binary(), store_fun()) -> kz_proplist().
 store_file_args(Filename, URLFun) ->
     [{<<"File-Name">>, Filename}
     ,{<<"Url">>, maybe_call_store_fun(URLFun)}
     ,{<<"Http-Method">>, <<"put">>}
     ].
 
--spec maybe_call_store_fun(ne_binary() | store_fun()) -> ne_binary().
+-spec maybe_call_store_fun(store_fun()) -> ne_binary().
 maybe_call_store_fun(URLFun) when is_function(URLFun, 0) ->
     URLFun();
 maybe_call_store_fun(URL) -> URL.
 
--spec store_file(ne_binary(), ne_binary() | store_fun(), kapps_call:call()) -> 'ok' | {'error', any()}.
+-spec store_file(ne_binary(), store_fun(), kapps_call:call()) -> 'ok' | {'error', any()}.
 store_file(Filename, URLFun, Call) ->
     App = kz_util:calling_app(),
     store_file(Filename, URLFun, storage_retries(App), storage_timeout(App), Call).
 
--spec store_file(ne_binary(), ne_binary() | store_fun(), pos_integer(), kapps_call:call()) ->
+-spec store_file(ne_binary(), store_fun(), pos_integer(), kapps_call:call()) ->
                         'ok' | {'error', any()}.
 store_file(Filename, URLFun, Tries, Call) ->
     App = kz_util:calling_app(),
     store_file(Filename, URLFun, Tries, storage_timeout(App), Call).
 
--spec store_file(ne_binary(), ne_binary() | store_fun(), pos_integer(), kz_timeout(), kapps_call:call()) ->
+-spec store_file(ne_binary(), store_fun(), pos_integer(), kz_timeout(), kapps_call:call()) ->
                         'ok' | {'error', any()}.
 store_file(Filename, URLFun, Tries, Timeout, Call) ->
     Msg = case kapps_call:kvs_fetch('alert_msg', Call) of
