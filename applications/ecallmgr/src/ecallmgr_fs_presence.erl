@@ -234,6 +234,7 @@ to_user(Props) ->
 
 to_user(<<"initiator">>, Props) ->
     props:get_first_defined([<<"Caller-Destination-Number">>
+                            ,<<"Other-Leg-Destination-Number">>
                             ,<<"variable_sip_to_user">>
                             ], Props);
 to_user(<<"recipient">>, Props) ->
