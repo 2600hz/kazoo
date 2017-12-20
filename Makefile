@@ -198,6 +198,9 @@ fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/master -- "*.
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
+app_applications:
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
+
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
 	@$(ROOT)/scripts/check-spelling.bash
@@ -270,6 +273,7 @@ circle-docs:
 circle-codechecks:
 	@./scripts/code_checks.bash $(CHANGED)
 	@$(MAKE) code_checks
+	@$(MAKE) app_applications
 	@./scripts/validate-js.sh $(CHANGED)
 
 circle-fmt:
