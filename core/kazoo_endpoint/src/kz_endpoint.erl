@@ -22,6 +22,7 @@
 
 -export([unsolicited_owner_mwi_update/2
         ,unsolicited_endpoint_mwi_update/2
+        ,send_mwi_update/5
         ]).
 
 -ifdef(TEST).
