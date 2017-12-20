@@ -1653,7 +1653,8 @@ maybe_set_confirm_properties({Endpoint, Call, CallFwd, CCVs}=Acc) ->
         'true' ->
             lager:info("call forwarding configured to require key press"),
             Confirm = [{<<"Confirm-Key">>, <<"1">>}
-                      ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
+                      ,{<<"Confirm-Cancel-Timeout">>, 'true'}
+                      ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
                       ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
                       ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
                       ],
