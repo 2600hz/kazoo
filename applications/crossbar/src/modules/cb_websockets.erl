@@ -225,10 +225,10 @@ blackhole_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req ++ Props
-                                     ,fun kapi_blackhole:publish_get_req/1
-                                     ,{'blackhole', 'true'}
-                                     )
+    case kz_amqp_worker:call_collect(Req ++ Props
+                                    ,fun kapi_blackhole:publish_get_req/1
+                                    ,{'blackhole', 'true'}
+                                    )
     of
         {'error', _R} ->
             lager:error("could not reach blackhole sockets tracking: ~p", [_R]),
