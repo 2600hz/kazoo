@@ -129,12 +129,10 @@ app_src_filename(App) ->
 
 -spec circles() -> [{atom(), [atom()]}].
 circles() ->
-    {'ok', Cache} = start_cache(),
     io:format("finding circular dependencies "),
     Circles = [circles(App)
                || App <- kz_ast_util:project_apps()
               ],
-    stop_cache(Cache),
     io:format(" done~n"),
     Circles.
 
