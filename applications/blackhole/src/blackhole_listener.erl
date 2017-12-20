@@ -25,12 +25,11 @@
         ]).
 
 -include("blackhole.hrl").
--include("kapi_blackhole.hrl").
+-include_lib("kazoo_amqp/src/api/kapi_websockets.hrl").
 
 -define(SERVER, ?MODULE).
 
--record(state, {bindings :: ets:tid()
-               }).
+-record(state, {bindings :: ets:tid()}).
 -type state() :: #state{}.
 
 -type mod_inited() :: 'ok' | {'error', atom()} |
