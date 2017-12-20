@@ -7,6 +7,9 @@
         ,fix_app_deps/1
         ,dot_file/0 ,dot_file/1
         ,circles/0, circles/1
+
+        ,start_cache/0
+        ,stop_cache/0, stop_cache/1
         ]).
 
 -export([remote_calls/1
@@ -15,9 +18,10 @@
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--define(DEBUG(_Fmt, _Args), 'ok').
-%% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+%%-define(DEBUG(_Fmt, _Args), 'ok').
+-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -spec dot_file() -> 'ok' |
                     {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
@@ -125,14 +129,25 @@ app_src_filename(App) ->
 
 -spec circles() -> [{atom(), [atom()]}].
 circles() ->
-    {'ok', Cache} = kz_cache:start_link(?MODULE),
+    {'ok', Cache} = start_cache(),
     io:format("finding circular dependencies "),
     Circles = [circles(App)
                || App <- kz_ast_util:project_apps()
               ],
-    kz_cache:stop_local(Cache),
+    stop_cache(Cache),
     io:format(" done~n"),
     Circles.
+
+-spec start_cache() -> {'ok', pid()}.
+start_cache() ->
+    {'ok', _Cache} = kz_cache:start_link(?MODULE).
+
+-spec stop_cache() -> 'ok'.
+-spec stop_cache(server_ref()) -> 'ok'.
+stop_cache() ->
+    stop_cache(?MODULE).
+stop_cache(Cache) ->
+    kz_cache:stop_local(Cache).
 
 -spec circles(atom()) -> {atom(), [atom()]}.
 circles(App) ->
@@ -244,10 +259,12 @@ process_app(App, Acc, ExistingApps) ->
 
 -spec remote_calls(atom()) -> [atom()].
 remote_calls(App) ->
+    AppModules = kz_ast_util:app_modules(App),
+    ?DEBUG("~s has modules: ~p~n", [App, AppModules]),
     lists:usort(
       lists:foldl(fun remote_calls_from_module/2
                  ,[]
-                 ,kz_ast_util:app_modules(App)
+                 ,AppModules
                  )
      ).
 
@@ -257,15 +274,17 @@ remote_calls_from_module(Module) ->
 
 remote_calls_from_module(Module, Acc) ->
     io:format("."),
+    ?DEBUG("remote calls from ~s~n", [Module]),
     {M, AST} = kz_ast_util:module_ast(Module),
     #module_ast{functions=Fs} = kz_ast_util:add_module_ast(#module_ast{}, M, AST),
     try remote_calls_from_functions(Fs, Acc) of
-        Modules -> lists:delete(M, Modules)
+        Modules -> ?DEBUG("  ~p~n", [Module]), lists:delete(M, Modules)
     catch
         _E:R ->
             ST = erlang:get_stacktrace(),
             io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
             [io:format("st: ~p~n", [S]) || S <- ST],
+            ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
             throw(R)
     end.
 

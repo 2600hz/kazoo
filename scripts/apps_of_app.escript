@@ -9,7 +9,9 @@
 main(CommandLineArgs) ->
     {'ok', Options, Args} = parse_args(CommandLineArgs),
     io:format("cwd: ~p~no: ~p~na: ~p~n", [file:get_cwd(), Options, Args]),
-    handle(Options, Args).
+    {'ok', Cache} = kast_app_deps:start_cache(),
+    handle(Options, Args),
+    kast_app_deps:stop_cache(Cache).
 
 %% handle([], []) ->
 %%     kast_app_deps:fix_project_deps();
@@ -29,9 +31,15 @@ handle(['module'], [Module]) ->
 handle(['circle'], []) ->
     Circles = kast_app_deps:circles(),
     print_circles(Circles);
-handle(['circle'], [App]) ->
-    {A, Circles} = kast_app_deps:circles(list_to_atom(App)),
-    print_circles([{A, Circles}]);
+handle(['circle'], Apps) ->
+    Circles = lists:foldl(fun(AppFile, Cs) ->
+                                  App = filename:basename(AppFile, ".app.src"),
+                                  [kast_app_deps:circles(list_to_atom(App)) | Cs]
+                          end
+                         ,[]
+                         ,Apps
+                         ),
+    print_circles(Circles);
 handle(_, _) ->
     print_help().
 
