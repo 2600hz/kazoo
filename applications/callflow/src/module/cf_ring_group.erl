@@ -43,7 +43,7 @@ maybe_set_alert(Data, Call) ->
             Call;
         Alert ->
             lager:debug("setting alert to ~s", [Alert]),
-            kapps_call:set_custom_sip_header(<<"Alert-Info">>, Alert, Call)
+            kapps_call:set_custom_channel_var(<<"Override-Ringtone">>, Alert, Call)
     end.
 
 -spec custom_alert_path(api_binary()) -> ne_binary().
