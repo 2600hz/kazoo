@@ -20,8 +20,8 @@
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
-%%-define(DEBUG(_Fmt, _Args), 'ok').
--define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+-define(DEBUG(_Fmt, _Args), 'ok').
+%%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -spec dot_file() -> 'ok' |
                     {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
