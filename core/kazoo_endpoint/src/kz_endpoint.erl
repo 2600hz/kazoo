@@ -1440,7 +1440,7 @@ generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = kapps_call:inception(Call),
 
     HeaderFuns = [fun(J) -> maybe_add_sip_headers(J, Endpoint, Call) end
-                 ,fun(J) -> maybe_add_alert_info(J, Endpoint, Inception) end
+                 ,fun(J) -> maybe_add_alert_info(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_invite_format(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_diversion(J, Endpoint, Inception, Call) end
@@ -1482,13 +1482,20 @@ merge_custom_sip_headers('undefined', JObj) ->
 merge_custom_sip_headers(CustomHeaders, JObj) ->
     kz_json:merge_jobjs(CustomHeaders, JObj).
 
--spec maybe_add_alert_info(kz_json:object(), kz_json:object(), api_binary()) -> kz_json:object().
-maybe_add_alert_info(JObj, Endpoint, 'undefined') ->
+-spec maybe_add_alert_info(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
+maybe_add_alert_info(JObj, Endpoint, Call) ->
+    case kapps_call:custom_channel_var(<<"Override-Ringtone">>, Call) of
+        'undefined' -> maybe_add_alert_info_from_endpoint(JObj, Endpoint, kapps_call:inception(Call));
+        Ringtone -> kz_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
+    end.
+
+-spec maybe_add_alert_info_from_endpoint(kz_json:object(), kz_json:object(), api_binary()) -> kz_json:object().
+maybe_add_alert_info_from_endpoint(JObj, Endpoint, 'undefined') ->
     case kz_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
         'undefined' -> JObj;
         Ringtone -> kz_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
     end;
-maybe_add_alert_info(JObj, Endpoint, _Inception) ->
+maybe_add_alert_info_from_endpoint(JObj, Endpoint, _Inception) ->
     case kz_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
         'undefined' -> JObj;
         Ringtone -> kz_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
