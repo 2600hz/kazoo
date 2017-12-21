@@ -67,16 +67,15 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
-    'true' = kapi_blackhole:get_req_v(ApiJObj),
+    'true' = kapi_websockets:get_req_v(ApiJObj),
     kz_util:put_callid(ApiJObj),
 
     Node = kz_json:get_binary_value(<<"Node">>, ApiJObj),
     RespData =
-        handle_get_req_data(
-          kz_json:get_value(<<"Account-ID">>, ApiJObj)
+        handle_get_req_data(kz_json:get_value(<<"Account-ID">>, ApiJObj)
                            ,kz_json:get_value(<<"Socket-ID">>, ApiJObj)
                            ,Node
-         ),
+                           ),
     case RespData of
         'ok' -> 'ok';
         RespData ->
@@ -86,7 +85,7 @@ handle_req(ApiJObj, _Props) ->
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             lager:debug("sending reply ~p to ~s",[RespData, Node]),
-            kapi_blackhole:publish_get_resp(RespQ, Resp)
+            kapi_websockets:publish_get_resp(RespQ, Resp)
     end.
 
 %%--------------------------------------------------------------------

@@ -119,7 +119,7 @@ read_app_src(App) ->
 
 write_app_src(App, Config) ->
     File = app_src_filename(App),
-    file:write_file(File, io_lib:format("~p.~n", [Config])).
+    'ok' = file:write_file(File, io_lib:format("~p.~n", [Config])).
 
 app_src_filename(App) ->
     AppBin = kz_term:to_binary(App),

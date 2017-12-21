@@ -2012,7 +2012,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
 maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
     J = kz_json:get_value(<<"doc">>, JObj),
     Username = kz_device:sip_username(J),
-    Realm = kz_endpoint:get_sip_realm(J, AccountId),
+    Realm = get_sip_realm(J, AccountId),
     OwnerId = get_endpoint_owner(J),
     case kz_device:sip_method(J) =:= <<"password">>
         andalso Username =/= 'undefined'
@@ -2059,7 +2059,7 @@ maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     Username = kz_device:sip_username(JObj),
-    Realm = kz_endpoint:get_sip_realm(JObj, AccountId),
+    Realm = get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
     case kz_device:sip_method(JObj) =:= <<"password">>
         andalso Username =/= 'undefined'

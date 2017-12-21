@@ -14,6 +14,11 @@ A simple script to query the Erlang VMs process count
 10
 ```
 
+## apps_of_app.escript
+
+Calculates application interdependencies, correcting .app.src files as necessary. Also can be used to detect circular references.
+
+For now, we just calculate app files in `applications/` since `core/` is a tangled mess right now (and is typically installed as one lump package anyway).
 
 ## bump-copyright-year.sh
 
