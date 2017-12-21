@@ -33,8 +33,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{?MODULE, [{<<"blackhole">>, <<"get_req">>}]}]).
--define(BINDINGS, [{'blackhole', ['federate']}]).
+-define(RESPONDERS, [{?MODULE, [{<<"websockets">>, <<"get_req">>}]}]).
+-define(BINDINGS, [{'websockets', ['federate']}]).
 
 -define(BLACKHOLE_QUEUE_NAME, <<>>).
 -define(BLACKHOLE_QUEUE_OPTIONS, []).

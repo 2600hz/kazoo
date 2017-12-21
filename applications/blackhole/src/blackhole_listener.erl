@@ -36,7 +36,7 @@
                       'stopped'. %% stopped instead of inited
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'blackhole', [{'restrict_to', ['get', 'module_req']}]}]).
+-define(BINDINGS, [{'websockets', [{'restrict_to', ['get', 'module_req']}]}]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_amqp_event'}
                      ,[{<<"*">>, <<"*">>}]
