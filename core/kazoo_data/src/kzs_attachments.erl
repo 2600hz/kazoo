@@ -22,7 +22,8 @@
 %% Attachment-related functions ------------------------------------------------
 -spec fetch_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', binary()} |
-                              data_error().
+                              data_error() |
+                              gen_attachment:error_response().
 fetch_attachment(#{}=Server, DbName, DocId, AName) ->
     case kzs_cache:open_cache_doc(Server, DbName, DocId, []) of
         {'ok', Doc} ->
@@ -115,7 +116,8 @@ relay_stream_attachment(Caller, Ref, Bin) ->
 -spec put_attachment(att_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                             {'ok', kz_json:object()} |
                             {'ok', kz_json:object(), kz_term:proplist()} |
-                            data_error().
+                            data_error() |
+                            gen_attachment:error_response().
 
 put_attachment(#{att_handler := {Handler, Params}}=Map
               ,DbName, DocId, AName, Contents, Options) ->

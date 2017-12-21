@@ -7,19 +7,26 @@
 %%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
 -module(kz_att_http).
+-behaviour(gen_attachment).
 
 -include("kz_att.hrl").
+
+%% `gen_attachment' behaviour callbacks (API)
+-export([put_attachment/6]).
+-export([fetch_attachment/4]).
 
 -define(MAX_REDIRECTS, 10).
 
 %% ====================================================================
-%% API functions
+%% `gen_attachment' behaviour callbacks (API)
 %% ====================================================================
-
--export([put_attachment/6]).
--export([fetch_attachment/4]).
-
--spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(gen_attachment:settings()
+                    ,gen_attachment:db_name()
+                    ,gen_attachment:doc_id()
+                    ,gen_attachment:att_name()
+                    ,gen_attachment:contents()
+                    ,gen_attachment:options()
+                    ) -> gen_attachment:put_response().
 put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     #{url := BaseUrlParam, verb := Verb} = Params,
     DocUrlField = maps:get('document_url_field', Params, 'undefined'),
@@ -29,9 +36,23 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
 
     case send_request(Url, kz_term:to_atom(Verb, 'true'), Headers, Contents) of
         {'ok', NewUrl, _Body, _Debug} -> {'ok', url_fields(DocUrlField, NewUrl)};
-        {'error', _} = Error -> Error
+        Error -> Error
     end.
 
+-spec fetch_attachment(gen_attachment:handler_props()
+                      ,gen_attachment:db_name()
+                      ,gen_attachment:doc_id()
+                      ,gen_attachment:att_name()
+                      ) -> gen_attachment:fetch_response().
+fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
+    case kz_json:get_value(<<"url">>, HandlerProps) of
+        'undefined' -> gen_attachment:error_response(400, 'invalid_data');
+        Url -> fetch_attachment(Url)
+    end.
+
+%% ====================================================================
+%% Internal functions
+%% ====================================================================
 -spec base_separator(kz_term:ne_binary()) -> binary().
 base_separator(Url) ->
     case kz_http_util:urlsplit(Url) of
@@ -44,7 +65,7 @@ send_request(Url, Verb, Headers, Contents) ->
 
 send_request(_Url, _Verb, _Headers, _Contents, Redirects, _)
   when Redirects > ?MAX_REDIRECTS ->
-    {'error', 'too_many_redirects'};
+    gen_attachment:error_response(400, 'too_many_redirects');
 send_request(Url, Verb, Headers, Contents, Redirects, Debug) ->
     case kz_http:req(Verb, Url, Headers, Contents) of
         {'ok', Code, ReplyHeaders, Body} when
@@ -58,17 +79,15 @@ send_request(Url, Verb, Headers, Contents, Redirects, Debug) ->
             NewDebug = add_debug(Debug, Url, Code, ReplyHeaders),
             Fun = fun(URL, Tries, Data) -> send_request(URL, Verb, Headers, Contents, Tries, Data) end,
             maybe_redirect(Url, ReplyHeaders, Redirects, NewDebug, Fun);
-        {'ok', Code, _ReplyHeaders, Body} ->
-            {'error', kz_term:to_binary(io_lib:format("~B : ~s", [Code, Body]))};
-        {'error', Error} ->
-            {'error', term_to_binary(Error)}
+        Resp ->
+            kz_att_util:handle_http_error_response(Resp, "HTTP error", Url)
     end.
 
 maybe_redirect(ToUrl, Headers, Redirects, Debug, Fun) ->
     case props:get_value("location", Headers) of
         'undefined' ->
             lager:debug("request to ~s got redirection but no 'location' header was found", [ToUrl]),
-            {'error', 'redirection_with_no_location'};
+            gen_attachment:error_response(400, 'redirection_with_no_location');
         Url ->
             maybe_redirect_loop(ToUrl, Url, Redirects, Debug, Fun)
     end.
@@ -80,7 +99,7 @@ maybe_redirect_loop(ToUrl, Url, Redirects, Debug, Fun) ->
             Fun(Url, Redirects + 1, Debug);
         _ ->
             lager:debug("the request ~s got redirect to ~s but this is already in the list of visited urls",[ToUrl, Url]),
-            {'error', 'redirect_loop_detected'}
+            gen_attachment:error_response(400, 'redirect_loop_detected')
     end.
 
 add_debug(Debug, Url, Code, Headers) ->
@@ -96,33 +115,24 @@ url_fields(DocUrlField, Url) ->
     ,{'document', [{DocUrlField, Url}]}
     ].
 
--spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
-fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
-    case kz_json:get_value(<<"url">>, HandlerProps) of
-        'undefined' -> {'error', 'invalid_data'};
-        Url -> fetch_attachment(Url)
-    end.
-
 fetch_attachment(URL) ->
-    case fetch_attachment(URL, 0, kz_json:new()) of
-        {'ok', Body} -> {'ok', Body};
-        {'error', _} = Error -> Error
-    end.
+    fetch_attachment(URL, 0, kz_json:new()).
 
--spec fetch_attachment(kz_term:ne_binary(), integer(), kz_json:object()) -> any().
+-spec fetch_attachment(kz_term:ne_binary(), integer(), kz_json:object()) ->
+                              gen_attachment:fetch_response().
 fetch_attachment(_Url, Redirects, _)
   when Redirects > ?MAX_REDIRECTS ->
-    {'error', 'too_many_redirects'};
+    gen_attachment:error_response(400, 'too_many_redirects');
 fetch_attachment(Url, Redirects, Debug) ->
     case kz_http:get(Url) of
-        {'ok', 200, _Headers, Body} -> {'ok', Body};
+        {'ok', 200, _Headers, Body} ->
+            {'ok', Body};
         {'ok', Code, Headers, _Body} when
               Code =:= 301;
               Code =:= 302 ->
             NewDebug = add_debug(Debug, Url, Code, Headers),
             Fun = fun(URL, N, Data) -> fetch_attachment(URL, N, Data) end,
             maybe_redirect(Url, Headers, Redirects, NewDebug, Fun);
-        {'ok', Code, _Headers, Body} ->
-            {'error', kz_term:to_binary(io_lib:format("~B : ~s", [Code, Body]))};
-        _R -> {'error', <<"error getting attachment from url ", Url/binary>>}
+        Resp ->
+            kz_att_util:handle_http_error_response(Resp, "HTTP fetch error", Url)
     end.

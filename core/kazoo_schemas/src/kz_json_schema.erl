@@ -198,7 +198,8 @@ validate(<<_/binary>> = Schema, DataJObj, Options) ->
     {'ok', SchemaJObj} = Fun(Schema),
     validate(SchemaJObj, DataJObj, Options);
 validate(SchemaJObj, DataJObj, Options0) when is_list(Options0) ->
-    jesse:validate_with_schema(SchemaJObj, DataJObj, Options0 ++ ?DEFAULT_OPTIONS).
+    Options = props:insert_values(?DEFAULT_OPTIONS, Options0),
+    jesse:validate_with_schema(SchemaJObj, DataJObj, Options).
 
 -type option() :: {'version', kz_term:ne_binary()} |
                   {'error_code', integer()} |
@@ -772,35 +773,35 @@ depreciated_validation_error(<<"account">>, <<"expired">>, Message, Options) ->
     build_validate_error([<<"account">>]
                         ,<<"expired">>
                         ,Message
-                        ,props:insert_values([{'error_code', 423}
-                                             ,{'error_message', <<"locked">>}
-                                             ]
-                                            ,Options
-                                            )
+                        ,props:set_values([{'error_code', 423}
+                                          ,{'error_message', <<"locked">>}
+                                          ]
+                                         ,Options
+                                         )
                         );
 depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Options) ->
     build_validate_error([<<"account">>]
                         ,<<"disabled">>
                         ,Message
-                        ,props:insert_values([{'error_code', 423}
-                                             ,{'error_message', <<"locked">>}
-                                             ]
-                                            ,Options
-                                            )
+                        ,props:set_values([{'error_code', 423}
+                                          ,{'error_message', <<"locked">>}
+                                          ]
+                                         ,Options
+                                         )
                         );
 depreciated_validation_error(Property, Code, Message, Options) ->
     build_validate_error(Property, Code, Message
-                        ,insert_default_options(Options)
+                        ,set_default_options(Options)
                         ).
 
--spec insert_default_options(options()) -> options().
-insert_default_options(Options) ->
-    props:insert_values([{'version', ?CURRENT_VERSION}
-                         ,{'error_code', 400}
-                         ,{'error_message', <<"invalid_request">>}
-                        ]
-                       ,Options
-                       ).
+-spec set_default_options(options()) -> options().
+set_default_options(Options) ->
+    props:set_values([{'version', ?CURRENT_VERSION}
+                     ,{'error_code', 400}
+                     ,{'error_message', <<"validation error">>}
+                     ]
+                    ,Options
+                    ).
 
 -spec build_validate_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
                                   validation_error().

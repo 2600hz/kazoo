@@ -452,3 +452,4 @@ pages:
   - 'Running Dev Shells': 'scripts/dev/README.md'
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
   - 'Webhooks': 'doc/engineering/webhooks.md'
+  - 'Attachments': 'core/kazoo_attachments/README.md'
