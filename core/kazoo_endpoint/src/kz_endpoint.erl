@@ -2096,8 +2096,8 @@ send_mwi_update(New, Saved, Username, Realm, JObj) ->
 
 -spec is_unsolicited_mwi_enabled(ne_binary()) -> boolean().
 is_unsolicited_mwi_enabled(AccountId) ->
-    kapps_config:get_is_true(<<"callflows">>, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
-        andalso kz_term:is_true(kapps_account_config:get(AccountId, <<"callflows">>, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
+    kapps_config:get_is_true(<<"callflow">>, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
+        andalso kz_term:is_true(kapps_account_config:get(AccountId, <<"callflow">>, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
 
 -spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
