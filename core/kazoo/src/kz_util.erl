@@ -646,7 +646,8 @@ put_callid(Atom) when is_atom(Atom) ->
     lager:md([{'callid', Atom}]++lager:md()),
     erlang:put('callid', Atom);
 put_callid(?LOG_SYSTEM_ID) ->
-    'ok';
+    lager:md([{'callid', ?LOG_SYSTEM_ID}]++lager:md()),
+    erlang:put('callid', ?LOG_SYSTEM_ID);
 put_callid(APITerm) ->
     put_callid(find_callid(APITerm)).
 
