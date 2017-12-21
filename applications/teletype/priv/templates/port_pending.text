@@ -2,7 +2,11 @@
 
 Your request "{{port_request.name}}" to port numbers into
 account '{{account.name}}' is transitioned into pending state.
+{% if port_request.transition_reason.content %}
 
+{{port_request.transition_reason.user.first_name}} {{port_request.transition_reason.user.last_name}} commented on {{port_request.transition_reason.date.local|date:"l, F j, Y \\a\\t H:i"}}:
+{{port_request.transition_reason.content}}
+{% endif %}
 
 === Port Request Numbers ===
 

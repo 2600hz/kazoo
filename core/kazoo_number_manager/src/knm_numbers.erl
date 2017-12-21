@@ -83,8 +83,8 @@
 
 -type t_pn() :: t(knm_phone_number:knm_phone_number()).
 
--opaque collection() :: t().
--opaque pn_collection() :: t_pn().
+-type collection() :: t().
+-type pn_collection() :: t_pn().
 -export_type([collection/0, pn_collection/0]).
 
 -type options() :: knm_number_options:options().
@@ -255,7 +255,7 @@ do_get_pn(Nums, Options, Error) ->
     do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)).
 
 %% @public (used by knm_number_crawler)
--spec from_jobjs(kz_json:objects()) -> t_pn().
+-spec from_jobjs(kz_json:objects()) -> t().
 from_jobjs(JObjs) ->
     Options = knm_number_options:default(),
     PNs = [knm_phone_number:from_json_with_options(Doc, Options)
@@ -297,7 +297,6 @@ from_jobjs(JObjs) ->
 create(Nums, Options) ->
     T0 = pipe(do_get_pn(Nums
                        ,?OPTIONS_FOR_LOAD(Nums, props:delete(state, Options))
-                       ,knm_errors:to_json(not_reconcilable)
                        )
              ,[fun fail_if_assign_to_is_not_an_account_id/1
               ]),
@@ -680,7 +679,7 @@ take_not_founds(T=#{ko := KOs}) ->
     Nums = [Num || {Num,not_found} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
 
--spec maybe_create(nums(), t_pn()) -> t_pn().
+-spec maybe_create(nums(), t()) -> t().
 maybe_create(NotFounds, T) ->
     Ta = do(fun knm_number:ensure_can_create/1, new(options(T), NotFounds)),
     Tb = pipe(T, [fun knm_number:ensure_can_load_to_create/1

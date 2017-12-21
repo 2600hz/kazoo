@@ -41,6 +41,24 @@
                         <p style="text-align:center;margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">Your number port request <b>{{port_request.name}}</b> of account <b>{{account.name}}</b> has been scheduled to happen on {{port_request.port_scheduled_date.local|date:"l, F j, Y H:i"}}</p>
                     </td>
                 </tr>
+            </table>
+            {% if port_request.transition_reason.content %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px">
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#eaeaea" width="80%" style="background-color:#eaeaea;border-radius:5px;">
+                            <tr>
+                                <td style="padding:.9em;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-radius:5px;">
+                                    <p style="margin:0;padding:0;font-size:.7em;font-family:'Open Sans',sans-serif;color:#555555;"><b>{{port_request.transition_reason.user.first_name}} {{port_request.transition_reason.user.last_name}}</b> commented on {{port_request.transition_reason.date.local|date:"l, F j, Y \\a\\t H:i"}}:</p>
+                                    <p style="margin:0;padding:0">{{port_request.transition_reason.content}}</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            {% endif %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
                         <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Port Request Numbers</h3>

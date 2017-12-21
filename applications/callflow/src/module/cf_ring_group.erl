@@ -39,15 +39,14 @@ handle(Data, Call) ->
 maybe_set_alert(Data, Call) ->
     AlertPath = custom_alert_path(kapps_call:inception(Call)),
     case kz_json:get_ne_binary_value([<<"ringtones">>, AlertPath], Data) of
-        'undefined' ->
-            Call;
+        'undefined' -> Call;
         Alert ->
             lager:debug("setting alert to ~s", [Alert]),
-            kapps_call:set_custom_sip_header(<<"Alert-Info">>, Alert, Call)
+            kapps_call:kvs_store(<<"Override-Ringtone">>, Alert, Call)
     end.
 
--spec custom_alert_path(api_binary()) -> ne_binary().
-custom_alert_path(_Inception='undefined') -> <<"internal">>;
+-spec custom_alert_path(api_ne_binary()) -> ne_binary().
+custom_alert_path('undefined') -> <<"internal">>;
 custom_alert_path(_Inception) -> <<"external">>.
 
 -spec repeat(kz_json:object(), kapps_call:call(), non_neg_integer()) -> 'ok'.

@@ -356,9 +356,6 @@ get(Context, _MediaId, ?BIN_DATA) ->
                                ,[{<<"Content-Type">>
                                  ,kz_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)
                                  }
-                                ,{<<"Content-Length">>
-                                 ,binary:referenced_byte_size(cb_context:resp_data(Context))
-                                 }
                                 ]).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -918,7 +915,6 @@ load_media_binary(Context, MediaId) ->
                                                   )
                                                ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
                                                 ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
-                                                ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context1), Attachment)}
                                                 ])
             end;
         _Status -> Context1

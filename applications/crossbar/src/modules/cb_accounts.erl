@@ -500,6 +500,7 @@ validate_request(AccountId, Context) ->
                    ,fun validate_account_name_is_unique/2
                    ,fun validate_account_schema/2
                    ,fun disallow_direct_clients/2
+                   ,fun(_, C) -> cb_modules_util:normalize_alphanum_name(C) end
                    ],
     lists:foldl(fun(F, C) -> F(AccountId, C) end
                ,Context

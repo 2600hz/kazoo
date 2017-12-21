@@ -116,7 +116,11 @@ list_templates_from_db(Db) ->
                             )
     of
         {'ok', Results} ->
-            [kz_doc:id(Result) || Result <- Results];
+            [Id
+             || Result <- Results,
+                Id <- [kz_doc:id(Result)],
+                'notification.skel' =/=  Id
+            ];
         {'error', _E} ->
             io:format("failed to query existing notifications: ~p~n", [_E]),
             []

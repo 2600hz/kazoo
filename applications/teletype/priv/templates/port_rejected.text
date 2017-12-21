@@ -1,7 +1,11 @@
                 Port Request Rejected
 
 Port request "{{port_request.name}}" of account '{{account.name}}' has been rejected.
+{% if port_request.transition_reason.content %}
 
+{{port_request.transition_reason.user.first_name}} {{port_request.transition_reason.user.last_name}} commented on {{port_request.transition_reason.date.local|date:"l, F j, Y \\a\\t H:i"}}:
+{{port_request.transition_reason.content}}
+{% endif %}
 
 === Port Request Numbers ===
 

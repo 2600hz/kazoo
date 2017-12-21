@@ -1440,7 +1440,7 @@ generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = kapps_call:inception(Call),
 
     HeaderFuns = [fun(J) -> maybe_add_sip_headers(J, Endpoint, Call) end
-                 ,fun(J) -> maybe_add_alert_info(J, Endpoint, Inception) end
+                 ,fun(J) -> maybe_add_alert_info(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_invite_format(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_diversion(J, Endpoint, Inception, Call) end
@@ -1482,16 +1482,27 @@ merge_custom_sip_headers('undefined', JObj) ->
 merge_custom_sip_headers(CustomHeaders, JObj) ->
     kz_json:merge_jobjs(CustomHeaders, JObj).
 
--spec maybe_add_alert_info(kz_json:object(), kz_json:object(), api_binary()) -> kz_json:object().
-maybe_add_alert_info(JObj, Endpoint, 'undefined') ->
+-spec maybe_add_alert_info(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
+maybe_add_alert_info(JObj, Endpoint, Call) ->
+    case kapps_call:kvs_fetch(<<"Override-Ringtone">>, Call) of
+        'undefined' -> maybe_add_alert_info_from_endpoint(JObj, Endpoint, kapps_call:inception(Call));
+        Ringtone -> set_alert_info(Ringtone, JObj)
+    end.
+
+-spec set_alert_info(ne_binary(), kz_json:object()) -> kz_json:object().
+set_alert_info(Info, JObj) ->
+    kz_json:set_value(<<"Alert-Info">>, Info, JObj).
+
+-spec maybe_add_alert_info_from_endpoint(kz_json:object(), kz_json:object(), api_binary()) -> kz_json:object().
+maybe_add_alert_info_from_endpoint(JObj, Endpoint, 'undefined') ->
     case kz_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
         'undefined' -> JObj;
-        Ringtone -> kz_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
+        Ringtone -> set_alert_info(Ringtone, JObj)
     end;
-maybe_add_alert_info(JObj, Endpoint, _Inception) ->
+maybe_add_alert_info_from_endpoint(JObj, Endpoint, _Inception) ->
     case kz_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
         'undefined' -> JObj;
-        Ringtone -> kz_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
+        Ringtone -> set_alert_info(Ringtone, JObj)
     end.
 
 -spec maybe_add_invite_format(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
@@ -1653,7 +1664,8 @@ maybe_set_confirm_properties({Endpoint, Call, CallFwd, CCVs}=Acc) ->
         'true' ->
             lager:info("call forwarding configured to require key press"),
             Confirm = [{<<"Confirm-Key">>, <<"1">>}
-                      ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
+                      ,{<<"Confirm-Cancel-Timeout">>, 'true'}
+                      ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
                       ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
                       ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
                       ],

@@ -106,6 +106,7 @@ fix_port_request_data(JObj, DataJObj) ->
                ,fun fix_transfer_date/2
                ,fun fix_scheduled_date/2
                ,fun fix_ui_metadata/2
+               ,fun maybe_add_reason/2
                ],
     lists:foldl(fun(F, J) -> F(J, DataJObj) end, JObj, Routines).
 
@@ -189,3 +190,31 @@ fix_scheduled_date(JObj, _DataJObj) ->
 -spec fix_ui_metadata(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_ui_metadata(JObj, _DataJObj) ->
     kz_json:delete_keys([<<"ui_metadata">>, <<"ui_flags">>], JObj).
+
+-spec maybe_add_reason(kz_json:object(), kz_json:object()) -> kz_json:object().
+maybe_add_reason(JObj, DataJObj) ->
+    case kz_json:get_ne_json_value(<<"reason">>, DataJObj) of
+        'undefined' -> JObj;
+        Reason ->
+            UserInfo = get_commenter_info(kz_json:get_ne_binary_value(<<"account_id">>, Reason)
+                                         ,kz_json:get_ne_binary_value(<<"user_id">>, Reason)
+                                         ),
+            Timestamp = kz_json:get_integer_value(<<"timestamp">>, Reason),
+            Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, DataJObj)),
+            Props = [{<<"content">>, kz_json:get_ne_binary_value(<<"content">>, Reason)}
+                    ,{<<"date">>, Date}
+                    ,{<<"user">>, kz_json:from_list(UserInfo)}
+                    ],
+            kz_json:set_value(<<"transition_reason">>, kz_json:from_list(Props), JObj)
+    end.
+
+-spec get_commenter_info(api_ne_binary(), api_ne_binary()) -> kz_proplist().
+get_commenter_info(?NE_BINARY=AccountId, ?NE_BINARY=UserId) ->
+    case kzd_user:fetch(AccountId, UserId) of
+        {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
+        {'error', _Reason} ->
+            lager:debug("failed to get commenter info: account_id ~s user_id ~s", [AccountId, UserId]),
+            []
+    end;
+get_commenter_info(_, _) ->
+    [].

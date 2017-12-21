@@ -4157,6 +4157,24 @@
                 "data": {
                     "description": "Action-specific parameters",
                     "properties": {
+                        "body": {
+                            "description": "Parameters of content body of SIP NOTIFY",
+                            "properties": {
+                                "content_type": {
+                                    "description": "The Content-Type of the data in the content body",
+                                    "type": "string"
+                                },
+                                "data": {
+                                    "description": "The data in the content body",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "data",
+                                "content_type"
+                            ],
+                            "type": "object"
+                        },
                         "event": {
                             "description": "Event header value for SIP NOTIFY",
                             "type": "string"
@@ -15946,6 +15964,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16102,6 +16123,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16180,6 +16204,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16254,6 +16281,9 @@
                 },
                 "Preview": {
                     "type": "string"
+                },
+                "Reason": {
+                    "type": "object"
                 },
                 "Reply-To": {
                     "type": "string"
@@ -16333,6 +16363,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16411,6 +16444,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16488,6 +16524,9 @@
                 },
                 "Preview": {
                     "type": "string"
+                },
+                "Reason": {
+                    "type": "object"
                 },
                 "Reply-To": {
                     "type": "string"
@@ -21356,6 +21395,12 @@
         "kapi.switch.notify": {
             "description": "AMQP API for switch.notify",
             "properties": {
+                "Body": {
+                    "type": "string"
+                },
+                "Content-Type": {
+                    "type": "string"
+                },
                 "Event": {
                     "type": "string"
                 },
@@ -24458,7 +24503,7 @@
                     "type": "string"
                 },
                 "format_from_uri": {
-                    "description": "When set to true requests to this resource will have a re-formated SIP From Header",
+                    "description": "When set to true requests to this resource will have a re-formatted SIP From Header",
                     "type": "boolean"
                 },
                 "formatters": {
@@ -29656,25 +29701,81 @@
                     "description": "reorder assume inbound e164",
                     "type": "boolean"
                 },
-                "known-error-code": {
-                    "default": "686",
-                    "description": "reorder known-error-code",
-                    "type": "string"
+                "known_number": {
+                    "description": "setting for how to response if the number is known but unconfigured",
+                    "properties": {
+                        "action": {
+                            "default": "respond",
+                            "description": "the action to take for unconfigured numbers",
+                            "enum": [
+                                "respond",
+                                "transfer",
+                                "bridge"
+                            ],
+                            "type": "string"
+                        },
+                        "bridge_account_id": {
+                            "description": "the account id that the bridge_device_id belongs to",
+                            "type": "string"
+                        },
+                        "bridge_device_id": {
+                            "description": "the device id to bridge unconfigured numbers to",
+                            "type": "string"
+                        },
+                        "response_code": {
+                            "default": "686",
+                            "description": "reorder code for replies to unconfigured numbers",
+                            "type": "string"
+                        },
+                        "response_message": {
+                            "default": "PICNIC",
+                            "description": "reorder message for replies to unconfigured numbers",
+                            "type": "string"
+                        },
+                        "transfer_target": {
+                            "description": "on-net phone number to transfer unconfigured numbers to",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 },
-                "known-error-message": {
-                    "default": "PEBCAK",
-                    "description": "reorder known-error-message",
-                    "type": "string"
-                },
-                "unknown-error-code": {
-                    "default": "604",
-                    "description": "reorder unknown-error-code",
-                    "type": "string"
-                },
-                "unknown-error-message": {
-                    "default": "Nope Nope Nope",
-                    "description": "reorder unknown-error-message",
-                    "type": "string"
+                "unknown_number": {
+                    "description": "setting for how to response if the number is not in the numbers database",
+                    "properties": {
+                        "action": {
+                            "default": "respond",
+                            "description": "the action to take for unknown numbers",
+                            "enum": [
+                                "respond",
+                                "transfer",
+                                "bridge"
+                            ],
+                            "type": "string"
+                        },
+                        "bridge_account_id": {
+                            "description": "the account id that the bridge_device_id belongs to",
+                            "type": "string"
+                        },
+                        "bridge_device_id": {
+                            "description": "the device id to bridge unknown numbers to",
+                            "type": "string"
+                        },
+                        "response_code": {
+                            "default": "604",
+                            "description": "reorder code for replies to unknown numbers",
+                            "type": "string"
+                        },
+                        "response_message": {
+                            "default": "Nope Nope Nope",
+                            "description": "reorder message for replies to unknown numbers",
+                            "type": "string"
+                        },
+                        "transfer_target": {
+                            "description": "on-net phone number to transfer unknown numbers to",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 }
             },
             "type": "object"

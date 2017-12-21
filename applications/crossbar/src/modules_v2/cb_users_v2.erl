@@ -330,7 +330,6 @@ load_attachment(AttachmentId, Context) ->
     Headers =
         [{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
         ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-        ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
         ],
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
@@ -629,7 +628,9 @@ rehash_creds(_UserId, Username, Password, Context) ->
                                ]
                               ,cb_context:doc(Context)
                               ),
-    cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1)).
+    crossbar_auth:reset_identity_secret(
+      cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1))
+     ).
 
 %%--------------------------------------------------------------------
 %% @private

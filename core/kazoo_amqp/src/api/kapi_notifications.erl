@@ -344,91 +344,125 @@
 
 %% Notify Port Unconfirmed
 -define(PORT_UNCONFIRMED_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_PORT_UNCONFIRMED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                           ,<<"Number-State">>, <<"Local-Number">>
-                                           ,<<"Number">>, <<"Port">>, <<"Version">>
+-define(OPTIONAL_PORT_UNCONFIRMED_HEADERS, [<<"Authorized-By">>
+                                           ,<<"Local-Number">>
+                                           ,<<"Number">>
+                                           ,<<"Number-State">>
+                                           ,<<"Port">>
+                                           ,<<"Port-Request-ID">>
+                                           ,<<"Reason">>
                                                 | ?DEFAULT_OPTIONAL_HEADERS
                                            ]).
 -define(PORT_UNCONFIRMED_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                  ,{<<"Event-Name">>, <<"port_unconfirmed">>}
                                  ]).
--define(PORT_UNCONFIRMED_TYPES, []).
+-define(PORT_UNCONFIRMED_TYPES, [{<<"Reason">>, fun kz_json:is_json_object/1}]).
 
 %% Notify Port Request
 -define(PORT_REQUEST_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                       ,<<"Number-State">>, <<"Local-Number">>
-                                       ,<<"Number">>, <<"Port">>, <<"Version">>
+-define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>
+                                       ,<<"Local-Number">>
+                                       ,<<"Number">>
+                                       ,<<"Number-State">>
+                                       ,<<"Port">>
+                                       ,<<"Port-Request-ID">>
+                                       ,<<"Reason">>
+                                       ,<<"Version">>
                                             | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PORT_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
                              ,{<<"Event-Name">>, <<"port_request">>}
                              ]).
--define(PORT_REQUEST_TYPES, []).
+-define(PORT_REQUEST_TYPES, [{<<"Reason">>, fun kz_json:is_json_object/1}]).
 
 %% Notify Port Pending
 -define(PORT_PENDING_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_PORT_PENDING_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                       ,<<"Number-State">>, <<"Local-Number">>
-                                       ,<<"Number">>, <<"Port">>, <<"Version">>
+-define(OPTIONAL_PORT_PENDING_HEADERS, [<<"Authorized-By">>
+                                       ,<<"Local-Number">>
+                                       ,<<"Number">>
+                                       ,<<"Number-State">>
+                                       ,<<"Port">>
+                                       ,<<"Port-Request-ID">>
+                                       ,<<"Reason">>
                                             | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PORT_PENDING_VALUES, [{<<"Event-Category">>, <<"notification">>}
                              ,{<<"Event-Name">>, <<"port_pending">>}
                              ]).
--define(PORT_PENDING_TYPES, []).
+-define(PORT_PENDING_TYPES, [{<<"Reason">>, fun kz_json:is_json_object/1}]).
 
 %% Notify Port Scheduled
 -define(PORT_SCHEDULED_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_PORT_SCHEDULED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                         ,<<"Number-State">>, <<"Local-Number">>
-                                         ,<<"Number">>, <<"Port">>, <<"Version">>
+-define(OPTIONAL_PORT_SCHEDULED_HEADERS, [<<"Authorized-By">>
+                                         ,<<"Local-Number">>
+                                         ,<<"Number">>
+                                         ,<<"Number-State">>
+                                         ,<<"Port">>
+                                         ,<<"Port-Request-ID">>
+                                         ,<<"Reason">>
                                               | ?DEFAULT_OPTIONAL_HEADERS
                                          ]).
 -define(PORT_SCHEDULED_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                ,{<<"Event-Name">>, <<"port_scheduled">>}
                                ]).
--define(PORT_SCHEDULED_TYPES, []).
+-define(PORT_SCHEDULED_TYPES, [{<<"Reason">>, fun kz_json:is_json_object/1}]).
 
                                                 % Notify Port Rejected
 -define(PORT_REJECTED_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_PORT_REJECTED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                        ,<<"Number-State">>, <<"Local-Number">>
-                                        ,<<"Number">>, <<"Port">>
+-define(OPTIONAL_PORT_REJECTED_HEADERS, [<<"Authorized-By">>
+                                        ,<<"Local-Number">>
+                                        ,<<"Number">>
+                                        ,<<"Number-State">>
+                                        ,<<"Port">>
+                                        ,<<"Port-Request-ID">>
+                                        ,<<"Reason">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
 -define(PORT_REJECTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"port_rejected">>}
                               ]).
--define(PORT_REJECTED_TYPES, []).
+-define(PORT_REJECTED_TYPES, [{<<"Reason">>, fun kz_json:is_json_object/1}]).
 
                                                 % Notify Port Cancel
 -define(PORT_CANCEL_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_PORT_CANCEL_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                      ,<<"Number-State">>, <<"Local-Number">>
-                                      ,<<"Number">>, <<"Port">>
+-define(OPTIONAL_PORT_CANCEL_HEADERS, [<<"Authorized-By">>
+                                      ,<<"Local-Number">>
+                                      ,<<"Number">>
+                                      ,<<"Number-State">>
+                                      ,<<"Port">>
+                                      ,<<"Port-Request-ID">>
+                                      ,<<"Reason">>
                                            | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(PORT_CANCEL_VALUES, [{<<"Event-Category">>, <<"notification">>}
                             ,{<<"Event-Name">>, <<"port_cancel">>}
                             ]).
--define(PORT_CANCEL_TYPES, []).
+-define(PORT_CANCEL_TYPES, [{<<"Reason">>, fun kz_json:is_json_object/1}]).
 
 %% Notify Ported Request
 -define(PORTED_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_PORTED_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
-                                 ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
+-define(OPTIONAL_PORTED_HEADERS, [<<"Authorized-By">>
+                                 ,<<"Local-Number">>
+                                 ,<<"Number">>
+                                 ,<<"Number-State">>
+                                 ,<<"Port">>
+                                 ,<<"Port-Request-ID">>
+                                 ,<<"Reason">>
                                       | ?DEFAULT_OPTIONAL_HEADERS
                                  ]).
 -define(PORTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
                        ,{<<"Event-Name">>, <<"ported">>}
                        ]).
--define(PORTED_TYPES, []).
+-define(PORTED_TYPES, [{<<"Reason">>, fun kz_json:is_json_object/1}]).
 
 %% Notify Ported Request
 -define(PORT_COMMENT_HEADERS, [<<"Account-ID">>, <<"Comment">>]).
--define(OPTIONAL_PORT_COMMENT_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
-                                       ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
+-define(OPTIONAL_PORT_COMMENT_HEADERS, [<<"Authorized-By">>
+                                       ,<<"Local-Number">>
+                                       ,<<"Number">>
+                                       ,<<"Number-State">>
+                                       ,<<"Port">>
+                                       ,<<"Port-Request-ID">>
                                             | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PORT_COMMENT_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -438,7 +472,10 @@
 
 %% Notify Cnam Request
 -define(CNAM_REQUEST_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Cnam">>]).
--define(OPTIONAL_CNAM_REQUEST_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Acquired-For">>, <<"Request">>
+-define(OPTIONAL_CNAM_REQUEST_HEADERS, [<<"Acquired-For">>
+                                       ,<<"Local-Number">>
+                                       ,<<"Number-State">>
+                                       ,<<"Request">>
                                             | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(CNAM_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -455,9 +492,14 @@
 -define(LOW_BALANCE_TYPES, []).
 
 %%% Transaction Common Optional Headers
--define(COMMON_TRANSACTION_HEADERS, [<<"ID">>, <<"Add-Ons">>, <<"Discounts">>
-                                    ,<<"Billing-Address">>, <<"Card-Last-Four">>, <<"Tax-Amount">>
-                                    , <<"Purchase-Order">>, <<"Currency-Code">>
+-define(COMMON_TRANSACTION_HEADERS, [<<"Add-Ons">>
+                                    ,<<"Billing-Address">>
+                                    ,<<"Card-Last-Four">>
+                                    ,<<"Currency-Code">>
+                                    ,<<"Discounts">>
+                                    ,<<"ID">>
+                                    ,<<"Purchase-Order">>
+                                    ,<<"Tax-Amount">>
                                     ]).
 
 %% Notify Top Up
@@ -471,8 +513,11 @@
 -define(TOPUP_TYPES, []).
 
 %% Notify Transaction
--define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Timestamp">>
-                             ,<<"Response">>, <<"Success">>
+-define(TRANSACTION_HEADERS, [<<"Account-ID">>
+                             ,<<"Amount">>
+                             ,<<"Response">>
+                             ,<<"Success">>
+                             ,<<"Timestamp">>
                              ]).
 -define(OPTIONAL_TRANSACTION_HEADERS, [<<"Service-Plan">>
                                            | ?COMMON_TRANSACTION_HEADERS

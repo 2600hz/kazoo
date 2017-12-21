@@ -48,6 +48,11 @@ Key | Description | Type | Default | Required
 
 
 
+##### Keys under development
+
+- `require_moderator`
+- `wait_for_moderator`
+
 #### Perform an action on a conference
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
@@ -277,6 +282,15 @@ curl -v -X PUT \
     -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
+```
+
+Sometimes you may get a HTTP/1.1 304 Not Modified response from crossbar for simliar API calls. If you do, add a random string filter to the end of the call to ensure the request is viewed as 'unique'. For example:
+
+```shell
+curl -v -X PUT \
+    -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}?random={RANDOM_BIT}
 ```
 
  Action | Description

@@ -39,7 +39,7 @@
         ,'end_keymap', 'keymap', 'start_keymap'
 
          %% chunked query
-        ,'chunk_size', 'is_chunked'
+        ,'chunk_size', 'is_chunked', 'unchunkable'
 
          %% ranged query
         ,'created_to', 'created_from', 'max_range'
@@ -200,9 +200,10 @@ build_load_params(Context, View, Options) ->
 
             {StartKey, EndKey} = start_end_keys(Context, Options, Direction),
 
-            Params = LoadMap#{mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
+            Params = LoadMap#{has_qs_filter => HasQSFilter
+                             ,mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
+                             ,start_key => StartKey
                              ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
-                             ,has_qs_filter => HasQSFilter
                              },
             maybe_set_start_end_keys(Params, StartKey, EndKey);
         Ctx -> Ctx
@@ -231,9 +232,9 @@ build_load_range_params(Context, View, Options) ->
                     Params = LoadMap#{end_time => EndTime
                                      ,has_qs_filter => HasQSFilter
                                      ,mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
+                                     ,start_key => StartKey
                                      ,start_time => StartTime
                                      ,view_options => build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter)
-                                     ,has_qs_filter => HasQSFilter
                                      },
                     maybe_set_start_end_keys(Params, StartKey, EndKey);
                 Ctx -> Ctx
@@ -684,7 +685,7 @@ get_results(#{databases := [Db|RestDbs]=Dbs
                      | props:delete('startkey', ViewOpts)
                     ]),
 
-    lager:debug("kz_datamgr:get_results(~p, ~p, ~1000p)", [Db, View, ViewOptions]),
+    lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
     case kz_datamgr:get_results(Db, View, ViewOptions) of
         {'error', 'not_found'} when [] =:= RestDbs ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
@@ -725,9 +726,8 @@ handle_query_result(#{last_key := LastKey
                      }=LoadMap, [Db|RestDbs]=Dbs, Results, Limit) ->
     ResultsLength = erlang:length(Results),
 
-    %% FIXME: return a boolean if db has more result and store it in LoadMap, so multiple same timestamp won't affect chunking
     {NewLastKey, JObjs} = last_key(LastKey, Results, Limit, ResultsLength),
-    %%^^^ FIXME: return a boolean if db has more result and store it in LoadMap, so multiple same timestamp won't affect chunking
+
     FilteredJObjs = apply_filter(Mapper, JObjs),
 
     Filtered = length(FilteredJObjs),

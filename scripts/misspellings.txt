@@ -9,6 +9,7 @@ acquire|aquire adquire
 acquit|aquit
 acreage|acrage acerage
 address|adress
+administrator|adminstrator
 adultery|adultary
 advisable|adviseable advizable
 affect|afect
@@ -134,6 +135,7 @@ personnel|personell personel
 plagiarize|plagerize
 playwright|playright playwrite
 possession|posession possesion
+possible|possilbe
 potatoes|potatos
 precede|preceed
 presence|presance

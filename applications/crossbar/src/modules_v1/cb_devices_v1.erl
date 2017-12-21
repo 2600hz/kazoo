@@ -640,11 +640,14 @@ put_action(Context, DeviceId, <<"notify">>) ->
     lager:debug("publishing NOTIFY for ~s", [DeviceId]),
     Username = kz_device:sip_username(cb_context:doc(Context)),
     Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
-    Req = [{<<"Event">>, cb_context:req_value(Context, [<<"data">>, <<"event">>])}
-          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-          ,{<<"Realm">>, Realm}
-          ,{<<"Username">>, Username}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+    Req = props:filter_undefined(
+            [{<<"Body">>, cb_context:req_value(Context, [<<"data">>, <<"body">>, <<"data">>])}
+            ,{<<"Content-Type">>, cb_context:req_value(Context, [<<"data">>, <<"body">>, <<"content_type">>])}
+            ,{<<"Event">>, cb_context:req_value(Context, [<<"data">>, <<"event">>])}
+            ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+            ,{<<"Realm">>, Realm}
+            ,{<<"Username">>, Username}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
     kapi_switch:publish_notify(Req),
     crossbar_util:response_202(<<"NOTIFY sent">>, Context).

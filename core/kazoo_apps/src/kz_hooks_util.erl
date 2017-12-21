@@ -259,7 +259,7 @@ fetch_account_id(Number) ->
 -spec cache_key_number(ne_binary()) -> {'kz_hooks', ne_binary()}.
 cache_key_number(Number) -> {'kz_hooks', Number}.
 
--spec get_inbound_destination(kz_json:object()) -> ne_binary().
+-spec get_inbound_destination(kz_json:object()) -> api_binary().
 get_inbound_destination(JObj) ->
     {Number, _} = kapps_util:get_destination(JObj, <<"stepswitch">>, <<"inbound_user_field">>),
     case kapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>, 'false') of
