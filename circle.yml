@@ -29,10 +29,7 @@ test:
     - $CHANGED
     - ./scripts/state-of-docs.sh || true
     - ./scripts/code_checks.bash $($CHANGED)
-    - |
-      if [[ ! -z "$($CHANGED)" ]]; then
-        TO_FMT="$(echo $($CHANGED))" make fmt
-      fi
+    - make fmt
     - if [[ "$CIRCLE_BRANCH" = 'master' ]]; then make bump-copyright; fi
     - . ~/.kerl/$OTP_VERSION/activate && make
     - . ~/.kerl/$OTP_VERSION/activate && make code_checks
