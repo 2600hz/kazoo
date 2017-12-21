@@ -126,7 +126,7 @@ validate_cccp(Context, ?AUTODIAL, ?HTTP_PUT) ->
                      ,{<<"user_id">>, cb_context:auth_user_id(Context)}
                      ],
             JObj = kz_json:set_values(Values, ReqData),
-            cccp_callback_sup:new(JObj),
+            send_new_camping(JObj, cb_context:account_id(Context)),
             cb_context:set_resp_status(Context, 'success');
         'false' ->
             Resp = kz_json:from_list([{<<"message">>, <<"For direct use by account holder only">>}]),
@@ -138,6 +138,14 @@ validate_cccp(Context, Id, ?HTTP_POST) ->
     update(Id, Context);
 validate_cccp(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
+
+-spec send_new_camping(kz_json:object(), ne_binary()) -> 'ok'.
+send_new_camping(JObj, AccountId) ->
+    Req = [{<<"Camping-Request">>, JObj}
+          ,{<<"Account-ID">>, AccountId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req, fun kapi_camping:publish_req/1).
 
 %%--------------------------------------------------------------------
 %% @public
