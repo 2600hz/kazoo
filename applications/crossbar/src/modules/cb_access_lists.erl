@@ -218,4 +218,4 @@ flush_acl(Doc) ->
                                  ,{<<"Device">>, kz_json:get_value([<<"sip">>,<<"username">>], Doc)}
                                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),
-    kapps_util:amqp_pool_send(Cmd, fun kapi_frontier:publish_flush/1).
+    kz_amqp_worker:cast(Cmd, fun kapi_frontier:publish_flush/1).
