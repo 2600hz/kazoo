@@ -77,6 +77,8 @@
 -export([uniq/1]).
 -export([iolist_join/2]).
 
+-export([kz_log_md_clear/0, kz_log_md_put/2]).
+
 -ifdef(TEST).
 -export([resolve_uri_path/2]).
 -endif.
@@ -640,10 +642,10 @@ try_load_module(Name) ->
 -spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) ->
                         api_binary().
 put_callid(?NE_BINARY = CallId) ->
-    lager:md([{'callid', CallId}]++lager:md()),
+    _ = kz_log_md_put('callid', CallId),
     erlang:put('callid', CallId);
 put_callid(Atom) when is_atom(Atom) ->
-    lager:md([{'callid', Atom}]++lager:md()),
+    _ = kz_log_md_put('callid', Atom),
     erlang:put('callid', Atom);
 put_callid(APITerm) ->
     put_callid(find_callid(APITerm)).
@@ -663,6 +665,17 @@ find_callid(APITerm, GetFun) ->
           ,APITerm
           ,?LOG_SYSTEM_ID
           ).
+
+-spec kz_log_md_put(atom(), any()) -> any().
+kz_log_md_put(K, V) ->
+    lager:md(lists:usort(fun is_kz_log_md_equal/2, [{K, V} | lager:md()])).
+
+is_kz_log_md_equal({K1, _}, {K2, _}) -> K1 =< K2;
+is_kz_log_md_equal(K1, K2) -> K1 =< K2.
+
+-spec kz_log_md_clear() -> any().
+kz_log_md_clear() ->
+    lager:md([]).
 
 %% @public
 %% @doc
