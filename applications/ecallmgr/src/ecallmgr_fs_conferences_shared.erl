@@ -312,9 +312,9 @@ handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
                         ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
                         )
     of
-        'ok' -> Resp;
-        {'ok', CallId, DialResp} ->
-            _ = (catch add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId))),
+        {'ok', CallId, DialResp, ChannelProps} ->
+            lager:debug("finished waiting for ~s, now ~s", [LoopbackCallId, CallId]),
+            add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId), ChannelProps),
             props:set_values([{<<"Message">>, DialResp}
                              ,{<<"Call-ID">>, CallId}
                              ]
@@ -333,12 +333,10 @@ handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
     end.
 
 -spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer()) ->
-                             'ok' |
                              {'ok', ne_binary(), ne_binary(), kz_proplist()} |
                              {'error', 'timeout'} |
                              {'error', ne_binary(), ne_binary()}.
 -spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer(), kz_proplist()) ->
-                             'ok' |
                              {'ok', ne_binary(), ne_binary(), kz_proplist()} |
                              {'error', 'timeout'} |
                              {'error', ne_binary(), ne_binary()}.
@@ -389,7 +387,7 @@ handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, ChannelProps,
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
             wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps))
     end;
-handle_create(ALeg, _Timeout, _Start, ChannelProps, Props) ->
+handle_create(ALeg, _Timeout, ChannelProps, _Start, Props) ->
     lager:debug("dial started to ~s", [ALeg]),
     {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>, props:insert_values(Props, ChannelProps)}.
 
@@ -461,20 +459,22 @@ get_control_queue(CtlPid) ->
             get_control_queue(CtlPid)
     end.
 
--spec add_participant(kapi_conference:doc(), ne_binary(), api_ne_binary()) -> 'ok'.
-add_participant(_JObj, _CallId, 'undefined') ->
+-spec add_participant(kapi_conference:doc(), ne_binary(), api_ne_binary(), kz_proplist()) -> 'ok'.
+add_participant(_JObj, _CallId, 'undefined', _ChannelProps) ->
     lager:info("not adding participant, no control queue");
-add_participant(JObj, CallId, ControlQueue) ->
-    Req = kz_json:set_values([{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj)}
-                             ,{<<"Call-ID">>, CallId}
-                             ,{<<"Control-Queue">>, ControlQueue}
-                             ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
-                             ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)}
-                             ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)}
-                              | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)
-                             ]
-                            ,ecallmgr_fs_channel:to_api_json(CallId)
-                            ),
+add_participant(JObj, CallId, ControlQueue, ChannelProps) ->
+    ReqJObj = kz_json:set_values([{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj)}
+                                 ,{<<"Call-ID">>, CallId}
+                                 ,{<<"Control-Queue">>, ControlQueue}
+                                 ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
+                                 ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)}
+                                 ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)}
+                                  | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)
+                                 ]
+                                ,ecallmgr_call_events:to_json(ChannelProps)
+                                ),
+    Req = kz_json:merge(ReqJObj, ecallmgr_fs_channel:to_api_json(CallId)),
+
     lager:debug("adding participant for ~s: ~p", [CallId, Req]),
     kz_amqp_worker:cast(Req
                        ,fun(P) ->
