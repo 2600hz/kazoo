@@ -642,7 +642,7 @@ try_load_module(Name) ->
 -spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) ->
                         api_binary().
 put_callid(?NE_BINARY = CallId) ->
-     _ = kz_log_md_put('callid', CallId),
+    _ = kz_log_md_put('callid', CallId),
     erlang:put('callid', CallId);
 put_callid(Atom) when is_atom(Atom) ->
     _ = kz_log_md_put('callid', Atom),
