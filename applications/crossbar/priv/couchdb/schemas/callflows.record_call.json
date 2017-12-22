@@ -28,6 +28,18 @@
             "description": "the name of media",
             "type": "string"
         },
+        "method": {
+            "description": "HTTP verb to use when sending the recording to the supplied URL",
+            "enum": [
+                "put",
+                "post"
+            ],
+            "type": "string"
+        },
+        "origin": {
+            "description": "How the recording was started - read-only",
+            "type": "string"
+        },
         "record_min_sec": {
             "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
             "type": "integer"
