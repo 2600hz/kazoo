@@ -452,12 +452,18 @@ add_participant(JObj, CallId, ControlQueue) ->
                              ,{<<"Call-ID">>, CallId}
                              ,{<<"Control-Queue">>, ControlQueue}
                              ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
+                             ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)}
+                             ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)}
                               | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)
                              ]
                             ,ecallmgr_fs_channel:to_api_json(CallId)
                             ),
     lager:debug("adding participant for ~s: ~p", [CallId, Req]),
-    kz_amqp_worker:cast(Req, fun(P) -> kapi_conference:publish_add_participant(kz_config:zone('binary'), P) end).
+    kz_amqp_worker:cast(Req
+                       ,fun(P) ->
+                                kapi_conference:publish_add_participant(kz_config:zone('binary'), P)
+                        end
+                       ).
 
 -spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
 publish_resp(JObj, BaseResps) ->
