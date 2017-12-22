@@ -198,7 +198,7 @@ process_specific_event(_Event, _UUID, _Props, _Node) ->
 
 -spec maybe_publish_record_event(kz_proplist()) -> 'ok'.
 maybe_publish_record_event(Props) ->
-    case props:is_true(<<"Force-Publish-Event-State">>, Props, 'true')
+    case props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
         orelse (props:is_true(<<"Publish-Channel-State">>, Props, 'true')
                 andalso handling_locally(Props)
                )
