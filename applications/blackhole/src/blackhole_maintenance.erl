@@ -32,8 +32,8 @@ start_module(ModuleBin, Persist) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
-                                    ,fun kapi_blackhole:publish_module_req/1
-                                    ,{'blackhole', fun kapi_blackhole:module_resp_v/1, 'true'}
+                                    ,fun kapi_websockets:publish_module_req/1
+                                    ,{'blackhole', fun kapi_websockets:module_resp_v/1, 'true'}
                                     )
     of
         {'ok', JObjs} ->
@@ -63,8 +63,8 @@ stop_module(ModuleBin, Persist) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
-                                    ,fun kapi_blackhole:publish_module_req/1
-                                    ,{'blackhole', fun kapi_blackhole:module_resp_v/1, 'true'}
+                                    ,fun kapi_websockets:publish_module_req/1
+                                    ,{'blackhole', fun kapi_websockets:module_resp_v/1, 'true'}
                                     )
     of
         {'ok', JObjs} ->

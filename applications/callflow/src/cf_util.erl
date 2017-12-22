@@ -56,7 +56,7 @@
 -define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
 -define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
 -define(OPERATOR_KEY, kapps_config:get_ne_binary(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
--define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
+
 -define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
 
 %%--------------------------------------------------------------------
@@ -198,7 +198,7 @@ maybe_vm_mwi_resp(<<_/binary>> = VMNumber, Realm, AccountDb, JObj) ->
 -spec vm_mwi_resp(kz_json:object(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 vm_mwi_resp(Doc, VMNumber, Realm, JObj) ->
     {New, Saved} = vm_count(Doc),
-    send_mwi_update(New, Saved, VMNumber, Realm, JObj).
+    kz_endpoint:send_mwi_update(New, Saved, VMNumber, Realm, JObj).
 
 -spec mwi_resp(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 mwi_resp(Username, Realm, AccountDb, JObj) ->
@@ -211,12 +211,7 @@ mwi_resp(Username, Realm, AccountDb, JObj) ->
 -spec mwi_resp(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
     {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-    send_mwi_update(New, Saved, Username, Realm, JObj).
-
--spec is_unsolicited_mwi_enabled(ne_binary()) -> boolean().
-is_unsolicited_mwi_enabled(AccountId) ->
-    kapps_config:get_is_true(?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
-        andalso kz_term:is_true(kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
+    kz_endpoint:send_mwi_update(New, Saved, Username, Realm, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -224,125 +219,17 @@ is_unsolicited_mwi_enabled(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--type mwi_update_return() :: 'missing_account_db' |
-                             'missing_owner_id'.
 -spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
                                           'ok' |
-                                          {'error', mwi_update_return()} |
+                                          {'error', atom()} |
                                           kz_datamgr:data_error().
--spec unsolicited_owner_mwi_update(ne_binary(), ne_binary(), boolean()) ->
-                                          'ok' |
-                                          {'error', mwi_update_return()} |
-                                          kz_datamgr:data_error().
-unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
-unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
-    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
-    unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
-
-unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
-    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
-unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
-    ViewOptions = [{'key', [OwnerId, <<"device">>]}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} ->
-            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-            lists:foreach(
-              fun(JObj) -> maybe_send_mwi_update(JObj, AccountId, New, Saved) end
-                         ,JObjs
-             );
-        {'error', _R}=E ->
-            lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
-            E
-    end.
-
--spec maybe_send_mwi_update(kz_json:object(), ne_binary(), integer(), integer()) -> 'ok'.
-maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
-    J = kz_json:get_value(<<"doc">>, JObj),
-    Username = kz_device:sip_username(J),
-    Realm = kz_endpoint:get_sip_realm(J, AccountId),
-    OwnerId = get_endpoint_owner(J),
-    case kz_device:sip_method(J) =:= <<"password">>
-        andalso Username =/= 'undefined'
-        andalso Realm =/= 'undefined'
-        andalso OwnerId =/= 'undefined'
-        andalso kz_device:unsolicitated_mwi_updates(J)
-    of
-        'true' -> send_mwi_update(New, Saved, Username, Realm);
-        'false' -> 'ok'
-    end.
+    kz_endpoint:unsolicited_owner_mwi_update(AccountDb, OwnerId).
 
 -spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
                                              'ok' | {'error', any()}.
--spec unsolicited_endpoint_mwi_update(ne_binary(), ne_binary(), boolean()) ->
-                                             'ok' | {'error', any()}.
-unsolicited_endpoint_mwi_update('undefined', _) ->
-    {'error', 'missing_account_db'};
-unsolicited_endpoint_mwi_update(_, 'undefined') ->
-    {'error', 'missing_owner_id'};
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
-    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
-    unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
-
-unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
-    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
-unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
-    case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
-        {'error', _}=E -> E;
-        {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
-    end.
-
--spec maybe_send_endpoint_mwi_update(ne_binary(), kz_json:object()) ->
-                                            'ok' | {'error', 'not_appropriate'}.
--spec maybe_send_endpoint_mwi_update(ne_binary(), kz_json:object(), boolean()) ->
-                                            'ok' | {'error', 'not_appropriate'}.
-
-maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
-    maybe_send_endpoint_mwi_update(AccountDb, JObj, kz_device:unsolicitated_mwi_updates(JObj)).
-
-maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
-    lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
-maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-    Username = kz_device:sip_username(JObj),
-    Realm = kz_endpoint:get_sip_realm(JObj, AccountId),
-    OwnerId = get_endpoint_owner(JObj),
-    case kz_device:sip_method(JObj) =:= <<"password">>
-        andalso Username =/= 'undefined'
-        andalso Realm =/= 'undefined'
-    of
-        'false' -> {'error', 'not_appropriate'};
-        'true' ->
-            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            send_mwi_update(New, Saved, Username, Realm)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--type vm_count() :: non_neg_integer().
--spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary()) -> 'ok'.
-send_mwi_update(New, Saved, Username, Realm) ->
-    send_mwi_update(New, Saved, Username, Realm, kz_json:new()).
-
--spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
-send_mwi_update(New, Saved, Username, Realm, JObj) ->
-    Command = [{<<"To">>, <<Username/binary, "@", Realm/binary>>}
-              ,{<<"Messages-New">>, New}
-              ,{<<"Messages-Saved">>, Saved}
-              ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("updating MWI for ~s@~s (~p/~p)", [Username, Realm, New, Saved]),
-    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).
+    kz_endpoint:unsolicited_endpoint_mwi_update(AccountDb, EndpointId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -539,28 +426,6 @@ send_default_response(Cause, Call) ->
                     lager:debug("sent default response for ~s (~s)", [Cause, NoopId])
             end
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_endpoint_owner(kz_json:object()) -> api_binary().
-get_endpoint_owner(JObj) ->
-    maybe_get_endpoint_hotdesk_owner(JObj).
-
--spec maybe_get_endpoint_hotdesk_owner(kz_json:object()) -> api_binary().
-maybe_get_endpoint_hotdesk_owner(JObj) ->
-    case kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
-        [] -> maybe_get_endpoint_assigned_owner(JObj);
-        [OwnerId] -> OwnerId;
-        [_|_] -> 'undefined'
-    end.
-
--spec maybe_get_endpoint_assigned_owner(kz_json:object()) -> api_binary().
-maybe_get_endpoint_assigned_owner(JObj) ->
-    kz_json:get_ne_value(<<"owner_id">>, JObj).
 
 -spec apply_dialplan(ne_binary(), api_object()) -> ne_binary().
 apply_dialplan(N, 'undefined') -> N;
@@ -872,8 +737,7 @@ vm_count(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
+-spec vm_count_by_owner(ne_binary(), ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kvm_messages:count_by_owner(AccountDb, OwnerId).
 

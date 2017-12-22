@@ -203,7 +203,7 @@ summary_available(Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    blackhole_req(Context, [{<<"Account-ID">>, cb_context:account_id(Context)}]).
+    websockets_req(Context, [{<<"Account-ID">>, cb_context:account_id(Context)}]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -213,28 +213,28 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    blackhole_req(Context, [{<<"Socket-ID">>, Id}]).
+    websockets_req(Context, [{<<"Socket-ID">>, Id}]).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec blackhole_req(cb_context:context(), kz_proplist()) -> cb_context:context().
-blackhole_req(Context, Props) ->
+-spec websockets_req(cb_context:context(), kz_proplist()) -> cb_context:context().
+websockets_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(Req ++ Props
-                                     ,fun kapi_blackhole:publish_get_req/1
-                                     ,{'blackhole', 'true'}
-                                     )
+    case kz_amqp_worker:call_collect(Req ++ Props
+                                    ,fun kapi_websockets:publish_get_req/1
+                                    ,{'blackhole', 'true'}
+                                    )
     of
         {'error', _R} ->
-            lager:error("could not reach blackhole sockets tracking: ~p", [_R]),
-            crossbar_util:response('error', <<"could not reach blackhole sockets tracking">>, Context);
+            lager:error("could not reach websockets tracking: ~p", [_R]),
+            crossbar_util:response('error', <<"could not reach websockets tracking">>, Context);
         {_OK, JObjs} ->
-            blackhole_resp(Context, JObjs)
+            websockets_resp(Context, JObjs)
 
     end.
 
@@ -243,21 +243,21 @@ blackhole_req(Context, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec blackhole_resp(cb_context:context(), kz_json:objects()) -> cb_context:context().
--spec blackhole_resp(cb_context:context(), kz_json:objects(), any()) -> cb_context:context().
-blackhole_resp(Context, JObjs) ->
-    blackhole_resp(Context, JObjs, []).
+-spec websockets_resp(cb_context:context(), kz_json:objects()) -> cb_context:context().
+-spec websockets_resp(cb_context:context(), kz_json:objects(), any()) -> cb_context:context().
+websockets_resp(Context, JObjs) ->
+    websockets_resp(Context, JObjs, []).
 
-blackhole_resp(Context, [], RespData) ->
+websockets_resp(Context, [], RespData) ->
     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
                                 ,{fun cb_context:set_resp_data/2, RespData}
                                 ]);
-blackhole_resp(Context, [JObj|JObjs], RespData) ->
+websockets_resp(Context, [JObj|JObjs], RespData) ->
     case kz_json:get_value(<<"Data">>, JObj) of
         'undefined' ->
-            blackhole_resp(Context, JObjs, RespData);
+            websockets_resp(Context, JObjs, RespData);
         Data when is_list(Data) ->
-            blackhole_resp(Context, JObjs, RespData ++ Data);
+            websockets_resp(Context, JObjs, RespData ++ Data);
         Data ->
-            blackhole_resp(Context, JObjs, [Data|RespData])
+            websockets_resp(Context, JObjs, [Data|RespData])
     end.

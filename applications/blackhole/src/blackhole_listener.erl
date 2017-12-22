@@ -25,19 +25,18 @@
         ]).
 
 -include("blackhole.hrl").
--include("kapi_blackhole.hrl").
+-include_lib("kazoo_amqp/src/api/kapi_websockets.hrl").
 
 -define(SERVER, ?MODULE).
 
--record(state, {bindings :: ets:tid()
-               }).
+-record(state, {bindings :: ets:tid()}).
 -type state() :: #state{}.
 
 -type mod_inited() :: 'ok' | {'error', atom()} |
                       'stopped'. %% stopped instead of inited
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'blackhole', [{'restrict_to', ['get', 'module_req']}]}]).
+-define(BINDINGS, [{'websockets', [{'restrict_to', ['get', 'module_req']}]}]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_amqp_event'}
                      ,[{<<"*">>, <<"*">>}]
@@ -84,7 +83,7 @@ handle_amqp_event(EventJObj, Props, BasicDeliver) ->
 -spec handle_module_req(kz_json:object()) -> 'ok'.
 -spec handle_module_req(kz_json:object(), atom(), ne_binary(), boolean()) -> 'ok'.
 handle_module_req(EventJObj) ->
-    'true' = kapi_blackhole:module_req_v(EventJObj),
+    'true' = kapi_websockets:module_req_v(EventJObj),
     lager:debug("recv module_req: ~p", [EventJObj]),
     handle_module_req(EventJObj
                      ,kz_json:get_atom_value(<<"Module">>, EventJObj)
@@ -151,7 +150,7 @@ send_module_resp(EventJObj, Started, Persisted) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_api:server_id(EventJObj),
-    kapi_blackhole:publish_module_resp(ServerId, Resp).
+    kapi_websockets:publish_module_resp(ServerId, Resp).
 
 -spec maybe_start_error(mod_inited()) -> api_ne_binary().
 maybe_start_error('ok') -> 'undefined';
@@ -167,7 +166,7 @@ send_error_module_resp(EventJObj, Error) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_api:server_id(EventJObj),
-    kapi_blackhole:publish_module_resp(ServerId, Resp).
+    kapi_websockets:publish_module_resp(ServerId, Resp).
 
 -type bh_amqp_binding() :: {'amqp', atom(), kz_proplist()}.
 -type bh_hook_binding() :: {'hook', ne_binary()} | {'hook', ne_binary(), ne_binary()}.

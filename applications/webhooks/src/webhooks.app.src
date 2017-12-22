@@ -1,17 +1,11 @@
-{application, webhooks,
- [
-  {description, "Skel - A webhookseton application useful for quickly creating services"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [webhooks_cache, webhooks_sup, webhooks_shared_listener]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-
-                 , lager
-                 , gproc
-                 ]},
-  {mod, {webhooks_app, []}}
- ]}.
+{application,webhooks,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_config,kazoo_data,kazoo_documents,
+                             kazoo_modb,kazoo_stdlib,kazoo_web,kernel,lager,
+                             stdlib]},
+              {description,"Skel - A webhookseton application useful for quickly creating services"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[webhooks_cache,webhooks_sup,
+                           webhooks_shared_listener]},
+              {mod,{webhooks_app,[]}}]}.

@@ -1,22 +1,10 @@
-{application, ananke,
- [
-  {description, "Ananke was the personification of destiny, necessity and fate, depicted as holding a spindle in ancient Greek religion. This application to schedule calls on events."},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [ananke_tasks_sup, ananke_listener, ananke_sup]},
-  {applications, [
-                  kernel,
-                  stdlib,
-
-                  kazoo,
-                  kazoo_data,
-                  kazoo_amqp,
-                  kazoo_apps,
-
-                  amqp_cron,
-
-                  lager
-                 ]},
-  {mod, {ananke_app, []}},
-  {env, []}
- ]}.
+{application,ananke,
+             [{applications,[amqp_cron,kazoo,kazoo_amqp,kazoo_config,
+                             kazoo_data,kazoo_documents,kazoo_stdlib,
+                             kazoo_voicemail,kernel,lager,stdlib]},
+              {description,"Ananke was the personification of destiny, necessity and fate, depicted as holding a spindle in ancient Greek religion. This application to schedule calls on events."},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[ananke_tasks_sup,ananke_listener,ananke_sup]},
+              {mod,{ananke_app,[]}},
+              {env,[]}]}.

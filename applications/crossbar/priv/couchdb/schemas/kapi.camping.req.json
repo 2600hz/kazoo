@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.camping.req",
+    "description": "AMQP API for camping.req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Camping-Request": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "camping"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "request"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Camping-Request"
+    ],
+    "type": "object"
+}
