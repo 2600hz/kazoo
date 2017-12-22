@@ -334,24 +334,31 @@ handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
 
 -spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer()) ->
                              'ok' |
-                             {'ok', ne_binary(), ne_binary()} |
+                             {'ok', ne_binary(), ne_binary(), kz_proplist()} |
+                             {'error', 'timeout'} |
+                             {'error', ne_binary(), ne_binary()}.
+-spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer(), kz_proplist()) ->
+                             'ok' |
+                             {'ok', ne_binary(), ne_binary(), kz_proplist()} |
                              {'error', 'timeout'} |
                              {'error', ne_binary(), ne_binary()}.
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
+    wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, []).
+wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps) ->
     Start = kz_time:now_s(),
     receive
         {'event', [LoopbackALeg | Props]} ->
-            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
+            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props);
         {'event', [LoopbackBLeg | Props]} ->
-            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
+            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props);
         ?LOOPBACK_BOWOUT_MSG(_Node, Props) when is_list(Props) ->
-            handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props)
+            handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props)
     after Timeout ->
             lager:info("timed out waiting for ~s", [LoopbackALeg]),
             {'error', 'timeout'}
     end.
 
-handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
+handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props) ->
     case {kzd_freeswitch:call_id(Props)
          ,kzd_freeswitch:event_name(Props)
          }
@@ -361,30 +368,30 @@ handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
         {LoopbackBLeg, <<"CHANNEL_DESTROY">>} ->
             handle_loopback_destroy(LoopbackBLeg, kzd_freeswitch:hangup_cause(Props));
         {LoopbackALeg, <<"CHANNEL_CREATE">>} ->
-            handle_create(LoopbackALeg, Timeout, Start, Props);
+            handle_create(LoopbackALeg, Timeout, ChannelProps, Start, Props);
         {_CallId, _Evt} ->
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), ChannelProps)
     end.
 
-handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, Start, Props) ->
+handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, ChannelProps, Start, Props) ->
     case {kzd_freeswitch:other_leg_call_id(Props)
          ,kzd_freeswitch:loopback_other_leg(Props)
          }
     of
         {'undefined', 'undefined'} ->
-            wait_for_bowout(LoopbackALeg, 'undefined', kz_time:decr_timeout(Timeout, Start));
+            wait_for_bowout(LoopbackALeg, 'undefined', kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps));
         {'undefined', LoopbackBLeg} ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start));
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps));
         {LoopbackBLeg, _} ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps))
     end;
-handle_create(ALeg, _Timeout, _Start, _Props) ->
+handle_create(ALeg, _Timeout, _Start, ChannelProps, Props) ->
     lager:debug("dial started to ~s", [ALeg]),
-    {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>}.
+    {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>, props:insert_values(Props, ChannelProps)}.
 
 handle_loopback_destroy(_LoopbackALeg, <<"NORMAL_UNSPECIFIED">>) ->
     lager:debug("~s went down", [_LoopbackALeg]);
@@ -392,21 +399,21 @@ handle_loopback_destroy(_LoopbackALeg, HangupCause) ->
     lager:info("~s went down with ~s", [_LoopbackALeg, HangupCause]),
     {'error', HangupCause, <<"failed to start call: ", HangupCause/binary>>}.
 
-handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
+handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props) ->
     case {props:get_value(?RESIGNING_UUID, Props)
          ,props:get_value(?ACQUIRED_UUID, Props)
          }
     of
         {LoopbackALeg, LoopbackALeg} ->
             lager:debug("call id after bowout remains the same"),
-            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>};
+            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>, props:insert_values(Props, ChannelProps)};
         {LoopbackALeg, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("~s acquired as ~s", [LoopbackALeg, AcquiringUUID]),
-            {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>};
+            {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>, props:insert_values(Props, ChannelProps)};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
             lager:debug("~p", [Props]),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), ChannelProps)
     end.
 
 -spec register_for_events(atom(), ne_binary()) -> 'ok'.
