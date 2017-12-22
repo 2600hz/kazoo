@@ -176,7 +176,7 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj) ->
 is_loopback(Endpoint) ->
     <<"loopback">> =:= kz_json:get_ne_binary_value(<<"Invite-Format">>, Endpoint).
 
--spec maybe_exec_dial(atom(), ne_binary(), kz_json:object(), kz_json:objects(), kz_json:objects()) -> 'ok'.
+-spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
     _ = (catch gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(ConferenceNode, <<"conference::maintenance">>)})),
@@ -188,7 +188,7 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
 
 -type exec_response() :: {ne_binary(), kz_proplist()}.
 -type exec_responses() :: [exec_response()].
--spec exec_endpoints(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
+-spec exec_endpoints(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
                             exec_responses().
 exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no endpoints to dial out to"),
@@ -201,7 +201,7 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
                    ),
     Resps.
 
--type exec_acc() :: {atom(), ne_binary(), kz_json:object(), exec_responses()}.
+-type exec_acc() :: {atom(), ne_binary(), kapi_conference:doc(), exec_responses()}.
 
 update_endpoint(Endpoint, EndpointCallId) ->
     Updates = [{fun kz_json:insert_value/3, <<"Outbound-Call-ID">>, EndpointCallId}
@@ -242,7 +242,7 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
             {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, Msg)} | Resps]}
     end.
 
--spec exec_loopbacks(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
+-spec exec_loopbacks(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
                             exec_responses().
 exec_loopbacks(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no loopbacks to dial out to"),
@@ -285,7 +285,7 @@ error_resp(EndpointId, Error) ->
     ,{<<"Endpoint-ID">>, EndpointId}
     ].
 
--spec handle_responses(atom(), kz_json:object(), exec_responses()) -> 'ok'.
+-spec handle_responses(atom(), kapi_conference:doc(), exec_responses()) -> 'ok'.
 handle_responses(ConferenceNode, JObj, Responses) ->
     BaseResponses = [kz_json:from_list(handle_response(ConferenceNode, JObj, Response))
                      || Response <- Responses
@@ -293,7 +293,7 @@ handle_responses(ConferenceNode, JObj, Responses) ->
 
     publish_resp(JObj, BaseResponses).
 
--spec handle_response(atom(), kz_json:object(), exec_response()) -> kz_proplist().
+-spec handle_response(atom(), kapi_conference:doc(), exec_response()) -> kz_proplist().
 handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
     BuiltResp =
         case wait_for_bowout(LoopbackCallId
@@ -407,7 +407,7 @@ register_for_events(ConferenceNode, EndpointCallId) ->
         ],
     'ok'.
 
--spec start_call_handlers(atom(), kz_json:object(), ne_binary()) -> api_ne_binary().
+-spec start_call_handlers(atom(), kapi_conference:doc(), ne_binary()) -> api_ne_binary().
 start_call_handlers(Node, JObj, CallId) ->
     FetchId = kz_api:msg_id(JObj),
     CCVs = kz_json:new(),
@@ -444,7 +444,7 @@ get_control_queue(CtlPid) ->
             get_control_queue(CtlPid)
     end.
 
--spec add_participant(kz_json:object(), ne_binary(), api_ne_binary(), kzd_freeswitch:data()) -> 'ok'.
+-spec add_participant(kapi_conference:doc(), ne_binary(), api_ne_binary(), kzd_freeswitch:data()) -> 'ok'.
 add_participant(_JObj, _EndpointId, 'undefined', _EventProps) ->
     lager:info("not adding participant, no control queue");
 add_participant(JObj, EndpointId, ControlQueue, EventProps) ->
