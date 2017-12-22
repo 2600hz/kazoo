@@ -142,6 +142,10 @@
 
 -include("kapps_call_command.hrl").
 
+-define(NO_USER, <<"nouser">>).
+-define(NO_REALM, <<"norealm">>).
+-define(NO_USER_REALM, <<"nouser@norealm">>).
+
 -record(kapps_call, {call_id :: api_binary()                       %% The UUID of the call
                     ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                     ,control_q :: api_binary()                   %% The control queue provided on route win
@@ -155,15 +159,15 @@
                     ,switch_hostname :: api_ne_binary()                    %% The switch hostname (as reported by the switch)
                     ,switch_url :: api_binary()                         %% The switch url
                     ,switch_uri :: api_binary()                         %% The switch uri
-                    ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
-                    ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
-                    ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
-                    ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
-                    ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
-                    ,from_realm = <<"norealm">> :: ne_binary()          %% SIP from host
-                    ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
-                    ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
-                    ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
+                    ,request = ?NO_USER_REALM :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
+                    ,request_user = ?NO_USER :: ne_binary()         %% SIP request user
+                    ,request_realm = ?NO_REALM :: ne_binary()       %% SIP request host
+                    ,from = ?NO_USER_REALM :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
+                    ,from_user = ?NO_USER :: ne_binary()            %% SIP from user
+                    ,from_realm = ?NO_REALM :: ne_binary()          %% SIP from host
+                    ,to = ?NO_USER_REALM :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
+                    ,to_user = ?NO_USER :: ne_binary()              %% SIP to user
+                    ,to_realm = ?NO_REALM :: ne_binary()            %% SIP to host
                     ,inception :: api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
                     ,account_db :: api_binary()                  %% The database name of the account that authorized this call
                     ,account_id :: api_binary()                  %% The account id that authorized this call
@@ -820,10 +824,28 @@ request(#kapps_call{request=Request}) ->
     Request.
 
 -spec request_user(call()) -> ne_binary().
+request_user(#kapps_call{request=?NO_USER_REALM
+                        ,request_user=RequestUser
+                        }) ->
+    RequestUser;
+request_user(#kapps_call{request=Request
+                        ,request_user=?NO_USER
+                        }) ->
+    [RequestUser, _] = binary:split(Request, <<"@">>),
+    RequestUser;
 request_user(#kapps_call{request_user=RequestUser}) ->
     RequestUser.
 
 -spec request_realm(call()) -> ne_binary().
+request_realm(#kapps_call{request=?NO_USER_REALM
+                        ,request_realm=RequestRealm
+                        }) ->
+    RequestRealm;
+request_realm(#kapps_call{request=Request
+                        ,request_realm=?NO_REALM
+                        }) ->
+    [_, RequestRealm] = binary:split(Request, <<"@">>),
+    RequestRealm;
 request_realm(#kapps_call{request_realm=RequestRealm}) ->
     RequestRealm.
 
@@ -840,10 +862,28 @@ from(#kapps_call{from=From}) ->
     From.
 
 -spec from_user(call()) -> ne_binary().
+from_user(#kapps_call{from=?NO_USER_REALM
+                        ,from_user=FromUser
+                        }) ->
+    FromUser;
+from_user(#kapps_call{from=From
+                        ,from_user=?NO_USER
+                        }) ->
+    [FromUser, _] = binary:split(From, <<"@">>),
+    FromUser;
 from_user(#kapps_call{from_user=FromUser}) ->
     FromUser.
 
--spec from_realm(call()) -> api_binary().
+-spec from_realm(call()) -> ne_binary().
+from_realm(#kapps_call{from=?NO_USER_REALM
+                        ,from_realm=FromRealm
+                        }) ->
+    FromRealm;
+from_realm(#kapps_call{from=From
+                        ,from_realm=?NO_REALM
+                        }) ->
+    [_, FromRealm] = binary:split(From, <<"@">>),
+    FromRealm;
 from_realm(#kapps_call{from_realm=FromRealm}) ->
     FromRealm.
 
@@ -860,10 +900,28 @@ to(#kapps_call{to=To}) ->
     To.
 
 -spec to_user(call()) -> ne_binary().
+to_user(#kapps_call{to=?NO_USER_REALM
+                        ,to_user=ToUser
+                        }) ->
+    ToUser;
+to_user(#kapps_call{to=To
+                        ,to_user=?NO_USER
+                        }) ->
+    [ToUser, _] = binary:split(To, <<"@">>),
+    ToUser;
 to_user(#kapps_call{to_user=ToUser}) ->
     ToUser.
 
--spec to_realm(call()) -> api_binary().
+-spec to_realm(call()) -> ne_binary().
+to_realm(#kapps_call{to=?NO_USER_REALM
+                        ,to_realm=ToRealm
+                        }) ->
+    ToRealm;
+to_realm(#kapps_call{to=To
+                        ,to_realm=?NO_REALM
+                        }) ->
+    [_, ToRealm] = binary:split(To, <<"@">>),
+    ToRealm;
 to_realm(#kapps_call{to_realm=ToRealm}) ->
     ToRealm.
 
