@@ -300,33 +300,37 @@ handle_responses(ConferenceNode, JObj, Responses) ->
 -spec handle_response(atom(), kapi_conference:doc(), exec_response()) -> kz_proplist().
 handle_response(_ConferenceNode, _JObj, {_CallId, {'error', Resp}}) ->
     Resp;
-handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
-    BuiltResp =
-        case wait_for_bowout(LoopbackCallId
-                            ,'undefined'
-                            ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
-                            )
-        of
-            'ok' -> Resp;
-            {'ok', CallId, DialResp} ->
-                _ = (catch add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId))),
-                props:set_values([{<<"Message">>, DialResp}
-                                 ,{<<"Call-ID">>, CallId}
-                                 ]
-                                ,Resp
-                                );
-            {'error', 'timeout'} ->
-                props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
-            {'error', HangupCause, E} ->
-                props:set_values([{<<"Status">>, <<"error">>}
-                                 ,{<<"Hangup-Cause">>, HangupCause}
-                                 ,{<<"Message">>, E}
-                                 ,{<<"Call-ID">>, 'null'}
-                                 ]
-                                ,Resp
-                                )
-        end,
+handle_response(ConferenceNode, JObj, {LoopbackCallId, {'ok', Resp}}) ->
+    BuiltResp = handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp),
     props:insert_value(<<"Call-ID">>, LoopbackCallId, BuiltResp).
+
+-spec handle_call_startup(atom(), kapi_conference:doc(), ne_binary(), kz_proplist()) ->
+                                 kz_proplist().
+handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
+    case wait_for_bowout(LoopbackCallId
+                        ,'undefined'
+                        ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
+                        )
+    of
+        'ok' -> Resp;
+        {'ok', CallId, DialResp} ->
+            _ = (catch add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId))),
+            props:set_values([{<<"Message">>, DialResp}
+                             ,{<<"Call-ID">>, CallId}
+                             ]
+                            ,Resp
+                            );
+        {'error', 'timeout'} ->
+            props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
+        {'error', HangupCause, E} ->
+            props:set_values([{<<"Status">>, <<"error">>}
+                             ,{<<"Hangup-Cause">>, HangupCause}
+                             ,{<<"Message">>, E}
+                             ,{<<"Call-ID">>, 'null'}
+                             ]
+                            ,Resp
+                            )
+    end.
 
 -spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer()) ->
                              'ok' |
