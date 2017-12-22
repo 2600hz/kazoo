@@ -302,8 +302,8 @@ handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
                             )
         of
             'ok' -> Resp;
-            {'ok', CallId, DialResp, EventProps} ->
-                _ = (catch add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId), EventProps)),
+            {'ok', CallId, DialResp} ->
+                _ = (catch add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId))),
                 props:set_values([{<<"Message">>, DialResp}
                                  ,{<<"Call-ID">>, CallId}
                                  ]
@@ -324,7 +324,7 @@ handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
 
 -spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer()) ->
                              'ok' |
-                             {'ok', ne_binary(), ne_binary(), kzd_freeswitch:data()} |
+                             {'ok', ne_binary(), ne_binary()} |
                              {'error', 'timeout'} |
                              {'error', ne_binary(), ne_binary()}.
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
@@ -372,9 +372,9 @@ handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, Start, Props)
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
             wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
     end;
-handle_create(ALeg, _Timeout, _Start, Props) ->
+handle_create(ALeg, _Timeout, _Start, _Props) ->
     lager:debug("dial started to ~s", [ALeg]),
-    {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>, Props}.
+    {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>}.
 
 handle_loopback_destroy(_LoopbackALeg, <<"NORMAL_UNSPECIFIED">>) ->
     lager:debug("~s went down", [_LoopbackALeg]);
@@ -389,10 +389,10 @@ handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
     of
         {LoopbackALeg, LoopbackALeg} ->
             lager:debug("call id after bowout remains the same"),
-            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>, Props};
+            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>};
         {LoopbackALeg, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("~s acquired as ~s", [LoopbackALeg, AcquiringUUID]),
-            {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>, Props};
+            {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
             lager:debug("~p", [Props]),
@@ -444,21 +444,19 @@ get_control_queue(CtlPid) ->
             get_control_queue(CtlPid)
     end.
 
--spec add_participant(kapi_conference:doc(), ne_binary(), api_ne_binary(), kzd_freeswitch:data()) -> 'ok'.
-add_participant(_JObj, _EndpointId, 'undefined', _EventProps) ->
+-spec add_participant(kapi_conference:doc(), ne_binary(), api_ne_binary()) -> 'ok'.
+add_participant(_JObj, _CallId, 'undefined') ->
     lager:info("not adding participant, no control queue");
-add_participant(JObj, EndpointId, ControlQueue, EventProps) ->
-    EventJObj = ecallmgr_call_events:to_json(EventProps),
-
+add_participant(JObj, CallId, ControlQueue) ->
     Req = kz_json:set_values([{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj)}
-                             ,{<<"Call-ID">>, EndpointId}
+                             ,{<<"Call-ID">>, CallId}
                              ,{<<"Control-Queue">>, ControlQueue}
                              ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
                               | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)
                              ]
-                            ,EventJObj
+                            ,ecallmgr_fs_channel:to_api_json(CallId)
                             ),
-    lager:debug("adding participant for ~s: ~p", [EndpointId, Req]),
+    lager:debug("adding participant for ~s: ~p", [CallId, Req]),
     kz_amqp_worker:cast(Req, fun(P) -> kapi_conference:publish_add_participant(kz_config:zone('binary'), P) end).
 
 -spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
