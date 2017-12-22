@@ -17,7 +17,7 @@
         ,delete/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
 
 -define(CB_LIST, <<"cccps/crossbar_listing">>).
 -define(AUTODIAL, <<"autodial">>).
@@ -126,7 +126,7 @@ validate_cccp(Context, ?AUTODIAL, ?HTTP_PUT) ->
                      ,{<<"user_id">>, cb_context:auth_user_id(Context)}
                      ],
             JObj = kz_json:set_values(Values, ReqData),
-            cccp_callback_sup:new(JObj),
+            send_new_camping(JObj, cb_context:account_id(Context)),
             cb_context:set_resp_status(Context, 'success');
         'false' ->
             Resp = kz_json:from_list([{<<"message">>, <<"For direct use by account holder only">>}]),
@@ -138,6 +138,14 @@ validate_cccp(Context, Id, ?HTTP_POST) ->
     update(Id, Context);
 validate_cccp(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
+
+-spec send_new_camping(kz_json:object(), ne_binary()) -> 'ok'.
+send_new_camping(JObj, AccountId) ->
+    Req = [{<<"Camping-Request">>, JObj}
+          ,{<<"Account-ID">>, AccountId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req, fun kapi_camping:publish_req/1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -284,43 +292,40 @@ check_cid(Context) ->
 
 -spec error_pin_exists(cb_context:context()) -> cb_context:context().
 error_pin_exists(Context) ->
-    cb_context:add_validation_error(
-      <<"cccp">>
+    cb_context:add_validation_error(<<"cccp">>
                                    ,<<"unique">>
                                    ,kz_json:from_list(
                                       [{<<"message">>, <<"Pin already exists">>}]
                                      )
                                    ,Context
-     ).
+                                   ).
 
 -spec error_number_is_not_reconcilable(cb_context:context(), ne_binary()) ->
                                               cb_context:context().
 error_number_is_not_reconcilable(Context, CID) ->
-    cb_context:add_validation_error(
-      <<"cccp">>
+    cb_context:add_validation_error(<<"cccp">>
                                    ,<<"unique">>
                                    ,kz_json:from_list(
                                       [{<<"message">>, <<"Number is non reconcilable">>}
                                       ,{<<"cause">>, CID}
                                       ])
                                    ,Context
-     ).
+                                   ).
 
 error_cid_exists(Context, CID) ->
-    cb_context:add_validation_error(
-      <<"cccp">>
+    cb_context:add_validation_error(<<"cccp">>
                                    ,<<"unique">>
                                    ,kz_json:from_list(
                                       [{<<"message">>, <<"CID already exists">>}
                                       ,{<<"cause">>, CID}
                                       ])
                                    ,Context
-     ).
+                                   ).
 
 -spec unique_cid(cb_context:context()) -> boolean().
 unique_cid(Context) ->
     CID = kz_json:get_value(<<"cid">>, cb_context:req_data(Context)),
-    case cccp_util:authorize(CID, <<"cccps/cid_listing">>) of
+    case authorize_listing(CID, <<"cccps/cid_listing">>) of
         {'ok',[]} -> 'true';
         _ -> 'false'
     end.
@@ -328,7 +333,21 @@ unique_cid(Context) ->
 -spec unique_pin(cb_context:context()) -> boolean().
 unique_pin(Context) ->
     Pin = kz_json:get_value(<<"pin">>, cb_context:req_data(Context)),
-    case cccp_util:authorize(Pin, <<"cccps/pin_listing">>) of
+    case authorize_listing(Pin, <<"cccps/pin_listing">>) of
         {'ok',[]} -> 'true';
         _ -> 'false'
+    end.
+
+-spec authorize_listing(ne_binary(), ne_binary()) ->
+                               {'ok', kz_json:object() | kz_json:objects()} |
+                               'empty' |
+                               'error'.
+authorize_listing(Value, View) ->
+    ViewOptions = [{'key', Value}],
+    case kz_datamgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of
+        {'ok', [JObj]} ->
+            {'ok', kz_json:get_value(<<"value">>, JObj)};
+        Reply ->
+            lager:info("authorize listing failed for ~p with reply: ~p", [Value, Reply]),
+            Reply
     end.

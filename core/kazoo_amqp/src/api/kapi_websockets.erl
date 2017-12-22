@@ -1,4 +1,4 @@
--module(kapi_blackhole).
+-module(kapi_websockets).
 
 -export([get_req/1, get_req_v/1
         ,get_resp/1, get_resp_v/1
@@ -15,8 +15,8 @@
         ,publish_module_resp/2, publish_module_resp/3
         ]).
 
--include("blackhole.hrl").
--include("kapi_blackhole.hrl").
+-include("kapi_websockets.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -type restriction() :: 'get' | 'module_req'.
 -type restrictions() :: [restriction()].
@@ -30,8 +30,8 @@
 -spec get_req(api_terms()) ->{'ok', iolist()} | {'error', string()}.
 get_req(Prop) when is_list(Prop) ->
     case get_req_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?BLACKHOLE_GET_REQ_HEADERS, ?OPTIONAL_BLACKHOLE_GET_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for blackhole get_req"}
+        'true' -> kz_api:build_message(Prop, ?WEBSOCKETS_GET_REQ_HEADERS, ?OPTIONAL_WEBSOCKETS_GET_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for websockets get_req"}
     end;
 get_req(JObj) ->
     get_req(kz_json:to_proplist(JObj)).
@@ -43,7 +43,7 @@ get_req(JObj) ->
 %%--------------------------------------------------------------------
 -spec get_req_v(api_terms()) -> boolean().
 get_req_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?BLACKHOLE_GET_REQ_HEADERS, ?BLACKHOLE_GET_REQ_VALUES, ?BLACKHOLE_TYPES);
+    kz_api:validate(Prop, ?WEBSOCKETS_GET_REQ_HEADERS, ?WEBSOCKETS_GET_REQ_VALUES, ?WEBSOCKETS_TYPES);
 get_req_v(JObj) ->
     get_req_v(kz_json:to_proplist(JObj)).
 
@@ -55,8 +55,8 @@ get_req_v(JObj) ->
 -spec get_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 get_resp(Prop) when is_list(Prop) ->
     case get_resp_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?BLACKHOLE_GET_RESP_HEADERS, ?OPTIONAL_BLACKHOLE_GET_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for blackhole get_resp"}
+        'true' -> kz_api:build_message(Prop, ?WEBSOCKETS_GET_RESP_HEADERS, ?OPTIONAL_WEBSOCKETS_GET_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for websockets get_resp"}
     end;
 get_resp(JObj) ->
     get_resp(kz_json:to_proplist(JObj)).
@@ -68,7 +68,7 @@ get_resp(JObj) ->
 %%--------------------------------------------------------------------
 -spec get_resp_v(api_terms()) -> boolean().
 get_resp_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?BLACKHOLE_GET_RESP_HEADERS, ?BLACKHOLE_GET_RESP_VALUES, ?BLACKHOLE_TYPES);
+    kz_api:validate(Prop, ?WEBSOCKETS_GET_RESP_HEADERS, ?WEBSOCKETS_GET_RESP_VALUES, ?WEBSOCKETS_TYPES);
 get_resp_v(JObj) ->
     get_resp_v(kz_json:to_proplist(JObj)).
 
@@ -113,7 +113,7 @@ bind_q(Queue, Props) ->
 
 -spec add_restriction(ne_binary(), restriction()) -> 'ok'.
 add_restriction(Queue, 'get') ->
-    amqp_util:bind_q_to_sysconf(Queue, ?KEY_BLACKHOLE_GET_REQ);
+    amqp_util:bind_q_to_sysconf(Queue, ?KEY_WEBSOCKETS_GET_REQ);
 add_restriction(Queue, 'module_req') ->
     amqp_util:bind_q_to_kapps(Queue, ?MODULE_REQ_ROUTING_KEY).
 
@@ -126,7 +126,7 @@ unbind_q(Queue, Props) ->
 
 -spec remove_restriction(ne_binary(), restriction()) -> 'ok'.
 remove_restriction(Queue, 'get') ->
-    amqp_util:unbind_q_from_sysconf(Queue, ?KEY_BLACKHOLE_GET_REQ);
+    amqp_util:unbind_q_from_sysconf(Queue, ?KEY_WEBSOCKETS_GET_REQ);
 remove_restriction(Queue, 'module_req') ->
     amqp_util:unbind_q_from_kapps(Queue, ?MODULE_REQ_ROUTING_KEY).
 
@@ -162,8 +162,8 @@ publish_module_resp(ServerId, API, ContentType) ->
 publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_req(Api, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?BLACKHOLE_GET_REQ_VALUES, fun get_req/1),
-    amqp_util:sysconf_publish(?KEY_BLACKHOLE_GET_REQ, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?WEBSOCKETS_GET_REQ_VALUES, fun get_req/1),
+    amqp_util:sysconf_publish(?KEY_WEBSOCKETS_GET_REQ, Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -178,5 +178,5 @@ publish_get_resp(RespQ, Api, ContentType) ->
     PrepareOptions = [{'formatter', fun get_resp/1}
                      ,{'remove_recursive', 'false'}
                      ],
-    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?BLACKHOLE_GET_RESP_VALUES, PrepareOptions),
+    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?WEBSOCKETS_GET_RESP_VALUES, PrepareOptions),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).

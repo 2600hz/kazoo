@@ -7987,6 +7987,34 @@
             ],
             "type": "object"
         },
+        "kapi.camping.req": {
+            "description": "AMQP API for camping.req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Camping-Request": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "camping"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "request"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Camping-Request"
+            ],
+            "type": "object"
+        },
         "kapi.conf.doc_type_update": {
             "description": "AMQP API for conf.doc_type_update",
             "properties": {
@@ -21829,6 +21857,117 @@
             },
             "required": [
                 "Reply"
+            ],
+            "type": "object"
+        },
+        "kapi.websockets.get_req": {
+            "description": "AMQP API for websockets.get_req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "websockets"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "get_req"
+                    ],
+                    "type": "string"
+                },
+                "Socket-ID": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "kapi.websockets.get_resp": {
+            "description": "AMQP API for websockets.get_resp",
+            "properties": {
+                "Data": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "websockets"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "get_resp"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "kapi.websockets.module_req": {
+            "description": "AMQP API for websockets.module_req",
+            "properties": {
+                "Action": {
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "websockets"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "module_req"
+                    ],
+                    "type": "string"
+                },
+                "Module": {
+                    "type": "string"
+                },
+                "Persist": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "Action",
+                "Module"
+            ],
+            "type": "object"
+        },
+        "kapi.websockets.module_resp": {
+            "description": "AMQP API for websockets.module_resp",
+            "properties": {
+                "Error": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "websockets"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "module_resp"
+                    ],
+                    "type": "string"
+                },
+                "Persisted": {
+                    "type": "boolean"
+                },
+                "Started": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "Persisted",
+                "Started"
             ],
             "type": "object"
         },

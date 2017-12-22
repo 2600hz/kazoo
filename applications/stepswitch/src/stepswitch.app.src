@@ -1,19 +1,14 @@
-{application, stepswitch,
- [
-  {description, "Routes calls coming or going offnet, like a line finder"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [stepswitch_cache, stepswitch_cnam_pool_sup, stepswitch_listener, stepswitch_request_sup, stepswitch_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-                 , ssl
-                 , inets
-
-                 , kazoo_apps
-
-                 , lager
-                 , poolboy
-                 ]},
-  {mod, {stepswitch_app, []}}
- ]}.
+{application,stepswitch,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_call,kazoo_config,kazoo_data,
+                             kazoo_documents,kazoo_endpoint,kazoo_globals,
+                             kazoo_ips,kazoo_number_manager,kazoo_services,
+                             kazoo_sip,kazoo_stdlib,kazoo_templates,kazoo_web,
+                             kernel,lager,poolboy,ssl,stdlib]},
+              {description,"Routes calls coming or going offnet, like a line finder"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[stepswitch_cache,stepswitch_cnam_pool_sup,
+                           stepswitch_listener,stepswitch_request_sup,
+                           stepswitch_sup]},
+              {mod,{stepswitch_app,[]}}]}.

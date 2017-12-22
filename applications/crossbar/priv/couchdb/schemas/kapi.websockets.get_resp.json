@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.websockets.get_resp",
+    "description": "AMQP API for websockets.get_resp",
+    "properties": {
+        "Data": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "websockets"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "get_resp"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

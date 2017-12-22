@@ -138,10 +138,10 @@ inspect_call_id(CallId, Context) ->
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_lookup_req/1
-                                    ,{call_inspector, fun kapi_inspector:lookup_resp_v/1, true}
+                                    ,{'call_inspector', fun kapi_inspector:lookup_resp_v/1, 'true'}
                                     )
     of
-        {ok, [JObj]} ->
+        {'ok', [JObj]} ->
             Chunks   = sanitize(kz_json:get_value(<<"Chunks">>, JObj, [])),
             Analysis = sanitize(kz_json:get_value(<<"Analysis">>, JObj, [])),
             Response = kz_json:from_list(
@@ -152,10 +152,10 @@ inspect_call_id(CallId, Context) ->
                          ]
                         ),
             crossbar_util:response(Response, Context);
-        {timeout, _Resp} ->
+        {'timeout', _Resp} ->
             lager:debug("timeout: ~s ~p", [CallId, _Resp]),
             crossbar_util:response_datastore_timeout(Context);
-        {error, _E} ->
+        {'error', _E} ->
             lager:debug("error: ~s ~p", [CallId, _E]),
             crossbar_util:response_bad_identifier(CallId, Context)
     end.
@@ -230,17 +230,17 @@ filter_callids(CallIds) ->
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_filter_req/1
-                                    ,{call_inspector, fun kapi_inspector:filter_resp_v/1, true}
+                                    ,{'call_inspector', fun kapi_inspector:filter_resp_v/1, 'true'}
                                     )
     of
-        {ok, JObjs} ->
+        {'ok', JObjs} ->
             FilterIds = fun (JObj) -> kz_json:get_value(<<"Call-IDs">>, JObj, []) end,
             lists:usort(lists:flatmap(FilterIds, JObjs));
-        {timeout, JObjs} ->
+        {'timeout', JObjs} ->
             lager:debug("timeout ~s", [kz_json:encode(JObjs)]),
             FilterIds = fun (JObj) -> kz_json:get_value(<<"Call-IDs">>, JObj, []) end,
             lists:usort(lists:flatmap(FilterIds, JObjs));
-        {error, _E} ->
+        {'error', _E} ->
             lager:debug("error: ~p", [_E]),
             []
     end.
