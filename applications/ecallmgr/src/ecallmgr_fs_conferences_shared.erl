@@ -186,7 +186,7 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
 
     handle_responses(ConferenceNode, JObj, EPResps ++ LBResps).
 
--type exec_response() :: {ne_binary(), kz_proplist()}.
+-type exec_response() :: {ne_binary(), {'ok' | 'error', kz_proplist()}}.
 -type exec_responses() :: [exec_response()].
 -spec exec_endpoints(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
                             exec_responses().
@@ -271,19 +271,23 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                  ),
     exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, kz_json:delete_key(<<"Outbound-Call-ID">>, JObj), Resps}).
 
--spec success_resp(ne_binary()) -> kz_proplist().
+-spec success_resp(ne_binary()) -> {'ok', kz_proplist()}.
 success_resp(EndpointId) ->
-    [{<<"Message">>, <<"dialing endpoints">>}
-    ,{<<"Status">>, <<"success">>}
-    ,{<<"Endpoint-ID">>, EndpointId}
-    ].
+    {'ok'
+    ,[{<<"Message">>, <<"dialing endpoints">>}
+     ,{<<"Status">>, <<"success">>}
+     ,{<<"Endpoint-ID">>, EndpointId}
+     ]
+    }.
 
--spec error_resp(ne_binary(), ne_binary()) -> kz_proplist().
+-spec error_resp(ne_binary(), ne_binary()) -> {'error', kz_proplist()}.
 error_resp(EndpointId, Error) ->
-    [{<<"Status">>, <<"error">>}
-    ,{<<"Message">>, Error}
-    ,{<<"Endpoint-ID">>, EndpointId}
-    ].
+    {'error'
+    ,[{<<"Status">>, <<"error">>}
+     ,{<<"Message">>, Error}
+     ,{<<"Endpoint-ID">>, EndpointId}
+     ]
+    }.
 
 -spec handle_responses(atom(), kapi_conference:doc(), exec_responses()) -> 'ok'.
 handle_responses(ConferenceNode, JObj, Responses) ->
@@ -294,6 +298,8 @@ handle_responses(ConferenceNode, JObj, Responses) ->
     publish_resp(JObj, BaseResponses).
 
 -spec handle_response(atom(), kapi_conference:doc(), exec_response()) -> kz_proplist().
+handle_response(_ConferenceNode, _JObj, {_CallId, {'error', Resp}}) ->
+    Resp;
 handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
     BuiltResp =
         case wait_for_bowout(LoopbackCallId
