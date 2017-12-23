@@ -8281,6 +8281,9 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Answered": {
+                    "type": "string"
+                },
                 "Application-Data": {
                     "type": "string"
                 },
@@ -8293,7 +8296,16 @@
                 "Application-Response": {
                     "type": "string"
                 },
+                "Authorizing-ID": {
+                    "type": "string"
+                },
+                "Authorizing-Type": {
+                    "type": "string"
+                },
                 "Billing-Seconds": {
+                    "type": "string"
+                },
+                "Bridge-ID": {
                     "type": "string"
                 },
                 "Call-Direction": {
@@ -8312,6 +8324,9 @@
                     "type": "string"
                 },
                 "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Channel-Authorized": {
                     "type": "string"
                 },
                 "Channel-Call-State": {
@@ -8374,6 +8389,9 @@
                 "DTMF-Duration": {
                     "type": "string"
                 },
+                "Destination": {
+                    "type": "string"
+                },
                 "Detected-Tone": {
                     "type": "string"
                 },
@@ -8384,6 +8402,9 @@
                     "type": "string"
                 },
                 "Duration-Seconds": {
+                    "type": "string"
+                },
+                "Ecallmgr-Node": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -8422,13 +8443,25 @@
                 "Intercepted-By": {
                     "type": "string"
                 },
+                "Is-Loopback": {
+                    "type": "string"
+                },
+                "Is-On-Hold": {
+                    "type": "string"
+                },
                 "Length": {
                     "type": "string"
                 },
                 "Local-SDP": {
                     "type": "string"
                 },
+                "Media-Node": {
+                    "type": "string"
+                },
                 "Media-Server": {
+                    "type": "string"
+                },
+                "Node": {
                     "type": "string"
                 },
                 "Origination-Call-ID": {
@@ -8459,6 +8492,9 @@
                     "type": "string"
                 },
                 "Raw-Application-Name": {
+                    "type": "string"
+                },
+                "Realm": {
                     "type": "string"
                 },
                 "Remote-SDP": {
@@ -8516,6 +8552,9 @@
                     "type": "string"
                 },
                 "User-Agent": {
+                    "type": "string"
+                },
+                "Username": {
                     "type": "string"
                 }
             },
