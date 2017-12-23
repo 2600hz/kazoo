@@ -13,6 +13,7 @@
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Options) ->
+    'true' = kapi_conference:add_participant_v(JObj),
     Call = kapps_call:from_json(JObj),
     _ = kapps_call_command:set(kz_json:from_list([{<<"Is-Conference">>, <<"true">>}]), 'undefined', Call),
     kapps_call:put_callid(Call),
