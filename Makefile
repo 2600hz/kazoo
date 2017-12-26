@@ -3,6 +3,12 @@ RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
+# You can override this when calling make, e.g. make MAKEFLAGS=""
+# to prevent parallel builds, or make MAKEFLAGS="-j8".
+# Note that this only applies to the core and applications
+# targets.
+MAKEFLAGS ?= -j
+
 KAZOODIRS = core/Makefile applications/Makefile
 
 .PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell
@@ -65,10 +71,10 @@ deps/Makefile: .erlang.mk
 	cp $(ROOT)/make/Makefile.deps deps/Makefile
 
 core:
-	$(MAKE) -j -C core/ all
+	$(MAKE) $(MAKEFLAGS) -C core/ all
 
 apps: core
-	$(MAKE) -j -C applications/ all
+	$(MAKE) $(MAKEFLAGS) -C applications/ all
 
 kazoo: apps
 
