@@ -1,5 +1,5 @@
 {application,acdc,
-             [{applications,[crossbar,crypto,gproc,kazoo,kazoo_amqp,
+             [{applications,[callflow,crossbar,crypto,gproc,kazoo,kazoo_amqp,
                              kazoo_apps,kazoo_caches,kazoo_call,kazoo_config,
                              kazoo_data,kazoo_documents,kazoo_endpoint,
                              kazoo_media,kazoo_modb,kazoo_stdlib,kazoo_web,

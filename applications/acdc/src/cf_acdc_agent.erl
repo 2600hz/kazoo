@@ -16,7 +16,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_acdc_agent).
--behaviour(gen_cf_action).
 
 -export([handle/2
         ,find_agent/1
@@ -27,7 +26,7 @@
         ,logout_agent/2
         ]).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
