@@ -2,7 +2,8 @@
              [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_call,
                              kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Skel - A skeleton application useful for quickly creating services"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{skel_app,[]}},
               {modules,[]},
               {registered,[skel_cache,skel_sup]},
-              {mod,{skel_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

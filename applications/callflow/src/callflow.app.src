@@ -6,8 +6,9 @@
                              kazoo_schemas,kazoo_stdlib,kazoo_token_buckets,
                              kazoo_voicemail,kazoo_web,kernel,lager,stdlib]},
               {description,"Callflow - traversing through the tree..."},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{callflow_app,[]}},
               {modules,[]},
               {registered,[callflow_cache,cf_event_handler_sup,callflow_sup,
                            cf_exe_sup]},
-              {mod,{callflow_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

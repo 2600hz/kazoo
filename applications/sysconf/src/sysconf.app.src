@@ -2,7 +2,8 @@
              [{applications,[kazoo,kazoo_amqp,kazoo_config,kazoo_data,
                              kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Expose system configuration in AMQP messaging bus"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{sysconf_app,[]}},
               {modules,[]},
               {registered,[sysconf_sup]},
-              {mod,{sysconf_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

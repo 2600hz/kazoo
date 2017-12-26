@@ -5,8 +5,9 @@
                              kazoo_number_manager,kazoo_services,kazoo_stdlib,
                              kazoo_transactions,kernel,lager,stdlib]},
               {description,"Jonny 5 - Short circuit accounts exceeding call volume"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{jonny5_app,[]}},
               {modules,[]},
               {registered,[jonny5_cache,j5_channels,jonny5_listener,
                            jonny5_sup]},
-              {mod,{jonny5_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

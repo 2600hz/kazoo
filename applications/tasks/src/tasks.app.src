@@ -7,7 +7,8 @@
                              kazoo_transactions,kazoo_web,kernel,lager,
                              stdlib]},
               {description,"Tasks - Schedule one-offs cluster-wide tasks"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{tasks_app,[]}},
               {modules,[]},
               {registered,[tasks_sup]},
-              {mod,{tasks_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

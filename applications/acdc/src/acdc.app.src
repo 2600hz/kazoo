@@ -5,9 +5,10 @@
                              kazoo_media,kazoo_modb,kazoo_stdlib,kazoo_web,
                              kernel,lager,stdlib,webseq]},
               {description,"ACDc - Automatic Call Distribution commander"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{acdc_app,[]}},
               {modules,[]},
               {registered,[acdc_cache,acdc_sup,acdc_recordings_sup,
                            acdc_agents_sup,acdc_queues_sup,acdc_stats_sup,
                            acdc_agent_manager]},
-              {mod,{acdc_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

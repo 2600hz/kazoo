@@ -3,8 +3,9 @@
                              kazoo_data,kazoo_documents,kazoo_stdlib,kernel,
                              lager,stdlib]},
               {description,"Registrar For the Stars"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{registrar_app,[]}},
               {modules,[]},
               {registered,[registrar_cache,registrar_sup,
                            registrar_shared_listener_sup]},
-              {mod,{registrar_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

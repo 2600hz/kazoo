@@ -3,7 +3,8 @@
                              kazoo_config,kazoo_endpoint,kazoo_number_manager,
                              kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Reorder - "},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{reorder_app,[]}},
               {modules,[]},
               {registered,[reorder_sup]},
-              {mod,{reorder_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

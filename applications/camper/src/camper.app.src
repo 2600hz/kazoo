@@ -3,7 +3,8 @@
                              kazoo_config,kazoo_documents,kazoo_endpoint,
                              kazoo_media,kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Camper - wait for the right moment"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{camper_app,[]}},
               {modules,[]},
               {registered,[camper_sup,camper_offnet_sup,camper_onnet_handler]},
-              {mod,{camper_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

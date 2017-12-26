@@ -4,7 +4,8 @@
                              kazoo_services,kazoo_stdlib,kazoo_transactions,
                              kernel,lager,stdlib,trie]},
               {description,"HotOrNot - Rate calls based on prefix"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{hotornot_app,[]}},
               {modules,[]},
               {registered,[hotornot_sup]},
-              {mod,{hotornot_app,[]}}]}.
+              {vsn,"4.0.0"}]}.
