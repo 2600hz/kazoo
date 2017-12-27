@@ -29,7 +29,6 @@
 -define(CB_LIST, <<"recordings/crossbar_listing">>).
 -define(CB_LIST_BY_OWNERID, <<"recordings/listing_by_user">>).
 
--define(INLINE, <<"inline">>).
 -define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"mpeg">>}
                           ,{<<"audio">>, <<"mp3">>}
                           ]).
