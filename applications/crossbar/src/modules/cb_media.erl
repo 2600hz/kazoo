@@ -47,16 +47,18 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
 
 -define(DEFAULT_VOICE
-       ,list_to_binary([kazoo_tts:default_voice(), $/, kazoo_tts:default_language()])).
+       ,list_to_binary([kazoo_tts:default_voice(), $/, kazoo_tts:default_language()])
+       ).
 
--define(NORMALIZATION_FORMAT, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
-
+-define(NORMALIZATION_FORMAT
+       ,kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)
+       ).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     {'ok', _} = application:ensure_all_started('kazoo_media'),
 
@@ -71,7 +73,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.media">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.media">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.media">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
