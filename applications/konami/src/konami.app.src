@@ -4,7 +4,8 @@
                              kazoo_endpoint,kazoo_media,kazoo_stdlib,kernel,
                              lager,stdlib,webseq]},
               {description,"Konami - Map in-call DTMF sequences to call features"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{konami_app,[]}},
               {modules,[]},
               {registered,[konami_event_listener,konami_sup]},
-              {mod,{konami_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

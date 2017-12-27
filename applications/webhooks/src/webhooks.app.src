@@ -3,9 +3,10 @@
                              kazoo_config,kazoo_data,kazoo_documents,
                              kazoo_modb,kazoo_stdlib,kazoo_web,kernel,lager,
                              stdlib]},
-              {description,"Skel - A webhookseton application useful for quickly creating services"},
-              {vsn,"4.0.0"},
+              {description,"Webhooks - HTTP events from Kazoo to you"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{webhooks_app,[]}},
               {modules,[]},
               {registered,[webhooks_cache,webhooks_sup,
                            webhooks_shared_listener]},
-              {mod,{webhooks_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

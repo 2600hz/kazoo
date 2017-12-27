@@ -6,8 +6,9 @@
                              kazoo_transactions,kazoo_voicemail,kazoo_web,
                              kernel,lager,poolboy,stdlib]},
               {description,"Teletype - Receive events and send them to interested parties"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{teletype_app,[]}},
               {modules,[]},
               {registered,[teletype_cache,teletype_sup,teletype_bindings,
                            teletype_shared_listener]},
-              {mod,{teletype_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

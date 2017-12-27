@@ -3,8 +3,8 @@
                              kazoo_data,kazoo_documents,kazoo_stdlib,
                              kazoo_voicemail,kernel,lager,stdlib]},
               {description,"Ananke was the personification of destiny, necessity and fate, depicted as holding a spindle in ancient Greek religion. This application to schedule calls on events."},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{ananke_app,[]}},
               {modules,[]},
               {registered,[ananke_tasks_sup,ananke_listener,ananke_sup]},
-              {mod,{ananke_app,[]}},
-              {env,[]}]}.
+              {vsn,"4.0.0"}]}.

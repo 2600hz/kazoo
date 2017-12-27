@@ -15,9 +15,7 @@
 
 -export([handle/2]).
 
--behaviour(gen_cf_action).
-
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -type max_wait() :: pos_integer() | 'infinity'.
 

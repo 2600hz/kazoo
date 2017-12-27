@@ -5,7 +5,8 @@
                              kazoo_stdlib,kazoo_templates,kazoo_voicemail,
                              kazoo_web,kernel,lager,stdlib]},
               {description,"Notify - Kazoo"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{notify_app,[]}},
               {modules,[]},
               {registered,[notify_sup]},
-              {mod,{notify_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

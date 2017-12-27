@@ -9,7 +9,6 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-        ,initialize_kapps/1
         ,init/1
         ,start_child/1
         ]).
@@ -35,10 +34,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec initialize_kapps(atoms()) -> sup_startchild_ret().
-initialize_kapps(Whapps) ->
-    supervisor:start_child(?SERVER, ?SUPER_ARGS('kapps_sup', Whapps)).
 
 -spec start_child(supervisor:child_spec()) -> sup_startchild_ret().
 start_child(Spec) ->

@@ -37,8 +37,6 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = kapi_acdc_agent:declare_exchanges(), %% TODO: decouple
-    _ = kapi_acdc_queue:declare_exchanges(), %% TODO: decouple
     _ = kapi_call:declare_exchanges(),
     _ = kapi_callflow:declare_exchanges(),
     _ = kapi_conf:declare_exchanges(),
