@@ -1654,26 +1654,26 @@ owner_info(AccountDb, MailboxJObj, OwnerId) ->
 -spec populate_keys(kapps_call:call()) -> vm_keys().
 populate_keys(Call) ->
     Default = #keys{},
-    JObj = kapps_account_config:get(kapps_call:account_id(Call), <<"keys">>),
-    #keys{operator = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"operator">>], JObj, Default#keys.operator)
-         ,login = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"login">>], JObj, Default#keys.login)
-         ,save = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"save">>], JObj, Default#keys.save)
-         ,listen = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"listen">>], JObj, Default#keys.listen)
-         ,record = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record">>], JObj, Default#keys.record)
-         ,hear_new = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_new">>], JObj, Default#keys.hear_new)
-         ,hear_saved = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_saved">>], JObj, Default#keys.hear_saved)
-         ,configure = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"configure">>], JObj, Default#keys.configure)
-         ,exit = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"exit">>], JObj, Default#keys.exit)
-         ,rec_unavailable = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record_unavailable">>], JObj, Default#keys.rec_unavailable)
-         ,rec_name = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record_name">>], JObj, Default#keys.rec_name)
-         ,set_pin = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"set_pin">>], JObj, Default#keys.set_pin)
-         ,return_main = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"return_main_menu">>], JObj, Default#keys.return_main)
-         ,keep = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"keep">>], JObj, Default#keys.keep)
-         ,replay = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"replay">>], JObj, Default#keys.replay)
-         ,prev = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"prev">>], JObj, Default#keys.prev)
-         ,next = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"next">>], JObj, Default#keys.next)
-         ,delete = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"delete">>], JObj, Default#keys.delete)
-         ,continue = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"continue">>], JObj, Default#keys.continue)
+    JObj = kapps_account_config:get_global(kapps_call:account_id(Call), <<"keys">>, ?KEY_VOICEMAIL),
+    #keys{operator = kz_json:get_binary_value(<<"operator">>, JObj, Default#keys.operator)
+         ,login = kz_json:get_binary_value(<<"login">>, JObj, Default#keys.login)
+         ,save = kz_json:get_binary_value(<<"save">>, JObj, Default#keys.save)
+         ,listen = kz_json:get_binary_value(<<"listen">>, JObj, Default#keys.listen)
+         ,record = kz_json:get_binary_value(<<"record">>, JObj, Default#keys.record)
+         ,hear_new = kz_json:get_binary_value(<<"hear_new">>, JObj, Default#keys.hear_new)
+         ,hear_saved = kz_json:get_binary_value(<<"hear_saved">>, JObj, Default#keys.hear_saved)
+         ,configure = kz_json:get_binary_value(<<"configure">>, JObj, Default#keys.configure)
+         ,exit = kz_json:get_binary_value(<<"exit">>, JObj, Default#keys.exit)
+         ,rec_unavailable = kz_json:get_binary_value(<<"record_unavailable">>, JObj, Default#keys.rec_unavailable)
+         ,rec_name = kz_json:get_binary_value(<<"record_name">>, JObj, Default#keys.rec_name)
+         ,set_pin = kz_json:get_binary_value(<<"set_pin">>, JObj, Default#keys.set_pin)
+         ,return_main = kz_json:get_binary_value(<<"return_main_menu">>, JObj, Default#keys.return_main)
+         ,keep = kz_json:get_binary_value(<<"keep">>, JObj, Default#keys.keep)
+         ,replay = kz_json:get_binary_value(<<"replay">>, JObj, Default#keys.replay)
+         ,prev = kz_json:get_binary_value(<<"prev">>, JObj, Default#keys.prev)
+         ,next = kz_json:get_binary_value(<<"next">>, JObj, Default#keys.next)
+         ,delete = kz_json:get_binary_value(<<"delete">>, JObj, Default#keys.delete)
+         ,continue = kz_json:get_binary_value(<<"continue">>, JObj, Default#keys.continue)
          }.
 
 %%--------------------------------------------------------------------
