@@ -405,6 +405,7 @@
     "kazoo_endpoint.restrict_to_known_types": "kazoo_endpoint restrict to known types",
     "kazoo_endpoint.should_add_diversion_header": "kazoo_endpoint should add diversion header",
     "kazoo_endpoint.sip_transport": "kazoo_endpoint sip transport",
+    "keys.voicemail": "DTMF keys for voicemail callflow module",
     "konami.default_takeback_dtmf": "konami default takeback dtmf",
     "konami.default_target_timeout_ms": "konami default target timeout in milliseconds",
     "konami.event_cleanup_timeout_ms": "konami event cleanup timeout in milliseconds",

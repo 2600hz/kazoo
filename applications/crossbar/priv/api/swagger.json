@@ -213,6 +213,15 @@
             },
             "type": "object"
         },
+        "account_config.keys": {
+            "description": "Schema for DTMF keys account_config",
+            "properties": {
+                "voicemail": {
+                    "description": "DTMF keys for voicemail callflow module"
+                }
+            },
+            "type": "object"
+        },
         "account_config.media": {
             "description": "Schema for media account_config",
             "properties": {
@@ -26957,6 +26966,15 @@
                     "default": "",
                     "description": "kazoo_endpoint.mobile suffix",
                     "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.keys": {
+            "description": "Schema for DTMF keys system_config",
+            "properties": {
+                "voicemail": {
+                    "description": "DTMF keys for voicemail callflow module"
                 }
             },
             "type": "object"
