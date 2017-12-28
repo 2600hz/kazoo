@@ -224,12 +224,12 @@ validate(Context, DocId, ?MESSAGES_RESOURCE) ->
 validate_messages(Context, DocId, ?HTTP_GET) ->
     load_message_summary(DocId, Context);
 validate_messages(Context, DocId, ?HTTP_POST) ->
-    case kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []) of
+    case kz_json:get_list_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []) of
         [] ->
             Message = kz_json:from_list([{<<"message">>, <<"No array of message ids are specified">>}]),
             cb_context:add_validation_error(<<"messages">>, <<"required">>, Message, Context);
         _ ->
-            NewBoxId = kz_json:get_value(<<"source_id">>, cb_context:req_data(Context)),
+            NewBoxId = kz_json:get_ne_binary_value(<<"source_id">>, cb_context:req_data(Context)),
             maybe_load_vmboxes([DocId | NewBoxId], Context)
     end;
 validate_messages(Context, DocId, ?HTTP_PUT) ->
@@ -242,7 +242,7 @@ validate_messages(Context, DocId, ?HTTP_PUT) ->
 validate_messages(Context, DocId, ?HTTP_DELETE) ->
     Messages = kvm_messages:get(cb_context:account_id(Context), DocId),
 
-    Filter = case kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context)) of
+    Filter = case kz_json:get_list_value(?VM_KEY_MESSAGES, cb_context:req_data(Context)) of
                  L when is_list(L) -> L;
                  _ -> get_folder_filter(Context, <<"all">>)
              end,
@@ -275,7 +275,7 @@ validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
                                                    ,Context
                                                    );
                 'false' ->
-                    NewBoxId = kz_json:get_value(<<"source_id">>, cb_context:req_data(Context)),
+                    NewBoxId = kz_json:get_ne_binary_value(<<"source_id">>, cb_context:req_data(Context)),
                     maybe_load_vmboxes(NewBoxId, Context)
             end;
         {'error', Error} ->
@@ -308,7 +308,7 @@ load_or_upload(DocId, MediaId, Context, ?HTTP_GET) ->
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
-    VMBoxMsgs = kz_json:get_value(?VM_KEY_MESSAGES, DbDoc),
+    VMBoxMsgs = kz_json:get_list_value(?VM_KEY_MESSAGES, DbDoc),
     C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
     %% remove messages array to not let it exposed
@@ -316,7 +316,7 @@ post(Context, _DocId) ->
 
 post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
     AccountId = cb_context:account_id(Context),
-    MsgIds = kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []),
+    MsgIds = kz_json:get_list_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []),
     Folder = get_folder_filter(Context, ?VM_FOLDER_SAVED),
 
     case kz_json:get_value(<<"source_id">>, cb_context:req_data(Context)) of
@@ -420,7 +420,7 @@ delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
-    VMBoxMsgs = kz_json:get_value(?VM_KEY_MESSAGES, DbDoc),
+    VMBoxMsgs = kz_json:get_list_value(?VM_KEY_MESSAGES, DbDoc),
     C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
     %% remove messages array to not let it exposed
@@ -469,8 +469,8 @@ maybe_save_attachment(Context, [{Filename, FileJObj} | _Others]) ->
 save_attachment(Context, Filename, FileJObj) ->
     JObj = cb_context:doc(Context),
     DocId = kz_doc:id(JObj),
-    Contents = kz_json:get_value(<<"contents">>, FileJObj),
-    CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
+    Contents = kz_json:get_ne_binary_value(<<"contents">>, FileJObj),
+    CT = kz_json:get_ne_binary_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT}
            ,{'rev', kz_doc:revision(JObj)}
             | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
@@ -580,7 +580,7 @@ maybe_normalize_upload(Context, FileJObj) ->
 
 -spec normalize_upload(cb_context:context(), kz_json:object()) -> cb_context:context().
 normalize_upload(Context, FileJObj) ->
-    normalize_upload(Context, FileJObj, kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj)).
+    normalize_upload(Context, FileJObj, kz_json:get_ne_binary_value([<<"headers">>, <<"content_type">>], FileJObj)).
 
 -spec normalize_upload(cb_context:context(), kz_json:object(), api_binary()) -> cb_context:context().
 normalize_upload(Context, FileJObj, UploadContentType) ->
@@ -679,8 +679,7 @@ maybe_migrate_notification_emails(Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, kzd_voicemail_box:type()}
-            ],
+    Props = [{<<"pvt_type">>, kzd_voicemail_box:type()}],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(VMBoxId, Context) ->
     crossbar_doc:load_merge(VMBoxId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())).
@@ -710,7 +709,7 @@ load_vmbox_summary(Context) ->
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_json_value(<<"value">>, JObj)|Acc].
 
 -spec add_counts_to_summary_results(kz_json:objects(), map()) -> kz_json:objects().
 add_counts_to_summary_results(BoxSummaries, CountMap) ->
@@ -721,7 +720,7 @@ add_counts_to_summary_results(BoxSummaries, CountMap) ->
 
 -spec merge_summary_fold(kz_json:object(), map()) -> kz_json:object().
 merge_summary_fold(BoxSummary, CountMap) ->
-    BoxId = kz_json:get_value(<<"id">>, BoxSummary),
+    BoxId = kz_json:get_ne_binary_value(<<"id">>, BoxSummary),
     case maps:get(BoxId, CountMap, 'undefined') of
         'undefined' ->
             BoxSummary;
@@ -819,13 +818,13 @@ prefix_filter_key(Key, Value) ->
 message_summary_normalizer('undefined', JObj, Acc, RetentionTimestamp) ->
     [kz_json:from_list(
        [{kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], JObj)
-        ,kvm_util:enforce_retention(kz_json:get_value(<<"value">>, JObj), RetentionTimestamp)
+        ,kvm_util:enforce_retention(kz_json:get_json_value(<<"value">>, JObj), RetentionTimestamp)
         }
        ])
      | Acc
     ];
 message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
-    [kvm_util:enforce_retention(kz_json:get_value(<<"value">>, JObj), RetentionTimestamp)
+    [kvm_util:enforce_retention(kz_json:get_json_value(<<"value">>, JObj), RetentionTimestamp)
      | Acc
     ].
 
@@ -888,7 +887,7 @@ create_new_message_document(Context, BoxJObj) ->
 
     Doc = cb_context:doc(Context),
 
-    Props = [{<<"Message-Timestamp">>, kz_json:get_value(<<"timestamp">>, Doc)}
+    Props = [{<<"Message-Timestamp">>, kz_json:get_integer_value(<<"timestamp">>, Doc)}
             ,{<<"Box-Num">>, BoxNum}
             ,{<<"Timezone">>, kzd_voicemail_box:timezone(BoxJObj)}
             ,{<<"Box-Id">>, kz_doc:id(BoxJObj)}
@@ -904,7 +903,7 @@ create_new_message_document(Context, BoxJObj) ->
     To = kz_json:get_ne_binary_value(<<"to">>, Doc, BoxNum),
     Length = kz_json:get_integer_value(<<"length">>, Doc, 1),
 
-    Timestamp = kz_json:get_value(<<"pvt_created">>, JObj),
+    Timestamp = kz_doc:created(JObj),
 
     Routines = [{fun kapps_call:set_to/2, <<To/binary, "@", AccountRealm/binary>>}
                ,{fun kapps_call:set_from/2, <<From/binary, "@", AccountRealm/binary>>}
