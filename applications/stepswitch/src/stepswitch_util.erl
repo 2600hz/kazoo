@@ -301,7 +301,10 @@ endpoint_format_from(Endpoint, Number, OffnetReq, CCVs) ->
 get_endpoint_format_from(OffnetReq, CCVs) ->
     DefaultRealm = default_realm(OffnetReq),
     case kz_json:is_true(<<"From-Account-Realm">>, CCVs) of
-        'true' -> DefaultRealm;
+        'true' ->
+            %% DefaultRealm isn't the account's realm for a blind transfer of an inbound offnet call
+            {'ok', AccountJObj} = kz_account:fetch(kz_json:get_ne_binary_value(<<"Account-ID">>, OffnetReq)),
+            kz_account:realm(AccountJObj);
         'false' -> kz_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm)
     end.
 
