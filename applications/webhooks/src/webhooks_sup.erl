@@ -34,7 +34,6 @@
                   ,?WORKER('webhooks_listener')
                   ,?WORKER('webhooks_shared_listener')
                   ,?WORKER('webhooks_init')
-                  ,?WORKER('webhooks_maint_listener')
                   ]).
 
 %% ===================================================================
