@@ -107,14 +107,13 @@ is_cors_preflight(Req0) ->
 -spec is_cors_request(cowboy_req:req(), ne_binaries()) -> {boolean(), cowboy_req:req()}.
 is_cors_request(Req) ->
     ReqHdrs = [<<"origin">>, <<"access-control-request-method">>, <<"access-control-request-headers">>],
-
     is_cors_request(Req, ReqHdrs).
+
 is_cors_request(Req, []) -> {'false', Req};
 is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
-    {Hdr, Req1} = cowboy_req:header(ReqHdr, Req),
-    case Hdr of
-        'undefined' -> is_cors_request(Req1, ReqHdrs);
-        _H -> {'true', Req1}
+    case cowboy_req:header(ReqHdr, Req) of
+        'undefined' -> is_cors_request(Req, ReqHdrs);
+        _H -> {'true', Req}
     end.
 
 %%--------------------------------------------------------------------
@@ -124,8 +123,8 @@ is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
 %%--------------------------------------------------------------------
 -spec add_cors_headers(cowboy_req:req(), cb_context:context()) ->
                               cowboy_req:req().
-add_cors_headers(Req0, Context) ->
-    {ReqMethod, Req1} = cowboy_req:header(<<"access-control-request-method">>, Req0),
+add_cors_headers(Req, Context) ->
+    ReqMethod = cowboy_req:header(<<"access-control-request-method">>, Req),
 
     Methods = [?HTTP_OPTIONS | cb_context:allow_methods(Context)],
     Allow = case kz_term:is_empty(ReqMethod)
@@ -138,7 +137,7 @@ add_cors_headers(Req0, Context) ->
     lists:foldl(fun({H, V}, ReqAcc) ->
                         cowboy_req:set_resp_header(H, V, ReqAcc)
                 end
-               ,Req1
+               ,Req
                ,get_cors_headers(Allow)
                ).
 
@@ -408,15 +407,15 @@ handle_max_filesize_exceeded(Context, Req1) ->
 -spec handle_file_contents(cb_context:context(), ne_binary(), cowboy_req:req(), binary()) ->
                                   {cb_context:context(), cowboy_req:req()} |
                                   halt_return().
-handle_file_contents(Context, ContentType, Req1, FileContents) ->
+handle_file_contents(Context, ContentType, Req, FileContents) ->
     %% http://tools.ietf.org/html/rfc2045#page-17
-    case cowboy_req:header(<<"content-transfer-encoding">>, Req1) of
-        {<<"base64">>, Req2} ->
+    case cowboy_req:header(<<"content-transfer-encoding">>, Req) of
+        <<"base64">> ->
             lager:debug("base64 encoded request coming in"),
-            decode_base64(Context, ContentType, Req2);
-        {_Else, Req2} ->
+            decode_base64(Context, ContentType, Req);
+        _Else ->
             lager:debug("unexpected transfer encoding: '~s'", [_Else]),
-            {ContentLength, Req3} = cowboy_req:header(<<"content-length">>, Req2),
+            ContentLength = cowboy_req:header(<<"content-length">>, Req),
             Headers = kz_json:from_list([{<<"content_type">>, ContentType}
                                         ,{<<"content_length">>, ContentLength}
                                         ]),
@@ -426,7 +425,7 @@ handle_file_contents(Context, ContentType, Req1, FileContents) ->
             lager:debug("request is a file upload of type: ~s", [ContentType]),
 
             Filename = uploaded_filename(Context),
-            {cb_context:set_req_files(Context, [{Filename, FileJObj}]), Req3}
+            {cb_context:set_req_files(Context, [{Filename, FileJObj}]), Req}
     end.
 
 -spec uploaded_filename(cb_context:context()) -> ne_binary().
@@ -812,35 +811,35 @@ prefer_new_context([{'halt', Context1}|_], Req, _Context, _Return) ->
     ?MODULE:halt(Req, Context1).
 
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
-get_auth_token(Req0, Context) ->
-    case cowboy_req:header(<<"x-auth-token">>, Req0) of
-        {'undefined', Req1} ->
+get_auth_token(Req, Context) ->
+    case cowboy_req:header(<<"x-auth-token">>, Req) of
+        'undefined' ->
             case cb_context:req_value(Context, <<"auth_token">>) of
-                'undefined' -> get_authorization_token(Req1, Context);
+                'undefined' -> get_authorization_token(Req, Context);
                 Token ->
                     lager:debug("using auth token found"),
-                    {Req1, set_auth_context(Context, Token, 'x-auth-token')}
+                    {Req, set_auth_context(Context, Token, 'x-auth-token')}
             end;
-        {Token, Req1} ->
+        Token ->
             lager:debug("using auth token from header"),
-            {Req1, set_auth_context(Context, Token, 'x-auth-token')}
+            {Req, set_auth_context(Context, Token, 'x-auth-token')}
     end.
 
 -spec get_authorization_token(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
-get_authorization_token(Req0, Context) ->
-    case cowboy_req:header(<<"authorization">>, Req0) of
-        {'undefined', Req1} ->
+get_authorization_token(Req, Context) ->
+    case cowboy_req:header(<<"authorization">>, Req) of
+        'undefined' ->
             case cb_context:req_value(Context, <<"authorization">>) of
                 'undefined' ->
                     lager:debug("no auth token found"),
-                    {Req1, Context};
+                    {Req, Context};
                 Authorization ->
                     lager:debug("using token ~s from url", [Authorization]),
-                    {Req1, set_auth_context(Context, Authorization)}
+                    {Req, set_auth_context(Context, Authorization)}
             end;
-        {Authorization, Req1} ->
+        Authorization ->
             lager:debug("using token ~s from header", [Authorization]),
-            {Req1, set_auth_context(Context, Authorization)}
+            {Req, set_auth_context(Context, Authorization)}
     end.
 
 -spec set_auth_context(cb_context:context(), ne_binary() | {ne_binary(), atom()}) ->
@@ -872,18 +871,18 @@ get_authorization_token_type(Token) -> {Token, 'unknown'}.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_pretty_print(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
-get_pretty_print(Req0, Context) ->
-    case cowboy_req:header(<<"x-pretty-print">>, Req0) of
-        {'undefined', Req1} ->
+get_pretty_print(Req, Context) ->
+    case cowboy_req:header(<<"x-pretty-print">>, Req) of
+        'undefined' ->
             case cb_context:req_value(Context, <<"pretty_print">>) of
-                'undefined' -> {Req1, cb_context:set_pretty_print(Context, 'false')};
+                'undefined' -> {Req, cb_context:set_pretty_print(Context, 'false')};
                 Value ->
                     lager:debug("using pretty print value from inside the request"),
-                    {Req1, cb_context:set_pretty_print(Context, kz_term:is_true(Value))}
+                    {Req, cb_context:set_pretty_print(Context, kz_term:is_true(Value))}
             end;
-        {Value, Req1} ->
+        Value ->
             lager:debug("found pretty print options inside header"),
-            {Req1, cb_context:set_pretty_print(Context, kz_term:is_true(Value))}
+            {Req, cb_context:set_pretty_print(Context, kz_term:is_true(Value))}
     end.
 
 %%--------------------------------------------------------------------

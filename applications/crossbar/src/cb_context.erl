@@ -207,7 +207,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec resp_data(context()) -> resp_data().
 -spec resp_status(context()) -> crossbar_status().
 -spec resp_expires(context()) -> kz_datetime().
--spec resp_headers(context()) -> kz_proplist().
+-spec resp_headers(context()) -> cowboy:http_headers().
 -spec api_version(context()) -> ne_binary().
 -spec resp_etag(context()) -> 'automatic' | string() | api_binary().
 -spec resp_envelope(context()) -> kz_json:object().
@@ -445,8 +445,8 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_api_version(context(), ne_binary()) -> context().
 -spec set_resp_etag(context(), api_binary()) -> context().
 -spec set_resp_envelope(context(), kz_json:object()) -> context().
--spec set_resp_headers(context(), map()) -> context().
--spec add_resp_headers(context(), map()) -> context().
+-spec set_resp_headers(context(), cowboy:http_headers()) -> context().
+-spec add_resp_headers(context(), cowboy:http_headers()) -> context().
 -spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().
 -spec add_resp_header(context(), ne_binary(), ne_binary()) -> context().
 -spec set_allow_methods(context(), http_methods()) -> context().
