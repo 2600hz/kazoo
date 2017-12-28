@@ -74,9 +74,7 @@ handle(Req0, ?STATE(Meta, Bin)) ->
 
     Req1 = start_stream(Req0, Meta, Bin, ContentType),
 
-    %%set_resp_body_fun(Req0, Meta, Bin, ContentType)),
-
-    lager:debug("sending reply"),
+    lager:debug("sent reply"),
 
     {'ok', Req1, 'ok'}.
 
@@ -97,7 +95,8 @@ start_stream(Req, Meta, Bin, ContentType)
 
     ShoutHeader = kz_media_proxy_util:get_shout_header(MediaName, Url),
 
-    kz_media_proxy_util:stream_body(Req1, ChunkSize, Bin, ShoutHeader, 'true');
+    kz_media_proxy_util:stream_body(Req1, ChunkSize, Bin, ShoutHeader, 'true'),
+    Req1;
 start_stream(Req, Meta, Bin, ContentType) ->
     Size = byte_size(Bin),
     ChunkSize = min(Size, ?CHUNKSIZE),
@@ -106,7 +105,8 @@ start_stream(Req, Meta, Bin, ContentType) ->
                ,[kz_json:get_binary_value(<<"media_name">>, Meta, <<>>), ContentType, Size]
                ),
     Req1 = cowboy_req:stream_reply(200, kz_media_proxy_util:resp_headers(ContentType), Req),
-    kz_media_proxy_util:stream_body(Req1, ChunkSize, Bin, 'undefined', 'false').
+    kz_media_proxy_util:stream_body(Req1, ChunkSize, Bin, 'undefined', 'false'),
+    Req1.
 
 -spec terminate(any(), Req, state()) -> Req.
 terminate(_Reason, Req, _State) ->

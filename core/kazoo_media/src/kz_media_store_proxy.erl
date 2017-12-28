@@ -31,7 +31,7 @@ init({_Transport, _Proto}, Req, _Opts) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
     case authenticate(Req) of
         'true' ->
-            validate_request(cowboy_req:path_info(Req));
+            validate_request(cowboy_req:path_info(Req), Req);
         'false' ->
             lager:debug("request did not provide valid credentials"),
             {'shutdown', unauthorized(Req), 'ok'}
@@ -134,10 +134,7 @@ unauthorized_body() ->
 
 -spec handle(cowboy_req:req(), state()) -> handler_return().
 handle(Req, State) ->
-    case cowboy_req:read_body(Req) of
-        {'error', Reason} -> handle_error(Reason, Req, State);
-        Body -> handle_body(Body, State)
-    end.
+    handle_body(cowboy_req:read_body(Req), State).
 
 -spec handle_body(body(), state()) -> handler_return().
 handle_body({'more', Contents, Req}, #state{file=Device}=State) ->
@@ -145,6 +142,8 @@ handle_body({'more', Contents, Req}, #state{file=Device}=State) ->
         'ok' -> handle(Req, State);
         {'error', Reason} -> failure(Reason, Req)
     end;
+handle_body({'ok', <<>>, Req}, #state{file=Device}=State) ->
+    handle_close(Req, State, file:close(Device));
 handle_body({'ok', Contents, Req}, #state{file=Device}=State) ->
     case file:write(Device, Contents) of
         'ok' -> handle_close(Req, State, file:close(Device));
@@ -156,23 +155,18 @@ handle_close(Req, State, 'ok') ->
 handle_close(Req, _State, {'error', Reason}) ->
     failure(Reason, Req).
 
-handle_error(Reason, Req, #state{file=Device}=State) ->
-    _ = file:close(Device),
-    lager:debug("received error ~p requesting for body", [Reason]),
-    reply_error(500, State, Req).
-
--spec validate_request({list(), cowboy_req:req()}) -> handler_return().
-validate_request({[EncodedUrl, _Filename], Req}) ->
+-spec validate_request(list(), cowboy_req:req()) -> handler_return().
+validate_request([EncodedUrl, _Filename], Req) ->
     case decode_url(EncodedUrl) of
         'error' -> reply_error(404, Req);
-        Path -> validate_request(Path, Req)
+        Path -> validate_path_request(Path, Req)
     end;
-validate_request({_Else , Req}) ->
+validate_request(_Else, Req) ->
     lager:debug("unexpected path: ~p", [_Else]),
     reply_error(404, Req).
 
--spec validate_request(media_store_path(), cowboy_req:req()) -> handler_return().
-validate_request(Path, Req) ->
+-spec validate_path_request(media_store_path(), cowboy_req:req()) -> handler_return().
+validate_path_request(Path, Req) ->
     case is_appropriate_content_type(Path, Req) of
         {'ok', NewPath} -> setup_context(NewPath, Req);
         {'error', Code} -> reply_error(Code, Req)
