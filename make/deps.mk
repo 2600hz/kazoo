@@ -51,6 +51,7 @@ endif
 dep_amqp_client_commit = rabbitmq_v3_6_0
 dep_apns = git https://github.com/inaka/apns4erl.git 2.2.0
 dep_certifi = hex 0.3.0
+dep_cowboy = git https://github.com/ninenines/cowboy 2.2.0
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
 dep_eiconv = git https://github.com/zotonic/eiconv
