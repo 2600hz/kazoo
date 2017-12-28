@@ -139,8 +139,37 @@
                                  ,<<"Control-Queue">>
                                  ]).
 -define(OPTIONAL_ADD_PARTICIPANT_HEADERS, [<<"Account-ID">>
-                                               | ?OPTIONAL_CALL_EVENT_HEADERS
+                                          ,<<"Answered">>
+                                          ,<<"Authorizing-ID">>
+                                          ,<<"Authorizing-Type">>
+                                          ,<<"Bridge-ID">>
+                                          ,<<"Call-Direction">>
+                                          ,<<"Callee-ID-Name">>
+                                          ,<<"Callee-ID-Number">>
+                                          ,<<"Channel-Authorized">>
+                                          ,<<"Custom-Application-Vars">>
+                                          ,<<"Custom-Channel-Vars">>
+                                          ,<<"Custom-SIP-Headers">>
+                                          ,<<"Destination">>
+                                          ,<<"Ecallmgr-Node">>
+                                          ,<<"From">>
+                                          ,<<"Is-Loopback">>
+                                          ,<<"Is-On-Hold">>
+                                          ,<<"Media-Node">>
+                                          ,<<"Media-Server">>
+                                          ,<<"Node">>
+                                          ,<<"Other-Leg-Call-ID">>
+                                          ,<<"Presence-ID">>
+                                          ,<<"Realm">>
+                                          ,<<"Request">>
+                                          ,<<"Switch-Nodename">>
+                                          ,<<"Switch-URI">>
+                                          ,<<"Switch-URL">>
+                                          ,<<"Timestamp">>
+                                          ,<<"To">>
+                                          ,<<"Username">>
                                           ]).
+
 -define(ADD_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                 ,{<<"Event-Name">>, <<"add_participant">>}
                                 ]).
