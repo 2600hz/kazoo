@@ -105,7 +105,7 @@ rest_init(Req0, Opts) ->
     ProfileId = get_profile_id(Req0),
     maybe_trace(Req0),
 
-    {HostUrl, _} = cowboy_req:host_url(Req0),
+    {HostUrl, _} = cowboy_req:uri(Req0),
     {Host, Req1} = cowboy_req:host(Req0),
     {Port, Req2} = cowboy_req:port(Req1),
     {Path, Req3} = find_path(Req2, Opts),

@@ -197,18 +197,19 @@ maybe_start_plaintext(Dispatch) ->
             try
                 IP = get_binding_ip(),
                 lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
-                cowboy:start_http('api_resource', Workers
-                                 ,[{'ip', IP}
-                                  ,{'port', Port}
-                                  ]
-                                 ,[{'env', [{'dispatch', Dispatch}
-                                           ,{'timeout', ReqTimeout}
-                                           ]}
-                                  ,{'onrequest', fun on_request/1}
-                                  ,{'onresponse', fun on_response/4}
-                                  ,{'compress', ?USE_COMPRESSION}
-                                  ]
-                                 )
+                cowboy:start_clear('api_resource'
+                                  ,[{'ip', IP}
+                                   ,{'port', Port}
+                                   ,{'num_acceptors', Workers}
+                                   ]
+                                  ,#{'env' => #{'dispatch' => Dispatch
+                                               ,'timeout' => ReqTimeout
+                                               }
+                                    ,'onrequest' => fun on_request/1
+                                    ,'onresponse' => fun on_response/4
+                                    ,'compress' => ?USE_COMPRESSION
+                                    }
+                                  )
             of
                 {'ok', _} ->
                     lager:info("started plaintext API server");
@@ -283,16 +284,19 @@ start_ssl(Dispatch) ->
                            ,props:get_value('port', SSLOpts)
                            ]
                           ),
-                cowboy:start_https('api_resource_ssl', Workers
-                                  ,[{'ip', IP} | SSLOpts]
-                                  ,[{'env', [{'dispatch', Dispatch}
-                                            ,{'timeout', ReqTimeout}
-                                            ]}
-                                   ,{'onrequest', fun on_request/1}
-                                   ,{'onresponse', fun on_response/4}
-                                   ,{'compress', ?USE_COMPRESSION}
-                                   ]
-                                  )
+                cowboy:start_tls('api_resource_ssl'
+                                ,[{'ip', IP}
+                                 ,{'num_acceptors', Workers}
+                                  | SSLOpts
+                                 ]
+                                ,#{'env' => #{'dispatch' => Dispatch
+                                             ,'timeout' => ReqTimeout
+                                             }
+                                  ,'onrequest' => fun on_request/1
+                                  ,'onresponse' => fun on_response/4
+                                  ,'compress' => ?USE_COMPRESSION
+                                  }
+                                )
             of
                 {'ok', _} ->
                     lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);
