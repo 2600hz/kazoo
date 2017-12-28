@@ -335,7 +335,7 @@ get_url_encoded_body(ReqBody) ->
 extract_multipart(Context, {'done', Req}, _QS) ->
     {Context, Req};
 extract_multipart(Context, {'ok', Headers, Req}, QS) ->
-    {Ctx, R} = get_req_data(Context, {props:get_value(<<"content-type">>, Headers), Req}, QS),
+    {Ctx, R} = get_req_data(Context, {maps:get(<<"content-type">>, Headers, 'undefined'), Req}, QS),
     extract_multipart(Ctx
                      ,cowboy_req:read_part(R)
                      ,QS
@@ -1234,10 +1234,10 @@ get_encode_options(Context) ->
 create_csv_resp_content(Req, Context) ->
     Content = csv_body(cb_context:resp_data(Context)),
     ContextHeaders = cb_context:resp_headers(Context),
-    Headers = [{<<"content-type">>, props:get_value(<<"content-type">>, ContextHeaders, <<"text/csv">>)}
-              ,{<<"content-disposition">>, props:get_value(<<"content-disposition">>, ContextHeaders, <<"attachment; filename=\"data.csv\"">>)}
-              ],
-    {Content, lists:foldl(fun({H, V}, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)}.
+    Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
+               ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, <<"attachment; filename=\"data.csv\"">>)
+               },
+    {Content, maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)}.
 
 -spec create_resp_file(cowboy_req:req(), cb_context:context()) ->
                               {resp_file(), cowboy_req:req()}.

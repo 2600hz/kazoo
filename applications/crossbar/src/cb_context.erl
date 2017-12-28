@@ -1084,7 +1084,7 @@ system_properties(Context) ->
                         ,{fun query_string/1, <<"query_json">>}
                         ,{fun req_data/1, <<"req_data">>}
                         ,{fun req_json/1, <<"req_json">>}
-                        ,{fun(C) -> kz_json:from_list(req_headers(C)) end, <<"req_headers">>}
+                        ,{fun(C) -> kz_json:from_map(req_headers(C)) end, <<"req_headers">>}
                         ,{fun auth_account_id/1, <<"auth_account_id">>}
                         ,{fun account_name/1, <<"account_name">>}
                         ,{fun account_id/1, <<"account_id">>}
