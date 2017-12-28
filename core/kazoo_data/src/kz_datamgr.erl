@@ -429,7 +429,7 @@ db_view_update(DbName, Views, Remove) ->
 %%  ,{<<"target">>, <<"target_db">>}
 %%
 %%   IMPORTANT: Use the atom true, not binary <<"true">> (though it may be changing in couch to allow <<"true">>)
-%%  ,{<<"create_target">>, true} % optional, creates the DB on target if non-existent
+%%  ,{<<"create_target">>, true} % optional, creates the DB on target if nonexistent
 %%  ,{<<"continuous">>, true} % optional, continuously update target from source
 %%  ,{<<"cancel">>, true} % optional, will cancel a replication (one-time or continuous)
 %%
