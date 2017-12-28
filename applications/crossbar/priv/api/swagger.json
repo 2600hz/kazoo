@@ -1554,7 +1554,11 @@
                 },
                 "dial_strategy": {
                     "default": "simultaneous",
-                    "description": "",
+                    "description": "Dial strategy for the device",
+                    "enum": [
+                        "simultaneous",
+                        "single"
+                    ],
                     "type": "string"
                 },
                 "id": {
