@@ -25,10 +25,10 @@
 -define(SOCKET_ACCEPTORS, kapps_config:get_integer(?APP_NAME, <<"acceptors">>, 100)).
 -define(SOCKET_OPTIONS, [{'port', ?SOCKET_PORT}]).
 -define(COWBOY_ROUTER, cowboy_router:compile([{'_', [{"/", 'blackhole_socket_handler', []}]}])).
--define(COWBOY_OPTIONS, [{'env', [{'dispatch', ?COWBOY_ROUTER}]}]).
+-define(COWBOY_OPTIONS, #{'env' => #{'dispatch' => ?COWBOY_ROUTER}}).
 
--define(RANCH_SPEC(Ref),
-        ranch:child_spec(Ref, ?SOCKET_ACCEPTORS, ranch_tcp, ?SOCKET_OPTIONS, cowboy_protocol, ?COWBOY_OPTIONS)
+-define(RANCH_SPEC(Ref)
+       ,ranch:child_spec(Ref, ?SOCKET_ACCEPTORS, ranch_tcp, ?SOCKET_OPTIONS, cowboy_handler, ?COWBOY_OPTIONS)
        ).
 -define(CHILDREN, [?WORKER('blackhole_listener')
                   ,?WORKER('blackhole_tracking')
@@ -69,6 +69,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
 
     {'ok', {SupFlags, ?CHILDREN}}.
