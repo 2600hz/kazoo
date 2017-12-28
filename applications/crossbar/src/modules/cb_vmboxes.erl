@@ -229,7 +229,7 @@ validate_messages(Context, DocId, ?HTTP_POST) ->
             Message = kz_json:from_list([{<<"message">>, <<"No array of message ids are specified">>}]),
             cb_context:add_validation_error(<<"messages">>, <<"required">>, Message, Context);
         _ ->
-            NewBoxId = kz_json:get_ne_binary_value(<<"source_id">>, cb_context:req_data(Context)),
+            NewBoxId = kz_json:get_list_value(<<"source_id">>, cb_context:req_data(Context)),
             maybe_load_vmboxes([DocId | NewBoxId], Context)
     end;
 validate_messages(Context, DocId, ?HTTP_PUT) ->
@@ -275,7 +275,7 @@ validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
                                                    ,Context
                                                    );
                 'false' ->
-                    NewBoxId = kz_json:get_ne_binary_value(<<"source_id">>, cb_context:req_data(Context)),
+                    NewBoxId = kz_json:get_value(<<"source_id">>, cb_context:req_data(Context)),
                     maybe_load_vmboxes(NewBoxId, Context)
             end;
         {'error', Error} ->
