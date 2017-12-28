@@ -682,7 +682,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %% the process dictionary, where the logger expects it.
 %% @end
 %%--------------------------------------------------------------------
--spec put_reqid(context()) -> api_ne_binary().
+-spec put_reqid(context()) -> 'ok'.
 put_reqid(#cb_context{req_id=ReqId}) ->
     kz_util:put_callid(ReqId).
 
