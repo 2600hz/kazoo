@@ -1,0 +1,131 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "call_recordings",
+    "additionalProperties": false,
+    "description": "endpoint recording settings",
+    "properties": {
+        "call_id": {
+            "description": "call_id",
+            "name": "call_id",
+            "type": "string"
+        },
+        "callee_id_name": {
+            "description": "callee_id_name",
+            "name": "callee_id_name",
+            "type": "string"
+        },
+        "callee_id_number": {
+            "description": "callee_id_number",
+            "name": "callee_id_number",
+            "type": "string"
+        },
+        "caller_id_name": {
+            "description": "caller_id_name",
+            "name": "caller_id_name",
+            "type": "string"
+        },
+        "caller_id_number": {
+            "description": "caller_id_number",
+            "name": "caller_id_number",
+            "type": "string"
+        },
+        "cdr_id": {
+            "description": "cdr_id",
+            "name": "cdr_id",
+            "type": "string"
+        },
+        "content_type": {
+            "description": "content_type",
+            "name": "content_type",
+            "type": "string"
+        },
+        "custom_channel_vars": {
+            "description": "custom_channel_vars",
+            "name": "custom_channel_vars",
+            "type": "object"
+        },
+        "description": {
+            "description": "description",
+            "name": "description",
+            "type": "string"
+        },
+        "direction": {
+            "description": "direction",
+            "name": "direction",
+            "type": "string"
+        },
+        "duration": {
+            "description": "duration",
+            "minimum": 0,
+            "name": "duration",
+            "type": "integer"
+        },
+        "duration_ms": {
+            "description": "duration_ms",
+            "minimum": 0,
+            "name": "duration_ms",
+            "type": "integer"
+        },
+        "from": {
+            "description": "from",
+            "name": "from",
+            "type": "string"
+        },
+        "interaction_id": {
+            "description": "interaction_id",
+            "name": "interaction_id",
+            "type": "string"
+        },
+        "media_source": {
+            "description": "media_source",
+            "name": "media_source",
+            "type": "string"
+        },
+        "media_type": {
+            "description": "media_type",
+            "name": "media_type",
+            "type": "string"
+        },
+        "name": {
+            "description": "name",
+            "name": "name",
+            "type": "string"
+        },
+        "origin": {
+            "description": "origin",
+            "name": "origin",
+            "type": "string"
+        },
+        "owner_id": {
+            "description": "owner_id",
+            "name": "owner_id",
+            "type": "string"
+        },
+        "request": {
+            "description": "request",
+            "name": "request",
+            "type": "string"
+        },
+        "source_type": {
+            "description": "source_type",
+            "name": "source_type",
+            "type": "string"
+        },
+        "start": {
+            "description": "start timestamp, in gregorian seconds",
+            "name": "start",
+            "type": "integer"
+        },
+        "to": {
+            "description": "to",
+            "name": "to",
+            "type": "string"
+        },
+        "url": {
+            "description": "url",
+            "name": "url",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

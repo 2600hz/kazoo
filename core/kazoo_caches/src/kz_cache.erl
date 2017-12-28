@@ -50,6 +50,9 @@
 -define(EXPIRES, ?SECONDS_IN_HOUR).
 -define(EXPIRE_PERIOD, 10 * ?MILLISECONDS_IN_SECOND).
 -define(EXPIRE_PERIOD_MSG, 'expire_cache_objects').
+
+-define(MONITOR_EXPIRE_MSG, 'monitor_cleanup').
+
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
 -define(NOTIFY_KEY(Key), {'monitor_key', Key}).
@@ -272,7 +275,7 @@ dump_local(Srv, ShowValue) when not is_atom(Srv) ->
 dump_local(Srv, ShowValue) when not is_boolean(ShowValue) ->
     dump_local(Srv, kz_term:to_boolean(ShowValue));
 dump_local(Srv, ShowValue) ->
-    {PointerTab, MonitorTab} = gen_listener:call(Srv, {'tables'}),
+    {'tables', PointerTab, MonitorTab} = gen_server:call(Srv, {'tables'}),
 
     _ = [dump_table(Tab, ShowValue)
          || Tab <- [Srv, PointerTab, MonitorTab]
@@ -282,7 +285,7 @@ dump_local(Srv, ShowValue) ->
 -spec dump_table(ets:tab(), boolean()) -> 'ok'.
 dump_table(Tab, ShowValue) ->
     Now = kz_time:now_s(),
-    io:format("Table ~p~n", [ets:info(Tab, 'name')]),
+    io:format('user', "Table ~p~n", [ets:info(Tab, 'name')]),
     _ = [display_cache_obj(CacheObj, ShowValue, Now)
          || CacheObj <- ets:match_object(Tab, #cache_obj{_ = '_'})
         ],
@@ -299,39 +302,42 @@ display_cache_obj(#cache_obj{key=Key
                  ,ShowValue
                  ,Now
                  ) ->
-    io:format("Key: ~300p~n", [Key]),
-    io:format("Expires: ~30p~n", [Expires]),
+    io:format('user', "Key: ~300p~n", [Key]),
+    io:format('user', "Expires: ~30p~n", [Expires]),
     case is_number(Expires) of
         'true' ->
-            io:format("Remaining: ~30p~n", [(Timestamp
-                                             + Expires)
-                                            - Now
-                                           ]);
+            io:format('user', "Remaining: ~30p~n", [(Timestamp + Expires) - Now]);
         'false' -> 'ok'
     end,
-    io:format("Origin: ~300p~n", [Origin]),
-    io:format("Callback: ~s~n", [Callback =/= 'undefined']),
+    io:format('user', "Origin: ~300p~n", [Origin]),
+    io:format('user', "Callback: ~s~n", [Callback =/= 'undefined']),
     case ShowValue of
-        'true' -> io:format("Value: ~p~n", [Value]);
+        'true' -> io:format('user', "Value: ~p~n", [Value]);
         'false' -> 'ok'
     end,
-    io:format("~n", []).
+    io:format('user', "~n", []).
 
 -spec wait_for_key_local(atom(), any()) -> {'ok', any()} |
                                            {'error', 'timeout'}.
--spec wait_for_key_local(atom(), any(), kz_timeout()) ->
+-spec wait_for_key_local(atom(), any(), pos_integer()) ->
                                 {'ok', any()} |
                                 {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT).
 
-wait_for_key_local(Srv, Key, Timeout) ->
-    {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}),
-    lager:debug("waiting for message with ref ~p", [Ref]),
+wait_for_key_local(Srv, Key, Timeout) when is_integer(Timeout) ->
+    WaitFor = Timeout + 100,
+    {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}, WaitFor),
+    wait_for_response(Ref, WaitFor).
+
+-spec wait_for_response(reference(), kz_timeout()) -> {'ok', any()} |
+                                                      {'error', 'timeout'}.
+wait_for_response(Ref, WaitFor) ->
     receive
         {'exists', Ref, Value} -> {'ok', Value};
         {'store', Ref, Value} -> {'ok', Value};
         {_, Ref, _} -> {'error', 'timeout'}
+    after WaitFor -> {'error', 'timeout'}
     end.
 
 %%%===================================================================
@@ -349,11 +355,20 @@ wait_for_key_local(Srv, Key, Timeout) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> {'ok', state()}.
+-spec init([atom() | kz_timeout() | kz_proplist()]) -> {'ok', state()}.
 init([Name, ExpirePeriod, Props]) ->
     kz_util:put_callid(Name),
-    kapi_conf:declare_exchanges(),
+    init(Name, ExpirePeriod, Props, props:get_value('origin_bindings', Props)).
 
+-spec init(atom(), kz_timeout(), kz_proplist(), api_list()) -> {'ok', state()}.
+init(Name, ExpirePeriod, Props, 'undefined') ->
+    init(Name, ExpirePeriod, Props);
+init(Name, ExpirePeriod, Props, _Bindings) ->
+    kapi_conf:declare_exchanges(),
+    init(Name, ExpirePeriod, Props).
+
+-spec init(atom(), kz_timeout(), kz_proplist()) -> {'ok', state()}.
+init(Name, ExpirePeriod, Props) ->
     Tab = ets:new(Name
                  ,['set', 'public', 'named_table', {'keypos', #cache_obj.key}]
                  ),
@@ -419,7 +434,7 @@ monitor_response_fun(Pid, Ref) ->
 handle_call({'tables'}, _From, #state{pointer_tab=PointerTab
                                      ,monitor_tab=MonitorTab
                                      }=State) ->
-    {'reply', {PointerTab, MonitorTab}, State};
+    {'reply', {'tables', PointerTab, MonitorTab}, State};
 handle_call({'wait_for_key', Key, Timeout}
            ,{Pid, _}
            ,#state{tab=Tab
@@ -439,6 +454,7 @@ handle_call({'wait_for_key', Key, Timeout}
                                  ,callback=monitor_response_fun(Pid, Ref)
                                  },
             ets:insert(MonitorTab, CacheObj),
+            _ = start_monitor_expire_timer(Timeout, Ref),
             {'reply', {'ok', Ref}, State#state{has_monitors='true'}}
     end;
 handle_call('stop', _From, State) ->
@@ -577,6 +593,10 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
     _Expired > 0
         andalso lager:debug("expired ~p objects", [_Expired]),
     {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
+handle_info({'timeout', _Ref, {?MONITOR_EXPIRE_MSG, MonitorRef}}
+           ,#state{has_monitors='true'}=State
+           ) ->
+    {'noreply', maybe_exec_timeout_callbacks(State, MonitorRef)};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -742,6 +762,11 @@ maybe_exec_flush_callbacks(Tab) ->
          ,[{'=/=', '$3', 'undefined'}]
          ,[{{'$3', '$1', '$2'}}]
          }],
+
+    exec_flush_callbacks(Tab, MatchSpec).
+
+-spec exec_flush_callbacks(ets:tab(), ets:match_spec()) -> 'ok'.
+exec_flush_callbacks(Tab, MatchSpec) ->
     _ = [kz_util:spawn(Callback, [K, V, 'flush'])
          || {Callback, K, V} <- ets:select(Tab, MatchSpec),
             is_function(Callback, 3)
@@ -766,6 +791,33 @@ maybe_exec_store_callbacks(#state{monitor_tab=MonitorTab}=State, Key, Value) ->
         end,
     State#state{has_monitors=has_monitors(MonitorTab)}.
 
+-spec maybe_exec_timeout_callbacks(state(), reference()) -> state().
+maybe_exec_timeout_callbacks(#state{monitor_tab=MonitorTab}=State, MonitorRef) ->
+    MatchSpec = [{#cache_obj{key = '$1'
+                            ,callback = '$2'
+                            ,value = '$3'
+                            ,_ = '_'
+                            }
+                 ,[{'=:=', {'const', MonitorRef}, '$3'}]
+                 ,[['$1', '$3', '$2']]
+                 }],
+    exec_timeout_callbacks(MonitorTab, MatchSpec),
+    State#state{has_monitors=has_monitors(MonitorTab)}.
+
+-spec exec_timeout_callbacks(ets:tab(), ets:match_spec()) -> 'ok'.
+exec_timeout_callbacks(Tab, MatchSpec) ->
+    _ = [exec_timeout_callback(Tab, list_to_tuple(Callback))
+         || Callback <- ets:select(Tab, MatchSpec)
+        ],
+    'ok'.
+
+-spec exec_timeout_callback(ets:tab(), {any(), reference(), fun()}) -> 'true'.
+exec_timeout_callback(Tab, {Key, Value, Callback}) when is_function(Callback, 3),
+                                                        is_reference(Value) ->
+    lager:debug("timing out monitor for ~p ~p", [Key, Value]),
+    kz_util:spawn(Callback, [Key, Value, 'timeout']),
+    delete_monitor_callbacks(Tab, Key).
+
 -spec has_monitors(ets:tab()) -> boolean().
 has_monitors(MonitorTab) ->
     ets:info(MonitorTab, 'size') > 0.
@@ -783,6 +835,10 @@ delete_monitor_callbacks(MonitorTab, Key) ->
 -spec start_expire_period_timer(pos_integer()) -> reference().
 start_expire_period_timer(ExpirePeriod) ->
     erlang:start_timer(ExpirePeriod, self(), ?EXPIRE_PERIOD_MSG).
+
+-spec start_monitor_expire_timer(pos_integer(), reference()) -> reference().
+start_monitor_expire_timer(Timeout, Ref) ->
+    erlang:start_timer(Timeout, self(), {?MONITOR_EXPIRE_MSG, Ref}).
 
 -spec insert_origin_pointers('undefined' | origin_tuple() | origin_tuples()
                             ,cache_obj(), ets:tab()) -> 'ok'.

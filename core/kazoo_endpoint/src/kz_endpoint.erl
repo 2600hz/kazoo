@@ -20,6 +20,11 @@
         ,get_sip_realm/2, get_sip_realm/3
         ]).
 
+-export([unsolicited_owner_mwi_update/2
+        ,unsolicited_endpoint_mwi_update/2
+        ,send_mwi_update/5
+        ]).
+
 -ifdef(TEST).
 -export([attributes_keys/0]).
 -endif.
@@ -27,6 +32,8 @@
 -include("kazoo_endpoint.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
+
+-define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
 
 -define(NON_DIRECT_MODULES, [<<"cf_ring_group">>, <<"acdc_util">>]).
 
@@ -111,20 +118,20 @@ get(EndpointId, Call) ->
 
 -spec maybe_fetch_endpoint(ne_binary(), ne_binary()) ->
                                   {'ok', kz_json:object()} |
-                                  kz_datamgr:data_error().
+                                  {'error', any()}.
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case kz_device:fetch(AccountDb, EndpointId) of
         {'ok', JObj} ->
-            maybe_have_endpoint(JObj, EndpointId, AccountDb);
+            check_endpoint_type(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
             lager:info("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
             E
     end.
 
--spec maybe_have_endpoint(kz_json:object(), ne_binary(), ne_binary()) ->
+-spec check_endpoint_type(kz_json:object(), ne_binary(), ne_binary()) ->
                                  {'ok', kz_json:object()} |
-                                 {'error', 'not_device_nor_user'}.
-maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
+                                 {'error', any()}.
+check_endpoint_type(JObj, EndpointId, AccountDb) ->
     EndpointTypes = [<<"device">>, <<"user">>, <<"account">>],
     EndpointType = endpoint_type_as(kz_doc:type(JObj)),
     case lists:member(EndpointType, EndpointTypes) of
@@ -132,7 +139,7 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
             lager:info("endpoint module does not manage document type ~s", [EndpointType]),
             {'error', 'not_device_nor_user'};
         'true' ->
-            has_endpoint(JObj, EndpointId, AccountDb, EndpointType)
+            check_endpoint_enabled(JObj, EndpointId, AccountDb, EndpointType)
     end.
 
 -spec endpoint_type_as(api_binary()) -> api_binary().
@@ -140,9 +147,38 @@ endpoint_type_as(<<"click2call">>) -> <<"device">>;
 endpoint_type_as(<<"conference">>) -> <<"device">>;
 endpoint_type_as(Type) -> Type.
 
--spec has_endpoint(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
-                          {'ok', kz_json:object()}.
-has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
+-spec check_endpoint_enabled(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+                                    {'ok', kz_json:object()} |
+                                    {'error', any()}.
+check_endpoint_enabled(JObj, EndpointId, AccountDb, EndpointType) ->
+    case {kz_doc:is_soft_deleted(JObj)
+          orelse kz_doc:is_deleted(JObj)
+         ,is_endpoint_enabled(JObj, EndpointType)
+         }
+    of
+        {'true', _} ->
+            lager:info("not handling deleted endpoint ~s", [EndpointId]),
+            {'error', 'endpoint_deleted'};
+        {'false', 'false'} ->
+            lager:info("not handling disabled endpoint ~s", [EndpointId]),
+            {'error', 'endpoint_disabled'};
+        {'false', 'true'} ->
+            cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType)
+    end.
+
+-spec is_endpoint_enabled(kz_json:object(), ne_binary()) -> boolean().
+is_endpoint_enabled(JObj, <<"account">>) ->
+    kz_account:is_enabled(JObj);
+is_endpoint_enabled(JObj, <<"user">>) ->
+    kzd_user:is_enabled(JObj);
+is_endpoint_enabled(JObj, <<"device">>) ->
+    kz_device:enabled(JObj);
+is_endpoint_enabled(JObj, _) ->
+    kz_json:is_true(<<"enabled">>, JObj, 'true').
+
+-spec cache_store_endpoint(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+                                  {'ok', kz_json:object()}.
+cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
     Endpoint = kz_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
     catch kz_cache:store_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
@@ -1411,7 +1447,7 @@ generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = kapps_call:inception(Call),
 
     HeaderFuns = [fun(J) -> maybe_add_sip_headers(J, Endpoint, Call) end
-                 ,fun(J) -> maybe_add_alert_info(J, Endpoint, Inception) end
+                 ,fun(J) -> maybe_add_alert_info(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_invite_format(J, Endpoint, Call) end
                  ,fun(J) -> maybe_add_diversion(J, Endpoint, Inception, Call) end
@@ -1453,16 +1489,27 @@ merge_custom_sip_headers('undefined', JObj) ->
 merge_custom_sip_headers(CustomHeaders, JObj) ->
     kz_json:merge_jobjs(CustomHeaders, JObj).
 
--spec maybe_add_alert_info(kz_json:object(), kz_json:object(), api_binary()) -> kz_json:object().
-maybe_add_alert_info(JObj, Endpoint, 'undefined') ->
+-spec maybe_add_alert_info(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
+maybe_add_alert_info(JObj, Endpoint, Call) ->
+    case kapps_call:kvs_fetch(<<"Override-Ringtone">>, Call) of
+        'undefined' -> maybe_add_alert_info_from_endpoint(JObj, Endpoint, kapps_call:inception(Call));
+        Ringtone -> set_alert_info(Ringtone, JObj)
+    end.
+
+-spec set_alert_info(ne_binary(), kz_json:object()) -> kz_json:object().
+set_alert_info(Info, JObj) ->
+    kz_json:set_value(<<"Alert-Info">>, Info, JObj).
+
+-spec maybe_add_alert_info_from_endpoint(kz_json:object(), kz_json:object(), api_binary()) -> kz_json:object().
+maybe_add_alert_info_from_endpoint(JObj, Endpoint, 'undefined') ->
     case kz_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
         'undefined' -> JObj;
-        Ringtone -> kz_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
+        Ringtone -> set_alert_info(Ringtone, JObj)
     end;
-maybe_add_alert_info(JObj, Endpoint, _Inception) ->
+maybe_add_alert_info_from_endpoint(JObj, Endpoint, _Inception) ->
     case kz_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
         'undefined' -> JObj;
-        Ringtone -> kz_json:set_value(<<"Alert-Info">>, Ringtone, JObj)
+        Ringtone -> set_alert_info(Ringtone, JObj)
     end.
 
 -spec maybe_add_invite_format(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
@@ -1624,7 +1671,8 @@ maybe_set_confirm_properties({Endpoint, Call, CallFwd, CCVs}=Acc) ->
         'true' ->
             lager:info("call forwarding configured to require key press"),
             Confirm = [{<<"Confirm-Key">>, <<"1">>}
-                      ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
+                      ,{<<"Confirm-Cancel-Timeout">>, 'true'}
+                      ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
                       ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
                       ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
                       ],
@@ -1922,3 +1970,158 @@ maybe_record_endpoint({Endpoint, Call, CallFwd, Actions} = Acc) ->
                     {Endpoint, Call, CallFwd, NewActions}
             end
     end.
+
+-type mwi_update_return() :: 'missing_account_db' |
+                             'missing_owner_id'.
+
+-spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
+                                          'ok' |
+                                          {'error', mwi_update_return()} |
+                                          kz_datamgr:data_error().
+-spec unsolicited_owner_mwi_update(ne_binary(), ne_binary(), boolean()) ->
+                                          'ok' |
+                                          {'error', mwi_update_return()} |
+                                          kz_datamgr:data_error().
+unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
+unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
+unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
+    AccountId = kz_util:format_account_id(AccountDb),
+    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
+    unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
+
+unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
+    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
+unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
+    ViewOptions = [{'key', [OwnerId, <<"device">>]}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
+        {'ok', JObjs} ->
+            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
+            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+            lists:foreach(
+              fun(JObj) -> maybe_send_mwi_update(JObj, AccountId, New, Saved) end
+                         ,JObjs
+             );
+        {'error', _R}=E ->
+            lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
+            E
+    end.
+
+-spec maybe_send_mwi_update(kz_json:object(), ne_binary(), integer(), integer()) -> 'ok'.
+maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
+    J = kz_json:get_value(<<"doc">>, JObj),
+    Username = kz_device:sip_username(J),
+    Realm = get_sip_realm(J, AccountId),
+    OwnerId = get_endpoint_owner(J),
+    case kz_device:sip_method(J) =:= <<"password">>
+        andalso Username =/= 'undefined'
+        andalso Realm =/= 'undefined'
+        andalso OwnerId =/= 'undefined'
+        andalso kz_device:unsolicitated_mwi_updates(J)
+    of
+        'true' -> send_mwi_update(New, Saved, Username, Realm);
+        'false' -> 'ok'
+    end.
+
+-spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
+                                             'ok' | {'error', any()}.
+-spec unsolicited_endpoint_mwi_update(ne_binary(), ne_binary(), boolean()) ->
+                                             'ok' | {'error', any()}.
+
+unsolicited_endpoint_mwi_update('undefined', _) ->
+    {'error', 'missing_account_db'};
+unsolicited_endpoint_mwi_update(_, 'undefined') ->
+    {'error', 'missing_owner_id'};
+unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
+    AccountId = kz_util:format_account_id(AccountDb),
+    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
+    unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
+
+unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
+    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
+unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
+    case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
+        {'error', _}=E -> E;
+        {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
+    end.
+
+-spec maybe_send_endpoint_mwi_update(ne_binary(), kz_json:object()) ->
+                                            'ok' | {'error', 'not_appropriate'}.
+-spec maybe_send_endpoint_mwi_update(ne_binary(), kz_json:object(), boolean()) ->
+                                            'ok' | {'error', 'not_appropriate'}.
+
+maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
+    maybe_send_endpoint_mwi_update(AccountDb, JObj, kz_device:unsolicitated_mwi_updates(JObj)).
+
+maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
+    lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
+maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
+    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    Username = kz_device:sip_username(JObj),
+    Realm = get_sip_realm(JObj, AccountId),
+    OwnerId = get_endpoint_owner(JObj),
+    case kz_device:sip_method(JObj) =:= <<"password">>
+        andalso Username =/= 'undefined'
+        andalso Realm =/= 'undefined'
+    of
+        'false' -> {'error', 'not_appropriate'};
+        'true' ->
+            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
+            send_mwi_update(New, Saved, Username, Realm)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-type vm_count() :: non_neg_integer().
+-spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary()) -> 'ok'.
+send_mwi_update(New, Saved, Username, Realm) ->
+    send_mwi_update(New, Saved, Username, Realm, kz_json:new()).
+
+-spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+send_mwi_update(New, Saved, Username, Realm, JObj) ->
+    Command = [{<<"To">>, <<Username/binary, "@", Realm/binary>>}
+              ,{<<"Messages-New">>, New}
+              ,{<<"Messages-Saved">>, Saved}
+              ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("updating MWI for ~s@~s (~p/~p)", [Username, Realm, New, Saved]),
+    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).
+
+
+-spec is_unsolicited_mwi_enabled(ne_binary()) -> boolean().
+is_unsolicited_mwi_enabled(AccountId) ->
+    kapps_config:get_is_true(<<"callflow">>, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
+        andalso kz_term:is_true(kapps_account_config:get(AccountId, <<"callflow">>, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
+
+-spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
+vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
+vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
+    kvm_messages:count_by_owner(AccountDb, OwnerId).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_endpoint_owner(kz_json:object()) -> api_ne_binary().
+get_endpoint_owner(JObj) ->
+    maybe_get_endpoint_hotdesk_owner(JObj).
+
+-spec maybe_get_endpoint_hotdesk_owner(kz_json:object()) -> api_ne_binary().
+maybe_get_endpoint_hotdesk_owner(JObj) ->
+    case kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
+        [] -> maybe_get_endpoint_assigned_owner(JObj);
+        [OwnerId] -> OwnerId;
+        [_|_] -> 'undefined'
+    end.
+
+-spec maybe_get_endpoint_assigned_owner(kz_json:object()) -> api_ne_binary().
+maybe_get_endpoint_assigned_owner(JObj) ->
+    kz_json:get_ne_binary_value(<<"owner_id">>, JObj).

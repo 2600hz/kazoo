@@ -116,7 +116,11 @@ list_templates_from_db(Db) ->
                             )
     of
         {'ok', Results} ->
-            [kz_doc:id(Result) || Result <- Results];
+            [Id
+             || Result <- Results,
+                Id <- [kz_doc:id(Result)],
+                'notification.skel' =/=  Id
+            ];
         {'error', _E} ->
             io:format("failed to query existing notifications: ~p~n", [_E]),
             []
@@ -184,9 +188,9 @@ copy_from_system_to_account(AccountDb, Id) ->
 -spec renderer_status() -> 'no_return'.
 renderer_status() ->
     Workers = [{Pid, process_info(Pid, 'message_queue_len')}
-               || {_, Pid, _, _} <- gen_server:call(teletype_sup:render_farm_name(), 'get_all_workers')
+               || {_, Pid, _, _} <- gen_server:call(teletype_farms_sup:render_farm_name(), 'get_all_workers')
               ],
-    {StateName, TotalWorkers, TotalOverflow, TotalInUse} = poolboy:status(teletype_sup:render_farm_name()),
+    {StateName, TotalWorkers, TotalOverflow, TotalInUse} = poolboy:status(teletype_farms_sup:render_farm_name()),
     io:format("Renderer Pool~n", []),
     io:format("  State           : ~s~n", [StateName]),
     io:format("  Total Workers   : ~p~n", [TotalWorkers]),

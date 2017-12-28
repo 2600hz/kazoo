@@ -1,0 +1,37 @@
+{
+    "_id": "configs_test_account_config_reseller_system",
+    "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
+    "one_root_key": "master_system",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
+    "pvt_account_id": "account0000000000000000000000001",
+    "pvt_created": 63668324118,
+    "pvt_modified": 63668324118,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "account_config",
+    "root_obj_key": {
+        "b_empty_list": [],
+        "b_key": "master-system",
+        "b_keys": [
+            "OneMasterSystem"
+        ],
+        "bol_key": false,
+        "f_key": 8.7,
+        "i_key": 956,
+        "list_of_json": [
+            {
+                "name": "master+system"
+            }
+        ],
+        "master_key": "i am here to mock the reseller",
+        "obj_empty_test": {
+            "banana": "bna.na.na.na.na.na.na.na",
+            "obj_empty_sometimes": {
+                "master_key": true
+            }
+        },
+        "obj_key": {
+            "from": "master"
+        },
+        "reseller_system_only": "from_master"
+    }
+}

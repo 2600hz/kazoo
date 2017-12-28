@@ -7,9 +7,9 @@
 %%%-------------------------------------------------------------------
 -module(conf_discovery_req).
 
--include("conference.hrl").
-
 -export([handle_req/2]).
+
+-include("conference.hrl").
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Options) ->
@@ -37,10 +37,9 @@ maybe_welcome_to_conference(Call, Srv, DiscoveryJObj) ->
 welcome_to_conference(Call, Srv, DiscoveryJObj) ->
     case kz_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
         'undefined' -> kapps_call_command:prompt(<<"conf-welcome">>, Call);
-        Media -> kapps_call_command:play(
-                   kz_media_util:media_path(Media, kapps_call:account_id(Call))
+        Media -> kapps_call_command:play(kz_media_util:media_path(Media, kapps_call:account_id(Call))
                                         ,Call
-                  )
+                                        )
     end,
     maybe_collect_conference_id(Call, Srv, DiscoveryJObj).
 
@@ -250,7 +249,7 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
     SwitchHostname = kapps_call:switch_hostname(Call),
     lager:debug("participant switch nodename ~p", [SwitchHostname]),
 
-    case kz_json:get_value(<<"Switch-Hostname">>, JObj) of
+    case kz_json:get_first_defined([<<"Switch-Hostname">>, <<"Media-Server">>], JObj) of
         SwitchHostname ->
             lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
             conf_participant:join_local(Srv);

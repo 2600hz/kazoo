@@ -50,17 +50,5 @@
 -define(WRONG_ACCOUNT_ID, <<"non_existing_ae05bd2c7779bc706da">>).
 -endif.
 
--ifdef(TEST).
--define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
--else.
--define(LOG_ERROR(F,A), lager:error(F,A)).
--define(LOG_WARN(F,A), lager:warning(F,A)).
--define(LOG_DEBUG(F,A), lager:debug(F,A)).
--define(LOG_DEBUG(F), lager:debug(F)).
--endif.
-
 -define(KAZOO_SERVICES_HRL, 'true').
 -endif.

@@ -359,12 +359,10 @@
                     "description": "call recording configuration",
                     "properties": {
                         "account": {
-                            "$ref": "#/definitions/call_recording",
-                            "type": "object"
+                            "$ref": "#/definitions/call_recording"
                         },
                         "endpoint": {
-                            "$ref": "#/definitions/call_recording",
-                            "type": "object"
+                            "$ref": "#/definitions/call_recording"
                         }
                     },
                     "type": "object"
@@ -392,15 +390,11 @@
                 },
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
-                    "default": {},
-                    "description": "The account default caller ID parameters",
-                    "type": "object"
+                    "description": "The account default caller ID parameters"
                 },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
-                    "default": {},
-                    "description": "A list of default rules used to modify dialed numbers",
-                    "type": "object"
+                    "description": "A list of default rules used to modify dialed numbers"
                 },
                 "do_not_disturb": {
                     "properties": {
@@ -417,8 +411,7 @@
                     "type": "boolean"
                 },
                 "formatters": {
-                    "$ref": "#/definitions/formatters",
-                    "type": "object"
+                    "$ref": "#/definitions/formatters"
                 },
                 "language": {
                     "description": "The language for this account",
@@ -433,7 +426,7 @@
                     "properties": {
                         "media_id": {
                             "description": "The ID of a media object that should be used as the default music on hold",
-                            "maxLength": 128,
+                            "maxLength": 2048,
                             "type": "string"
                         }
                     },
@@ -921,6 +914,134 @@
                 },
                 "onnet": {
                     "$ref": "#/definitions/call_recording.parameters"
+                }
+            },
+            "type": "object"
+        },
+        "call_recordings": {
+            "description": "endpoint recording settings",
+            "properties": {
+                "call_id": {
+                    "description": "call_id",
+                    "name": "call_id",
+                    "type": "string"
+                },
+                "callee_id_name": {
+                    "description": "callee_id_name",
+                    "name": "callee_id_name",
+                    "type": "string"
+                },
+                "callee_id_number": {
+                    "description": "callee_id_number",
+                    "name": "callee_id_number",
+                    "type": "string"
+                },
+                "caller_id_name": {
+                    "description": "caller_id_name",
+                    "name": "caller_id_name",
+                    "type": "string"
+                },
+                "caller_id_number": {
+                    "description": "caller_id_number",
+                    "name": "caller_id_number",
+                    "type": "string"
+                },
+                "cdr_id": {
+                    "description": "cdr_id",
+                    "name": "cdr_id",
+                    "type": "string"
+                },
+                "content_type": {
+                    "description": "content_type",
+                    "name": "content_type",
+                    "type": "string"
+                },
+                "custom_channel_vars": {
+                    "description": "custom_channel_vars",
+                    "name": "custom_channel_vars",
+                    "type": "object"
+                },
+                "description": {
+                    "description": "description",
+                    "name": "description",
+                    "type": "string"
+                },
+                "direction": {
+                    "description": "direction",
+                    "name": "direction",
+                    "type": "string"
+                },
+                "duration": {
+                    "description": "duration",
+                    "minimum": 0,
+                    "name": "duration",
+                    "type": "integer"
+                },
+                "duration_ms": {
+                    "description": "duration_ms",
+                    "minimum": 0,
+                    "name": "duration_ms",
+                    "type": "integer"
+                },
+                "from": {
+                    "description": "from",
+                    "name": "from",
+                    "type": "string"
+                },
+                "interaction_id": {
+                    "description": "interaction_id",
+                    "name": "interaction_id",
+                    "type": "string"
+                },
+                "media_source": {
+                    "description": "media_source",
+                    "name": "media_source",
+                    "type": "string"
+                },
+                "media_type": {
+                    "description": "media_type",
+                    "name": "media_type",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "name",
+                    "name": "name",
+                    "type": "string"
+                },
+                "origin": {
+                    "description": "origin",
+                    "name": "origin",
+                    "type": "string"
+                },
+                "owner_id": {
+                    "description": "owner_id",
+                    "name": "owner_id",
+                    "type": "string"
+                },
+                "request": {
+                    "description": "request",
+                    "name": "request",
+                    "type": "string"
+                },
+                "source_type": {
+                    "description": "source_type",
+                    "name": "source_type",
+                    "type": "string"
+                },
+                "start": {
+                    "description": "start timestamp, in gregorian seconds",
+                    "name": "start",
+                    "type": "integer"
+                },
+                "to": {
+                    "description": "to",
+                    "name": "to",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "url",
+                    "name": "url",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -2233,6 +2354,15 @@
                     ],
                     "type": "string"
                 },
+                "req_body_format": {
+                    "default": "form",
+                    "description": "What format should the request body have",
+                    "enum": [
+                        "form",
+                        "json"
+                    ],
+                    "type": "string"
+                },
                 "req_format": {
                     "default": "kazoo",
                     "description": "What format of Pivot will the your server respond with",
@@ -2397,6 +2527,18 @@
                 },
                 "media_name": {
                     "description": "the name of media",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "HTTP verb to use when sending the recording to the supplied URL",
+                    "enum": [
+                        "put",
+                        "post"
+                    ],
+                    "type": "string"
+                },
+                "origin": {
+                    "description": "How the recording was started - read-only",
                     "type": "string"
                 },
                 "record_min_sec": {
@@ -2573,6 +2715,7 @@
                 },
                 "media": {
                     "description": "Optional media file to play before responding with the hangup code/cause",
+                    "maxLength": 2048,
                     "type": "string"
                 },
                 "message": {
@@ -3526,6 +3669,39 @@
             },
             "type": "object"
         },
+        "conferences.dial": {
+            "description": "Schema for conference dial API command",
+            "properties": {
+                "caller_id_name": {
+                    "description": "Caller ID Name to use when dialing out to endpoints",
+                    "type": "string"
+                },
+                "caller_id_number": {
+                    "description": "Caller ID Number to use when dialing out to endpoints",
+                    "type": "string"
+                },
+                "endpoints": {
+                    "items": {
+                        "description": "Device or User IDs, DIDs or extensions, SIP URIs",
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "target_call_id": {
+                    "description": "Existing UUID to use as a hint for where to start the conference",
+                    "type": "string"
+                },
+                "timeout": {
+                    "description": "How long to try to reach the endpoint(s)",
+                    "minimum": 1,
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "endpoints"
+            ]
+        },
         "connectivity": {
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
             "properties": {
@@ -3839,8 +4015,7 @@
                     "type": "object"
                 },
                 "call_recording": {
-                    "$ref": "#/definitions/call_recording",
-                    "type": "object"
+                    "$ref": "#/definitions/call_recording"
                 },
                 "call_restriction": {
                     "additionalProperties": {
@@ -3865,9 +4040,7 @@
                 },
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
-                    "default": {},
-                    "description": "The device caller ID parameters",
-                    "type": "object"
+                    "description": "The device caller ID parameters"
                 },
                 "contact_list": {
                     "default": {},
@@ -3886,9 +4059,7 @@
                 },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
-                    "default": {},
-                    "description": "A list of rules used to modify dialed numbers",
-                    "type": "object"
+                    "description": "A list of rules used to modify dialed numbers"
                 },
                 "do_not_disturb": {
                     "description": "DND Parameters",
@@ -3911,136 +4082,15 @@
                     "type": "boolean"
                 },
                 "formatters": {
-                    "$ref": "#/definitions/formatters",
-                    "type": "object"
+                    "$ref": "#/definitions/formatters"
                 },
                 "language": {
                     "description": "The language for the device",
                     "type": "string"
                 },
                 "media": {
-                    "default": {},
-                    "description": "The device media parameters",
-                    "properties": {
-                        "audio": {
-                            "default": {},
-                            "description": "The audio media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [
-                                        "PCMU"
-                                    ],
-                                    "description": "A list of audio codecs the device supports",
-                                    "items": {
-                                        "enum": [
-                                            "OPUS",
-                                            "CELT@32000h",
-                                            "G7221@32000h",
-                                            "G7221@16000h",
-                                            "G722",
-                                            "speex@32000h",
-                                            "speex@16000h",
-                                            "PCMU",
-                                            "PCMA",
-                                            "G729",
-                                            "GSM",
-                                            "CELT@48000h",
-                                            "CELT@64000h",
-                                            "G722_16",
-                                            "G722_32",
-                                            "CELT_48",
-                                            "CELT_64",
-                                            "Speex",
-                                            "speex"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "bypass_media": {
-                            "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
-                            "enum": [
-                                true,
-                                false,
-                                "auto"
-                            ],
-                            "type": [
-                                "boolean",
-                                "string"
-                            ]
-                        },
-                        "encryption": {
-                            "default": {},
-                            "description": "Encryption Parameters",
-                            "properties": {
-                                "enforce_security": {
-                                    "default": false,
-                                    "description": "Is Encryption Enabled?",
-                                    "type": "boolean"
-                                },
-                                "methods": {
-                                    "default": [],
-                                    "description": "Supported Encryption Types",
-                                    "items": {
-                                        "enum": [
-                                            "zrtp",
-                                            "srtp"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "fax_option": {
-                            "description": "Is T.38 Supported?",
-                            "type": "boolean"
-                        },
-                        "ignore_early_media": {
-                            "description": "The option to determine if early media from the device should always be ignored",
-                            "type": "boolean"
-                        },
-                        "progress_timeout": {
-                            "description": "The progress timeout to apply to the device (seconds)",
-                            "type": "integer"
-                        },
-                        "rtcp_mux": {
-                            "description": "RTCP protocol messages mixed with RTP data",
-                            "type": "boolean"
-                        },
-                        "video": {
-                            "default": {},
-                            "description": "The video media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [],
-                                    "description": "A list of video codecs the device supports",
-                                    "items": {
-                                        "enum": [
-                                            "VP8",
-                                            "H264",
-                                            "H263",
-                                            "H261"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "webrtc": {
-                            "description": "If true forces a webrtc compatible SDP on the INVITE.",
-                            "type": "boolean"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/endpoint.media",
+                    "description": "Configure audio/video/etc media options for this device"
                 },
                 "metaflows": {
                     "$ref": "#/definitions/metaflows",
@@ -4052,7 +4102,7 @@
                     "properties": {
                         "media_id": {
                             "description": "The ID of a media object that should be used as the music on hold",
-                            "maxLength": 128,
+                            "maxLength": 2048,
                             "type": "string"
                         }
                     },
@@ -4246,6 +4296,46 @@
             ],
             "type": "object"
         },
+        "devices_notify": {
+            "description": "Schema for CrossBar devices notify API",
+            "properties": {
+                "data": {
+                    "description": "Action-specific parameters",
+                    "properties": {
+                        "body": {
+                            "description": "Parameters of content body of SIP NOTIFY",
+                            "properties": {
+                                "content_type": {
+                                    "description": "The Content-Type of the data in the content body",
+                                    "type": "string"
+                                },
+                                "data": {
+                                    "description": "The data in the content body",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "data",
+                                "content_type"
+                            ],
+                            "type": "object"
+                        },
+                        "event": {
+                            "description": "Event header value for SIP NOTIFY",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "event"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "data"
+            ],
+            "type": "object"
+        },
         "dialplans": {
             "description": "Permit local dialing by converting the dialed number to a routable form",
             "properties": {
@@ -4341,6 +4431,118 @@
                 }
             }
         },
+        "endpoint.media": {
+            "description": "Schema for endpoint media options",
+            "properties": {
+                "audio": {
+                    "default": {},
+                    "description": "The audio media parameters",
+                    "properties": {
+                        "codecs": {
+                            "description": "A list of audio codecs the endpoint supports",
+                            "items": {
+                                "enum": [
+                                    "OPUS",
+                                    "CELT@32000h",
+                                    "G7221@32000h",
+                                    "G7221@16000h",
+                                    "G722",
+                                    "speex@32000h",
+                                    "speex@16000h",
+                                    "PCMU",
+                                    "PCMA",
+                                    "G729",
+                                    "GSM",
+                                    "CELT@48000h",
+                                    "CELT@64000h",
+                                    "G722_16",
+                                    "G722_32",
+                                    "CELT_48",
+                                    "CELT_64",
+                                    "Speex",
+                                    "speex"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array",
+                            "uniqueItems": true
+                        }
+                    },
+                    "type": "object"
+                },
+                "bypass_media": {
+                    "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
+                    "enum": [
+                        true,
+                        false,
+                        "auto"
+                    ],
+                    "type": [
+                        "boolean",
+                        "string"
+                    ]
+                },
+                "encryption": {
+                    "default": {},
+                    "description": "Encryption Parameters",
+                    "properties": {
+                        "enforce_security": {
+                            "default": false,
+                            "description": "Is Encryption Enabled?",
+                            "type": "boolean"
+                        },
+                        "methods": {
+                            "default": [],
+                            "description": "Supported Encryption Types",
+                            "items": {
+                                "enum": [
+                                    "zrtp",
+                                    "srtp"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "type": "object"
+                },
+                "fax_option": {
+                    "description": "Is T.38 Supported?",
+                    "type": "boolean"
+                },
+                "ignore_early_media": {
+                    "description": "The option to determine if early media from the endpoint should always be ignored",
+                    "type": "boolean"
+                },
+                "progress_timeout": {
+                    "description": "The progress timeout to apply to the endpoint (seconds)",
+                    "type": "integer"
+                },
+                "video": {
+                    "default": {},
+                    "description": "The video media parameters",
+                    "properties": {
+                        "codecs": {
+                            "default": [],
+                            "description": "A list of video codecs the endpoint supports",
+                            "items": {
+                                "enum": [
+                                    "H261",
+                                    "H263",
+                                    "H264",
+                                    "VP8"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array",
+                            "uniqueItems": true
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
         "faxbox": {
             "description": "FaxBoxes allow configuration of individual fax virtual machines",
             "properties": {
@@ -4379,7 +4581,7 @@
                 },
                 "media": {
                     "default": {},
-                    "description": "The device media parameters",
+                    "description": "The faxbox media parameters",
                     "properties": {
                         "fax_option": {
                             "description": "Is T.38 Supported?",
@@ -7960,6 +8162,34 @@
             ],
             "type": "object"
         },
+        "kapi.camping.req": {
+            "description": "AMQP API for camping.req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Camping-Request": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "camping"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "request"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Camping-Request"
+            ],
+            "type": "object"
+        },
         "kapi.conf.doc_type_update": {
             "description": "AMQP API for conf.doc_type_update",
             "properties": {
@@ -8077,6 +8307,128 @@
             },
             "required": [
                 "Dialplan-Command"
+            ],
+            "type": "object"
+        },
+        "kapi.conference.add_participant": {
+            "description": "AMQP API for conference.add_participant",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Answered": {
+                    "type": "string"
+                },
+                "Authorizing-ID": {
+                    "type": "string"
+                },
+                "Authorizing-Type": {
+                    "type": "string"
+                },
+                "Bridge-ID": {
+                    "type": "string"
+                },
+                "Call-Direction": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Callee-ID-Name": {
+                    "type": "string"
+                },
+                "Callee-ID-Number": {
+                    "type": "string"
+                },
+                "Channel-Authorized": {
+                    "type": "string"
+                },
+                "Conference-ID": {
+                    "type": "string"
+                },
+                "Control-Queue": {
+                    "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "Destination": {
+                    "type": "string"
+                },
+                "Ecallmgr-Node": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "conference"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "add_participant"
+                    ],
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "Is-Loopback": {
+                    "type": "string"
+                },
+                "Is-On-Hold": {
+                    "type": "string"
+                },
+                "Media-Node": {
+                    "type": "string"
+                },
+                "Media-Server": {
+                    "type": "string"
+                },
+                "Node": {
+                    "type": "string"
+                },
+                "Other-Leg-Call-ID": {
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Realm": {
+                    "type": "string"
+                },
+                "Request": {
+                    "type": "string"
+                },
+                "Switch-Nodename": {
+                    "type": "string"
+                },
+                "Switch-URI": {
+                    "type": "string"
+                },
+                "Switch-URL": {
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                },
+                "Username": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call-ID",
+                "Conference-ID",
+                "Control-Queue"
             ],
             "type": "object"
         },
@@ -8217,6 +8569,9 @@
         "kapi.conference.dial": {
             "description": "AMQP API for conference.dial",
             "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
                 "Application-Name": {
                     "enum": [
                         "dial"
@@ -8261,6 +8616,9 @@
                 "Outbound-Call-ID": {
                     "type": "string"
                 },
+                "Target-Call-ID": {
+                    "type": "string"
+                },
                 "Timeout": {
                     "type": "integer"
                 }
@@ -8269,6 +8627,36 @@
                 "Application-Name",
                 "Conference-ID",
                 "Endpoints"
+            ],
+            "type": "object"
+        },
+        "kapi.conference.dial_resp": {
+            "description": "AMQP API for conference.dial_resp",
+            "properties": {
+                "Application-Name": {
+                    "enum": [
+                        "dial_resp"
+                    ],
+                    "type": "string"
+                },
+                "Endpoint-Responses": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "conference"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Endpoint-Responses"
             ],
             "type": "object"
         },
@@ -10509,6 +10897,9 @@
                     "enum": [
                         "command"
                     ],
+                    "type": "string"
+                },
+                "Hangup-Cause": {
                     "type": "string"
                 },
                 "Insert-At": {
@@ -14214,6 +14605,9 @@
                 "Channels": {
                     "type": "string"
                 },
+                "Conferences": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "nodes"
@@ -15698,6 +16092,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -15737,7 +16134,7 @@
                 "Cc": {
                     "type": "string"
                 },
-                "Comments": {
+                "Comment": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -15854,6 +16251,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -15932,6 +16332,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16006,6 +16409,9 @@
                 },
                 "Preview": {
                     "type": "string"
+                },
+                "Reason": {
+                    "type": "object"
                 },
                 "Reply-To": {
                     "type": "string"
@@ -16085,6 +16491,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16163,6 +16572,9 @@
                 "Preview": {
                     "type": "string"
                 },
+                "Reason": {
+                    "type": "object"
+                },
                 "Reply-To": {
                     "type": "string"
                 },
@@ -16240,6 +16652,9 @@
                 },
                 "Preview": {
                     "type": "string"
+                },
+                "Reason": {
+                    "type": "object"
                 },
                 "Reply-To": {
                     "type": "string"
@@ -17345,6 +17760,9 @@
                     ],
                     "type": "string"
                 },
+                "Origination-Call-ID": {
+                    "type": "string"
+                },
                 "Outbound-Call-ID": {
                     "type": "string"
                 },
@@ -17570,6 +17988,9 @@
                     "type": "string"
                 },
                 "HTTP-Method": {
+                    "type": "string"
+                },
+                "Request-Body-Format": {
                     "type": "string"
                 },
                 "Request-Format": {
@@ -21001,34 +21422,6 @@
             ],
             "type": "object"
         },
-        "kapi.switch.check_sync": {
-            "description": "AMQP API for switch.check_sync",
-            "properties": {
-                "Event-Category": {
-                    "enum": [
-                        "switch_event"
-                    ],
-                    "type": "string"
-                },
-                "Event-Name": {
-                    "enum": [
-                        "check_sync"
-                    ],
-                    "type": "string"
-                },
-                "Realm": {
-                    "type": "string"
-                },
-                "Username": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Realm",
-                "Username"
-            ],
-            "type": "object"
-        },
         "kapi.switch.fs_command": {
             "description": "AMQP API for switch.fs_command",
             "properties": {
@@ -21123,6 +21516,43 @@
                 }
             },
             "required": [
+                "Username"
+            ],
+            "type": "object"
+        },
+        "kapi.switch.notify": {
+            "description": "AMQP API for switch.notify",
+            "properties": {
+                "Body": {
+                    "type": "string"
+                },
+                "Content-Type": {
+                    "type": "string"
+                },
+                "Event": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "switch_event"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "notify"
+                    ],
+                    "type": "string"
+                },
+                "Realm": {
+                    "type": "string"
+                },
+                "Username": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Realm",
                 "Username"
             ],
             "type": "object"
@@ -21527,6 +21957,117 @@
             },
             "required": [
                 "Reply"
+            ],
+            "type": "object"
+        },
+        "kapi.websockets.get_req": {
+            "description": "AMQP API for websockets.get_req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "websockets"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "get_req"
+                    ],
+                    "type": "string"
+                },
+                "Socket-ID": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "kapi.websockets.get_resp": {
+            "description": "AMQP API for websockets.get_resp",
+            "properties": {
+                "Data": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "websockets"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "get_resp"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "kapi.websockets.module_req": {
+            "description": "AMQP API for websockets.module_req",
+            "properties": {
+                "Action": {
+                    "enum": [
+                        "start",
+                        "stop"
+                    ],
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "websockets"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "module_req"
+                    ],
+                    "type": "string"
+                },
+                "Module": {
+                    "type": "string"
+                },
+                "Persist": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "Action",
+                "Module"
+            ],
+            "type": "object"
+        },
+        "kapi.websockets.module_resp": {
+            "description": "AMQP API for websockets.module_resp",
+            "properties": {
+                "Error": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "websockets"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "module_resp"
+                    ],
+                    "type": "string"
+                },
+                "Persisted": {
+                    "type": "boolean"
+                },
+                "Started": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "Persisted",
+                "Started"
             ],
             "type": "object"
         },
@@ -22010,7 +22551,7 @@
                     "properties": {
                         "exit_media": {
                             "description": "When a call is transferred from the menu after all retries exhausted this media can be played (prior to transfer if enabled)",
-                            "maxLength": 64,
+                            "maxLength": 2048,
                             "minLength": 3,
                             "type": [
                                 "boolean",
@@ -22019,13 +22560,13 @@
                         },
                         "greeting": {
                             "description": "The ID of a media object that should be used as the menu greeting",
-                            "maxLength": 64,
+                            "maxLength": 2048,
                             "minLength": 3,
                             "type": "string"
                         },
                         "invalid_media": {
                             "description": "When the collected digits dont result in a match or hunt this media can be played",
-                            "maxLength": 64,
+                            "maxLength": 2048,
                             "minLength": 3,
                             "type": [
                                 "boolean",
@@ -22034,7 +22575,7 @@
                         },
                         "transfer_media": {
                             "description": "When a call is transferred from the menu, either after all retries exhausted or a successful hunt, this media can be played",
-                            "maxLength": 64,
+                            "maxLength": 2048,
                             "minLength": 3,
                             "type": [
                                 "boolean",
@@ -24201,7 +24742,7 @@
                     "type": "string"
                 },
                 "format_from_uri": {
-                    "description": "When set to true requests to this resource will have a re-formated SIP From Header",
+                    "description": "When set to true requests to this resource will have a re-formatted SIP From Header",
                     "type": "boolean"
                 },
                 "formatters": {
@@ -24433,80 +24974,8 @@
                     "type": "integer"
                 },
                 "media": {
-                    "default": {},
-                    "description": "The default resouce media parameters applied if not present to all specified gateways",
-                    "properties": {
-                        "audio": {
-                            "default": {},
-                            "description": "The default audio media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [
-                                        "PCMU"
-                                    ],
-                                    "description": "A list of default codecs to use",
-                                    "items": {
-                                        "enum": [
-                                            "OPUS",
-                                            "CELT@32000h",
-                                            "G7221@32000h",
-                                            "G7221@16000h",
-                                            "G722",
-                                            "speex@32000h",
-                                            "speex@16000h",
-                                            "PCMU",
-                                            "PCMA",
-                                            "G729",
-                                            "GSM",
-                                            "CELT@48000h",
-                                            "CELT@64000h",
-                                            "G722_16",
-                                            "G722_32",
-                                            "CELT_48",
-                                            "CELT_64",
-                                            "Speex",
-                                            "speex"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "bypass_media": {
-                            "description": "Default bypass media mode",
-                            "type": "boolean"
-                        },
-                        "fax_option": {
-                            "description": "Is T.38 Supported?",
-                            "type": "boolean"
-                        },
-                        "video": {
-                            "default": {},
-                            "description": "The default video media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [],
-                                    "description": "A list of default codecs to use",
-                                    "items": {
-                                        "enum": [
-                                            "H261",
-                                            "H263",
-                                            "H264",
-                                            "VP8"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/endpoint.media",
+                    "description": "Media options for resources"
                 },
                 "name": {
                     "description": "A friendly name for the resource",
@@ -25645,9 +26114,13 @@
                             "description": "callflow save after notify",
                             "type": "boolean"
                         },
-                        "vm_message_foraward_type": {
+                        "vm_message_forward_type": {
                             "default": "only_forward",
                             "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
+                            "enum": [
+                                "only_forward",
+                                "prepend_forward"
+                            ],
                             "type": "string"
                         }
                     },
@@ -25943,6 +26416,11 @@
                     "description": "conferences number timeout",
                     "type": "integer"
                 },
+                "participant_sanity_check_ms": {
+                    "default": 60000,
+                    "description": "conferences participant_sanity_check_ms",
+                    "type": "integer"
+                },
                 "pin_timeout": {
                     "default": 5000,
                     "description": "conferences pin timeout",
@@ -26062,6 +26540,12 @@
                 "max_upload_size": {
                     "default": 8000000,
                     "description": "crossbar maximum upload size",
+                    "type": "integer"
+                },
+                "maximum_chunk_size": {
+                    "default": 50,
+                    "description": "crossbar maximum_chunk_size",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "maximum_range": {
@@ -27797,6 +28281,17 @@
                     "default": false,
                     "description": "whether to use the trie to store rates in the VM",
                     "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.ips": {
+            "description": "Schema for ips system_config",
+            "properties": {
+                "zone_name_map": {
+                    "default": {},
+                    "description": "ips zone_name_map",
+                    "type": "object"
                 }
             },
             "type": "object"
@@ -29613,25 +30108,81 @@
                     "description": "reorder assume inbound e164",
                     "type": "boolean"
                 },
-                "known-error-code": {
-                    "default": "686",
-                    "description": "reorder known-error-code",
-                    "type": "string"
+                "known_number": {
+                    "description": "setting for how to response if the number is known but unconfigured",
+                    "properties": {
+                        "action": {
+                            "default": "respond",
+                            "description": "the action to take for unconfigured numbers",
+                            "enum": [
+                                "respond",
+                                "transfer",
+                                "bridge"
+                            ],
+                            "type": "string"
+                        },
+                        "bridge_account_id": {
+                            "description": "the account id that the bridge_device_id belongs to",
+                            "type": "string"
+                        },
+                        "bridge_device_id": {
+                            "description": "the device id to bridge unconfigured numbers to",
+                            "type": "string"
+                        },
+                        "response_code": {
+                            "default": "686",
+                            "description": "reorder code for replies to unconfigured numbers",
+                            "type": "string"
+                        },
+                        "response_message": {
+                            "default": "PICNIC",
+                            "description": "reorder message for replies to unconfigured numbers",
+                            "type": "string"
+                        },
+                        "transfer_target": {
+                            "description": "on-net phone number to transfer unconfigured numbers to",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 },
-                "known-error-message": {
-                    "default": "PEBCAK",
-                    "description": "reorder known-error-message",
-                    "type": "string"
-                },
-                "unknown-error-code": {
-                    "default": "604",
-                    "description": "reorder unknown-error-code",
-                    "type": "string"
-                },
-                "unknown-error-message": {
-                    "default": "Nope Nope Nope",
-                    "description": "reorder unknown-error-message",
-                    "type": "string"
+                "unknown_number": {
+                    "description": "setting for how to response if the number is not in the numbers database",
+                    "properties": {
+                        "action": {
+                            "default": "respond",
+                            "description": "the action to take for unknown numbers",
+                            "enum": [
+                                "respond",
+                                "transfer",
+                                "bridge"
+                            ],
+                            "type": "string"
+                        },
+                        "bridge_account_id": {
+                            "description": "the account id that the bridge_device_id belongs to",
+                            "type": "string"
+                        },
+                        "bridge_device_id": {
+                            "description": "the device id to bridge unknown numbers to",
+                            "type": "string"
+                        },
+                        "response_code": {
+                            "default": "604",
+                            "description": "reorder code for replies to unknown numbers",
+                            "type": "string"
+                        },
+                        "response_message": {
+                            "default": "Nope Nope Nope",
+                            "description": "reorder message for replies to unknown numbers",
+                            "type": "string"
+                        },
+                        "transfer_target": {
+                            "description": "on-net phone number to transfer unknown numbers to",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 }
             },
             "type": "object"
@@ -29809,17 +30360,6 @@
                     "description": "speech asr api key",
                     "type": "string"
                 },
-                "asr_content_types": {
-                    "default": [
-                        "application/mpeg",
-                        "application/wav"
-                    ],
-                    "description": "speech asr content types",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "array"
-                },
                 "asr_locale": {
                     "default": "en-us",
                     "description": "speech asr default locale",
@@ -29830,9 +30370,9 @@
                     "description": "speech asr mime type",
                     "type": "string"
                 },
-                "asr_prefered_content_type": {
-                    "default": "application/mpeg",
-                    "description": "speech asr prefered content type",
+                "asr_preferred_content_type": {
+                    "default": "application/wav",
+                    "description": "speech asr preferred content type",
                     "type": "string"
                 },
                 "asr_provider": {
@@ -30034,6 +30574,11 @@
                     "default": "stepswitch_resources",
                     "description": "stepswitch route by",
                     "type": "string"
+                },
+                "use_first_dedicated_proxy_only": {
+                    "default": true,
+                    "description": "If gateways are generated for assigned dedicated IPs, only generate one for the first IP (usally local to the call).",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -31010,8 +31555,7 @@
                     "type": "object"
                 },
                 "call_recording": {
-                    "$ref": "#/definitions/call_recording",
-                    "type": "object"
+                    "$ref": "#/definitions/call_recording"
                 },
                 "call_restriction": {
                     "additionalProperties": {
@@ -31036,9 +31580,7 @@
                 },
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
-                    "default": {},
-                    "description": "The device caller ID parameters",
-                    "type": "object"
+                    "description": "The device caller ID parameters"
                 },
                 "contact_list": {
                     "default": {},
@@ -31053,9 +31595,7 @@
                 },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
-                    "default": {},
-                    "description": "A list of rules used to modify dialed numbers",
-                    "type": "object"
+                    "description": "A list of rules used to modify dialed numbers"
                 },
                 "directories": {
                     "description": "Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller.",
@@ -31141,117 +31681,8 @@
                     "type": "string"
                 },
                 "media": {
-                    "default": {},
-                    "description": "The device media parameters",
-                    "properties": {
-                        "audio": {
-                            "default": {},
-                            "description": "The audio media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "description": "A list of audio codecs the device supports",
-                                    "items": {
-                                        "enum": [
-                                            "OPUS",
-                                            "CELT@32000h",
-                                            "G7221@32000h",
-                                            "G7221@16000h",
-                                            "G722",
-                                            "speex@32000h",
-                                            "speex@16000h",
-                                            "PCMU",
-                                            "PCMA",
-                                            "G729",
-                                            "GSM",
-                                            "CELT@48000h",
-                                            "CELT@64000h",
-                                            "G722_16",
-                                            "G722_32",
-                                            "CELT_48",
-                                            "CELT_64",
-                                            "Speex",
-                                            "speex"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "bypass_media": {
-                            "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
-                            "enum": [
-                                true,
-                                false,
-                                "auto"
-                            ],
-                            "type": [
-                                "boolean",
-                                "string"
-                            ]
-                        },
-                        "encryption": {
-                            "default": {},
-                            "description": "Encryption Parameters",
-                            "properties": {
-                                "enforce_security": {
-                                    "default": false,
-                                    "description": "Is Encryption Enabled?",
-                                    "type": "boolean"
-                                },
-                                "methods": {
-                                    "default": [],
-                                    "description": "Supported Encryption Types",
-                                    "items": {
-                                        "enum": [
-                                            "zrtp",
-                                            "srtp"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "fax_option": {
-                            "description": "Is T.38 Supported?",
-                            "type": "boolean"
-                        },
-                        "ignore_early_media": {
-                            "description": "The option to determine if early media from the device should always be ignored",
-                            "type": "boolean"
-                        },
-                        "progress_timeout": {
-                            "description": "The progress timeout to apply to the device (seconds)",
-                            "type": "integer"
-                        },
-                        "video": {
-                            "default": {},
-                            "description": "The video media parameters",
-                            "properties": {
-                                "codecs": {
-                                    "default": [],
-                                    "description": "A list of video codecs the device supports",
-                                    "items": {
-                                        "enum": [
-                                            "H261",
-                                            "H263",
-                                            "H264",
-                                            "VP8"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "type": "array",
-                                    "uniqueItems": true
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/endpoint.media",
+                    "description": "Configure audio/video/etc media options for this user"
                 },
                 "metaflows": {
                     "$ref": "#/definitions/metaflows",
@@ -31288,9 +31719,7 @@
                 },
                 "profile": {
                     "$ref": "#/definitions/profile",
-                    "default": {},
-                    "description": "User's profile data",
-                    "type": "object"
+                    "description": "User's profile data"
                 },
                 "pronounced_name": {
                     "description": "Name pronounced by user to introduce himself to conference members",
@@ -34983,6 +35412,35 @@
                 "responses": {
                     "200": {
                         "description": "request succeeded"
+                    }
+                }
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "devices",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devices"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/DEVICE_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    },
+                    "202": {
+                        "description": "action was accepted (for asynchronous actions)"
                     }
                 }
             }
@@ -39141,6 +39599,24 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/RECORDING_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
             "get": {
                 "parameters": [
                     {

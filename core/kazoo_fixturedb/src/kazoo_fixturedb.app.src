@@ -1,0 +1,13 @@
+{application, kazoo_fixturedb,
+ [
+  {description, "A naive simple file-based CouchDB little bro"}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [kazoo_fixturedb_sup]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , public_key
+                 ]}
+ ,{mod, {kazoo_fixturedb_app, []}}
+ ]}.

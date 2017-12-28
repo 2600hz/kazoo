@@ -1,0 +1,22 @@
+                Port Request Submitted
+
+Request "{{port_request.name}}" to port numbers into account '{{account.name}}' has been submitted.
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

@@ -193,7 +193,7 @@ get_callee_extension_info(Call) ->
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
     FirstModule = kz_json:get_ne_binary_value(<<"module">>, Flow),
     FirstId = kz_json:get_ne_binary_value([<<"data">>, <<"id">>], Flow),
-    SecondModule = kz_json:get_ne_binary_value([<<"_">>, <<"module">>], Flow),
+    SecondModule = kz_json:get_ne_binary_value([?DEFAULT_CHILD_KEY, <<"module">>], Flow),
     case (FirstModule =:= <<"device">>
               orelse FirstModule =:= <<"user">>
          )
@@ -324,13 +324,15 @@ maybe_start_account_recording(From, To, Call) ->
     case maybe_start_call_recording(?ACCOUNT_INBOUND_RECORDING(From)
                                    ,?ACCOUNT_INBOUND_RECORDING_LABEL(From)
                                    ,Endpoint
-                                   ,Call)
+                                   ,Call
+                                   )
     of
         Call ->
             case maybe_start_call_recording(?ACCOUNT_OUTBOUND_RECORDING(To)
                                            ,?ACCOUNT_OUTBOUND_RECORDING_LABEL(To)
                                            ,Endpoint
-                                           ,Call)
+                                           ,Call
+                                           )
             of
                 Call -> Call;
                 NewCall -> kapps_call:set_is_recording('true', NewCall)

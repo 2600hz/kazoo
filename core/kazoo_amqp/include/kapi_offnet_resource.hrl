@@ -41,6 +41,7 @@
 -define(KEY_OUTBOUND_CALLER_ID_NAME, <<"Outbound-Caller-ID-Name">>).
 -define(KEY_OUTBOUND_CALLER_ID_NUMBER, <<"Outbound-Caller-ID-Number">>).
 -define(KEY_OUTBOUND_CALL_ID, <<"Outbound-Call-ID">>).
+-define(KEY_ORIGINATION_CALL_ID, <<"Origination-Call-ID">>).
 -define(KEY_PRESENCE_ID, <<"Presence-ID">>).
 -define(KEY_RESOURCE_TYPE, <<"Resource-Type">>).
 -define(KEY_RINGBACK, <<"Ringback">>).

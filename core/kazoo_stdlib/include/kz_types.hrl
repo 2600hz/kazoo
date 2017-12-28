@@ -393,6 +393,7 @@
                  ,ports = 0 :: non_neg_integer() | '_'
                  ,version :: api_binary() | '_'
                  ,channels = 0 :: non_neg_integer() | '_'
+                 ,conferences = 0 :: non_neg_integer() | '_'
                  ,registrations = 0 :: non_neg_integer() | '_'
                  ,globals = [] :: kz_proplist() | '$1' | '_'
                  ,node_info :: api_object() | '_'
@@ -403,6 +404,74 @@
 -type kz_nodes() :: [kz_node()].
 
 -define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash(md5, C))).
+
+-ifdef(TEST).
+
+-define(LOG_ALERT(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_CRITICAL(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_DEBUG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_EMERGENCY(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_ERROR(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_INFO(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_NOTICE(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_WARNING(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+
+-define(LOG_ALERT(F), ?LOG_ALERT(F, [])).
+-define(LOG_CRITICAL(F), ?LOG_CRITICAL(F, [])).
+-define(LOG_DEBUG(F), ?LOG_DEBUG(F, [])).
+-define(LOG_EMERGENCY(F), ?LOG_EMERGENCY(F, [])).
+-define(LOG_ERROR(F), ?LOG_ERROR(F, [])).
+-define(LOG_INFO(F), ?LOG_INFO(F, [])).
+-define(LOG_NOTICE(F), ?LOG_NOTICE(F, [])).
+-define(LOG_WARNING(F), ?LOG_WARNING(F, [])).
+
+-else.
+
+-define(LOG_ALERT(F, A), lager:alert(F, A)).
+-define(LOG_CRITICAL(F, A), lager:critical(F, A)).
+-define(LOG_DEBUG(F, A), lager:debug(F, A)).
+-define(LOG_EMERGENCY(F, A), lager:emergency(F, A)).
+-define(LOG_ERROR(F, A), lager:error(F, A)).
+-define(LOG_INFO(F, A), lager:info(F, A)).
+-define(LOG_NOTICE(F, A), lager:notice(F, A)).
+-define(LOG_WARNING(F, A), lager:warning(F, A)).
+
+-define(LOG_ALERT(F), ?LOG_ALERT(F, [])).
+-define(LOG_CRITICAL(F), ?LOG_CRITICAL(F, [])).
+-define(LOG_DEBUG(F), ?LOG_DEBUG(F, [])).
+-define(LOG_EMERGENCY(F), ?LOG_EMERGENCY(F, [])).
+-define(LOG_ERROR(F), ?LOG_ERROR(F, [])).
+-define(LOG_INFO(F), ?LOG_INFO(F, [])).
+-define(LOG_NOTICE(F), ?LOG_NOTICE(F, [])).
+-define(LOG_WARNING(F), ?LOG_WARNING(F, [])).
+
+-endif.
+
+-define(SUP_LOG_DEBUG(F, A),
+        begin
+            lager:debug(F, A),
+            io:format(F ++ "\n", A)
+        end
+       ).
+-define(SUP_LOG_WARNING(F, A),
+        begin
+            lager:warning(F, A),
+            io:format(F ++ "\n", A)
+        end
+       ).
+-define(SUP_LOG_ERROR(F, A),
+        begin
+            lager:error(F, A),
+            io:format(F ++ "\n", A)
+        end
+       ).
+
+-define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(DEV_LOG(F), ?DEV_LOG(F, [])).
+
+-define(SUP_LOG_DEBUG(F), ?SUP_LOG_DEBUG(F, [])).
+-define(SUP_LOG_WARNING(F), ?SUP_LOG_WARNING(F, [])).
+-define(SUP_LOG_ERROR(F), ?SUP_LOG_ERROR(F, [])).
 
 -define(KAZOO_TYPES_INCLUDED, 'true').
 -endif.

@@ -1,0 +1,22 @@
+                Port Request Canceled
+
+Your port request "{{port_request.name}}" of account '{{account.name}}' has been canceled.
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

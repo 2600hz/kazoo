@@ -36,6 +36,11 @@
             "description": "conferences number timeout",
             "type": "integer"
         },
+        "participant_sanity_check_ms": {
+            "default": 60000,
+            "description": "conferences participant_sanity_check_ms",
+            "type": "integer"
+        },
         "pin_timeout": {
             "default": 5000,
             "description": "conferences pin timeout",

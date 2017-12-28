@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>Receipt for your payment of account '{{account.name}}'</title>
+    <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
+    <style>
+        /* CSS Reset */
+        html,body{margin:0 auto !important;padding:0 !important;height:100% !important;width:100% !important;} *{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;}div[style*="margin:16px 0"]{margin:0 !important;}table,td{mso-table-lspace:0pt !important;mso-table-rspace:0pt !important;}table{border-spacing:0 !important;border-collapse:collapse !important;table-layout:fixed !important;margin:0 auto !important;}table table table{table-layout:auto;}img{-ms-interpolation-mode:bicubic;}*[x-apple-data-detectors]{color:inherit !important;text-decoration:none !important;}.x-gmail-data-detectors,.x-gmail-data-detectors *,.aBn{border-bottom:0 !important;cursor:default !important;}.a6S{display:none !important;opacity:0.01 !important;}img.g-img + div{display:none !important;}.button-link{text-decoration:none !important;}@media only screen and (min-device-width:375px) and (max-device-width:413px){.email-container{min-width:375px !important;}}
+        /* Progressive Enhancements */
+        *{font-family:'Open Sans',Arial,sans-serif;}
+        html,body{font-size:15px;line-height:20px;}
+    </style>
+</head>
+<body width="100%" bgcolor="#eaeaea" style="margin:0;mso-line-height-rule:exactly;background-color:#eaeaea">
+    <center style="padding:40px 0;width:100%;background:#eaeaea;text-align:left;">
+        <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family:sans-serif;">
+            We received your payment for '{{account.name}}' -
+        </div>
+        <div style="max-width:600px;margin:auto;" class="email-container">
+            <!--[if mso]>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center">
+            <tr>
+            <td>
+            <![endif]-->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#5995f7" align="center" width="100%" style="background-color:#5995f7;border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><td height="10" style="font-size:10px;line-height:10px;">&nbsp;</td></tr>
+            </table>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:40px;text-align:center;">
+                        <h2 style="margin:0;padding:0;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Payment Receipt</h2>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="text-align:left;padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <span style="margin:4px 0;padding:25px 0 0;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;"><b>Date:</b>&nbsp;{{transaction.date.local|date:"l, F j, Y H:i"}}</span><br>
+                        <span style="margin:4px 0;padding:25px 0 0;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;"><b>Invoice ID:</b> {{transaction.id}}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;text-align:center;">
+                        <h3 style="font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">Thank you for being a customer!</h3>
+                        <h3 style="font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;line-height:20px;">We received your payment</h3>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">
+                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">We've successfully charged <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}</b>{% if transaction.card_last_four %} to your card with four last digits <b>{{transaction.card_last_four}}</b>&nbsp;{% endif %}on <b>{{transaction.date.local|date:"n/j/Y"}}</b>.</p>
+                    </td>
+                </tr>
+            </table>
+            {% if transaction.address %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;">
+                        <table role="presentation" aria-hidden="true" border="0" cellpadding="0" cellspacing="0" align="center" width="100%" style="max-width:560px;border-top:1px solid #dedede;border-bottom:1px solid #dedede;">
+                            <tr>
+                                <td align="center" valign="top" width="50%">
+                                    <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%" style="text-align:left;">
+                                        <tr>
+                                            <td style="text-align:left;font-family:sans-serif;font-size:.8em;line-height:20px;color:#555555;padding:20px 10px;">{% spaceless %}
+                                                <b>Billed To:</b><br>
+                                                {% if transaction.address.first_name %}<span>{{transaction.address.first_name}}&nbsp;</span>{% endif %}
+                                                {% if transaction.address.last_name %}<span>{{transaction.address.last_name}}</span><br>{% endif %}
+                                                {% if transaction.address.company %}<span>{{transaction.address.company}}</span><br>{% endif %}
+                                                {% if transaction.address.locality %}<span>{{transaction.address.locality}},&nbsp;</span>{% endif %}
+                                                {% if transaction.address.region %}<span>{{transaction.address.region}}&nbsp;</span>{% endif %}
+                                                {% if transaction.address.postal_code %}<span>{{transaction.address.postal_code}}&nbsp;</span>{% endif %}
+                                                {% if transaction.address.country_name %}<span>&nbsp;-&nbsp;{{transaction.address.country_name}}</span>{% endif %}
+                                            {% endspaceless %}</td>
+                                        </tr>
+                                    </table>
+                                </td>
+                                <td align="center" valign="top" width="50%">
+                                    <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%" style="text-align:right;">
+                                        <tr>
+                                            <td style="text-align:left;font-family:sans-serif;font-size:.8em;line-height:20px;color:#555555;padding:15px 10px;">{% spaceless %}
+                                                <b>Billing Address:</b><br>
+                                                {% if transaction.address.street_address %}<span>{{transaction.address.street_address}}</span><br>{% endif %}
+                                                {% if transaction.address.extended_address %}<span>{{transaction.address.extended_address}}</span><br>{% endif %}
+                                                {% if transaction.address.locality %}<span>{{transaction.address.locality}},&nbsp;</span>{% endif %}
+                                                {% if transaction.address.region %}<span>{{transaction.address.region}}&nbsp;</span>{% endif %}
+                                                {% if transaction.address.postal_code %}<span>{{transaction.address.postal_code}}</span>{% endif %}
+                                                {% if transaction.address.country_name %}<span>&nbsp;-&nbsp;{{transaction.address.country_name}}</span>{% endif %}
+                                            {% endspaceless %}</td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            {% endif %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <h4 style="margin:0 0 5px;padding:0;"><small style="font-family:'Open Sans',sans-serif;line-height:20px;color:#555555;">Questions?</small></h4>
+                        <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">Please email us and we'll be happy to help.</small></p>
+                        <h4 style="margin:0 0 5px;padding:0;"><small style="font-family:'Open Sans',sans-serif;line-height:20px;color:#555555;">Need to update your billing info?</small></h4>
+                        <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">The Credit Card section in Account Settings can be accessed by your account owner{% if user.first_name or user.last_name %}, <b>{{user.first_name}} {{user.last_name}}{% endif %}.</b></small></p><br>
+                        <p style="margin:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">Thank you for your business!</p>
+                    </td>
+                </tr>
+            </table>
+            <!-- Pre-Footer -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <!-- Clear Spacer -->
+                <tr><td height="50" style="background-color:#ffffff;font-size:50px;line-height:50px;">&nbsp;</td></tr>
+                <tr><!-- #6a59f7 -->
+                    <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;">
+                        <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans',sans-serif;color:#555555;">Account Information</h4>
+                        <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
+                            <b>-&nbsp;&nbsp;&nbsp;Account ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.id}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Account Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.name}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Account Realm:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.realm}}</span>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <!-- Email Footer -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#202029" align="center" width="100%" style="background-color:#202029;border-color:#202029;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><td style="font-size:50px;line-height:50px;" height="50">&nbsp;</td></tr>
+            </table>
+            <p style="margin:0;padding:5px 0;font-family:'Open Sans',sans-serif;color:#a9a9a9;font-size:10px;">Sent from {{system.encoded_node}}</p>
+            <!--[if mso]>
+            </td>
+            </tr>
+            </table>
+            <![endif]-->
+        </div>
+    </center>
+</body>
+</html>

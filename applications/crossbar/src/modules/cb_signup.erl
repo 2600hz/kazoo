@@ -73,7 +73,7 @@ start_link() ->
 
 -spec init_it() -> no_return().
 init_it() ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     State = init_state(),
     cleanup_loop(State).
 

@@ -48,18 +48,9 @@
                                                  {'error', any()}.
 fetch(Account=?NE_BINARY, UserId=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
-    open_cache_doc(AccountDb, UserId);
+    kz_datamgr:open_cache_doc(AccountDb, UserId, [{cache_failures,false}]);
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
-
--ifdef(TEST).
-open_cache_doc(?MATCH_ACCOUNT_ENCODED(_), UserId) ->
-    kz_json:fixture(?APP, <<"fixtures/user/", UserId/binary, ".json">>).
--else.
-open_cache_doc(AccountDb, UserId) ->
-    kz_datamgr:open_cache_doc(AccountDb, UserId, [{cache_failures,false}]).
--endif.
-
 
 -spec email(doc()) -> api_binary().
 -spec email(doc(), Default) -> ne_binary() | Default.

@@ -27,6 +27,7 @@
         ,unbind/3, unbind/4
         ,apply/2, apply/3
         ,map/2
+        ,pmap/2, pmap/3
         ,fold/2
         ,flush/0, flush/1
         ,filter/1
@@ -75,6 +76,14 @@ apply(API, Action, Args) ->
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     kazoo_bindings:map(Routing, Payload).
+
+-spec pmap(ne_binary(), payload()) -> map_results().
+-spec pmap(ne_binary(), payload(), kazoo_bindings:kz_rt_options()) -> map_results().
+pmap(Routing, Payload) ->
+    kazoo_bindings:pmap(Routing, Payload).
+
+pmap(Routing, Payload, Options) ->
+    kazoo_bindings:pmap(Routing, Payload, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -182,7 +191,8 @@ unbind([_|_]=Bindings, Module, Fun, Payload) ->
     _ = [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings],
     'ok';
 unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
-    kazoo_bindings:unbind(Binding, Module, Fun, Payload).
+    _ = kazoo_bindings:unbind(Binding, Module, Fun, Payload),
+    'ok'.
 
 -spec flush() -> 'ok'.
 flush() ->
@@ -213,7 +223,7 @@ is_task_module(_) -> 'false'.
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing tasks bindings"),
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lists:foreach(fun init_mod/1, ?TASKS).
 
 init_mod(ModuleName) ->

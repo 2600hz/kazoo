@@ -21,11 +21,6 @@
         ,account_doc_id/1
         ]).
 
-
--ifdef(TEST).
--export([fixture/1]).
--endif.
-
 -spec account_doc_id(ne_binary()) -> ne_binary().
 account_doc_id(Category) -> <<(?KZ_ACCOUNT_CONFIGS)/binary, Category/binary>>.
 
@@ -113,12 +108,3 @@ system_config_document_schema(Id) ->
            ,{[<<"type">>], <<"object">>}
            ],
     kz_json:expand(kz_json:from_list(Flat)).
-
--ifdef(TEST).
--spec fixture(nonempty_string()) -> kz_json:object().
-fixture(JSONFileName) ->
-    Path = filename:join([code:lib_dir(?APP), "test/fixture", JSONFileName ++ ".json"]),
-    %% ?LOG_DEBUG("loading fixture: ~s", [Path]),
-    {ok, Bin} = file:read_file(Path),
-    kz_json:decode(Bin).
--endif.

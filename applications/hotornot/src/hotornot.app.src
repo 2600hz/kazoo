@@ -1,18 +1,11 @@
-{application, hotornot,
- [
-  {description, "HotOrNot - Rate calls based on prefix"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [hotornot_sup]}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]}
- ,{mod, {hotornot_app, []}}
- ]}.
+{application,hotornot,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_config,
+                             kazoo_data,kazoo_documents,kazoo_number_manager,
+                             kazoo_services,kazoo_stdlib,kazoo_transactions,
+                             kernel,lager,stdlib,trie]},
+              {description,"HotOrNot - Rate calls based on prefix"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{hotornot_app,[]}},
+              {modules,[]},
+              {registered,[hotornot_sup]},
+              {vsn,"4.0.0"}]}.

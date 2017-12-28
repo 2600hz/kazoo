@@ -57,6 +57,9 @@
         "Preview": {
             "type": "string"
         },
+        "Reason": {
+            "type": "object"
+        },
         "Reply-To": {
             "type": "string"
         },

@@ -99,14 +99,14 @@ debug_dump_ets(FolderName) ->
 -spec debug_dump_ets_details(string(), [ets:tab()]) -> 'ok'.
 debug_dump_ets_details(_, []) -> 'ok';
 debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
-    TabInfoLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_info",
+    TabInfoLog = EtsFolder ++ "/" ++ table_name(Tab) ++ "_info",
     'ok' = start_debug_file(TabInfoLog),
     'ok' = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
-    TabDumpLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_dump",
+    TabDumpLog = EtsFolder ++ "/" ++ table_name(Tab) ++ "_dump",
     TabList = (catch ets:tab2list(Tab)),
     'ok' = start_debug_file(TabDumpLog),
     'ok' = file:write_file(TabDumpLog, io_lib:format("~p~n", [TabList])),
-    TabBinaryLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_binary",
+    TabBinaryLog = EtsFolder ++ "/" ++ table_name(Tab) ++ "_binary",
     catch ets:tab2file(Tab, TabBinaryLog),
     debug_dump_ets_details(EtsFolder, Tabs).
 
@@ -199,28 +199,28 @@ ets_info() ->
     _ = [print_table(T) || T <- sort_tables(ets:all())],
     'ok'.
 
--spec sort_tables([ets:tid()]) -> [{ets:tid(), integer()}].
+-spec sort_tables([ets:tab()]) -> [{string(), integer()}].
 sort_tables(Ts) ->
     lists:reverse(
       lists:keysort(2
-                   ,[{T, table_size(T)} || T <- Ts]
+                   ,[{table_name(T), table_size(T)} || T <- Ts]
                    )
      ).
 
 -spec table_size(ets:tid()) -> integer().
 table_size(T) ->
-    words_to_bytes(ets:info(T, 'memory')).
+    kz_term:words_to_bytes(ets:info(T, 'memory')).
 
-words_to_bytes(Words) ->
-    Words * erlang:system_info('wordsize').
+-spec print_table({string(), integer()}) -> 'ok'.
+print_table({Name, Mem}) ->
+    io:format("  ~-25s: ~6s~n", [Name
+                                ,kz_util:pretty_print_bytes(Mem, 'truncated')
+                                ]).
 
--spec print_table({ets:tab(), integer()}) -> 'ok'.
-print_table({T, Mem}) ->
-    io:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
-
--spec log_table({ets:tab(), integer()}, file:name_all()) -> 'ok'.
-log_table({T, Mem}, Filename) ->
-    Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]),
+-spec log_table({string(), integer()}, file:name_all()) -> 'ok'.
+log_table({Name, Mem}, Filename) ->
+    Bytes = io_lib:format("  ~-25s: ~6s~n", [Name
+                                            ,kz_util:pretty_print_bytes(Mem, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec mem_info() -> 'ok'.
@@ -237,3 +237,7 @@ print_memory_type({Type, Size}) ->
 log_memory_type({Type, Size}, Filename) ->
     Bytes = io_lib:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
+
+-spec table_name(ets:tab()) -> string().
+table_name(Tab) ->
+    kz_term:to_list(ets:info(Tab, 'name')).

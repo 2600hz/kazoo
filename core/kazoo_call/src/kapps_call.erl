@@ -142,6 +142,10 @@
 
 -include("kapps_call_command.hrl").
 
+-define(NO_USER, <<"nouser">>).
+-define(NO_REALM, <<"norealm">>).
+-define(NO_USER_REALM, <<"nouser@norealm">>).
+
 -record(kapps_call, {call_id :: api_binary()                       %% The UUID of the call
                     ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                     ,control_q :: api_binary()                   %% The control queue provided on route win
@@ -152,18 +156,18 @@
                     ,callee_id_name :: api_binary()                     %% The callee name
                     ,callee_id_number :: api_binary()                   %% The callee number
                     ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                    ,switch_hostname :: api_binary()                    %% The switch hostname (as reported by the switch)
+                    ,switch_hostname :: api_ne_binary()                    %% The switch hostname (as reported by the switch)
                     ,switch_url :: api_binary()                         %% The switch url
                     ,switch_uri :: api_binary()                         %% The switch uri
-                    ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
-                    ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
-                    ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
-                    ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
-                    ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
-                    ,from_realm = <<"norealm">> :: ne_binary()          %% SIP from host
-                    ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
-                    ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
-                    ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
+                    ,request = ?NO_USER_REALM :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
+                    ,request_user = ?NO_USER :: ne_binary()         %% SIP request user
+                    ,request_realm = ?NO_REALM :: ne_binary()       %% SIP request host
+                    ,from = ?NO_USER_REALM :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
+                    ,from_user = ?NO_USER :: ne_binary()            %% SIP from user
+                    ,from_realm = ?NO_REALM :: ne_binary()          %% SIP from host
+                    ,to = ?NO_USER_REALM :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
+                    ,to_user = ?NO_USER :: ne_binary()              %% SIP to user
+                    ,to_realm = ?NO_REALM :: ne_binary()            %% SIP to host
                     ,inception :: api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
                     ,account_db :: api_binary()                  %% The database name of the account that authorized this call
                     ,account_id :: api_binary()                  %% The account id that authorized this call
@@ -414,42 +418,42 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
     CAVs = kz_json:merge(OldCAVs, kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new())),
     SHs = kz_json:merge(OldSHs, kz_json:get_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new())),
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
-    Call#kapps_call{call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj, call_id_direct(Call))
-                   ,control_q = kz_json:get_ne_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
-                   ,controller_q = kz_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
-                   ,caller_id_name = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
-                   ,caller_id_number = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, caller_id_number(Call))
-                   ,callee_id_name = kz_json:get_ne_value(<<"Callee-ID-Name">>, JObj, callee_id_name(Call))
-                   ,callee_id_number = kz_json:get_ne_value(<<"Callee-ID-Number">>, JObj, callee_id_number(Call))
-                   ,request = kz_json:get_ne_value(<<"Request">>, JObj, request(Call))
-                   ,request_user = kz_json:get_ne_value(<<"Request-User">>, JObj, request_user(Call))
-                   ,request_realm = kz_json:get_ne_value(<<"Request-Realm">>, JObj, request_realm(Call))
-                   ,from = kz_json:get_ne_value(<<"From">>, JObj, from(Call))
-                   ,from_user = kz_json:get_ne_value(<<"From-User">>, JObj, from_user(Call))
-                   ,from_realm = kz_json:get_ne_value(<<"From-Realm">>, JObj, from_realm(Call))
-                   ,to = kz_json:get_ne_value(<<"To">>, JObj, to(Call))
-                   ,to_user = kz_json:get_ne_value(<<"To-User">>, JObj, to_user(Call))
-                   ,to_realm = kz_json:get_ne_value(<<"To-Realm">>, JObj, to_realm(Call))
-                   ,switch_hostname = kz_json:get_value(<<"Switch-Hostname">>, JObj, switch_hostname(Call))
-                   ,switch_nodename = kz_json:get_value(<<"Switch-Nodename">>, JObj, switch_nodename(Call))
-                   ,switch_url = kz_json:get_value(<<"Switch-URL">>, JObj, switch_url(Call))
-                   ,switch_uri = kz_json:get_value(<<"Switch-URI">>, JObj, switch_uri(Call))
-                   ,inception = kz_json:get_ne_value(<<"Inception">>, JObj, inception(Call))
-                   ,account_db = kz_json:get_ne_value(<<"Account-DB">>, JObj, account_db(Call))
-                   ,account_id = kz_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
-                   ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, JObj, authorizing_id(Call))
-                   ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, JObj, authorizing_type(Call))
-                   ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
-                   ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, JObj, fetch_id(Call))
-                   ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, JObj, bridge_id(Call))
-                   ,language = kz_json:get_ne_value(<<"Language">>, JObj, language(Call))
-                   ,app_name = kz_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
-                   ,app_version = kz_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
+    Call#kapps_call{call_id = kz_json:get_ne_binary_value(<<"Call-ID">>, JObj, call_id_direct(Call))
+                   ,control_q = kz_json:get_ne_binary_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
+                   ,controller_q = kz_json:get_ne_binary_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
+                   ,caller_id_name = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
+                   ,caller_id_number = kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj, caller_id_number(Call))
+                   ,callee_id_name = kz_json:get_ne_binary_value(<<"Callee-ID-Name">>, JObj, callee_id_name(Call))
+                   ,callee_id_number = kz_json:get_ne_binary_value(<<"Callee-ID-Number">>, JObj, callee_id_number(Call))
+                   ,request = kz_json:get_ne_binary_value(<<"Request">>, JObj, request(Call))
+                   ,request_user = kz_json:get_ne_binary_value(<<"Request-User">>, JObj, request_user(Call))
+                   ,request_realm = kz_json:get_ne_binary_value(<<"Request-Realm">>, JObj, request_realm(Call))
+                   ,from = kz_json:get_ne_binary_value(<<"From">>, JObj, from(Call))
+                   ,from_user = kz_json:get_ne_binary_value(<<"From-User">>, JObj, from_user(Call))
+                   ,from_realm = kz_json:get_ne_binary_value(<<"From-Realm">>, JObj, from_realm(Call))
+                   ,to = kz_json:get_ne_binary_value(<<"To">>, JObj, to(Call))
+                   ,to_user = kz_json:get_ne_binary_value(<<"To-User">>, JObj, to_user(Call))
+                   ,to_realm = kz_json:get_ne_binary_value(<<"To-Realm">>, JObj, to_realm(Call))
+                   ,switch_hostname = kz_json:get_ne_binary_value(<<"Switch-Hostname">>, JObj, switch_hostname(Call))
+                   ,switch_nodename = kz_json:get_ne_binary_value(<<"Switch-Nodename">>, JObj, switch_nodename(Call))
+                   ,switch_url = kz_json:get_ne_binary_value(<<"Switch-URL">>, JObj, switch_url(Call))
+                   ,switch_uri = kz_json:get_ne_binary_value(<<"Switch-URI">>, JObj, switch_uri(Call))
+                   ,inception = kz_json:get_ne_binary_value(<<"Inception">>, JObj, inception(Call))
+                   ,account_db = kz_json:get_ne_binary_value(<<"Account-DB">>, JObj, account_db(Call))
+                   ,account_id = kz_json:get_ne_binary_value(<<"Account-ID">>, JObj, account_id(Call))
+                   ,authorizing_id = kz_json:get_ne_binary_value(<<"Authorizing-ID">>, JObj, authorizing_id(Call))
+                   ,authorizing_type = kz_json:get_ne_binary_value(<<"Authorizing-Type">>, JObj, authorizing_type(Call))
+                   ,owner_id = kz_json:get_ne_binary_value(<<"Owner-ID">>, JObj, owner_id(Call))
+                   ,fetch_id = kz_json:get_ne_binary_value(<<"Fetch-ID">>, JObj, fetch_id(Call))
+                   ,bridge_id = kz_json:get_ne_binary_value(<<"Bridge-ID">>, JObj, bridge_id(Call))
+                   ,language = kz_json:get_ne_binary_value(<<"Language">>, JObj, language(Call))
+                   ,app_name = kz_json:get_ne_binary_value(<<"App-Name">>, JObj, application_name(Call))
+                   ,app_version = kz_json:get_ne_binary_value(<<"App-Version">>, JObj, application_version(Call))
                    ,ccvs = CCVs
                    ,cavs = CAVs
                    ,sip_headers = SHs
                    ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Kvs, KVS)
-                   ,other_leg_call_id = kz_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
+                   ,other_leg_call_id = kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
                    ,resource_type = kz_json:get_ne_binary_value(<<"Resource-Type">>, JObj, resource_type(Call))
                    ,to_tag = kz_json:get_ne_binary_value(<<"To-Tag">>, JObj, to_tag(Call))
                    ,from_tag = kz_json:get_ne_binary_value(<<"From-Tag">>, JObj, from_tag(Call))
@@ -741,7 +745,7 @@ caller_id_number(#kapps_call{caller_id_number=CIDNumber}) -> CIDNumber.
 caller_id_number(#kapps_call{caller_id_number=CIDNumber
                             ,account_id=AccountId
                             }) ->
-    case  kz_term:is_empty(CIDNumber) of
+    case kz_term:is_empty(CIDNumber) of
         'true' -> kz_privacy:anonymous_caller_id_number(AccountId);
         'false' -> CIDNumber
     end.
@@ -820,10 +824,28 @@ request(#kapps_call{request=Request}) ->
     Request.
 
 -spec request_user(call()) -> ne_binary().
+request_user(#kapps_call{request=?NO_USER_REALM
+                        ,request_user=RequestUser
+                        }) ->
+    RequestUser;
+request_user(#kapps_call{request=Request
+                        ,request_user=?NO_USER
+                        }) ->
+    [RequestUser, _] = binary:split(Request, <<"@">>),
+    RequestUser;
 request_user(#kapps_call{request_user=RequestUser}) ->
     RequestUser.
 
 -spec request_realm(call()) -> ne_binary().
+request_realm(#kapps_call{request=?NO_USER_REALM
+                        ,request_realm=RequestRealm
+                        }) ->
+    RequestRealm;
+request_realm(#kapps_call{request=Request
+                        ,request_realm=?NO_REALM
+                        }) ->
+    [_, RequestRealm] = binary:split(Request, <<"@">>),
+    RequestRealm;
 request_realm(#kapps_call{request_realm=RequestRealm}) ->
     RequestRealm.
 
@@ -840,10 +862,28 @@ from(#kapps_call{from=From}) ->
     From.
 
 -spec from_user(call()) -> ne_binary().
+from_user(#kapps_call{from=?NO_USER_REALM
+                        ,from_user=FromUser
+                        }) ->
+    FromUser;
+from_user(#kapps_call{from=From
+                        ,from_user=?NO_USER
+                        }) ->
+    [FromUser, _] = binary:split(From, <<"@">>),
+    FromUser;
 from_user(#kapps_call{from_user=FromUser}) ->
     FromUser.
 
--spec from_realm(call()) -> api_binary().
+-spec from_realm(call()) -> ne_binary().
+from_realm(#kapps_call{from=?NO_USER_REALM
+                        ,from_realm=FromRealm
+                        }) ->
+    FromRealm;
+from_realm(#kapps_call{from=From
+                        ,from_realm=?NO_REALM
+                        }) ->
+    [_, FromRealm] = binary:split(From, <<"@">>),
+    FromRealm;
 from_realm(#kapps_call{from_realm=FromRealm}) ->
     FromRealm.
 
@@ -860,10 +900,28 @@ to(#kapps_call{to=To}) ->
     To.
 
 -spec to_user(call()) -> ne_binary().
+to_user(#kapps_call{to=?NO_USER_REALM
+                        ,to_user=ToUser
+                        }) ->
+    ToUser;
+to_user(#kapps_call{to=To
+                        ,to_user=?NO_USER
+                        }) ->
+    [ToUser, _] = binary:split(To, <<"@">>),
+    ToUser;
 to_user(#kapps_call{to_user=ToUser}) ->
     ToUser.
 
--spec to_realm(call()) -> api_binary().
+-spec to_realm(call()) -> ne_binary().
+to_realm(#kapps_call{to=?NO_USER_REALM
+                        ,to_realm=ToRealm
+                        }) ->
+    ToRealm;
+to_realm(#kapps_call{to=To
+                        ,to_realm=?NO_REALM
+                        }) ->
+    [_, ToRealm] = binary:split(To, <<"@">>),
+    ToRealm;
 to_realm(#kapps_call{to_realm=ToRealm}) ->
     ToRealm.
 
@@ -926,7 +984,14 @@ set_account_db(<<_/binary>> = AccountDb, #kapps_call{}=Call) ->
                                                                        ,account_id=AccountId
                                                                        }).
 
--spec account_db(call()) -> api_binary().
+-spec account_db(call()) -> api_ne_binary().
+account_db(#kapps_call{account_db='undefined'
+                      ,account_id='undefined'
+                      }) -> 'undefined';
+account_db(#kapps_call{account_db='undefined'
+                       ,account_id=AccountId
+                      }) ->
+    kz_util:format_account_db(AccountId);
 account_db(#kapps_call{account_db=AccountDb}) ->
     AccountDb.
 

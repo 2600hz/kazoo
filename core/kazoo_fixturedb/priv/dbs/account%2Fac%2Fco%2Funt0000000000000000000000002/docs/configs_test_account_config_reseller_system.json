@@ -1,0 +1,34 @@
+{
+    "_id": "configs_test_account_config_reseller_system",
+    "_rev": "1-1db8a605fc856cc951bce63bdc12e2fd",
+    "one_root_key": "reseller_system",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000002",
+    "pvt_account_id": "account0000000000000000000000002",
+    "pvt_created": 63668324118,
+    "pvt_modified": 63668324118,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "account_config",
+    "root_obj_key": {
+        "b_empty_list": [],
+        "b_key": "reseller-system",
+        "b_keys": [
+            "OneResellerSystem"
+        ],
+        "bol_key": true,
+        "f_key": 1.2,
+        "i_key": 89456,
+        "list_of_json": [
+            {
+                "name": "reseller+system"
+            }
+        ],
+        "obj_empty_test": {
+            "banana": "nadarim",
+            "obj_empty_sometimes": {}
+        },
+        "obj_key": {
+            "from": "reseller"
+        },
+        "reseller_system_only": "from_reseller"
+    }
+}

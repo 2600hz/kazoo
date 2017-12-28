@@ -14,6 +14,11 @@ A simple script to query the Erlang VMs process count
 10
 ```
 
+## apps_of_app.escript
+
+Calculates application interdependencies, correcting .app.src files as necessary. Also can be used to detect circular references.
+
+For now, we just calculate app files in `applications/` since `core/` is a tangled mess right now (and is typically installed as one lump package anyway).
 
 ## bump-copyright-year.sh
 
@@ -230,7 +235,7 @@ done (warnings were emitted)
 
 ## dialyze-usage.bash
 
-Given a module name, such as 'props' or 'kz\_json', search core/applications for modules that make calls to the supplied module and dialyze those beam files looking for dialyzer complaints. You will likely see complaints unrelated to your supplied module - go ahead and fix those too if possilbe ;)
+Given a module name, such as 'props' or 'kz\_json', search core/applications for modules that make calls to the supplied module and dialyze those beam files looking for dialyzer complaints. You will likely see complaints unrelated to your supplied module - go ahead and fix those too if possible ;)
 
 The more heavily utilized the module is, the longer this will take to run!
 
@@ -571,6 +576,26 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > GET /v2/websockets
     > POST /v2/resource_selectors/rules
     > POST /v2/whitelabel/domains
+
+
+## `sync_to_remote.bash`
+
+```bash
+HOST="server.com" ERL_FILES="path/to/source.erl" BEAM_PATH="/tmp/beams" ./scripts/sync_to_remote.bash
+```
+
+Takes the provided Erlang files, finds their .beam and syncs those to the remote server provided.
+
+-   `ERL_FILES`: which source files to sync (the changed files (against master) are used by default).
+-   `HOST`: The Host to use for the scp command
+-   `BEAM_PATH`: Where on the Host to put the beam files
+
+## `sync_to_release.bash`
+
+Useful in conjunction with `sync_to_remote`. Takes .beam files in a directory and moves them into a release, into the proper application ebin, and reloads them in the default VMs
+
+-   `BEAMS`: Path to beam files, defaults to `/tmp/beams/*.beam`
+-   `DEST`: Path to the release's lib/ directory, defaults to `/opt/kazoo/lib`
 
 
 ## update-the-types.sh

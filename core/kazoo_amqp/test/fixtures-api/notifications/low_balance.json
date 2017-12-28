@@ -1,0 +1,12 @@
+{
+    "Account-ID": "account0000000000000000000000003",
+    "App-Name": "tasks",
+    "App-Version": "4.0.0",
+    "Current-Balance": 0,
+    "Event-Category": "notification",
+    "Event-Name": "low_balance",
+    "Msg-ID": "1b7b247fd885418c",
+    "Node": "kazoo_apps@apps001.example.com",
+    "Server-ID": "kazoo_apps@apps001.example.com-<0.804.0>-de4b7c26",
+    "System-Log-ID": "1b7b247fd885418c"
+}

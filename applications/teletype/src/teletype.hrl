@@ -14,19 +14,8 @@
 -define(PVT_TYPE, kz_notification:pvt_type()).
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
--define(TEMPLATE_CONFIG_CAT(Id), <<"notification.", (Id)/binary>>).
 
 -define(CACHE_NAME, 'teletype_cache').
-
-
--ifdef(TEST).
--define(A_MASTER_ACCOUNT_ID, <<"6b71cb72c876b5b1396a335f8f8a2594">>).
--define(A_MASTER_ACCOUNT_DB, <<"account%2F6b%2F71%2Fcb72c876b5b1396a335f8f8a2594">>).
--define(AN_ACCOUNT_ID, <<"009afc511c97b2ae693c6cc4920988e8">>).
--define(AN_ACCOUNT_DB, <<"account%2F00%2F9a%2Ffc511c97b2ae693c6cc4920988e8">>).
--define(AN_ACCOUNT_USER_ID, <<"8e248327b85591955749e53ea45b6baa">>).
--endif.
-
 
 -type mime_tuples() :: [mimemail:mimetuple()].
 
@@ -128,9 +117,9 @@
 
 -define(PORT_REQUEST_MACROS
        ,[?MACRO_VALUE(<<"port_request.comment.content">>, <<"comment.content">>, <<"Comment Text">>, <<"Comment Text">>)
-        ,?MACRO_VALUE(<<"port_request.comment.timestamp.local">>, <<"comment.timestamp_local">>, <<"Comment UTC Timestamp">>, <<"Comment Local Timestamp">>)
-        ,?MACRO_VALUE(<<"port_request.comment.timestamp.utc">>, <<"comment.timestamp_utc">>, <<"Comment UTC Timestamp">>, <<"Comment UTC Timestamp">>)
-        ,?MACRO_VALUE(<<"port_request.comment.timestamp.timezone">>, <<"comment.timestamp_timezone">>, <<"Comment Local Timestamp">>, <<"Comment Timestamp Local Timezone">>)
+        ,?MACRO_VALUE(<<"port_request.comment.date.local">>, <<"comment.date_local">>, <<"Comment Local Timestamp">>, <<"Comment Local Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.comment.date.utc">>, <<"comment.date_utc">>, <<"Comment UTC Timestamp">>, <<"Comment UTC Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.comment.date.timezone">>, <<"comment.date_timezone">>, <<"Comment Local Timestamp">>, <<"Comment Timestamp Local Timezone">>)
         ,?MACRO_VALUE(<<"port_request.customser_contact">>, <<"customser_contact">>, <<"Customser Email">>, <<"Customser Email">>)
         ,?MACRO_VALUE(<<"port_request.bill_name">>, <<"bill_name">>, <<"Bill Name">>, <<"Name on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_address">>, <<"bill_address">>, <<"Bill Address">>, <<"Address on the bill">>)
@@ -146,7 +135,18 @@
         ,?MACRO_VALUE(<<"port_request.port_scheduled_date.utc">>, <<"port_scheduled_date_utc">>, <<"UTC Scheduled Date">>, <<"UTC Scheduled Date">>)
         ,?MACRO_VALUE(<<"port_request.port_scheduled_date.timezone">>, <<"port_scheduled_date_timezone">>, <<"Scheduled Date Timezone">>, <<"Scheduled Date Local Timezone">>)
         ,?MACRO_VALUE(<<"port_request.service_provider">>, <<"service_provider">>, <<"Service Provider">>, <<"Service Provider">>)
-        ,?MACRO_VALUE(<<"port_request.requested_port_date">>, <<"requested_port_date">>, <<"Requested Port Date">>, <<"Requested Port Date">>)
+        ,?MACRO_VALUE(<<"port_request.requested_port_date.local">>, <<"requested_port_date_local">>, <<"Local Requested Port Date">>, <<"Local Requested Port Date">>)
+        ,?MACRO_VALUE(<<"port_request.requested_port_date.utc">>, <<"requested_port_date_utc">>, <<"UTC Requested Port Date">>, <<"UTC Requested Port Date">>)
+        ,?MACRO_VALUE(<<"port_request.requested_port_date.timezone">>, <<"requested_port_date_timezone">>, <<"Requested Port Date Timezone">>, <<"Requested Port Date Local Timezone">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.content">>, <<"transition_reason.content">>, <<"Transition Reason Comment Text">>, <<"Transition Reason Comment Text">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.date.local">>, <<"transition_reason.date_local">>, <<"Transition Reason Comment Local Timestamp">>, <<"Transition Reason Comment Local Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.date.utc">>, <<"transition_reason.date_utc">>, <<"Transition Reason Comment UTC Timestamp">>, <<"Transition Reason Comment UTC Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.date.timezone">>, <<"transition_reason.date_timezone">>, <<"Transition Reason Comment Local Timestamp">>, <<"Transition Reason Comment Timestamp Local Timezone">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.first_name">>, <<"transition_reason.user_first_name">>, <<"Transition Commenter First Name">>, <<"First name of the transition commenter">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.last_name">>, <<"transition_reason.user_last_name">>, <<"Transition Commenter Last Name">>, <<"Last name of the transition commenter">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.email">>, <<"transition_reason.user_email">>, <<"Transition Commenter Email">>, <<"Email of the transition commenter">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.timezone">>, <<"transition_reason.user_timezone">>, <<"Transition Commenter Timezone">>, <<"Timezone of the transition commenter">>)
+        ,?MACRO_VALUE(<<"port_request.transition_reason.user.username">>, <<"transition_reason.username">>, <<"Transition Commenter Username">>, <<"Username of transition commenter">>)
         ]).
 
 -define(TRANSACTION_MACROS
@@ -234,18 +234,6 @@
 
 -define(AUTOLOAD_MODULES_KEY, <<"autoload_modules">>).
 -define(AUTOLOAD_MODULES, kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES)).
-
--ifdef(TEST).
--define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
--else.
--define(LOG_ERROR(F,A), lager:error(F,A)).
--define(LOG_WARN(F,A), lager:warning(F,A)).
--define(LOG_DEBUG(F,A), lager:debug(F,A)).
--define(LOG_DEBUG(F), lager:debug(F)).
--endif.
 
 -define(TELETYPE_HRL, 'true').
 -endif.

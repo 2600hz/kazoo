@@ -141,12 +141,31 @@ profile_authorization_headers(Provider, AccessToken) ->
 -spec profile_url(map()) -> binary().
 profile_url(#{auth_provider := #{profile_url := ProfileURL} = Provider
              ,access_token := AccessToken
-             }) ->
+             }=Token) ->
     case maps:get(profile_access_auth_type, Provider, <<"token">>) of
-        <<"token">> -> ProfileURL;
-        <<"api_key">> -> ProfileURL;
-        <<"url">> -> <<ProfileURL/binary, AccessToken/binary>>
+        <<"token">> -> maybe_compose_profile_url(ProfileURL, Token);
+        <<"api_key">> -> maybe_compose_profile_url(ProfileURL, Token);
+        <<"url">> -> maybe_compose_profile_url(<<ProfileURL/binary, AccessToken/binary>>, Token)
     end.
+
+-define(PROFILE_URL_REGEX, <<"\:([^\/]+)">>).
+-define(PROFILE_URL_REGEX_OPTIONS, [{'capture', 'all_but_first', 'binary'}, 'global']).
+-define(PROFILE_URL_REPLACE_OPTIONS, ['global', {'return', 'binary'}]).
+
+-spec maybe_compose_profile_url(ne_binary(), map()) -> binary().
+maybe_compose_profile_url(Url, Token) ->
+    case re:run(Url, ?PROFILE_URL_REGEX, ?PROFILE_URL_REGEX_OPTIONS) of
+        {match, [_ | _] = Fields} -> compose_profile_url(Url, lists:flatten(Fields), Token);
+        _ -> Url
+    end.
+
+-spec compose_profile_url(ne_binary(), ne_binaries(), map()) -> binary().
+compose_profile_url(Url, Fields, Token) ->
+    Payload = maps:get(payload, Token, #{}),
+    lists:foldl(fun(Field, Acc) ->
+                        V = kz_maps:get(Field, Payload, <<>>),
+                        re:replace(Acc, <<":", Field/binary>>, V, ?PROFILE_URL_REPLACE_OPTIONS)
+                end, Url, Fields).
 
 -spec maybe_add_user_identity(map()) -> map().
 maybe_add_user_identity(#{user_identity := _Identity} = Token) -> Token;

@@ -223,7 +223,10 @@
 -type audio_macro_prompts() :: [audio_macro_prompt()].
 -export_type([audio_macro_prompt/0
              ,audio_macro_prompts/0
+             ,store_fun/0
              ]).
+
+-type store_fun() :: ne_binary() | fun(() -> ne_binary()).
 
 -define(CONFIG_CAT, <<"call_command">>).
 
@@ -783,6 +786,7 @@ set(ChannelVars, 'undefined', AppVars, Call) -> set(ChannelVars, kz_json:new(), 
 set(ChannelVars, CallVars, AppVars, Call) ->
     case kz_json:is_empty(ChannelVars)
         andalso kz_json:is_empty(CallVars)
+        andalso kz_json:is_empty(AppVars)
     of
         'true' -> 'ok';
         'false' ->
@@ -1173,8 +1177,8 @@ b_bridge_wait(Timeout, Call) ->
     wait_for_bridge((kz_term:to_integer(Timeout) * ?MILLISECONDS_IN_SECOND) + ?EXTRA_BRIDGE_TIMEOUT , Call).
 
 -spec unbridge(kapps_call:call()) -> 'ok'.
--spec unbridge(kapps_call:call(), ne_binary()) -> 'ok'.
--spec unbridge(kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+-spec unbridge(kapps_call:call(), api_ne_binary()) -> 'ok'.
+-spec unbridge(kapps_call:call(), api_ne_binary(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
     Command = unbridge_command(Call),
     send_command(Command, Call).
@@ -1186,8 +1190,8 @@ unbridge(Call, Leg, Insert) ->
     send_command(Command, Call).
 
 -spec unbridge_command(kapps_call:call()) -> kz_proplist().
--spec unbridge_command(kapps_call:call(), ne_binary()) -> kz_proplist().
--spec unbridge_command(kapps_call:call(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec unbridge_command(kapps_call:call(), api_ne_binary()) -> kz_proplist().
+-spec unbridge_command(kapps_call:call(), api_ne_binary(), ne_binary()) -> kz_proplist().
 unbridge_command(Call) ->
     unbridge_command(Call, <<"Both">>).
 unbridge_command(Call, Leg) ->
@@ -2288,6 +2292,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
                                          ,noop_id=NoopId
                                          ,terminators=Terminators
                                          ,call=Call
+                                         ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
 -spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
@@ -2887,7 +2892,7 @@ get_outbound_t38_settings(CarrierFlag, 'undefined') ->
 get_outbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
     get_outbound_t38_settings(CarrierFlag, kz_term:is_true(CallerFlag));
 get_outbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2899,7 +2904,7 @@ get_outbound_t38_settings('true', 'false') ->
     ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
 get_outbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2940,7 +2945,7 @@ get_inbound_t38_settings(CarrierFlag, 'undefined') ->
 get_inbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
     get_inbound_t38_settings(CarrierFlag, kz_term:is_true(CallerFlag));
 get_inbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -2958,7 +2963,7 @@ get_inbound_t38_settings('true', 'undefined') ->
     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ];
 get_inbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
+    [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
     ,{<<"Enable-T38-Passthrough">>, 'true'}
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
@@ -3098,40 +3103,42 @@ wait_for_unparked_call(Call, Timeout) ->
             end
     end.
 
--spec store_file_args(ne_binary(), ne_binary() | function()) -> kz_proplist().
-store_file_args(Filename, UrlFun) ->
-    Url = case is_function(UrlFun, 0) of
-              'true' -> UrlFun();
-              'false' -> UrlFun
-          end,
+-spec store_file_args(ne_binary(), store_fun()) -> kz_proplist().
+store_file_args(Filename, URLFun) ->
     [{<<"File-Name">>, Filename}
-    ,{<<"Url">>, Url}
+    ,{<<"Url">>, maybe_call_store_fun(URLFun)}
     ,{<<"Http-Method">>, <<"put">>}
     ].
 
--spec store_file(ne_binary(), ne_binary() | function(), kapps_call:call()) -> 'ok' | {'error', any()}.
-store_file(Filename, Url, Call) ->
-    App = kz_util:calling_app(),
-    store_file(Filename, Url, storage_retries(App), storage_timeout(App), Call).
+-spec maybe_call_store_fun(store_fun()) -> ne_binary().
+maybe_call_store_fun(URLFun) when is_function(URLFun, 0) ->
+    URLFun();
+maybe_call_store_fun(URL) -> URL.
 
--spec store_file(ne_binary(), ne_binary() | function(), pos_integer(), kapps_call:call()) ->
-                        'ok' | {'error', any()}.
-store_file(Filename, Url, Tries, Call) ->
+-spec store_file(ne_binary(), store_fun(), kapps_call:call()) -> 'ok' | {'error', any()}.
+store_file(Filename, URLFun, Call) ->
     App = kz_util:calling_app(),
-    store_file(Filename, Url, Tries, storage_timeout(App), Call).
+    store_file(Filename, URLFun, storage_retries(App), storage_timeout(App), Call).
 
--spec store_file(ne_binary(), ne_binary() | function(), pos_integer(), kz_timeout(), kapps_call:call()) ->
+-spec store_file(ne_binary(), store_fun(), pos_integer(), kapps_call:call()) ->
                         'ok' | {'error', any()}.
-store_file(Filename, Url, Tries, Timeout, Call) ->
+store_file(Filename, URLFun, Tries, Call) ->
+    App = kz_util:calling_app(),
+    store_file(Filename, URLFun, Tries, storage_timeout(App), Call).
+
+-spec store_file(ne_binary(), store_fun(), pos_integer(), kz_timeout(), kapps_call:call()) ->
+                        'ok' | {'error', any()}.
+store_file(Filename, URLFun, Tries, Timeout, Call) ->
     Msg = case kapps_call:kvs_fetch('alert_msg', Call) of
               'undefined' ->
-                  io_lib:format("Error Storing File ~s From Media Server ~s",
-                                [Filename, kapps_call:switch_nodename(Call)]);
+                  io_lib:format("Error Storing File ~s From Media Server ~s"
+                               ,[Filename, kapps_call:switch_nodename(Call)]
+                               );
               ErrorMsg -> ErrorMsg
           end,
     {AppName, AppVersion} = kz_util:calling_app_version(),
     API = fun() -> [{<<"Command">>, <<"send_http">>}
-                   ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
+                   ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, URLFun))}
                    ,{<<"FreeSWITCH-Node">>, kapps_call:switch_nodename(Call)}
                     | kz_api:default_headers(AppName, AppVersion)
                    ]

@@ -163,6 +163,7 @@ read(Context, CallId) ->
                     lager:warning("trying to get info about a channel ~s not in the account ~s", [CallId, cb_context:account_id(Context)]),
                     crossbar_util:response_bad_identifier(CallId, Context);
                 Channel ->
+                    lager:debug("found our channel ~s: ~p", [CallId, Channel]),
                     crossbar_util:response(normalize_channel(Channel), Context)
             end;
         {'returned', JObj, _BR} ->
@@ -240,9 +241,7 @@ validate_action(Context, CallId) ->
     case cb_context:has_errors(Ctx) of
         'true' -> Ctx;
         'false' ->
-            Envelope = cb_context:req_json(Context),
-            Data = cb_context:req_data(Context),
-            validate_action(Ctx, CallId, kz_json:find(<<"action">>, [Envelope, Data]))
+            validate_action(Ctx, CallId, cb_modules_util:get_request_action(Context))
     end.
 
 validate_action(Context, _UUID, <<"metaflow">>) ->

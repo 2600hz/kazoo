@@ -112,7 +112,7 @@ macros(DataJObj) ->
 -spec admin_user_properties(kz_json:object()) -> kz_proplist().
 admin_user_properties(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    case account_fetch(AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', JObj} -> account_admin_user_properties(JObj);
         {'error', _} -> []
     end.
@@ -120,7 +120,7 @@ admin_user_properties(DataJObj) ->
 -spec account_admin_user_properties(kz_json:object()) -> kz_proplist().
 account_admin_user_properties(AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
-    case list_users(AccountDb) of
+    case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
         {'error', _E} ->
             ?LOG_DEBUG("failed to get user listing from ~s: ~p", [AccountDb, _E]),
             [];
@@ -138,19 +138,3 @@ find_admin([User|Users]) ->
         'true' -> teletype_util:user_params(UserDoc);
         'false' -> find_admin(Users)
     end.
-
--ifdef(TEST).
-account_fetch(?AN_ACCOUNT_ID) ->
-    kz_json:fixture(?APP, "an_account.json").
-
-list_users(?AN_ACCOUNT_DB) ->
-    {ok,UserJObj0} = kz_json:fixture(?APP, "an_account_user.json"),
-    UserJObj = kzd_user:set_priv_level(<<"admin">>, UserJObj0),
-    {ok, [kz_json:from_list([{<<"doc">>, UserJObj}])]}.
--else.
-account_fetch(AccountId) ->
-    kz_account:fetch(AccountId).
-
-list_users(AccountDb) ->
-    kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']).
--endif.

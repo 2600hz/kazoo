@@ -19,13 +19,13 @@ Key | Description | Type | Default | Required
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean()` | `true` | `false`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean()` | `true` | `false`
 `call_forward` | The device call forward parameters | `object()` |   | `false`
-`call_recording` |   | `object()` |   | `false`
+`call_recording` |   | [#/definitions/call_recording](#call_recording) |   | `false`
 `call_restriction` | Device level call restrictions for each available number classification | `object()` | `{}` | `false`
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
-`caller_id` | The device caller ID parameters | `object()` | `{}` | `false`
+`caller_id` | The device caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false`
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false`
 `contact_list` | Contect List Parameters | `object()` | `{}` | `false`
-`dial_plan` | A list of rules used to modify dialed numbers | `object()` | `{}` | `false`
+`dial_plan` | A list of rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false`
 `directories` | Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller. | `object()` |   | `false`
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean()` |   | `false`
 `do_not_disturb` | DND Parameters | `object()` |   | `false`
@@ -42,28 +42,14 @@ Key | Description | Type | Default | Required
 `hotdesk` | The user hotdesk parameters | `object()` | `{}` | `false`
 `language` | The language for this user | `string()` |   | `false`
 `last_name` | The last name of the user | `string(1..128)` |   | `true`
-`media.audio.codecs.[]` |   | `string()` |   | `false`
-`media.audio.codecs` | A list of audio codecs the device supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false`
-`media.audio` | The audio media parameters | `object()` | `{}` | `false`
-`media.bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false`
-`media.encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false`
-`media.encryption.methods.[]` |   | `string()` |   | `false`
-`media.encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false`
-`media.encryption` | Encryption Parameters | `object()` | `{}` | `false`
-`media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
-`media.ignore_early_media` | The option to determine if early media from the device should always be ignored | `boolean()` |   | `false`
-`media.progress_timeout` | The progress timeout to apply to the device (seconds) | `integer()` |   | `false`
-`media.video.codecs.[]` |   | `string()` |   | `false`
-`media.video.codecs` | A list of video codecs the device supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false`
-`media.video` | The video media parameters | `object()` | `{}` | `false`
-`media` | The device media parameters | `object()` | `{}` | `false`
+`media` | Configure audio/video/etc media options for this user | [#/definitions/endpoint.media](#endpointmedia) |   | `false`
 `metaflows` | The device metaflow parameters | [#/definitions/metaflows](#metaflows) |   | `false`
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object()` | `{}` | `false`
 `password` | The GUI login password | `string()` |   | `false`
 `presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false`
 `priv_level` | The privilege level of the user | `string('user' | 'admin')` | `user` | `false`
-`profile` | User's profile data | `object()` | `{}` | `false`
+`profile` | User's profile data | [#/definitions/profile](#profile) |   | `false`
 `pronounced_name.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
 `pronounced_name` | Name pronounced by user to introduce himself to conference members | `object()` |   | `false`
 `require_password_update` | UI flag that the user should update their password. | `boolean()` | `false` | `false`
@@ -147,6 +133,28 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `system.[]` |   | `string()` |   | `false`
 `system` | List of system dial plans | `array(string())` |   | `false`
+
+##### endpoint.media
+
+Schema for endpoint media options
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`audio.codecs.[]` |   | `string()` |   | `false`
+`audio.codecs` | A list of audio codecs the endpoint supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false`
+`audio` | The audio media parameters | `object()` | `{}` | `false`
+`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false`
+`encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false`
+`encryption.methods.[]` |   | `string()` |   | `false`
+`encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false`
+`encryption` | Encryption Parameters | `object()` | `{}` | `false`
+`fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
+`ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `boolean()` |   | `false`
+`progress_timeout` | The progress timeout to apply to the endpoint (seconds) | `integer()` |   | `false`
+`video.codecs.[]` |   | `string()` |   | `false`
+`video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false`
+`video` | The video media parameters | `object()` | `{}` | `false`
 
 ##### formatters
 

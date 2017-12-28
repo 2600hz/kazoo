@@ -1,0 +1,23 @@
+                Voicemail Box Full
+
+
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
+
+Your voicemail box {{voicemail.name}} ({{voicemail.number}}) reached
+the limit of {{voicemail.max_messages}} messages and no new voicemail
+messages will be store on your voicemailbox.
+
+    > Please review and clean up your voicemail box messages to
+      continue receiving new messages.
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

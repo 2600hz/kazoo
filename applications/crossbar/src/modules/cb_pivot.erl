@@ -147,6 +147,7 @@ debug_read(Context, ?MATCH_MODB_PREFIX(Year, Month, CallId)) ->
 debug_read(Context, CallId) ->
     ViewOptions = [{'mapper', fun normalize_debug_read/2}
                   ,{'range_keymap', CallId}
+                  ,{'unchunkable', 'true'}
                   ,'include_docs'
                   ],
     crossbar_view:load_modb(Context, ?CB_DEBUG_LIST, ViewOptions).

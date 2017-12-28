@@ -1,0 +1,23 @@
+                Port Request Pending
+
+Your request "{{port_request.name}}" to port numbers into
+account '{{account.name}}' is transitioned into pending state.
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

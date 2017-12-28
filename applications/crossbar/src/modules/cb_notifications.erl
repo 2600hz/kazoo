@@ -976,8 +976,7 @@ set_teletype_as_default(Context, AccountDb, AccountJObj) ->
             lager:debug("failed to note preference: ~p", [_E])
     end.
 
--spec migrate_template_attachments(cb_context:context(), ne_binary(), api_object()) ->
-                                          cb_context:context().
+-spec migrate_template_attachments(cb_context:context(), ne_binary(), api_object()) -> cb_context:context().
 migrate_template_attachments(Context, _Id, 'undefined') ->
     lager:debug("no attachments to migrate for ~s", [_Id]),
     Context;
@@ -996,12 +995,8 @@ migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
             ContentType = kz_json:get_value(<<"content_type">>, AMeta),
             lager:debug("saving attachment for ~s(~s): ~s", [Id, AName, ContentType]),
             Opts = [{'content_type', kz_term:to_list(ContentType)}],
-            crossbar_doc:save_attachment(Id
-                                        ,attachment_name_by_content_type(ContentType)
-                                        ,Bin
-                                        ,Context
-                                        ,Opts
-                                        );
+            AttName = attachment_name_by_content_type(ContentType),
+            crossbar_doc:save_attachment(Id, AttName, Bin, Context, Opts);
         {'error', _E} ->
             lager:debug("failed to load attachment ~s for ~s: ~p", [AName, Id, _E]),
             Context
@@ -1046,7 +1041,6 @@ read_template(Context, Id, Accept) ->
               read_account_attachment(Context, AttachmentsDb, Id, AttachmentName)
                                        ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
                                         ,{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentName)}
-                                        ,{<<"Content-Length">>, kz_doc:attachment_length(Doc, AttachmentName)}
                                         ])
     end.
 
@@ -1513,7 +1507,11 @@ list_templates_from_db(Db) ->
                ],
     case kz_datamgr:all_docs(Db, ViewOpts) of
         {'ok', Results} ->
-            [kz_doc:id(Result) || Result <- Results];
+            [Id
+             || Result <- Results,
+                Id <- [kz_doc:id(Result)],
+                'notification.skel' =/=  Id
+            ];
         {'error', _E} ->
             lager:debug("failed to query existing notifications: ~p~n", [_E]),
             []

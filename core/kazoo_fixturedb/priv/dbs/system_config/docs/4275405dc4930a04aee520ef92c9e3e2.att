@@ -1,0 +1,26 @@
+                Missed Call
+
+
+A call was received on phone number {%firstof to.user callee_id.number %}
+but went unanswered and left no voicemail message.
+
+The caller was {{caller_id.name}} ({{caller_id.number}}).
+
+=== Call Details ===
+
+    Caller: {{caller_id.name}} ({{caller_id.number}})
+    Callee: {{to.user}} (originally dialed number)
+    Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
+    Hangup Cause: {{missed_call.reason|title}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

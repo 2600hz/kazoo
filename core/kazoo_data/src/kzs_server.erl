@@ -32,10 +32,10 @@ db_url({App, Conn}, DbName) -> App:db_url(Conn, DbName).
 
 -spec get_db(map() | server(), ne_binary()) -> db().
 get_db(#{server := {App, Conn}}, DbName) ->
-    {'ok', Db} = App:get_db(Conn, DbName),
+    Db = App:get_db(Conn, DbName),
     #db{app=App, server=Conn, db=Db, name=DbName};
 get_db({App, Conn}, DbName) ->
-    {'ok', Db} = App:get_db(Conn, DbName),
+    Db = App:get_db(Conn, DbName),
     #db{app=App, server=Conn, db=Db, name=DbName}.
 
 -spec format_error(any()) -> any().

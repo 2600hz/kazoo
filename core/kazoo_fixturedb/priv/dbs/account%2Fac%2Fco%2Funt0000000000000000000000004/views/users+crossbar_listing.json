@@ -1,0 +1,21 @@
+[
+    {
+        "id": "user0000000000000000000000000004",
+        "key": "User Three",
+        "value": {
+            "email": "user-4001@2600hz.local",
+            "features": [
+                "hotdesk",
+                "caller_id",
+                "vm_to_email",
+                "music_on_hold"
+            ],
+            "first_name": "User",
+            "id": "user0000000000000000000000000004",
+            "last_name": "Four",
+            "presence_id": "4001",
+            "priv_level": "admin",
+            "username": "userfour"
+        }
+    }
+]

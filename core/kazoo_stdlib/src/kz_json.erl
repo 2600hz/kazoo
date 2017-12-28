@@ -78,8 +78,11 @@
 -export([from_list/1, from_list_recursive/1, merge_jobjs/2]).
 
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
+
 -ifdef(TEST).
--export([fixture/2]).
+-export([fixture/1
+        ,fixture/2
+        ]).
 -endif.
 
 -export([normalize_jobj/1
@@ -1169,16 +1172,16 @@ load_fixture_from_file(App, Dir, File) ->
     end.
 
 -ifdef(TEST).
--spec fixture(atom(), file:filename_all()) -> {ok,object()} | {error,any()}.
-fixture(App, Path0) when is_atom(App) ->
-    Path = filename:join(code:lib_dir(App, test), Path0),
-    io:format(user, "reading fixture from ~s\n", [Path]),
+-spec fixture(file:filename_all()) -> {ok, object()} | {error, not_found}.
+fixture(Path) ->
     case file:read_file(Path) of
         {ok, Bin} -> {ok, decode(Bin)};
-        {error, _R}=E ->
-            io:format(user, "error fetching ~s: ~p\n", [Path0, _R]),
-            E
+        {error, _} -> {error, not_found}
     end.
+
+-spec fixture(atom(), file:filename_all()) -> {ok, object()} | {error, not_found}.
+fixture(App, Path) when is_atom(App) ->
+    fixture(filename:join(code:lib_dir(App, test), Path)).
 -endif.
 
 %%--------------------------------------------------------------------

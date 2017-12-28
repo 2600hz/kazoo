@@ -164,15 +164,8 @@ auth_user_data(DataJObj) ->
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
             UserId = kz_json:get_value([<<"authenticating_user">>, <<"auth_user_id">>], Audit),
-            case fetch_user(AccountId, UserId) of
+            case kzd_user:fetch(AccountId, UserId) of
                 {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
                 {'error', _} -> []
             end
     end.
-
--ifdef(TEST).
-fetch_user(?AN_ACCOUNT_ID, ?AN_ACCOUNT_USER_ID) ->
-    kz_json:fixture(?APP, "an_account_user.json").
--else.
-fetch_user(AccountId, UserId) -> kzd_user:fetch(AccountId, UserId).
--endif.

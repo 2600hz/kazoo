@@ -1,0 +1,124 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.conference.add_participant",
+    "description": "AMQP API for conference.add_participant",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Answered": {
+            "type": "string"
+        },
+        "Authorizing-ID": {
+            "type": "string"
+        },
+        "Authorizing-Type": {
+            "type": "string"
+        },
+        "Bridge-ID": {
+            "type": "string"
+        },
+        "Call-Direction": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Channel-Authorized": {
+            "type": "string"
+        },
+        "Conference-ID": {
+            "type": "string"
+        },
+        "Control-Queue": {
+            "type": "string"
+        },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Destination": {
+            "type": "string"
+        },
+        "Ecallmgr-Node": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "conference"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "add_participant"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "Is-Loopback": {
+            "type": "string"
+        },
+        "Is-On-Hold": {
+            "type": "string"
+        },
+        "Media-Node": {
+            "type": "string"
+        },
+        "Media-Server": {
+            "type": "string"
+        },
+        "Node": {
+            "type": "string"
+        },
+        "Other-Leg-Call-ID": {
+            "type": "string"
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Switch-Nodename": {
+            "type": "string"
+        },
+        "Switch-URI": {
+            "type": "string"
+        },
+        "Switch-URL": {
+            "type": "string"
+        },
+        "Timestamp": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Conference-ID",
+        "Control-Queue"
+    ],
+    "type": "object"
+}

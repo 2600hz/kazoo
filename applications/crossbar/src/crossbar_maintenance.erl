@@ -45,6 +45,8 @@
         ,set_app_screenshots/2
         ]).
 
+-export([does_schema_exist/1]).
+
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
 
@@ -447,12 +449,30 @@ update_system_config(AccountId) ->
 
 -spec prechecks(cb_context:context()) -> {'ok', cb_context:context()}.
 prechecks(Context) ->
-    Funs = [fun db_accounts_exists/0
+    Funs = [fun is_crossbar_running/0
+           ,fun db_accounts_exists/0
            ,fun db_system_config_exists/0
            ,fun db_system_schemas_exists/0
+           ,fun do_schemas_exist/0
            ],
     'true' = lists:all(fun(F) -> F() end, Funs),
+    lager:info("prechecks passed"),
     {'ok', Context}.
+
+-spec is_crossbar_running() -> boolean().
+is_crossbar_running() ->
+    case lists:member('crossbar', kapps_controller:running_apps()) of
+        'false' -> start_crossbar();
+        'true' -> 'true'
+    end.
+
+start_crossbar() ->
+    case kapps_controller:start_app('crossbar') of
+        {'ok', _} -> 'true';
+        {'error', _E} ->
+            io:format("failed to start crossbar: ~p~n", [_E]),
+            'false'
+    end.
 
 -spec db_accounts_exists() -> 'true'.
 db_accounts_exists() ->
@@ -483,6 +503,50 @@ db_exists(Database, ShouldRetry) ->
                                     ,{<<"database">>, Database}
                                     ])
                  )
+    end.
+
+-spec do_schemas_exist() -> boolean().
+do_schemas_exist() ->
+    Schemas = [<<"users">>
+              ,<<"accounts">>
+              ,<<"profile">>
+              ],
+    lists:all(fun does_schema_exist/1, Schemas).
+
+-spec does_schema_exist(ne_binary()) -> boolean().
+does_schema_exist(Schema) ->
+    case kz_json_schema:load(Schema) of
+        {'ok', SchemaJObj} -> maybe_load_refs(SchemaJObj);
+        {'error', 'not_found'} -> maybe_fload(Schema)
+    end.
+
+-spec maybe_fload(ne_binary()) -> boolean().
+maybe_fload(Schema) ->
+    case kz_json_schema:fload(Schema) of
+        {'ok', SchemaJObj} ->
+            lager:info("schema ~s exists on disk, refreshing in db", [Schema]),
+            case kz_datamgr:save_doc(?KZ_SCHEMA_DB, SchemaJObj) of
+                {'ok', _} -> 'ok';
+                {'error', 'conflict'} -> 'ok'
+            end,
+            maybe_load_refs(SchemaJObj);
+        {'error', _E} ->
+            lager:error("schema ~s not in db or on disk: ~p", [Schema, _E]),
+            throw(kz_json:from_list([{<<"error">>, <<"schema ", Schema/binary, " not found">>}
+                                    ,{<<"schema">>, Schema}
+                                    ])
+                 )
+    end.
+
+maybe_load_refs(SchemaJObj) ->
+    kz_json:all(fun maybe_load_ref/1
+               ,kz_json:get_json_value(<<"properties">>, SchemaJObj, kz_json:new())
+               ).
+
+maybe_load_ref({_Property, Schema}) ->
+    case kz_json:get_ne_binary_value(<<"$ref">>, Schema) of
+        'undefined' -> maybe_load_refs(Schema);
+        Ref -> does_schema_exist(Ref)
     end.
 
 %%--------------------------------------------------------------------

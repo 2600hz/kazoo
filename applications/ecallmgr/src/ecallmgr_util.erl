@@ -121,9 +121,9 @@ send_cmd(Node, UUID, "call_pickup", Target) ->
     Args = iolist_to_binary([UUID, " ", Target]),
     lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
     freeswitch:api(Node, 'uuid_bridge', kz_term:to_list(Args));
-send_cmd(Node, UUID, "hangup", _) ->
+send_cmd(Node, UUID, "hangup", Args) ->
     lager:debug("terminate call on node ~s", [Node]),
-    freeswitch:api(Node, 'uuid_kill', kz_term:to_list(UUID));
+    freeswitch:api(Node, 'uuid_kill', iolist_to_binary([UUID, " ", Args]));
 send_cmd(Node, UUID, "break", _) ->
     lager:debug("break call on node ~s", [Node]),
     freeswitch:api(Node, 'uuid_break', kz_term:to_list(UUID));
@@ -207,8 +207,7 @@ get_sip_to(Props) ->
 get_sip_to(Props, <<"outbound">>) ->
     case props:get_value(<<"Channel-Presence-ID">>, Props) of
         'undefined' ->
-            Number = props:get_first_defined([<<"Other-Leg-ANI">>
-                                             ,<<"Other-Leg-Callee-ID-Number">>
+            Number = props:get_first_defined([<<"Other-Leg-Callee-ID-Number">>
                                              ,<<"variable_sip_to_user">>
                                              ], Props, <<"nouser">>),
             Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)

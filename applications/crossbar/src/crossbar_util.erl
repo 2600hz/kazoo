@@ -346,11 +346,12 @@ flush_registrations(Context) ->
 flush_registration('undefined', _Realm) ->
     lager:debug("did not flush registration: username is undefined");
 flush_registration(Username, <<_/binary>> = Realm) ->
-    FlushCmd = [{<<"Realm">>, Realm}
+    FlushCmd = [{<<"Event">>, <<"check-sync">>}
+               ,{<<"Realm">>, Realm}
                ,{<<"Username">>, Username}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    kapps_util:amqp_pool_send(FlushCmd, fun kapi_switch:publish_check_sync/1),
+    kapps_util:amqp_pool_send(FlushCmd, fun kapi_switch:publish_notify/1),
     kapps_util:amqp_pool_send(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registration(Username, Context) ->
     Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
@@ -363,49 +364,71 @@ flush_registration(Context) ->
     NewDevice = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     Realm = kz_account:fetch_realm(AccountId),
-    maybe_flush_registration_on_password(Realm, OldDevice, NewDevice).
 
--spec maybe_flush_registration_on_password(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+    Routins = [fun maybe_flush_registration_on_password/3
+              ,fun maybe_flush_registration_on_username/3
+              ,fun maybe_flush_registration_on_ownerid/3
+              ,fun maybe_flush_registration_on_enabled/3
+              ,fun maybe_flush_registration_on_deleted/3
+              ],
+    Fun = fun(_, 'ok') -> 'ok';
+             (F, 'next') -> F(Realm, OldDevice, NewDevice)
+          end,
+    _ = lists:foldl(Fun, 'next', Routins),
+    'ok'.
+
+-spec maybe_flush_registration_on_password(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
     case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
-        'true' -> maybe_flush_registration_on_username(Realm, OldDevice, NewDevice);
+        'true' -> 'next';
         'false' ->
             lager:debug("the SIP password has changed, sending a registration flush"),
             flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
--spec maybe_flush_registration_on_username(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec maybe_flush_registration_on_username(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
     OldUsername = kz_device:sip_username(OldDevice),
 
     case kz_device:sip_username(NewDevice) of
-        OldUsername -> maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice);
+        OldUsername -> 'next';
         NewUsername ->
             lager:debug("the SIP username has changed, sending a registration flush for both"),
             flush_registration(OldUsername, Realm),
             flush_registration(NewUsername, Realm)
     end.
 
--spec maybe_flush_registration_on_ownerid(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec maybe_flush_registration_on_ownerid(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice) ->
     OldOwnerId = kz_device:owner_id(OldDevice),
 
     case kz_device:owner_id(NewDevice) of
-        OldOwnerId -> maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice);
+        OldOwnerId -> 'next';
         _NewOwnerId ->
             lager:debug("the device owner_id has changed, sending a registration flush"),
             flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
--spec maybe_flush_registration_on_enabled(api_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec maybe_flush_registration_on_enabled(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
     OldEnabled = kz_device:enabled(OldDevice),
 
     case kz_device:enabled(NewDevice) of
-        OldEnabled -> 'ok';
+        OldEnabled -> 'next';
         _NewEnabled ->
             lager:debug("the device enabled has changed, sending a registration flush"),
             flush_registration(kz_device:sip_username(OldDevice), Realm)
+    end.
+
+-spec maybe_flush_registration_on_deleted(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
+maybe_flush_registration_on_deleted(Realm, _OldDevice, NewDevice) ->
+    case kz_doc:is_soft_deleted(NewDevice)
+        orelse kz_doc:is_deleted(NewDevice)
+    of
+        'false' -> 'next';
+        'true' ->
+            lager:debug("the device has been deleted, sending a registration flush"),
+            flush_registration(kz_device:sip_username(NewDevice), Realm)
     end.
 
 %%--------------------------------------------------------------------

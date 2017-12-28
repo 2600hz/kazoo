@@ -1,20 +1,64 @@
 -module(kz_device_test).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(MASTER_ACCOUNT, <<"account0000000000000000000000001">>).
+-define(SUB_ACCOUNT_ID, <<"account0000000000000000000000002">>).
+
 -define(DEVICE_1_ID, <<"device00000000000000000000000001">>).
 -define(DEVICE_2_ID, <<"device00000000000000000000000002">>).
 
-invalid_parameters_test_() ->
+kz_device_test_() ->
+    {setup
+    ,fun setup/0
+    ,fun cleanup/1
+    ,fun(_) ->
+             [test_invalid_parameters()
+             ,test_validate_fixtures()
+             ,test_auxiliary_functions()
+             ,test_custom_sip_headers()
+             ,test_no_legacy_sip_headers()
+             ,test_no_inbound_sip_headers()
+             ,test_no_outbound_custom_sip_headers()
+             ,test_custom_sip_headers_schema()
+             ,test_outbound_flags()
+             ,test_outbound_flags_static()
+             ,test_outbound_dynamic_flags()
+             ,test_device_param_setting()
+             ]
+     end
+    }.
+
+setup() ->
+    ?LOG_DEBUG(":: Setting up Kazoo FixtureDB"),
+
+    {ok, _} = application:ensure_all_started(kazoo_config),
+    {ok, LinkPid} = kazoo_data_link_sup:start_link(),
+
+    LinkPid.
+
+cleanup(LinkPid) ->
+    _DataLink = erlang:exit(LinkPid, normal),
+    Ref = monitor(process, LinkPid),
+    receive
+        {'DOWN', Ref, process, LinkPid, _Reason} ->
+            _KConfig = application:stop(kazoo_config),
+            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: ~p kazoo_config: ~p", [_DataLink, _KConfig])
+    after 1000 ->
+            _KConfig = application:stop(kazoo_config),
+            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: timeout kazoo_config: ~p", [_KConfig])
+    end.
+
+test_invalid_parameters() ->
     [?_assertMatch({'error', 'invalid_parameters'}, kz_device:fetch(?MASTER_ACCOUNT, 256))].
 
-validate_fixtures_test_() ->
+test_validate_fixtures() ->
     {'ok', Schema} = kz_json_schema:fload(<<"devices">>),
     {'ok', Device1} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     [{"validate device fixture 1", ?_assertMatch({'ok', _}, validate(Schema, Device1))}].
 
-auxiliary_functions_test_() ->
+test_auxiliary_functions() ->
     {'ok', Device1} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     [?_assert(kz_device:is_device(Device1))
     ,?_assertEqual(<<"device_1_username">>, kz_device:sip_username(Device1))
@@ -33,7 +77,7 @@ auxiliary_functions_test_() ->
     ,?_assert(kz_device:enabled(Device1))
     ].
 
-custom_sip_headers_test_() ->
+test_custom_sip_headers() ->
     {'ok', TestDevice} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     [?_assertEqual(<<"foo">>, kz_device:custom_sip_header_inbound(TestDevice, <<"x-device-header">>))
     ,?_assertEqual(<<"bar">>, kz_device:custom_sip_header_outbound(TestDevice, <<"x-outbound-header">>))
@@ -42,7 +86,7 @@ custom_sip_headers_test_() ->
     ,?_assertEqual('undefined', kz_device:custom_sip_header_outbound(TestDevice, <<"x-missing-header">>))
     ].
 
-no_legacy_sip_headers_test_() ->
+test_no_legacy_sip_headers() ->
     {'ok', Device} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     InCSH = kz_json:from_list([{<<"x-device-header">>, <<"foo">>}]),
     OutCSH = kz_json:from_list([{<<"x-outbound-header">>, <<"bar">>}]),
@@ -58,7 +102,7 @@ no_legacy_sip_headers_test_() ->
     ,?_assertEqual('undefined', kz_device:custom_sip_header_outbound(TestDevice, <<"x-missing-header">>))
     ].
 
-no_inbound_sip_headers_test_() ->
+test_no_inbound_sip_headers() ->
     {'ok', Device} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     LegacyCSH = kz_json:from_list([{<<"x-device-header">>, <<"baz">>}
                                   ,{<<"x-legacy-header">>, <<"Hz">>}
@@ -73,7 +117,7 @@ no_inbound_sip_headers_test_() ->
     ,?_assertEqual('undefined', kz_device:custom_sip_header_outbound(TestDevice, <<"x-missing-header">>))
     ].
 
-no_outbound_custom_sip_headers_test_() ->
+test_no_outbound_custom_sip_headers() ->
     {'ok', Device} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     InCSH = kz_json:from_list([{<<"x-device-header">>, <<"foo">>}]),
     LegacyCSH = kz_json:from_list([{<<"x-device-header">>, <<"baz">>}
@@ -92,7 +136,7 @@ no_outbound_custom_sip_headers_test_() ->
     ,?_assertEqual('undefined', kz_device:custom_sip_header_outbound(TestDevice, <<"x-missing-header">>))
     ].
 
-custom_sip_headers_schema_test_() ->
+test_custom_sip_headers_schema() ->
     {'ok', Device} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     InCSH = kz_json:from_list([{<<"x-device-header">>, <<"foo">>}]),
     OutCSH = kz_json:from_list([{<<"x-outbound-header">>, <<"bar">>}]),
@@ -112,11 +156,11 @@ custom_sip_headers_schema_test_() ->
     ,{"invalid header check", ?_assertMatch({'error', _}, validate(Schema, kz_json:set_value([<<"sip">>, <<"custom_sip_headers">>, <<"out">>, <<"bad@header">>], <<"ok">>, TestDevice)))}
     ].
 
-outbound_flags_test_() ->
+test_outbound_flags() ->
     {'ok', OldData} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     ExpectedOldData = kz_json:decode("{\"static\": [\"device_old_static_flag\"]}"),
 
-    {'ok', NewData} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_2_ID),
+    {'ok', NewData} = kz_device:fetch(?SUB_ACCOUNT_ID, ?DEVICE_2_ID),
     ExpectedNewData = kz_json:decode("{\"dynamic\": [\"not_exported\", \"from_realm\"], \"static\": [\"device_new_static_flag\"]}"),
 
     MissingData = kz_json:delete_key(<<"outbound_flags">>, NewData),
@@ -155,12 +199,12 @@ outbound_flags_test_() ->
      }
     ].
 
-outbound_flags_static_test_() ->
+test_outbound_flags_static() ->
     {'ok', OldData} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     UpdatedOldData = kz_json:get_value(<<"outbound_flags">>, kz_device:set_outbound_static_flags(OldData, [<<"updated_flag">>])),
     ExpectedOldUpdate = kz_json:decode("{\"static\": [\"updated_flag\"]}"),
 
-    {'ok', NewData} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_2_ID),
+    {'ok', NewData} = kz_device:fetch(?SUB_ACCOUNT_ID, ?DEVICE_2_ID),
     UpdatedNewData = kz_json:get_value(<<"outbound_flags">>, kz_device:set_outbound_static_flags(NewData, [<<"updated_flag">>])),
     ExpectedNewUpdate = kz_json:decode("{\"dynamic\": [\"not_exported\", \"from_realm\"], \"static\": [\"updated_flag\"]}"),
 
@@ -178,12 +222,12 @@ outbound_flags_static_test_() ->
      }
     ].
 
-outbound_dynamic_flags_test_() ->
+test_outbound_dynamic_flags() ->
     {'ok', OldData} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
     UpdatedOldData = kz_json:get_value(<<"outbound_flags">>, kz_device:set_outbound_dynamic_flags(OldData, [<<"updated_flag">>])),
     ExpectedOldUpdate = kz_json:decode("{\"static\": [\"device_old_static_flag\"], \"dynamic\": [\"updated_flag\"]}"),
 
-    {'ok', NewData} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_2_ID),
+    {'ok', NewData} = kz_device:fetch(?SUB_ACCOUNT_ID, ?DEVICE_2_ID),
     UpdatedNewData = kz_json:get_value(<<"outbound_flags">>, kz_device:set_outbound_dynamic_flags(NewData, [<<"updated_flag">>])),
     ExpectedNewUpdate = kz_json:decode("{\"dynamic\": [\"updated_flag\"], \"static\": [\"device_new_static_flag\"]}"),
     [{"verify get for deprecated format"
@@ -200,7 +244,7 @@ outbound_dynamic_flags_test_() ->
      }
     ].
 
-device_param_setting_test_() ->
+test_device_param_setting() ->
     {'ok', Device} = kz_device:fetch(?MASTER_ACCOUNT, ?DEVICE_1_ID),
 
     Setup = [{<<"rick_and_morty">>, fun kz_device:set_sip_username/2, fun kz_device:sip_username/1}

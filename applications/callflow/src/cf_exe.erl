@@ -18,7 +18,7 @@
 -export([continue/1, continue/2]).
 -export([continue_with_flow/2]).
 -export([branch/2]).
--export([stop/1]).
+-export([stop/1, stop/2]).
 -export([hard_stop/1]).
 -export([transfer/1]).
 -export([control_usurped/1]).
@@ -121,7 +121,7 @@ update_call(Call, Routines) ->
 
 -spec continue(kapps_call:call() | pid()) -> 'ok'.
 -spec continue(ne_binary(), kapps_call:call() | pid()) -> 'ok'.
-continue(Srv) -> continue(<<"_">>, Srv).
+continue(Srv) -> continue(?DEFAULT_CHILD_KEY, Srv).
 
 continue(Key, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'continue', Key});
@@ -145,7 +145,7 @@ branch(Flow, Call) ->
 
 -spec next(kapps_call:call() | pid()) -> api_object().
 -spec next(ne_binary(), kapps_call:call() | pid()) -> api_object().
-next(Srv) -> next(<<"_">>, Srv).
+next(Srv) -> next(?DEFAULT_CHILD_KEY, Srv).
 
 next(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'next', Key});
@@ -172,11 +172,15 @@ remove_termination_handler(Call, {_,_,_}=Handler) ->
     remove_termination_handler(kapps_call:kvs_fetch('consumer_pid', Call), Handler).
 
 -spec stop(kapps_call:call() | pid()) -> 'ok'.
-stop(Srv) when is_pid(Srv) ->
-    gen_listener:cast(Srv, 'stop');
-stop(Call) ->
+-spec stop(kapps_call:call() | pid(), api_ne_binary()) -> 'ok'.
+stop(Srv) ->
+    stop(Srv, 'undefined').
+
+stop(Srv, Cause) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {'stop', Cause});
+stop(Call, Cause) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
-    stop(Srv).
+    stop(Srv, Cause).
 
 -spec hard_stop(kapps_call:call() | pid()) -> 'ok'.
 hard_stop(Srv) when is_pid(Srv) ->
@@ -283,7 +287,7 @@ get_all_branch_keys(Call) ->
 -spec attempt(ne_binary(), kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
-attempt(Srv) -> attempt(<<"_">>, Srv).
+attempt(Srv) -> attempt(?DEFAULT_CHILD_KEY, Srv).
 
 attempt(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'attempt', Key});
@@ -365,7 +369,7 @@ handle_call('control_queue_name', _From, #state{call=Call}=State) ->
     {'reply', kapps_call:control_queue_direct(Call), State};
 handle_call('get_branch_keys', _From, #state{flow = Flow}=State) ->
     Children = kz_json:get_value(<<"children">>, Flow, kz_json:new()),
-    Reply = {'branch_keys', lists:delete(<<"_">>, kz_json:get_keys(Children))},
+    Reply = {'branch_keys', lists:delete(?DEFAULT_CHILD_KEY, kz_json:get_keys(Children))},
     {'reply', Reply, State};
 handle_call({'get_branch_keys', 'all'}, _From, #state{flow = Flow}=State) ->
     Children = kz_json:get_value(<<"children">>, Flow, kz_json:new()),
@@ -383,14 +387,14 @@ handle_call({'attempt', Key}, _From, #state{flow=Flow}=State) ->
             {'reply', Reply, launch_cf_module(State#state{flow = NewFlow})}
     end;
 handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
-    case kz_json:get_value([<<"children">>, <<"_">>], Flow) of
+    case kz_json:get_json_value([<<"children">>, ?DEFAULT_CHILD_KEY], Flow) of
         'undefined' -> {'reply', 'true', State};
         ChildFlow -> {'reply', kz_json:is_empty(ChildFlow), State}
     end;
 handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
     {'reply'
     ,kz_json:get_first_defined([[<<"children">>, Key]
-                               ,[<<"children">>, <<"_">>]
+                               ,[<<"children">>, ?DEFAULT_CHILD_KEY]
                                ]
                               ,Flow
                               )
@@ -433,7 +437,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
     lager:info("continuing to child '~s'", [Key]),
 
     case kz_json:get_value([<<"children">>, Key], Flow) of
-        'undefined' when Key =:= <<"_">> ->
+        'undefined' when Key =:= ?DEFAULT_CHILD_KEY ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
             maybe_run_destory_handlers(Call, kz_json:new(), Handlers),
             stop(self()),
@@ -445,9 +449,14 @@ handle_cast({'continue', Key}, #state{flow=Flow
         NewFlow ->
             {'noreply', launch_cf_module(State#state{flow=NewFlow})}
     end;
-handle_cast('stop', #state{flows=[]}=State) ->
+handle_cast({'stop', 'undefined'}, #state{flows=[]}=State) ->
     {'stop', 'normal', State};
-handle_cast('stop', #state{flows=[Flow|Flows]}=State) ->
+handle_cast({'stop', Cause}, #state{flows=[]
+                                   ,call=Call
+                                   }=State) ->
+    hangup_call(Call, Cause),
+    {'noreply', State};
+handle_cast({'stop', _Cause}, #state{flows=[Flow|Flows]}=State) ->
     {'noreply', launch_cf_module(State#state{flow=Flow, flows=Flows})};
 handle_cast('hard_stop', State) ->
     {'stop', 'normal', State};
@@ -472,7 +481,7 @@ handle_cast({'branch', NewFlow}, #state{flow=Flow
                                        ,branch_count=BC
                                        }=State) ->
     lager:info("callflow has been branched"),
-    case kz_json:get_ne_value([<<"children">>, <<"_">>], Flow) of
+    case kz_json:get_ne_value([<<"children">>, ?DEFAULT_CHILD_KEY], Flow) of
         'undefined' ->
             {'noreply', launch_cf_module(State#state{flow=NewFlow
                                                     ,branch_count=BC-1
@@ -683,14 +692,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec launch_cf_module(state()) -> state().
 launch_cf_module(#state{flow=?EMPTY_JSON_OBJECT}=State) ->
     lager:debug("no flow left to launch, maybe stopping"),
-    gen_listener:cast(self(), 'stop'),
+    stop(self()),
     State;
 launch_cf_module(#state{call=Call
                        ,flow=Flow
                        ,cf_module_pid=OldPidRef
                        }=State) ->
-    Module = <<"cf_", (kz_json:get_value(<<"module">>, Flow))/binary>>,
-    Data = kz_json:get_value(<<"data">>, Flow, kz_json:new()),
+    Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
+    Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
 
     {PidRef, Action} =
         case maybe_start_cf_module(Module, Data, Call) of
@@ -709,7 +718,7 @@ launch_cf_module(#state{call=Call
                ,call=kapps_call:exec(Routines, Call)
                }.
 
--spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
+-spec maybe_start_cf_module(ne_binary(), kz_json:object(), kapps_call:call()) ->
                                    {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
@@ -737,7 +746,7 @@ cf_module_not_found(Call) ->
 %% point 'handle' having set the callid on the new process first
 %% @end
 %%--------------------------------------------------------------------
--spec spawn_cf_module(CFModule, list(), kapps_call:call()) ->
+-spec spawn_cf_module(CFModule, kz_json:object(), kapps_call:call()) ->
                              {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
@@ -746,7 +755,7 @@ spawn_cf_module(CFModule, Data, Call) ->
     }.
 
 %% @private
--spec cf_module_task(atom(), list(), kapps_call:call(), pid()) -> any().
+-spec cf_module_task(atom(), kz_json:object(), kapps_call:call(), pid()) -> any().
 cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
     kz_util:put_callid(kapps_call:call_id_direct(Call)),
@@ -868,8 +877,8 @@ handle_error(CallId, Notify, JObj) ->
 -spec relay_message(pids(), kz_json:object()) -> 'ok'.
 relay_message(Notify, Message) ->
     _ = [kapps_call_command:relay_event(Pid, Message)
-         || Pid <- Notify
-                ,is_pid(Pid)
+         || Pid <- Notify,
+            is_pid(Pid)
         ],
     'ok'.
 
@@ -883,10 +892,14 @@ get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
 -spec hangup_call(kapps_call:call()) -> 'ok'.
+-spec hangup_call(kapps_call:call(), api_ne_binary()) -> 'ok'.
 hangup_call(Call) ->
+    hangup_call(Call, 'undefined').
+hangup_call(Call, Cause) ->
     Cmd = [{<<"Event-Name">>, <<"command">>}
           ,{<<"Event-Category">>, <<"call">>}
           ,{<<"Application-Name">>, <<"hangup">>}
+          ,{<<"Hangup-Cause">>, Cause}
           ,{<<"Insert-At">>, <<"tail">>}
           ],
     send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).

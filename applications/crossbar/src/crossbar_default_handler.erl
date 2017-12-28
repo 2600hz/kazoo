@@ -25,7 +25,7 @@
 -spec init({atom(), 'http'}, cowboy_req:req(), kz_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'}.
 init({_Any, 'http'}, Req0, HandlerOpts) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {Path, Req1} = cowboy_req:path(Req0),
     case get_magic_token(Path) of
         'undefined' -> {'ok', Req1, 'undefined'};
@@ -77,7 +77,6 @@ get_magic_token_from_path([Path|Paths]) ->
 
 -spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.
 handle(Req, State) ->
-    lager:debug("default handler executing"),
     Headers = [{<<"Content-Type">>, <<"text/plain; charset=UTF-8">>}],
     {'ok', Bytes} = file:read_file(filename:join(code:priv_dir(?APP), "kazoo.txt")),
     {'ok', Req1} = cowboy_req:reply(200, Headers, Bytes, Req),

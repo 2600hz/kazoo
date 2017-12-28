@@ -8,12 +8,10 @@
             "description": "call recording configuration",
             "properties": {
                 "account": {
-                    "$ref": "call_recording",
-                    "type": "object"
+                    "$ref": "call_recording"
                 },
                 "endpoint": {
-                    "$ref": "call_recording",
-                    "type": "object"
+                    "$ref": "call_recording"
                 }
             },
             "type": "object"
@@ -41,15 +39,11 @@
         },
         "caller_id": {
             "$ref": "caller_id",
-            "default": {},
-            "description": "The account default caller ID parameters",
-            "type": "object"
+            "description": "The account default caller ID parameters"
         },
         "dial_plan": {
             "$ref": "dialplans",
-            "default": {},
-            "description": "A list of default rules used to modify dialed numbers",
-            "type": "object"
+            "description": "A list of default rules used to modify dialed numbers"
         },
         "do_not_disturb": {
             "properties": {
@@ -66,8 +60,7 @@
             "type": "boolean"
         },
         "formatters": {
-            "$ref": "formatters",
-            "type": "object"
+            "$ref": "formatters"
         },
         "language": {
             "description": "The language for this account",
@@ -82,7 +75,7 @@
             "properties": {
                 "media_id": {
                     "description": "The ID of a media object that should be used as the default music on hold",
-                    "maxLength": 128,
+                    "maxLength": 2048,
                     "type": "string"
                 }
             },

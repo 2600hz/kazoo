@@ -1,0 +1,25 @@
+                Port Request Successful
+
+
+Port request "{{port_request.name}}" of account '{{account.name}}' has been ported successfully.
+
+Please review the Port Request and fully sumbitted or cancel it.
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

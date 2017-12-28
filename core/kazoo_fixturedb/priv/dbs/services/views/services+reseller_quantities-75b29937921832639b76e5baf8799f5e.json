@@ -1,0 +1,42 @@
+[
+    {
+        "key": [
+            "account0000000000000000000000002",
+            "devices",
+            "sip_device"
+        ],
+        "value": 2
+    },
+    {
+        "key": [
+            "account0000000000000000000000002",
+            "limits",
+            "inbound_trunks"
+        ],
+        "value": 2
+    },
+    {
+        "key": [
+            "account0000000000000000000000002",
+            "limits",
+            "outbound_trunks"
+        ],
+        "value": 2
+    },
+    {
+        "key": [
+            "account0000000000000000000000002",
+            "limits",
+            "twoway_trunks"
+        ],
+        "value": 4
+    },
+    {
+        "key": [
+            "account0000000000000000000000002",
+            "users",
+            "admin"
+        ],
+        "value": 2
+    }
+]

@@ -9,7 +9,6 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-        ,render_farm_name/0
         ]).
 -export([init/1]).
 
@@ -17,23 +16,11 @@
 
 -define(SERVER, ?MODULE).
 
--define(POOL_NAME, 'teletype_render_farm').
--define(POOL_SIZE, kapps_config:get_integer(?APP_NAME, <<"render_farm_workers">>, 50)).
--define(POOL_OVERFLOW, 50).
-
--define(POOL_ARGS, [[{'worker_module', 'teletype_renderer'}
-                    ,{'name', {'local', ?POOL_NAME}}
-                    ,{'size', ?POOL_SIZE}
-                    ,{'max_overflow', ?POOL_OVERFLOW}
-                    ]]).
-
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE(?CACHE_NAME)
-                  ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
-                  ,?WORKER('teletype_listener')
+-define(CHILDREN, [?WORKER('teletype_listener')
                   ,?WORKER('teletype_shared_listener')
                   ,?WORKER('teletype_maint_listener')
-                  ,?WORKER('teletype_bindings')
+                  ,?SUPER(teletype_farms_sup)
                   ]).
 
 %% ===================================================================
@@ -47,10 +34,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec render_farm_name() -> ?POOL_NAME.
-render_farm_name() ->
-    ?POOL_NAME.
 
 %% ===================================================================
 %% Supervisor callbacks

@@ -77,6 +77,8 @@
 -export([uniq/1]).
 -export([iolist_join/2]).
 
+-export([kz_log_md_clear/0, kz_log_md_put/2]).
+
 -ifdef(TEST).
 -export([resolve_uri_path/2]).
 -endif.
@@ -111,14 +113,6 @@ log_stacktrace(ST) ->
 log_stacktrace(Fmt, Args) ->
     ST = erlang:get_stacktrace(),
     log_stacktrace(ST, Fmt, Args).
-
--ifdef(TEST).
--define(LOG_ERROR(F), io:format(user, "ERROR ~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
--define(LOG_ERROR(F,A), io:format(user, "ERROR ~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
--else.
--define(LOG_ERROR(F,A), lager:error(F,A)).
--define(LOG_ERROR(F), lager:error(F)).
--endif.
 
 log_stacktrace(ST, Fmt, Args) ->
     ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
@@ -629,14 +623,15 @@ try_load_module(Name) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) ->
-                        api_binary().
+-spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) -> 'ok'.
 put_callid(?NE_BINARY = CallId) ->
-    lager:md([{'callid', CallId}]),
-    erlang:put('callid', CallId);
+    _ = kz_log_md_put('callid', CallId),
+    _ = erlang:put('callid', CallId),
+    'ok';
 put_callid(Atom) when is_atom(Atom) ->
-    lager:md([{'callid', Atom}]),
-    erlang:put('callid', Atom);
+    _ = kz_log_md_put('callid', Atom),
+    _ = erlang:put('callid', Atom),
+    'ok';
 put_callid(APITerm) ->
     put_callid(find_callid(APITerm)).
 
@@ -653,8 +648,19 @@ find_callid(APITerm) ->
 find_callid(APITerm, GetFun) ->
     GetFun([?KEY_LOG_ID, ?KEY_API_CALL_ID, ?KEY_MSG_ID]
           ,APITerm
-          ,?LOG_SYSTEM_ID
+          ,?DEFAULT_LOG_SYSTEM_ID
           ).
+
+-spec kz_log_md_put(atom(), any()) -> any().
+kz_log_md_put(K, V) ->
+    lager:md(lists:usort(fun is_kz_log_md_equal/2, [{K, V} | lager:md()])).
+
+is_kz_log_md_equal({K1, _}, {K2, _}) -> K1 =< K2;
+is_kz_log_md_equal(K1, K2) -> K1 =< K2.
+
+-spec kz_log_md_clear() -> any().
+kz_log_md_clear() ->
+    lager:md([]).
 
 %% @public
 %% @doc

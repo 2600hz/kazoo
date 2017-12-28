@@ -47,43 +47,18 @@ init() ->
 
 -spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_json({Req, Context}) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    IsReseller = kz_services:is_reseller(AuthAccountId),
-    to_json(Req, cb_context:store(Context, 'is_reseller', IsReseller), get_view_options(cb_context:req_nouns(Context))).
-
--spec to_json(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
-to_json(Req, Context, {'undefined', _}) ->
-    lager:debug("invalid URL chain for cdrs request"),
-    {Req, cb_context:add_system_error('faulty_request', Context)};
-to_json(Req, Context, {ViewName, Options0}) ->
-    Options = [{'is_chunked', 'true'}
-              ,{'chunk_size', ?MAX_BULK}
-              ,{'cowboy_req', Req}
-              ,{'chunked_mapper', fun load_chunked_cdrs/3}
-              ,{'chunk_response_type', 'json'}
-               | Options0
-              ],
-    crossbar_view:load_modb(Context, ViewName, Options).
+    {Req, to_response(Context, <<"json">>, cb_context:req_nouns(Context))}.
 
 -spec to_csv(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_csv({Req, Context}) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    IsReseller = kz_services:is_reseller(AuthAccountId),
-    to_csv(Req, cb_context:store(Context, 'is_reseller', IsReseller), get_view_options(cb_context:req_nouns(Context))).
+    {Req, to_response(Context, <<"csv">>, cb_context:req_nouns(Context))}.
 
--spec to_csv(cowboy_req:req(), cb_context:context(), {api_ne_binary(), crossbar_view:options()}) -> cb_cowboy_payload().
-to_csv(Req, Context, {'undefined', _}) ->
-    lager:debug("invalid URL chain for cdrs request"),
-    {Req, cb_context:add_system_error('faulty_request', Context)};
-to_csv(Req, Context, {ViewName, Options0}) ->
-    Options = [{'is_chunked', 'true'}
-              ,{'chunk_size', ?MAX_BULK}
-              ,{'cowboy_req', Req}
-              ,{'chunked_mapper', fun load_chunked_cdrs/3}
-              ,{'chunk_response_type', 'csv'}
-               | Options0
-              ],
-    crossbar_view:load_modb(cb_context:store(Context, 'is_csv', 'true'), ViewName, Options).
+to_response(Context, RespType, [{<<"call_inspector">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
+    load_chunked_cdrs(Context, RespType);
+to_response(Context, RespType, [{<<"call_inspector">>, []}, {<<"users">>, [_]}|_]) ->
+    load_chunked_cdrs(Context, RespType);
+to_response(Context, _, _) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -125,23 +100,23 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_path_and_date_range(Context, cb_context:req_nouns(Context)).
-
--spec validate_path_and_date_range(cb_context:context(), req_nouns()) -> cb_context:context().
-validate_path_and_date_range(Context, [{<<"call_inspector">>, _}, {?KZ_ACCOUNTS_DB, _}|_]) ->
-    validate_date_range(Context);
-validate_path_and_date_range(Context, [{<<"call_inspector">>, _}, {<<"users">>, [_]}|_]) ->
-    validate_date_range(Context);
-validate_path_and_date_range(Context, [{<<"call_inspector">>, _}|_]) ->
-    lager:debug("invalid URL chain for call_inspector request"),
-    cb_context:add_system_error('faulty_request', Context).
-
--spec validate_date_range(cb_context:context()) -> cb_context:context().
-validate_date_range(Context) ->
-    case crossbar_view:time_range(Context) of
-        {_StartTime, _EndTime} -> cb_context:set_resp_status(Context, 'success');
-        Ctx -> Ctx
+    case get_view_options(cb_context:req_nouns(Context)) of
+        {'undefined', []} ->
+            lager:debug("invalid URL chain for cdrs request"),
+            cb_context:add_system_error('faulty_request', Context);
+        {ViewName, Options} ->
+            load_chunk_view(Context, ViewName, Options)
     end.
+
+-spec load_chunk_view(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
+load_chunk_view(Context, ViewName, Options0) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsReseller = kz_services:is_reseller(AuthAccountId),
+    Options = [{'is_chunked', 'true'}
+              ,{'chunk_size', ?MAX_BULK}
+               | Options0
+              ],
+    crossbar_view:load_modb(cb_context:store(Context, 'is_reseller', IsReseller), ViewName, Options).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, CallId) ->
@@ -163,10 +138,10 @@ inspect_call_id(CallId, Context) ->
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_lookup_req/1
-                                    ,{call_inspector, fun kapi_inspector:lookup_resp_v/1, true}
+                                    ,{'call_inspector', fun kapi_inspector:lookup_resp_v/1, 'true'}
                                     )
     of
-        {ok, [JObj]} ->
+        {'ok', [JObj]} ->
             Chunks   = sanitize(kz_json:get_value(<<"Chunks">>, JObj, [])),
             Analysis = sanitize(kz_json:get_value(<<"Analysis">>, JObj, [])),
             Response = kz_json:from_list(
@@ -177,10 +152,10 @@ inspect_call_id(CallId, Context) ->
                          ]
                         ),
             crossbar_util:response(Response, Context);
-        {timeout, _Resp} ->
+        {'timeout', _Resp} ->
             lager:debug("timeout: ~s ~p", [CallId, _Resp]),
             crossbar_util:response_datastore_timeout(Context);
-        {error, _E} ->
+        {'error', _E} ->
             lager:debug("error: ~s ~p", [CallId, _E]),
             crossbar_util:response_bad_identifier(CallId, Context)
     end.
@@ -214,10 +189,10 @@ get_view_options(_) ->
 %% Loads CDR docs from database and normalized the them.
 %% @end
 %%--------------------------------------------------------------------
--spec load_chunked_cdrs(cb_cowboy_payload(), kz_json:objects(), ne_binary()) -> crossbar_view:chunked_mapper_ret().
-load_chunked_cdrs(Payload, JObjs, Db) ->
-    Ids = get_cdr_ids(JObjs),
-    cb_cdrs:load_chunked_cdr_ids(Payload, Ids, Db).
+-spec load_chunked_cdrs(cb_context:context(), ne_binary()) -> cb_context:context().
+load_chunked_cdrs(Context, RespType) ->
+    Ids = get_cdr_ids(cb_context:resp_data(Context)),
+    cb_cdrs:load_chunked_cdr_ids(Context, RespType, Ids).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,15 +204,15 @@ load_chunked_cdrs(Payload, JObjs, Db) ->
 get_cdr_ids(JObjs) ->
     Ids = [kz_doc:id(JObj) || JObj <- JObjs],
     %% Remove leading year, month and dash
-    CallIds = [CallId || {?MATCH_CDR_ID(_, CallId), _CDR} <- Ids],
+    CallIds = [CallId || ?MATCH_CDR_ID(_, CallId) <- Ids],
 
     lager:debug("filtering ~p call_ids", [length(CallIds)]),
     FilteredCallIds = filter_callids(CallIds),
 
     lager:debug("found ~p dialogues", [length(FilteredCallIds)]),
 
-    [Id || ?MATCH_CDR_ID(_, CallId)=Id <- Ids,
-           lists:member(CallId, FilteredCallIds)
+    [Id ||?MATCH_CDR_ID(_, CallId)=Id <- Ids,
+          lists:member(CallId, FilteredCallIds)
     ].
 
 %%--------------------------------------------------------------------
@@ -255,17 +230,17 @@ filter_callids(CallIds) ->
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_filter_req/1
-                                    ,{call_inspector, fun kapi_inspector:filter_resp_v/1, true}
+                                    ,{'call_inspector', fun kapi_inspector:filter_resp_v/1, 'true'}
                                     )
     of
-        {ok, JObjs} ->
+        {'ok', JObjs} ->
             FilterIds = fun (JObj) -> kz_json:get_value(<<"Call-IDs">>, JObj, []) end,
             lists:usort(lists:flatmap(FilterIds, JObjs));
-        {timeout, JObjs} ->
+        {'timeout', JObjs} ->
             lager:debug("timeout ~s", [kz_json:encode(JObjs)]),
             FilterIds = fun (JObj) -> kz_json:get_value(<<"Call-IDs">>, JObj, []) end,
             lists:usort(lists:flatmap(FilterIds, JObjs));
-        {error, _E} ->
+        {'error', _E} ->
             lager:debug("error: ~p", [_E]),
             []
     end.

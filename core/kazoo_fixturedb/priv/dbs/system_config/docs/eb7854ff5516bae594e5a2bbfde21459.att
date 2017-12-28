@@ -1,0 +1,26 @@
+                Your User Profile
+
+
+Welcome {{user.first_name}},
+
+Your user profile is ready to use, here are logindetails to sign in.
+
+
+=== Profile Information ===
+
+    First Name: {{user.first_name}}
+    Last Name: {{user.last_name}}
+    User Name: {{user.email}}
+    Password: {{user.password}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

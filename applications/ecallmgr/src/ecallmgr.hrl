@@ -224,6 +224,7 @@
                               ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
                               ,{<<"Confirm-File">>, <<"group_confirm_file">>}
                               ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
+                              ,{<<"Confirm-Read-Timeout">>, <<"group_confirm_read_timeout">>}
                               ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
                               ,{<<"Default-Language">>, <<"default_language">>}
                               ,{<<"Diversions">>, <<"sip_h_Diversion">>}
@@ -238,7 +239,7 @@
                               ,{<<"Fail-On-Single-Reject">>, <<"fail_on_single_reject">>}
                               ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
                               ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}
-                              ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
+                              ,{<<"Fax-Enabled">>, <<"fax_enable_t38">>}
                               ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
                               ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
                               ,{<<"Fax-Timezone">>, <<"fax_timezone">>}
@@ -256,9 +257,9 @@
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
                               ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
-                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_uuid">>}
                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
-                              ,{<<"Outbound-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"Outbound-Call-ID">>, <<"origination_uuid">>}
                               ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
                               ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
                               ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}

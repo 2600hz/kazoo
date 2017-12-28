@@ -1,0 +1,25 @@
+                First Occurrence
+
+Yay! The very first {{event}} has occurred on your account!
+
+
+
+=== Account Information ===
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+{% if user.first_name or user.email %}
+Administrator User Information
+
+    Name: {{user.first_name}} {{user.last_name}}
+    Email: {{user.email}}
+    Timezone: {{user.timezone}}
+{% endif %}
+
+
+
+Sent from {{system.encoded_node}}

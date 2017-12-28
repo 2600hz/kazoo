@@ -167,7 +167,12 @@ validate(Context, ?AVAILABLE) ->
               ],
     cb_context:setters(Context, Setters);
 validate(Context, Id) ->
-    validate_ledger(Context, Id, cb_context:req_verb(Context)).
+    ViewOptions = [{'is_chunked', 'true'}
+                  ,{'range_keymap', Id}
+                  ,{'mapper', fun normalize_view_results/3}
+                  ,'include_docs'
+                  ],
+    crossbar_view:load_modb(Context, ?LEDGER_VIEW, ViewOptions).
 
 validate(Context, Ledger, Id) ->
     validate_ledger_doc(Context, Ledger, Id, cb_context:req_verb(Context)).
@@ -199,10 +204,6 @@ put(Context, ?DEBIT) ->
 validate_ledgers(Context, ?HTTP_GET) ->
     read_ledgers(Context).
 
--spec validate_ledger(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_ledger(Context, Id, ?HTTP_GET) ->
-    read_ledger(Context, Id).
-
 -spec validate_ledger_doc(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 validate_ledger_doc(Context, Ledger, Id, ?HTTP_GET) ->
     read_ledger_doc(Context, Ledger, Id).
@@ -224,7 +225,7 @@ credit_or_debit(Context, Action) ->
 
     Props =
         props:filter_undefined(
-          [{<<"amount">>, kz_json:get_value(<<"amount">>, ReqData)}
+          [{<<"amount">>, kz_json:get_value(<<"amount">>, ReqData, 0)}
           ,{<<"description">>, kz_json:get_value(<<"description">>, ReqData)}
           ,{<<"period_start">>, kz_json:get_value([<<"period">>, <<"start">>], ReqData)}
           ,{<<"period_end">>, kz_json:get_value([<<"period">>, <<"end">>], ReqData)}
@@ -308,6 +309,7 @@ summary_to_dollars(LedgersJObj) ->
         ])).
 
 -spec maybe_convert_units(ne_binary(), kz_transaction:units() | T) -> kz_transaction:dollars() | T when T::any().
+maybe_convert_units(<<"amount">>, 'undefined') -> 0;
 maybe_convert_units(<<"amount">>, Units) -> wht_util:units_to_dollars(Units);
 maybe_convert_units(_, Value) -> Value.
 
@@ -317,14 +319,6 @@ maybe_convert_units(_, Value) -> Value.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec read_ledger(cb_context:context(), ne_binary()) -> cb_context:context().
-read_ledger(Context, Ledger) ->
-    ViewOptions = [{'range_keymap', Ledger}
-                  ,{'mapper', fun normalize_view_results/3}
-                  ,'include_docs'
-                  ],
-    crossbar_view:load_modb(Context, ?LEDGER_VIEW, ViewOptions).
-
 -spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(Context, JObj, Acc) ->

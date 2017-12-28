@@ -11,7 +11,16 @@
         ,encode_multipart/2
         ]).
 
+-export_type([format_field/0, format_fields/0]).
+
 -include("kz_att.hrl").
+
+-type format_field() :: map()
+                      | {'group', kz_proplist()}
+                      | {'arg', ne_binary()}
+                      | {'field', ne_binary()}
+                      | ne_binary().
+-type format_fields() :: [format_field()].
 
 -spec sha_mac(iodata(), iodata()) -> binary().
 sha_mac(K, S) ->
@@ -79,27 +88,21 @@ do_format_url(Fields, JObj, Args, Separator) ->
     Reversed = lists:reverse(FormattedFields),
     kz_binary:join(Reversed, Separator).
 
--type format_field() :: map()
-                      | {group, kz_proplist()}
-                      | {arg, ne_binary()}
-                      | {field, ne_binary()}
-                      | ne_binary().
-
 -spec format_url_field(kz_json:object(), kz_proplist(), format_field(), ne_binaries()) -> ne_binaries().
 format_url_field(JObj, Args, #{<<"group">> := Arg}, Acc) ->
-    format_url_field(JObj, Args, {group, Arg}, Acc);
-format_url_field(JObj, Args, {group, Arg}, Acc) ->
+    format_url_field(JObj, Args, {'group', Arg}, Acc);
+format_url_field(JObj, Args, {'group', Arg}, Acc) ->
     [do_format_url(Arg, JObj, Args, <<>>) | Acc];
 format_url_field(JObj, Args, #{<<"arg">> := Arg}, Fields) ->
-    format_url_field(JObj, Args, {arg, Arg}, Fields);
-format_url_field(_JObj, Args, {arg, Arg}, Fields) ->
+    format_url_field(JObj, Args, {'arg', Arg}, Fields);
+format_url_field(_JObj, Args, {'arg', Arg}, Fields) ->
     case props:get_value(Arg, Args) of
         'undefined' -> Fields;
         V -> [kz_util:uri_encode(V) | Fields]
     end;
 format_url_field(JObj, Args, #{<<"field">> := Field}, Fields) ->
-    format_url_field(JObj, Args, {field, Field}, Fields);
-format_url_field(JObj, _Args, {field, Field}, Fields) ->
+    format_url_field(JObj, Args, {'field', Field}, Fields);
+format_url_field(JObj, _Args, {'field', Field}, Fields) ->
     case kz_json:get_value(Field, JObj) of
         'undefined' -> Fields;
         V -> [kz_util:uri_encode(V) | Fields]
@@ -109,10 +112,10 @@ format_url_field(_JObj, _Args, Field, Fields) ->
 
 -spec default_format_url_fields() -> kz_proplist().
 default_format_url_fields() ->
-    [{arg, <<"account_id">>}
-    ,{field, <<"owner_id">>}
-    ,{arg, <<"id">>}
-    ,{arg, <<"attachment">>}
+    [{'arg', <<"account_id">>}
+    ,{'field', <<"owner_id">>}
+    ,{'arg', <<"id">>}
+    ,{'arg', <<"attachment">>}
     ].
 
 -spec combined_path(api_binary(), api_binary()) -> api_binary().

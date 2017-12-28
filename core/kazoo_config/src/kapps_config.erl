@@ -52,7 +52,7 @@
 -export([migrate/0]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
--type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
+-type config_key() :: ne_binary() | nonempty_string() | atom() | ne_binaries().
 
 -type update_option() :: {'node_specific', boolean()} |
                          {'pvt_fields', api_object()}.
@@ -811,10 +811,15 @@ get_category(Category) ->
     get_category(Category, 'true').
 
 -ifdef(TEST).
-get_category(?TEST_CAT, _) ->
-    {'ok', kapps_config_util:fixture("test_cat_system")};
-get_category(?TEST_CAT_EMPTY, _) ->
-    {'ok', kz_json:new()};
+get_category(Category, _)
+  when Category =:= <<"test_account_config">>;
+       Category =:= <<"test_account_config_sub_empty">>;
+       Category =:= <<"test_account_config_reseller_only">>;
+       Category =:= <<"test_account_config_reseller_system">>;
+       Category =:= <<"test_account_config_system_empty">>;
+       Category =:= <<"test_account_config_system_only">>;
+       Category =:= <<"no_cat_please">> ->
+    kz_datamgr:open_doc(?KZ_CONFIG_DB, Category);
 get_category(_, _) ->
     {'error', 'not_found'}.
 -else.
@@ -832,7 +837,7 @@ get_category(Category, 'false') ->
 %%  exist and will move per-node settings if they exist.
 %%  In the event that both the source and destination exist but
 %%  have different values it will not make any change.  The parameter
-%%  is only removed from the source after a successsful save of the
+%%  is only removed from the source after a successful save of the
 %%  the destination.
 %% @end
 %%--------------------------------------------------------------------
@@ -841,7 +846,20 @@ get_category(Category, 'false') ->
 -type migrate_values() :: [migrate_value()].
 
 -define(CONFIG_MIGRATIONS
-       ,[{{<<"callflow">>, <<"default_emergency_cid_number">>}
+       ,[{{<<"reorder">>, <<"unknown-error-code">>}
+         ,{<<"reorder">>, [<<"unknown_number">>, <<"response_code">>]}
+         }
+        ,{{<<"reorder">>, <<"unknown-error-message">>}
+         ,{<<"reorder">>, [<<"unknown_number">>, <<"response_message">>]}
+         }
+        ,{{<<"reorder">>, <<"known-error-code">>}
+         ,{<<"reorder">>, [<<"known_number">>, <<"response_code">>]}
+         }
+        ,{{<<"reorder">>, <<"known-error-message">>}
+         ,{<<"reorder">>, [<<"known_number">>, <<"response_message">>]}
+         }
+
+        ,{{<<"callflow">>, <<"default_emergency_cid_number">>}
          ,{<<"stepswitch">>, <<"default_emergency_cid_number">>}
          }
         ,{{<<"callflow">>, <<"ensure_valid_emergency_number">>}
@@ -974,6 +992,13 @@ get_category(Category, 'false') ->
         ,{{<<"media">>, <<"tts_cache">>}
          ,{<<"speech">>, <<"tts_cache">>}
          }
+        ,{{<<"speech">>, <<"asr_prefered_content_type">>}
+         ,{<<"speech">>, <<"asr_preferred_content_type">>}
+         }
+
+        ,{{<<"callflow">>, [<<"voicemail">>, <<"vm_message_foraward_type">>]}
+         ,{<<"callflow">>, [<<"voicemail">>, <<"vm_message_forward_type">>]}
+         }
         ]).
 
 -spec migrate() -> 'ok'.
@@ -1093,5 +1118,7 @@ remove_config_setting([{Id, Node, Setting} | Keys], JObj, Removed) ->
 
 -spec config_setting_key(ne_binary(), config_key()) -> ne_binaries().
 %% NOTE: to support nested keys, update this merge function
+config_setting_key(Node, [_|_]=Setting) ->
+    [Node | Setting];
 config_setting_key(Node, Setting) ->
     [Node, Setting].

@@ -30,6 +30,9 @@
         ,log_assignment_updates/1
 
         ,normalize_media_upload/5
+
+        ,get_request_action/1
+        ,normalize_alphanum_name/1
         ]).
 
 -include("crossbar.hrl").
@@ -66,7 +69,7 @@ send_mwi_update(BoxId, AccountId) ->
     OwnerId = kzd_voicemail_box:owner_id(BoxJObj),
     BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
 
-    _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
+    _ = kz_util:spawn(fun kz_endpoint:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
     {New, Saved} = kvm_messages:count_non_deleted(AccountId, BoxId),
     _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),
     lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, AccountId, New, Saved]).
@@ -686,3 +689,24 @@ handle_normalized_upload(Context, FileJObj, ToExt, {'error', _R}) ->
     UpdatedDoc = kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context)),
     UpdatedContext = cb_context:set_doc(Context, UpdatedDoc),
     {UpdatedContext, FileJObj}.
+
+%% Before, we used cb_context:req_value/2 which searched "data" then the envelope
+%% but we want "action" on the envelope to be respected for these PUTs against
+%% /channels or /conferences, so we reverse the order here (just in case people are
+%% only putting "action" in "data"
+-spec get_request_action(cb_context:context()) -> api_ne_binary().
+get_request_action(Context) ->
+    kz_json:find(<<"action">>, [cb_context:req_json(Context)
+                               ,cb_context:req_data(Context)
+                               ]
+                ).
+
+-spec normalize_alphanum_name(api_binary() | cb_context:context()) -> cb_context:context() | api_binary().
+normalize_alphanum_name('undefined') ->
+    'undefined';
+normalize_alphanum_name(Name) when is_binary(Name) ->
+    re:replace(kz_term:to_lower_binary(Name), <<"[^a-z0-9]">>, <<>>, [global, {return, binary}]);
+normalize_alphanum_name(Context) ->
+    Doc = cb_context:doc(Context),
+    Name = kz_json:get_ne_binary_value(<<"name">>, Doc),
+    cb_context:set_doc(Context, kz_json:set_value(<<"pvt_alphanum_name">>, normalize_alphanum_name(Name), Doc)).

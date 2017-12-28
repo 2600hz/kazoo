@@ -1,0 +1,13 @@
+{
+    "Account-ID": "account0000000000000000000000003",
+    "App-Name": "crossbar",
+    "App-Version": "4.0.0",
+    "Event-Category": "notification",
+    "Event-Name": "new_user",
+    "Msg-ID": "32035f575400006a",
+    "Node": "kazoo_apps@apps001.example.com",
+    "Password": "hbrs5833",
+    "Server-ID": "kazoo_apps@apps001.example.com-<0.595.0>-1f0d0793",
+    "System-Log-ID": "32035f575400006a",
+    "User-ID": "user0000000000000000000000000003"
+}

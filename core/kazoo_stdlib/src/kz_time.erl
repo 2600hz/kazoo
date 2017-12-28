@@ -167,15 +167,25 @@ unitfy_seconds(Seconds) ->
     D = Seconds div ?SECONDS_IN_DAY,
     [kz_term:to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
--spec decr_timeout(kz_timeout(), kz_now()) -> kz_timeout().
--spec decr_timeout(kz_timeout(), kz_now(), kz_now()) -> kz_timeout().
+-spec decr_timeout(kz_timeout(), kz_now() | gregorian_seconds()) -> kz_timeout().
+-spec decr_timeout(kz_timeout(), kz_now() | gregorian_seconds(), kz_now() | gregorian_seconds()) -> kz_timeout().
 decr_timeout('infinity', _) -> 'infinity';
 decr_timeout(Timeout, {_Mega, _S, _Micro}=Start) when is_integer(Timeout) ->
-    decr_timeout(Timeout, Start, now()).
+    decr_timeout(Timeout, Start, now());
+decr_timeout(Timeout, StartS) when is_integer(Timeout),
+                                   is_integer(StartS),
+                                   ?UNIX_EPOCH_IN_GREGORIAN < StartS ->
+    decr_timeout(Timeout, StartS, now_s()).
 
 decr_timeout('infinity', _Start, _Future) -> 'infinity';
 decr_timeout(Timeout, Start, {_Mega, _S, _Micro}=Now) ->
-    decr_timeout_elapsed(Timeout, elapsed_s(Start, Now)).
+    decr_timeout_elapsed(Timeout, elapsed_s(Start, Now));
+decr_timeout(Timeout, StartS, Now) when is_integer(Timeout),
+                                        is_integer(StartS),
+                                        ?UNIX_EPOCH_IN_GREGORIAN < StartS,
+                                        is_integer(Now),
+                                        ?UNIX_EPOCH_IN_GREGORIAN < Now ->
+    decr_timeout_elapsed(Timeout, elapsed_s(StartS, Now)).
 
 -spec decr_timeout_elapsed(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 decr_timeout_elapsed(Timeout, Elapsed) ->

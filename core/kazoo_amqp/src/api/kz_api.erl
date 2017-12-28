@@ -96,9 +96,9 @@ app_name(JObj) ->
 app_version(JObj) ->
     kz_json:get_value(?KEY_APP_VERSION, JObj).
 
--spec node(kz_json:object()) -> api_binary().
+-spec node(kz_json:object()) -> api_ne_binary().
 node(JObj) ->
-    kz_json:get_value(?KEY_NODE, JObj).
+    kz_json:get_ne_binary_value(?KEY_NODE, JObj).
 
 -spec msg_id(api_terms()) -> api_binary().
 msg_id(Props) when is_list(Props) ->
@@ -414,6 +414,7 @@ build_message_specific(Prop, ReqH, OptH) ->
 
 -spec headers_to_json(kz_proplist()) -> api_formatter_return().
 headers_to_json([_|_]=HeadersProp) ->
+    _ = kz_util:kz_log_md_put('msg_id', msg_id(HeadersProp)),
     try kz_json:encode(kz_json:from_list(HeadersProp)) of
         JSON -> {'ok', JSON}
     catch

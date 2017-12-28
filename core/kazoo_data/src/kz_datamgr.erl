@@ -554,7 +554,7 @@ open_cache_doc(DbName, DocId, Options) ->
     end.
 
 -spec add_to_doc_cache(text(), ne_binary(), kz_json:object()) ->
-                              {'ok', kz_json:objects()} |
+                              'ok' |
                               data_error().
 add_to_doc_cache(DbName, DocId, Doc) when ?VALID_DBNAME(DbName) ->
     kzs_cache:add_to_doc_cache(DbName, DocId, Doc);
@@ -617,6 +617,20 @@ flush_cache_docs(DbName) ->
 %% open a document given a doc id returns an error tuple or the json
 %% @end
 %%--------------------------------------------------------------------
+
+-ifdef(TEST).
+%% -define(OPEN_DOC_LOG(DbName, DocId, Options),
+%%         begin
+%%             {_, ST} = erlang:process_info(self(), current_stacktrace),
+%%             kz_util:log_stacktrace(ST),
+%%             ?LOG_DEBUG("~s:open_doc(~p, ~p, ~p)", [?MODULE, DbName, DocId, Options])
+%%         end
+%%        ).
+-define(OPEN_DOC_LOG(DbName, DocId, Options), ok).
+-else.
+-define(OPEN_DOC_LOG(DbName, DocId, Options), ok).
+-endif.
+
 -spec open_doc(text(), docid()) ->
                       {'ok', kz_json:object()} |
                       data_error() |
@@ -631,30 +645,16 @@ open_doc(DbName, {DocType, DocId}) ->
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--ifdef(TEST).
 open_doc(DbName, {DocType, DocId}, Options) ->
     open_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
 open_doc(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
-    {_, ST} = erlang:process_info(self(), current_stacktrace),
-    kz_util:log_stacktrace(ST),
-    io:format(user, "\n~s:open_doc(~p, ~p, ~p)\n", [?MODULE, DbName, DocId, Options]),
+    ?OPEN_DOC_LOG(DbName, DocId, Options),
     kzs_doc:open_doc(kzs_plan:plan(DbName, Options), DbName, DocId, Options);
 open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> open_doc(Db, DocId, Options);
         {'error', _}=E -> E
     end.
--else.
-open_doc(DbName, {DocType, DocId}, Options) ->
-    open_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
-open_doc(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
-    kzs_doc:open_doc(kzs_plan:plan(DbName, Options), DbName, DocId, Options);
-open_doc(DbName, DocId, Options) ->
-    case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> open_doc(Db, DocId, Options);
-        {'error', _}=E -> E
-    end.
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1173,8 +1173,10 @@ add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
 %%%===================================================================
 
 -ifdef(TEST).
--define(GET_RESULTS(DbName, DesignId, Options)
-       ,io:format(user, "\n~s:get_results(~p, ~p, ~p)\n", [?MODULE, DbName, DesignId, Options])).
+%% -define(GET_RESULTS(DbName, DesignId, Options)
+%%        ,?LOG_DEBUG("~s:get_results(~p, ~p, ~p)", [?MODULE, DbName, DesignId, Options])
+%%        ).
+-define(GET_RESULTS(DbName, DesignId, Options), ok).
 -else.
 -define(GET_RESULTS(DbName, DesignId, Options), ok).
 -endif.

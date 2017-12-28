@@ -9,6 +9,7 @@ acquire|aquire adquire
 acquit|aquit
 acreage|acrage acerage
 address|adress
+administrator|adminstrator
 adultery|adultary
 advisable|adviseable advizable
 affect|afect
@@ -116,6 +117,7 @@ misspelt|mispelt
 necessary|neccessary necessery
 niece|neice
 neighbor|nieghbor
+nonexistent|non-existant non-existent inexistant
 noticeable|noticable
 occasion|occassion
 occasionally|occasionaly occassionally
@@ -133,6 +135,7 @@ personnel|personell personel
 plagiarize|plagerize
 playwright|playright playwrite
 possession|posession possesion
+possible|possilbe
 potatoes|potatos
 precede|preceed
 presence|presance
@@ -156,6 +159,7 @@ reference|referance refrence
 relevant|relevent revelant
 religious|religous religius
 repetition|repitition
+response|reponse
 restaurant|restarant restaraunt
 rhyme|rime
 rhythm|rythm rythem
@@ -177,6 +181,7 @@ tomorrow|tommorow tommorrow
 twelfth|twelth
 tyranny|tyrany
 underrate|underate
+unfortunatly|unfortunately
 until|untill
 upholstery|upholstry
 usable|usible
@@ -192,3 +197,5 @@ withhold|withold
 writing|writting writeing
 search|seacrh
 useful|usefull
+formatted|formated
+sent|sended

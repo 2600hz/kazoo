@@ -13,7 +13,7 @@
 -type option() :: {atom(), term()}.
 -type options() :: [option()].
 -type document() :: kz_json:object().
--type documents() :: [document()].
+-type documents() :: kz_json:objects().
 
 -export_type([connection/0
              ,option/0, options/0

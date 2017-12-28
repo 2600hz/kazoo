@@ -96,10 +96,10 @@ compile(Path, Module, CompileOpts) ->
 %%--------------------------------------------------------------------
 -spec render_template(atom(), kz_proplist()) -> template_result().
 render_template(Module, TemplateData) ->
-    ?LOG_DEBUG("rendering using ~s", [Module]),
+    lager:debug("rendering using ~s", [Module]),
     try Module:render(props:filter_empty(TemplateData)) of
         {'ok', _IOList}=OK ->
-            ?LOG_DEBUG("rendered template successfully"),
+            lager:debug("rendered template successfully"),
             OK;
         {'error', _E}=E ->
             ?LOG_DEBUG("failed to render template: ~p", [_E]),
@@ -129,10 +129,10 @@ render_template(Module, TemplateData) ->
 -spec handle_compile_result(template(), atom(), template_result()) ->
                                    template_result().
 handle_compile_result(_Template, Module, {'ok', Module} = OK) ->
-    ?LOG_DEBUG("built renderer for ~p", [Module]),
+    lager:debug("built renderer for ~p", [Module]),
     OK;
 handle_compile_result(_Template, Module, {'ok', Module, []}) ->
-    ?LOG_DEBUG("built renderer for ~p", [Module]),
+    lager:debug("built renderer for ~p", [Module]),
     {'ok', Module};
 handle_compile_result(Template, Module, {'ok', Module, Warnings}) ->
     ?LOG_DEBUG("compiling template renderer for ~p produced warnings: ~p"
@@ -140,7 +140,7 @@ handle_compile_result(Template, Module, {'ok', Module, Warnings}) ->
     log_warnings(Warnings, Template),
     {'ok', Module};
 handle_compile_result(_Template, Module, 'ok') ->
-    ?LOG_DEBUG("build renderer for ~p from template file", [Module]),
+    lager:debug("build renderer for ~p from template file", [Module]),
     {'ok', Module};
 handle_compile_result(_Template, _Module, 'error') ->
     ?LOG_DEBUG("failed to compile template for ~p", [_Module]),

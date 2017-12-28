@@ -37,6 +37,7 @@
 -record(state, {voice_uri :: api_ne_binary()
                ,cdr_uri :: api_ne_binary()
                ,request_format = <<"kazoo">> :: ne_binary()
+               ,request_body_format = <<"form">> :: ne_binary()
                ,method = 'get' :: http_method()
                ,call :: kapps_call:call() | 'undefined'
                ,request_id :: kz_http:req_id() | 'undefined'
@@ -142,6 +143,7 @@ init([Call, JObj]) ->
     VoiceUri = kz_json:get_value(<<"Voice-URI">>, JObj),
 
     ReqFormat = kz_json:get_value(<<"Request-Format">>, JObj, <<"twiml">>),
+    ReqBodyFormat = kz_json:get_value(<<"Request-Body-Format">>, JObj, <<"form">>),
     BaseParams = kz_json:from_list(req_params(ReqFormat, Call)),
 
     lager:debug("starting pivot req to ~s to ~s", [Method, VoiceUri]),
@@ -152,6 +154,7 @@ init([Call, JObj]) ->
     ,#state{cdr_uri=kz_json:get_value(<<"CDR-URI">>, JObj)
            ,call=kzt_util:increment_iteration(Call)
            ,request_format=ReqFormat
+           ,request_body_format=ReqBodyFormat
            ,debug=kz_json:is_true(<<"Debug">>, JObj, 'false')
            ,requester_queue = kapps_call:controller_queue(Call)
            }
@@ -200,10 +203,11 @@ handle_cast({'request', Uri, Method, Params}
            ,#state{call=Call
                   ,debug=Debug
                   ,requester_queue=Q
+                  ,request_body_format=ReqBodyFormat
                   }=State) ->
     Call1 = kzt_util:set_voice_uri(Uri, Call),
 
-    case send_req(Call1, Uri, Method, Params, Debug) of
+    case send_req(Call1, Uri, Method, Params, ReqBodyFormat, Debug) of
         {'ok', ReqId, Call2} ->
             lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
             {'noreply'
@@ -432,22 +436,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_req(kapps_call:call(), ne_binary(), http_method(), kz_json:object() | kz_proplist(), boolean()) ->
+-spec send_req(kapps_call:call(), ne_binary(), http_method(), kz_json:object() | kz_proplist(), ne_binary(), boolean()) ->
                       {'ok', kz_http:req_id(), kapps_call:call()} |
                       {'stop', kapps_call:call()}.
-send_req(Call, Uri, Method, BaseParams, Debug) when not is_list(BaseParams) ->
-    send_req(Call, Uri, Method, kz_json:to_proplist(BaseParams), Debug);
-send_req(Call, Uri, 'get', BaseParams, Debug) ->
+send_req(Call, Uri, Method, BaseParams, ReqBodyFormat, Debug) when not is_list(BaseParams) ->
+    send_req(Call, Uri, Method, kz_json:to_proplist(BaseParams), ReqBodyFormat, Debug);
+send_req(Call, Uri, 'get', BaseParams, _ReqBodyFormat, Debug) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = kz_json:set_values(BaseParams, UserParams),
     UpdatedCall = kapps_call:kvs_erase(<<"digits_collected">>, Call),
-    send(UpdatedCall, uri(Uri, kz_http_util:json_to_querystring(Params)), 'get', [], [], Debug);
-send_req(Call, Uri, 'post', BaseParams, Debug) ->
+    send(UpdatedCall, uri(Uri, format_request(Params, <<"form">>)), 'get', [], [], Debug);
+send_req(Call, Uri, 'post', BaseParams, ReqBodyFormat, Debug) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = kz_json:set_values(BaseParams, UserParams),
     UpdatedCall = kapps_call:kvs_erase(<<"digits_collected">>, Call),
-    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
-    send(UpdatedCall, Uri, 'post', Headers, kz_http_util:json_to_querystring(Params), Debug).
+    Headers = [{"Content-Type", req_content_type(ReqBodyFormat)}],
+    send(UpdatedCall, Uri, 'post', Headers, format_request(Params, ReqBodyFormat), Debug).
 
 -spec send(kapps_call:call(), ne_binary(), http_method(), kz_proplist(), iolist(), boolean()) ->
                   {'ok', kz_http:req_id(), kapps_call:call()} |
@@ -631,3 +635,15 @@ store_debug(Call, DebugJObj) ->
 -spec fix_value(number() | list()) -> number() | ne_binary().
 fix_value(N) when is_number(N) -> N;
 fix_value(O) -> kz_term:to_lower_binary(O).
+
+-spec format_request(kz_json:object(), ne_binary()) -> iolist().
+format_request(Params, <<"form">>) ->
+    kz_http_util:json_to_querystring(Params);
+format_request(Params, <<"json">>) ->
+    kz_json:encode(Params).
+
+-spec req_content_type(ne_binary()) -> list().
+req_content_type(<<"form">>) ->
+    "application/x-www-form-urlencoded";
+req_content_type(<<"json">>) ->
+    "application/json".

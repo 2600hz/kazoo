@@ -1,0 +1,30 @@
+                Device Expired Registration
+
+
+Device "device-3" in account 'Sub-Sub Account'
+lost its registration.
+
+    This may be due to a network connectivity issue,
+    power outage, or misconfiguration.
+    Please check the device.
+
+
+=== Last Registration Details ====
+
+    Device ID: device00000000000000000000000003
+    Account ID: account0000000000000000000000003
+    Account Realm: paustu8.sip.2600hz.local
+    User Agent: OBIHAI/OBi1020-5.0.0.3201
+    Contact: sip:device-3@101.3.2.55:5060;expires=60;+sip.instance="urn:uuid:00000000-0000-0000-0000-9cadefc002b5"
+
+
+
+Account Information
+
+    Account ID: account0000000000000000000000003
+    Account Name: Sub-Sub Account
+    Account Realm: paustu8.sip.2600hz.local
+
+
+
+Sent from zSWyes4Y7hdsgJ0-bONIoA

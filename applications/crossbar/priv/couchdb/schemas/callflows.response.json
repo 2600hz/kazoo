@@ -10,6 +10,7 @@
         },
         "media": {
             "description": "Optional media file to play before responding with the hangup code/cause",
+            "maxLength": 2048,
             "type": "string"
         },
         "message": {

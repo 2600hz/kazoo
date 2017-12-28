@@ -51,15 +51,20 @@ fireable_hooks(JObj, Hooks) ->
 -spec is_fireable_hook(kz_json:object(), webhook()) -> boolean().
 is_fireable_hook(_JObj, #webhook{include_loopback='true'}) -> 'true';
 is_fireable_hook(JObj, #webhook{include_loopback='false'
-                               ,id=_Id, hook_id=_HookId
+                               ,id=_Id
                                }) ->
-    lager:debug("evt: ~s", [kz_json:encode(JObj)]),
-    case kz_json:is_false(<<"Channel-Is-Loopback">>, JObj, 'true') of
-        'true' -> 'true';
-        'false' ->
+    case is_loopback_channel_name(kz_call_event:channel_name(JObj))
+        orelse kz_json:is_true(<<"Channel-Is-Loopback">>, JObj, 'false')
+    of
+        'false' -> 'true';
+        'true' ->
             lager:debug("channel is loopback, filtering hook ~s", [_Id]),
             'false'
     end.
+
+-spec is_loopback_channel_name(api_ne_binary()) -> boolean().
+is_loopback_channel_name(<<"loopback/", _/binary>>=_N) -> 'true';
+is_loopback_channel_name(_N) -> 'false'.
 
 -spec hook_event_name(ne_binary()) -> ne_binary().
 hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
@@ -152,7 +157,6 @@ non_reserved_ccvs(JObj) ->
 non_reserved_ccvs(_CCVs, 'undefined') -> 'undefined';
 non_reserved_ccvs(CCVs, Keys) ->
     kz_json:filter(fun({K, _}) -> not lists:member(K, Keys) end, CCVs).
-
 
 -spec cavs(kz_json:object()) ->
                   api_object().

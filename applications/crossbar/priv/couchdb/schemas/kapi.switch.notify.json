@@ -1,0 +1,39 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.switch.notify",
+    "description": "AMQP API for switch.notify",
+    "properties": {
+        "Body": {
+            "type": "string"
+        },
+        "Content-Type": {
+            "type": "string"
+        },
+        "Event": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "switch_event"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "notify"
+            ],
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Realm",
+        "Username"
+    ],
+    "type": "object"
+}

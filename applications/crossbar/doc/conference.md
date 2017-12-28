@@ -48,13 +48,18 @@ Key | Description | Type | Default | Required
 
 
 
+##### Keys under development
+
+- `require_moderator`
+- `wait_for_moderator`
+
 #### Perform an action on a conference
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
 ```shell
 curl -v -X PUT \
-    -d '{"data": {"action": {CONFERENCE_ACTION}}}' \
+    -d '{"action": "{CONFERENCE_ACTION}", "data": {"ACTION":"DATA"}}' \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
@@ -70,12 +75,41 @@ curl -v -X PUT \
 
 Sometimes you want to dial out from a conference to an endpoint (versus waiting for the caller to dial into the conference). Similar to how the `group` callflow works, you can include device and user IDs; unlike groups, you can include DIDs as well (similar to quickcall/click2call).
 
+###### Schema
+
+Schema for conference dial API command
+
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false`
+`caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
+`endpoints.[]` |   | `string()` |   | `true`
+`endpoints` |   | `array(string())` |   | `true`
+`target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false`
+`timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
+
+
+
+###### Endpoints
+
+Dial-able endpoints are
+1. Devices (by device id)
+2. Users (by user id)
+3. Phone Numbers
+4. SIP URIs (`sip:user@realm`)
+
+Note: Phone numbers will involve some internal legs being generated (loopback legs) to process the number as if it was a call coming in for the desired number. This means billing and limits will be applied just the same as if a user dialed the number from their device.
+
+###### Examples
+
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
         ,"data":{
-            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212"
         }
@@ -87,13 +121,13 @@ As when making [quickcalls](./quickcall.md), you can include `custom_application
 
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
         ,"custom_application_vars":{
             "foo":"bar"
         }
         "data":{
-            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212"
         }
@@ -105,40 +139,18 @@ You can also include the outbound call id you'd like the leg to use:
 
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
         ,"custom_application_vars":{
             "foo":"bar"
         }
         "data":{
-            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212",
             "outbound_call_id":"xyz-abc"
         }
     }
-}
-```
-
-A full example:
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: $AUTH_TOKEN" \
-    "http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}" \
-    -d'{"data":{"action":"dial","data":{"endpoints":["{DEVICE_ID}"]}}}'
-```
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": "dialing endpoints",
-    "node": "{NODE}",
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success",
-    "timestamp": "{TIMESTAMP}",
-    "version": "4.2.2"
 }
 ```
 
@@ -148,10 +160,10 @@ Sometimes you want to create ad-hoc conferences and put a participant in there. 
 
 ```json
 {
-    "data":{
-        "action":"dial"
+    "action":"dial"
+    ,"data":{
         "data":{
-            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}"],
+            "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212",
             "play_entry_tone": true,
@@ -164,15 +176,35 @@ Sometimes you want to create ad-hoc conferences and put a participant in there. 
 
 These properties will be merged into a "default" conference document and then executed the same as if the conference was preconfigured.
 
+##### The API response
+
+```json
+{
+    "data": {
+        "endpoint_responses": [
+            {
+                "call_id": "522bb682-da03-11e7-8ce9-5364ba916f96",
+                "endpoint_id": "{ENDPOINT_FROM_REQUEST}",
+                "job_id": "137b1e9e-d9fb-11e7-8cad-5364ba916f96",
+                "message": "dial resulted in call id 522bb682-da03-11e7-8ce9-5364ba916f96",
+                "status": "success"
+            }
+        ]
+    }
+    ,...
+}
+```
+
 ##### Playing media to a conference
 
 Playing a media file to everyone in a conference:
 
 ```json
-{"data"{
-    "action":"play",
-    "data":{"media_id":"{MEDIA_ID}"}
- }
+{
+    action":"play"
+    ,"data"{
+        "data":{"media_id":"{MEDIA_ID}"}
+    }
 }
 ```
 
@@ -250,6 +282,15 @@ curl -v -X PUT \
     -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
+```
+
+Sometimes you may get a HTTP/1.1 304 Not Modified response from crossbar for simliar API calls. If you do, add a random string filter to the end of the call to ensure the request is viewed as 'unique'. For example:
+
+```shell
+curl -v -X PUT \
+    -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}?random={RANDOM_BIT}
 ```
 
  Action | Description

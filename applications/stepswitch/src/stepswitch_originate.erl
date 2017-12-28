@@ -271,34 +271,35 @@ build_originate(#state{endpoints=Endpoints
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, CIDName, CIDNum, OffnetReq),
 
     props:filter_undefined(
-      [{<<"Dial-Endpoint-Method">>, <<"single">>}
+      [{<<"Application-Data">>, kz_json:get_value(<<"Application-Data">>, OffnetReq)}
       ,{<<"Application-Name">>, Application}
-      ,{<<"Msg-ID">>, MsgId}
       ,{<<"Call-ID">>, kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
-      ,{<<"Outbound-Call-ID">>, kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
-      ,{<<"Existing-Call-ID">>, kz_json:get_value(<<"Existing-Call-ID">>, OffnetReq)}
-      ,{<<"Originate-Immediate">>, kz_json:get_value(<<"Originate-Immediate">>, OffnetReq)}
-      ,{<<"Simplify-Loopback">>, kz_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
-      ,{<<"Loopback-Bowout">>, kz_json:get_value(<<"Loopback-Bowout">>, OffnetReq)}
-      ,{<<"Endpoints">>, FmtEndpoints}
-      ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-      ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-      ,{<<"Caller-ID-Number">>, CIDNum}
       ,{<<"Caller-ID-Name">>, CIDName}
-      ,{<<"Application-Data">>, kz_json:get_value(<<"Application-Data">>, OffnetReq)}
-      ,{<<"Timeout">>, kz_json:get_value(<<"Timeout">>, OffnetReq)}
-      ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"Ignore-Early-Media">>, OffnetReq)}
-      ,{<<"Media">>, kz_json:get_value(<<"Media">>, OffnetReq)}
-      ,{<<"Hold-Media">>, kz_json:get_value(<<"Hold-Media">>, OffnetReq)}
-      ,{<<"Presence-ID">>, kz_json:get_value(<<"Presence-ID">>, OffnetReq)}
-      ,{<<"Outbound-Callee-ID-Number">>, kz_json:get_value(<<"Outbound-Callee-ID-Number">>, OffnetReq)}
-      ,{<<"Outbound-Callee-ID-Name">>, kz_json:get_value(<<"Outbound-Callee-ID-Name">>, OffnetReq)}
-      ,{<<"Fax-Identity-Number">>, kz_json:get_value(<<"Fax-Identity-Number">>, OffnetReq, CIDNum)}
-      ,{<<"Fax-Identity-Name">>, kz_json:get_value(<<"Fax-Identity-Name">>, OffnetReq, CIDName)}
-      ,{<<"Fax-Timezone">>, kz_json:get_value(<<"Fax-Timezone">>, OffnetReq)}
-      ,{<<"Ringback">>, kz_json:get_value(<<"Ringback">>, OffnetReq)}
-      ,{<<"Custom-SIP-Headers">>, kz_json:get_value(<<"Custom-SIP-Headers">>, OffnetReq)}
+      ,{<<"Caller-ID-Number">>, CIDNum}
       ,{<<"Custom-Channel-Vars">>, kz_json:set_values(CCVUpdates, CCVs)}
+      ,{<<"Custom-SIP-Headers">>, kz_json:get_value(<<"Custom-SIP-Headers">>, OffnetReq)}
+      ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+      ,{<<"Endpoints">>, FmtEndpoints}
+      ,{<<"Existing-Call-ID">>, kz_json:get_value(<<"Existing-Call-ID">>, OffnetReq)}
+      ,{<<"Fax-Identity-Name">>, kz_json:get_value(<<"Fax-Identity-Name">>, OffnetReq, CIDName)}
+      ,{<<"Fax-Identity-Number">>, kz_json:get_value(<<"Fax-Identity-Number">>, OffnetReq, CIDNum)}
+      ,{<<"Fax-Timezone">>, kz_json:get_value(<<"Fax-Timezone">>, OffnetReq)}
+      ,{<<"Hold-Media">>, kz_json:get_value(<<"Hold-Media">>, OffnetReq)}
+      ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"Ignore-Early-Media">>, OffnetReq)}
+      ,{<<"Loopback-Bowout">>, kz_json:get_value(<<"Loopback-Bowout">>, OffnetReq)}
+      ,{<<"Media">>, kz_json:get_value(<<"Media">>, OffnetReq)}
+      ,{<<"Msg-ID">>, MsgId}
+      ,{<<"Originate-Immediate">>, kz_json:get_value(<<"Originate-Immediate">>, OffnetReq)}
+      ,{<<"Origination-Call-ID">>, kz_json:get_value(<<"Origination-Call-ID">>, OffnetReq)}
+      ,{<<"Outbound-Call-ID">>, kz_json:get_first_defined([<<"Origination-Call-ID">>, <<"Outbound-Call-ID">>], OffnetReq)}
+      ,{<<"Outbound-Callee-ID-Name">>, kz_json:get_value(<<"Outbound-Callee-ID-Name">>, OffnetReq)}
+      ,{<<"Outbound-Callee-ID-Number">>, kz_json:get_value(<<"Outbound-Callee-ID-Number">>, OffnetReq)}
+      ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+      ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+      ,{<<"Presence-ID">>, kz_json:get_value(<<"Presence-ID">>, OffnetReq)}
+      ,{<<"Ringback">>, kz_json:get_value(<<"Ringback">>, OffnetReq)}
+      ,{<<"Simplify-Loopback">>, kz_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
+      ,{<<"Timeout">>, kz_json:get_value(<<"Timeout">>, OffnetReq)}
        | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 

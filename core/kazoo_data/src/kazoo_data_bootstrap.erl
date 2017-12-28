@@ -51,7 +51,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
-    kz_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Connection = kz_dataconfig:connection(),
     kz_dataconnections:add(Connection),
     lager:info("waiting for first connection...", []),

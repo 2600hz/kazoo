@@ -1,0 +1,37 @@
+                Error Receiving Fax
+
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
+
+{% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %}) tried to
+send a fax document to {% if fax.box_name %}your faxbox {{fax.box_name}}{% else %}you{% endif %},
+but unfortunatly it was unsuccessful.
+
+Here are some more details on what went wrong during transmission.
+
+
+=== Receiving Fax Failure Details ===
+
+    Sender: {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %})
+    Callee: {{to.user}} (originally dialed number)
+    Receiving Date: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
+    Fax ID: {{fax.id}}
+    Error Reason: {% firstof error.fax_info error.call_info "Unknown Error" %}
+
+    --------
+
+    FaxBox Name: {{fax.box_name}}
+    FaxBox ID: {{fax.box_id}}
+    Call ID: {{call_id|default:"N/A"}}
+    Receiving Timestamp: {{fax.timestamp}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}

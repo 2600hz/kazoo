@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.websockets.get_req",
+    "description": "AMQP API for websockets.get_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "websockets"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "get_req"
+            ],
+            "type": "string"
+        },
+        "Socket-ID": {
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

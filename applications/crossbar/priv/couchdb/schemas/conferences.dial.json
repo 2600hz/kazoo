@@ -1,0 +1,35 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "conferences.dial",
+    "description": "Schema for conference dial API command",
+    "properties": {
+        "caller_id_name": {
+            "description": "Caller ID Name to use when dialing out to endpoints",
+            "type": "string"
+        },
+        "caller_id_number": {
+            "description": "Caller ID Number to use when dialing out to endpoints",
+            "type": "string"
+        },
+        "endpoints": {
+            "items": {
+                "description": "Device or User IDs, DIDs or extensions, SIP URIs",
+                "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+        },
+        "target_call_id": {
+            "description": "Existing UUID to use as a hint for where to start the conference",
+            "type": "string"
+        },
+        "timeout": {
+            "description": "How long to try to reach the endpoint(s)",
+            "minimum": 1,
+            "type": "integer"
+        }
+    },
+    "required": [
+        "endpoints"
+    ]
+}

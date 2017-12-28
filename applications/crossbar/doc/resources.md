@@ -34,7 +34,7 @@ Key | Description | Type | Default | Required
 `flags` | A list of flags that can be provided on the request and must match for the resource to be eligible | `array(string())` | `[]` | `false`
 `flat_rate_blacklist` | Regex for determining if a number should not be eligible for flat-rate trunking | `string()` |   | `false`
 `flat_rate_whitelist` | Regex for determining if the number is eligible for flat-rate trunking | `string()` |   | `false`
-`format_from_uri` | When set to true requests to this resource will have a re-formated SIP From Header | `boolean()` |   | `false`
+`format_from_uri` | When set to true requests to this resource will have a re-formatted SIP From Header | `boolean()` |   | `false`
 `formatters` |   | `object()` |   | `false`
 `from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string()` |   | `false`
 `gateways.[].bypass_media` | The resource gateway bypass media mode | `boolean()` |   | `false`
@@ -74,15 +74,7 @@ Key | Description | Type | Default | Required
 `gateways.[].username` | SIP authentication username | `string(0..32)` |   | `false`
 `gateways` | A list of gateways avaliable for this resource | `array(object())` |   | `true`
 `grace_period` | The amount of time, in seconds, to wait before starting another resource | `integer()` | `5` | `false`
-`media.audio.codecs.[]` |   | `string()` |   | `false`
-`media.audio.codecs` | A list of default codecs to use | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` | `["PCMU"]` | `false`
-`media.audio` | The default audio media parameters | `object()` | `{}` | `false`
-`media.bypass_media` | Default bypass media mode | `boolean()` |   | `false`
-`media.fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
-`media.video.codecs.[]` |   | `string()` |   | `false`
-`media.video.codecs` | A list of default codecs to use | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false`
-`media.video` | The default video media parameters | `object()` | `{}` | `false`
-`media` | The default resouce media parameters applied if not present to all specified gateways | `object()` | `{}` | `false`
+`media` | Media options for resources | [#/definitions/endpoint.media](#endpointmedia) |   | `false`
 `name` | A friendly name for the resource | `string(1..128)` |   | `true`
 `require_flags` | When set to true this resource is ignored if the request does not specify outbound flags | `boolean()` |   | `false`
 `rules.[]` |   | `string()` |   | `false`
@@ -97,6 +89,28 @@ Custom SIP headers applied to an INVITE
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false`
+
+##### endpoint.media
+
+Schema for endpoint media options
+
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`audio.codecs.[]` |   | `string()` |   | `false`
+`audio.codecs` | A list of audio codecs the endpoint supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false`
+`audio` | The audio media parameters | `object()` | `{}` | `false`
+`bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false`
+`encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false`
+`encryption.methods.[]` |   | `string()` |   | `false`
+`encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false`
+`encryption` | Encryption Parameters | `object()` | `{}` | `false`
+`fax_option` | Is T.38 Supported? | `boolean()` |   | `false`
+`ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `boolean()` |   | `false`
+`progress_timeout` | The progress timeout to apply to the endpoint (seconds) | `integer()` |   | `false`
+`video.codecs.[]` |   | `string()` |   | `false`
+`video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false`
+`video` | The video media parameters | `object()` | `{}` | `false`
 
 ##### formatters
 

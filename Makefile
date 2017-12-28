@@ -1,11 +1,17 @@
-ROOT = $(shell readlink -f .)
+ROOT = $(shell cd "$(dirname '.')" && pwd -P)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
+# You can override this when calling make, e.g. make MAKEFLAGS=""
+# to prevent parallel builds, or make MAKEFLAGS="-j8".
+# Note that this only applies to the core and applications
+# targets.
+MAKEFLAGS ?= -j
+
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell
 
 all: compile rel/dev-vm.args
 
@@ -65,10 +71,10 @@ deps/Makefile: .erlang.mk
 	cp $(ROOT)/make/Makefile.deps deps/Makefile
 
 core:
-	$(MAKE) -j -C core/ all
+	$(MAKE) $(MAKEFLAGS) -C core/ all
 
 apps: core
-	$(MAKE) -j -C applications/ all
+	$(MAKE) $(MAKEFLAGS) -C applications/ all
 
 kazoo: apps
 
@@ -126,8 +132,14 @@ read-release-cookie: REL ?= kazoo_apps
 read-release-cookie:
 	@NODE_NAME='$(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
 
+fixture_shell: ERL_CRASH_DUMP = "$(ROOT)/$(shell date +%s)_ecallmgr_erl_crash.dump"
+fixture_shell: ERL_LIBS = "$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications:$(shell echo $(ROOT)/deps/rabbitmq_erlang_client-*/deps)"
+fixture_shell:
+	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
+		erl -name fixturedb -s reloader "$$@"
+
 DIALYZER ?= dialyzer
-DIZLYZER += --statistics --no_native
+DIALYZER += --statistics --no_native
 PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
@@ -188,8 +200,12 @@ bump-copyright:
 $(FMT):
 	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' | tar xz -C $(ROOT)/make/
 
+fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
+
+app_applications:
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
@@ -242,7 +258,6 @@ validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
 CHANGED := $(shell git --no-pager diff --name-only HEAD origin/master -- applications core scripts)
-TO_FMT := $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json)
 PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 
@@ -264,6 +279,7 @@ circle-docs:
 circle-codechecks:
 	@./scripts/code_checks.bash $(CHANGED)
 	@$(MAKE) code_checks
+	@$(MAKE) app_applications
 	@./scripts/validate-js.sh $(CHANGED)
 
 circle-fmt:

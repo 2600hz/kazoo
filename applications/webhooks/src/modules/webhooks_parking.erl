@@ -83,6 +83,8 @@ maybe_send_event(AccountId, JObj) ->
 %%--------------------------------------------------------------------
 -spec format(kz_json:object()) -> kz_json:object().
 format(JObj) ->
+    AccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    JObj1 = kz_json:set_value(<<"Account-ID">>, AccountId, JObj),
     RemoveKeys = [
                   <<"Node">>
                  ,<<"Msg-ID">>
@@ -91,4 +93,4 @@ format(JObj) ->
                  ,<<"Event-Category">>
                  ,<<"Custom-Channel-Vars">>
                  ],
-    kz_json:normalize_jobj(JObj, RemoveKeys, []).
+    kz_json:normalize_jobj(JObj1, RemoveKeys, []).

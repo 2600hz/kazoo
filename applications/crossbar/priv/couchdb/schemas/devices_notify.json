@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "devices_notify",
+    "description": "Schema for CrossBar devices notify API",
+    "properties": {
+        "data": {
+            "description": "Action-specific parameters",
+            "properties": {
+                "body": {
+                    "description": "Parameters of content body of SIP NOTIFY",
+                    "properties": {
+                        "content_type": {
+                            "description": "The Content-Type of the data in the content body",
+                            "type": "string"
+                        },
+                        "data": {
+                            "description": "The data in the content body",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "data",
+                        "content_type"
+                    ],
+                    "type": "object"
+                },
+                "event": {
+                    "description": "Event header value for SIP NOTIFY",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "event"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "data"
+    ],
+    "type": "object"
+}

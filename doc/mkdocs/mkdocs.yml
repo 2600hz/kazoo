@@ -247,6 +247,7 @@ pages:
     - 'After Bridge': 'applications/callflow/doc/after_bridge.md'
     - 'Set': 'applications/callflow/doc/set.md'
     - 'Branch BNumber': 'applications/callflow/doc/branch_bnumber.md'
+    - 'Camping': 'applications/callflow/doc/camping_feature.md'
     - 'Deprecated':
         - 'Offnet': 'applications/callflow/doc/offnet.md'
   - 'Call Inspector':
@@ -419,11 +420,13 @@ pages:
   - 'Kazoo PropEr':
     - 'core/kazoo_proper/doc/README.md'
     - 'core/kazoo_proper/doc/rates.md'
-  - 'Kazoo Performance Testing':
-      - 'core/kazoo_perf/doc/maintenance.md'
   - 'Kazoo EDR':
       - 'core/kazoo_edr/doc/README.md'
       - 'applications/edr/doc/README.md'
+  - 'Kazoo Performance Testing':
+      - 'core/kazoo_perf/doc/maintenance.md'
+  - 'Kazoo Test FixtureDB':
+      - 'core/kazoo_fixturedb/doc/README.md'
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'

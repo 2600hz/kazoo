@@ -77,11 +77,30 @@ assigned(Account) ->
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(fun() -> assigned(Account) end);
         {'ok', JObjs} ->
-            {'ok', [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
+            {'ok', sort_assigned([kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs])};
         {'error', _R}=E ->
             lager:debug("unable to get assigned dedicated ips: ~p", [_R]),
             E
     end.
+
+-spec sort_assigned(kz_json:objects()) -> kz_json:objects().
+sort_assigned(IPs) ->
+    ZoneName = get_zone_name(),
+    sort_assigned(kz_term:shuffle_list(IPs), ZoneName, []).
+
+-spec sort_assigned(kz_json:objects(), ne_binary(), kz_json:objects()) -> kz_json:objects().
+sort_assigned([], _, Sorted) -> Sorted;
+sort_assigned([IP|IPs], ZoneName, Sorted) ->
+    case kz_json:get_value(<<"zone">>, IP) =:= ZoneName of
+        'true' -> sort_assigned(IPs, ZoneName, [IP] ++ Sorted);
+        'false' -> sort_assigned(IPs, ZoneName, Sorted ++ [IP])
+    end.
+
+-spec get_zone_name() -> ne_binary().
+get_zone_name() ->
+    LocalZone = kz_term:to_binary(kz_nodes:local_zone()),
+    NameMap = kapps_config:get_json(?CONFIG_CAT, <<"zone_name_map">>, kz_json:new()),
+    kz_json:get_ne_value(LocalZone, NameMap, LocalZone).
 
 %%--------------------------------------------------------------------
 %% @public
