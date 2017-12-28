@@ -7,8 +7,9 @@
                              kazoo_services,kazoo_stdlib,kazoo_web,kernel,
                              lager,stdlib]},
               {description,"Fax - Why is everyone faxinated with fax?"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{fax_app,[]}},
               {modules,[]},
               {registered,[fax_cache,fax_worker_pool_sup,fax_requests_sup,
                            fax_xmpp_sup,fax_sup]},
-              {mod,{fax_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

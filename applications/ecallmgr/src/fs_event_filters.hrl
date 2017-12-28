@@ -47,7 +47,6 @@
         ,<<"Hunt-Context">>
         ,<<"Hunt-Destination-Number">>
         ,<<"Join-Time">>
-        ,<<"Other-Leg-ANI">>
         ,<<"Other-Leg-Call-ID">>
         ,<<"Other-Leg-Callee-ID-Number">>
         ,<<"Other-Leg-Caller-ID-Name">>

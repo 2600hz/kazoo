@@ -194,6 +194,16 @@ list_apps() ->
 
 -spec is_kapp(atom()) -> boolean().
 is_kapp(App) ->
+    case application:get_env(App, 'is_kazoo_app') of
+        {'ok', 'true'} -> 'true';
+        _ -> has_me_as_dep(App)
+    end.
+
+%% This is the old way of detecting a "kazoo app" vs "core app"/"dep app"/"otp app"
+%% This doesn't really work as core libs can have kazoo_apps as a dep (looking at you
+%% kapps_util!).
+-spec has_me_as_dep(atom()) -> boolean().
+has_me_as_dep(App) ->
     case application:get_key(App, 'applications') of
         {'ok', Deps} -> lists:member(?APP, Deps);
         'undefined' ->

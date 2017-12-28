@@ -3,7 +3,8 @@
                              kazoo_config,kazoo_data,kazoo_documents,
                              kazoo_media,kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Conferencing Service Provider"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{conference_app,[]}},
               {modules,[]},
               {registered,[conference_sup,conf_participant_sup]},
-              {mod,{conference_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

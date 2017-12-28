@@ -3,7 +3,8 @@
                              kazoo_documents,kazoo_sip,kazoo_stdlib,kernel,
                              lager,stdlib]},
               {description,"Omnipresence - Who's doing what when"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{omnipresence_app,[]}},
               {modules,[]},
               {registered,[omnipresence_cache,omnip_message_summary_sip,
                            omnipresence_proxy,omnip_message_summary_amqp,
@@ -11,4 +12,4 @@
                            omnip_sup,omnipresence_sup,omnip_dialog_sip,
                            omnip_dialog_amqp,omnip_presence_amqp,
                            omnip_presence_sip]},
-              {mod,{omnipresence_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

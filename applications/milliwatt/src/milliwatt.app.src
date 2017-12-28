@@ -2,7 +2,8 @@
              [{applications,[kazoo,kazoo_amqp,kazoo_call,kazoo_config,
                              kazoo_stdlib,kernel,lager,stdlib]},
               {description,"milliwatt "},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{milliwatt_app,[]}},
               {modules,[]},
               {registered,[milliwatt_sup]},
-              {mod,{milliwatt_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

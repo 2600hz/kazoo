@@ -3,7 +3,8 @@
                              kazoo_number_manager,kazoo_stdlib,kazoo_web,
                              kernel,lager,stdlib]},
               {description,"DTH - Integration with DTH Billing System"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{dth_app,[]}},
               {modules,[]},
               {registered,[dth_cache,dth_sup]},
-              {mod,{dth_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

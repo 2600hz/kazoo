@@ -4,7 +4,7 @@
  ,{id, ""}
  ,{vsn, "4.0.0"}
  ,{modules, []}
- ,{registered, [kz_globals]}
+ ,{registered, [kz_globals, kz_nodes]}
  ,{applications, [ kernel
                  , stdlib
 

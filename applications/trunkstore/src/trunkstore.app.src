@@ -5,8 +5,9 @@
                              kazoo_number_manager,kazoo_stdlib,
                              kazoo_transactions,kernel,lager,stdlib]},
               {description,"Trunk Store Backend - Authentication and Routing"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{trunkstore_app,[]}},
               {modules,[]},
               {registered,[trunkstore_cache,ts_offnet_sup,trunkstore_sup,
                            ts_onnet_sup]},
-              {mod,{trunkstore_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

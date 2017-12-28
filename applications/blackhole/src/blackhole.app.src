@@ -4,8 +4,9 @@
                              kazoo_modb,kazoo_stdlib,kazoo_token_buckets,
                              kernel,lager,stdlib]},
               {description,"blackhole - websocket"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{blackhole_app,[]}},
               {modules,[]},
               {registered,[blackhole_listener,blackhole_sup,
                            blackhole_tracking]},
-              {mod,{blackhole_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

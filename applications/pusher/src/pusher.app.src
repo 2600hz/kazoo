@@ -3,8 +3,9 @@
                              kazoo_config,kazoo_data,kazoo_sip,kazoo_stdlib,
                              kernel,lager,public_key,stdlib]},
               {description,"pusher - wake the dead"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{pusher_app,[]}},
               {modules,[]},
               {registered,[pusher_cache,pm_google,pm_apple,pusher_sup,
                            pusher_module_sup]},
-              {mod,{pusher_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

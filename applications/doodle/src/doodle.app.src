@@ -6,9 +6,10 @@
                              kazoo_stdlib,kazoo_token_buckets,kernel,lager,
                              stdlib]},
               {description,"doodle - sms store and forward"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{doodle_app,[]}},
               {modules,[]},
               {registered,[doodle_cache,doodle_shared_listener,doodle_sup,
                            doodle_exe_sup,doodle_event_handler_sup,
                            doodle_inbound_listener_sup]},
-              {mod,{doodle_app,[]}}]}.
+              {vsn,"4.0.0"}]}.

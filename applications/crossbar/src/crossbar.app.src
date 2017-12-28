@@ -13,8 +13,9 @@
                              kazoo_voicemail,kazoo_web,kernel,lager,ssl,
                              stdlib,tools]},
               {description,"Crossbar - REST Interface to the stars"},
-              {vsn,"4.0.0"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{crossbar_app,[]}},
               {modules,[]},
               {registered,[crossbar_cache,cb_jobs_listener,crossbar_sup,
                            crossbar_module_sup]},
-              {mod,{crossbar_app,[]}}]}.
+              {vsn,"4.0.0"}]}.
