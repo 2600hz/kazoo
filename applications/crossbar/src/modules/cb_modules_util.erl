@@ -432,7 +432,7 @@ attachment_name(Filename, CT) ->
                               {'error', 'badarg'} |
                               media_values().
 parse_media_type(MediaType) ->
-    cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2).
+    cow_http_hd:parse_accept(MediaType).
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_ne_binary(), api_ne_binary()) -> ne_binary().

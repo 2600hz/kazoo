@@ -7,9 +7,9 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(crossbar_default_handler).
--behaviour(cowboy_http_handler).
+-behaviour(cowboy_handler).
 
--export([init/3
+-export([init/2
         ,upgrade/4
         ,handle/2
         ,terminate/3
@@ -22,9 +22,9 @@
                        ,<<"/:version/accounts/:account_id/presence/:reportid">>
                        ]).
 
--spec init({atom(), 'http'}, cowboy_req:req(), kz_proplist()) ->
+-spec init(cowboy_req:req(), kz_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'}.
-init({_Any, 'http'}, Req0, HandlerOpts) ->
+init(Req0, HandlerOpts) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {Path, Req1} = cowboy_req:path(Req0),
     case get_magic_token(Path) of

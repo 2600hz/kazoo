@@ -170,9 +170,9 @@ get_req_data(Context, Req0) ->
                                    {kz_json:object(), cowboy_req:req()}.
 -spec get_query_string_data(kz_proplist(), cowboy_req:req()) ->
                                    {kz_json:object(), cowboy_req:req()}.
-get_query_string_data(Req0) ->
-    {QS0, Req1} = cowboy_req:qs_vals(Req0),
-    get_query_string_data(QS0, Req1).
+get_query_string_data(Req) ->
+    QS = cowboy_req:parse_qs(Req),
+    get_query_string_data(QS, Req).
 
 get_query_string_data([], Req) ->
     {kz_json:new(), Req};
@@ -346,12 +346,12 @@ extract_multipart(Context, {'done', Req}, _QS) ->
 extract_multipart(Context, {'ok', Headers, Req}, QS) ->
     {Ctx, R} = get_req_data(Context, {props:get_value(<<"content-type">>, Headers), Req}, QS),
     extract_multipart(Ctx
-                     ,cowboy_req:part(R)
+                     ,cowboy_req:read_part(R)
                      ,QS
                      );
 extract_multipart(Context, Req, QS) ->
     extract_multipart(Context
-                     ,cowboy_req:part(Req)
+                     ,cowboy_req:read_part(Req)
                      ,QS
                      ).
 
@@ -369,7 +369,7 @@ extract_file(Context, ContentType, Req0) ->
                                     {cb_context:context(), cowboy_req:req()} |
                                     halt_return().
 extract_file_part_body(Context, ContentType, Req0) ->
-    case cowboy_req:part_body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
+    case cowboy_req:read_part_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', FileContents, Req1} ->
@@ -380,7 +380,7 @@ extract_file_part_body(Context, ContentType, Req0) ->
                                {cb_context:context(), cowboy_req:req()} |
                                halt_return().
 extract_file_body(Context, ContentType, Req0) ->
-    case cowboy_req:body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
+    case cowboy_req:read_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', FileContents, Req1} ->
@@ -449,7 +449,7 @@ decode_base64(Context, CT, Req0) ->
     decode_base64(Context, CT, Req0, []).
 
 decode_base64(Context, CT, Req0, Body) ->
-    case cowboy_req:body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
+    case cowboy_req:read_body(Req0, #{'length'=>?MAX_UPLOAD_SIZE}) of
         {'error', 'badlength'} ->
             lager:debug("the request body was most likely too big"),
             handle_max_filesize_exceeded(Context, Req0);
@@ -488,10 +488,10 @@ decode_base64(Context, CT, Req0, Body) ->
 get_request_body(Req) ->
     get_request_body(Req, []).
 get_request_body(Req0, Body) ->
-    try get_request_body(Req0, Body, cowboy_req:part_body(Req0))
+    try get_request_body(Req0, Body, cowboy_req:read_part_body(Req0))
     catch
         'error':{'badmatch', _} ->
-            get_request_body(Req0, Body, cowboy_req:body(Req0))
+            get_request_body(Req0, Body, cowboy_req:read_body(Req0))
     end.
 
 -type body_return() :: {'more', binary(), cowboy_req:req()} |
@@ -1281,11 +1281,11 @@ create_json_chunk_response(Req, [], StartedChunk) ->
 create_json_chunk_response(Req, JObjs, StartedChunk) ->
     try do_encode_to_json(JObjs) of
         JSON when StartedChunk ->
-            'ok' = cowboy_req:chunk(<<",", JSON/binary>>, Req),
+            'ok' = cowboy_req:stream_body(<<",", JSON/binary>>, nofin, Req),
             {StartedChunk, Req};
         JSON ->
             Req1 = init_chunk_stream(Req, <<"to_json">>),
-            'ok' = cowboy_req:chunk(JSON, Req1),
+            'ok' = cowboy_req:stream_body(JSON, 'fin', Req1),
             {'true', Req1}
     catch
         'throw':{'json_encode', {'bad_term', _Term}} ->
@@ -1309,28 +1309,27 @@ create_csv_chunk_response(Req, Context) ->
     CSVs = cb_context:resp_data(Context),
     case cb_context:fetch(Context, 'chunking_started', 'false') of
         'true' ->
-            'ok' = cowboy_req:chunk(CSVs, Req),
+            'ok' = cowboy_req:stream_body(CSVs, 'fin', Req),
             {'true', Req};
         'false' ->
             Req1 = init_chunk_stream(Req, <<"to_csv">>),
-            'ok' = cowboy_req:chunk(CSVs, Req1),
+            'ok' = cowboy_req:stream_body(CSVs, 'fin', Req1),
             {'true', Req1}
     end.
-
 
 %% @public
 -spec init_chunk_stream(cowboy_req:req(), ne_binary()) -> cowboy_req:req().
 init_chunk_stream(Req, <<"to_json">>) ->
-    Headers = cowboy_req:get('resp_headers', Req),
-    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
-    'ok' = cowboy_req:chunk("{\"data\":[", Req1),
+    Headers = cowboy_req:resp_headers(Req),
+    {'ok', Req1} = cowboy_req:stream_reply(200, Headers, Req),
+    'ok' = cowboy_req:stream_body("{\"data\":[", 'nofin', Req1),
     Req1;
 init_chunk_stream(Req, <<"to_csv">>) ->
-    Headers0 = [{<<"content-type">>, <<"text/csv">>}
-               ,{<<"content-disposition">>, <<"attachment; filename=\"result.csv\"">>}
-               ],
-    Headers = props:set_values(Headers0, cowboy_req:get('resp_headers', Req)),
-    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
+    Headers0 = #{<<"content-type">> => <<"text/csv">>
+                ,<<"content-disposition">> => <<"attachment; filename=\"result.csv\"">>
+                },
+    Headers = maps:merge(Headers0, cowboy_req:resp_headers(Req)),
+    {'ok', Req1} = cowboy_req:stream_reply(200, Headers, Req),
     Req1.
 
 -spec csv_body(ne_binary() | kz_json:object() | kz_json:objects()) -> iolist().
@@ -1466,7 +1465,7 @@ close_chunk_json_envelope(Req, Context) ->
                    || {K, V} <- Trailer,
                       kz_term:is_not_empty(V)
               ],
-    'ok' = cowboy_req:chunk(<<"], ", (kz_binary:join(Encoded))/binary, "}">>, Req).
+    'ok' = cowboy_req:stream_body(<<"], ", (kz_binary:join(Encoded))/binary, "}">>, fin, Req).
 
 -spec encode_start_keys(kz_json:object(), boolean()) -> kz_json:object().
 encode_start_keys(Resp, 'false') ->
