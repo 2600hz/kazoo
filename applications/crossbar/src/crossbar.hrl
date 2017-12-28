@@ -148,7 +148,7 @@
                     ,req_json = kz_json:new() :: req_json()
                     ,req_files = [] :: req_files()
                     ,req_data = kz_json:new() :: kz_json:json_term()  % the "data" from the request JSON envelope
-                    ,req_headers = [] :: cowboy:http_headers()
+                    ,req_headers = #{} :: cowboy:http_headers()
                     ,query_json = kz_json:new() :: kz_json:object()
                     ,account_id :: api_ne_binary()
                     ,account_name :: api_ne_binary()

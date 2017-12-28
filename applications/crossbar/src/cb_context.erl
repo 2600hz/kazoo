@@ -96,7 +96,6 @@
 
         ,host_url/1, set_host_url/2
         ,set_pretty_print/2
-        ,set_raw_host/2
         ,set_port/2
         ,set_raw_path/2
         ,set_raw_qs/2
@@ -318,7 +317,7 @@ req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
 req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 req_headers(#cb_context{req_headers=Hs}) -> Hs.
-req_header(#cb_context{req_headers=Hs}, K) -> props:get_value(K, Hs).
+req_header(#cb_context{req_headers=Hs}, K) -> maps:get(K, Hs, 'undefined').
 query_string(#cb_context{query_json=Q}) -> Q.
 req_param(#cb_context{}=Context, K) -> req_param(Context, K, 'undefined').
 req_param(#cb_context{query_json=JObj}, K, Default) -> kz_json:get_value(K, JObj, Default).
@@ -446,8 +445,8 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_api_version(context(), ne_binary()) -> context().
 -spec set_resp_etag(context(), api_binary()) -> context().
 -spec set_resp_envelope(context(), kz_json:object()) -> context().
--spec set_resp_headers(context(), kz_proplist()) -> context().
--spec add_resp_headers(context(), kz_proplist()) -> context().
+-spec set_resp_headers(context(), map()) -> context().
+-spec add_resp_headers(context(), map()) -> context().
 -spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().
 -spec add_resp_header(context(), ne_binary(), ne_binary()) -> context().
 -spec set_allow_methods(context(), http_methods()) -> context().
@@ -464,7 +463,6 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_should_paginate(context(), boolean()) -> context().
 -spec set_validation_errors(context(), kz_json:object()) -> context().
 -spec set_port(context(), integer()) -> context().
--spec set_raw_host(context(), binary()) -> context().
 -spec set_raw_path(context(), binary()) -> context().
 -spec set_raw_qs(context(), binary()) -> context().
 -spec set_client_ip(context(), ne_binary()) -> context().
@@ -510,8 +508,7 @@ set_req_nouns(#cb_context{}=Context, ReqNouns) ->
 set_req_headers(#cb_context{}=Context, ReqHs) ->
     Context#cb_context{req_headers=ReqHs}.
 set_req_header(#cb_context{req_headers=ReqHs}=Context, HKey, HValue) ->
-    NewReqHs = [{HKey,HValue} | ReqHs],
-    Context#cb_context{req_headers=NewReqHs}.
+    Context#cb_context{req_headers=maps:put(HKey, HValue, ReqHs)}.
 set_query_string(#cb_context{}=Context, Q) ->
     Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) ->
@@ -565,20 +562,18 @@ set_resp_error_msg(#cb_context{}=Context, Msg) ->
     Context#cb_context{resp_error_msg=Msg}.
 
 set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
-    Context#cb_context{resp_headers=lists:foldl(fun set_resp_header_fold/2, Hs, Headers)}.
+    Context#cb_context{resp_headers=maps:merge(Hs, Headers)}.
 set_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
-    Context#cb_context{resp_headers=lists:keystore(K, 1, RespHeaders, {K, V})}.
-set_resp_header_fold({K, V}, Hs) -> lists:keystore(K, 1, Hs, {K, V}).
+    Context#cb_context{resp_headers=maps:put(K, V, RespHeaders)}.
 
 add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, Headers) ->
-    Context#cb_context{resp_headers=lists:foldl(fun add_resp_header_fold/2, RespHeaders, Headers)}.
+    Context#cb_context{resp_headers=maps:fold(fun add_resp_header_fold/3, RespHeaders, Headers)}.
+
+add_resp_header_fold(K, V, RHs) ->
+    maps:put(kz_term:to_lower_binary(K), V, RHs).
 
 add_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
-    Context#cb_context{resp_headers=add_resp_header_fold({K, V}, RespHeaders)}.
-
--spec add_resp_header_fold({ne_binary(), any()}, kz_proplist()) -> kz_proplist().
-add_resp_header_fold({K, V}, Hs) ->
-    props:set_value(kz_term:to_lower_binary(K), V, Hs).
+    Context#cb_context{resp_headers=add_resp_header_fold(K, V, RespHeaders)}.
 
 set_validation_errors(#cb_context{}=Context, Errors) ->
     Context#cb_context{validation_errors=Errors}.
@@ -595,9 +590,6 @@ host_url(#cb_context{host_url = Value}) -> Value.
 -spec set_pretty_print(context(), boolean()) -> context().
 set_pretty_print(#cb_context{}=Context, Value) ->
     Context#cb_context{pretty_print = Value}.
-
-set_raw_host(#cb_context{}=Context, Value) ->
-    Context#cb_context{raw_host = Value}.
 
 set_raw_path(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_path = Value}.
