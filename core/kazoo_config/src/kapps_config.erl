@@ -672,6 +672,7 @@ update_category(Category, JObj, PvtFields) ->
             lager:debug("updating from ~s to ~s", [kz_doc:revision(JObj), kz_doc:revision(Merged)]),
             update_category(Category, Merged, PvtFields)
     end.
+-endif.
 
 %% @private
 -spec maybe_save_category(ne_binary(), kz_json:object(), api_object()) ->
@@ -726,7 +727,6 @@ update_pvt_fields(Category, JObj, 'undefined') ->
 update_pvt_fields(Category, JObj, PvtFields) ->
     Base = update_pvt_fields(Category, JObj, 'undefined'),
     kz_json:merge_jobjs(Base, PvtFields).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
