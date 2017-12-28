@@ -474,7 +474,7 @@ is_account_deleted(AccountId) ->
 refresh_views(AccountMODb) ->
     lager:debug("refresh views on modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    kz_datamgr:refresh_views(EncodedMODb),
+    _ = kz_datamgr:refresh_views(EncodedMODb),
     'ok'.
 
 %%--------------------------------------------------------------------

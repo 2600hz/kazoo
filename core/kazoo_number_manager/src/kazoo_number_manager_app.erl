@@ -21,7 +21,7 @@
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
     declare_exchanges(),
-    kz_datamgr:register_view('numbers', ?APP, "views/numbers.json"),
+    _ = kz_datamgr:register_view('numbers', ?APP, "views/numbers.json"),
     kazoo_number_manager_sup:start_link().
 
 -spec stop(any()) -> any().
