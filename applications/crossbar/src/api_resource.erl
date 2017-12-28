@@ -465,14 +465,14 @@ valid_entity_length(Req, Context) ->
                      {'ok', cowboy_req:req(), cb_context:context()}.
 options(Req0, Context) ->
     case api_util:is_cors_request(Req0) of
-        {'true', Req1} ->
+        'true' ->
             lager:debug("is CORS request"),
-            Req2 = api_util:add_cors_headers(Req1, Context),
-            Req3 = cowboy_req:set_resp_body(<<>>, Req2),
-            {'ok', Req3, Context};
-        {'false', Req1} ->
+            Req1 = api_util:add_cors_headers(Req0, Context),
+            Req2 = cowboy_req:set_resp_body(<<>>, Req1),
+            {'ok', Req2, Context};
+        'false' ->
             lager:debug("is not CORS request"),
-            {'ok', Req1, Context}
+            {'ok', Req0, Context}
     end.
 
 -type content_type_callbacks() :: [{{ne_binary(), ne_binary(), kz_proplist()}, atom()} |
