@@ -85,16 +85,10 @@
 %% request
 %% @end
 %%--------------------------------------------------------------------
--spec is_cors_preflight(cowboy_req:req()) -> {boolean(), cowboy_req:req()}.
-is_cors_preflight(Req0) ->
-    case is_cors_request(Req0) of
-        {'true', Req1} ->
-            case cowboy_req:method(Req1) of
-                {?HTTP_OPTIONS, Req2} -> {'true', Req2};
-                {_M, Req2} -> {'false', Req2}
-            end;
-        Nope -> Nope
-    end.
+-spec is_cors_preflight(cowboy_req:req()) -> boolean().
+is_cors_preflight(Req) ->
+    is_cors_request(Req)
+        andalso ?HTTP_OPTIONS =:= cowboy_req:method(Req).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,18 +97,16 @@ is_cors_preflight(Req0) ->
 %% request
 %% @end
 %%--------------------------------------------------------------------
--spec is_cors_request(cowboy_req:req()) -> {boolean(), cowboy_req:req()}.
--spec is_cors_request(cowboy_req:req(), ne_binaries()) -> {boolean(), cowboy_req:req()}.
+-spec is_cors_request(cowboy_req:req()) -> boolean().
+-spec is_cors_request(cowboy_req:req(), ne_binaries()) -> boolean().
 is_cors_request(Req) ->
     ReqHdrs = [<<"origin">>, <<"access-control-request-method">>, <<"access-control-request-headers">>],
     is_cors_request(Req, ReqHdrs).
 
-is_cors_request(Req, []) -> {'false', Req};
+is_cors_request(_Req, []) -> 'false';
 is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
-    case cowboy_req:header(ReqHdr, Req) of
-        'undefined' -> is_cors_request(Req, ReqHdrs);
-        _H -> {'true', Req}
-    end.
+    'undefined' =/= cowboy_req:header(ReqHdr, Req)
+        orelse is_cors_request(Req, ReqHdrs).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1320,7 +1312,7 @@ create_csv_chunk_response(Req, Context) ->
 -spec init_chunk_stream(cowboy_req:req(), ne_binary()) -> cowboy_req:req().
 init_chunk_stream(Req, <<"to_json">>) ->
     Headers = cowboy_req:resp_headers(Req),
-    {'ok', Req1} = cowboy_req:stream_reply(200, Headers, Req),
+    Req1 = cowboy_req:stream_reply(200, Headers, Req),
     'ok' = cowboy_req:stream_body("{\"data\":[", 'nofin', Req1),
     Req1;
 init_chunk_stream(Req, <<"to_csv">>) ->
@@ -1328,8 +1320,7 @@ init_chunk_stream(Req, <<"to_csv">>) ->
                 ,<<"content-disposition">> => <<"attachment; filename=\"result.csv\"">>
                 },
     Headers = maps:merge(Headers0, cowboy_req:resp_headers(Req)),
-    {'ok', Req1} = cowboy_req:stream_reply(200, Headers, Req),
-    Req1.
+    cowboy_req:stream_reply(200, Headers, Req).
 
 -spec csv_body(ne_binary() | kz_json:object() | kz_json:objects()) -> iolist().
 csv_body(Body=?NE_BINARY) -> Body;
@@ -1498,20 +1489,24 @@ decode_start_key(Encoded) ->
 %% Iterate through cb_context:resp_headers/1, setting the headers specified
 %% @end
 %%--------------------------------------------------------------------
--spec set_resp_headers(cowboy_req:req(), cb_context:context() | kz_proplist()) ->
+-spec set_resp_headers(cowboy_req:req(), cb_context:context() | cowboy:http_headers()) ->
                               cowboy_req:req().
-set_resp_headers(Req0, []) -> Req0;
-set_resp_headers(Req0, [_|_]=Headers) ->
-    lists:foldl(fun({Header, Value}, ReqAcc) ->
-                        {H, V} = fix_header(Header, Value, ReqAcc),
-                        cowboy_req:set_resp_header(H, V, ReqAcc)
-                end, Req0, props:filter_empty(Headers));
+set_resp_headers(Req0, #{}=Headers) ->
+    maps:fold(fun(Header, Value, ReqAcc) ->
+                      {H, V} = fix_header(Header, Value, ReqAcc),
+                      cowboy_req:set_resp_header(H, V, ReqAcc)
+              end
+             ,Req0
+             ,Headers
+             );
 set_resp_headers(Req0, Context) ->
     set_resp_headers(Req0, cb_context:resp_headers(Context)).
 
 -spec fix_header(text(), text(), cowboy_req:req()) ->
                         {binary(), binary()}.
-fix_header(<<"Location">> = H, Path, Req) ->
+fix_header(<<"Location">>, Path, Req) ->
+    {<<"location">>, crossbar_util:get_path(Req, Path)};
+fix_header(<<"ocation">> = H, Path, Req) ->
     {H, crossbar_util:get_path(Req, Path)};
 fix_header(H, V, _) ->
     {kz_term:to_lower_binary(H), kz_term:to_binary(V)}.
@@ -1531,7 +1526,7 @@ halt(Req0, Context) ->
 
     Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),
 
-    {'ok', Req5} = cowboy_req:reply(StatusCode, Req4),
+    Req5 = cowboy_req:reply(StatusCode, Req4),
     {'halt', Req5, cb_context:set_resp_status(Context, 'halt')}.
 
 -spec create_event_name(cb_context:context(), ne_binary() | ne_binaries()) -> ne_binary().

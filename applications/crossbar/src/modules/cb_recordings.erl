@@ -203,8 +203,8 @@ do_load_recording_binary_attachment(Context, DocId) ->
 
 -spec set_resp_headers(cb_context:context(), ne_binary()) -> cb_context:context().
 set_resp_headers(Context, AName) ->
-    Headers = [{<<"Content-Disposition">>, get_disposition(AName, Context)}],
-    cb_context:set_resp_headers(Context, Headers).
+    Headers = #{<<"content-disposition">> => get_disposition(AName, Context)},
+    cb_context:add_resp_headers(Context, Headers).
 
 -spec get_disposition(ne_binary(), cb_context:context()) -> ne_binary().
 get_disposition(MediaName, Context) ->

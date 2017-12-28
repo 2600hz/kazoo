@@ -62,11 +62,11 @@ get_request_id(Req) ->
     kz_util:put_callid(ReqId),
     ReqId.
 
--spec get_profile_id(cowbow_req:req()) -> api_binary().
+-spec get_profile_id(cowbow_req:req()) -> api_ne_binary().
 get_profile_id(Req) ->
     case cowboy_req:header(<<"x-profile-id">>, Req) of
-        {'undefined', _} -> 'undefined';
-        {ProfId, _} -> kz_term:to_binary(ProfId)
+        'undefined' -> 'undefined';
+        ProfId -> kz_term:to_binary(ProfId)
     end.
 
 -spec get_client_ip(inet:ip_address(), cowboy_req:req()) ->
@@ -356,13 +356,13 @@ find_allowed_methods(Req, Context) ->
 
 -spec maybe_add_cors_headers(cowboy_req:req(), cb_context:context()) ->
                                     {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
-maybe_add_cors_headers(Req0, Context) ->
-    case api_util:is_cors_request(Req0) of
-        {'true', Req1} ->
+maybe_add_cors_headers(Req, Context) ->
+    case api_util:is_cors_request(Req) of
+        'true' ->
             lager:debug("adding cors headers"),
-            check_preflight(api_util:add_cors_headers(Req1, Context), Context);
-        {'false', Req1} ->
-            maybe_allow_method(Req1, Context)
+            check_preflight(api_util:add_cors_headers(Req, Context), Context);
+        'false' ->
+            maybe_allow_method(Req, Context)
     end.
 
 -spec check_preflight(cowboy_req:req(), cb_context:context()) ->
@@ -796,6 +796,8 @@ to_json(Req, Context, Accept) ->
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
                        {binary() | 'halt', cowboy_req:req(), cb_context:context()}.
+-spec to_binary(cowboy_req:req(), cb_context:context(), api_ne_binary()) ->
+                       {binary() | 'halt', cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context) ->
     to_binary(Req, Context, accept_override(Context)).
 
@@ -814,14 +816,14 @@ to_binary(Req, Context, 'undefined') ->
             Setters = [{fun cb_context:set_resp_data/2, Content}
                       ,{fun cb_context:set_resp_error_code/2, ErrorCode}
                       ,{fun cb_context:add_resp_headers/2
-                       ,[{<<"Content-Range">>, kz_term:to_binary(io_lib:fwrite("bytes ~B-~B/~B", [Start, End, FileLength]))}
-                        ,{<<"Accept-Ranges">>, <<"bytes">>}
-                        ]
+                       ,#{<<"content-range">> => kz_term:to_binary(io_lib:fwrite("bytes ~B-~B/~B", [Start, End, FileLength]))
+                         ,<<"accept-ranges">> => <<"bytes">>
+                         }
                        }
                       ],
             NewContext = cb_context:setters(Context, Setters),
             %% Respond, possibly with 206
-            {'ok', Req1} = cowboy_req:reply(kz_term:to_binary(ErrorCode), cb_context:resp_headers(NewContext), Content, Req),
+            Req1 = cowboy_req:reply(kz_term:to_binary(ErrorCode), cb_context:resp_headers(NewContext), Content, Req),
             {'halt', Req1, NewContext}
     end;
 
@@ -912,12 +914,11 @@ to_pdf(Req, Context) ->
 to_pdf(Req, Context, <<>>) ->
     to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, RespData) ->
-    RespHeaders = [{<<"Content-Type">>, <<"application/pdf">>}
-                  ,{<<"Content-Disposition">>, <<"attachment; filename=\"file.pdf\"">>}
-                   | cb_context:resp_headers(Context)
-                  ],
+    RespHeaders = #{<<"content-type">> => <<"application/pdf">>
+                   ,<<"content-disposition">> => <<"attachment; filename=\"file.pdf\"">>
+                   },
     {RespData
-    ,api_util:set_resp_headers(Req, cb_context:set_resp_headers(Context, RespHeaders))
+    ,api_util:set_resp_headers(Req, cb_context:add_resp_headers(Context, RespHeaders))
     ,Context
     }.
 
@@ -1094,7 +1095,7 @@ to_fun_event_name(ToThing, Context) ->
     Verb = cb_context:req_verb(Context),
     api_util:create_event_name(Context, [ToThing, kz_term:to_lower_binary(Verb), Mod]).
 
--spec accept_override(cb_context:context()) -> api_binary().
+-spec accept_override(cb_context:context()) -> api_ne_binary().
 accept_override(Context) ->
     cb_context:req_value(Context, <<"accept">>).
 

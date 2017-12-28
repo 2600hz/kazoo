@@ -818,8 +818,7 @@ apply_response_map_item({Key, ExistingKey}, J, JObj) ->
 get_path(<<_/binary>> = RawPath, Relative) ->
     kz_util:resolve_uri(RawPath, Relative);
 get_path(Req, Relative) ->
-    {RawPath, _} = cowboy_req:path(Req),
-    get_path(RawPath, Relative).
+    get_path(cowboy_req:path(Req), Relative).
 
 -spec maybe_remove_attachments(cb_context:context()) -> cb_context:context().
 maybe_remove_attachments(Context) ->

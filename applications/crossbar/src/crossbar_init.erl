@@ -168,21 +168,11 @@ stop_mod_version(Version, Mod) ->
 %% @doc Functions for onrequest and onresponse callbacks
 %%--------------------------------------------------------------------
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
-on_request(Req0) ->
-    {Method, Req1} = cowboy_req:method(Req0),
-    case Method of
-        ?HTTP_OPTIONS -> Req1;
-        _ -> Req1
-    end.
+on_request(Req) -> Req.
 
 -spec on_response(cowboy:http_status(), cowboy:http_headers(), text(), cowboy_req:req()) ->
                          cowboy_req:req().
-on_response(_Status, _Headers, _Body, Req0) ->
-    {Method, Req1} = cowboy_req:method(Req0),
-    case Method of
-        ?HTTP_OPTIONS -> Req1;
-        _ -> Req1
-    end.
+on_response(_Status, _Headers, _Body, Req) -> Req.
 
 -spec maybe_start_plaintext(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_plaintext(Dispatch) ->

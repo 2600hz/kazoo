@@ -1038,9 +1038,9 @@ load_attachment(AttachmentId, Context) ->
                                            ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                            ),
     Headers =
-        [{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-        ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-        ],
+        #{<<"content-disposition">> => <<"attachment; filename=", AttachmentId/binary>>
+         ,<<"content-type">> => kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)
+         },
     cb_context:add_resp_headers(Context1, Headers).
 
 %% @private
