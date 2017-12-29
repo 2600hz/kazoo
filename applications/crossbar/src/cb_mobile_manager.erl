@@ -77,7 +77,7 @@ req_uri(ExplodedPath) ->
 -spec req_headers(ne_binary()) -> kz_proplist().
 req_headers(AuthToken) ->
     props:filter_undefined(
-      [{"Content-Type", "application/json"}
-      ,{"X-Auth-Token", kz_term:to_list(AuthToken)}
-      ,{"User-Agent", kz_term:to_list(erlang:node())}
+      [{"content-type", "application/json"}
+      ,{"x-auth-token", kz_term:to_list(AuthToken)}
+      ,{"user-agent", kz_term:to_list(erlang:node())}
       ]).

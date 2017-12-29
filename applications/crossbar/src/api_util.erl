@@ -142,8 +142,8 @@ add_cors_headers(Req, Context) ->
 get_cors_headers(Allow) ->
     [{<<"access-control-allow-origin">>, <<"*">>}
     ,{<<"access-control-allow-methods">>, kz_binary:join(Allow, <<", ">>)}
-    ,{<<"access-control-allow-headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-control, X-Auth-Token, X-Kazoo-Cluster-ID, If-Match">>}
-    ,{<<"access-control-expose-headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, X-Kazoo-Cluster-ID, Location, Etag, ETag">>}
+    ,{<<"access-control-allow-headers">>, <<"content-type, depth, user-agent, x-http-method-override, x-file-size, x-requested-with, if-modified-since, x-file-name, cache-control, x-auth-token, x-kazoo-cluster-id, if-match">>}
+    ,{<<"access-control-expose-headers">>, <<"content-type, x-auth-token, x-request-id, x-kazoo-cluster-id, location, etag, etag">>}
     ,{<<"access-control-max-age">>, kz_term:to_binary(?SECONDS_IN_DAY)}
     ].
 
