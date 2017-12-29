@@ -15,6 +15,15 @@
             "description": "How long to delay ringing the device, in seconds",
             "type": "integer"
         },
+        "dial_strategy": {
+            "default": "simultaneous",
+            "description": "Dial strategy for the device",
+            "enum": [
+                "simultaneous",
+                "single"
+            ],
+            "type": "string"
+        },
         "id": {
             "description": "Device ID",
             "type": "string"
