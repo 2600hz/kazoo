@@ -98,7 +98,7 @@
         ,set_pretty_print/2
         ,set_port/2
         ,set_raw_path/2
-        ,set_raw_qs/2
+        ,raw_qs/1, set_raw_qs/2
         ,profile_id/1 ,set_profile_id/2
 
          %% Special accessors
@@ -442,7 +442,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
 -spec set_resp_expires(context(), kz_datetime()) -> context().
--spec set_api_version(context(), ne_binary()) -> context().
+-spec set_api_version(context(), ne_binary() | pos_integer()) -> context().
 -spec set_resp_etag(context(), api_binary()) -> context().
 -spec set_resp_envelope(context(), kz_json:object()) -> context().
 -spec set_resp_headers(context(), cowboy:http_headers()) -> context().
@@ -528,7 +528,7 @@ set_resp_status(#cb_context{}=Context, RespStatus) ->
 set_resp_expires(#cb_context{}=Context, RespExpires) ->
     Context#cb_context{resp_expires=RespExpires}.
 set_api_version(#cb_context{}=Context, ApiVersion) ->
-    Context#cb_context{api_version=ApiVersion}.
+    Context#cb_context{api_version=kz_term:to_binary(ApiVersion)}.
 set_resp_etag(#cb_context{}=Context, ETag) ->
     Context#cb_context{resp_etag=ETag}.
 set_resp_envelope(#cb_context{}=Context, E) ->
@@ -594,6 +594,9 @@ set_pretty_print(#cb_context{}=Context, Value) ->
 set_raw_path(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_path = Value}.
 
+-spec raw_qs(context()) -> api_ne_binary().
+raw_qs(#cb_context{raw_qs=QS}) ->
+    QS.
 set_raw_qs(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_qs = Value}.
 

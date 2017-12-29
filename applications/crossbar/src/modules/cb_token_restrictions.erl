@@ -130,7 +130,7 @@ delete(Context) ->
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
                        'false' |
-                       {'true' | 'halt', cb_context:context()}.
+                       {'true' | 'stop', cb_context:context()}.
 authorize(Context) ->
     case maybe_deny_access(Context) of
         'false' -> 'false';
@@ -139,7 +139,7 @@ authorize(Context) ->
             Cause = kz_json:from_list(
                       [{<<"cause">>, <<"access denied by token restrictions">>}]
                      ),
-            {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
+            {'stop', cb_context:add_system_error('forbidden', Cause, Context)}
     end.
 
 -spec maybe_deny_access(cb_context:context()) -> boolean().

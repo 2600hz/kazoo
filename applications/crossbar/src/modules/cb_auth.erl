@@ -137,15 +137,15 @@ content_types_provided(Context, _, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> boolean() | {'halt', cb_context:context()}.
+-spec authorize(cb_context:context()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_nouns(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(cb_context:context(), path_token()) -> boolean() | {'halt', cb_context:context()}.
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context, PathToken) ->
     authorize_nouns(Context, PathToken, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(cb_context:context(), path_token(), path_token()) -> boolean() | {'halt', cb_context:context()}.
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context, PathToken, Id) ->
     authorize_nouns(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
@@ -159,7 +159,7 @@ authorize_nouns(C, ?HTTP_PUT, [{<<"auth">>, _}, {<<"users">>, [UserId]}, {<<"acc
         orelse (cb_context:auth_account_id(C) =:= AccountId
                 andalso cb_context:auth_user_id(C) =:= UserId
                );
-authorize_nouns(C, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
+authorize_nouns(C, _, _) -> {'stop', cb_context:add_system_error('forbidden', C)}.
 
 %% authorize /auth/{nouns}
 -spec authorize_nouns(cb_context:context(), path_token(), req_verb(), req_nouns()) -> boolean().
@@ -171,7 +171,7 @@ authorize_nouns(_, ?LINKS_PATH,            ?HTTP_GET,   [{<<"auth">>, _}]) -> 't
 authorize_nouns(_, ?PROVIDERS_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_GET,   [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, ?TOKENINFO_PATH,        ?HTTP_POST,  [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(C, _, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
+authorize_nouns(C, _, _, _) -> {'stop', cb_context:add_system_error('forbidden', C)}.
 
 %% authorize /auth/{nouns}/{id}
 -spec authorize_nouns(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
@@ -186,7 +186,7 @@ authorize_nouns(_, ?LINKS_PATH,     _Id,           ?HTTP_DELETE, [{<<"auth">>, _
 authorize_nouns(_, ?PROVIDERS_PATH, _Id,           ?HTTP_GET,    [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_POST,   [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
 authorize_nouns(C, ?PROVIDERS_PATH, _Id,           ?HTTP_DELETE, [{<<"auth">>, _}]) -> cb_context:is_superduper_admin(C);
-authorize_nouns(C, _, _, _, _) -> {'halt', cb_context:add_system_error('forbidden', C)}.
+authorize_nouns(C, _, _, _, _) -> {'stop', cb_context:add_system_error('forbidden', C)}.
 
 -spec authorize_action(cb_context:context(), kz_json:api_json_term()) -> boolean().
 authorize_action(C, <<"reset_signature_secret">>) -> cb_context:is_superduper_admin(C);

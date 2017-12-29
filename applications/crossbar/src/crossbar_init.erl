@@ -32,17 +32,24 @@ api_path() ->
 
 -spec api_version_constraint() -> cowboy_router:constraint().
 api_version_constraint() ->
-    {'version', 'function', fun api_version_constraint/1}.
+    {'version', fun api_version_constraint/2}.
 
--spec api_version_constraint(ne_binary()) -> boolean().
-api_version_constraint(<<"v", ApiVersion/binary>>) ->
+-spec api_version_constraint('forward', ne_binary()) -> boolean().
+api_version_constraint('forward', <<"v", ApiVersion/binary>>=Vsn) ->
     try kz_term:to_integer(ApiVersion) of
-        _Int -> lager:debug("routing to version ~b", [_Int]), 'true'
+        Int ->
+            lager:debug("routing to version ~b", [Int]),
+            {'ok', Vsn}
     catch
-        _:_ -> lager:debug("not routing to version ~s", [ApiVersion]), 'false'
+        _:_ ->
+            lager:debug("not routing to version ~s", [ApiVersion]),
+            {'error', 'not_a_version'}
     end;
-api_version_constraint(NotVersion) ->
-    lists:member(NotVersion, ?INBOUND_HOOKS).
+api_version_constraint('forward', NotVersion) ->
+    case lists:member(NotVersion, ?INBOUND_HOOKS) of
+        'true' -> {'ok', NotVersion};
+        'false' -> {'error', 'not_a_version'}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -52,8 +59,7 @@ api_version_constraint(NotVersion) ->
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
-    _ = [
-         lager:warning("System config ~s validation error:~p", [Config, Error])
+    _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
          || {Config, Error} <- kapps_maintenance:validate_system_configs()
         ],
 

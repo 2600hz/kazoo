@@ -122,7 +122,7 @@ resource_exists(?PROMPTS, _PromptId) -> 'true';
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
 -spec authorize(cb_context:context()) -> boolean() |
-                                         {'halt', cb_context:context()}.
+                                         {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
 
@@ -151,7 +151,7 @@ authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
                 )
     of
         'true' -> 'true';
-        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
+        'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
     end;
 authorize_media(Context, [{<<"media">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
     cb_simple_authz:authorize(Context);
