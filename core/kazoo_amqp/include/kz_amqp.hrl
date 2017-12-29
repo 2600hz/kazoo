@@ -121,6 +121,11 @@
 -define(EXCHANGE_SYSCONF, <<"sysconf">>).
 -define(TYPE_SYSCONF, <<"topic">>).
 
+%% Bookkeeper Exchange
+%% - For bookkeeper events
+-define(EXCHANGE_BOOKKEEPERS, <<"bookkeepers">>).
+-define(TYPE_BOOKKEEPERS, <<"topic">>).
+
 %% Nodes Exchange
 %% - Used for internode communications
 -define(EXCHANGE_NODES, <<"nodes">>).

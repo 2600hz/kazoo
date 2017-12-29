@@ -751,10 +751,10 @@ call_cost(Channel) -> call_cost(Channel, 60).
 
 -spec call_cost(channel(), integer()) -> non_neg_integer().
 call_cost(#channel{answered_timestamp='undefined'}=Channel, Seconds) ->
-    wht_util:call_cost(billing_jobj(Seconds, Channel));
+    kapps_call_util:call_cost(billing_jobj(Seconds, Channel));
 call_cost(#channel{answered_timestamp=Timestamp}=Channel, Seconds) ->
     BillingSeconds = kz_time:now_s() - Timestamp + Seconds,
-    wht_util:call_cost(billing_jobj(BillingSeconds, Channel)).
+    kapps_call_util:call_cost(billing_jobj(BillingSeconds, Channel)).
 
 -spec billing_jobj(non_neg_integer(), channel()) -> kz_json:object().
 billing_jobj(BillingSeconds, Channel) ->

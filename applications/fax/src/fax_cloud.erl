@@ -258,7 +258,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     AccountId = kz_doc:account_id(FaxBoxDoc),
     AccountDb = ?KZ_FAXES_DB,
     ResellerId = case kzd_services:reseller_id(FaxBoxDoc) of
-                     'undefined' -> kz_services:find_reseller_id(AccountId);
+                     'undefined' -> kz_services_reseller:get_id(AccountId);
                      TheResellerId -> TheResellerId
                  end,
     OwnerId = kz_json:get_value(<<"ownerId">>, Job),

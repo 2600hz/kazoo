@@ -17,7 +17,7 @@
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
-    _ = kazoo_services_maintenance:refresh(),
+    _ = kazoo_services_maintenance:db_init(),
     kazoo_services_sup:start_link().
 
 %%------------------------------------------------------------------------------

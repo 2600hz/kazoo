@@ -40,12 +40,12 @@ save(Number, _State) ->
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     _ = remove_inbound_cnam(Number),
-    knm_services:deactivate_features(Number
-                                    ,[?FEATURE_CNAM_INBOUND
-                                     ,?FEATURE_CNAM_OUTBOUND
-                                     ,?FEATURE_CNAM
-                                     ]
-                                    ).
+    knm_providers:deactivate_features(Number
+                                     ,[?FEATURE_CNAM_INBOUND
+                                      ,?FEATURE_CNAM_OUTBOUND
+                                      ,?FEATURE_CNAM
+                                      ]
+                                     ).
 
 %%%=============================================================================
 %%% Internal functions
@@ -64,13 +64,13 @@ handle_outbound_cnam(Number) ->
     CurrentCNAM = kz_json:get_ne_value(?CNAM_DISPLAY_NAME, Feature),
     case kz_json:get_ne_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], Doc) of
         'undefined' ->
-            Number1 = knm_services:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND),
+            Number1 = knm_providers:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND),
             handle_inbound_cnam(Number1);
         CurrentCNAM ->
             handle_inbound_cnam(Number);
         NewCNAM when IsDryRun ->
             lager:debug("dry run: cnam display name changed to ~s", [NewCNAM]),
-            Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, NewCNAM}),
+            Number1 = knm_providers:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, NewCNAM}),
             handle_inbound_cnam(Number1);
         NewCNAM ->
             lager:debug("cnam display name changed to ~s, updating", [NewCNAM]),
@@ -158,7 +158,7 @@ check_outbound_response_tag(Number, NewCNAM, Children) ->
         'undefined' -> knm_errors:unspecified('resp_tag_not_found', Number);
         <<"ok">> ->
             FeatureData = kz_json:from_list([{?CNAM_DISPLAY_NAME, NewCNAM}]),
-            Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, FeatureData}),
+            Number1 = knm_providers:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, FeatureData}),
             _ = publish_cnam_update(Number1),
             Number1;
         Msg ->
@@ -181,12 +181,12 @@ handle_inbound_cnam(Number, 'true') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of
         false ->
-            knm_services:deactivate_features(Number, [?FEATURE_CNAM_INBOUND
-                                                     ,?CNAM_INBOUND_LOOKUP
-                                                     ]);
+            knm_providers:deactivate_features(Number, [?FEATURE_CNAM_INBOUND
+                                                      ,?CNAM_INBOUND_LOOKUP
+                                                      ]);
         'true' ->
             FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
-            knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
+            knm_providers:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
     end;
 handle_inbound_cnam(Number, 'false') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
@@ -207,9 +207,9 @@ remove_inbound_cnam(Number) ->
             remove_inbound_options(DID)
            )
          ),
-    knm_services:deactivate_features(Number, [?FEATURE_CNAM_INBOUND
-                                             ,?CNAM_INBOUND_LOOKUP
-                                             ]).
+    knm_providers:deactivate_features(Number, [?FEATURE_CNAM_INBOUND
+                                              ,?CNAM_INBOUND_LOOKUP
+                                              ]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -290,7 +290,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
             knm_errors:unspecified(Msg, Number);
         <<"ok">> ->
             FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
-            knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
+            knm_providers:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
     end.
 
 %%------------------------------------------------------------------------------

@@ -290,10 +290,7 @@ post(Context, AccountId) ->
 
             JObj = cb_context:doc(Context1),
             _ = replicate_account_definition(JObj),
-            support_depreciated_billing_id(kz_json:get_value(<<"billing_id">>, JObj)
-                                          ,AccountId
-                                          ,leak_pvt_fields(AccountId, Context1)
-                                          );
+            leak_pvt_fields(AccountId, Context1);
         _Status -> Context1
     end.
 
@@ -357,7 +354,7 @@ put(Context, _AccountId, ?API_KEY) ->
         _ -> C1
     end;
 put(Context, AccountId, ?RESELLER) ->
-    case whs_account_conversion:promote(AccountId) of
+    case kz_services_reseller:promote(AccountId) of
         {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
         {'error', 'reseller_descendants'} -> cb_context:add_system_error('account_has_descendants', Context);
         'ok' -> load_account(AccountId, Context)
@@ -383,7 +380,7 @@ delete(Context, Account) ->
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, AccountId, ?RESELLER) ->
-    case whs_account_conversion:demote(AccountId) of
+    case kz_services_reseller:demote(AccountId) of
         {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
         {'error', 'reseller_descendants'} -> cb_context:add_system_error('account_has_descendants', Context);
         'ok' -> load_account(AccountId, Context)
@@ -640,9 +637,9 @@ maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
 maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     AuthAccountId = cb_context:auth_account_id(Context),
-    AuthUserReseller = kz_services:get_reseller_id(AuthAccountId),
+    AuthUserReseller = kz_services_reseller:get_id(AuthAccountId),
     case AuthUserReseller =/= MasterAccountId
-        orelse kz_services:is_reseller(AuthAccountId)
+        orelse kz_services_reseller:is_reseller(AuthAccountId)
     of
         'true' -> Context;
         'false' ->
@@ -778,7 +775,7 @@ leak_reseller_id(Context, PathAccountId) ->
 
 -spec leak_is_reseller(cb_context:context()) -> cb_context:context().
 leak_is_reseller(Context) ->
-    IsReseller = kz_services:is_reseller(cb_context:account_id(Context)),
+    IsReseller = kz_services_reseller:is_reseller(cb_context:account_id(Context)),
     cb_context:set_resp_data(Context
                             ,kz_json:set_value(<<"is_reseller">>
                                               ,IsReseller
@@ -812,7 +809,7 @@ find_reseller_id(Context, 'undefined') ->
     cb_context:reseller_id(Context);
 find_reseller_id(Context, PathAccountId) ->
     IsNotSelf = PathAccountId =/= cb_context:account_id(Context),
-    case kz_services:is_reseller(PathAccountId) of
+    case kz_services_reseller:is_reseller(PathAccountId) of
         'true' when IsNotSelf -> PathAccountId;
         'true' -> cb_context:reseller_id(Context);
         'false' -> cb_context:reseller_id(Context)
@@ -1232,7 +1229,7 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
         {'ok', JObj} ->
             AccountDb = kz_util:format_account_db(AccountId),
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
-            ResellerId = kz_services:find_reseller_id(AccountId),
+            ResellerId = kz_services_reseller:find_id(AccountId),
             cb_context:setters(Context
                               ,[{fun cb_context:set_resp_status/2, 'success'}
                                ,{fun cb_context:set_account_db/2, AccountDb}
@@ -1277,7 +1274,7 @@ create_new_account_db(Context) ->
             _ = create_account_mod(cb_context:account_id(C)),
             lager:debug("created this month's MODb for account"),
 
-            _ = kz_services:reconcile(AccountDb),
+            _ = crossbar_services:reconcile(AccountDb),
             lager:debug("performed initial services reconcile"),
 
             _ = create_first_transaction(cb_context:account_id(C)),
@@ -1296,7 +1293,7 @@ create_new_account_db(Context) ->
 -spec maybe_set_notification_preference(cb_context:context()) -> 'ok'.
 maybe_set_notification_preference(Context) ->
     AccountId = cb_context:account_id(Context),
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:find_id(AccountId),
     case kzd_accounts:fetch(ResellerId) of
         {'error', _E} ->
             lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
@@ -1328,8 +1325,8 @@ create_account_mod(AccountId) ->
 
 -spec create_first_transaction(kz_term:ne_binary()) -> any().
 create_first_transaction(AccountId) ->
-    AccountMODb = kazoo_modb:get_modb(AccountId),
-    wht_util:rollup(AccountMODb, 0).
+    {Year, Month, _} = erlang:date(),
+    kz_currency:rollup(AccountId, Year, Month, 0).
 
 -spec ensure_accounts_db_exists() -> 'ok'.
 ensure_accounts_db_exists() ->
@@ -1457,29 +1454,6 @@ notify_new_account(Context, _AuthDoc) ->
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
-
-%%------------------------------------------------------------------------------
-%% @doc Support the depreciated billing id on the account definition, will
-%% be phased out shortly
-%% @end
-%%------------------------------------------------------------------------------
--spec support_depreciated_billing_id(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                            cb_context:context().
-support_depreciated_billing_id('undefined', _, Context) -> Context;
-support_depreciated_billing_id(BillingId, AccountId, Context) ->
-    try kz_services:set_billing_id(BillingId, AccountId) of
-        'undefined' -> Context;
-        Services ->
-            _ = kz_services:save(Services),
-            Context
-    catch
-        'throw':{Error, Reason} ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, kz_term:to_binary(Error)}
-                    ,{<<"cause">>, AccountId}
-                    ]),
-            cb_context:add_validation_error(<<"billing_id">>, <<"not_found">>, Msg, Reason)
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

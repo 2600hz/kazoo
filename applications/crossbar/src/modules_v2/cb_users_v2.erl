@@ -20,7 +20,6 @@
         ,content_types_provided/1, content_types_provided/2, content_types_provided/3
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
-        ,billing/1
         ,authenticate/1
         ,authorize/1
         ,validate/1, validate/2, validate/3
@@ -52,22 +51,20 @@ create_user(Context) ->
         _Status -> Context1
     end.
 
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.users">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate_resource.users">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate.users">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.users">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.users">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.users">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.users">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.*.users">>, 'crossbar_services', 'reconcile'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -153,25 +150,6 @@ authorize_users(?USERS_QCALL_NOUNS(_UserId, _Number), ?HTTP_GET) ->
     lager:debug("authorizing request"),
     'true';
 authorize_users(_Nouns, _Verb) -> 'false'.
-
-%%------------------------------------------------------------------------------
-%% @doc Ensure we will be able to bill for users
-%% @end
-%%------------------------------------------------------------------------------
--spec billing(cb_context:context()) -> cb_context:context().
-billing(Context) ->
-    process_billing(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
-
-process_billing(Context, [{<<"users">>, _}|_], ?HTTP_GET) ->
-    Context;
-process_billing(Context, [{<<"users">>, _}|_], _Verb) ->
-    try kz_services:allow_updates(cb_context:account_id(Context)) of
-        'true' -> Context
-    catch
-        'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
-    end;
-process_billing(Context, _Nouns, _Verb) -> Context.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
@@ -289,17 +267,13 @@ post(Context, UserId, ?PHOTO) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Callback =
-        fun() ->
-                Context1 = crossbar_doc:save(Context),
-                case cb_context:resp_status(Context1) of
-                    'success' ->
-                        _ = maybe_send_email(Context1),
-                        Context1;
-                    _ -> Context1
-                end
-        end,
-    crossbar_services:maybe_dry_run(Context, Callback).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            _ = maybe_send_email(Context1),
+            Context1;
+        _ -> Context1
+    end.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _Id) ->

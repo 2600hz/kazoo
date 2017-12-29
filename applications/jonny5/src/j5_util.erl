@@ -5,21 +5,9 @@
 %%%-----------------------------------------------------------------------------
 -module(j5_util).
 
--export([remove_call_charges/2]).
 -export([send_system_alert/1]).
 
 -include("jonny5.hrl").
-
--spec remove_call_charges(kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
-remove_call_charges('undefined', _) -> 'ok';
-remove_call_charges(_, 'undefined') -> 'ok';
-remove_call_charges(AccountId, CallId) ->
-    case kz_transactions:call_charges(AccountId, CallId, 'false') of
-        [] -> 'ok';
-        Transactions ->
-            _ = kz_transactions:remove(Transactions),
-            'ok'
-    end.
 
 -spec send_system_alert(j5_request:request()) -> any().
 send_system_alert(Request) ->
@@ -66,7 +54,7 @@ add_limit_details(Account, Prefix, Props) ->
     ,{<<Prefix/binary, "-Twoway-Trunks">>, kz_term:to_binary(j5_limits:twoway_trunks(Limits))}
     ,{<<Prefix/binary, "-Burst-Trunks">>, kz_term:to_binary(j5_limits:burst_trunks(Limits))}
     ,{<<Prefix/binary, "-Allow-Prepay">>, kz_term:to_binary(j5_limits:allow_prepay(Limits))}
-    ,{<<Prefix/binary, "-Balance">>, kz_term:to_binary(current_balance(AccountId))}
+    ,{<<Prefix/binary, "-Balance">>, kz_term:to_binary(available_dollars(AccountId))}
     ,{<<Prefix/binary, "-Allow-Postpay">>, kz_term:to_binary(j5_limits:allow_postpay(Limits))}
     ,{<<Prefix/binary, "-Max-Postpay">>, kz_term:to_binary(max_postpay(Limits))}
      | Props
@@ -90,7 +78,7 @@ outbound_trunks(AccountId, Limits) ->
     io_lib:format("~w/~w", [FlatRate, j5_limits:outbound_trunks(Limits)]).
 
 max_postpay(Limits) ->
-    wht_util:units_to_dollars(j5_limits:max_postpay(Limits)).
+    kz_currency:units_to_dollars(j5_limits:max_postpay(Limits)).
 
 -spec get_account_name(kz_term:api_binary()) -> kz_term:ne_binary().
 get_account_name('undefined') -> <<"unknown">>;
@@ -100,9 +88,9 @@ get_account_name(Account) ->
         Name -> Name
     end.
 
--spec current_balance(kz_term:ne_binary()) -> kz_term:ne_binary().
-current_balance(AccountId) ->
-    case wht_util:current_balance(AccountId) of
-        {'ok', Balance} -> wht_util:units_to_dollars(Balance);
+-spec available_dollars(kz_term:ne_binary()) -> kz_term:ne_binary().
+available_dollars(AccountId) ->
+    case kz_currency:available_dollars(AccountId) of
+        {'ok', AvailableDollars} -> AvailableDollars;
         {'error', _} -> <<"not known at the moment">>
     end.

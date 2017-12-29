@@ -53,7 +53,7 @@ delete(Number) ->
         _Else ->
             lager:debug("removing e911 information"),
             {'ok', NewNumber} = remove_number(Number),
-            knm_services:deactivate_feature(NewNumber, ?FEATURE_E911)
+            knm_providers:deactivate_feature(NewNumber, ?FEATURE_E911)
     end.
 
 %%%=============================================================================
@@ -88,12 +88,12 @@ maybe_update_e911(Number, 'true') ->
     case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("dry run: information has been removed, updating upstream"),
-            knm_services:deactivate_feature(Number, ?FEATURE_E911);
+            knm_providers:deactivate_feature(Number, ?FEATURE_E911);
         'false' when NotChanged  ->
             Number;
         'false' ->
             lager:debug("dry run: information has been changed: ~s", [kz_json:encode(E911)]),
-            knm_services:activate_feature(Number, {?FEATURE_E911, E911})
+            knm_providers:activate_feature(Number, {?FEATURE_E911, E911})
     end;
 
 maybe_update_e911(Number, 'false') ->
@@ -104,14 +104,14 @@ maybe_update_e911(Number, 'false') ->
         'true' ->
             lager:debug("information has been removed, updating upstream"),
             {'ok', NewNumber} = remove_number(Number),
-            knm_services:deactivate_feature(NewNumber, ?FEATURE_E911);
+            knm_providers:deactivate_feature(NewNumber, ?FEATURE_E911);
         'false' when NotChanged  ->
             Number;
         'false' ->
             case update_e911(Number, E911) of
                 {'ok', NewNumber} ->
                     lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-                    knm_services:activate_feature(NewNumber, {?FEATURE_E911, E911});
+                    knm_providers:activate_feature(NewNumber, {?FEATURE_E911, E911});
                 {'error', E} ->
                     lager:error("information update failed: ~p", [E]),
                     knm_errors:unspecified(E, Number)

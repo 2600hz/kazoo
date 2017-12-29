@@ -341,7 +341,7 @@ load_config_from_account(AccountId, Category) ->
 
 -spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(AccountId, Category) ->
-    load_config_from_ancestors(AccountId, Category, kz_services:is_reseller(AccountId)).
+    load_config_from_ancestors(AccountId, Category, kz_services_reseller:is_reseller(AccountId)).
 
 -spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(_, _, true) ->
@@ -371,7 +371,7 @@ load_config_from_ancestors_fold([], _Category, JObjs) ->
     {ok, JObjs};
 load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
     case {load_config_from_account(ParentId, Category)
-         ,kz_services:is_reseller(ParentId)
+         ,kz_services_reseller:is_reseller(ParentId)
          }
     of
         {{ok, JObj}, true} ->
@@ -391,7 +391,7 @@ load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
 
 -spec find_reseller_account(kz_term:ne_binary()) -> kz_term:ne_binaries().
 find_reseller_account(AccountId) ->
-    case kz_services:find_reseller_id(AccountId) of
+    case kz_services_reseller:get_id(AccountId) of
         undefined ->
             lager:debug("failed to find account ~s parents and reseller"),
             [];

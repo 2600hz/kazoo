@@ -44,6 +44,7 @@
 -export([timezone/1, timezone/2, set_timezone/2]).
 -export([topup/1, topup/2, set_topup/2]).
 -export([topup_threshold/1, topup_threshold/2, set_topup_threshold/2]).
+-export([topup_amount/1, topup_amount/2, set_topup_amount/2]).
 -export([voicemail/1, voicemail/2, set_voicemail/2]).
 -export([voicemail_notify/1, voicemail_notify/2, set_voicemail_notify/2]).
 -export([voicemail_notify_callback/1, voicemail_notify_callback/2, set_voicemail_notify_callback/2]).
@@ -600,17 +601,29 @@ topup(Doc, Default) ->
 set_topup(Doc, Topup) ->
     kz_json:set_value([<<"topup">>], Topup, Doc).
 
--spec topup_threshold(doc()) -> kz_term:api_number().
+-spec topup_threshold(doc()) -> kz_term:api_float().
 topup_threshold(Doc) ->
     topup_threshold(Doc, 'undefined').
 
--spec topup_threshold(doc(), Default) -> number() | Default.
+-spec topup_threshold(doc(), Default) -> float() | Default.
 topup_threshold(Doc, Default) ->
     kz_json:get_float_value([<<"topup">>, <<"threshold">>], Doc, Default).
 
--spec set_topup_threshold(doc(), number()) -> doc().
+-spec set_topup_threshold(doc(), float()) -> doc().
 set_topup_threshold(Doc, TopupThreshold) ->
     kz_json:set_value([<<"topup">>, <<"threshold">>], TopupThreshold, Doc).
+
+-spec topup_amount(doc()) -> kz_term:api_float().
+topup_amount(Doc) ->
+    topup_amount(Doc, 'undefined').
+
+-spec topup_amount(doc(), Default) -> float() | Default.
+topup_amount(Doc, Default) ->
+    kz_json:get_float_value([<<"topup">>, <<"amount">>], Doc, Default).
+
+-spec set_topup_amount(doc(), float()) -> doc().
+set_topup_amount(Doc, TopupAmount) ->
+    kz_json:set_value([<<"topup">>, <<"amount">>], TopupAmount, Doc).
 
 -spec voicemail(doc()) -> kz_term:api_object().
 voicemail(Doc) ->
@@ -923,7 +936,7 @@ check_account(Account, ValueFun) ->
 
 -spec check_reseller(kz_term:api_binary(), fun(), any()) -> any().
 check_reseller(Account, ValueFun, Default) ->
-    Reseller = kz_services:find_reseller_id(Account),
+    Reseller = kz_services_reseller:get_id(Account),
     case check_account(Reseller, ValueFun) of
         'undefined' -> Default;
         Value -> Value

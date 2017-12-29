@@ -408,7 +408,7 @@ maybe_delete_rate(JObj, Dict) ->
         'false' -> 'false'
     end.
 
--spec maybe_default(kz_transaction:units(), kz_transaction:units()) -> kz_transaction:units().
+-spec maybe_default(kz_currency:units(), kz_currency:units()) -> kz_currency:units().
 maybe_default(0, Default) -> Default;
 maybe_default(Value, _Default) -> Value.
 
@@ -450,13 +450,13 @@ maybe_generate_weight(RateJObj, 'undefined') ->
                    );
 maybe_generate_weight(_RateJObj, Weight) -> kzd_rates:constrain_weight(Weight).
 
--spec generate_weight(kz_term:ne_binary() | pos_integer(), kz_transaction:units(), kz_transaction:units()) ->
+-spec generate_weight(kz_term:ne_binary() | pos_integer(), kz_currency:units(), kz_currency:units()) ->
                              kzd_rates:weight_range().
 generate_weight(Prefix, UnitCost, UnitIntCost) when is_integer(Prefix) ->
     generate_weight(kz_term:to_binary(Prefix), UnitCost, UnitIntCost);
 generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
     UnitCostToUse = maybe_default(UnitIntCost, UnitCost),
-    CostToUse = wht_util:units_to_dollars(UnitCostToUse),
+    CostToUse = kz_currency:units_to_dollars(UnitCostToUse),
 
     Weight = (byte_size(Prefix) * 10) - trunc(CostToUse * 100),
     kzd_rates:constrain_weight(Weight).

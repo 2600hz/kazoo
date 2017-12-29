@@ -2,12 +2,20 @@
     "_id": "_design/services",
     "language": "javascript",
     "views": {
+        "by_tree": {
+            "map": [
+                "function (doc) {",
+                "  if (doc.pvt_type != 'service' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_type, null);",
+                "}"
+            ]
+        },
         "cascade_quantities": {
             "map": [
                 "function (doc) {",
-                "  if (doc.pvt_type != 'service' || doc.pvt_deleted || !doc.quantities || doc.billing_id == doc._id) return;",
-                "  for (var key in doc.quantities) {",
-                "    var obj = doc.quantities[key];",
+                "  if (doc.pvt_type != 'service' || doc.pvt_deleted || !doc.quantities || !doc.quantities.account) return;",
+                "  for (var key in doc.quantities.account) {",
+                "    var obj = doc.quantities.account[key];",
                 "    for (var prop in obj) {",
                 "      if (obj[prop] < 1) continue;",
                 "      for (var idx in doc.pvt_tree) {",
@@ -19,43 +27,12 @@
             ],
             "reduce": "_sum"
         },
-        "dirty": {
-            "map": [
-                "function (doc) {",
-                "  if (doc.pvt_type != 'service' || !doc.pvt_dirty || doc.pvt_status != 'good_standing') return;",
-                "  emit(doc.pvt_modified, null);",
-                "}"
-            ]
-        },
-        "not_in_good_standing": {
-            "map": [
-                "function (doc) {",
-                "  if (doc.pvt_type != 'service' || doc.pvt_status == 'good_standing') return;",
-                "  emit(doc.pvt_modified, doc.pvt_status);",
-                "}"
-            ]
-        },
-        "reseller_quantities": {
-            "map": [
-                "function (doc) {",
-                "  if (doc.pvt_type != 'service' || doc.pvt_deleted || !doc.quantities) return;",
-                "  for (var key in doc.quantities) {",
-                "    var obj = doc.quantities[key];",
-                "    for (var prop in obj) {",
-                "      if (obj[prop] < 1) continue;",
-                "      emit([doc.pvt_reseller_id, key, prop], obj[prop]);",
-                "    }",
-                "  }",
-                "}"
-            ],
-            "reduce": "_sum"
-        },
         "totals": {
             "map": [
                 "function (doc) {",
-                "  if (doc.pvt_type != 'service' || doc.pvt_deleted || !doc.quantities) return;",
-                "  for (var key in doc.quantities) {",
-                "    var obj = doc.quantities[key];",
+                "  if (doc.pvt_type != 'service' || doc.pvt_deleted || !doc.quantities || !doc.quantities.account) return;",
+                "  for (var key in doc.quantities.account) {",
+                "    var obj = doc.quantities.account[key];",
                 "    for (var prop in obj) {",
                 "      if (obj[prop] < 1) continue;",
                 "      emit(key + '.' + prop, obj[prop]);",

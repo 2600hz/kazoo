@@ -512,7 +512,7 @@ provisioning_uri(ExplodedPath) ->
 
 -spec account_payload(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 account_payload(JObj, AccountId) ->
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     kz_json:from_list(
       [{<<"create_if_missing">>, 'true'}
       ,{<<"reseller_id">>, ResellerId}
@@ -560,7 +560,7 @@ create_alert(JObj, AccountId, AuthToken) ->
     To = [kz_json:from_list([{<<"type">>, AccountId}
                             ,{<<"value">>, <<"admins">>}
                             ])
-         ,kz_json:from_list([{<<"type">>, kz_services:get_reseller_id(AccountId)}
+         ,kz_json:from_list([{<<"type">>, kz_services_reseller:get_id(AccountId)}
                             ,{<<"value">>, <<"admins">>}
                             ])
          ],

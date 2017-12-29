@@ -9,7 +9,6 @@
 -export([init/0
         ,allowed_methods/0
         ,resource_exists/0
-        ,billing/1
         ,validate/1
         ,post/1
         ]).
@@ -28,15 +27,13 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.limits">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.limits">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.limits">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.limits">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.*.limits">>, 'crossbar_services', 'reconcile'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -58,58 +55,6 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @doc Ensure we will be able to bill for devices
-%% @end
-%%------------------------------------------------------------------------------
--spec billing(cb_context:context()) ->
-                     cb_context:context().
-billing(Context) ->
-    process_billing(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
-
--spec process_billing(cb_context:context(), req_nouns(), http_method()) ->
-                             cb_context:context().
-process_billing(Context, [{<<"limits">>, _}|_], ?HTTP_GET) ->
-    Context;
-process_billing(Context, [{<<"limits">>, _}|_], _Verb) ->
-    AccountId = cb_context:account_id(Context),
-    try kz_services:allow_updates(AccountId)
-             andalso is_allowed(Context)
-    of
-        'true' -> Context;
-        'false' ->
-            Message = <<"Please contact your phone provider to add limits.">>,
-            cb_context:add_system_error('forbidden'
-                                       ,kz_json:from_list([{<<"message">>, Message}])
-                                       ,Context
-                                       )
-    catch
-        'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
-    end;
-process_billing(Context, _Nouns, _Verb) -> Context.
-
--spec is_allowed(cb_context:context()) -> boolean().
-is_allowed(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AuthAccountId = cb_context:auth_account_id(Context),
-    IsSystemAdmin = kzd_accounts:is_superduper_admin(AuthAccountId),
-    {'ok', MasterAccount} = kapps_util:get_master_account_id(),
-    case kz_services:find_reseller_id(AccountId) of
-        AuthAccountId ->
-            lager:debug("allowing reseller to update limits"),
-            'true';
-        MasterAccount ->
-            lager:debug("allowing direct account to update limits"),
-            'true';
-        _Else when IsSystemAdmin ->
-            lager:debug("allowing system admin to update limits"),
-            'true';
-        _Else ->
-            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their limits"),
-            'false'
-    end.
-
-%%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -124,10 +69,39 @@ validate(Context) ->
 validate_limits(Context, ?HTTP_GET) ->
     load_limit(Context);
 validate_limits(Context, ?HTTP_POST) ->
-    update_limits(Context).
+    case is_allowed(Context) of
+        'false' ->
+            Message = <<"Please contact your phone provider to add limits.">>,
+            cb_context:add_system_error('forbidden'
+                                       ,kz_json:from_list([{<<"message">>, Message}])
+                                       ,Context
+                                       );
+        'true' -> update_limits(Context)
+    end.
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) -> crossbar_doc:save(Context).
+
+-spec is_allowed(cb_context:context()) -> boolean().
+is_allowed(Context) ->
+    AccountId = cb_context:account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsSystemAdmin = kzd_accounts:is_superduper_admin(AuthAccountId),
+    {'ok', MasterAccount} = kapps_util:get_master_account_id(),
+    case kz_services_reseller:get_id(AccountId) of
+        AuthAccountId ->
+            lager:debug("allowing reseller to update limits"),
+            'true';
+        MasterAccount ->
+            lager:debug("allowing direct account to update limits"),
+            'true';
+        _Else when IsSystemAdmin ->
+            lager:debug("allowing system admin to update limits"),
+            'true';
+        _Else ->
+            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their limits"),
+            'false'
+    end.
 
 %%%=============================================================================
 %%% Internal functions

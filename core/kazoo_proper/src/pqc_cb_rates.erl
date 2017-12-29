@@ -316,11 +316,11 @@ seq() ->
 
     RateDoc = rate_doc(<<"custom">>, 1.0),
 
-    RateCost = wht_util:units_to_dollars(
-                 wht_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
-                                        ,kzd_rates:rate_minimum(RateDoc, 60)
-                                        ,kzd_rates:rate_surcharge(RateDoc)
-                                        )
+    RateCost = kz_currency:units_to_dollars(
+                 kapps_call_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
+                                               ,kzd_rates:rate_minimum(RateDoc, 60)
+                                               ,kzd_rates:rate_surcharge(RateDoc)
+                                               )
                 ),
     ?INFO("rate cost from doc: ~p", [RateCost]),
 
@@ -573,9 +573,9 @@ matches_service_plan_cost(Model, AccountId, DID, APIResult) ->
     case pqc_kazoo_model:has_service_plan_rate_matching(Model, AccountId, DID) of
         {'true', Cost} when is_number(APIResult) ->
             ?INFO("model rates ~s against account ~s as ~p, got ~p in API"
-                 ,[DID, AccountId, Cost, wht_util:dollars_to_units(APIResult)]
+                 ,[DID, AccountId, Cost, kz_currency:dollars_to_units(APIResult)]
                  ),
-            Cost =:= wht_util:dollars_to_units(APIResult);
+            Cost =:= kz_currency:dollars_to_units(APIResult);
         {'true', _Cost} ->
             ?INFO("model rates ~s against account ~s as ~p, but got ~p in API"
                  ,[DID, AccountId, _Cost, APIResult]
@@ -592,9 +592,9 @@ matches_cost(Model, RatedeckId, DID, APIResult) ->
     case pqc_kazoo_model:has_rate_matching(Model, RatedeckId, DID) of
         {'true', Cost} when is_number(APIResult) ->
             ?INFO("model rates ~s as ~p, got ~p in API"
-                 ,[DID, Cost, wht_util:dollars_to_units(APIResult)]
+                 ,[DID, Cost, kz_currency:dollars_to_units(APIResult)]
                  ),
-            Cost =:= wht_util:dollars_to_units(APIResult);
+            Cost =:= kz_currency:dollars_to_units(APIResult);
         {'true', _Cost} ->
             ?INFO("model rates ~s as ~p, but got ~p in API"
                  ,[DID, _Cost, APIResult]

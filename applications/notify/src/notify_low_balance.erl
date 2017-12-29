@@ -83,7 +83,7 @@ create_template_props(CurrentBalance, Account) ->
     Threshold = kzd_accounts:low_balance_threshold(kz_doc:id(Account)),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
-    ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
+    ,{<<"current_balance">>, pretty_print_dollars(kz_currency:units_to_dollars(CurrentBalance))}
     ,{<<"threshold">>, pretty_print_dollars(Threshold)}
     ].
 
@@ -163,7 +163,7 @@ get_email(JObj, AccountId, MasterAccountId) ->
             lager:debug("billing contact email not set or low balance disabled for account ~s"
                        ,[AccountId]
                        ),
-            ResellerId = kz_services:find_reseller_id(AccountId),
+            ResellerId = kz_services_reseller:get_id(AccountId),
             get_email(ResellerId, MasterAccountId);
         Email -> Email
     end.

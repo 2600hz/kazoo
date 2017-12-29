@@ -40,7 +40,7 @@ save(Number, _State) ->
 delete(Number) ->
     case feature(Number) of
         'undefined' -> Number;
-        _Else -> knm_services:deactivate_feature(Number, ?KEY)
+        _Else -> knm_providers:deactivate_feature(Number, ?KEY)
     end.
 
 %%%=============================================================================
@@ -67,12 +67,12 @@ update_prepend(Number) ->
     NotChanged = kz_json:are_equal(CurrentPrepend, Prepend),
     case kz_term:is_empty(Prepend) of
         'true' ->
-            knm_services:deactivate_feature(Number, ?KEY);
+            knm_providers:deactivate_feature(Number, ?KEY);
         'false' when NotChanged  ->
             Number;
         'false' ->
             case kz_json:is_true(?PREPEND_ENABLED, Prepend) of
-                'false' -> knm_services:deactivate_feature(Number, ?KEY);
-                'true' -> knm_services:activate_feature(Number, {?KEY, Prepend})
+                'false' -> knm_providers:deactivate_feature(Number, ?KEY);
+                'true' -> knm_providers:activate_feature(Number, {?KEY, Prepend})
             end
     end.

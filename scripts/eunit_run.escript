@@ -10,7 +10,16 @@
 
 main(Args) ->
     _ = io:setopts('user', [{'encoding', 'unicode'}]),
+    maybe_add_ebin(),
     run_eunit(parse_args(Args, #{modules => []})).
+
+maybe_add_ebin() ->
+    {'ok', CWD} = file:get_cwd(),
+    Ebin = filename:join([CWD, "ebin"]),
+    case filelib:is_dir(Ebin) of
+        'true' -> code:add_patha(Ebin);
+        'false' -> 'ok'
+    end.
 
 parse_args([], Opts) ->
     Opts;
@@ -27,15 +36,26 @@ run_eunit(#{modules := []}) ->
     io:format('user', "No modules are specified.\n", []),
     usage();
 run_eunit(#{modules := Modules}=Opts) ->
-    maybe_start_cover(Opts),
-
+    _Cover = maybe_start_cover(Opts),
     TestMods = filter_same_name_test_modules(Modules),
-    case eunit:test([TestMods], ['verbose']) of
+
+    case eunit:test(TestMods, ['verbose']) of
         'ok' ->
             maybe_stop_cover(Opts),
             erlang:halt();
         'error' ->
             erlang:halt(1)
+    end.
+
+is_loaded(M) ->
+    case 'true' =:= code:is_loaded(M)
+        orelse code:ensure_loaded(M)
+    of
+        'true' -> 'true';
+        {'module', M} -> 'true';
+        {'error', _E} ->
+            io:format("failed to find ~p: ~p~n", [M, _E]),
+            'false'
     end.
 
 filter_same_name_test_modules(Modules) ->
@@ -44,10 +64,13 @@ filter_same_name_test_modules(Modules) ->
                   case lists:reverse(Module) of
                       "stset_"++M ->
                           case not lists:member(lists:reverse(M), Modules) of
-                              'true' -> [list_to_atom(Module) | Acc];
-                              'false' -> Acc
+                              'false' -> Acc;
+                              'true' ->
+                                  'true' = is_loaded(list_to_atom(Module)),
+                                  [list_to_atom(Module) | Acc]
                           end;
                       _ ->
+                          'true' = is_loaded(list_to_atom(Module)),
                           [list_to_atom(Module) | Acc]
                   end
           end,

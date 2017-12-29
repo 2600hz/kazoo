@@ -1266,7 +1266,7 @@ normalize_available_port(Value, Acc, Context) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
 
-    case kz_services:is_reseller(AuthAccountId)
+    case kz_services_reseller:is_reseller(AuthAccountId)
         andalso cb_port_requests:authority(AccountId)
     of
         'false' -> Acc;

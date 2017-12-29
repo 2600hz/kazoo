@@ -28,6 +28,7 @@
                        {'month', kz_time:month()} |
                        {'create_db', boolean()} |
                        {'allow_old_modb_creation', boolean()} |
+                       {'missing_as_error', boolean()} |
                        kz_datamgr:view_option().
 -type view_options() :: [view_option()].
 
@@ -77,6 +78,7 @@ is_modb_option({'create_db', _}) -> 'true';
 is_modb_option({'allow_old_modb_creation', _}) -> 'true';
 is_modb_option({'ensure_saved', _}) -> 'true';
 is_modb_option({'max_retries', _}) -> 'true';
+is_modb_option({'missing_as_error', _}) -> 'true';
 is_modb_option(_) -> 'false'.
 
 -spec get_results_missing_db(kz_term:ne_binary(), kz_term:ne_binary(), view_options(), integer()) ->
@@ -84,16 +86,21 @@ is_modb_option(_) -> 'false'.
 get_results_missing_db(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     ShouldCreate = props:get_is_true('create_db', ViewOptions, 'true'),
+    MissingAsError = props:get_is_true('missing_as_error', ViewOptions, 'false'),
     lager:info("modb ~p not found, maybe creating...", [AccountMODb]),
     case ShouldCreate
         andalso maybe_create_current_modb(AccountMODb, ViewOptions)
     of
         'true' -> get_results(Account, View, ViewOptions, 'not_found', Retry-1);
+        'too_old' when MissingAsError ->
+            {'error', 'db_not_found'};
         'too_old' ->
             {'ok', []};
         'false' when ShouldCreate ->
             lager:info("modb ~s creation failed, maybe due to race condition, re-trying get_results", [AccountMODb]),
             get_results(Account, View, ViewOptions, 'not_found', Retry-1);
+        'false' when MissingAsError ->
+            {'error', 'db_not_found'};
         'false' ->
             lager:info("create_db is false, not creating modb ~s ...", [AccountMODb]),
             {'ok', []}
@@ -492,7 +499,7 @@ add_routine(Module) ->
 
 -spec add_migrate_routines(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 add_migrate_routines(Routines, Module) ->
-    lists:usort([Module | migrate_routines(Routines, [])] ++ [<<"wht_util">>]).
+    lists:usort([Module | migrate_routines(Routines, [])] ++ [<<"kz_currency">>]).
 
 -spec migrate_routines(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 migrate_routines([], Acc) -> Acc;

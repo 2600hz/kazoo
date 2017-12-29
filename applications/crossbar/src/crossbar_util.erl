@@ -428,11 +428,11 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
     case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
         {'ok', _} ->
-            NewResellerId = kz_services:find_reseller_id(ToAccount),
+            NewResellerId = kz_services_reseller:get_id(ToAccount),
             {'ok', _} = replicate_account_definition(JObj1),
             {'ok', _} = move_descendants(AccountId, ToTree, NewResellerId),
-            {'ok', _} = kz_services:mark_dirty(AccountId),
-            move_service(AccountId, ToTree, NewResellerId, 'true')
+            Services = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
+            {'ok', kz_services:services_jobj(Services)}
     end.
 
 %%------------------------------------------------------------------------------
@@ -486,31 +486,9 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
                 {'ok', NewAccountJObj} ->
                     {'ok', _} = replicate_account_definition(NewAccountJObj),
                     AccountId = kz_util:format_account_id(Descendant),
-                    {'ok', _} = move_service(AccountId, ToTree, NewResellerId, 'undefined'),
+                    _ = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
                     update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
             end
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec move_service(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:api_boolean()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', any()}.
-move_service(AccountId, NewTree, NewResellerId, Dirty) ->
-    case kz_services:fetch_services_doc(AccountId, true) of
-        {'error', _E}=Error -> Error;
-        {'ok', JObj} ->
-            Props = props:filter_undefined(
-                      [{?SERVICES_PVT_TREE, NewTree}
-                      ,{?SERVICES_PVT_TREE_PREVIOUSLY, kzd_accounts:tree(JObj)}
-                      ,{?SERVICES_PVT_IS_DIRTY, Dirty}
-                      ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
-                      ,{?SERVICES_PVT_RESELLER_ID, NewResellerId}
-                      ]),
-            %%FIXME: do something about setting pvt_auth_*_id
-            kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values(Props, JObj))
     end.
 
 %%------------------------------------------------------------------------------
@@ -626,8 +604,8 @@ populate_resp(JObj, AccountId, UserId) ->
               [{<<"apps">>, load_apps(AccountId, UserId, Language)}
               ,{<<"language">>, Language}
               ,{<<"account_name">>, kzd_accounts:fetch_name(AccountId)}
-              ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
-              ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+              ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+              ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
               ]),
     kz_json:set_values(Props, JObj).
 

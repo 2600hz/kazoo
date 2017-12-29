@@ -16,6 +16,7 @@
         ,ported_in/1
         ,public_fields/1
         ,state/1, state/2
+        ,crossbar/1, crossbar/2
 
         ,default/0
         ,mdn_options/0
@@ -43,12 +44,12 @@
 -type option() :: {'assign_to', kz_term:ne_binary()} |
                   {'auth_by', kz_term:ne_binary()} |
                   {'batch_run', boolean()} |
-                  {'dry_run', boolean()} |
                   {'mdn_run', boolean()} |
                   {'module_name', kz_term:ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
-                  {'state', kz_term:ne_binary()}.
+                  {'state', kz_term:ne_binary()} |
+                  {'crossbar', kz_term:proplist()}.
 
 -type options() :: [option()].
 
@@ -72,13 +73,14 @@
 default() ->
     [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
     ,{'batch_run', 'false'}
-    ,{'dry_run', 'false'}
     ,{'mdn_run', 'false'}
     ].
 
 -spec mdn_options() -> options().
 mdn_options() ->
-    props:set_value('mdn_run', 'true', default()).
+    [{'mdn_run', 'true'}
+     |default()
+    ].
 
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
 to_phone_number_setters(Options) ->
@@ -89,8 +91,9 @@ to_phone_number_setters(Options) ->
              FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
              {fun knm_phone_number:FName/2, Value}
      end
-     || {Option, Value} <- kz_util:uniq(Options),
-        is_atom(Option)
+     || {Option, Value} <- kz_util:uniq(Options)
+            ,is_atom(Option)
+            ,Option =/= 'crossbar'
     ].
 
 -spec dry_run(options()) -> boolean().
@@ -149,6 +152,14 @@ state(Options) ->
 -spec state(options(), Default) -> kz_term:ne_binary() | Default.
 state(Options, Default) ->
     props:get_binary_value('state', Options, Default).
+
+-spec crossbar(options()) -> kz_term:api_proplist().
+crossbar(Options) ->
+    crossbar(Options, 'undefined').
+
+-spec crossbar(options(), Default) -> kz_term:api_proplist() | Default.
+crossbar(Options, Default) ->
+    props:get_value('crossbar', Options, Default).
 
 -spec ported_in(options()) -> boolean().
 ported_in(Options) ->

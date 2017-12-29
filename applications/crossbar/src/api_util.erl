@@ -1160,10 +1160,7 @@ finish_request(_Req, Context) ->
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
     _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
-    case kz_json:get_value(<<"billing">>, cb_context:doc(Context)) of
-        'undefined' -> 'ok';
-        _Else -> crossbar_services:reconcile(Context)
-    end.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.

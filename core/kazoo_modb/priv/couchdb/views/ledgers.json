@@ -2,15 +2,28 @@
     "_id": "_design/ledgers",
     "language": "javascript",
     "views": {
-        "list_by_timestamp_legacy": {
+        "list_by_source": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_deleted || (doc.pvt_type !== 'ledger' && !( (doc.pvt_type === 'credit' || doc.pvt_type === 'debit') && (doc.pvt_code === 1001 || doc.pvt_code === 1002 )) ))",
+                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger')",
                 "    return;",
-                "  var amount = doc.pvt_amount || doc.amount || 0;",
-                "  var usage = doc.pvt_usage || doc.usage || {};",
-                "  var service = doc.pvt_type === 'ledger' ? doc.source.service : 'per-minute-voip';",
-                "  if (doc.pvt_ledger_type === 'debit' || doc.pvt_type === 'debit')",
+                "  var amount = doc.amount || 0;",
+                "  if (doc.pvt_ledger_type === 'debit')",
+                "    amount *= -1;",
+                "  var result = {'amount': amount, 'source': doc.source, 'usage': doc.usage, 'metadata': doc.metadata || {}, 'executor': doc.executor || {}};",
+                "  emit([doc.source.service, doc.pvt_created], result);",
+                "}"
+            ]
+        },
+        "list_by_timestamp": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger')",
+                "    return;",
+                "  var amount = doc.amount || 0;",
+                "  var usage =  doc.usage || {};",
+                "  var service = doc.source.service;",
+                "  if (doc.pvt_ledger_type === 'debit')",
                 "    amount *= -1;",
                 "  var o = {};",
                 "  o[service] = {amount:amount, usage:usage};",
@@ -41,57 +54,15 @@
                 "}"
             ]
         },
-        "listing_by_service": {
+        "total_by_source": {
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger')",
                 "    return;",
-                "  var amount = doc.pvt_amount || doc.amount || 0;",
+                "  var amount = doc.amount || 0;",
                 "  if (doc.pvt_ledger_type === 'debit')",
                 "    amount *= -1;",
                 "  emit([doc.source.service, doc.pvt_created], amount);",
-                "}"
-            ]
-        },
-        "listing_by_service_legacy": {
-            "map": [
-                "function(doc) {",
-                "  if (doc.pvt_deleted || (doc.pvt_type !== 'ledger' && !( (doc.pvt_type === 'credit' || doc.pvt_type === 'debit') && (doc.pvt_code === 1001 || doc.pvt_code === 1002 )) ))",
-                "    return;",
-                "  var amount = doc.pvt_amount || doc.amount || 0;",
-                "  var usage = doc.pvt_usage || doc.usage || {};",
-                "  var service = doc.pvt_type === 'ledger' ? doc.source.service : 'per-minute-voip';",
-                "  if (doc.pvt_ledger_type === 'debit' || doc.pvt_type === 'debit')",
-                "    amount *= -1;",
-                "  var o = {};",
-                "  o[service] = {amount:amount, usage:usage};",
-                "  emit([service, doc.pvt_created], o);",
-                "}"
-            ]
-        },
-        "total_by_service": {
-            "map": [
-                "function(doc) {",
-                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger')",
-                "    return;",
-                "  var amount = doc.pvt_amount || doc.amount || 0;",
-                "  if (doc.pvt_ledger_type === 'debit')",
-                "    amount *= -1;",
-                "  emit(doc.source.service, amount);",
-                "}"
-            ],
-            "reduce": "_sum"
-        },
-        "total_by_service_legacy": {
-            "map": [
-                "function(doc) {",
-                "  if (doc.pvt_deleted || (doc.pvt_type !== 'ledger' && !( (doc.pvt_type === 'credit' || doc.pvt_type === 'debit') && (doc.pvt_code === 1001 || doc.pvt_code === 1002 )) ))",
-                "    return;",
-                "  var amount = doc.pvt_amount || doc.amount || 0;",
-                "  var service = doc.pvt_type === 'ledger' ? doc.source.service : 'per-minute-voip';",
-                "  if (doc.pvt_ledger_type === 'debit' || doc.pvt_type === 'debit')",
-                "    amount *= -1;",
-                "  emit(service, amount);",
                 "}"
             ],
             "reduce": "_sum"

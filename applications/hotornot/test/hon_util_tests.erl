@@ -21,7 +21,7 @@ dollars_and_units_test_() ->
     Charges = [{0.01, 60, 0.5}
               ,{100, 60, 5000}
               ],
-    [?_assertEqual(BaseCost, wht_util:base_call_cost(RateCost, RateMin, RateSurcharge))
+    [?_assertEqual(BaseCost, kapps_call_util:base_call_cost(RateCost, RateMin, RateSurcharge))
      || {RateCost, RateMin, RateSurcharge} <- Charges
     ].
 

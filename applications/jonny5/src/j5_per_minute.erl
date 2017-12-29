@@ -7,7 +7,9 @@
 
 -export([authorize/2]).
 -export([reconcile_cdr/2]).
--export([maybe_credit_available/2, maybe_credit_available/3]).
+-export([maybe_credit_available/2
+        ,maybe_credit_available/3
+        ]).
 
 -include("jonny5.hrl").
 
@@ -20,8 +22,8 @@ authorize(Request, Limits) ->
     lager:debug("checking if account ~s has available per-minute credit"
                ,[j5_limits:account_id(Limits)]
                ),
-    Amount = j5_limits:reserve_amount(Limits),
-    case maybe_credit_available(Amount, Limits) of
+    ReserveUnits = j5_limits:reserve_amount(Limits),
+    case maybe_credit_available(ReserveUnits, Limits) of
         'false' -> Request;
         'true' -> j5_request:authorize(<<"per_minute">>, Request, Limits)
     end.
@@ -49,35 +51,32 @@ reconcile_call_cost(Request, Limits) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_credit_available(integer(), j5_limits:limits()) -> boolean().
-maybe_credit_available(Amount, Limits) -> maybe_credit_available(Amount, Limits, 'false').
+-spec maybe_credit_available(kz_currency:units(), j5_limits:limits()) -> boolean().
+maybe_credit_available(ReserveUnits, Limits) -> maybe_credit_available(ReserveUnits, Limits, 'false').
 
--spec maybe_credit_available(integer(), j5_limits:limits(), boolean()) -> boolean().
-maybe_credit_available(Amount, Limits, IsReal) ->
+-spec maybe_credit_available(kz_currency:units(), j5_limits:limits(), boolean()) -> boolean().
+maybe_credit_available(ReserveUnits, Limits, IsReal) ->
     AccountId = j5_limits:account_id(Limits),
-    Balance = case wht_util:current_balance(AccountId) of
-                  {'ok', Bal} -> Bal;
-                  {'error', _} -> 0
-              end,
+    AvailableUnits = kz_currency:available_units(AccountId, 0),
     PerMinuteCost = case kz_term:is_true(IsReal) of
                         'true' -> j5_channels:real_per_minute_cost(AccountId);
                         'false' -> j5_channels:per_minute_cost(AccountId)
                     end,
-    maybe_prepay_credit_available(Balance - PerMinuteCost, Amount, Limits)
-        orelse maybe_postpay_credit_available(Balance - PerMinuteCost, Amount, Limits).
+    maybe_prepay_credit_available(AvailableUnits - PerMinuteCost, ReserveUnits, Limits)
+        orelse maybe_postpay_credit_available(AvailableUnits - PerMinuteCost, ReserveUnits, Limits).
 
--spec maybe_prepay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
-maybe_prepay_credit_available(Balance, Amount, Limits) ->
+-spec maybe_prepay_credit_available(kz_currency:units(), kz_currency:units(), j5_limits:limits()) -> boolean().
+maybe_prepay_credit_available(AvailableUnits, ReserveUnits, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     Dbg = [AccountId
-          ,wht_util:units_to_dollars(Amount)
-          ,wht_util:units_to_dollars(Balance)
+          ,kz_currency:units_to_dollars(ReserveUnits)
+          ,kz_currency:units_to_dollars(AvailableUnits)
           ],
     case j5_limits:allow_prepay(Limits) of
         'false' ->
             lager:debug("account ~s is restricted from using prepay", [AccountId]),
             'false';
-        'true' when (Balance - Amount) > 0 ->
+        'true' when (AvailableUnits - ReserveUnits) > 0 ->
             lager:debug("using prepay from account ~s $~w/$~w", Dbg),
             'true';
         'true' ->
@@ -85,8 +84,8 @@ maybe_prepay_credit_available(Balance, Amount, Limits) ->
             'false'
     end.
 
--spec maybe_postpay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
-maybe_postpay_credit_available(Balance, Amount, Limits) ->
+-spec maybe_postpay_credit_available(kz_currency:units(), kz_currency:units(), j5_limits:limits()) -> boolean().
+maybe_postpay_credit_available(AvailableUnits, ReserveUnits, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     MaxPostpay = j5_limits:max_postpay(Limits),
     case j5_limits:allow_postpay(Limits) of
@@ -95,19 +94,19 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
                        ,[AccountId]
                        ),
             'false';
-        'true' when (Balance - Amount) > MaxPostpay ->
+        'true' when (AvailableUnits - ReserveUnits) > MaxPostpay ->
             lager:debug("using postpay from account ~s $~w/$~w"
                        ,[AccountId
-                        ,wht_util:units_to_dollars(Amount)
-                        ,wht_util:units_to_dollars(Balance)
+                        ,kz_currency:units_to_dollars(ReserveUnits)
+                        ,kz_currency:units_to_dollars(AvailableUnits)
                         ]
                        ),
             'true';
         'true' ->
             lager:debug("account ~s would exceed the maximum postpay amount $~w/$~w"
                        ,[AccountId
-                        ,wht_util:units_to_dollars(Balance)
-                        ,wht_util:units_to_dollars(MaxPostpay)
+                        ,kz_currency:units_to_dollars(AvailableUnits)
+                        ,kz_currency:units_to_dollars(MaxPostpay)
                         ]
                        ),
             'false'
@@ -117,27 +116,23 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec create_ledger_usage(integer(), integer(), j5_request:request(), j5_limits:limits()) -> any().
+-spec create_ledger_usage(kz_currency:units(), kz_currency:units(), j5_request:request(), j5_limits:limits()) -> any().
 create_ledger_usage(Seconds, Amount, Request, Limits) ->
-    SrcService = <<"per-minute-voip">>,
-    SrcId = j5_request:call_id(Request),
-    LedgerId = j5_limits:account_id(Limits),
-    AccountId = j5_request:account_id(Request),
-    lager:debug("creating debit transaction in ledger ~s / ~s for $~w"
-               ,[LedgerId, SrcService, wht_util:units_to_dollars(Amount)]
-               ),
-    Usage = [{<<"type">>, <<"voice">>}
-            ,{<<"quantity">>, Seconds}
-            ,{<<"unit">>, <<"sec">>}
-            ],
-
-    Extra = [{<<"amount">>, Amount}
-            ,{<<"description">>, j5_request:rate_name(Request)}
-            ,{<<"period_start">>, j5_request:timestamp(Request)}
-            ,{<<"metadata">>, metadata(Request)}
-            ],
-
-    kz_ledger:debit(LedgerId, SrcService, SrcId, Usage, Extra, AccountId).
+    Setters =
+        props:filter_empty(
+          [{fun kz_ledger:set_account/2, j5_request:account_id(Request)}
+          ,{fun kz_ledger:set_source_service/2, <<"per-minute-voip">>}
+          ,{fun kz_ledger:set_source_id/2, j5_request:call_id(Request)}
+          ,{fun kz_ledger:set_description/2, j5_request:rate_name(Request)}
+          ,{fun kz_ledger:set_usage_type/2, <<"voice">>}
+          ,{fun kz_ledger:set_usage_quantity/2, Seconds}
+          ,{fun kz_ledger:set_usage_unit/2, <<"sec">>}
+          ,{fun kz_ledger:set_period_start/2, j5_request:timestamp(Request)}
+          ,{fun kz_ledger:set_metadata/2, metadata(Request)}
+          ,{fun kz_ledger:set_unit_amount/2, Amount}
+          ]
+         ),
+    kz_ledger:debit(kz_ledger:setters(Setters), j5_limits:account_id(Limits)).
 
 -spec metadata(j5_request:request()) -> kz_json:object().
 metadata(Request) ->

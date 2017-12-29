@@ -594,6 +594,6 @@ normalize_fields(Rate) ->
 -spec normalize_field(kz_json:path(), kz_json:json_term()) ->
                              {kz_json:path(), kz_json:json_term()}.
 normalize_field(<<"Base-Cost">> = K, BaseCost) ->
-    {K, wht_util:units_to_dollars(BaseCost)};
+    {K, kz_currency:units_to_dollars(BaseCost)};
 normalize_field(K, V) ->
     {K, V}.

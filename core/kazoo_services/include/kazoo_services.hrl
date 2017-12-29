@@ -18,9 +18,7 @@
        ,kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>, 'kz_bookkeeper_local')
        ).
 
--define(SUPPORT_BILLING_ID
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"support_billing_id">>, 'true')
-       ).
+-define(TOPUP_CONFIG, <<"topup">>).
 
 -define(KZ_SERVICE_HRL, 'true').
 -endif.

@@ -37,7 +37,7 @@ save(N, _) -> delete(N).
 delete(N) ->
     case feature(N) =:= 'undefined' of
         'true' -> N;
-        'false' -> knm_services:deactivate_feature(N, ?KEY)
+        'false' -> knm_providers:deactivate_feature(N, ?KEY)
     end.
 
 %%%=============================================================================
@@ -62,7 +62,7 @@ update_failover(N) ->
     Public = kz_json:get_ne_value(?KEY, knm_phone_number:doc(knm_number:phone_number(N))),
     NotChanged = kz_json:are_equal(Private, Public),
     case kz_term:is_empty(Public) of
-        true -> knm_services:deactivate_feature(N, ?KEY);
+        true -> knm_providers:deactivate_feature(N, ?KEY);
         false when NotChanged -> N;
-        false -> knm_services:activate_feature(N, {?KEY, Public})
+        false -> knm_providers:activate_feature(N, {?KEY, Public})
     end.

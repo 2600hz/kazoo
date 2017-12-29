@@ -327,7 +327,7 @@ build_sms_base({CIDNum, CIDName}, OffnetReq, Q) ->
                    ,{<<"Account-ID">>, AccountId}
                    ,{<<"Account-Realm">>, AccountRealm}
                    ,{<<"From-URI">>, bridge_from_uri(CIDNum, OffnetReq)}
-                   ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
+                   ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
                    ]),
     props:filter_undefined(
       [{<<"Application-Name">>, <<"send">>}

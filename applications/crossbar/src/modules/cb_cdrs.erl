@@ -256,7 +256,7 @@ validate_chunk_view(Context) ->
 load_chunk_view(Context, ViewName, Options0) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     Setters = [{fun cb_context:store/3, 'has_cdr_filter', crossbar_filter:is_defined(Context)}
-              ,{fun cb_context:store/3, 'is_reseller', kz_services:is_reseller(AuthAccountId)}
+              ,{fun cb_context:store/3, 'is_reseller', kz_services_reseller:is_reseller(AuthAccountId)}
               ],
     Options = [{'is_chunked', 'true'}
               ,{'chunk_size', ?MAX_BULK}
@@ -493,7 +493,7 @@ col_unix_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(kz_time:greg
 col_rfc1036(_JObj, Timestamp, _Context) -> list_to_binary([$", kz_time:rfc1036(Timestamp), $"]).
 col_iso8601(_JObj, Timestamp, _Context) -> list_to_binary([$", kz_date:to_iso8601_extended(Timestamp), $"]).
 col_account_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
-col_rate(JObj, _Timestamp, _Context) -> kz_term:to_binary(wht_util:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
+col_rate(JObj, _Timestamp, _Context) -> kz_term:to_binary(kz_currency:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
 col_rate_name(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
 col_bridge_id(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"bridge_id">>], JObj, <<>>).
 col_recording_url(JObj, _Timestamp, _Context) -> kz_json:get_value([<<"recording_url">>], JObj, <<>>).
@@ -547,14 +547,14 @@ calling_from(JObj) ->
 -spec customer_cost(kz_json:object()) -> pos_integer().
 customer_cost(JObj) ->
     case kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj) of
-        <<"per_minute">> -> wht_util:call_cost(JObj);
+        <<"per_minute">> -> kapps_call_util:call_cost(JObj);
         _ -> 0
     end.
 
 -spec reseller_cost(kz_json:object()) -> pos_integer().
 reseller_cost(JObj) ->
     case kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj) of
-        <<"per_minute">> -> wht_util:call_cost(JObj);
+        <<"per_minute">> -> kapps_call_util:call_cost(JObj);
         _ -> 0
     end.
 

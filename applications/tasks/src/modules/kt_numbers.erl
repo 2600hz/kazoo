@@ -120,7 +120,7 @@ cleanup(<<"import">>, 'init') ->
 cleanup(<<"import">>, AccountIds) ->
     F = fun (AccountId) ->
                 lager:debug("reconciling account ~s", [AccountId]),
-                kz_services:reconcile(AccountId, <<"phone_numbers">>)
+                kz_services:reconcile(AccountId)
         end,
     lists:foreach(F, sets:to_list(AccountIds)),
     kz_datamgr:enable_change_notice();

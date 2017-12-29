@@ -57,43 +57,43 @@ maybe_test_for_low_balance(AccountId, AccountJObj) ->
 test_for_low_balance(_AccountId, _AccountJObj, 0) ->
     lager:debug("max try to get account ~s current balance", [_AccountId]);
 test_for_low_balance(AccountId, AccountJObj, Loop) ->
-    case wht_util:current_balance(AccountId) of
+    case kz_currency:available_units(AccountId) of
         {'error', 'timeout'} ->
             test_for_low_balance(AccountId, AccountJObj, Loop - 1);
         {'error', _R} -> 'ok';
-        {'ok', CurrentBalance} ->
-            maybe_notify_for_low_balance(AccountJObj, CurrentBalance),
-            maybe_topup_account(AccountJObj, CurrentBalance)
+        {'ok', AvailableUnits} ->
+            maybe_notify_for_low_balance(AccountJObj, AvailableUnits),
+            maybe_topup_account(AccountJObj, AvailableUnits)
     end.
 
--spec maybe_notify_for_low_balance(kzd_accounts:doc(), kz_transaction:units()) -> 'ok'.
-maybe_notify_for_low_balance(AccountJObj, CurrentBalance) ->
+-spec maybe_notify_for_low_balance(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
+maybe_notify_for_low_balance(AccountJObj, AvailableUnits) ->
     AccountId = kz_doc:id(AccountJObj),
     Threshold = kzd_accounts:low_balance_threshold(AccountJObj),
     lager:info("checking if account ~s balance $~w is below notification threshold $~w"
-              ,[AccountId, wht_util:units_to_dollars(CurrentBalance), Threshold]),
-    case is_balance_below_notify_threshold(CurrentBalance, Threshold) of
+              ,[AccountId, kz_currency:units_to_dollars(AvailableUnits), Threshold]),
+    case is_balance_below_notify_threshold(AvailableUnits, Threshold) of
         'false' -> maybe_reset_low_balance_sent(AccountJObj);
-        'true' -> maybe_low_balance_notify(AccountJObj, CurrentBalance)
+        'true' -> maybe_low_balance_notify(AccountJObj, AvailableUnits)
     end.
 
--spec is_balance_below_notify_threshold(kz_transaction:units(), number()) -> boolean().
-is_balance_below_notify_threshold(CurrentBalance, Threshold) ->
-    CurrentBalance =< wht_util:dollars_to_units(Threshold).
+-spec is_balance_below_notify_threshold(kz_currency:units(), number()) -> boolean().
+is_balance_below_notify_threshold(AvailableUnits, Threshold) ->
+    AvailableUnits =< kz_currency:dollars_to_units(Threshold).
 
--spec maybe_topup_account(kzd_accounts:doc(), kz_transaction:units()) -> 'ok'.
-maybe_topup_account(AccountJObj, CurrentBalance) ->
+-spec maybe_topup_account(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
+maybe_topup_account(AccountJObj, AvailableUnits) ->
     AccountId = kz_doc:id(AccountJObj),
     lager:info("checking topup for account ~s with balance $~w"
-              ,[AccountId, wht_util:units_to_dollars(CurrentBalance)]),
-    case kz_topup:init(AccountId, CurrentBalance) of
-        'ok' ->
+              ,[AccountId, kz_currency:units_to_dollars(AvailableUnits)]),
+    case kz_services_topup:maybe_topup(AccountId, AvailableUnits) of
+        {'ok', _} ->
             maybe_reset_low_balance_sent(AccountJObj),
             lager:info("topup successful for ~s", [AccountId]);
         {'error', topup_disabled} -> 'ok';
         {'error', 'balance_above_threshold'} -> 'ok';
         {'error', _Error} ->
-            lager:error("topup failed for ~s: ~p", [AccountId, _Error])
+            lager:debug("topup failed for ~s: ~p", [AccountId, _Error])
     end.
 
 -spec maybe_reset_low_balance_sent(kzd_accounts:doc()) -> 'ok'.
@@ -113,48 +113,48 @@ reset_low_balance_sent(AccountJObj0) ->
     _ = kzd_accounts:save(AccountJObj2),
     'ok'.
 
--spec maybe_low_balance_notify(kzd_accounts:doc(), kz_transaction:units()) -> 'ok'.
-maybe_low_balance_notify(AccountJObj, CurrentBalance) ->
+-spec maybe_low_balance_notify(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
+maybe_low_balance_notify(AccountJObj, AvailableUnits) ->
     case kzd_accounts:low_balance_enabled_exists(AccountJObj) of
         'false' ->
             lager:debug("low balance notification enabled key not present, using deprecated check"),
-            maybe_low_balance_notify_deprecated(AccountJObj, CurrentBalance);
+            maybe_low_balance_notify_deprecated(AccountJObj, AvailableUnits);
         'true' ->
-            maybe_low_balance_notify(AccountJObj, CurrentBalance, kzd_accounts:low_balance_enabled(AccountJObj))
+            maybe_low_balance_notify(AccountJObj, AvailableUnits, kzd_accounts:low_balance_enabled(AccountJObj))
     end.
 
--spec maybe_low_balance_notify(kzd_accounts:doc(), kz_transaction:units(), boolean()) -> 'ok'.
-maybe_low_balance_notify(_AccountJObj, _CurrentBalance, 'false') ->
+-spec maybe_low_balance_notify(kzd_accounts:doc(), kz_currency:units(), boolean()) -> 'ok'.
+maybe_low_balance_notify(_AccountJObj, _AvailableUnits, 'false') ->
     lager:debug("low balance notification disabled");
-maybe_low_balance_notify(AccountJObj, CurrentBalance, 'true') ->
+maybe_low_balance_notify(AccountJObj, AvailableUnits, 'true') ->
     lager:debug("low balance notification enabled"),
     case kzd_accounts:low_balance_tstamp(AccountJObj) of
         LowBalanceSent when is_number(LowBalanceSent) ->
             Cycle = ?LOW_BALANCE_REPEAT,
             Diff = kz_time:now_s() - LowBalanceSent,
             case Diff >= Cycle of
-                'true' -> notify_of_low_balance(AccountJObj, CurrentBalance);
+                'true' -> notify_of_low_balance(AccountJObj, AvailableUnits);
                 'false' ->
                     lager:debug("low balance alert sent ~w seconds ago, repeats every ~w", [Diff, Cycle])
             end;
-        _Else -> notify_of_low_balance(AccountJObj, CurrentBalance)
+        _Else -> notify_of_low_balance(AccountJObj, AvailableUnits)
     end.
 
--spec maybe_low_balance_notify_deprecated(kzd_accounts:doc(), kz_transaction:units()) -> 'ok'.
-maybe_low_balance_notify_deprecated(AccountJObj, CurrentBalance) ->
+-spec maybe_low_balance_notify_deprecated(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
+maybe_low_balance_notify_deprecated(AccountJObj, AvailableUnits) ->
     case kzd_accounts:low_balance_sent(AccountJObj) of
         'true' -> lager:debug("low balance alert already sent");
-        'false' -> notify_of_low_balance(AccountJObj, CurrentBalance)
+        'false' -> notify_of_low_balance(AccountJObj, AvailableUnits)
     end.
 
--spec notify_of_low_balance(kzd_accounts:doc(), kz_transaction:units()) -> 'ok'.
-notify_of_low_balance(AccountJObj, CurrentBalance) ->
+-spec notify_of_low_balance(kzd_accounts:doc(), kz_currency:units()) -> 'ok'.
+notify_of_low_balance(AccountJObj, AvailableUnits) ->
     AccountId = kz_doc:id(AccountJObj),
     lager:debug("sending low balance alert for account ~s with balance ~w"
-               ,[AccountId, CurrentBalance]),
+               ,[AccountId, AvailableUnits]),
 
     Req = [{<<"Account-ID">>, AccountId}
-          ,{<<"Current-Balance">>, CurrentBalance}
+          ,{<<"Current-Balance">>, AvailableUnits}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_low_balance/1),

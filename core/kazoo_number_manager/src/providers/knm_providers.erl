@@ -18,6 +18,10 @@
 -export([e911_caller_name/2]).
 -export([features_denied/1]).
 -export([system_allowed_features/0]).
+-export([activate_feature/2]).
+-export([deactivate_features/2
+        ,deactivate_feature/2
+        ]).
 
 -define(CNAM_PROVIDER(AccountId)
        ,kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, <<"knm_cnam_notifier">>)
@@ -113,7 +117,7 @@ e911_caller_name(_Number, ?NE_BINARY=Name) -> Name;
 e911_caller_name(Number, 'undefined') ->
     AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
     case kzd_accounts:fetch_name(AccountId) of
-        undefined -> ?E911_NAME_DEFAULT;
+        'undefined' -> ?E911_NAME_DEFAULT;
         Name -> Name
     end.
 -endif.
@@ -353,7 +357,7 @@ requested_modules(Number) ->
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
     Doc = knm_phone_number:doc(PhoneNumber),
     RequestedFeatures = [Key || Key <- ?FEATURES_ROOT_KEYS,
-                                undefined =/= kz_json:get_value(Key, Doc)
+                                'undefined' =/= kz_json:get_value(Key, Doc)
                         ],
     ?LOG_DEBUG("asked on public fields: ~s", [?PP(RequestedFeatures)]),
     ExistingFeatures = knm_phone_number:features_list(PhoneNumber),
@@ -419,26 +423,26 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 -type exec_action() :: 'save' | 'delete'.
 
 -spec do_exec(knm_numbers:collection(), exec_action()) -> knm_numbers:collection().
-do_exec(T0=#{todo := Ns}, Action) ->
+do_exec(T0=#{'todo' := Ns}, Action) ->
     F = fun (N, T) ->
                 case knm_number:attempt(fun exec/2, [N, Action]) of
-                    {ok, NewN} -> knm_numbers:ok(NewN, T);
-                    {error, R} -> knm_numbers:ko(N, R, T)
+                    {'ok', NewN} -> knm_numbers:ok(NewN, T);
+                    {'error', R} -> knm_numbers:ko(N, R, T)
                 end
         end,
     lists:foldl(F, T0, Ns).
 
 
 -spec exec(knm_number:knm_number(), exec_action()) -> knm_number:knm_number().
-exec(Number, Action=delete) ->
+exec(Number, Action='delete') ->
     RequestedModules = requested_modules(Number),
     ?LOG_DEBUG("deleting feature providers: ~s", [?PP(RequestedModules)]),
     exec(Number, Action, RequestedModules);
-exec(N, Action=save) ->
+exec(N, Action='save') ->
     {NewN, AllowedModules, DeniedModules} = maybe_rename_carrier_and_strip_denied(N),
     case DeniedModules =:= [] of
-        true -> exec(NewN, Action, AllowedModules);
-        false ->
+        'true' -> exec(NewN, Action, AllowedModules);
+        'false' ->
             ?LOG_DEBUG("denied feature providers: ~s", [?PP(DeniedModules)]),
             knm_errors:unauthorized()
     end.
@@ -448,9 +452,9 @@ maybe_rename_carrier_and_strip_denied(N) ->
     {AllowedRequests, DeniedRequests} = split_requests(N),
     ?LOG_DEBUG("allowing feature providers: ~s", [?PP(AllowedRequests)]),
     case lists:member(?PROVIDER_RENAME_CARRIER, AllowedRequests) of
-        false -> {N, AllowedRequests, DeniedRequests};
-        true ->
-            N1 = exec(N, save, [?PROVIDER_RENAME_CARRIER]),
+        'false' -> {N, AllowedRequests, DeniedRequests};
+        'true' ->
+            N1 = exec(N, 'save', [?PROVIDER_RENAME_CARRIER]),
             N2 = remove_denied_features(N1),
             {NewAllowed, NewDenied} = split_requests(N2),
             ?LOG_DEBUG("allowing feature providers: ~s", [?PP(NewAllowed)]),
@@ -498,3 +502,48 @@ apply_action(Number, Action, Provider) ->
             Ret = erlang:apply(Module, Action, [Number]),
             {'true', Ret}
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-type set_feature() :: {kz_term:ne_binary(), kz_json:object()}.
+
+-spec activate_feature(knm_number:knm_number(), set_feature() | kz_term:ne_binary()) ->
+                              knm_number:knm_number().
+activate_feature(Number, Feature=?NE_BINARY) ->
+    activate_feature(Number, {Feature, kz_json:new()});
+activate_feature(Number, FeatureToSet={?NE_BINARY,_}) ->
+    do_activate_feature(Number, FeatureToSet).
+
+-spec do_activate_feature(knm_number:knm_number(), set_feature()) ->
+                                 knm_number:knm_number().
+do_activate_feature(Number, {Feature,FeatureData}) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    lager:debug("adding feature ~s to ~s"
+               ,[Feature, knm_phone_number:number(PhoneNumber)]
+               ),
+    PN = knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData),
+    knm_number:set_phone_number(Number, PN).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec deactivate_feature(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
+deactivate_feature(Number, Feature) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    Features = knm_phone_number:features(PhoneNumber),
+    PN = knm_phone_number:set_features(PhoneNumber, kz_json:delete_key(Feature, Features)),
+    knm_number:set_phone_number(Number, PN).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec deactivate_features(knm_number:knm_number(), kz_term:ne_binaries()) -> knm_number:knm_number().
+deactivate_features(Number, Features) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    ExistingFeatures = knm_phone_number:features(PhoneNumber),
+    PN = knm_phone_number:set_features(PhoneNumber, kz_json:delete_keys(Features, ExistingFeatures)),
+    knm_number:set_phone_number(Number, PN).

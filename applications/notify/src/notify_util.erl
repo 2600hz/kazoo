@@ -299,13 +299,13 @@ get_rep_email(JObj) ->
 find_rep_email(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     Admin =
-        case kz_services:is_reseller(AccountId) of
+        case kz_services_reseller:is_reseller(AccountId) of
             'true' ->
                 lager:debug("finding admins for reseller account ~s", [AccountId]),
                 find_admin(AccountId);
             'false' ->
                 lager:debug("finding admins for reseller of account ~s", [AccountId]),
-                find_admin(kz_services:find_reseller_id(AccountId))
+                find_admin(kz_services_reseller:get_id(AccountId))
         end,
     kzd_user:email(Admin).
 

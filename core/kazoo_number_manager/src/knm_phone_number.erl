@@ -45,6 +45,7 @@
         ,mdn_run/1, set_mdn_run/2
         ,locality/1, set_locality/2
         ,doc/1, update_doc/2, reset_doc/2, reset_doc/1
+        ,current_doc/1
         ,modified/1, set_modified/2
         ,created/1, set_created/2
         ]).
@@ -92,6 +93,7 @@
                           ,mdn_run = 'false' :: boolean()
                           ,locality :: kz_term:api_object()
                           ,doc :: kz_term:api_object()
+                          ,current_doc :: kz_term:api_object()
                           ,modified :: kz_time:api_seconds()             %%%
                           ,created :: kz_time:api_seconds()              %%%
                           ,is_dirty = 'false' :: boolean()
@@ -636,6 +638,7 @@ from_json(JObj) ->
                 ,{fun set_created/2, kz_doc:created(JObj)}
 
                 ,{fun set_doc/2, sanitize_public_fields(JObj)}
+                ,{fun set_current_doc/2, JObj}
                 ,{fun maybe_migrate_features/2, kz_json:get_ne_value(?PVT_FEATURES, JObj)}
 
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
@@ -1465,6 +1468,19 @@ reset_doc(PN) ->
 doc_from_public_fields(JObj) ->
     maybe_rename_public_features(
       sanitize_public_fields(JObj)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec current_doc(knm_phone_number()) -> kz_json:object().
+current_doc(#knm_phone_number{current_doc=Doc}) -> Doc.
+
+-spec set_current_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
+set_current_doc(PN=#knm_phone_number{}, JObj) ->
+    %% Only during from_json/1
+    'true' = kz_json:is_json_object(JObj),
+    PN#knm_phone_number{current_doc = JObj}.
 
 %%------------------------------------------------------------------------------
 %% @doc

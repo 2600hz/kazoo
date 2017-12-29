@@ -214,7 +214,7 @@ do_full_provision_contact_list(AccountId) when is_binary(AccountId) ->
         {'ok', JObj} ->
             Routines = [fun kz_doc:public_fields/1
                        ,fun(J) ->
-                                ResellerId = kz_services:find_reseller_id(AccountId),
+                                ResellerId = kz_services_reseller:get_id(AccountId),
                                 kz_json:set_value(<<"provider_id">>, ResellerId, J)
                         end
                        ,fun(J) -> kz_json:delete_key(<<"available_apps">>, J) end

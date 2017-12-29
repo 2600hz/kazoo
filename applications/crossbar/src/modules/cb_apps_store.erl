@@ -303,29 +303,19 @@ validate_app(Context, Id, ?HTTP_GET) ->
 validate_app(Context, Id, ?HTTP_PUT) ->
     Context1 = validate_modification(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            Callback =
-                fun() ->
-                        install(Context1, Id)
-                end,
-            crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
+        'success' -> prepare_install(Context1, Id);
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_DELETE) ->
     Context1 = validate_modification(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' -> uninstall(Context1, Id);
+        'success' -> prepare_uninstall(Context1, Id);
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_POST) ->
     Context1 = validate_modification(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            Callback =
-                fun() ->
-                        update(Context1, Id)
-                end,
-            crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
+        'success' -> prepare_update(Context1, Id);
         _ -> Context1
     end.
 
@@ -456,8 +446,8 @@ bad_app_error(Context, AppId) ->
 %% @doc install a new app on the account
 %% @end
 %%------------------------------------------------------------------------------
--spec install(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-install(Context, Id) ->
+-spec prepare_install(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+prepare_install(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
     case kz_json:get_value(Id, Apps) of
@@ -480,8 +470,8 @@ install(Context, Id) ->
 %% valid
 %% @end
 %%------------------------------------------------------------------------------
--spec uninstall(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-uninstall(Context, Id) ->
+-spec prepare_uninstall(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+prepare_uninstall(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
     case kz_json:get_value(Id, Apps) of
@@ -497,8 +487,8 @@ uninstall(Context, Id) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-update(Context, Id) ->
+-spec prepare_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+prepare_update(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
     case kz_json:get_value(Id, Apps) of

@@ -459,7 +459,7 @@ number(#request{number=Number}) -> Number.
 %%------------------------------------------------------------------------------
 -spec per_minute_cost(request()) -> non_neg_integer().
 per_minute_cost(#request{request_jobj=JObj}) ->
-    wht_util:per_minute_cost(JObj).
+    kapps_call_util:per_minute_cost(JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -467,11 +467,11 @@ per_minute_cost(#request{request_jobj=JObj}) ->
 %%------------------------------------------------------------------------------
 -spec call_cost(request()) -> non_neg_integer().
 call_cost(#request{request_jobj=JObj}) ->
-    wht_util:call_cost(JObj).
+    kapps_call_util:call_cost(JObj).
 
 -spec calculate_call(request()) -> {non_neg_integer(), non_neg_integer()}.
 calculate_call(#request{request_jobj=JObj}) ->
-    wht_util:calculate_call(JObj).
+    kapps_call_util:calculate_call(JObj).
 
 -spec caller_network_address(request()) -> kz_term:api_binary().
 caller_network_address(#request{request_jobj=JObj}) ->
