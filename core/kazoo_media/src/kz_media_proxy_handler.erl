@@ -1,6 +1,6 @@
 -module(kz_media_proxy_handler).
 
--export([init/3
+-export([init/2
         ,terminate/3
         ,handle/2
         ]).
@@ -13,9 +13,9 @@
 -type state() :: ?STATE(kz_json:object(), binary()).
 -type stream_type() :: 'single' | 'continuous'.
 
--spec init(any(), cowboy_req:req(), any()) -> {'ok', cowboy_req:req(), state()} |
-                                              {'shutdown', cowboy_req:req(), 'ok'}.
-init({_Transport, _Proto}, Req, [StreamType]) ->
+-spec init(cowboy_req:req(), any()) -> {'ok', cowboy_req:req(), state()} |
+                                       {'shutdown', cowboy_req:req(), 'ok'}.
+init(Req, [StreamType]) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
     lager:info("starting ~s media proxy"),
     case cowboy_req:path_info(Req) of
@@ -34,12 +34,12 @@ init_from_tts(Id, Req, StreamType) ->
         {'error', _E} ->
             lager:debug("missing tts server for ~s: ~p", [Id, _E]),
             Req1 = cowboy_req:reply(404, Req),
-            {'shutdown', Req1, 'ok'}
+            {'ok', Req1, 'ok'}
     catch
         _E:_R ->
             lager:debug("exception thrown: ~s: ~p", [_E, _R]),
             Req1 = cowboy_req:reply(404, Req),
-            {'shutdown', Req1, 'ok'}
+            {'ok', Req1, 'ok'}
     end.
 
 init_from_doc(Url, Req, StreamType) ->
@@ -48,7 +48,7 @@ init_from_doc(Url, Req, StreamType) ->
     try kz_media_cache_sup:find_file_server(Db, Id, Attachment) of
         {'ok', Pid} ->
             {Meta, Bin} = media_data(Pid, StreamType),
-            {'ok', Req, ?STATE(Meta, Bin)};
+            handle(Req, ?STATE(Meta, Bin));
         {'error', _} ->
             lager:debug("starting file server ~s/~s/~s", [Db, Id, Attachment]),
             case kz_media_cache_sup:start_file_server(Db, Id, Attachment) of

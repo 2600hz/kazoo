@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_media_store_proxy).
 
--export([init/3
+-export([init/2
         ,terminate/3
         ,handle/2
         ]).
@@ -24,17 +24,17 @@
 
 -type body() :: {'ok', binary(), cowboy_req:req()} | {'more', binary(), cowboy_req:req()}.
 -type validate_request_ret() :: {'ok', media_store_path()} | {'error', integer()}.
--type handler_return() :: {'ok', cowboy_req:req(), state()} | {'shutdown',  cowboy_req:req(), 'ok'}.
+-type handler_return() :: {'ok', cowboy_req:req(), 'ok' | state()}.
 
--spec init({any(), any()}, cowboy_req:req(), kz_proplist()) -> handler_return().
-init({_Transport, _Proto}, Req, _Opts) ->
+-spec init(cowboy_req:req(), kz_proplist()) -> handler_return().
+init(Req, _Opts) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
     case authenticate(Req) of
         'true' ->
             validate_request(cowboy_req:path_info(Req), Req);
         'false' ->
             lager:debug("request did not provide valid credentials"),
-            {'shutdown', unauthorized(Req), 'ok'}
+            {'ok', unauthorized(Req), 'ok'}
     end.
 
 -spec authenticate(cowboy_req:req()) -> boolean().
@@ -298,20 +298,20 @@ failure(Reason, Req0) ->
     Req1 = cowboy_req:set_resp_body(Body, Req0),
     cowboy_req:reply(500, Req1).
 
--spec reply_error(integer(), cowboy_req:req()) -> {'shutdown', cowboy_req:req(), 'ok'}.
+-spec reply_error(integer(), cowboy_req:req()) -> {'ok', cowboy_req:req(), 'ok'}.
 reply_error(Code, Req0) ->
     Req1 = cowboy_req:reply(Code, Req0),
-    {'shutdown', Req1, 'ok'}.
+    {'ok', Req1, 'ok'}.
 
--spec reply_error(integer(), state(), cowboy_req:req()) -> {'shutdown', cowboy_req:req(), state()}.
+-spec reply_error(integer(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
 reply_error(Code, State, Req0) ->
     Req1 = cowboy_req:reply(Code, Req0),
-    {'shutdown', Req1, State}.
+    {'ok', Req1, State}.
 
--spec terminate(any(), cowboy_req:req(), any()) -> cowboy_req:req().
-terminate(_Reason, Req, 'ok') ->
-    Req;
-terminate(_Reason, Req, #state{file=Device, filename=Filename}) ->
+-spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
+terminate(_Reason, _Req, 'ok') ->
+    'ok';
+terminate(_Reason, _Req, #state{file=Device, filename=Filename}) ->
     catch(file:close(Device)),
     catch(file:delete(Filename)),
-    Req.
+    'ok'.
