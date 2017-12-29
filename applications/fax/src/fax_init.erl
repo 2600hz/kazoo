@@ -19,8 +19,8 @@
 start_link() ->
     _ = declare_exchanges(),
     Dispatch = cowboy_router:compile([
-                                      %% :: {HostMatch, [{PathMatch, Handler, Opts}]}
-                                      {'_', [{<<"/fax/[...]">>, 'fax_file_proxy', []}]}
+                                      %% :: {HostMatch, [{PathMatch, Constraints, Handler, Opts}]}
+                                      {'_', [{<<"/fax/[...]">>, [], 'fax_file_proxy', []}]}
                                      ]),
 
     Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 50),
