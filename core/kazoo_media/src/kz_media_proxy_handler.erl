@@ -13,11 +13,10 @@
 -type state() :: ?STATE(kz_json:object(), binary()).
 -type stream_type() :: 'single' | 'continuous'.
 
--spec init(cowboy_req:req(), any()) -> {'ok', cowboy_req:req(), state()} |
-                                       {'shutdown', cowboy_req:req(), 'ok'}.
+-spec init(cowboy_req:req(), any()) -> {'ok', cowboy_req:req(), state() | 'ok'}.
 init(Req, [StreamType]) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
-    lager:info("starting ~s media proxy"),
+    lager:info("starting ~s media proxy", [StreamType]),
     case cowboy_req:path_info(Req) of
         [<<"tts">>, Id] ->
             init_from_tts(maybe_strip_extension(Id), Req, StreamType);
@@ -30,7 +29,7 @@ init_from_tts(Id, Req, StreamType) ->
     try kz_media_cache_sup:find_tts_server(Id) of
         {'ok', Pid} ->
             {Meta, Bin} = media_data(Pid, StreamType),
-            {'ok', Req, ?STATE(Meta, Bin)};
+            handle(Req, ?STATE(Meta, Bin));
         {'error', _E} ->
             lager:debug("missing tts server for ~s: ~p", [Id, _E]),
             Req1 = cowboy_req:reply(404, Req),
@@ -54,18 +53,18 @@ init_from_doc(Url, Req, StreamType) ->
             case kz_media_cache_sup:start_file_server(Db, Id, Attachment) of
                 {'ok', Pid} ->
                     {Meta, Bin} = media_data(Pid, StreamType),
-                    {'ok', Req, ?STATE(Meta, Bin)};
+                    handle(Req, ?STATE(Meta, Bin));
                 {'error', Error} ->
                     lager:debug("start server failed ~s/~s/~s: ~p", [Db, Id, Attachment, Error]),
                     Req1 = cowboy_req:reply(404, Req),
-                    {'shutdown', Req1, 'ok'}
+                    {'ok', Req1, 'ok'}
             end
     catch
         _E:_R ->
             kz_util:log_stacktrace(),
             lager:debug("exception thrown: ~s: ~p", [_E, _R]),
             Req1 = cowboy_req:reply(404, Req),
-            {'shutdown', Req1, 'ok'}
+            {'ok', Req1, 'ok'}
     end.
 
 -spec handle(cowboy_req:req(), state()) -> {'ok', cowboy_req:req(), 'ok'}.
