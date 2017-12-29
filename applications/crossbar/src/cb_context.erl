@@ -566,7 +566,7 @@ set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
 set_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
     Context#cb_context{resp_headers=maps:put(K, V, RespHeaders)}.
 
-add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, Headers) ->
+add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, #{}=Headers) ->
     Context#cb_context{resp_headers=maps:fold(fun add_resp_header_fold/3, RespHeaders, Headers)}.
 
 add_resp_header_fold(K, V, RHs) ->

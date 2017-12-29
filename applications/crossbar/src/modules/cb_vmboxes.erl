@@ -970,9 +970,9 @@ load_attachment_from_message(Doc, Context, Timezone) ->
                       ,{fun cb_context:set_resp_data/2, AttachBin}
                       ,{fun cb_context:set_resp_etag/2, 'undefined'}
                       ,{fun cb_context:add_resp_headers/2
-                       ,[{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentId)}
-                        ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-                        ]
+                       ,#{<<"content-type">> => kz_doc:attachment_content_type(Doc, AttachmentId)
+                         ,<<"content-disposition">> => <<"attachment; filename=", Filename/binary>>
+                         }
                        }
                       ],
             cb_context:setters(Context, Setters)
@@ -1060,9 +1060,9 @@ create_zip_file(WorkDir, Files, Context) ->
               ,{fun cb_context:set_resp_etag/2, 'undefined'}
               ,{fun cb_context:set_resp_file/2, kz_term:to_binary(ZipPath)}
               ,{fun cb_context:add_resp_headers/2
-               ,[{<<"Content-Type">>, <<"application/zip">>}
-                ,{<<"Content-Disposition">>, <<"attachment; filename=", (kz_term:to_binary(ZipName))/binary>>}
-                ]
+               ,#{<<"content-type">> => <<"application/zip">>
+                 ,<<"content-disposition">> => <<"attachment; filename=", (kz_term:to_binary(ZipName))/binary>>
+                 }
                }
               ],
     cb_context:setters(Context, Setters).

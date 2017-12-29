@@ -651,9 +651,9 @@ set_fax_binary(Context, AttachmentId) ->
     cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"fax">>), Context)
                       ,[{fun cb_context:set_resp_etag/2, 'undefined'}
                        ,{fun cb_context:add_resp_headers/2
-                        ,[{<<"Content-Disposition">>, <<Disposition/binary, "; filename=", AttachmentId/binary>>}
-                         ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-                         ]
+                        ,#{<<"content-disposition">> => <<Disposition/binary, "; filename=", AttachmentId/binary>>
+                          ,<<"content-type">> => kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)
+                          }
                         }
                        ]
                       ).

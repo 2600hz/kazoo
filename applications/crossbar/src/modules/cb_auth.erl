@@ -569,9 +569,9 @@ set_public_key_response(Context, PublicKeyPem, <<"application/x-pem-file">>=CT) 
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:set_resp_data/2, PublicKeyPem}
               ,{fun cb_context:add_resp_headers/2
-               ,[{<<"Content-Type">>, CT}
-                ,{<<"Content-Disposition">>, <<"attachment; filename=public_key.pem">>}
-                ]
+               ,#{<<"content-type">> => CT
+                 ,<<"content-disposition">> => <<"attachment; filename=public_key.pem">>
+                 }
                }
               ],
     cb_context:setters(Context, Setters).
