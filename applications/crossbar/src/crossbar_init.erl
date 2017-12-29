@@ -34,7 +34,9 @@ api_path() ->
 api_version_constraint() ->
     {'version', fun api_version_constraint/2}.
 
--spec api_version_constraint('forward', ne_binary()) -> boolean().
+-spec api_version_constraint('forward', ne_binary()) ->
+                                    {'ok', ne_binary()} |
+                                    {'error', 'not_a_version'}.
 api_version_constraint('forward', <<"v", ApiVersion/binary>>=Vsn) ->
     try kz_term:to_integer(ApiVersion) of
         Int ->
