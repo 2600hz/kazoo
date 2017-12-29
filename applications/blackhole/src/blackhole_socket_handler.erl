@@ -13,6 +13,7 @@
         ,websocket_handle/2
         ,websocket_info/2
         ,websocket_terminate/2
+        ,terminate/3
         ]).
 
 -include("blackhole.hrl").
@@ -20,17 +21,24 @@
 -spec init(cowboy_req:req(), State) ->
                   {'ok' | 'cowboy_websocket', cowboy_req:req(), State | {inet:ip_address(), ne_binary()}}.
 init(Req, HandlerOpts) ->
+    lager:info("handling socket init"),
     case cowboy_req:parse_header(<<"sec-websocket-protocol">>, Req) of
         'undefined' ->
             {RemoteIP, _} = cowboy_req:peer(Req),
+            lager:info("no sub protocols defined by remote client ~p", [RemoteIP]),
             {'cowboy_websocket', Req, {RemoteIP, session_id(Req)}};
         _SubProtocols ->
-            lager:warning("sub-protocols are not supported at the moment"),
+            lager:warning("sub-protocols are not supported at the moment: ~p", [_SubProtocols]),
             {'ok', cowboy_req:reply(400, Req), HandlerOpts}
     end.
 
+-spec terminate(any(), any(), any()) -> 'ok'.
+terminate(_Reason, _Req, _State) ->
+    lager:info("bh socket going down: ~p", [_Reason]).
+
 -spec websocket_init({inet:ip_address(), ne_binary()}) -> {'ok', bh_context:context()}.
 websocket_init({RemoteIP, SessionsId}) ->
+    lager:info("init from ~p(~p)", [RemoteIP, SessionsId]),
     {'ok', _State} = blackhole_socket_callback:open(self(), SessionsId, RemoteIP).
 
 -spec websocket_handle(any(), bh_context:context()) ->
