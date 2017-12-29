@@ -55,7 +55,7 @@ on_response(_Status, _Headers, _Body, Req) -> Req.
 -spec maybe_start_plaintext(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_plaintext(Dispatch) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of
-        'false' -> lager:info("plaintext api support not enabled");
+        'false' -> lager:info("plaintext websocket support not enabled");
         'true' ->
             Port = ?SOCKET_PORT,
             ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
@@ -80,12 +80,12 @@ maybe_start_plaintext(Dispatch) ->
                                   )
             of
                 {'ok', _} ->
-                    lager:info("started plaintext API server");
+                    lager:info("started plaintext WebSocket server");
                 {'error', {'already_started', _P}} ->
-                    lager:info("already started plaintext API server at ~p", [_P])
+                    lager:info("already started plaintext WebSocket server at ~p", [_P])
             catch
                 _E:_R ->
-                    lager:warning("crashed starting API server: ~s: ~p", [_E, _R])
+                    lager:warning("crashed starting WEBSOCKET server: ~s: ~p", [_E, _R])
             end
     end.
 
@@ -131,7 +131,7 @@ get_binding_ip() ->
 -spec maybe_start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_ssl(Dispatch) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
-        'false' -> lager:info("ssl api support not enabled");
+        'false' -> lager:info("ssl websocket support not enabled");
         'true' -> start_ssl(Dispatch)
     end.
 
@@ -139,7 +139,7 @@ maybe_start_ssl(Dispatch) ->
 start_ssl(Dispatch) ->
     try ssl_opts(code:lib_dir(?APP)) of
         SSLOpts ->
-            lager:debug("trying to start SSL API server"),
+            lager:debug("trying to start SSL WEBSOCKET server"),
             _SslStarted = ssl:start(),
             lager:debug("starting SSL : ~p", [_SslStarted]),
             ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
@@ -147,7 +147,7 @@ start_ssl(Dispatch) ->
 
             try
                 IP = get_binding_ip(),
-                lager:info("trying to bind SSL API server to address ~s port ~b"
+                lager:info("trying to bind SSL WEBSOCKET server to address ~s port ~b"
                           ,[inet:ntoa(IP)
                            ,props:get_value('port', SSLOpts)
                            ]
@@ -167,20 +167,20 @@ start_ssl(Dispatch) ->
                                 )
             of
                 {'ok', _} ->
-                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);
+                    lager:info("started SSL WEBSOCKET server on port ~b", [props:get_value('port', SSLOpts)]);
                 {'error', {'already_started', _P}} ->
-                    lager:info("already started SSL API server on port ~b at ~p"
+                    lager:info("already started SSL WEBSOCKET server on port ~b at ~p"
                               ,[props:get_value('port', SSLOpts), _P]
                               )
             catch
                 'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s", [_File]);
                 _E:_R ->
-                    lager:warning("crashed starting SSL API server: ~s: ~p", [_E, _R])
+                    lager:warning("crashed starting SSL WEBSOCKET server: ~s: ~p", [_E, _R])
             end
     catch
         'throw':_E ->
-            lager:warning("failed to start SSL API server: ~p", [_E])
+            lager:warning("failed to start SSL WEBSOCKET server: ~p", [_E])
     end.
 
 -spec ssl_opts(list()) -> kz_proplist().
