@@ -24,10 +24,61 @@
             },
             "type": "array"
         },
+        "compress_response_body": {
+            "default": true,
+            "description": "blackhole compress_response_body",
+            "type": "boolean"
+        },
+        "ip": {
+            "description": "blackhole ip",
+            "type": "string"
+        },
         "port": {
             "default": 5555,
             "description": "blackhole port",
             "type": "integer"
+        },
+        "request_timeout_ms": {
+            "default": 10000,
+            "description": "blackhole request_timeout_ms",
+            "type": "integer"
+        },
+        "ssl_ca_cert": {
+            "description": "blackhole ssl_ca_cert",
+            "type": "string"
+        },
+        "ssl_cert": {
+            "description": "blackhole ssl_cert",
+            "type": "string"
+        },
+        "ssl_key": {
+            "description": "blackhole ssl_key",
+            "type": "string"
+        },
+        "ssl_password": {
+            "default": "",
+            "description": "blackhole ssl_password",
+            "type": "string"
+        },
+        "ssl_port": {
+            "default": 5556,
+            "description": "blackhole ssl_port",
+            "type": "integer"
+        },
+        "ssl_workers": {
+            "default": 100,
+            "description": "blackhole ssl_workers",
+            "type": "integer"
+        },
+        "use_plaintext": {
+            "default": true,
+            "description": "blackhole use_plaintext",
+            "type": "boolean"
+        },
+        "use_ssl": {
+            "default": false,
+            "description": "blackhole use_ssl",
+            "type": "boolean"
         }
     },
     "type": "object"
