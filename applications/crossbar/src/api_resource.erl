@@ -827,13 +827,16 @@ to_binary(Req, Context, Accept) ->
 
 -type range_response() :: {ne_binary(), pos_integer(), pos_integer(), pos_integer(), pos_integer()}.
 
--spec get_range(ne_binary(), ne_binary()) -> range_response().
+-spec get_range(ne_binary(), binary()) -> range_response().
+get_range(Data, <<>>) ->
+    FileLength = size(Data),
+    {Data, 0, FileLength-1, FileLength, FileLength};
 get_range(Data, RangeHeader) ->
     FileLength = size(Data),
     lager:debug("received range header ~p for file size ~p", [RangeHeader, FileLength]),
     {Start, End} = case cow_http_hd:parse_range(RangeHeader) of
-                       {<<"bytes">>, [{S, 'infinity'}]} -> {S, FileLength};
-                       {<<"bytes">>, [{S, E}]} when E < FileLength -> {S, E + 1};
+                       {'bytes', [{S, 'infinity'}]} -> {S, FileLength};
+                       {'bytes', [{S, E}]} when E < FileLength -> {S, E + 1};
                        _Thing ->
                            lager:info("invalid range specification ~p", [RangeHeader]),
                            {0, FileLength}
