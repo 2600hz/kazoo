@@ -220,7 +220,7 @@ maybe_update_doc(DbName, JObj) ->
 
 should_update(DbName, JObj) ->
     case open_doc(DbName, kz_doc:id(JObj)) of
-        {'ok', Doc} -> not kz_json:are_equal(JObj, kz_doc:delete_revision(Doc));
+        {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
         _ -> true
     end.
 

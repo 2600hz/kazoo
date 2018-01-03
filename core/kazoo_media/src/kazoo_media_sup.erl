@@ -28,7 +28,6 @@
                                 ])
                   ,?WORKER('kz_media_map')
                   ,?WORKER('kz_media_proxy')
-                  ,?WORKER('kazoo_media_maint_listener')
                   ]).
 
 %% ===================================================================
