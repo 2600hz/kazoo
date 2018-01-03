@@ -5,7 +5,7 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
-JOBS ?=
+JOBS ?= 1
 
 KAZOODIRS = core/Makefile applications/Makefile
 
