@@ -337,7 +337,7 @@ seq() ->
         pqc_cb_api:cleanup(API)
     end,
     ?INFO("seq finished running: ~p", [API]),
-    io:format("seq finished running: ~p", [API]).
+    io:format("seq finished running: ~p~n", [API]).
 
 -spec command(any()) -> proper_types:type().
 command(Model) ->

@@ -1552,6 +1552,15 @@
                     "description": "How long to delay ringing the device, in seconds",
                     "type": "integer"
                 },
+                "dial_strategy": {
+                    "default": "simultaneous",
+                    "description": "Dial strategy for the device",
+                    "enum": [
+                        "simultaneous",
+                        "single"
+                    ],
+                    "type": "string"
+                },
                 "id": {
                     "description": "Device ID",
                     "type": "string"
@@ -8281,19 +8290,16 @@
                 "Account-ID": {
                     "type": "string"
                 },
-                "Application-Data": {
+                "Answered": {
                     "type": "string"
                 },
-                "Application-Event": {
+                "Authorizing-ID": {
                     "type": "string"
                 },
-                "Application-Name": {
+                "Authorizing-Type": {
                     "type": "string"
                 },
-                "Application-Response": {
-                    "type": "string"
-                },
-                "Billing-Seconds": {
+                "Bridge-ID": {
                     "type": "string"
                 },
                 "Call-Direction": {
@@ -8308,52 +8314,10 @@
                 "Callee-ID-Number": {
                     "type": "string"
                 },
-                "Caller-ID-Name": {
-                    "type": "string"
-                },
-                "Caller-ID-Number": {
-                    "type": "string"
-                },
-                "Channel-Call-State": {
-                    "type": "string"
-                },
-                "Channel-Created-Time": {
-                    "type": "integer"
-                },
-                "Channel-Debug": {
-                    "type": "string"
-                },
-                "Channel-Is-Loopback": {
-                    "type": "string"
-                },
-                "Channel-Loopback-Bowout": {
-                    "type": "string"
-                },
-                "Channel-Loopback-Bowout-Execute": {
-                    "type": "string"
-                },
-                "Channel-Loopback-Leg": {
-                    "type": "string"
-                },
-                "Channel-Loopback-Other-Leg-ID": {
-                    "type": "string"
-                },
-                "Channel-Moving": {
-                    "type": "string"
-                },
-                "Channel-Name": {
-                    "type": "string"
-                },
-                "Channel-State": {
-                    "type": "string"
-                },
-                "Conference-Config": {
+                "Channel-Authorized": {
                     "type": "string"
                 },
                 "Conference-ID": {
-                    "type": "string"
-                },
-                "Conference-Name": {
                     "type": "string"
                 },
                 "Control-Queue": {
@@ -8368,22 +8332,10 @@
                 "Custom-SIP-Headers": {
                     "type": "object"
                 },
-                "DTMF-Digit": {
+                "Destination": {
                     "type": "string"
                 },
-                "DTMF-Duration": {
-                    "type": "string"
-                },
-                "Detected-Tone": {
-                    "type": "string"
-                },
-                "Digits-Dialed": {
-                    "type": "string"
-                },
-                "Disposition": {
-                    "type": "string"
-                },
-                "Duration-Seconds": {
+                "Ecallmgr-Node": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -8398,85 +8350,34 @@
                     ],
                     "type": "string"
                 },
-                "Fax-Info": {
-                    "type": "string"
-                },
                 "From": {
                     "type": "string"
                 },
-                "From-Tag": {
+                "Is-Loopback": {
                     "type": "string"
                 },
-                "From-Uri": {
+                "Is-On-Hold": {
                     "type": "string"
                 },
-                "Hangup-Cause": {
-                    "type": "string"
-                },
-                "Hangup-Code": {
-                    "type": "string"
-                },
-                "Interaction-ID": {
-                    "type": "string"
-                },
-                "Intercepted-By": {
-                    "type": "string"
-                },
-                "Length": {
-                    "type": "string"
-                },
-                "Local-SDP": {
+                "Media-Node": {
                     "type": "string"
                 },
                 "Media-Server": {
                     "type": "string"
                 },
-                "Origination-Call-ID": {
+                "Node": {
                     "type": "string"
                 },
                 "Other-Leg-Call-ID": {
                     "type": "string"
                 },
-                "Other-Leg-Caller-ID-Name": {
-                    "type": "string"
-                },
-                "Other-Leg-Caller-ID-Number": {
-                    "type": "string"
-                },
-                "Other-Leg-Destination-Number": {
-                    "type": "string"
-                },
-                "Other-Leg-Direction": {
-                    "type": "string"
-                },
-                "Parking-Slot": {
-                    "type": "string"
-                },
                 "Presence-ID": {
                     "type": "string"
                 },
-                "Raw-Application-Data": {
-                    "type": "string"
-                },
-                "Raw-Application-Name": {
-                    "type": "string"
-                },
-                "Remote-SDP": {
-                    "type": "string"
-                },
-                "Replaced-By": {
+                "Realm": {
                     "type": "string"
                 },
                 "Request": {
-                    "type": "string"
-                },
-                "Ringing-Seconds": {
-                    "type": "string"
-                },
-                "Silence-Terminated": {
-                    "type": "string"
-                },
-                "Switch-Hostname": {
                     "type": "string"
                 },
                 "Switch-Nodename": {
@@ -8488,34 +8389,13 @@
                 "Switch-URL": {
                     "type": "string"
                 },
-                "Target-Call-ID": {
-                    "type": "string"
-                },
-                "Terminator": {
-                    "type": "string"
-                },
                 "Timestamp": {
                     "type": "string"
                 },
                 "To": {
                     "type": "string"
                 },
-                "To-Tag": {
-                    "type": "string"
-                },
-                "To-Uri": {
-                    "type": "string"
-                },
-                "Transfer-History": {
-                    "type": "string"
-                },
-                "Transfer-To": {
-                    "type": "string"
-                },
-                "Transfer-Type": {
-                    "type": "string"
-                },
-                "User-Agent": {
+                "Username": {
                     "type": "string"
                 }
             },
@@ -15101,8 +14981,69 @@
             ],
             "type": "object"
         },
-        "kapi.notifications.fax_inbound": {
-            "description": "AMQP API for notifications.fax_inbound",
+        "kapi.notifications.first_occurrence": {
+            "description": "AMQP API for notifications.first_occurrence",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "first_occurrence"
+                    ],
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Occurrence": {
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "string"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Occurrence"
+            ],
+            "type": "object"
+        },
+        "kapi.notifications.inbound_fax": {
+            "description": "AMQP API for notifications.inbound_fax",
             "properties": {
                 "Account-DB": {
                     "type": "string"
@@ -15208,8 +15149,8 @@
             ],
             "type": "object"
         },
-        "kapi.notifications.fax_inbound_error": {
-            "description": "AMQP API for notifications.fax_inbound_error",
+        "kapi.notifications.inbound_fax_error": {
+            "description": "AMQP API for notifications.inbound_fax_error",
             "properties": {
                 "Account-DB": {
                     "type": "string"
@@ -15317,329 +15258,6 @@
                 "From-User",
                 "To-Realm",
                 "To-User"
-            ],
-            "type": "object"
-        },
-        "kapi.notifications.fax_outbound": {
-            "description": "AMQP API for notifications.fax_outbound",
-            "properties": {
-                "Account-DB": {
-                    "type": "string"
-                },
-                "Account-ID": {
-                    "type": "string"
-                },
-                "Attachment-URL": {
-                    "type": "string"
-                },
-                "Bcc": {
-                    "type": "string"
-                },
-                "Call-ID": {
-                    "type": "string"
-                },
-                "Callee-ID-Name": {
-                    "type": "string"
-                },
-                "Callee-ID-Number": {
-                    "type": "string"
-                },
-                "Caller-ID-Name": {
-                    "type": "string"
-                },
-                "Caller-ID-Number": {
-                    "type": "string"
-                },
-                "Cc": {
-                    "type": "string"
-                },
-                "Event-Category": {
-                    "enum": [
-                        "notification"
-                    ],
-                    "type": "string"
-                },
-                "Event-Name": {
-                    "enum": [
-                        "outbound_fax"
-                    ],
-                    "type": "string"
-                },
-                "Fax-ID": {
-                    "type": "string"
-                },
-                "Fax-Info": {
-                    "type": "string"
-                },
-                "Fax-JobId": {
-                    "type": "string"
-                },
-                "Fax-Notifications": {
-                    "type": "string"
-                },
-                "Fax-Timestamp": {
-                    "type": "string"
-                },
-                "FaxBox-ID": {
-                    "type": "string"
-                },
-                "From": {
-                    "type": "string"
-                },
-                "HTML": {
-                    "type": "string"
-                },
-                "Owner-ID": {
-                    "type": "string"
-                },
-                "Preview": {
-                    "type": "string"
-                },
-                "Reply-To": {
-                    "type": "string"
-                },
-                "Subject": {
-                    "type": "string"
-                },
-                "Text": {
-                    "type": "string"
-                },
-                "To": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Account-ID",
-                "Callee-ID-Number",
-                "Caller-ID-Number",
-                "Fax-ID",
-                "Fax-JobId"
-            ],
-            "type": "object"
-        },
-        "kapi.notifications.fax_outbound_error": {
-            "description": "AMQP API for notifications.fax_outbound_error",
-            "properties": {
-                "Account-DB": {
-                    "type": "string"
-                },
-                "Account-ID": {
-                    "type": "string"
-                },
-                "Attachment-URL": {
-                    "type": "string"
-                },
-                "Bcc": {
-                    "type": "string"
-                },
-                "Call-ID": {
-                    "type": "string"
-                },
-                "Callee-ID-Name": {
-                    "type": "string"
-                },
-                "Callee-ID-Number": {
-                    "type": "string"
-                },
-                "Caller-ID-Name": {
-                    "type": "string"
-                },
-                "Caller-ID-Number": {
-                    "type": "string"
-                },
-                "Cc": {
-                    "type": "string"
-                },
-                "Event-Category": {
-                    "enum": [
-                        "notification"
-                    ],
-                    "type": "string"
-                },
-                "Event-Name": {
-                    "enum": [
-                        "outbound_fax_error"
-                    ],
-                    "type": "string"
-                },
-                "Fax-Error": {
-                    "type": "string"
-                },
-                "Fax-ID": {
-                    "type": "string"
-                },
-                "Fax-Info": {
-                    "type": "string"
-                },
-                "Fax-JobId": {
-                    "type": "string"
-                },
-                "Fax-Notifications": {
-                    "type": "string"
-                },
-                "Fax-Timestamp": {
-                    "type": "string"
-                },
-                "FaxBox-ID": {
-                    "type": "string"
-                },
-                "From": {
-                    "type": "string"
-                },
-                "HTML": {
-                    "type": "string"
-                },
-                "Owner-ID": {
-                    "type": "string"
-                },
-                "Preview": {
-                    "type": "string"
-                },
-                "Reply-To": {
-                    "type": "string"
-                },
-                "Subject": {
-                    "type": "string"
-                },
-                "Text": {
-                    "type": "string"
-                },
-                "To": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Fax-ID",
-                "Fax-JobId"
-            ],
-            "type": "object"
-        },
-        "kapi.notifications.fax_outbound_smtp_error": {
-            "description": "AMQP API for notifications.fax_outbound_smtp_error",
-            "properties": {
-                "Account-DB": {
-                    "type": "string"
-                },
-                "Account-ID": {
-                    "type": "string"
-                },
-                "Attachment-URL": {
-                    "type": "string"
-                },
-                "Bcc": {
-                    "type": "string"
-                },
-                "Cc": {
-                    "type": "string"
-                },
-                "Errors": {
-                    "type": "string"
-                },
-                "Event-Category": {
-                    "enum": [
-                        "notification"
-                    ],
-                    "type": "string"
-                },
-                "Event-Name": {
-                    "enum": [
-                        "outbound_smtp_fax_error"
-                    ],
-                    "type": "string"
-                },
-                "Fax-From-Email": {
-                    "type": "string"
-                },
-                "Fax-To-Email": {
-                    "type": "string"
-                },
-                "From": {
-                    "type": "string"
-                },
-                "HTML": {
-                    "type": "string"
-                },
-                "Preview": {
-                    "type": "string"
-                },
-                "Reply-To": {
-                    "type": "string"
-                },
-                "Subject": {
-                    "type": "string"
-                },
-                "Text": {
-                    "type": "string"
-                },
-                "To": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Account-ID",
-                "Errors",
-                "Fax-From-Email"
-            ],
-            "type": "object"
-        },
-        "kapi.notifications.first_occurrence": {
-            "description": "AMQP API for notifications.first_occurrence",
-            "properties": {
-                "Account-DB": {
-                    "type": "string"
-                },
-                "Account-ID": {
-                    "type": "string"
-                },
-                "Attachment-URL": {
-                    "type": "string"
-                },
-                "Bcc": {
-                    "type": "string"
-                },
-                "Cc": {
-                    "type": "string"
-                },
-                "Event-Category": {
-                    "enum": [
-                        "notification"
-                    ],
-                    "type": "string"
-                },
-                "Event-Name": {
-                    "enum": [
-                        "first_occurrence"
-                    ],
-                    "type": "string"
-                },
-                "From": {
-                    "type": "string"
-                },
-                "HTML": {
-                    "type": "string"
-                },
-                "Occurrence": {
-                    "type": "string"
-                },
-                "Preview": {
-                    "type": "string"
-                },
-                "Reply-To": {
-                    "type": "string"
-                },
-                "Subject": {
-                    "type": "string"
-                },
-                "Text": {
-                    "type": "string"
-                },
-                "To": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Account-ID",
-                "Occurrence"
             ],
             "type": "object"
         },
@@ -15995,6 +15613,268 @@
             },
             "required": [
                 "Status"
+            ],
+            "type": "object"
+        },
+        "kapi.notifications.outbound_fax": {
+            "description": "AMQP API for notifications.outbound_fax",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Callee-ID-Name": {
+                    "type": "string"
+                },
+                "Callee-ID-Number": {
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "outbound_fax"
+                    ],
+                    "type": "string"
+                },
+                "Fax-ID": {
+                    "type": "string"
+                },
+                "Fax-Info": {
+                    "type": "string"
+                },
+                "Fax-JobId": {
+                    "type": "string"
+                },
+                "Fax-Notifications": {
+                    "type": "string"
+                },
+                "Fax-Timestamp": {
+                    "type": "string"
+                },
+                "FaxBox-ID": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Owner-ID": {
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "string"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Callee-ID-Number",
+                "Caller-ID-Number",
+                "Fax-ID",
+                "Fax-JobId"
+            ],
+            "type": "object"
+        },
+        "kapi.notifications.outbound_fax_error": {
+            "description": "AMQP API for notifications.outbound_fax_error",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Callee-ID-Name": {
+                    "type": "string"
+                },
+                "Callee-ID-Number": {
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "outbound_fax_error"
+                    ],
+                    "type": "string"
+                },
+                "Fax-Error": {
+                    "type": "string"
+                },
+                "Fax-ID": {
+                    "type": "string"
+                },
+                "Fax-Info": {
+                    "type": "string"
+                },
+                "Fax-JobId": {
+                    "type": "string"
+                },
+                "Fax-Notifications": {
+                    "type": "string"
+                },
+                "Fax-Timestamp": {
+                    "type": "string"
+                },
+                "FaxBox-ID": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Owner-ID": {
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "string"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Fax-ID",
+                "Fax-JobId"
+            ],
+            "type": "object"
+        },
+        "kapi.notifications.outbound_smtp_fax_error": {
+            "description": "AMQP API for notifications.outbound_smtp_fax_error",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Errors": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "outbound_smtp_fax_error"
+                    ],
+                    "type": "string"
+                },
+                "Fax-From-Email": {
+                    "type": "string"
+                },
+                "Fax-To-Email": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "string"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Errors",
+                "Fax-From-Email"
             ],
             "type": "object"
         },
@@ -16878,7 +16758,7 @@
                 "Text": {
                     "type": "string"
                 },
-                "Time-Stamp": {
+                "Timestamp": {
                     "type": "string"
                 },
                 "To": {
@@ -16888,7 +16768,7 @@
             "required": [
                 "Account-ID",
                 "Audit-Log",
-                "Time-Stamp"
+                "Timestamp"
             ],
             "type": "object"
         },
@@ -25865,10 +25745,61 @@
                     },
                     "type": "array"
                 },
+                "compress_response_body": {
+                    "default": true,
+                    "description": "blackhole compress_response_body",
+                    "type": "boolean"
+                },
+                "ip": {
+                    "description": "blackhole ip",
+                    "type": "string"
+                },
                 "port": {
                     "default": 5555,
                     "description": "blackhole port",
                     "type": "integer"
+                },
+                "request_timeout_ms": {
+                    "default": 10000,
+                    "description": "blackhole request_timeout_ms",
+                    "type": "integer"
+                },
+                "ssl_ca_cert": {
+                    "description": "blackhole ssl_ca_cert",
+                    "type": "string"
+                },
+                "ssl_cert": {
+                    "description": "blackhole ssl_cert",
+                    "type": "string"
+                },
+                "ssl_key": {
+                    "description": "blackhole ssl_key",
+                    "type": "string"
+                },
+                "ssl_password": {
+                    "default": "",
+                    "description": "blackhole ssl_password",
+                    "type": "string"
+                },
+                "ssl_port": {
+                    "default": 5556,
+                    "description": "blackhole ssl_port",
+                    "type": "integer"
+                },
+                "ssl_workers": {
+                    "default": 100,
+                    "description": "blackhole ssl_workers",
+                    "type": "integer"
+                },
+                "use_plaintext": {
+                    "default": true,
+                    "description": "blackhole use_plaintext",
+                    "type": "boolean"
+                },
+                "use_ssl": {
+                    "default": false,
+                    "description": "blackhole use_ssl",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -39471,6 +39402,24 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/RECORDING_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
             "get": {
                 "parameters": [
                     {
@@ -40645,43 +40594,6 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/signup": {
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/signup/{THING}": {
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/THING"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

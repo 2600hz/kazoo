@@ -16,7 +16,7 @@
 
 -type cb_return() :: {'ok', bh_context:context()}.
 
--spec open(pid(), binary(), any()) -> cb_return().
+-spec open(pid(), binary(), inet:ip_address()) -> cb_return().
 open(Pid, Id, Ipaddr) ->
     IPBin = kz_term:to_binary(inet_parse:ntoa(Ipaddr)),
     lager:debug("opening socket (~p) ~p, peer: ~p", [Pid, Id, IPBin]),

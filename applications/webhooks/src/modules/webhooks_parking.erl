@@ -15,7 +15,8 @@
 -include("webhooks.hrl").
 
 -define(ID, kz_term:to_binary(?MODULE)).
--define(NAME, <<"parking">>).
+-define(HOOK_NAME, <<"parking">>).
+-define(NAME, <<"Call Parking">>).
 -define(DESC, <<"Events when calls get parked/retrieved">>).
 -define(METADATA
        ,kz_json:from_list([{<<"_id">>, ?ID}
@@ -71,7 +72,7 @@ handle(JObj, _Props) ->
 -spec maybe_send_event(api_binary(), kz_json:object()) -> 'ok'.
 maybe_send_event('undefined', _JObj) -> 'ok';
 maybe_send_event(AccountId, JObj) ->
-    case webhooks_util:find_webhooks(?NAME, AccountId) of
+    case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
         [] -> lager:debug("no hooks to handle for ~s", [AccountId]);
         Hooks -> webhooks_util:fire_hooks(JObj, Hooks)
     end.
@@ -85,8 +86,7 @@ maybe_send_event(AccountId, JObj) ->
 format(JObj) ->
     AccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     JObj1 = kz_json:set_value(<<"Account-ID">>, AccountId, JObj),
-    RemoveKeys = [
-                  <<"Node">>
+    RemoveKeys = [<<"Node">>
                  ,<<"Msg-ID">>
                  ,<<"App-Version">>
                  ,<<"App-Name">>

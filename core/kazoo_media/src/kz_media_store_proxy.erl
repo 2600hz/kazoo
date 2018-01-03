@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_media_store_proxy).
 
--export([init/3
+-export([init/2
         ,terminate/3
         ,handle/2
         ]).
@@ -24,17 +24,17 @@
 
 -type body() :: {'ok', binary(), cowboy_req:req()} | {'more', binary(), cowboy_req:req()}.
 -type validate_request_ret() :: {'ok', media_store_path()} | {'error', integer()}.
--type handler_return() :: {'ok', cowboy_req:req(), state()} | {'shutdown',  cowboy_req:req(), 'ok'}.
+-type handler_return() :: {'ok', cowboy_req:req(), 'ok' | state()}.
 
--spec init({any(), any()}, cowboy_req:req(), kz_proplist()) -> handler_return().
-init({_Transport, _Proto}, Req, _Opts) ->
+-spec init(cowboy_req:req(), kz_proplist()) -> handler_return().
+init(Req, _Opts) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
     case authenticate(Req) of
         'true' ->
-            validate_request(cowboy_req:path_info(Req));
+            validate_request(cowboy_req:path_info(Req), Req);
         'false' ->
             lager:debug("request did not provide valid credentials"),
-            {'shutdown', unauthorized(Req), 'ok'}
+            {'ok', unauthorized(Req), 'ok'}
     end.
 
 -spec authenticate(cowboy_req:req()) -> boolean().
@@ -60,13 +60,13 @@ maybe_basic_authentication(Username, Password) ->
     AuthPassword = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
     not kz_term:is_empty(AuthUsername)
         andalso not kz_term:is_empty(AuthPassword)
-        andalso Username == AuthUsername
-        andalso Password == AuthPassword.
+        andalso Username =:= AuthUsername
+        andalso Password =:= AuthPassword.
 
 -spec maybe_acl_authentication(cowboy_req:req()) -> boolean().
 maybe_acl_authentication(Req) ->
     ACLs = kapps_config:get(?CONFIG_CAT, <<"proxy_store_acls">>, [<<"127.0.0.0/24">>]),
-    {{IpTuple, _PeerPort}, _Req1} = cowboy_req:peer(Req),
+    {IpTuple, _PeerPort} = cowboy_req:peer(Req),
     Ip = kz_network_utils:iptuple_to_binary(IpTuple),
     maybe_acl_authentication(ACLs, Ip).
 
@@ -84,13 +84,13 @@ maybe_acl_authentication([ACL|ACLs], Ip) ->
     end.
 
 -spec credentials(cowboy_req:req()) -> {api_binary(), api_binary(), cowboy_req:req()}.
-credentials(Req0) ->
-    case cowboy_req:header(<<"authorization">>, Req0) of
-        {'undefined', Req1} ->
-            {'undefined', 'undefined', Req1};
-        {Authorization, Req1} ->
+credentials(Req) ->
+    case cowboy_req:header(<<"authorization">>, Req) of
+        'undefined' ->
+            {'undefined', 'undefined', Req};
+        Authorization ->
             {Username, Password} = credentials_from_header(Authorization),
-            {Username, Password, Req1}
+            {Username, Password, Req}
     end.
 
 -spec credentials_from_header(ne_binary()) -> {api_binary(), api_binary()}.
@@ -116,8 +116,7 @@ decoded_credentials(EncodedCredentials) ->
 unauthorized(Req0) ->
     Req1 = cowboy_req:set_resp_header(<<"Www-Authenticate">>, <<"Basic realm=\"Kazoo Media Storage Proxy\"">>, Req0),
     Req2 = cowboy_req:set_resp_body(unauthorized_body(), Req1),
-    {'ok', Req3} = cowboy_req:reply(401, Req2),
-    Req3.
+    cowboy_req:reply(401, Req2).
 
 -spec unauthorized_body() -> ne_binary().
 unauthorized_body() ->
@@ -135,10 +134,7 @@ unauthorized_body() ->
 
 -spec handle(cowboy_req:req(), state()) -> handler_return().
 handle(Req, State) ->
-    case cowboy_req:body(Req) of
-        {'error', Reason} -> handle_error(Reason, Req, State);
-        Body -> handle_body(Body, State)
-    end.
+    handle_body(cowboy_req:read_body(Req), State).
 
 -spec handle_body(body(), state()) -> handler_return().
 handle_body({'more', Contents, Req}, #state{file=Device}=State) ->
@@ -146,6 +142,8 @@ handle_body({'more', Contents, Req}, #state{file=Device}=State) ->
         'ok' -> handle(Req, State);
         {'error', Reason} -> failure(Reason, Req)
     end;
+handle_body({'ok', <<>>, Req}, #state{file=Device}=State) ->
+    handle_close(Req, State, file:close(Device));
 handle_body({'ok', Contents, Req}, #state{file=Device}=State) ->
     case file:write(Device, Contents) of
         'ok' -> handle_close(Req, State, file:close(Device));
@@ -157,23 +155,18 @@ handle_close(Req, State, 'ok') ->
 handle_close(Req, _State, {'error', Reason}) ->
     failure(Reason, Req).
 
-handle_error(Reason, Req, #state{file=Device}=State) ->
-    _ = file:close(Device),
-    lager:debug("received error ~p requesting for body", [Reason]),
-    reply_error(500, State, Req).
-
--spec validate_request({list(), cowboy_req:req()}) -> handler_return().
-validate_request({[EncodedUrl, _Filename], Req}) ->
+-spec validate_request(list(), cowboy_req:req()) -> handler_return().
+validate_request([EncodedUrl, _Filename], Req) ->
     case decode_url(EncodedUrl) of
         'error' -> reply_error(404, Req);
-        Path -> validate_request(Path, Req)
+        Path -> validate_path_request(Path, Req)
     end;
-validate_request({_Else , Req}) ->
+validate_request(_Else, Req) ->
     lager:debug("unexpected path: ~p", [_Else]),
     reply_error(404, Req).
 
--spec validate_request(media_store_path(), cowboy_req:req()) -> handler_return().
-validate_request(Path, Req) ->
+-spec validate_path_request(media_store_path(), cowboy_req:req()) -> handler_return().
+validate_path_request(Path, Req) ->
     case is_appropriate_content_type(Path, Req) of
         {'ok', NewPath} -> setup_context(NewPath, Req);
         {'error', Code} -> reply_error(Code, Req)
@@ -207,18 +200,18 @@ decode_url(Url) ->
     end.
 
 -spec is_appropriate_content_type(media_store_path(), cowboy_req:req()) -> validate_request_ret().
-is_appropriate_content_type(Path, Req0) ->
-    case cowboy_req:header(<<"content-type">>, Req0) of
-        {<<"audio/", _/binary>> = CT, _Req1}->
+is_appropriate_content_type(Path, Req) ->
+    case cowboy_req:header(<<"content-type">>, Req) of
+        <<"audio/", _/binary>> = CT ->
             lager:debug("found content-type via header: ~s", [CT]),
             ensure_extension_present(Path, CT);
-        {<<"video/", _/binary>> = CT, _Req1}->
+        <<"video/", _/binary>> = CT ->
             lager:debug("found content-type via header: ~s", [CT]),
             ensure_extension_present(Path, CT);
-        {<<"image/", _/binary>> = CT, _Req1}->
+        <<"image/", _/binary>> = CT ->
             lager:debug("found content-type via header: ~s", [CT]),
             ensure_extension_present(Path, CT);
-        {_CT, _Req1} ->
+        _CT ->
             lager:debug("inappropriate content-type via headers: ~s", [_CT]),
             is_appropriate_extension(Path)
     end.
@@ -271,8 +264,6 @@ store(#state{filename=Filename, media=Path}=State, Req) ->
             reply_error(500, State, Req)
     end.
 
-
-
 -spec store(media_store_path(), ne_binary(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
 store(#media_store_path{db=Db
                        ,id=Id
@@ -296,31 +287,31 @@ store(#media_store_path{db=Db
 success(JObj, Props, Req0) ->
     Body = io_lib:format("~s~n", [kz_json:encode(kz_json:set_value(<<"ok">>, 'true', JObj))]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),
-    Headers = [{kz_term:to_binary(H), kz_term:to_binary(V)} || {H, V} <- props:get_value('headers', Props, [])],
-    {'ok', Req2} = cowboy_req:reply(200, Headers, Req1),
-    Req2.
+    Headers = maps:from_list([{kz_term:to_binary(H), kz_term:to_binary(V)}
+                              || {H, V} <- props:get_value('headers', Props, [])
+                             ]),
+    cowboy_req:reply(200, Headers, Req1).
 
 -spec failure(any(), cowboy_req:req()) -> cowboy_req:req().
 failure(Reason, Req0) ->
     Body = io_lib:format("~p~n", [Reason]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),
-    {'ok', Req2} = cowboy_req:reply(500, Req1),
-    Req2.
+    cowboy_req:reply(500, Req1).
 
--spec reply_error(integer(), cowboy_req:req()) -> {'shutdown', cowboy_req:req(), 'ok'}.
+-spec reply_error(integer(), cowboy_req:req()) -> {'ok', cowboy_req:req(), 'ok'}.
 reply_error(Code, Req0) ->
-    {'ok', Req1} = cowboy_req:reply(Code, Req0),
-    {'shutdown', Req1, 'ok'}.
+    Req1 = cowboy_req:reply(Code, Req0),
+    {'ok', Req1, 'ok'}.
 
--spec reply_error(integer(), state(), cowboy_req:req()) -> {'shutdown', cowboy_req:req(), state()}.
+-spec reply_error(integer(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
 reply_error(Code, State, Req0) ->
-    {'ok', Req1} = cowboy_req:reply(Code, Req0),
-    {'shutdown', Req1, State}.
+    Req1 = cowboy_req:reply(Code, Req0),
+    {'ok', Req1, State}.
 
--spec terminate(any(), cowboy_req:req(), any()) -> cowboy_req:req().
-terminate(_Reason, Req, 'ok') ->
-    Req;
-terminate(_Reason, Req, #state{file=Device, filename=Filename}) ->
+-spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
+terminate(_Reason, _Req, 'ok') ->
+    'ok';
+terminate(_Reason, _Req, #state{file=Device, filename=Filename}) ->
     catch(file:close(Device)),
     catch(file:delete(Filename)),
-    Req.
+    'ok'.

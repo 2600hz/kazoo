@@ -144,6 +144,7 @@
 -define(NOT(Operand), ?UNARY_OP('not', Operand)).
 
 -define(APPEND(First, Second), ?BINARY_OP('++', First, Second)).
+-define(SUBTRACT(First, Second), ?BINARY_OP('--', First, Second)).
 -define(ORELSE(First, Second), ?BINARY_OP('orelse', First, Second)).
 -define(ANDALSO(First, Second), ?BINARY_OP('andalso', First, Second)).
 

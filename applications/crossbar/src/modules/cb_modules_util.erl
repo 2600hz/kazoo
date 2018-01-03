@@ -428,11 +428,15 @@ attachment_name(Filename, CT) ->
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 
--spec parse_media_type(ne_binary()) ->
-                              {'error', 'badarg'} |
-                              media_values().
+-spec parse_media_type(ne_binary()) -> media_values() |
+                                       {'error', 'badarg'}.
 parse_media_type(MediaType) ->
-    cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2).
+    try cow_http_hd:parse_accept(MediaType)
+    catch
+        _E:_R ->
+            lager:debug("failed to parse ~p: ~s: ~p", [MediaType, _E, _R]),
+            {'error', 'badarg'}
+    end.
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_ne_binary(), api_ne_binary()) -> ne_binary().

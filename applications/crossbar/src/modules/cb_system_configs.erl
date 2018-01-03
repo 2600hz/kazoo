@@ -57,7 +57,7 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--type authorize_return() :: boolean() | {'halt', cb_context:context()}.
+-type authorize_return() :: boolean() | {'stop', cb_context:context()}.
 
 -spec authorize(cb_context:context()) -> authorize_return().
 -spec authorize(cb_context:context(), path_token()) -> authorize_return().
@@ -65,9 +65,9 @@ init() ->
 authorize(Context) ->
     case cb_context:is_superduper_admin(Context)
         andalso cb_context:req_nouns(Context) of
-        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)};
+        'false' -> {'stop', cb_context:add_system_error('forbidden', Context)};
         [{<<"system_configs">>, _}] -> 'true';
-        _ -> {'halt', cb_context:add_system_error('bad_identifier', Context)}
+        _ -> {'stop', cb_context:add_system_error('bad_identifier', Context)}
     end.
 authorize(Context, _Id) -> authorize(Context).
 authorize(Context, _Id, _Node) -> authorize(Context).

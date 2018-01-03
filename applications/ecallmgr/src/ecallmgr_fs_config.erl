@@ -119,6 +119,16 @@ handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID
     lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
     _ = kz_util:spawn(fun handle_config_req/4, [Node, ID, Conf, Data]),
     {'noreply', State};
+handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, [UUID | Data]}, #state{node=Node}=State)
+  when is_binary(UUID) ->
+    lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
+    _ = kz_util:spawn(fun handle_config_req/4, [Node, ID, Conf, Data]),
+    {'noreply', State};
+handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, Data}, #state{node=Node}=State)
+  when is_list(Data) ->
+    lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
+    _ = kz_util:spawn(fun handle_config_req/4, [Node, ID, Conf, Data]),
+    {'noreply', State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),

@@ -22,6 +22,7 @@
         ,resource_exists/0, resource_exists/1
         ,content_types_provided/2
         ,validate/1, validate/2
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -29,7 +30,6 @@
 -define(CB_LIST, <<"recordings/crossbar_listing">>).
 -define(CB_LIST_BY_OWNERID, <<"recordings/listing_by_user">>).
 
--define(INLINE, <<"inline">>).
 -define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"mpeg">>}
                           ,{<<"audio">>, <<"mp3">>}
                           ]).
@@ -46,10 +46,13 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.recordings">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.recordings">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.recordings">>, ?MODULE, 'content_types_provided'),
-    crossbar_bindings:bind(<<"*.validate.recordings">>, ?MODULE, 'validate').
+    Bindings = [{<<"*.allowed_methods.recordings">>, 'allowed_methods'}
+               ,{<<"*.resource_exists.recordings">>, 'resource_exists'}
+               ,{<<"*.content_types_provided.recordings">>, 'content_types_provided'}
+               ,{<<"*.validate.recordings">>, 'validate'}
+               ,{<<"*.execute.delete.recordings">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -62,7 +65,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 
 allowed_methods() -> [?HTTP_GET].
-allowed_methods(_RecordingId) -> [?HTTP_GET].
+allowed_methods(_RecordingId) -> [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -113,18 +116,26 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, RecordingId) ->
+    validate_recording(Context, RecordingId, cb_context:req_verb(Context)).
+
+validate_recording(Context, RecordingId, ?HTTP_GET) ->
     case action_lookup(Context) of
         'read' ->
             load_recording_doc(Context, RecordingId);
         'download' ->
             load_recording_binary(Context, RecordingId)
-    end.
+    end;
+validate_recording(Context, RecordingId, ?HTTP_DELETE) ->
+    load_recording_doc(Context, RecordingId).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, _RecordingId) ->
+    crossbar_doc:delete(Context).
 
 -spec recording_summary(cb_context:context()) -> cb_context:context().
 recording_summary(Context) ->
@@ -192,8 +203,8 @@ do_load_recording_binary_attachment(Context, DocId) ->
 
 -spec set_resp_headers(cb_context:context(), ne_binary()) -> cb_context:context().
 set_resp_headers(Context, AName) ->
-    Headers = [{<<"Content-Disposition">>, get_disposition(AName, Context)}],
-    cb_context:set_resp_headers(Context, Headers).
+    Headers = #{<<"content-disposition">> => get_disposition(AName, Context)},
+    cb_context:add_resp_headers(Context, Headers).
 
 -spec get_disposition(ne_binary(), cb_context:context()) -> ne_binary().
 get_disposition(MediaName, Context) ->

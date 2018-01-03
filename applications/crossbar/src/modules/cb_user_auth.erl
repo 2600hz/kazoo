@@ -89,11 +89,11 @@ resource_exists(_AuthToken) -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> boolean() | {'halt', cb_context:context()}.
+-spec authorize(cb_context:context()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
--spec authorize_nouns(cb_context:context(), req_nouns(), req_verb()) -> boolean() | {'halt', cb_context:context()}.
+-spec authorize_nouns(cb_context:context(), req_nouns(), req_verb()) -> boolean() | {'stop', cb_context:context()}.
 authorize_nouns(Context
                ,[{<<"user_auth">>, []}
                 ,{<<"users">>, [UserId]}
@@ -110,14 +110,14 @@ authorize_nouns(Context
             lager:error("non-admin user ~s in non super-duper admin account tries to impersonate user ~s in account ~s"
                        ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context), UserId, AccountId]
                        ),
-            {'halt', cb_context:add_system_error('forbidden', Context)}
+            {'stop', cb_context:add_system_error('forbidden', Context)}
     end;
 authorize_nouns(Context, _, ?HTTP_PUT) ->
     case cb_context:req_value(Context, <<"action">>) of
         %% do not allow if no user/account is set
         ?SWITCH_USER ->
             lager:error("not authorizing user impersonation when invalid user or account are provided"),
-            {'halt', cb_context:add_system_error('forbidden', Context)};
+            {'stop', cb_context:add_system_error('forbidden', Context)};
         _ -> 'true'
     end;
 authorize_nouns(_, [{<<"user_auth">>, _}], _) -> 'true';

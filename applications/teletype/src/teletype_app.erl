@@ -8,7 +8,7 @@
 -module(teletype_app).
 -behaviour(application).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include("teletype.hrl").
 
 -export([start/2, stop/1]).
 
@@ -21,6 +21,7 @@
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
     _ = declare_exchanges(),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
     teletype_sup:start_link().
 
 %%--------------------------------------------------------------------

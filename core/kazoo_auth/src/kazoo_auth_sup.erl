@@ -29,7 +29,6 @@
                   ,?CACHE_ARGS(?PROFILE_CACHE, ?CACHE_PROPS)
                   ,?WORKER('kz_auth_rsa')
                   ,?WORKER('kz_auth_init')
-                  ,?WORKER('kazoo_auth_maint_listener')
                   ]).
 
 %% ===================================================================

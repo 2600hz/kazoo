@@ -20,6 +20,7 @@
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
+    _ = stepswitch_maintenance:refresh(),
     stepswitch_sup:start_link().
 
 %%--------------------------------------------------------------------

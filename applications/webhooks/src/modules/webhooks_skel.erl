@@ -14,7 +14,8 @@
 -include("webhooks.hrl").
 
 -define(ID, kz_term:to_binary(?MODULE)).
--define(NAME, <<"skel">>).
+-define(HOOK_NAME, <<"skel">>).
+-define(NAME, <<"Skel">>).
 -define(DESC, <<"Example webhook module">>).
 -define(METADATA
        ,kz_json:from_list([{<<"_id">>, ?ID}
@@ -27,10 +28,7 @@
 init() ->
     webhooks_util:init_metadata(?ID, ?METADATA).
 
--spec bindings_and_responders() ->
-                                     {gen_listener:bindings()
-                                     ,gen_listener:responders()
-                                     }.
+-spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
     {[{'self', []}]
     ,[{{?MODULE, 'handle_event'}

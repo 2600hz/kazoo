@@ -434,7 +434,7 @@ register_cloud_printer(Context, FaxboxId) ->
     Body = register_body(ResellerId, FaxboxId, Boundary),
     ContentType = kz_term:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
     Headers = [?GPC_PROXY_HEADER
-              ,{"Content-Type",ContentType}
+              ,{"content-type", ContentType}
               ],
     Url = kz_term:to_list(?GPC_URL_REGISTER),
     case kz_http:post(Url, Headers, Body) of
@@ -512,7 +512,7 @@ format_multipart_formdata(Boundary, Fields, Files) ->
 build_field_parts(Boundary, Fields, Acc0) ->
     lists:foldr(fun({FieldName, FieldContent}, Acc) ->
                         [<<"--", Boundary/binary>>
-                        ,<<"Content-Disposition: form-data; name=\"",FieldName/binary,"\"">>
+                        ,<<"content-disposition: form-data; name=\"",FieldName/binary,"\"">>
                         ,<<>>
                         ,FieldContent
                          | Acc
@@ -526,8 +526,8 @@ build_field_parts(Boundary, Fields, Acc0) ->
 build_file_parts(Boundary, Files, Acc0) ->
     lists:foldr(fun({FieldName, FileName, FileContent, FileContentType}, Acc) ->
                         [<<"--", Boundary/binary>>
-                        ,<<"Content-Disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>
-                        ,<<"Content-Type: ", FileContentType/binary>>
+                        ,<<"content-disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>
+                        ,<<"content-type: ", FileContentType/binary>>
                         ,<<>>
                         ,FileContent
                          | Acc

@@ -751,14 +751,14 @@ filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
 -spec update_response_with_attachment(cb_context:context(), ne_binary(), kz_json:object()) ->
                                              cb_context:context().
 update_response_with_attachment(Context, AttachmentId, JObj) ->
-    cb_context:set_resp_etag(
-      cb_context:add_resp_headers(
-        crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"whitelabel">>), Context)
-                                 ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-                                  ,{<<"Content-Type">>, kz_json:get_value([AttachmentId, <<"content_type">>], JObj)}
-                                  ]
-       ), 'undefined'
-     ).
+    LoadedContext = crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"whitelabel">>), Context),
+    WithHeaders = cb_context:add_resp_headers(LoadedContext
+
+                                             ,#{<<"content-disposition">> => <<"attachment; filename=", AttachmentId/binary>>
+                                               ,<<"content-type">> => kz_json:get_value([AttachmentId, <<"content_type">>], JObj)
+                                               }
+                                             ),
+    cb_context:set_resp_etag(WithHeaders, 'undefined').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -777,15 +777,14 @@ validate_unique_domain(Context, WhitelabelId) ->
         'true' -> check_whitelabel_schema(Context, WhitelabelId);
         'false' ->
             Context1 =
-                cb_context:add_validation_error(
-                  <<"domain">>
+                cb_context:add_validation_error(<<"domain">>
                                                ,<<"unique">>
                                                ,kz_json:from_list(
                                                   [{<<"message">>, <<"White label domain is already in use">>}
                                                   ,{<<"cause">>, Domain}
                                                   ])
                                                ,Context
-                 ),
+                                               ),
             check_whitelabel_schema(Context1, WhitelabelId)
     end.
 

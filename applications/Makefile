@@ -1,6 +1,6 @@
 ROOT = ..
 
-MAKEDIRS = */Makefile
+MAKEDIRS = $(sort $(wildcard */Makefile))
 
 .PHONY: all compile compile-test clean clean-test eunit test $(MAKEDIRS)
 
@@ -25,4 +25,4 @@ test: ACTION = test
 test: $(MAKEDIRS)
 
 $(MAKEDIRS):
-	$(MAKE) -C $(@D) $(ACTION)
+	@$(MAKE) -C $(@D) $(ACTION)

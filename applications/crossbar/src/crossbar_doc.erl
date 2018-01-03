@@ -1040,9 +1040,10 @@ handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
-    RespHeaders = [{<<"Location">>, kz_doc:id(JObj)}
-                   || JObj <- JObjs
-                  ] ++ cb_context:resp_headers(Context),
+    RespHeaders = lists:foldl(fun(JObj, RHs) -> maps:put(<<"location">>, kz_doc:id(JObj), RHs) end
+                             ,cb_context:resp_headers(Context)
+                             ,JObjs
+                             ),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObjs}
                        ,{fun cb_context:set_resp_status/2, 'success'}
@@ -1063,9 +1064,7 @@ handle_json_success([_|_]=JObjs, Context, _Verb) ->
                         | version_specific_success(JObjs, Context)
                        ]);
 handle_json_success(JObj, Context, ?HTTP_PUT) ->
-    RespHeaders = [{<<"Location">>, kz_doc:id(JObj)}
-                   | cb_context:resp_headers(Context)
-                  ],
+    RespHeaders = maps:put(<<"location">>, kz_doc:id(JObj), cb_context:resp_headers(Context)),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
                        ,{fun cb_context:set_resp_status/2, 'success'}

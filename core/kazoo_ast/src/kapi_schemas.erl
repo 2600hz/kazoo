@@ -74,7 +74,7 @@ existing_schema(Name) ->
 process() ->
     io:format("process kapi modules: "),
     Options = [{'expression', fun expression_to_schema/2}
-              ,{'function', fun set_function/2}
+              ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
               ,{'accumulator', #acc{}}
               ,{'application', fun add_app_config/2}
@@ -87,7 +87,7 @@ process() ->
 process_app(App) ->
     io:format("process kapi modules: "),
     Options = [{'expression', fun expression_to_schema/2}
-              ,{'function', fun set_function/2}
+              ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
               ,{'accumulator', #acc{}}
               ,{'application', fun add_app_config/2}
@@ -100,7 +100,7 @@ process_app(App) ->
 process_module(KapiModule) ->
     io:format("process kapi module ~s: ", [KapiModule]),
     Options = [{'expression', fun expression_to_schema/2}
-              ,{'function', fun set_function/2}
+              ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
               ,{'accumulator', #acc{}}
               ,{'application', fun add_app_config/2}
@@ -118,6 +118,8 @@ process_module(KapiModule) ->
 print_dot(<<"kapi_fs">>, #acc{}=Acc) ->
     {'skip', Acc};
 print_dot(<<"kapi_schemas">>, #acc{}=Acc) ->
+    {'skip', Acc};
+print_dot(<<"kapi_definition">>, #acc{}=Acc) ->
     {'skip', Acc};
 print_dot(<<"kapi_", Module/binary>>, #acc{}=Acc) ->
     io:format("."),
@@ -154,8 +156,20 @@ add_schemas_to_bucket(_App, #acc{schema_dir = PrivDir
            ,project_schemas = kz_json:set_value(PrivDir, UpdatedSchema, ProjectSchemas)
            }.
 
--spec set_function(ne_binary() | function(), acc()) -> acc().
-set_function(<<_/binary>> = Function, #acc{}=Acc) ->
+-spec set_function(ne_binary() | function(), integer(), acc()) -> acc().
+set_function(<<_/binary>> = Function, 0, #acc{kapi_name = <<"notifications">>}=Acc) ->
+    case kz_binary:reverse(Function) of
+        <<"noitinifed_", Nuf/binary>> ->
+            ?DEBUG("api definition for ~s~n", [Function]),
+            Acc#acc{api_name=kz_binary:reverse(Nuf)};
+        _ ->
+            ?DEBUG("ignoring non api definition function ~p/0~n", [Function]),
+            {'skip', Acc}
+    end;
+set_function(<<_/binary>> = _Function, _Arity, #acc{kapi_name = <<"notifications">>}=Acc) ->
+    ?DEBUG("ignoring non api definition function ~p/~p~n", [_Function, _Arity]),
+    {'skip', Acc};
+set_function(<<_/binary>> = Function, _Arity, #acc{}=Acc) ->
     case kz_binary:reverse(Function) of
         <<"v_", Nuf/binary>> ->
             ?DEBUG("validator ~s~n", [Function]),
@@ -164,9 +178,13 @@ set_function(<<_/binary>> = Function, #acc{}=Acc) ->
             ?DEBUG("builder ~s~n", [Function]),
             Acc#acc{api_name=Function}
     end;
-set_function(Function, Acc) ->
-    set_function(kz_term:to_binary(Function), Acc).
+set_function(Function, Arity, Acc) ->
+    set_function(kz_term:to_binary(Function), Arity, Acc).
 
+expression_to_schema(?RECORD('kapi_definition', Fields), Acc) ->
+    kapi_definition_to_schema(Fields, Acc);
+expression_to_schema(_, #acc{kapi_name = <<"notifications">>}=Acc) ->
+    Acc;
 expression_to_schema(?MOD_FUN_ARGS('kz_api', 'build_message', [_Prop, Required, Optional]), Acc) ->
     properties_to_schema(kz_ast_util:ast_to_list_of_binaries(Required)
                         ,optional_validators(Optional)
@@ -182,6 +200,20 @@ expression_to_schema(?MOD_FUN_ARGS('kz_api', 'validate', [_Prop, _Required, Valu
 expression_to_schema(?MOD_FUN_ARGS('kz_api', 'validate_message', [_Prop, _Required, Values, Types]), Acc) ->
     validators_to_schema(ast_to_proplist(Values), ast_to_proplist(Types), Acc);
 expression_to_schema(_Expr, Acc) ->
+    Acc.
+
+kapi_definition_to_schema(Fields, Acc) ->
+    lists:foldl(fun kapi_definition_field_to_schema/2, Acc, Fields).
+
+kapi_definition_field_to_schema(?RECORD_FIELD_BIND('required_headers', Required), Acc) ->
+    properties_to_schema(kz_ast_util:ast_to_list_of_binaries(Required), [], Acc);
+kapi_definition_field_to_schema(?RECORD_FIELD_BIND('optional_headers', Optional), Acc) ->
+    properties_to_schema([], optional_validators(Optional), Acc);
+kapi_definition_field_to_schema(?RECORD_FIELD_BIND('values', Values), Acc) ->
+    validators_to_schema(ast_to_proplist(Values), [], Acc);
+kapi_definition_field_to_schema(?RECORD_FIELD_BIND('types', Types), Acc) ->
+    validators_to_schema([], ast_to_proplist(Types), Acc);
+kapi_definition_field_to_schema(_, Acc) ->
     Acc.
 
 optional_validators(?EMPTY_LIST) -> [];
@@ -259,6 +291,8 @@ guess_field_default(<<"Notifications">>) ->
     kz_json:from_list([{<<"type">>, <<"object">>}]);
 guess_field_default(<<"Reason">>) ->
     kz_json:from_list([{<<"type">>, <<"string">>}]);
+guess_field_default(<<"Preview">>) ->
+    kz_json:from_list([{<<"type">>, <<"boolean">>}]);
 guess_field_default(<<"Endpoints">>) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>, kz_json:from_list([{<<"$ref">>, <<"kapi.dialplan.bridge_endpoint">>}

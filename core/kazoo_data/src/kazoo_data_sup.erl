@@ -20,7 +20,6 @@
 -define(CHILDREN, [?WORKER('kazoo_data_init')
                   ,?SUPER('kazoo_data_link_sup')
                   ,?WORKER('kz_data_tracing')
-                  ,?WORKER('kz_data_maint_listener')
                   ]).
 
 %% ===================================================================

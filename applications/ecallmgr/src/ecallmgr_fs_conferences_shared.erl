@@ -176,7 +176,7 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj) ->
 is_loopback(Endpoint) ->
     <<"loopback">> =:= kz_json:get_ne_binary_value(<<"Invite-Format">>, Endpoint).
 
--spec maybe_exec_dial(atom(), ne_binary(), kz_json:object(), kz_json:objects(), kz_json:objects()) -> 'ok'.
+-spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
     _ = (catch gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(ConferenceNode, <<"conference::maintenance">>)})),
@@ -186,9 +186,9 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
 
     handle_responses(ConferenceNode, JObj, EPResps ++ LBResps).
 
--type exec_response() :: {ne_binary(), kz_proplist()}.
+-type exec_response() :: {ne_binary(), {'ok' | 'error', kz_proplist()}}.
 -type exec_responses() :: [exec_response()].
--spec exec_endpoints(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
+-spec exec_endpoints(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
                             exec_responses().
 exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no endpoints to dial out to"),
@@ -201,7 +201,7 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
                    ),
     Resps.
 
--type exec_acc() :: {atom(), ne_binary(), kz_json:object(), exec_responses()}.
+-type exec_acc() :: {atom(), ne_binary(), kapi_conference:doc(), exec_responses()}.
 
 update_endpoint(Endpoint, EndpointCallId) ->
     Updates = [{fun kz_json:insert_value/3, <<"Outbound-Call-ID">>, EndpointCallId}
@@ -242,7 +242,7 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
             {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, Msg)} | Resps]}
     end.
 
--spec exec_loopbacks(atom(), ne_binary(), kz_json:object(), kz_json:objects()) ->
+-spec exec_loopbacks(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
                             exec_responses().
 exec_loopbacks(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no loopbacks to dial out to"),
@@ -271,21 +271,25 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                  ),
     exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, kz_json:delete_key(<<"Outbound-Call-ID">>, JObj), Resps}).
 
--spec success_resp(ne_binary()) -> kz_proplist().
+-spec success_resp(ne_binary()) -> {'ok', kz_proplist()}.
 success_resp(EndpointId) ->
-    [{<<"Message">>, <<"dialing endpoints">>}
-    ,{<<"Status">>, <<"success">>}
-    ,{<<"Endpoint-ID">>, EndpointId}
-    ].
+    {'ok'
+    ,[{<<"Message">>, <<"dialing endpoints">>}
+     ,{<<"Status">>, <<"success">>}
+     ,{<<"Endpoint-ID">>, EndpointId}
+     ]
+    }.
 
--spec error_resp(ne_binary(), ne_binary()) -> kz_proplist().
+-spec error_resp(ne_binary(), ne_binary()) -> {'error', kz_proplist()}.
 error_resp(EndpointId, Error) ->
-    [{<<"Status">>, <<"error">>}
-    ,{<<"Message">>, Error}
-    ,{<<"Endpoint-ID">>, EndpointId}
-    ].
+    {'error'
+    ,[{<<"Status">>, <<"error">>}
+     ,{<<"Message">>, Error}
+     ,{<<"Endpoint-ID">>, EndpointId}
+     ]
+    }.
 
--spec handle_responses(atom(), kz_json:object(), exec_responses()) -> 'ok'.
+-spec handle_responses(atom(), kapi_conference:doc(), exec_responses()) -> 'ok'.
 handle_responses(ConferenceNode, JObj, Responses) ->
     BaseResponses = [kz_json:from_list(handle_response(ConferenceNode, JObj, Response))
                      || Response <- Responses
@@ -293,55 +297,66 @@ handle_responses(ConferenceNode, JObj, Responses) ->
 
     publish_resp(JObj, BaseResponses).
 
--spec handle_response(atom(), kz_json:object(), exec_response()) -> kz_proplist().
-handle_response(ConferenceNode, JObj, {LoopbackCallId, Resp}) ->
-    BuiltResp =
-        case wait_for_bowout(LoopbackCallId
-                            ,'undefined'
-                            ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
-                            )
-        of
-            'ok' -> Resp;
-            {'ok', CallId, DialResp, EventProps} ->
-                _ = (catch add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId), EventProps)),
-                props:set_values([{<<"Message">>, DialResp}
-                                 ,{<<"Call-ID">>, CallId}
-                                 ]
-                                ,Resp
-                                );
-            {'error', 'timeout'} ->
-                props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
-            {'error', HangupCause, E} ->
-                props:set_values([{<<"Status">>, <<"error">>}
-                                 ,{<<"Hangup-Cause">>, HangupCause}
-                                 ,{<<"Message">>, E}
-                                 ,{<<"Call-ID">>, 'null'}
-                                 ]
-                                ,Resp
-                                )
-        end,
+-spec handle_response(atom(), kapi_conference:doc(), exec_response()) -> kz_proplist().
+handle_response(_ConferenceNode, _JObj, {_CallId, {'error', Resp}}) ->
+    Resp;
+handle_response(ConferenceNode, JObj, {LoopbackCallId, {'ok', Resp}}) ->
+    BuiltResp = handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp),
     props:insert_value(<<"Call-ID">>, LoopbackCallId, BuiltResp).
 
+-spec handle_call_startup(atom(), kapi_conference:doc(), ne_binary(), kz_proplist()) ->
+                                 kz_proplist().
+handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
+    case wait_for_bowout(LoopbackCallId
+                        ,'undefined'
+                        ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
+                        )
+    of
+        {'ok', CallId, DialResp, ChannelProps} ->
+            lager:debug("finished waiting for ~s, now ~s", [LoopbackCallId, CallId]),
+            add_participant(JObj, CallId, start_call_handlers(ConferenceNode, JObj, CallId), ChannelProps),
+            props:set_values([{<<"Message">>, DialResp}
+                             ,{<<"Call-ID">>, CallId}
+                             ]
+                            ,Resp
+                            );
+        {'error', 'timeout'} ->
+            props:insert_value(<<"Message">>, <<"dialing timed out before a call could be established">>, Resp);
+        {'error', HangupCause, E} ->
+            props:set_values([{<<"Status">>, <<"error">>}
+                             ,{<<"Hangup-Cause">>, HangupCause}
+                             ,{<<"Message">>, E}
+                             ,{<<"Call-ID">>, 'null'}
+                             ]
+                            ,Resp
+                            )
+    end.
+
 -spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer()) ->
-                             'ok' |
-                             {'ok', ne_binary(), ne_binary(), kzd_freeswitch:data()} |
+                             {'ok', ne_binary(), ne_binary(), kz_proplist()} |
+                             {'error', 'timeout'} |
+                             {'error', ne_binary(), ne_binary()}.
+-spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer(), kz_proplist()) ->
+                             {'ok', ne_binary(), ne_binary(), kz_proplist()} |
                              {'error', 'timeout'} |
                              {'error', ne_binary(), ne_binary()}.
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
+    wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, []).
+wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps) ->
     Start = kz_time:now_s(),
     receive
         {'event', [LoopbackALeg | Props]} ->
-            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
+            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props);
         {'event', [LoopbackBLeg | Props]} ->
-            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props);
+            handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props);
         ?LOOPBACK_BOWOUT_MSG(_Node, Props) when is_list(Props) ->
-            handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props)
+            handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props)
     after Timeout ->
             lager:info("timed out waiting for ~s", [LoopbackALeg]),
             {'error', 'timeout'}
     end.
 
-handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
+handle_event(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props) ->
     case {kzd_freeswitch:call_id(Props)
          ,kzd_freeswitch:event_name(Props)
          }
@@ -351,30 +366,30 @@ handle_event(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
         {LoopbackBLeg, <<"CHANNEL_DESTROY">>} ->
             handle_loopback_destroy(LoopbackBLeg, kzd_freeswitch:hangup_cause(Props));
         {LoopbackALeg, <<"CHANNEL_CREATE">>} ->
-            handle_create(LoopbackALeg, Timeout, Start, Props);
+            handle_create(LoopbackALeg, Timeout, ChannelProps, Start, Props);
         {_CallId, _Evt} ->
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), ChannelProps)
     end.
 
-handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, Start, Props) ->
+handle_create(<<?LB_ALEG_PREFIX, _/binary>>=LoopbackALeg, Timeout, ChannelProps, Start, Props) ->
     case {kzd_freeswitch:other_leg_call_id(Props)
          ,kzd_freeswitch:loopback_other_leg(Props)
          }
     of
         {'undefined', 'undefined'} ->
-            wait_for_bowout(LoopbackALeg, 'undefined', kz_time:decr_timeout(Timeout, Start));
+            wait_for_bowout(LoopbackALeg, 'undefined', kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps));
         {'undefined', LoopbackBLeg} ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start));
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps));
         {LoopbackBLeg, _} ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), props:insert_values(Props, ChannelProps))
     end;
-handle_create(ALeg, _Timeout, _Start, Props) ->
+handle_create(ALeg, _Timeout, ChannelProps, _Start, Props) ->
     lager:debug("dial started to ~s", [ALeg]),
-    {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>, Props}.
+    {'ok', ALeg, <<"dial resulted in call id ", ALeg/binary>>, props:insert_values(Props, ChannelProps)}.
 
 handle_loopback_destroy(_LoopbackALeg, <<"NORMAL_UNSPECIFIED">>) ->
     lager:debug("~s went down", [_LoopbackALeg]);
@@ -382,21 +397,21 @@ handle_loopback_destroy(_LoopbackALeg, HangupCause) ->
     lager:info("~s went down with ~s", [_LoopbackALeg, HangupCause]),
     {'error', HangupCause, <<"failed to start call: ", HangupCause/binary>>}.
 
-handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, Start, Props) ->
+handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props) ->
     case {props:get_value(?RESIGNING_UUID, Props)
          ,props:get_value(?ACQUIRED_UUID, Props)
          }
     of
         {LoopbackALeg, LoopbackALeg} ->
             lager:debug("call id after bowout remains the same"),
-            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>, Props};
+            {'ok', LoopbackALeg, <<"dial resulted in call id ", LoopbackALeg/binary>>, props:insert_values(Props, ChannelProps)};
         {LoopbackALeg, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("~s acquired as ~s", [LoopbackALeg, AcquiringUUID]),
-            {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>, Props};
+            {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>, props:insert_values(Props, ChannelProps)};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
             lager:debug("~p", [Props]),
-            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start))
+            wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), ChannelProps)
     end.
 
 -spec register_for_events(atom(), ne_binary()) -> 'ok'.
@@ -407,7 +422,7 @@ register_for_events(ConferenceNode, EndpointCallId) ->
         ],
     'ok'.
 
--spec start_call_handlers(atom(), kz_json:object(), ne_binary()) -> api_ne_binary().
+-spec start_call_handlers(atom(), kapi_conference:doc(), ne_binary()) -> api_ne_binary().
 start_call_handlers(Node, JObj, CallId) ->
     FetchId = kz_api:msg_id(JObj),
     CCVs = kz_json:new(),
@@ -444,22 +459,28 @@ get_control_queue(CtlPid) ->
             get_control_queue(CtlPid)
     end.
 
--spec add_participant(kz_json:object(), ne_binary(), api_ne_binary(), kzd_freeswitch:data()) -> 'ok'.
-add_participant(_JObj, _EndpointId, 'undefined', _EventProps) ->
+-spec add_participant(kapi_conference:doc(), ne_binary(), api_ne_binary(), kz_proplist()) -> 'ok'.
+add_participant(_JObj, _CallId, 'undefined', _ChannelProps) ->
     lager:info("not adding participant, no control queue");
-add_participant(JObj, EndpointId, ControlQueue, EventProps) ->
-    EventJObj = ecallmgr_call_events:to_json(EventProps),
+add_participant(JObj, CallId, ControlQueue, ChannelProps) ->
+    ReqJObj = kz_json:set_values([{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj)}
+                                 ,{<<"Call-ID">>, CallId}
+                                 ,{<<"Control-Queue">>, ControlQueue}
+                                 ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
+                                 ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)}
+                                 ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)}
+                                  | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)
+                                 ]
+                                ,ecallmgr_call_events:to_json(ChannelProps)
+                                ),
+    Req = kz_json:merge(ReqJObj, ecallmgr_fs_channel:to_api_json(CallId)),
 
-    Req = kz_json:set_values([{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj)}
-                             ,{<<"Call-ID">>, EndpointId}
-                             ,{<<"Control-Queue">>, ControlQueue}
-                             ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
-                              | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)
-                             ]
-                            ,EventJObj
-                            ),
-    lager:debug("adding participant for ~s: ~p", [EndpointId, Req]),
-    kz_amqp_worker:cast(Req, fun(P) -> kapi_conference:publish_add_participant(kz_config:zone('binary'), P) end).
+    lager:debug("adding participant for ~s: ~p", [CallId, Req]),
+    kz_amqp_worker:cast(Req
+                       ,fun(P) ->
+                                kapi_conference:publish_add_participant(kz_config:zone('binary'), P)
+                        end
+                       ).
 
 -spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
 publish_resp(JObj, BaseResps) ->

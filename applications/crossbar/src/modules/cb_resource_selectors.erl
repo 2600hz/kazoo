@@ -51,9 +51,9 @@ init() ->
     ok.
 
 -spec authorize(cb_context:context()) ->
-                       boolean() | {'halt', cb_context:context()}.
+                       boolean() | {'stop', cb_context:context()}.
 -spec authorize(cb_context:context(), req_nouns()) ->
-                       boolean() | {'halt', cb_context:context()}.
+                       boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
@@ -67,13 +67,13 @@ authorize(_Context, _Nouns) ->
 
 -spec maybe_authorize_admin(cb_context:context()) ->
                                    'true' |
-                                   {'halt', cb_context:context()}.
+                                   {'stop', cb_context:context()}.
 maybe_authorize_admin(Context) ->
     case cb_context:is_superduper_admin(Context) of
         'true' ->
             lager:debug("authz the request for global resources"),
             'true';
-        'false' -> {'halt', Context}
+        'false' -> {'stop', Context}
     end.
 
 %%--------------------------------------------------------------------

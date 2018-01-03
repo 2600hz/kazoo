@@ -210,12 +210,15 @@ add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling
                ),
     Conflicts = add_views(Server, Db, Add, NewViews),
     lager:debug("view additions resulted in ~p conflicts", [length(Conflicts)]),
-    Errors = update_views(Server, Db, Update ++ Conflicts, CurrentViews, NewViews),
+    {Changed, Errors} = update_views(Server, Db, Update ++ Conflicts, CurrentViews, NewViews),
     lager:debug("view updates resulted in ~p conflicts", [length(Errors)]),
-    correct_view_errors(Server, Db, Errors, NewViews),
+    Corrected = correct_view_errors(Server, Db, Errors, NewViews),
     _ = ShouldRemoveDangling
         andalso delete_views(Server, Db, Delete, CurrentViews),
-    true.
+    Corrected > 0
+        orelse Changed > 0
+        orelse (length(Add) > 0
+                andalso length(Conflicts) < length(Add)).
 
 -spec add_views(map(), ne_binary(), ne_binaries(), views_listing()) -> api_ne_binaries().
 add_views(Server, Db, Add, NewViews) ->
@@ -226,7 +229,7 @@ add_views(Server, Db, Add, NewViews) ->
         <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
     ].
 
--spec update_views(map(), ne_binary(), ne_binaries(), views_listing(), views_listing()) -> api_ne_binaries().
+-spec update_views(map(), ne_binary(), ne_binaries(), views_listing(), views_listing()) -> {integer(), api_ne_binaries()}.
 update_views(Server, Db, Update, CurrentViews, NewViews) ->
     Views = lists:flatten(
               [kz_doc:set_revision(NewView, kz_doc:revision(CurrentView))
@@ -236,10 +239,11 @@ update_views(Server, Db, Update, CurrentViews, NewViews) ->
                   should_update(Id, NewView, CurrentView)
               ]),
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
-    [kz_doc:id(JObj)
-     || JObj <- JObjs,
-        <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
-    ].
+    Errors = [kz_doc:id(JObj)
+              || JObj <- JObjs,
+                 <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
+             ],
+    {length(Views), Errors}.
 
 -spec should_update(ne_binary(), kz_json:object(), kz_json:object()) -> boolean().
 should_update(_Id, _, undefined) ->
@@ -248,17 +252,19 @@ should_update(_Id, _, undefined) ->
 should_update(_Id, NewView, OldView) ->
     case kz_json:are_equal(kz_doc:delete_revision(NewView), kz_doc:delete_revision(OldView)) of
         true ->
-            lager:debug("view ~s does not require update", [_Id]),
+            _ = kz_datamgr:change_notice()
+                andalso lager:debug("view ~s does not require update", [_Id]),
             false;
         false ->
             lager:debug("staging update of view ~s with rev ~s", [_Id, kz_doc:revision(OldView)]),
             true
     end.
 
--spec correct_view_errors(map(), ne_binary(), ne_binaries(), views_listing()) -> 'true'.
+-spec correct_view_errors(map(), ne_binary(), ne_binaries(), views_listing()) -> integer().
 correct_view_errors(Server, Db, Errors, NewViews) ->
     Views = [props:get_value(Id, NewViews) || Id <- Errors],
-    correct_view_errors(Server, Db, Views).
+    correct_view_errors(Server, Db, Views),
+    length(Views).
 
 -spec correct_view_errors(map(), ne_binary(), kz_json:objects()) -> 'true'.
 correct_view_errors(_, _, []) -> 'true';

@@ -64,7 +64,7 @@
 %%--------------------------------------------------------------------
 -type map_results() :: [boolean() |
                         http_methods() |
-                        {boolean() | 'halt', cb_context:context()}
+                        {boolean() | 'stop', cb_context:context()}
                        ].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
@@ -105,9 +105,9 @@ all(Res) when is_list(Res) ->
 -spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) ->
     Successes = kazoo_bindings:succeeded(Res, fun filter_out_failed/1),
-    case props:get_value('halt', Successes) of
+    case props:get_value('stop', Successes) of
         'undefined' -> Successes;
-        HaltContext -> [{'halt', HaltContext}]
+        HaltContext -> [{'stop', HaltContext}]
     end.
 
 -spec failed(map_results()) -> map_results().
@@ -136,10 +136,10 @@ check_bool(_) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_failed({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+-spec filter_out_failed({boolean() | 'stop', any()} | boolean() | any()) -> boolean().
 filter_out_failed({'true', _}) -> 'true';
 filter_out_failed('true') -> 'true';
-filter_out_failed({'halt', _}) -> 'true';
+filter_out_failed({'stop', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
@@ -150,10 +150,10 @@ filter_out_failed(Term) -> not kz_term:is_empty(Term).
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'stop', any()} | boolean() | any()) -> boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
-filter_out_succeeded({'halt', _}) -> 'true';
+filter_out_succeeded({'stop', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';

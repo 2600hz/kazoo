@@ -96,10 +96,9 @@
 
         ,host_url/1, set_host_url/2
         ,set_pretty_print/2
-        ,set_raw_host/2
         ,set_port/2
         ,set_raw_path/2
-        ,set_raw_qs/2
+        ,raw_qs/1, set_raw_qs/2
         ,profile_id/1 ,set_profile_id/2
 
          %% Special accessors
@@ -208,7 +207,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec resp_data(context()) -> resp_data().
 -spec resp_status(context()) -> crossbar_status().
 -spec resp_expires(context()) -> kz_datetime().
--spec resp_headers(context()) -> kz_proplist().
+-spec resp_headers(context()) -> cowboy:http_headers().
 -spec api_version(context()) -> ne_binary().
 -spec resp_etag(context()) -> 'automatic' | string() | api_binary().
 -spec resp_envelope(context()) -> kz_json:object().
@@ -318,7 +317,7 @@ req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
 req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 req_headers(#cb_context{req_headers=Hs}) -> Hs.
-req_header(#cb_context{req_headers=Hs}, K) -> props:get_value(K, Hs).
+req_header(#cb_context{req_headers=Hs}, K) -> maps:get(K, Hs, 'undefined').
 query_string(#cb_context{query_json=Q}) -> Q.
 req_param(#cb_context{}=Context, K) -> req_param(Context, K, 'undefined').
 req_param(#cb_context{query_json=JObj}, K, Default) -> kz_json:get_value(K, JObj, Default).
@@ -443,11 +442,11 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
 -spec set_resp_expires(context(), kz_datetime()) -> context().
--spec set_api_version(context(), ne_binary()) -> context().
+-spec set_api_version(context(), ne_binary() | pos_integer()) -> context().
 -spec set_resp_etag(context(), api_binary()) -> context().
 -spec set_resp_envelope(context(), kz_json:object()) -> context().
--spec set_resp_headers(context(), kz_proplist()) -> context().
--spec add_resp_headers(context(), kz_proplist()) -> context().
+-spec set_resp_headers(context(), cowboy:http_headers()) -> context().
+-spec add_resp_headers(context(), cowboy:http_headers()) -> context().
 -spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().
 -spec add_resp_header(context(), ne_binary(), ne_binary()) -> context().
 -spec set_allow_methods(context(), http_methods()) -> context().
@@ -464,7 +463,6 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_should_paginate(context(), boolean()) -> context().
 -spec set_validation_errors(context(), kz_json:object()) -> context().
 -spec set_port(context(), integer()) -> context().
--spec set_raw_host(context(), binary()) -> context().
 -spec set_raw_path(context(), binary()) -> context().
 -spec set_raw_qs(context(), binary()) -> context().
 -spec set_client_ip(context(), ne_binary()) -> context().
@@ -510,8 +508,7 @@ set_req_nouns(#cb_context{}=Context, ReqNouns) ->
 set_req_headers(#cb_context{}=Context, ReqHs) ->
     Context#cb_context{req_headers=ReqHs}.
 set_req_header(#cb_context{req_headers=ReqHs}=Context, HKey, HValue) ->
-    NewReqHs = [{HKey,HValue} | ReqHs],
-    Context#cb_context{req_headers=NewReqHs}.
+    Context#cb_context{req_headers=maps:put(HKey, HValue, ReqHs)}.
 set_query_string(#cb_context{}=Context, Q) ->
     Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) ->
@@ -531,7 +528,7 @@ set_resp_status(#cb_context{}=Context, RespStatus) ->
 set_resp_expires(#cb_context{}=Context, RespExpires) ->
     Context#cb_context{resp_expires=RespExpires}.
 set_api_version(#cb_context{}=Context, ApiVersion) ->
-    Context#cb_context{api_version=ApiVersion}.
+    Context#cb_context{api_version=kz_term:to_binary(ApiVersion)}.
 set_resp_etag(#cb_context{}=Context, ETag) ->
     Context#cb_context{resp_etag=ETag}.
 set_resp_envelope(#cb_context{}=Context, E) ->
@@ -565,20 +562,18 @@ set_resp_error_msg(#cb_context{}=Context, Msg) ->
     Context#cb_context{resp_error_msg=Msg}.
 
 set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
-    Context#cb_context{resp_headers=lists:foldl(fun set_resp_header_fold/2, Hs, Headers)}.
+    Context#cb_context{resp_headers=maps:merge(Hs, Headers)}.
 set_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
-    Context#cb_context{resp_headers=lists:keystore(K, 1, RespHeaders, {K, V})}.
-set_resp_header_fold({K, V}, Hs) -> lists:keystore(K, 1, Hs, {K, V}).
+    Context#cb_context{resp_headers=maps:put(K, V, RespHeaders)}.
 
-add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, Headers) ->
-    Context#cb_context{resp_headers=lists:foldl(fun add_resp_header_fold/2, RespHeaders, Headers)}.
+add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, #{}=Headers) ->
+    Context#cb_context{resp_headers=maps:fold(fun add_resp_header_fold/3, RespHeaders, Headers)}.
+
+add_resp_header_fold(K, V, RHs) ->
+    maps:put(kz_term:to_lower_binary(K), V, RHs).
 
 add_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
-    Context#cb_context{resp_headers=add_resp_header_fold({K, V}, RespHeaders)}.
-
--spec add_resp_header_fold({ne_binary(), any()}, kz_proplist()) -> kz_proplist().
-add_resp_header_fold({K, V}, Hs) ->
-    props:set_value(kz_term:to_lower_binary(K), V, Hs).
+    Context#cb_context{resp_headers=add_resp_header_fold(K, V, RespHeaders)}.
 
 set_validation_errors(#cb_context{}=Context, Errors) ->
     Context#cb_context{validation_errors=Errors}.
@@ -596,12 +591,12 @@ host_url(#cb_context{host_url = Value}) -> Value.
 set_pretty_print(#cb_context{}=Context, Value) ->
     Context#cb_context{pretty_print = Value}.
 
-set_raw_host(#cb_context{}=Context, Value) ->
-    Context#cb_context{raw_host = Value}.
-
 set_raw_path(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_path = Value}.
 
+-spec raw_qs(context()) -> api_ne_binary().
+raw_qs(#cb_context{raw_qs=QS}) ->
+    QS.
 set_raw_qs(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_qs = Value}.
 
@@ -690,7 +685,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %% the process dictionary, where the logger expects it.
 %% @end
 %%--------------------------------------------------------------------
--spec put_reqid(context()) -> api_ne_binary().
+-spec put_reqid(context()) -> 'ok'.
 put_reqid(#cb_context{req_id=ReqId}) ->
     kz_util:put_callid(ReqId).
 
@@ -783,7 +778,7 @@ validate_request_data('undefined', Context, _OnSuccess, _OnFailure, 'true') ->
 validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, SchemaRequired) ->
     case find_schema(SchemaId) of
         'undefined' when SchemaRequired ->
-            lager:error("schema ~s not found", [SchemaId]),
+            lager:error("schema ~s not found, and is required", [SchemaId]),
             system_error(Context, <<"schema ", SchemaId/binary, " not found.">>);
         'undefined' ->
             lager:error("schema ~s not found, continuing anyway", [SchemaId]),
@@ -1092,7 +1087,7 @@ system_properties(Context) ->
                         ,{fun query_string/1, <<"query_json">>}
                         ,{fun req_data/1, <<"req_data">>}
                         ,{fun req_json/1, <<"req_json">>}
-                        ,{fun(C) -> kz_json:from_list(req_headers(C)) end, <<"req_headers">>}
+                        ,{fun(C) -> kz_json:from_map(req_headers(C)) end, <<"req_headers">>}
                         ,{fun auth_account_id/1, <<"auth_account_id">>}
                         ,{fun account_name/1, <<"account_name">>}
                         ,{fun account_id/1, <<"account_id">>}

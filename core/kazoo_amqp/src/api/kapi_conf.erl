@@ -50,6 +50,7 @@
                                                     ,?DB_EDITED
                                                     ,?DB_CREATED
                                                     ,?DB_DELETED
+                                                    ,?DB_VIEWS_UPDATED
                                                     ]}
                                 ]).
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}

@@ -41,3 +41,15 @@ curl -v -X GET \
     -H "Accept: audio/mpeg" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 ```
+
+#### Remove a recording
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
+
+This will delete the metadata document. If the binary data is stored on the metadata document (instead of on a storage provider), it will also be deleted. Recordings stored on storage providers will not be deleted.
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
+```

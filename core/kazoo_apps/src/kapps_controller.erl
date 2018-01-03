@@ -116,11 +116,11 @@ running_apps_list() ->
 -spec initialize_kapps() -> 'ok'.
 initialize_kapps() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
-    kz_datamgr:db_exists(?KZ_ACCOUNTS_DB)
-        orelse kapps_maintenance:refresh(),
+    _New = kz_datamgr:init_dbs(),
+    _ = kapps_maintenance:init_system(),
     kapps_config:migrate(),
-    ToStart = [kz_term:to_atom(KApp, 'true') || KApp <- start_which_kapps()],
-    Started = [KApp || KApp <- lists:sort(fun sysconf_first/2, ToStart),
+    ToStart = lists:sort(fun sysconf_first/2, [kz_term:to_atom(KApp, 'true') || KApp <- start_which_kapps()]),
+    Started = [KApp || KApp <- ToStart,
                        {'ok',_} <- [start_app(KApp)]
               ],
     lager:notice("auto-started kapps ~p", [lists:sort(Started)]).

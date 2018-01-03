@@ -6,19 +6,16 @@
         "Account-ID": {
             "type": "string"
         },
-        "Application-Data": {
+        "Answered": {
             "type": "string"
         },
-        "Application-Event": {
+        "Authorizing-ID": {
             "type": "string"
         },
-        "Application-Name": {
+        "Authorizing-Type": {
             "type": "string"
         },
-        "Application-Response": {
-            "type": "string"
-        },
-        "Billing-Seconds": {
+        "Bridge-ID": {
             "type": "string"
         },
         "Call-Direction": {
@@ -33,52 +30,10 @@
         "Callee-ID-Number": {
             "type": "string"
         },
-        "Caller-ID-Name": {
-            "type": "string"
-        },
-        "Caller-ID-Number": {
-            "type": "string"
-        },
-        "Channel-Call-State": {
-            "type": "string"
-        },
-        "Channel-Created-Time": {
-            "type": "integer"
-        },
-        "Channel-Debug": {
-            "type": "string"
-        },
-        "Channel-Is-Loopback": {
-            "type": "string"
-        },
-        "Channel-Loopback-Bowout": {
-            "type": "string"
-        },
-        "Channel-Loopback-Bowout-Execute": {
-            "type": "string"
-        },
-        "Channel-Loopback-Leg": {
-            "type": "string"
-        },
-        "Channel-Loopback-Other-Leg-ID": {
-            "type": "string"
-        },
-        "Channel-Moving": {
-            "type": "string"
-        },
-        "Channel-Name": {
-            "type": "string"
-        },
-        "Channel-State": {
-            "type": "string"
-        },
-        "Conference-Config": {
+        "Channel-Authorized": {
             "type": "string"
         },
         "Conference-ID": {
-            "type": "string"
-        },
-        "Conference-Name": {
             "type": "string"
         },
         "Control-Queue": {
@@ -93,22 +48,10 @@
         "Custom-SIP-Headers": {
             "type": "object"
         },
-        "DTMF-Digit": {
+        "Destination": {
             "type": "string"
         },
-        "DTMF-Duration": {
-            "type": "string"
-        },
-        "Detected-Tone": {
-            "type": "string"
-        },
-        "Digits-Dialed": {
-            "type": "string"
-        },
-        "Disposition": {
-            "type": "string"
-        },
-        "Duration-Seconds": {
+        "Ecallmgr-Node": {
             "type": "string"
         },
         "Event-Category": {
@@ -123,85 +66,34 @@
             ],
             "type": "string"
         },
-        "Fax-Info": {
-            "type": "string"
-        },
         "From": {
             "type": "string"
         },
-        "From-Tag": {
+        "Is-Loopback": {
             "type": "string"
         },
-        "From-Uri": {
+        "Is-On-Hold": {
             "type": "string"
         },
-        "Hangup-Cause": {
-            "type": "string"
-        },
-        "Hangup-Code": {
-            "type": "string"
-        },
-        "Interaction-ID": {
-            "type": "string"
-        },
-        "Intercepted-By": {
-            "type": "string"
-        },
-        "Length": {
-            "type": "string"
-        },
-        "Local-SDP": {
+        "Media-Node": {
             "type": "string"
         },
         "Media-Server": {
             "type": "string"
         },
-        "Origination-Call-ID": {
+        "Node": {
             "type": "string"
         },
         "Other-Leg-Call-ID": {
             "type": "string"
         },
-        "Other-Leg-Caller-ID-Name": {
-            "type": "string"
-        },
-        "Other-Leg-Caller-ID-Number": {
-            "type": "string"
-        },
-        "Other-Leg-Destination-Number": {
-            "type": "string"
-        },
-        "Other-Leg-Direction": {
-            "type": "string"
-        },
-        "Parking-Slot": {
-            "type": "string"
-        },
         "Presence-ID": {
             "type": "string"
         },
-        "Raw-Application-Data": {
-            "type": "string"
-        },
-        "Raw-Application-Name": {
-            "type": "string"
-        },
-        "Remote-SDP": {
-            "type": "string"
-        },
-        "Replaced-By": {
+        "Realm": {
             "type": "string"
         },
         "Request": {
-            "type": "string"
-        },
-        "Ringing-Seconds": {
-            "type": "string"
-        },
-        "Silence-Terminated": {
-            "type": "string"
-        },
-        "Switch-Hostname": {
             "type": "string"
         },
         "Switch-Nodename": {
@@ -213,34 +105,13 @@
         "Switch-URL": {
             "type": "string"
         },
-        "Target-Call-ID": {
-            "type": "string"
-        },
-        "Terminator": {
-            "type": "string"
-        },
         "Timestamp": {
             "type": "string"
         },
         "To": {
             "type": "string"
         },
-        "To-Tag": {
-            "type": "string"
-        },
-        "To-Uri": {
-            "type": "string"
-        },
-        "Transfer-History": {
-            "type": "string"
-        },
-        "Transfer-To": {
-            "type": "string"
-        },
-        "Transfer-Type": {
-            "type": "string"
-        },
-        "User-Agent": {
+        "Username": {
             "type": "string"
         }
     },

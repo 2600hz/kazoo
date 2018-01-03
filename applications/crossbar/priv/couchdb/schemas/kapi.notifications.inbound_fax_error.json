@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.notifications.fax_outbound_error",
-    "description": "AMQP API for notifications.fax_outbound_error",
+    "_id": "kapi.notifications.inbound_fax_error",
+    "description": "AMQP API for notifications.inbound_fax_error",
     "properties": {
         "Account-DB": {
             "type": "string"
@@ -41,7 +41,7 @@
         },
         "Event-Name": {
             "enum": [
-                "outbound_fax_error"
+                "inbound_fax_error"
             ],
             "type": "string"
         },
@@ -54,10 +54,10 @@
         "Fax-Info": {
             "type": "string"
         },
-        "Fax-JobId": {
+        "Fax-Notifications": {
             "type": "string"
         },
-        "Fax-Notifications": {
+        "Fax-Result-Code": {
             "type": "string"
         },
         "Fax-Timestamp": {
@@ -67,6 +67,12 @@
             "type": "string"
         },
         "From": {
+            "type": "string"
+        },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-User": {
             "type": "string"
         },
         "HTML": {
@@ -89,11 +95,20 @@
         },
         "To": {
             "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
         }
     },
     "required": [
-        "Fax-ID",
-        "Fax-JobId"
+        "Account-ID",
+        "From-Realm",
+        "From-User",
+        "To-Realm",
+        "To-User"
     ],
     "type": "object"
 }

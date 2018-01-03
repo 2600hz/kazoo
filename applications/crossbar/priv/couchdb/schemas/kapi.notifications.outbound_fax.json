@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.notifications.fax_inbound_error",
-    "description": "AMQP API for notifications.fax_inbound_error",
+    "_id": "kapi.notifications.outbound_fax",
+    "description": "AMQP API for notifications.outbound_fax",
     "properties": {
         "Account-DB": {
             "type": "string"
@@ -41,11 +41,8 @@
         },
         "Event-Name": {
             "enum": [
-                "inbound_fax_error"
+                "outbound_fax"
             ],
-            "type": "string"
-        },
-        "Fax-Error": {
             "type": "string"
         },
         "Fax-ID": {
@@ -54,10 +51,10 @@
         "Fax-Info": {
             "type": "string"
         },
-        "Fax-Notifications": {
+        "Fax-JobId": {
             "type": "string"
         },
-        "Fax-Result-Code": {
+        "Fax-Notifications": {
             "type": "string"
         },
         "Fax-Timestamp": {
@@ -67,12 +64,6 @@
             "type": "string"
         },
         "From": {
-            "type": "string"
-        },
-        "From-Realm": {
-            "type": "string"
-        },
-        "From-User": {
             "type": "string"
         },
         "HTML": {
@@ -95,20 +86,14 @@
         },
         "To": {
             "type": "string"
-        },
-        "To-Realm": {
-            "type": "string"
-        },
-        "To-User": {
-            "type": "string"
         }
     },
     "required": [
         "Account-ID",
-        "From-Realm",
-        "From-User",
-        "To-Realm",
-        "To-User"
+        "Callee-ID-Number",
+        "Caller-ID-Number",
+        "Fax-ID",
+        "Fax-JobId"
     ],
     "type": "object"
 }

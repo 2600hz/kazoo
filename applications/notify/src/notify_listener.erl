@@ -45,7 +45,7 @@
                     ,{'notify_low_balance', [{<<"notification">>, <<"low_balance">>}]}
                     ]).
 
--define(RESTRICT_TO, ['new_voicemail'
+-define(RESTRICT_TO, ['voicemail_new'
                      ,'voicemail_full'
                      ,'inbound_fax'
                      ,'inbound_fax_error'
@@ -54,7 +54,7 @@
                      ,'deregister'
                      ,'password_recovery'
                      ,'new_account'
-                     ,'cnam_requests'
+                     ,'cnam_request'
                      ,'port_request'
                      ,'port_cancel'
                      ,'low_balance'

@@ -26,6 +26,8 @@
         ]).
 -export([dump_transactions/3]).
 
+-export([register_views/0]).
+
 -include("kazoo_modb.hrl").
 
 -define(HEADER_MAP, [{<<"_id">>, <<"ID">>}
@@ -293,3 +295,7 @@ fix_value_map(<<"pvt_amount">> = Key, Value) -> {Key, wht_util:units_to_dollars(
 fix_value_map(<<"pvt_modified">> = Key, Value) -> {Key, kz_time:rfc1036(Value)};
 fix_value_map(<<"pvt_created">> = Key, Value) -> {Key, kz_time:rfc1036(Value)};
 fix_value_map(Key, Value) -> {Key, Value}.
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder('modb', 'kazoo_modb').

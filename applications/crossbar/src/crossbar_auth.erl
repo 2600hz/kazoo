@@ -369,7 +369,7 @@ log_attempts(Context, AccountId, Method, Status, AuthType, Reason) ->
             ,{<<"status">>, Status}
             ,{<<"auth_module">>, Method}
             ,{<<"message">>, Reason}
-            ,{<<"client_headers">>, kz_json:from_list(cb_context:req_headers(Context))}
+            ,{<<"client_headers">>, kz_json:from_map(cb_context:req_headers(Context))}
             ,{<<"client_ip">>, cb_context:client_ip(Context)}
             ,{<<"crossbar_request_id">>, cb_context:req_id(Context)}
             ,{<<"timestamp">>, Now}

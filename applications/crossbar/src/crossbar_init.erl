@@ -32,17 +32,26 @@ api_path() ->
 
 -spec api_version_constraint() -> cowboy_router:constraint().
 api_version_constraint() ->
-    {'version', 'function', fun api_version_constraint/1}.
+    {'version', fun api_version_constraint/2}.
 
--spec api_version_constraint(ne_binary()) -> boolean().
-api_version_constraint(<<"v", ApiVersion/binary>>) ->
+-spec api_version_constraint('forward', ne_binary()) ->
+                                    {'ok', ne_binary()} |
+                                    {'error', 'not_a_version'}.
+api_version_constraint('forward', <<"v", ApiVersion/binary>>=Vsn) ->
     try kz_term:to_integer(ApiVersion) of
-        _Int -> lager:debug("routing to version ~b", [_Int]), 'true'
+        Int ->
+            lager:debug("routing to version ~b", [Int]),
+            {'ok', Vsn}
     catch
-        _:_ -> lager:debug("not routing to version ~s", [ApiVersion]), 'false'
+        _:_ ->
+            lager:debug("not routing to version ~s", [ApiVersion]),
+            {'error', 'not_a_version'}
     end;
-api_version_constraint(NotVersion) ->
-    lists:member(NotVersion, ?INBOUND_HOOKS).
+api_version_constraint('forward', NotVersion) ->
+    case lists:member(NotVersion, ?INBOUND_HOOKS) of
+        'true' -> {'ok', NotVersion};
+        'false' -> {'error', 'not_a_version'}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -52,8 +61,7 @@ api_version_constraint(NotVersion) ->
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
-    _ = [
-         lager:warning("System config ~s validation error:~p", [Config, Error])
+    _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
          || {Config, Error} <- kapps_maintenance:validate_system_configs()
         ],
 
@@ -168,21 +176,11 @@ stop_mod_version(Version, Mod) ->
 %% @doc Functions for onrequest and onresponse callbacks
 %%--------------------------------------------------------------------
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
-on_request(Req0) ->
-    {Method, Req1} = cowboy_req:method(Req0),
-    case Method of
-        ?HTTP_OPTIONS -> Req1;
-        _ -> Req1
-    end.
+on_request(Req) -> Req.
 
 -spec on_response(cowboy:http_status(), cowboy:http_headers(), text(), cowboy_req:req()) ->
                          cowboy_req:req().
-on_response(_Status, _Headers, _Body, Req0) ->
-    {Method, Req1} = cowboy_req:method(Req0),
-    case Method of
-        ?HTTP_OPTIONS -> Req1;
-        _ -> Req1
-    end.
+on_response(_Status, _Headers, _Body, Req) -> Req.
 
 -spec maybe_start_plaintext(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_plaintext(Dispatch) ->
@@ -197,18 +195,19 @@ maybe_start_plaintext(Dispatch) ->
             try
                 IP = get_binding_ip(),
                 lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
-                cowboy:start_http('api_resource', Workers
-                                 ,[{'ip', IP}
-                                  ,{'port', Port}
-                                  ]
-                                 ,[{'env', [{'dispatch', Dispatch}
-                                           ,{'timeout', ReqTimeout}
-                                           ]}
-                                  ,{'onrequest', fun on_request/1}
-                                  ,{'onresponse', fun on_response/4}
-                                  ,{'compress', ?USE_COMPRESSION}
-                                  ]
-                                 )
+                cowboy:start_clear('api_resource'
+                                  ,[{'ip', IP}
+                                   ,{'port', Port}
+                                   ,{'num_acceptors', Workers}
+                                   ]
+                                  ,#{'env' => #{'dispatch' => Dispatch
+                                               ,'timeout' => ReqTimeout
+                                               }
+                                    ,'onrequest' => fun on_request/1
+                                    ,'onresponse' => fun on_response/4
+                                    ,'compress' => ?USE_COMPRESSION
+                                    }
+                                  )
             of
                 {'ok', _} ->
                     lager:info("started plaintext API server");
@@ -283,16 +282,19 @@ start_ssl(Dispatch) ->
                            ,props:get_value('port', SSLOpts)
                            ]
                           ),
-                cowboy:start_https('api_resource_ssl', Workers
-                                  ,[{'ip', IP} | SSLOpts]
-                                  ,[{'env', [{'dispatch', Dispatch}
-                                            ,{'timeout', ReqTimeout}
-                                            ]}
-                                   ,{'onrequest', fun on_request/1}
-                                   ,{'onresponse', fun on_response/4}
-                                   ,{'compress', ?USE_COMPRESSION}
-                                   ]
-                                  )
+                cowboy:start_tls('api_resource_ssl'
+                                ,[{'ip', IP}
+                                 ,{'num_acceptors', Workers}
+                                  | SSLOpts
+                                 ]
+                                ,#{'env' => #{'dispatch' => Dispatch
+                                             ,'timeout' => ReqTimeout
+                                             }
+                                  ,'onrequest' => fun on_request/1
+                                  ,'onresponse' => fun on_response/4
+                                  ,'compress' => ?USE_COMPRESSION
+                                  }
+                                )
             of
                 {'ok', _} ->
                     lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);

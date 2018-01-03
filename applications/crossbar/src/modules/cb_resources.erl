@@ -38,10 +38,6 @@
 
 -spec init() -> ok.
 init() ->
-    _ = kz_datamgr:db_create(?KZ_OFFNET_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, ?APP, "views/resources.json"),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, ?APP, "views/resources.json"),
-
     _Pid = maybe_start_jobs_listener(),
     lager:debug("started jobs listener: ~p", [_Pid]),
     Binder = fun ({Binding, F}) -> crossbar_bindings:bind(Binding, ?MODULE, F) end,
@@ -85,10 +81,10 @@ jobs_listener_pid() ->
 
 -spec authorize(cb_context:context()) ->
                        boolean() |
-                       {'halt', cb_context:context()}.
+                       {'stop', cb_context:context()}.
 -spec authorize(cb_context:context(), req_nouns()) ->
                        boolean() |
-                       {'halt', cb_context:context()}.
+                       {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
@@ -104,13 +100,13 @@ authorize(_Context, _Nouns) ->
 
 -spec maybe_authorize_admin(cb_context:context()) ->
                                    'true' |
-                                   {'halt', cb_context:context()}.
+                                   {'stop', cb_context:context()}.
 maybe_authorize_admin(Context) ->
     case cb_context:is_superduper_admin(Context) of
         'true' ->
             lager:debug("authz the request for global resources"),
             'true';
-        'false' -> {'halt', Context}
+        'false' -> {'stop', Context}
     end.
 
 %%--------------------------------------------------------------------

@@ -406,7 +406,7 @@ dial(Context, ConferenceId, Data) ->
                 'true' -> Context1;
                 'false' ->
                     Resp = exec_dial_endpoints(Context1, ConferenceId, Data, Endpoints),
-                    crossbar_util:response_202(Resp, Context1)
+                    crossbar_util:response_202(<<"attempted dial">>, Resp, Context1)
             end
     end.
 
@@ -600,7 +600,7 @@ build_endpoint_from_doc(Device, {Endpoints, Call, Context, Element}, <<"device">
         {'ok', Legs} -> {Endpoints ++ Legs, Call, Context, Element+1};
         {'error', _E} ->
             lager:info("failed to build endpoint ~s: ~p", [kz_doc:id(Device), _E]),
-            {Endpoints, Call, add_not_found_error(Context, Device, Element), Element+1}
+            {Endpoints, Call, add_not_found_error(Context, kz_doc:id(Device), Element), Element+1}
     end;
 build_endpoint_from_doc(User, {Endpoints, Call, Context, Element}, <<"user">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),

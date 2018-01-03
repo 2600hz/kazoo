@@ -48,6 +48,7 @@
                        'invalid_db_name' |
                        'invalid_view_name' |
                        'not_found' |
+                       'no_results' |
                        'precondition_failed' |
                        'req_timedout' |
                        'retry_later' |

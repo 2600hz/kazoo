@@ -28,7 +28,7 @@
 -type state() :: #state{}.
 
 -define(RESPONDERS, [{{?MODULE, 'handle_message'}
-                     ,[{<<"*">>, <<"*">>}]
+                     ,[{<<"notification">>, <<"*">>}]
                      }
                     ]).
 

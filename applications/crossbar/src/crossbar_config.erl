@@ -22,7 +22,7 @@ flush() -> kapps_config:flush(?CONFIG_CAT).
 -spec autoload_modules() -> ne_binaries().
 -spec autoload_modules(ne_binaries() | atoms()) -> ne_binaries().
 autoload_modules() ->
-    autoload_modules([]).
+    autoload_modules(?DEFAULT_MODULES).
 
 autoload_modules(Default) ->
     Modules = kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, Default),
