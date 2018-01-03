@@ -30,7 +30,7 @@
 
 -define(CACHE_TTL, kapps_config:get_integer(?CONFIG_CAT, <<"cache_ttl">>, 300)).
 
--define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).
+-define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, '*'}).
 
 -define(CB_ACCOUNT_TOKEN_RESTRICTIONS, <<"token_restrictions">>).
 

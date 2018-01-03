@@ -499,7 +499,11 @@ content_types_provided(Req, Context, CTPs) ->
                                            (CT, Acc1) when is_binary(CT) ->
                                                 [{CT, Fun} | Acc1]
                                         end, Acc, L)
-                    end, [], CTPs),
+                    end
+                   ,[]
+                   ,CTPs
+                   ),
+    lager:debug("ctp: ~p", [CTP]),
     {CTP, Req, Context}.
 
 -spec content_types_accepted(cowboy_req:req(), cb_context:context()) ->
@@ -514,6 +518,8 @@ content_types_accepted(Req0, Context0) ->
 
     case cowboy_req:parse_header(<<"content-type">>, Req0) of
         'undefined' ->
+            %% Cowboy no longer allows empty content-type headers and will auto-respond with
+            %% a 415 if we return a content type.
             lager:debug("no content type on request, checking defaults"),
             default_content_types_accepted(Req0, Context1);
         CT ->
@@ -524,18 +530,35 @@ content_types_accepted(Req0, Context0) ->
 -spec default_content_types_accepted(cowboy_req:req(), cb_context:context()) ->
                                             {content_types_funs(), cowboy_req:req(), cb_context:context()}.
 default_content_types_accepted(Req, Context) ->
-    CTA = [ {'*', Fun}
-            || {Fun, L} <- cb_context:content_types_accepted(Context),
-               lists:any(fun({Type, SubType}) ->
-                                 api_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE
-                                                              ,{Type, SubType, []}
-                                                              );
-                            ({_,_,_}=ModCT) ->
-                                 api_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE, ModCT)
-                         end, L) % check each type against the default
+    CTA = [{?CROSSBAR_DEFAULT_CONTENT_TYPE, Fun}
+           || {Fun, L} <- cb_context:content_types_accepted(Context),
+              'ok' =:= lager:debug("f: ~p l: ~p", [Fun, L])
+                  andalso lists:any(fun({Type, SubType}) ->
+                                            api_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE
+                                                                         ,{Type, SubType, '*'}
+                                                                         );
+                                       ({_,_,_}=ModCT) ->
+                                            api_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE, ModCT)
+                                    end
+                                   ,L % check each type against the default
+                                   )
           ],
     lager:debug("default cta: ~p", [CTA]),
-    {CTA, Req, Context}.
+    case CTA of
+        [] ->
+            {[{?DEFAULT_CONTENT_TYPE, 'from_json'}]
+            ,set_content_type_header(Req, ?DEFAULT_CONTENT_TYPE)
+            ,Context
+            };
+        [{Type, _}|_]=CTA ->
+            {CTA, set_content_type_header(Req, Type), Context}
+    end.
+
+set_content_type_header(#{headers := Headers}=Req, ?NE_BINARY=CT) ->
+    Req#{headers => maps:put(<<"content-type">>, CT, Headers)};
+set_content_type_header(#{headers := Headers}=Req, {Type, SubType, _}) ->
+    Req#{headers => maps:put(<<"content-type">>, <<Type/binary, "/", SubType/binary>>, Headers)}.
+
 
 -type content_type_fun() :: {content_type(), atom()}.
 -type content_types_funs() :: [content_type_fun()].

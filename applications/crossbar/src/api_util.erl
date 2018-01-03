@@ -994,18 +994,18 @@ fold_in_content_type({Type, Sub}, Acc) ->
 
 -spec is_acceptable_content_type(content_type(), [content_type()]) -> boolean().
 is_acceptable_content_type(CTA, CTAs) ->
-    [ 'true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
+    ['true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
 
 %% (ReqContentType, ModuleContentType)
 -spec content_type_matches(content_type(), content_type()) -> boolean().
-content_type_matches({Type, _, _}, {Type, <<"*">>, []}) ->
+content_type_matches({Type, _, _}, {Type, <<"*">>, '*'}) ->
     'true';
-content_type_matches({Type, SubType, _}, {Type, SubType, []}) ->
+content_type_matches({Type, SubType, _}, {Type, SubType, '*'}) ->
     'true';
 content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
-    lists:all(fun({K, V}) ->
-                      props:get_value(K, Opts) =:= V
-              end, ModOpts);
+    lists:all(fun({K, V}) -> props:get_value(K, Opts) =:= V end
+             ,ModOpts
+             );
 content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
     CTA =:= <<CT/binary, "/", SubCT/binary>>;
 content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->

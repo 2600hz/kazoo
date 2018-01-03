@@ -778,7 +778,7 @@ validate_request_data('undefined', Context, _OnSuccess, _OnFailure, 'true') ->
 validate_request_data(?NE_BINARY=SchemaId, Context, OnSuccess, OnFailure, SchemaRequired) ->
     case find_schema(SchemaId) of
         'undefined' when SchemaRequired ->
-            lager:error("schema ~s not found", [SchemaId]),
+            lager:error("schema ~s not found, and is required", [SchemaId]),
             system_error(Context, <<"schema ", SchemaId/binary, " not found.">>);
         'undefined' ->
             lager:error("schema ~s not found, continuing anyway", [SchemaId]),

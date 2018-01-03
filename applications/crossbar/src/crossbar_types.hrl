@@ -27,7 +27,7 @@
 -type req_nouns() :: [req_noun()].
 
 %% {Type, SubType, Options}
--type content_type() :: {ne_binary(), ne_binary(), kz_proplist()} | ne_binary().
+-type content_type() :: {ne_binary(), ne_binary(), '*' | kz_proplist()} | ne_binary().
 
 -type media_value() :: {content_type(), non_neg_integer(), list()}.
 -type media_values() :: [media_value()].
