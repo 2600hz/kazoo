@@ -3,11 +3,9 @@ RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
-# You can override this when calling make, e.g. make MAKEFLAGS=""
-# to prevent parallel builds, or make MAKEFLAGS="-j8".
-# Note that this only applies to the core and applications
-# targets.
-MAKEFLAGS ?= -j
+# You can override this when calling make, e.g. make JOBS=1
+# to prevent parallel builds, or make JOBS="8".
+JOBS ?= 1
 
 KAZOODIRS = core/Makefile applications/Makefile
 
@@ -19,7 +17,7 @@ compile: ACTION = all
 compile: deps kazoo
 
 $(KAZOODIRS):
-	$(MAKE) -C $(@D) $(ACTION)
+	@$(MAKE) -C $(@D) $(ACTION)
 
 clean: ACTION = clean
 clean: $(KAZOODIRS)
@@ -64,17 +62,17 @@ clean-deps:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2017.07.06/erlang.mk' -O $(ROOT)/erlang.mk
 
 deps: deps/Makefile
-	$(MAKE) -C deps/ all
+	@$(MAKE) -C deps/ all
 deps/Makefile: .erlang.mk
 	mkdir -p deps
-	$(MAKE) -f erlang.mk deps
+	@$(MAKE) -f erlang.mk deps
 	cp $(ROOT)/make/Makefile.deps deps/Makefile
 
 core:
-	$(MAKE) $(MAKEFLAGS) -C core/ all
+	@$(MAKE) -j$(JOBS) -C core/ all
 
 apps: core
-	$(MAKE) $(MAKEFLAGS) -C applications/ all
+	@$(MAKE) -j$(JOBS) -C applications/ all
 
 kazoo: apps
 
