@@ -18,9 +18,9 @@
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
-    Dispatch = cowboy_router:compile([{'_', [{<<"/store/[...]">>, 'kz_media_store_proxy', []}
-                                            ,{<<"/single/[...]">>, 'kz_media_proxy_handler', ['single']}
-                                            ,{<<"/continuous/[...]">>, 'kz_media_proxy_handler', ['continuous']}
+    Dispatch = cowboy_router:compile([{'_', [{<<"/store/[...]">>, [], 'kz_media_store_proxy', []}
+                                            ,{<<"/single/[...]">>, [], 'kz_media_proxy_handler', ['single']}
+                                            ,{<<"/continuous/[...]">>, [], 'kz_media_proxy_handler', ['continuous']}
                                             ]}
                                      ]),
     maybe_start_plaintext(Dispatch),
@@ -43,13 +43,13 @@ maybe_start_plaintext(Dispatch) ->
             lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
             Listeners = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
 
-            cowboy:start_http(?MODULE
-                             ,Listeners
-                             ,[{'ip', IP}
-                              ,{'port', Port}
-                              ]
-                             ,[{'env', [{'dispatch', Dispatch}]}]
-                             ),
+            cowboy:start_clear(?MODULE
+                              ,[{'ip', IP}
+                               ,{'port', Port}
+                               ,{'num_acceptors', Listeners}
+                               ]
+                              ,#{'env' => #{'dispatch' => Dispatch}}
+                              ),
             lager:info("started media proxy on port ~p", [Port])
     end.
 
@@ -77,18 +77,19 @@ maybe_start_ssl(Dispatch) ->
             lager:info("trying to bind SSL API server to address ~s port ~b", [inet:ntoa(IP), SSLPort]),
 
             try
-                cowboy:start_https('media_mgr_ssl', Listeners
-                                  ,[{'ip', IP}
-                                   ,{'port', SSLPort}
-                                   ,{'certfile', find_file(SSLCert, RootDir)}
-                                   ,{'keyfile', find_file(SSLKey, RootDir)}
-                                   ,{'password', SSLPassword}
-                                   ]
-                                  ,[{'env', [{'dispatch', Dispatch}]}
-                                   ,{'onrequest', fun on_request/1}
-                                   ,{'onresponse', fun on_response/3}
-                                   ]
-                                  ),
+                cowboy:start_tls('media_mgr_ssl'
+                                ,[{'ip', IP}
+                                 ,{'port', SSLPort}
+                                 ,{'num_acceptors', Listeners}
+                                 ,{'certfile', find_file(SSLCert, RootDir)}
+                                 ,{'keyfile', find_file(SSLKey, RootDir)}
+                                 ,{'password', SSLPassword}
+                                 ]
+                                ,#{'env' => #{'dispatch' => Dispatch}
+                                  ,'onrequest' => fun on_request/1
+                                  ,'onresponse' => fun on_response/3
+                                  }
+                                ),
                 lager:info("started ssl media proxy on port ~p", [SSLPort])
             catch
                 'throw':{'invalid_file', _File} ->
@@ -97,9 +98,7 @@ maybe_start_ssl(Dispatch) ->
     end.
 
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
-on_request(Req0) ->
-    {_Method, Req1} = cowboy_req:method(Req0),
-    Req1.
+on_request(Req) -> Req.
 
 -spec on_response(cowboy:http_status(), cowboy:http_headers(), cowboy_req:req()) -> cowboy_req:req().
 on_response(_Status, _Headers, Req) -> Req.

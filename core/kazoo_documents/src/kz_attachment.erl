@@ -37,10 +37,13 @@ get_content_type(MediaType) ->
 get_content_type(MediaType, <<"base64">>) ->
     get_content_type(kz_binary:truncate_right(MediaType, byte_size(MediaType) - 7), 'undefined');
 get_content_type(MediaType, _) ->
-    case cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2) of
+    try cow_http_hd:parse_accept(MediaType) of
         [{{Type, SubType, _Options}, _, _}] ->
-            kz_binary:join([Type, SubType], <<"/">>);
-        {'error', 'badarg'} -> 'undefined'
+            kz_binary:join([Type, SubType], <<"/">>)
+    catch
+        _E:_R ->
+            lager:debug("failed to parse ~p: ~s: ~p", [MediaType, _E, _R]),
+            {'error', 'badarg'}
     end.
 
 -spec corrected_base64_decode(ne_binary()) -> ne_binary().

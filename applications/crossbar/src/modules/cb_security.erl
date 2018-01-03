@@ -72,7 +72,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
                        boolean() |
-                       {'halt', cb_context:context()}.
+                       {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_list_available_module(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
@@ -84,11 +84,11 @@ authorize(_Context, _, _) -> 'true'.
 
 -spec authorize_list_available_module(cb_context:context(), req_nouns(), http_method()) ->
                                              boolean() |
-                                             {'halt', cb_context:context()}.
+                                             {'stop', cb_context:context()}.
 authorize_list_available_module(_Context, [{<<"security">>, []}], ?HTTP_GET) ->
     'true';
 authorize_list_available_module(Context, [{<<"security">>, []}], _) ->
-    {'halt', cb_context:add_system_error('forbidden', Context)};
+    {'stop', cb_context:add_system_error('forbidden', Context)};
 authorize_list_available_module(_Context, _Nouns, _Verb) ->
     'true'.
 

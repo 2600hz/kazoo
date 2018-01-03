@@ -99,7 +99,7 @@ resource_exists(_, _) -> 'true'.
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) -> cb_simple_authz:authorize(Context).
 
--spec authorize(cb_context:context(), path_token()) -> boolean() | {'halt', cb_context:context()}.
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context, Path) ->
     authorize_request(Context, Path, cb_context:req_verb(Context)).
 
@@ -109,7 +109,7 @@ authorize(Context, _Path, _Id) ->
 
 -spec authorize_request(cb_context:context(), path_token(), http_method()) ->
                                boolean() |
-                               {'halt', cb_context:context()}.
+                               {'stop', cb_context:context()}.
 authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
@@ -117,12 +117,12 @@ authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
 authorize_request(_Context, ?AVAILABLE, ?HTTP_GET) ->
     'true';
 authorize_request(Context, _, ?HTTP_PUT) ->
-    {'halt', cb_context:add_system_error('forbidden', Context)};
+    {'stop', cb_context:add_system_error('forbidden', Context)};
 authorize_request(Context, _, ?HTTP_GET) ->
     cb_simple_authz:authorize(Context).
 
 -spec authorize_create(cb_context:context()) -> boolean() |
-                                                {'halt', cb_context:context()}.
+                                                {'stop', cb_context:context()}.
 authorize_create(Context) ->
     IsAuthenticated = cb_context:is_authenticated(Context),
     IsSuperDuperAdmin = cb_context:is_superduper_admin(Context),
@@ -133,7 +133,7 @@ authorize_create(Context) ->
                 )
     of
         'true' -> 'true';
-        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
+        'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
     end.
 
 %%--------------------------------------------------------------------

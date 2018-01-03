@@ -154,17 +154,16 @@ maybe_load_last_data(Context) ->
 load_last_data(Context, File) ->
     {'ok', AttachBin} = file:read_file(File),
     BaseName = kz_term:to_binary(filename:basename(File)),
-    cb_context:setters(
-      Context,[{fun cb_context:set_resp_status/2, 'success'}
-              ,{fun cb_context:set_resp_data/2, AttachBin}
-              ,{fun cb_context:add_resp_headers/2,
-                [{<<"Content-Disposition">>, <<"attachment; filename=", BaseName/binary>>}
-                ,{<<"Content-Type">>, extension_to_content_type(
-                                        kz_term:to_lower_binary(
-                                          filename:extension(BaseName)))
-                 }
-                ]}
-              ]).
+    ContentType = extension_to_content_type(kz_term:to_lower_binary(filename:extension(BaseName))),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, AttachBin}
+                       ,{fun cb_context:add_resp_headers/2,
+                         #{<<"content-disposition">> => <<"attachment; filename=", BaseName/binary>>
+                          ,<<"content-type">> => ContentType
+                          }
+                        }
+                       ]).
 
 -spec extension_to_content_type(ne_binary()) -> ne_binary().
 extension_to_content_type(<<".gzip">>) -> ?MIME_TYPE_GZIP;

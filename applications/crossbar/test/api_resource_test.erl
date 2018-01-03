@@ -10,5 +10,5 @@ get_range_test_() ->
     ,?_assertEqual({FullBinary, 0, 6, 7, 7}, api_resource:get_range(FullBinary, <<"bytes=0-6">>))
      %% Invalid should give full size
     ,?_assertEqual({FullBinary, 0, 6, 7, 7}, api_resource:get_range(FullBinary, <<"bytes=0-9">>))
-    ,?_assertEqual({FullBinary, 0, 6, 7, 7}, api_resource:get_range(FullBinary, <<"">>))
+    ,?_assertEqual({FullBinary, 0, 6, 7, 7}, api_resource:get_range(FullBinary, <<>>))
     ].

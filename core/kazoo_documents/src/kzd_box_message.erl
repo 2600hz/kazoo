@@ -189,7 +189,7 @@ get_msg_id(JObj) ->
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
--spec folder(doc()) -> api_object().
+-spec folder(doc()) -> api_ne_binary().
 folder(Metadata) ->
     folder(Metadata, 'undefined').
 
@@ -197,7 +197,7 @@ folder(Metadata) ->
 folder(Metadata, Default) ->
     kz_json:get_first_defined([[?KEY_METADATA, ?VM_KEY_FOLDER], ?VM_KEY_FOLDER], Metadata, Default).
 
--spec set_folder(api_binary(), doc()) -> doc().
+-spec set_folder(api_ne_binary(), doc()) -> doc().
 set_folder(Folder, Metadata) ->
     kz_json:set_value(?VM_KEY_FOLDER, Folder, Metadata).
 

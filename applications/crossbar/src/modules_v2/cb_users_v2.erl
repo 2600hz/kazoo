@@ -328,16 +328,15 @@ patch(Context, Id) ->
                              cb_context:context().
 load_attachment(AttachmentId, Context) ->
     Headers =
-        [{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-        ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-        ],
-    cb_context:add_resp_headers(
-      crossbar_doc:load_attachment(cb_context:doc(Context)
-                                  ,AttachmentId
-                                  ,?TYPE_CHECK_OPTION(kzd_user:type())
-                                  ,Context
-                                  )
-                               ,Headers).
+        #{<<"content-disposition">> => <<"attachment; filename=", AttachmentId/binary>>
+         ,<<"content-type">> => kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)
+         },
+    LoadedContext = crossbar_doc:load_attachment(cb_context:doc(Context)
+                                                ,AttachmentId
+                                                ,?TYPE_CHECK_OPTION(kzd_user:type())
+                                                ,Context
+                                                ),
+    cb_context:add_resp_headers(LoadedContext, Headers).
 
 load_attachment(UserId, AttachmentId, Context) ->
     Context1 = load_user(UserId, Context),

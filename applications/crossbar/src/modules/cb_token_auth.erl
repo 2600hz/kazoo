@@ -107,10 +107,10 @@ authorize(Context) ->
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) ->
                           boolean() |
-                          {'true' | 'halt', cb_context:context()}.
+                          {'true' | 'stop', cb_context:context()}.
 -spec authenticate(cb_context:context(), api_ne_binary(), atom()) ->
                           boolean() |
-                          {'true' | 'halt', cb_context:context()}.
+                          {'true' | 'stop', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
     authenticate(Context, cb_context:auth_account_id(Context), cb_context:auth_token_type(Context)).
@@ -131,7 +131,7 @@ authenticate(Context, 'undefined', 'x-auth-token') ->
                             );
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
-            {'halt', cb_context:add_system_error('too_many_requests', Context)}
+            {'stop', cb_context:add_system_error('too_many_requests', Context)}
     end;
 authenticate(_Context, _AccountId, _TokenType) -> 'false'.
 
@@ -180,10 +180,10 @@ validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
         {'error', <<"token expired">>} ->
             lager:info("provided auth token has expired"),
 
-            {'halt', crossbar_util:response_401(Context)};
+            {'stop', crossbar_util:response_401(Context)};
         {'error', 'not_found'} ->
             lager:info("provided auth token was not found"),
-            {'halt', crossbar_util:response_401(Context)};
+            {'stop', crossbar_util:response_401(Context)};
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'
@@ -191,7 +191,7 @@ validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
 
 -spec is_account_expired(cb_context:context(), kz_json:object()) ->
                                 boolean() |
-                                {'halt', cb_context:context()}.
+                                {'stop', cb_context:context()}.
 is_account_expired(Context, JObj) ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, JObj),
     case kz_util:is_account_expired(AccountId) of
@@ -205,7 +205,7 @@ is_account_expired(Context, JObj) ->
                   ]
                  ),
             Context1 = cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context),
-            {'halt', Context1}
+            {'stop', Context1}
     end.
 
 -spec check_as(cb_context:context(), kz_json:object()) ->

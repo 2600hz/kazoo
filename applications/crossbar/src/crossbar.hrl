@@ -30,7 +30,7 @@
 
 -define(CACHE_TTL, kapps_config:get_integer(?CONFIG_CAT, <<"cache_ttl">>, 300)).
 
--define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).
+-define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, '*'}).
 
 -define(CB_ACCOUNT_TOKEN_RESTRICTIONS, <<"token_restrictions">>).
 
@@ -148,7 +148,7 @@
                     ,req_json = kz_json:new() :: req_json()
                     ,req_files = [] :: req_files()
                     ,req_data = kz_json:new() :: kz_json:json_term()  % the "data" from the request JSON envelope
-                    ,req_headers = [] :: cowboy:http_headers()
+                    ,req_headers = #{} :: cowboy:http_headers()
                     ,query_json = kz_json:new() :: kz_json:object()
                     ,account_id :: api_ne_binary()
                     ,account_name :: api_ne_binary()
@@ -165,7 +165,7 @@
                     ,resp_error_code :: api_integer()
                     ,resp_file = <<>> :: binary()
                     ,resp_data :: resp_data()
-                    ,resp_headers = [] :: kz_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
+                    ,resp_headers = #{} :: cowboy:http_headers() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
                     ,resp_envelope = kz_json:new() :: kz_json:object()
                     ,start = os:timestamp() :: kz_now()
                     ,req_id = ?DEFAULT_LOG_SYSTEM_ID :: binary()

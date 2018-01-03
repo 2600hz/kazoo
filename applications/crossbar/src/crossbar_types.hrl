@@ -5,7 +5,7 @@
 -define(HARD_DELETE, 'false').
 -define(SOFT_DELETE, 'true').
 
--type crossbar_status() :: 'success' | 'error' | 'fatal' | 'halt'.
+-type crossbar_status() :: 'success' | 'error' | 'fatal' | 'stop'.
 -type crossbar_module_result() :: {crossbar_status(), kz_proplist()} |
                                   {crossbar_status(), kz_proplist(), string()} |
                                   {crossbar_status(), kz_proplist(), string(), integer()}.
@@ -27,7 +27,7 @@
 -type req_nouns() :: [req_noun()].
 
 %% {Type, SubType, Options}
--type content_type() :: {ne_binary(), ne_binary(), kz_proplist()} | ne_binary().
+-type content_type() :: {ne_binary(), ne_binary(), '*' | kz_proplist()} | ne_binary().
 
 -type media_value() :: {content_type(), non_neg_integer(), list()}.
 -type media_values() :: [media_value()].

@@ -188,11 +188,12 @@ ctp(Context) ->
                     {cowboy_req:req(), cb_context:context()}.
 to_csv({Req, Context}) ->
     Filename = download_filename(Context, requested_attachment_name(Context)),
-    Headers = props:set_values([{<<"content-type">>, <<"text/csv">>}
-                               ,{<<"content-disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
-                               ]
-                              ,cowboy_req:get('resp_headers', Req)
-                              ),
+    Headers0 = cowboy_req:resp_headers(Req),
+    Headers = maps:merge(#{<<"content-type">> => <<"text/csv">>
+                          ,<<"content-disposition">> => <<"attachment; filename=\"", Filename/binary, "\"">>
+                          }
+                        ,Headers0
+                        ),
     {Req, cb_context:set_resp_headers(Context, Headers)}.
 
 -spec download_filename(cb_context:context(), ne_binary()) -> ne_binary().

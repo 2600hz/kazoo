@@ -1037,11 +1037,12 @@ read_template(Context, Id, Accept) ->
             crossbar_util:response_faulty_request(Context);
         {_Attachment, AttachmentsDb} ->
             lager:debug("found attachment ~s in document ~s at ~s", [AttachmentName, Id, AttachmentsDb]),
-            cb_context:add_resp_headers(
-              read_account_attachment(Context, AttachmentsDb, Id, AttachmentName)
-                                       ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
-                                        ,{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentName)}
-                                        ])
+            LoadedContext = read_account_attachment(Context, AttachmentsDb, Id, AttachmentName),
+            cb_context:add_resp_headers(LoadedContext
+                                       ,#{<<"content-disposition">> => attachment_filename(Id, Accept)
+                                         ,<<"content-type">> => kz_doc:attachment_content_type(Doc, AttachmentName)
+                                         }
+                                       )
     end.
 
 -spec attachment_filename(ne_binary(), ne_binary()) -> iolist().

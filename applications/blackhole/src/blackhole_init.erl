@@ -8,50 +8,24 @@
 %%%   James Aimonetti
 %%%   Jon Blanton
 %%%-------------------------------------------------------------------
--module(crossbar_init).
+-module(blackhole_init).
 
--export([start_link/0
-        ,start_mod/1, stop_mod/1
-        ]).
+-export([start_link/0]).
 
--include("crossbar.hrl").
+-include("blackhole.hrl").
 
 -define(USE_COMPRESSION, kapps_config:get_is_true(?CONFIG_CAT, <<"compress_response_body">>, 'true')).
+-define(SOCKET_PORT, kapps_config:get_integer(?APP_NAME, <<"port">>, 5555)).
+-define(SOCKET_ACCEPTORS, kapps_config:get_integer(?APP_NAME, <<"acceptors">>, 100)).
 
--spec crossbar_routes() -> cowboy_router:routes().
-crossbar_routes() -> [{'_', paths_list()}].
+-spec blackhole_routes() -> cowboy_router:routes().
+blackhole_routes() -> [{'_', paths_list()}].
 
 paths_list() ->
-    [api_path(), default_path()].
-
-default_path() ->
-    {'_', 'crossbar_default_handler', []}.
+    [api_path()].
 
 api_path() ->
-    {<<"/:version/[...]">>, [api_version_constraint()], 'api_resource', []}.
-
--spec api_version_constraint() -> cowboy_router:constraint().
-api_version_constraint() ->
-    {'version', fun api_version_constraint/2}.
-
--spec api_version_constraint('forward', ne_binary()) ->
-                                    {'ok', ne_binary()} |
-                                    {'error', 'not_a_version'}.
-api_version_constraint('forward', <<"v", ApiVersion/binary>>=Vsn) ->
-    try kz_term:to_integer(ApiVersion) of
-        Int ->
-            lager:debug("routing to version ~b", [Int]),
-            {'ok', Vsn}
-    catch
-        _:_ ->
-            lager:debug("not routing to version ~s", [ApiVersion]),
-            {'error', 'not_a_version'}
-    end;
-api_version_constraint('forward', NotVersion) ->
-    case lists:member(NotVersion, ?INBOUND_HOOKS) of
-        'true' -> {'ok', NotVersion};
-        'false' -> {'error', 'not_a_version'}
-    end.
+    {'_', [], 'blackhole_socket_handler', []}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -61,115 +35,11 @@ api_version_constraint('forward', NotVersion) ->
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
-    _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
-         || {Config, Error} <- kapps_maintenance:validate_system_configs()
-        ],
-
-    Dispatch = cowboy_router:compile(crossbar_routes()),
+    Dispatch = cowboy_router:compile(blackhole_routes()),
 
     maybe_start_plaintext(Dispatch),
     maybe_start_ssl(Dispatch),
     'ignore'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Load a crossbar module's bindings into the bindings server
-%%--------------------------------------------------------------------
-
--spec is_versioned_module(binary()) -> boolean().
-is_versioned_module(Module) ->
-    Mod = lists:reverse(binary_to_list(Module)),
-    case Mod of
-        "1v_" ++ _ -> 'true';
-        "2v_" ++ _ -> 'true';
-        _ -> 'false'
-    end.
-
--spec start_mod(atom() | string() | binary()) -> 'ok' | {'error', any()}.
-start_mod(CBMod) when is_binary(CBMod) ->
-    case is_versioned_module(CBMod) of
-        'true' -> {'error', 'version_supplied'};
-        'false' -> start_mod(kz_term:to_atom(CBMod, 'true'))
-    end;
-start_mod(CBMod) when is_atom(CBMod) ->
-    try CBMod:init() of
-        _ -> 'ok'
-    catch
-        _E:_R ->
-            lager:debug("failed to initialize ~s: ~p (trying other versions)", [CBMod, _R]),
-            maybe_start_mod_versions(?VERSION_SUPPORTED, CBMod)
-    end;
-start_mod(CBMod) ->
-    start_mod(kz_term:to_binary(CBMod)).
-
--spec maybe_start_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
-maybe_start_mod_versions(Versions, Mod) ->
-    case lists:all(fun(Version) -> start_mod_version(Version, Mod) end, Versions) of
-        'true' -> 'ok';
-        'false' -> {'error', 'no_modules_started'}
-    end.
-
--spec start_mod_version(ne_binary(), ne_binary() | atom()) -> boolean().
-start_mod_version(Version, Mod) ->
-    Module = <<(kz_term:to_binary(Mod))/binary
-               , "_", (kz_term:to_binary(Version))/binary
-             >>,
-    CBMod = kz_term:to_atom(Module, 'true'),
-    try CBMod:init() of
-        _ ->
-            lager:debug("module ~s version ~s successfully loaded", [Mod, Version]),
-            'true'
-    catch
-        _E:_R ->
-            lager:warning("failed to initialize module ~s version ~s: ~p", [Mod, Version, _R]),
-            'false'
-    end.
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Load a crossbar module's bindings into the bindings server
-%%--------------------------------------------------------------------
--spec stop_mod(atom() | string() | binary()) -> 'ok'.
-stop_mod(CBMod) when not is_atom(CBMod) ->
-    stop_mod(kz_term:to_atom(CBMod, 'true'));
-stop_mod(CBMod) ->
-    crossbar_bindings:flush_mod(CBMod),
-    case erlang:function_exported(CBMod, 'stop', 0) of
-        'true' -> do_stop_mod(CBMod);
-        'false' ->
-            lager:debug("failed to stop ~s (trying other versions)", [CBMod]),
-            maybe_stop_mod_versions(?VERSION_SUPPORTED, CBMod)
-    end.
-
--spec do_stop_mod(atom()) -> 'ok'.
-do_stop_mod(CBMod) ->
-    try CBMod:stop() of
-        _ -> 'ok'
-    catch
-        _E:_R ->
-            lager:notice("failed to stop ~s: ~p (trying other versions)", [CBMod, _R]),
-            maybe_stop_mod_versions(?VERSION_SUPPORTED, CBMod)
-    end.
-
--spec maybe_stop_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
-maybe_stop_mod_versions(Versions, Mod) ->
-    lists:foreach(fun(Version) -> stop_mod_version(Version, Mod) end, Versions).
-
--spec stop_mod_version(ne_binary(), ne_binary() | atom()) -> boolean().
-stop_mod_version(Version, Mod) ->
-    Module = <<(kz_term:to_binary(Mod))/binary
-               , "_", (kz_term:to_binary(Version))/binary
-             >>,
-    CBMod = kz_term:to_atom(Module, 'true'),
-    crossbar_bindings:flush_mod(CBMod),
-    try CBMod:stop() of
-        _ ->
-            lager:notice("module ~s version ~s successfully stopped", [Mod, Version]),
-            'true'
-    catch
-        _E:_R ->
-            lager:warning("failed to stop module ~s version ~s: ~p", [Mod, Version, _R]),
-            'false'
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -185,17 +55,17 @@ on_response(_Status, _Headers, _Body, Req) -> Req.
 -spec maybe_start_plaintext(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_plaintext(Dispatch) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_plaintext">>, 'true') of
-        'false' -> lager:info("plaintext api support not enabled");
+        'false' -> lager:info("plaintext websocket support not enabled");
         'true' ->
-            Port = kapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
+            Port = ?SOCKET_PORT,
             ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
-            Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
+            Workers = ?SOCKET_ACCEPTORS,
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
             try
                 IP = get_binding_ip(),
                 lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
-                cowboy:start_clear('api_resource'
+                cowboy:start_clear('blackhole_socket_handler'
                                   ,[{'ip', IP}
                                    ,{'port', Port}
                                    ,{'num_acceptors', Workers}
@@ -210,12 +80,12 @@ maybe_start_plaintext(Dispatch) ->
                                   )
             of
                 {'ok', _} ->
-                    lager:info("started plaintext API server");
+                    lager:info("started plaintext WebSocket server");
                 {'error', {'already_started', _P}} ->
-                    lager:info("already started plaintext API server at ~p", [_P])
+                    lager:info("already started plaintext WebSocket server at ~p", [_P])
             catch
                 _E:_R ->
-                    lager:warning("crashed starting API server: ~s: ~p", [_E, _R])
+                    lager:warning("crashed starting WEBSOCKET server: ~s: ~p", [_E, _R])
             end
     end.
 
@@ -261,7 +131,7 @@ get_binding_ip() ->
 -spec maybe_start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_ssl(Dispatch) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_ssl">>, 'false') of
-        'false' -> lager:info("ssl api support not enabled");
+        'false' -> lager:info("ssl websocket support not enabled");
         'true' -> start_ssl(Dispatch)
     end.
 
@@ -269,7 +139,7 @@ maybe_start_ssl(Dispatch) ->
 start_ssl(Dispatch) ->
     try ssl_opts(code:lib_dir(?APP)) of
         SSLOpts ->
-            lager:debug("trying to start SSL API server"),
+            lager:debug("trying to start SSL WEBSOCKET server"),
             _SslStarted = ssl:start(),
             lager:debug("starting SSL : ~p", [_SslStarted]),
             ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
@@ -277,12 +147,12 @@ start_ssl(Dispatch) ->
 
             try
                 IP = get_binding_ip(),
-                lager:info("trying to bind SSL API server to address ~s port ~b"
+                lager:info("trying to bind SSL WEBSOCKET server to address ~s port ~b"
                           ,[inet:ntoa(IP)
                            ,props:get_value('port', SSLOpts)
                            ]
                           ),
-                cowboy:start_tls('api_resource_ssl'
+                cowboy:start_tls('blackhole_socket_handler_ssl'
                                 ,[{'ip', IP}
                                  ,{'num_acceptors', Workers}
                                   | SSLOpts
@@ -297,20 +167,20 @@ start_ssl(Dispatch) ->
                                 )
             of
                 {'ok', _} ->
-                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);
+                    lager:info("started SSL WEBSOCKET server on port ~b", [props:get_value('port', SSLOpts)]);
                 {'error', {'already_started', _P}} ->
-                    lager:info("already started SSL API server on port ~b at ~p"
+                    lager:info("already started SSL WEBSOCKET server on port ~b at ~p"
                               ,[props:get_value('port', SSLOpts), _P]
                               )
             catch
                 'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s", [_File]);
                 _E:_R ->
-                    lager:warning("crashed starting SSL API server: ~s: ~p", [_E, _R])
+                    lager:warning("crashed starting SSL WEBSOCKET server: ~s: ~p", [_E, _R])
             end
     catch
         'throw':_E ->
-            lager:warning("failed to start SSL API server: ~p", [_E])
+            lager:warning("failed to start SSL WEBSOCKET server: ~p", [_E])
     end.
 
 -spec ssl_opts(list()) -> kz_proplist().
@@ -323,14 +193,14 @@ ssl_opts(RootDir) ->
 
 -spec base_ssl_opts(list()) -> kz_proplist().
 base_ssl_opts(RootDir) ->
-    [{'port', kapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443)}
+    [{'port', kapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 5556)}
     ,{'certfile', find_file(kapps_config:get_string(?CONFIG_CAT
                                                    ,<<"ssl_cert">>
-                                                   ,filename:join([RootDir, <<"priv/ssl/crossbar.crt">>])
+                                                   ,filename:join([RootDir, <<"priv/ssl/blackhole.crt">>])
                                                    ), RootDir)}
     ,{'keyfile', find_file(kapps_config:get_string(?CONFIG_CAT
                                                   ,<<"ssl_key">>
-                                                  ,filename:join([RootDir, <<"priv/ssl/crossbar.key">>])
+                                                  ,filename:join([RootDir, <<"priv/ssl/blackhole.key">>])
                                                   ), RootDir)}
     ,{'password', kapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>)}
     ].

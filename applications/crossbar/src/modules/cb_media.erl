@@ -122,7 +122,7 @@ resource_exists(?PROMPTS, _PromptId) -> 'true';
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
 -spec authorize(cb_context:context()) -> boolean() |
-                                         {'halt', cb_context:context()}.
+                                         {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
 
@@ -151,7 +151,7 @@ authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
                 )
     of
         'true' -> 'true';
-        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
+        'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
     end;
 authorize_media(Context, [{<<"media">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
     cb_simple_authz:authorize(Context);
@@ -354,11 +354,8 @@ validate_upload(Context, MediaId, FileJObj) ->
 
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 get(Context, _MediaId, ?BIN_DATA) ->
-    cb_context:add_resp_headers(Context
-                               ,[{<<"Content-Type">>
-                                 ,kz_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)
-                                 }
-                                ]).
+    CT = kz_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>),
+    cb_context:add_resp_headers(Context, #{<<"content-type">> => CT}).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -909,15 +906,16 @@ load_media_binary(Context, MediaId) ->
             case kz_doc:attachment_names(cb_context:doc(Context1)) of
                 [] -> crossbar_util:response_bad_identifier(MediaId, Context);
                 [Attachment|_] ->
-                    cb_context:add_resp_headers(
-                      crossbar_doc:load_attachment(cb_context:doc(Context1)
-                                                  ,Attachment
-                                                  ,?TYPE_CHECK_OPTION(kzd_media:type())
-                                                  ,Context1
-                                                  )
-                                               ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                                                ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
-                                                ])
+                    LoadedContext = crossbar_doc:load_attachment(cb_context:doc(Context1)
+                                                                ,Attachment
+                                                                ,?TYPE_CHECK_OPTION(kzd_media:type())
+                                                                ,Context1
+                                                                ),
+                    cb_context:add_resp_headers(LoadedContext
+                                               ,#{<<"content-disposition">> => <<"attachment; filename=", Attachment/binary>>
+                                                 ,<<"content-type">> => kz_doc:attachment_content_type(cb_context:doc(Context1), Attachment)
+                                                 }
+                                               )
             end;
         _Status -> Context1
     end.
