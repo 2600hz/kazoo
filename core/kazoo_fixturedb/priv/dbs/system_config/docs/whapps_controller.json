@@ -1,0 +1,190 @@
+{
+    "_id": "whapps_controller",
+    "_rev": "23-37a711250e044cb040d05385b74e5329",
+    "default": {
+        "console_log_level": "info",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "error",
+        "syslog_log_level": "info",
+        "whapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5"
+        ]
+    },
+    "whistle_apps@bar.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "crossbar",
+            "callflow",
+            "fax",
+            "teletype",
+            "conference"
+        ],
+        "zone": "zone_QA1"
+    },
+    "whistle_apps@baz.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "crossbar",
+            "callflow",
+            "fax",
+            "teletype",
+            "conference"
+        ],
+        "zone": "zone_QA2"
+    },
+    "whistle_apps@buzz": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "crossbar"
+        ],
+        "zone": "zone_QA1"
+    },
+    "whistle_apps@different.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "crossbar"
+        ],
+        "zone": "zone_QA1"
+    },
+    "whistle_apps@fizz.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "crossbar"
+        ],
+        "zone": "zone_QA1"
+    },
+    "whistle_apps@fizzbuzz.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5",
+            "callflow",
+            "fax",
+            "teletype",
+            "conference"
+        ],
+        "zone": "zone_QA3"
+    },
+    "whistle_apps@foo.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "crossbar"
+        ],
+        "zone": "zone_QA2"
+    },
+    "whistle_apps@hello.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5",
+            "callflow",
+            "fax",
+            "teletype",
+            "conference"
+        ],
+        "zone": "zone_QA4"
+    },
+    "whistle_apps@other.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5"
+        ],
+        "zone": "zone_QA2"
+    },
+    "whistle_apps@printf.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "crossbar"
+        ],
+        "zone": "zone_QA4"
+    },
+    "whistle_apps@some.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5"
+        ],
+        "zone": "zone_QA1"
+    },
+    "whistle_apps@world.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "syslog_log_level": "debug",
+        "whapps": [
+            "crossbar",
+            "webhooks"
+        ],
+        "zone": "zone_QA3"
+    }
+}
