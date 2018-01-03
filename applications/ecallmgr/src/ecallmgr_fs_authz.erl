@@ -174,13 +174,16 @@ authz_response(JObj, Props, CallId, Node) ->
     of
         'true' -> authorize_account(JObj, Props, CallId, Node);
         'false' ->
-            lager:info("channel is unauthorized: ~s/~s"
-                      ,[kz_json:get_value(<<"Account-Billing">>, JObj)
-                       ,kz_json:get_value(<<"Reseller-Billing">>, JObj)
-                       ]),
+            AccountBilling = kz_json:get_value(<<"Account-Billing">>, JObj),
+            ResellerBilling = kz_json:get_value(<<"Reseller-Billing">>, JObj),
+            lager:info("channel is unauthorized: ~s/~s" ,[AccountBilling, ResellerBilling]),
             case ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') of
                 'true' -> authorize_account(JObj, Props, CallId, Node);
                 'false' ->
+                    %% Set the following CCVs so that we can see why the call was barred in CDRs
+                    ecallmgr_fs_command:set(Node, CallId, [{<<"Account-Billing">>, AccountBilling}
+                                                          ,{<<"Reseller-Billing">>, ResellerBilling}
+                                                          ]),
                     _ = kz_util:spawn(fun kill_channel/2, [Props, Node]),
                     'false'
             end
