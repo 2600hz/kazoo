@@ -704,16 +704,16 @@ maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     case kz_datamgr:save_doc(?KZ_CONFIG_DB, JObj1) of
         {'ok', SavedJObj}=Ok ->
             lager:debug("saved cat ~s to db ~s (~s)", [Category, ?KZ_CONFIG_DB, kz_doc:revision(SavedJObj)]),
-            kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, SavedJObj),
+            _ = kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, SavedJObj),
             Ok;
         {'error', 'not_found'} when not Looped ->
             lager:debug("attempting to create ~s DB", [?KZ_CONFIG_DB]),
-            kz_datamgr:db_create(?KZ_CONFIG_DB),
+            'true' = kz_datamgr:db_create(?KZ_CONFIG_DB),
             maybe_save_category(Category, JObj, PvtFields, 'true');
         {'error', 'conflict'}=E -> E;
         {'error', _R} ->
             lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
-            kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, JObj1),
+            _ = kz_datamgr:add_to_doc_cache(?KZ_CONFIG_DB, Category, JObj1),
             {'ok', JObj1}
     end.
 
