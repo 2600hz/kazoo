@@ -87,8 +87,6 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -spec refresh_account_db(ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
-    %%     Classification = 'account' = kz_datamgr:db_classification(Database),
-    %%     kapi_maintenance:refresh_views(Database, Classification),
     kz_datamgr:refresh_views(Database),
     'ok'.
 
