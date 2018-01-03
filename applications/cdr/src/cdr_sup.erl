@@ -22,7 +22,6 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER('cdr_listener')
-                  ,?WORKER('cdr_maint_listener')
                   ]).
 
 %% ===================================================================

@@ -58,6 +58,8 @@
         ,get_all_account_views/0
         ]).
 
+-export([init_system/0, init_dbs/0]).
+
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 -include("kazoo_apps.hrl").
 
@@ -85,8 +87,7 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -spec refresh_account_db(ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
-    Classification = 'account' = kz_datamgr:db_classification(Database),
-    kapi_maintenance:refresh_views(Database, Classification),
+    kz_datamgr:refresh_views(Database),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -239,30 +240,25 @@ blocking_refresh(Pause) ->
 %%--------------------------------------------------------------------
 -spec refresh() -> 'no_return'.
 -spec refresh(ne_binaries(), text() | non_neg_integer()) -> 'no_return'.
--spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer(), pid()) -> 'no_return'.
+-spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
     refresh(Databases, 2 * ?MILLISECONDS_IN_SECOND).
 
 refresh(Databases, Pause) ->
     Total = length(Databases),
-    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
-    kz_amqp_worker:relay_to(Worker, self()),
+    refresh(Databases, kz_term:to_integer(Pause), Total).
 
-    refresh(Databases, kz_term:to_integer(Pause), Total, Worker).
-
-refresh([], _, _, Worker) ->
-    kz_amqp_worker:checkin_worker(Worker),
-    'no_return';
-refresh([Database|Databases], Pause, Total, Worker) ->
+refresh([], _, _) -> 'no_return';
+refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
              ,[self(), length(Databases) + 1, Total, Database]),
-    _ = do_refresh(Database, Worker),
+    _ = refresh(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
             'true' -> 'ok'
         end,
-    refresh(Databases, Pause, Total, Worker).
+    refresh(Databases, Pause, Total).
 
 -spec get_databases() -> ne_binaries().
 get_databases() ->
@@ -273,22 +269,10 @@ get_databases() ->
 get_database_sort(Db1, Db2) ->
     kzs_util:db_priority(Db1) < kzs_util:db_priority(Db2).
 
--type refresh_result() :: {kz_amqp_worker:request_return()
-                          ,kz_amqp_worker:request_return()
-                          }.
 -spec refresh(ne_binary()) -> 'ok'.
 refresh(Database) ->
-    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
-    kz_amqp_worker:relay_to(Worker, self()),
-    _ = do_refresh(Database, Worker),
-    kz_amqp_worker:checkin_worker(Worker).
-
--spec do_refresh(ne_binary(), pid()) -> refresh_result().
-do_refresh(Database, Worker) ->
-    Classification = kz_datamgr:db_classification(Database),
-    {kapi_maintenance:refresh_database(Database, Worker, Classification)
-    ,kapi_maintenance:refresh_views(Database, Worker, Classification)
-    }.
+    kz_datamgr:refresh_views(Database),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1105,3 +1089,26 @@ fetch_all_account_views() ->
      |kapps_util:get_views_json('crossbar', "account")
      ++ kapps_util:get_views_json('callflow', "views")
     ].
+
+-spec init_dbs() -> 'ok'.
+init_dbs() ->
+    SipViews = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)],
+    _ = kapps_util:update_views(?KZ_SIP_DB, SipViews, 'false'),
+    Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
+            ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
+            ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
+            ],
+    _ = kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'false'),
+    _ = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB, 'kazoo_ips', "views"),
+    'ok'.
+
+register_account_views() ->
+    kazoo_modb_maintenance:register_views(),
+    Views = fetch_all_account_views(),
+    kz_datamgr:register_views('account', Views).
+
+-spec init_system() -> 'ok'.
+init_system() ->
+    init_dbs(),
+    register_account_views(),
+    lager:notice("system initialized").

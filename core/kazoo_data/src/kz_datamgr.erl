@@ -13,7 +13,7 @@
 -export([max_bulk_insert/0
         ,max_bulk_read/0
         ]).
-
+-export([init_dbs/0]).
 %% format
 -export([format_error/1]).
 
@@ -87,6 +87,14 @@
         ,change_notice/0
         ]).
 
+-export([register_view/2, register_view/3
+        ,register_views/2,register_views/3
+        ,refresh_views/1
+        ,register_views_from_folder/1
+        ,register_views_from_folder/2
+        ,register_views_from_folder/3
+        ]).
+
 -export_type([view_option/0, view_options/0
              ,view_listing/0, views_listing/0
              ,data_error/0, data_errors/0
@@ -119,7 +127,7 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME(DbName) ->
     try
         {'ok', Bin} = file:read_file(Path),
         JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
-        ensure_saved(DbName, JObj)
+        maybe_update_doc(DbName, JObj)
     catch
         _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("bad match: ~p", [Reason]),
@@ -176,7 +184,7 @@ revise_views_from_folder(DbName, App) ->
 -spec revise_docs_from_folder(ne_binary(), atom(), ne_binary() | nonempty_string(), boolean()) -> 'ok'.
 
 revise_docs_from_folder(DbName, App, Folder) ->
-    revise_docs_from_folder(DbName, App, Folder, 'true').
+    revise_docs_from_folder(DbName, App, Folder, 'false').
 
 revise_docs_from_folder(DbName, App, Folder, Sleep) ->
     case code:priv_dir(App) of
@@ -194,14 +202,26 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     try
         {'ok', Bin} = file:read_file(H),
         JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
+        _ = maybe_update_doc(DbName, JObj),
         Sleep
             andalso timer:sleep(250),
-        _ = ensure_saved(DbName, JObj),
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
         _:_ ->
             kz_util:log_stacktrace(),
             do_revise_docs_from_folder(DbName, Sleep, T)
+    end.
+
+maybe_update_doc(DbName, JObj) ->
+    case should_update(DbName, JObj) of
+        true -> ensure_saved(DbName, JObj);
+        false -> {'ok', JObj}
+    end.
+
+should_update(DbName, JObj) ->
+    case open_doc(DbName, kz_doc:id(JObj)) of
+        {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
+        _ -> true
     end.
 
 %%--------------------------------------------------------------------
@@ -389,8 +409,10 @@ db_view_update(DbName, Views) ->
     db_view_update(DbName, Views, 'false').
 
 db_view_update(DbName, Views0, Remove) when ?VALID_DBNAME(DbName) ->
-    Views = lists:keymap(fun maybe_adapt_multilines/1, 2, Views0),
-    kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove);
+    case lists:keymap(fun maybe_adapt_multilines/1, 2, Views0) of
+        [] -> 'false';
+        Views ->  kzs_db:db_view_update(kzs_plan:plan(DbName), DbName, Views, Remove)
+    end;
 db_view_update(DbName, Views, Remove) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_view_update(Db, Views, Remove);
@@ -919,22 +941,34 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 -spec update_doc(ne_binary(), docid(), update_props(), kz_proplist()) ->
                         {'ok', kz_json:object()} |
                         data_error().
+-spec update_doc(ne_binary(), docid(), update_props(), kz_proplist(), kz_proplist()) ->
+                        {'ok', kz_json:object()} |
+                        data_error().
 
 update_doc(DbName, Id, UpdateProps) ->
     update_doc(DbName, Id, UpdateProps, []).
 
-update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
-                                                      is_list(CreateProps) ->
+update_doc(DbName, Id, UpdateProps, CreateProps) ->
+    update_doc(DbName, Id, UpdateProps, CreateProps, []).
+
+update_doc(DbName, Id, UpdateProps, CreateProps, ExtraUpdateProps)
+  when is_list(UpdateProps),
+       is_list(CreateProps),
+       is_list(ExtraUpdateProps) ->
     case open_doc(DbName, Id) of
         {'error', 'not_found'} ->
-            JObj = kz_json:from_list(lists:append([[{<<"_id">>, Id} | CreateProps], UpdateProps])),
+            JObj = kz_json:from_list([{<<"_id">>, Id}]
+                                     ++ CreateProps
+                                     ++ UpdateProps
+                                     ++ ExtraUpdateProps
+                                    ),
             save_doc(DbName, JObj);
         {'error', _}=E -> E;
         {'ok', JObj}=OK ->
             UpdatedJObj = kz_json:set_values(UpdateProps, JObj),
             case kz_json:are_equal(JObj, UpdatedJObj) of
                 'true' -> OK;
-                'false' -> save_doc(DbName, UpdatedJObj)
+                'false' -> save_doc(DbName, kz_json:set_values(ExtraUpdateProps, UpdatedJObj))
             end
     end.
 
@@ -1311,14 +1345,14 @@ get_result_doc(DbName, DesignDoc, Key) ->
     end.
 
 -spec get_result_docs(ne_binary(), ne_binary(), ne_binaries()) ->
-                             {'ok', kz_json:object()} |
+                             {'ok', kz_json:objects()} |
                              data_error().
 get_result_docs(DbName, DesignDoc, Keys) ->
     Options = ['include_docs'
               ,{'keys', Keys}
               ],
     case get_results(DbName, DesignDoc, Options) of
-        {'ok', []} -> {'error', 'not_found'};
+        {'ok', []} -> {'error', 'no_results'};
         {'ok', Results} -> {'ok', [kz_json:get_json_value(<<"doc">>, Result) || Result <- Results]};
         {'error', _}=E -> E
     end.
@@ -1474,3 +1508,90 @@ add_doc_type_from_view(View, Options) ->
             [{'doc_type', DocType} | Options];
         _ -> Options
     end.
+
+-spec init_dbs() -> boolean().
+init_dbs() ->
+    Result = case db_exists(?KZ_ACCOUNTS_DB) of
+                 'true' -> 'false';
+                 'false' -> [db_create(DbName) || DbName <- ?KZ_SYSTEM_DBS],
+                            'true'
+             end,
+    revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>),
+    Result.
+
+-spec register_views(ne_binary() | db_classification(), views_listing()) -> 'ok'.
+register_views(Classification, Views) ->
+    App = kz_util:calling_app(),
+    register_views(Classification, kz_term:to_atom(App, 'true'), Views).
+
+
+-spec register_views(ne_binary() | db_classification(), atom(), views_listing()) -> 'ok'.
+register_views(_Classification, _App, []) -> 'ok';
+register_views(Classification, App, [View | Other]) ->
+    _ = register_view(Classification, App, View),
+    register_views(Classification, App, Other).
+
+-spec register_view(ne_binary() | db_classification(), view_listing()) ->
+                           {'ok', kz_json:object()} |
+                           data_error().
+register_view(Classification, View) ->
+    App = kz_util:calling_app(),
+    register_view(Classification, kz_term:to_atom(App, 'true'), View).
+
+-spec register_view(ne_binary() | db_classification(), atom(), view_listing() | string() | ne_binary()) ->
+                           {'ok', kz_json:object()} |
+                           data_error().
+register_view(Classification, App, {<<"_design/", Name/binary>>, View}) ->
+    Version = kz_util:application_version(App),
+    AppName = kz_term:to_binary(App),
+    DocId = <<(kz_term:to_binary(Classification))/binary, "-", AppName/binary, "-", Name/binary>>,
+    Update = [{<<"view_definition">>, View}],
+    ExtraUpdate = [{<<"version">>, Version}],
+    Create = [{<<"application">>, AppName}
+             ,{<<"classification">>, kz_term:to_binary(Classification)}
+             ,{<<"name">>, Name}
+             ,{<<"pvt_type">>, <<"view_definition">>}
+             ],
+    update_doc(?KZ_DATA_DB, DocId, Update, Create, ExtraUpdate);
+register_view(Classification, App, ViewName) ->
+    register_view(Classification, App, kzs_util:get_view_json(App, ViewName)).
+
+-spec register_views_from_folder(ne_binary() | db_classification()) -> 'ok'.
+register_views_from_folder(Classification) ->
+    register_views_from_folder(Classification, kz_term:to_atom(kz_util:calling_app(), 'true')).
+
+-spec register_views_from_folder(ne_binary() | db_classification(), atom()) -> 'ok'.
+register_views_from_folder(Classification, App) ->
+    register_views_from_folder(Classification, App, "views").
+
+-spec register_views_from_folder(ne_binary() | db_classification(), atom(), ne_binary() | nonempty_string()) -> 'ok'.
+register_views_from_folder(Classification, App, Folder) ->
+    Views = kzs_util:get_views_json(App, Folder),
+    register_views(Classification, App, Views).
+
+-spec refresh_views(ne_binary()) -> boolean() | {'error', 'invalid_db_name'}.
+refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
+    suppress_change_notice(),
+    Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
+    lager:debug("updating views for db ~s:~s", [Classification, DbName]),
+    Updated = case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, [Classification]) of
+                  {'error', _} -> 'false';
+                  {'ok', JObjs} ->
+                      ViewDefs = [kz_json:get_json_value(<<"view_definition">>, JObj) || JObj <- JObjs],
+                      Views = [{kz_doc:id(ViewDef), ViewDef} || ViewDef <- ViewDefs],
+                      Database = kz_util:uri_encode(kz_util:uri_decode(DbName)),
+                      db_view_update(Database, Views)
+              end,
+    _ = case Updated of
+            'true' -> lager:debug("~s:~s views updated", [Classification, DbName]),
+                      kzs_publish:publish_db(DbName, 'edited');
+            'false' -> lager:debug("~s:~s no views needed updating", [Classification, DbName])
+        end,
+    enable_change_notice(),
+    Updated;
+refresh_views(DbName) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> refresh_views(Db);
+        {'error', _}=E -> E
+    end.
+

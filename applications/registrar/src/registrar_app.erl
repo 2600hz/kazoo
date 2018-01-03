@@ -25,6 +25,7 @@
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
+    _ = registrar_maintenance:refresh_views(),
     registrar_sup:start_link().
 
 %%--------------------------------------------------------------------

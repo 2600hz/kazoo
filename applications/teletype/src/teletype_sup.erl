@@ -19,8 +19,8 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('teletype_listener')
                   ,?WORKER('teletype_shared_listener')
-                  ,?WORKER('teletype_maint_listener')
                   ,?SUPER(teletype_farms_sup)
+                  ,?WORKER('teletype_bindings')
                   ]).
 
 %% ===================================================================

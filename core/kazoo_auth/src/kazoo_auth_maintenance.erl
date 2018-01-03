@@ -12,6 +12,8 @@
 
 -export([refresh/0, flush/0]).
 
+-export([ensure_secret/0]).
+
 
 %% ====================================================================
 %% Internal functions
@@ -52,3 +54,11 @@ flush() ->
     kz_cache:flush_local(?PROFILE_CACHE),
     kz_cache:flush_local(?PK_CACHE),
     kz_cache:flush_local(?TOKENS_CACHE).
+
+-spec ensure_secret() -> 'ok'.
+ensure_secret() ->
+    _ = case kapps_config:get_ne_binary(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID) of
+            'undefined' -> kapps_config:set_string(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID, ?KAZOO_GEN_SIGNATURE_SECRET);
+            _ -> 'ok'
+        end,
+    'ok'.

@@ -22,7 +22,6 @@
 
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
                   ,?WORKER('hotornot_listener')
-                  ,?WORKER('hotornot_maint_listener')
                   ]).
 
 %% ===================================================================

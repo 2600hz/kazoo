@@ -120,6 +120,11 @@ handle_info('timeout', State) ->
             _ = distribute_accounts(AccountIds),
             _ = garbage_collect(),
             {'noreply', State, ?POLLING_INTERVAL};
+        {'error', 'not_found'} ->
+            _ = kz_datamgr:db_create(?KZ_FAXES_DB),
+            Views = kapps_util:get_views_json('fax', "views"),
+            _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
+            {'noreply', State, ?POLLING_INTERVAL};
         {'error', _Reason} ->
             lager:debug("failed to fetch fax account jobs: ~p", [_Reason]),
             {'noreply', State, ?POLLING_INTERVAL}

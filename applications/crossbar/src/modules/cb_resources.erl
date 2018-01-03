@@ -38,10 +38,6 @@
 
 -spec init() -> ok.
 init() ->
-    _ = kz_datamgr:db_create(?KZ_OFFNET_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, ?APP, "views/resources.json"),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, ?APP, "views/resources.json"),
-
     _Pid = maybe_start_jobs_listener(),
     lager:debug("started jobs listener: ~p", [_Pid]),
     Binder = fun ({Binding, F}) -> crossbar_bindings:bind(Binding, ?MODULE, F) end,
