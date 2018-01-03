@@ -51,6 +51,10 @@
 
 -export([migrate/0]).
 
+-ifdef(TEST).
+-export([migrate_from_doc/2]).
+-endif.
+
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | ne_binaries().
 
@@ -668,6 +672,7 @@ update_category(Category, JObj, PvtFields) ->
             lager:debug("updating from ~s to ~s", [kz_doc:revision(JObj), kz_doc:revision(Merged)]),
             update_category(Category, Merged, PvtFields)
     end.
+-endif.
 
 %% @private
 -spec maybe_save_category(ne_binary(), kz_json:object(), api_object()) ->
@@ -722,7 +727,6 @@ update_pvt_fields(Category, JObj, 'undefined') ->
 update_pvt_fields(Category, JObj, PvtFields) ->
     Base = update_pvt_fields(Category, JObj, 'undefined'),
     kz_json:merge_jobjs(Base, PvtFields).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -841,7 +845,7 @@ get_category(Category, 'false') ->
 %%  the destination.
 %% @end
 %%--------------------------------------------------------------------
--type migrate_setting() :: {ne_binary(), config_key()}.
+-type migrate_setting() :: {ne_binary(), config_key()} | ne_binary().
 -type migrate_value() :: {ne_binary(), ne_binary(), config_key(), _}.
 -type migrate_values() :: [migrate_value()].
 
@@ -999,6 +1003,8 @@ get_category(Category, 'false') ->
         ,{{<<"callflow">>, [<<"voicemail">>, <<"vm_message_foraward_type">>]}
          ,{<<"callflow">>, [<<"voicemail">>, <<"vm_message_forward_type">>]}
          }
+
+        ,{<<"whapps_controller">>, <<"kapps_controller">>}
         ]).
 
 -spec migrate() -> 'ok'.
@@ -1008,7 +1014,10 @@ migrate() ->
 -spec migrate_config_setting({migrate_setting(), migrate_setting()}) ->
                                     'ok' |
                                     {'error', any()}.
+migrate_config_setting({?NE_BINARY = FromId, ?NE_BINARY = ToId}) ->
+    migrate_config_doc(FromId, ToId);
 migrate_config_setting({From, To}) ->
+    lager:info("migrating ~p to ~p", [From, To]),
     case remove_config_setting(From) of
         {'ok', _, []} -> 'ok';
         {'ok', JObj, Removed} ->
@@ -1118,7 +1127,59 @@ remove_config_setting([{Id, Node, Setting} | Keys], JObj, Removed) ->
 
 -spec config_setting_key(ne_binary(), config_key()) -> ne_binaries().
 %% NOTE: to support nested keys, update this merge function
-config_setting_key(Node, [_|_]=Setting) ->
+config_setting_key(Node, Setting) when is_list(Setting) ->
     [Node | Setting];
 config_setting_key(Node, Setting) ->
     [Node, Setting].
+
+-spec migrate_config_doc(ne_binary(), ne_binary()) -> 'ok'.
+migrate_config_doc(FromId, ToId) ->
+    case kz_datamgr:open_doc(?KZ_CONFIG_DB, FromId) of
+        {'error', 'not_found'} -> lager:debug("didn't find ~s to migrate", [FromId]);
+        {'ok', FromJObj} ->
+            migrate_from_doc_to_doc(FromJObj, open_to_doc(ToId))
+
+    end.
+
+-spec migrate_from_doc_to_doc(kz_json:object(), kz_json:object()) -> 'ok'.
+migrate_from_doc_to_doc(FromJObj, ToJObj) ->
+    MigratedJObj = migrate_from_doc(FromJObj, ToJObj),
+    {'ok', _ConfigDoc} = maybe_save_category(kz_doc:id(ToJObj), MigratedJObj, 'undefined'),
+    lager:info("migrated ~s to ~s(~s)"
+              ,[kz_doc:id(FromJObj), kz_doc:id(ToJObj), kz_doc:revision(_ConfigDoc)]
+              ).
+
+-spec migrate_from_doc(kz_json:object(), kz_json:object()) -> kz_json:object().
+migrate_from_doc(FromJObj, ToJObj) ->
+    kz_json:foldl(fun migrate_config_doc_node/3, ToJObj, kz_doc:public_fields(FromJObj, 'false')).
+
+-spec migrate_config_doc_node(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+migrate_config_doc_node(FromNodeBefore, FromConfig, ToJObj) ->
+    FromNode = maybe_fix_nodename(FromNodeBefore),
+    kz_json:foldl(fun(ConfigKey, ConfigValue, Acc) ->
+                          migrate_config_value(FromNode, ConfigKey, ConfigValue, Acc)
+                  end
+                 ,ToJObj
+                 ,FromConfig
+                 ).
+
+-spec migrate_config_value(ne_binary(), ne_binary(), kz_json:json_term(), kz_json:object()) ->
+                                  kz_json:object().
+migrate_config_value(FromNode, <<"whapps">>, ConfigValue, ToJObj) ->
+    kz_json:set_value([FromNode, <<"kapps">>], ConfigValue, ToJObj);
+migrate_config_value(FromNode, ConfigKey, ConfigValue, ToJObj) ->
+    kz_json:set_value([FromNode, ConfigKey], ConfigValue, ToJObj).
+
+-spec maybe_fix_nodename(ne_binary()) -> ne_binary().
+maybe_fix_nodename(<<"whistle_apps@", Host/binary>>) ->
+    lager:info("changing whistle_apps@~s to kazoo_apps@~s", [Host, Host]),
+    <<"kazoo_apps@", Host/binary>>;
+maybe_fix_nodename(NodeName) ->
+    NodeName.
+
+-spec open_to_doc(ne_binary()) -> kz_json:object().
+open_to_doc(ToId) ->
+    case kz_datamgr:open_doc(?KZ_CONFIG_DB, ToId) of
+        {'ok', ToJObj} -> ToJObj;
+        {'error', 'not_found'} -> kz_json:from_list([{<<"_id">>, ToId}])
+    end.
