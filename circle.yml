@@ -59,3 +59,4 @@ test:
   post:
     - mkdir $CIRCLE_ARTIFACTS/logs
     - mv ./_rel/kazoo/log/* $CIRCLE_ARTIFACTS/logs/
+    - cp ./rel/relx.config $CIRCLE_ARTIFACTS/logs/
