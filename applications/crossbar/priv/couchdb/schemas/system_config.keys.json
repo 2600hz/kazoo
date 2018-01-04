@@ -4,6 +4,7 @@
     "description": "Schema for DTMF keys system_config",
     "properties": {
         "voicemail": {
+            "$ref": "voicemail_keys",
             "description": "DTMF keys for voicemail callflow module"
         }
     },
