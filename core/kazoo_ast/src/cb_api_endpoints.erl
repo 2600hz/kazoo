@@ -257,11 +257,16 @@ process_schema(Filename, Definitions) ->
                     'true' -> {Path, maybe_fix_ref(V)}
                 end
                 || {Path, V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
-                   not lists:member(<<"patternProperties">>, Path),
-                   not lists:member(<<"kazoo-validation">>, Path)
+                   not lists:member(<<"patternProperties">>, Path)
+                       andalso not is_kazoo_prefixed(Path)
                ])),
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
+
+-spec is_kazoo_prefixed(ne_binaries()) -> boolean().
+is_kazoo_prefixed([]) -> 'false';
+is_kazoo_prefixed([<<"kazoo-", _/binary>>|_]) -> 'true';
+is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
 
 -spec maybe_fix_ref(ne_binary()) -> ne_binary().
 maybe_fix_ref(<<"#",_/binary>>=Ref) -> Ref;
