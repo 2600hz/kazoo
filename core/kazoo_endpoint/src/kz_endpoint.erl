@@ -908,8 +908,8 @@ maybe_start_metaflow(Call, Endpoint) ->
                     [{<<"Endpoint-ID">>, Id}
                     ,{<<"Account-ID">>, kapps_call:account_id(Call)}
                     ,{<<"Call">>, kapps_call:to_json(Call)}
-                    ,{<<"Numbers">>, kz_json:get_list_value(<<"numbers">>, JObj)}
-                    ,{<<"Patterns">>, kz_json:get_list_value(<<"patterns">>, JObj)}
+                    ,{<<"Numbers">>, kz_json:get_json_value(<<"numbers">>, JObj)}
+                    ,{<<"Patterns">>, kz_json:get_json_value(<<"patterns">>, JObj)}
                     ,{<<"Binding-Digit">>, kz_json:get_ne_binary_value(<<"binding_digit">>, JObj)}
                     ,{<<"Digit-Timeout">>, kz_json:get_integer_value(<<"digit_timeout">>, JObj)}
                     ,{<<"Listen-On">>, kz_json:get_ne_binary_value(<<"listen_on">>, JObj, <<"self">>)}
