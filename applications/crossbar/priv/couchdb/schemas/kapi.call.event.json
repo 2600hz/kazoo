@@ -18,6 +18,12 @@
         "Billing-Seconds": {
             "type": "string"
         },
+        "Bridge-Hangup-Cause": {
+            "type": "string"
+        },
+        "Call-Debug": {
+            "type": "object"
+        },
         "Call-Direction": {
             "type": "string"
         },

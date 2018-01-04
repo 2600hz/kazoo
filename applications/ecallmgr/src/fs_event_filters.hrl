@@ -2,38 +2,26 @@
 
 -define(FS_GENERATED_EVENT_FILTERS
        ,[<<"Acquired-UUID">>
-        ,<<"Action">>
-        ,<<"Answer-State">>
         ,<<"Application">>
         ,<<"Application-Data">>
         ,<<"Application-Logical-Direction">>
         ,<<"Application-Response">>
-        ,<<"Auth-Realm">>
         ,<<"Bridge-A-Unique-ID">>
         ,<<"Bridge-B-Unique-ID">>
         ,<<"Call-Direction">>
         ,<<"Call-ID">>
-        ,<<"Call-Setup">>
         ,<<"Caller-Callee-ID-Name">>
         ,<<"Caller-Callee-ID-Number">>
         ,<<"Caller-Caller-ID-Name">>
         ,<<"Caller-Caller-ID-Number">>
         ,<<"Caller-Channel-Created-Time">>
-        ,<<"Caller-Context">>
         ,<<"Caller-Destination-Number">>
-        ,<<"Caller-Dialplan">>
         ,<<"Caller-Unique-ID">>
         ,<<"Channel-Call-State">>
         ,<<"Channel-Call-UUID">>
         ,<<"Channel-Name">>
         ,<<"Channel-Presence-ID">>
         ,<<"Channel-State">>
-        ,<<"Conf-Name">>
-        ,<<"Conference-Name">>
-        ,<<"Conference-Profile-Name">>
-        ,<<"Conference-Unique-ID">>
-        ,<<"Controls">>
-        ,<<"Core-UUID">>
         ,<<"DTMF-Digit">>
         ,<<"DTMF-Duration">>
         ,<<"Detected-Fax-Tone">>
@@ -41,12 +29,9 @@
         ,<<"Event-Date-Timestamp">>
         ,<<"Event-Name">>
         ,<<"Event-Subclass">>
-        ,<<"Force-Publish-Event-State">>
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
-        ,<<"Hunt-Context">>
         ,<<"Hunt-Destination-Number">>
-        ,<<"Join-Time">>
         ,<<"Other-Leg-Call-ID">>
         ,<<"Other-Leg-Callee-ID-Number">>
         ,<<"Other-Leg-Caller-ID-Name">>
@@ -56,19 +41,12 @@
         ,<<"Other-Leg-Direction">>
         ,<<"Other-Leg-RDNIS">>
         ,<<"Other-Leg-Unique-ID">>
-        ,<<"Presence-Call-Direction">>
-        ,<<"Publish-Channel-State">>
         ,<<"Record-File-Path">>
         ,<<"Resigning-UUID">>
-        ,<<"Route-Resp-Fun">>
-        ,<<"Route-Resp-Xml-Fun">>
         ,<<"Switch-Nodename">>
         ,<<"Switch-URI">>
         ,<<"Switch-URL">>
         ,<<"Unique-ID">>
-        ,<<"X-AUTH-IP">>
-        ,<<"X-AUTH-PORT">>
-        ,<<"action">>
         ,<<"att_xfer_replaced_by">>
         ,<<"conference_name">>
         ,<<"context">>
@@ -77,7 +55,6 @@
         ,<<"from">>
         ,<<"from_user">>
         ,<<"intercepted_by">>
-        ,<<"ip">>
         ,<<"kazoo_application_name">>
         ,<<"kazoo_application_response">>
         ,<<"kazoo_event_name">>
@@ -106,12 +83,10 @@
         ,<<"variable_billmsec">>
         ,<<"variable_billsec">>
         ,<<"variable_bridge_hangup_cause">>
-        ,<<"variable_bridge_uuid">>
         ,<<"variable_channel_is_moving">>
         ,<<"variable_collected_digits">>
         ,<<"variable_current_application">>
         ,<<"variable_current_application_data">>
-        ,<<"variable_domain_name">>
         ,<<"variable_duration">>
         ,<<"variable_effective_callee_id_name">>
         ,<<"variable_effective_callee_id_number">>
@@ -146,7 +121,6 @@
         ,<<"variable_fax_transfer_rate">>
         ,<<"variable_hangup_cause">>
         ,<<"variable_has_t38">>
-        ,<<"variable_hold_music">>
         ,<<"variable_is_loopback">>
         ,<<"variable_last_bridge_proto_specific_hangup_cause">>
         ,<<"variable_loopback_bowout">>
@@ -165,8 +139,6 @@
         ,<<"variable_proto_specific_hangup_cause">>
         ,<<"variable_record_ms">>
         ,<<"variable_record_silence_hits">>
-        ,<<"variable_recovered">>
-        ,<<"variable_refer_uuid">>
         ,<<"variable_rtp_local_sdp_str">>
         ,<<"variable_silence_hits_exhausted">>
         ,<<"variable_sip_auth_realm">>
@@ -175,7 +147,6 @@
         ,<<"variable_sip_from_tag">>
         ,<<"variable_sip_from_uri">>
         ,<<"variable_sip_from_user">>
-        ,<<"variable_sip_invite_domain">>
         ,<<"variable_sip_loopback_req_uri">>
         ,<<"variable_sip_origination_call_uuid">>
         ,<<"variable_sip_received_ip">>
@@ -188,12 +159,9 @@
         ,<<"variable_sip_to_uri">>
         ,<<"variable_sip_to_user">>
         ,<<"variable_sip_user_agent">>
-        ,<<"variable_sofia_profile_name">>
-        ,<<"variable_sofia_profile_url">>
         ,<<"variable_switch_r_sdp">>
         ,<<"variable_transfer_history">>
         ,<<"variable_transfer_to">>
-        ,<<"variable_user_name">>
         ,<<"variable_uuid">>
         ]).
 

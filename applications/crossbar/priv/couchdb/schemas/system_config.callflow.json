@@ -26,6 +26,11 @@
             },
             "type": "object"
         },
+        "callflow_listeners": {
+            "default": 1,
+            "description": "callflow callflow_listeners",
+            "type": "integer"
+        },
         "calls_consume_tokens": {
             "default": true,
             "description": "callflow calls consume tokens",
@@ -99,6 +104,11 @@
             "default": "",
             "description": "callflow singular call hook url",
             "type": "string"
+        },
+        "use_auto_ack": {
+            "default": false,
+            "description": "callflow use_auto_ack",
+            "type": "boolean"
         },
         "voicemail": {
             "properties": {

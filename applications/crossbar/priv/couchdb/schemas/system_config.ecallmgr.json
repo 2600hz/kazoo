@@ -203,6 +203,11 @@
             "description": "ecallmgr freeswitch context",
             "type": "string"
         },
+        "fs_call_control_workers": {
+            "default": 5,
+            "description": "ecallmgr fs_call_control_workers",
+            "type": "integer"
+        },
         "fs_cmds": {
             "default": [
                 {

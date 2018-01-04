@@ -44,6 +44,12 @@
         },
         "Participant-ID": {
             "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        },
+        "Switch-URL": {
+            "type": "string"
         }
     },
     "required": [
