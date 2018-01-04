@@ -299,10 +299,9 @@ endpoint_format_from(Endpoint, Number, OffnetReq, CCVs) ->
 
 -spec get_endpoint_format_from(kapi_offnet_resource:req(), kz_json:object()) -> api_binary().
 get_endpoint_format_from(OffnetReq, CCVs) ->
-    DefaultRealm = default_realm(OffnetReq),
     case kz_json:is_true(<<"From-Account-Realm">>, CCVs) of
-        'true' -> DefaultRealm;
-        'false' -> kz_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm)
+        'true' -> kapi_offnet_resource:account_realm(OffnetReq);
+        'false' -> kz_json:get_value(<<"From-URI-Realm">>, CCVs, default_realm(OffnetReq))
     end.
 
 -spec route_by() -> atom().
