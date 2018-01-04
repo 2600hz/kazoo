@@ -7,6 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(kz_service_plans).
 
+-export([integrate_plans/1]).
+
 -export([empty/0]).
 -export([public_json/1]).
 -export([add_service_plan/3]).
@@ -61,6 +63,31 @@ find_reseller_id(ServicesJObj) ->
         'undefined' -> kz_json:get_value(<<"reseller_id">>, ServicesJObj);
         ResellerId -> ResellerId
     end.
+
+-spec integrate_plans(plans()) -> plans().
+integrate_plans(Plans) ->
+    Props = [{[CategoryId, ItemId], kzd_service_plan:item(Plan, CategoryId, ItemId)}
+             || Plan <- Plans
+                    ,CategoryId <- kzd_service_plan:categories(Plan)
+                    ,ItemId <- kzd_service_plan:items(Plan, CategoryId)
+            ],
+    Dict0 = lists:foldl(fun({Key, Value}, D) ->
+                                dict:append(Key, Value, D)
+                        end, dict:new(), Props),
+    Dict1 = dict:map(fun integrate_plans_map/2, Dict0),
+    dict:to_list(Dict1).
+
+-spec integrate_plans_map(kz_json:path(), kz_json:objects()) -> kz_json:object().
+integrate_plans_map(_Key, JObjs) ->
+    integrate_plans_key(kzd_item_plan:integrate_scheme(), JObjs, kz_json:new()).
+
+-spec integrate_plans_key(kz_json:paths(), kz_json:objects(), kz_json:object()) -> kz_json:object().
+integrate_plans_key([], _, JObj) -> JObj;
+integrate_plans_key([{Key, Fun}|Scheme], JObjs, JObj) ->
+    integrate_plans_key(Scheme
+                       ,JObjs
+                       ,kz_json:set_value(Key, Fun(Key, JObjs), JObj)
+                       ).
 
 %%--------------------------------------------------------------------
 %% @public
