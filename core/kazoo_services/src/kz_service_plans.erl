@@ -94,7 +94,7 @@ get_service_plans_fold(ResellerId, ServicesJObj) ->
 get_services_plan(PlanId, ResellerId, ServicesJObj, ServicePlans) ->
     AccountId = kzd_services:plan_account_id(ServicesJObj, PlanId, ResellerId),
     Overrides = kzd_services:plan_overrides(ServicesJObj, PlanId),
-    case fetch_plan(PlanId, AccountId, Overrides) of
+    case fetch_plan(PlanId, AccountId, ResellerId, Overrides) of
         'undefined' -> ServicePlans;
         ServicePlan ->
             append_vendor_plan(ServicePlan
@@ -134,7 +134,7 @@ get_object_plans_fold(ResellerId) ->
 get_object_plan(PlanId, ResellerId, JObj, ServicePlans) ->
     AccountId = kz_json:get_ne_value(<<"account_id">>, JObj, ResellerId),
     Overrides = kz_json:get_ne_value(<<"overrides">>, JObj, kz_json:new()),
-    case fetch_plan(PlanId, AccountId, Overrides) of
+    case fetch_plan(PlanId, AccountId, ResellerId, Overrides) of
         'undefined' -> ServicePlans;
         ServicePlan ->
             append_vendor_plan(ServicePlan
@@ -144,15 +144,18 @@ get_object_plan(PlanId, ResellerId, JObj, ServicePlans) ->
     end.
 -endif.
 
--spec fetch_plan(ne_binary(), ne_binary(), kz_json:object()) -> api_object().
-fetch_plan(PlanId, AccountId, Overrides) ->
+-spec fetch_plan(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> api_object().
+fetch_plan(PlanId, ResellerId, ResellerId,  Overrides) ->
     AreOverridesEmpty = kz_json:is_empty(Overrides),
-    case kz_service_plan:fetch(PlanId, AccountId) of
+    case kz_service_plan:fetch(PlanId, ResellerId) of
         'undefined' -> 'undefined';
         ServicePlan when not AreOverridesEmpty ->
             kzd_service_plan:merge_overrides(ServicePlan, Overrides);
         ServicePlan -> ServicePlan
-    end.
+    end;
+fetch_plan(PlanId, _, ResellerId, _) ->
+    lager:debug("service plan ~s doesnt belong to reseller ~s", [PlanId, ResellerId]),
+    'undefined'.
 
 -spec append_vendor_plan(kz_json:object(), ne_binary(), plans()) -> plans().
 append_vendor_plan(Plan, VendorId, ServicePlans) ->
@@ -188,8 +191,7 @@ public_json(ServicePlans) ->
     public_json(ServicePlans, kz_json:new()).
 
 -spec public_json(plans(), kz_json:object()) -> kzd_service_plan:doc().
-public_json([], JObj) ->
-    kzd_service_plan:set_plan(kzd_service_plan:new(), JObj);
+public_json([], JObj) -> kz_doc:public_fields(JObj);
 public_json([ServicesPlan|ServicesPlans], JObj) ->
     #kz_service_plans{plans=NewJObj}=merge_plan(ServicesPlan, JObj),
     public_json(ServicesPlans, NewJObj).
