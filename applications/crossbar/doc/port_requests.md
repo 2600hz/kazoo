@@ -69,7 +69,7 @@ Schema for a port request
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`bill.carrier` | Name of the losing carrier | `string()` |   | `false`
+`bill.carrier` | The name of the losing carrier | `string()` |   | `false`
 `bill.extended_address` | The suite/floor/apt of the billing address the losing carrier has on record | `string()` |   | `false`
 `bill.locality` | The locality (city) of the billing address the losing carrier has on record | `string()` |   | `false`
 `bill.name` | The losing carrier billing/account name | `string()` |   | `false`
