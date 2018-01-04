@@ -656,10 +656,10 @@ flush(Db, Id) ->
                       | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'
                       | 'do_not_disturb' | 'no_resource_type'.
 
--spec build(api_binary() | kz_json:object(), kapps_call:call()) ->
+-spec build(api_ne_binary() | kz_json:object(), kapps_call:call()) ->
                    {'ok', kz_json:objects()} |
                    {'error', build_errors()}.
--spec build(api_binary() | kz_json:object(), api_object(), kapps_call:call()) ->
+-spec build(api_ne_binary() | kz_json:object(), api_object(), kapps_call:call()) ->
                    {'ok', kz_json:objects()} |
                    {'error', build_errors()}.
 

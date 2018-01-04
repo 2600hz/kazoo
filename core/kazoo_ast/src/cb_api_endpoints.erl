@@ -253,13 +253,12 @@ process_schema(Filename, Definitions) ->
     JObj = kz_json:expand(
              kz_json:from_list(
                [case lists:last(Path) =:= <<"$ref">> of
-                    false -> KV;
-                    true -> {Path, maybe_fix_ref(V)}
+                    'false' -> KV;
+                    'true' -> {Path, maybe_fix_ref(V)}
                 end
                 || {Path, V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
                    not lists:member(<<"patternProperties">>, Path),
-                   not lists:member(<<"kazoo-validation">>, Path),
-                   not lists:member(<<"oneOf">>, Path)
+                   not lists:member(<<"kazoo-validation">>, Path)
                ])),
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
