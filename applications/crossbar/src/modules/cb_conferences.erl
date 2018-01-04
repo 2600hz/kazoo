@@ -539,7 +539,7 @@ build_endpoint(<<_:32/binary>>=EndpointId, {Endpoints, Call, Context, Element}) 
             lager:info("failed to build endpoint ~s: ~p", [EndpointId, _E]),
             {Endpoints, Call, Context, Element+1}
     end;
-build_endpoint(Number, {Endpoints, Call, Context, Element}=Acc) ->
+build_endpoint(?NE_BINARY=Number, {Endpoints, Call, Context, Element}=Acc) ->
     case knm_converters:is_reconcilable(Number)
         orelse byte_size(Number) < ?MIN_DIGITS_FOR_DID
     of
@@ -549,7 +549,10 @@ build_endpoint(Number, {Endpoints, Call, Context, Element}=Acc) ->
             ,add_not_endpoint_error(Context, Element)
             ,Element+1
             }
-    end.
+    end;
+build_endpoint(Device, {Endpoints, Call, Context, Element}) ->
+    DeviceWithId = kz_json:insert_value(<<"id">>, kz_binary:rand_hex(16), Device),
+    build_endpoint_from_doc(DeviceWithId, {Endpoints, Call, Context, Element}, <<"device">>).
 
 -spec add_not_endpoint_error(cb_context:context(), pos_integer()) -> cb_context:context().
 add_not_endpoint_error(Context, Element) ->

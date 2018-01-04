@@ -86,7 +86,7 @@ Key | Description | Type | Default | Required
 `caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false`
 `caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
 `endpoints.[]` |   | `string()` |   | `true`
-`endpoints` |   | `array(string())` |   | `true`
+`endpoints` |   | `array(string() | device())` |   | `true`
 `target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false`
 `timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
 
@@ -95,7 +95,7 @@ Key | Description | Type | Default | Required
 ###### Endpoints
 
 Dial-able endpoints are
-1. Devices (by device id)
+1. Devices (by device id or [device JSON](./devices.md))
 2. Users (by user id)
 3. Phone Numbers
 4. SIP URIs (`sip:user@realm`)
