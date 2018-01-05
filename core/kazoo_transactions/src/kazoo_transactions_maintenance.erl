@@ -80,7 +80,7 @@ top_up_status(AccountId) ->
               ]),
     io:format("+-----------------+------------------+------------------+---------------+-------------------------+~n").
 
--spec current_balance(ne_binary()) -> ne_binary().
+-spec current_balance(ne_binary()) -> dollars().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
         {'ok', Balance} -> wht_util:units_to_dollars(Balance);

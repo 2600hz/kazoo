@@ -243,7 +243,7 @@ create(#bt_subscription{}=Subscription) ->
 -spec update(subscription()) -> subscription().
 update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
-update(#bt_subscription{id=SubscriptionId}=Subscription) ->
+update(#bt_subscription{id=?NE_BINARY=SubscriptionId}=Subscription) ->
     Url = url(SubscriptionId),
     %% Fixes: 91919: First Billing Date cannot be updated
     Prepared = Subscription#bt_subscription{billing_first_date = 'undefined'},
