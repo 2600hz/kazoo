@@ -838,7 +838,7 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 find_active_days(Weekdays, DOW0) ->
     [DOW1
      || DOW1 <- [kz_date:wday_to_dow(D) || D <- Weekdays],
-        DOW1 > DOW0
+        DOW1 >= DOW0
     ].
 
 -spec sort_wdays([wday()]) -> [wday()].
