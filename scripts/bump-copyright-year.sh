@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-# Find undocumented API endpoints
+# bumps copyright year to current year in source/hrl files
 
 import re
 import sys
@@ -29,9 +29,12 @@ for filename in sys.argv[1:]:
     year = re.findall('20[0-9]{2}', line)[-1]
     new_line = line.replace(year, str(datetime.datetime.now().year))
     if line != new_line:
+        if replaced == 0:
+            sys.stdout.write("updating copyright: ")
         replaced += 1
-        print filename
+        sys.stdout.write(".")
     new_contents = contents.replace(line, new_line)
     replace_line(filename, new_contents)
 
-sys.exit(replaced)
+if replaced > 0:
+    print " done"
