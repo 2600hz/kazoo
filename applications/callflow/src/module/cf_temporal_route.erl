@@ -503,6 +503,19 @@ next_rule_date(#rule{cycle = <<"weekly">>
 
             StartDate;
 
+        %% This case will handle a Moday start when using weeks with interval 1 ON a Monday, previously that caused
+        %% the code to calculate the NEXT week's Monday as the next active day.  This was not correct.
+        _Val when DOW0 =:= 7
+                  andalso I0 =:= 1 ->
+            case lists:member(<<"monday">>, Weekdays) of
+                'true' ->
+                    {Y1, M1, D1+1};
+                'false' ->
+                    {WY0, W0} = calendar:iso_week_number({Y0, M0, D0}),
+                    {Y2, M2, D2} = kz_date:from_iso_week({WY0, W0 + Offset + I0}),
+                    kz_date:normalize({Y2, M2, ( D2 - 1 ) + kz_date:wday_to_dow( hd( Weekdays ) )})
+            end;
+
         %% Empty list:
         %%   The last DOW during an 'active' week,
         %% Non Empty List that failed the guard:
@@ -838,7 +851,7 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 find_active_days(Weekdays, DOW0) ->
     [DOW1
      || DOW1 <- [kz_date:wday_to_dow(D) || D <- Weekdays],
-        DOW1 >= DOW0
+        DOW1 > DOW0
     ].
 
 -spec sort_wdays([wday()]) -> [wday()].

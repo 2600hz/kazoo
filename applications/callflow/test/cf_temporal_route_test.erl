@@ -216,6 +216,13 @@ weekly_recurrence_test_() ->
      %% long span
     ,?_assertEqual({2011,1,10}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=4, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,1,1}))
     ,?_assertEqual({2011,5,2}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=4, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,4,11}))
+    ,?_assertEqual({2018,1,8}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>,<<"tuesday">>,<<"wednesday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={1983,4,11}}, {2018,1,7}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>,<<"tuesday">>,<<"wednesday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={1983,4,11}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,8}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>,<<"tuesday">>,<<"wednesday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={2018,1,1}}, {2018,1,7}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>,<<"tuesday">>,<<"wednesday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={2018,1,1}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>], start_date={2018,1,1}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>], start_date={2018,1,2}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,16}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"tuesday">>], start_date={2018,1,2}}, {2018,1,15}))
     ].
 
 monthly_every_recurrence_test_() ->
