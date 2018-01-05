@@ -76,7 +76,7 @@ get_value(Paths, Xml) ->
 
 
 %% @private
--spec extract_values(xml_els()) -> api_ne_binary().
+-spec extract_values(xml_els()) -> api_binary().
 extract_values([]) -> 'undefined';
 extract_values(Elements) ->
     Values = [case Element of

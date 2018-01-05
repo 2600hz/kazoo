@@ -47,11 +47,11 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a descriptor record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_descriptor()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(bt_descriptor()) -> kz_proplist() | bt_xml() | 'undefined'.
+-spec record_to_xml(bt_descriptor(), boolean()) -> kz_proplist() | bt_xml() | 'undefined'.
 record_to_xml(Descriptor) ->
-    record_to_xml(Descriptor, false).
+    record_to_xml(Descriptor, 'false').
 
--spec record_to_xml(bt_descriptor(), boolean()) -> kz_proplist() | bt_xml().
 record_to_xml('undefined', _ToString) -> 'undefined';
 record_to_xml(Descriptor, ToString) ->
     Props = [{'name', Descriptor#bt_descriptor.name}
@@ -59,8 +59,8 @@ record_to_xml(Descriptor, ToString) ->
             ,{'url', Descriptor#bt_descriptor.url}
             ],
     case ToString of
-        true -> braintree_util:make_doc_xml(Props, 'descriptor');
-        false -> Props
+        'true' -> braintree_util:make_doc_xml(Props, 'descriptor');
+        'false' -> Props
     end.
 
 %%--------------------------------------------------------------------
@@ -71,11 +71,10 @@ record_to_xml(Descriptor, ToString) ->
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_descriptor()) -> kz_json:object().
 record_to_json(#bt_descriptor{name=Name, phone=Phone, url=Url}) ->
-    kz_json:from_list(
-      [{<<"name">>, Name}
-      ,{<<"phone">>, Phone}
-      ,{<<"url">>, Url}
-      ]).
+    kz_json:from_list([{<<"name">>, Name}
+                      ,{<<"phone">>, Phone}
+                      ,{<<"url">>, Url}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @public
