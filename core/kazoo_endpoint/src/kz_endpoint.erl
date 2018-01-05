@@ -241,7 +241,6 @@ attributes_keys() ->
     ,<<"call_forward">>
     ,<<"dial_plan">>
     ,<<"metaflows">>
-    ,<<"media">>
     ,<<"language">>
     ,<<"record_call">>
     ,<<"call_recording">>
