@@ -55,7 +55,7 @@ open_file_for_read(Filename) ->
               ,'raw', 'read_ahead' %% Faster access to file
               ],
     case file:open(Filename, Options) of
-        {'ok', IoDevice} -> IoDevice;
+        {'ok', _}=OK -> OK;
         {'error', _FileOpenError}=Error ->
             lager:debug("parser cannot open '~p': ~p", [Filename,_FileOpenError]),
             {'error', Error}

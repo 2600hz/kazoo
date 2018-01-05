@@ -211,7 +211,7 @@ handle_cast(_Msg, State) ->
 add_request(JObj) ->
     Exten = kz_json:get_value(<<"Number">>, JObj),
     lager:info("adding offnet request to ~s", [Exten]),
-    camper_offnet_sup:new(JObj),
+    _ = camper_offnet_sup:new(JObj),
     'ok'.
 
 %%--------------------------------------------------------------------

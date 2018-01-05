@@ -61,7 +61,9 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init({'parser_args', file:filename_all(), ne_binary(), pos_integer()}) -> {'ok', state()} | {'stop', any()}.
+-spec init({'parser_args', file:filename_all(), ne_binary(), pos_integer()}) ->
+                  {'ok', state()} |
+                  {'error', any()}.
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
     _ = kz_util:put_callid(ParserId),
@@ -77,8 +79,8 @@ init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
                           },
             self() ! 'start_parsing',
             {'ok', State};
-        {'error', _}=Error ->
-            Error
+        {'error', Error} ->
+            {'stop', Error}
     end.
 
 %%--------------------------------------------------------------------
