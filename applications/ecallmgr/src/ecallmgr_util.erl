@@ -203,8 +203,7 @@ get_sip_to(Props) ->
 get_sip_to(Props, <<"outbound">>) ->
     case props:get_value(<<"Channel-Presence-ID">>, Props) of
         'undefined' ->
-            Number = props:get_first_defined([<<"Other-Leg-ANI">>
-                                             ,<<"Other-Leg-Callee-ID-Number">>
+            Number = props:get_first_defined([<<"Other-Leg-Callee-ID-Number">>
                                              ,<<"variable_sip_to_user">>
                                              ], Props, <<"nouser">>),
             Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
