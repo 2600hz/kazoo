@@ -80,7 +80,7 @@ build_offnet_request(Data, Call) ->
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
     props:filter_undefined(
       [{?KEY_ACCOUNT_ID, kapps_call:account_id(Call)}
-      ,{?KEY_ACCOUNT_REALM, kapps_call:from_realm(Call)}
+      ,{?KEY_ACCOUNT_REALM, kapps_call:account_realm(Call)}
       ,{?KEY_APPLICATION_NAME, ?APPLICATION_BRIDGE}
       ,{?KEY_BYPASS_E164, get_bypass_e164(Data)}
       ,{?KEY_B_LEG_EVENTS, [<<"DTMF">>]}
