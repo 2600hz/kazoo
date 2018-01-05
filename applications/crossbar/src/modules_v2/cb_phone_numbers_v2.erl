@@ -704,7 +704,7 @@ maybe_reseller_id_lookup(ReqResellerId) ->
         'true' -> {ok, ReqResellerId, ReqResellerId};
         'false' -> {error, <<"number search restricted">>}
     catch
-        _:_ -> {error, <<"non-existent reseller_id">>}
+        _:_ -> {error, <<"nonexistent reseller_id">>}
     end.
 
 %%--------------------------------------------------------------------

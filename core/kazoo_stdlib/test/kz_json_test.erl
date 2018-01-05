@@ -537,9 +537,9 @@ set_value_object_test_() ->
     [?_assertEqual(?T2R1, kz_json:set_value([<<"d1k2">>], <<"update">>, ?D1))
      %% Test setting a non-existing key
     ,?_assertEqual(?T2R2, kz_json:set_value([<<"d1k4">>], <<"new_value">>, ?D1))
-     %% Test setting an existing key followed by a non-existant key
+     %% Test setting an existing key followed by a nonexistent key
     ,?_assertEqual(?T2R3, kz_json:set_value([<<"d1k2">>, <<"new_key">>], <<"added_value">>, ?D1))
-     %% Test setting a non-existing key followed by another non-existant key
+     %% Test setting a non-existing key followed by another nonexistent key
     ,?_assertEqual(?T2R4, kz_json:set_value([<<"d1k4">>, <<"new_key">>], <<"added_value">>, ?D1))
     ].
 
@@ -555,7 +555,7 @@ set_value_multiple_object_test_() ->
     [?_assertEqual(?T3R1, kz_json:set_value([1, <<"k1">>], <<"test">>, ?D5))
      %% Set a non-existing key in the first kz_json:object()
     ,?_assertEqual(?T3R2, kz_json:set_value([1, <<"pi">>], 3.14, ?D5))
-     %% Set a non-existing key followed by another non-existant key in the first kz_json:object()
+     %% Set a non-existing key followed by another nonexistent key in the first kz_json:object()
     ,?_assertEqual(?T3R3, kz_json:set_value([1, <<"callerid">>, <<"name">>], <<"2600hz">>, ?D5))
      %% Set an existing key in the second kz_json:object()
     ,?_assertEqual(?T3R4, kz_json:set_value([2, <<"k2">>], <<"updated">>, ?D5))

@@ -101,7 +101,7 @@ admin_discretion(T) ->
 -spec admin_description(kz_transaction:kz_transaction()) ->
                                kz_transaction:kz_transaction().
 admin_description(T) ->
-    kz_transaction:set_description(<<"system adminstrator credit modification">>, T).
+    kz_transaction:set_description(<<"system administrator credit modification">>, T).
 
 %%--------------------------------------------------------------------
 %% @public

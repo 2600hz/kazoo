@@ -289,7 +289,7 @@ disconnect(Number) ->
         Result -> Result
     catch
         'error':_ ->
-            lager:debug("non-existant carrier module ~p, allowing disconnect", [Module]),
+            lager:debug("nonexistent carrier module ~p, allowing disconnect", [Module]),
             Number
     end.
 
