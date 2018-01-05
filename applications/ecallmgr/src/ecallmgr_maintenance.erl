@@ -21,10 +21,12 @@
         ,carrier_acls/1
         ,test_carrier_ip/1, test_carrier_ip/2
         ]).
--export([allow_carrier/2
+-export([allow_carrier/1
+        ,allow_carrier/2
         ,allow_carrier/3
         ]).
--export([deny_carrier/2
+-export([deny_carrier/1
+        ,deny_carrier/2
         ,deny_carrier/3
         ]).
 
@@ -32,10 +34,12 @@
         ,sbc_acls/1
         ,test_sbc_ip/1, test_sbc_ip/2
         ]).
--export([allow_sbc/2
+-export([allow_sbc/1
+        ,allow_sbc/2
         ,allow_sbc/3
         ]).
--export([deny_sbc/2
+-export([deny_sbc/1
+        ,deny_sbc/2
         ,deny_sbc/3
         ]).
 
@@ -164,55 +168,53 @@ test_carrier_ip(IP, [Node|Nodes]) ->
 test_carrier_ip(IP, Node) ->
     test_ip_against_acl(IP, Node, ?FS_CARRIER_ACL_LIST).
 
+-spec allow_carrier(ne_binary()) -> 'no_return'.
+allow_carrier(Name) -> allow_carrier(Name, Name, 'false').
+
 -spec allow_carrier(ne_binary(), ne_binary()) -> 'no_return'.
-allow_carrier(Name, IP) ->
-    modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
-               ,get_acls()
-               ,fun carrier_acl/1
-               ,fun ecallmgr_config:set/2
-               ).
+allow_carrier(Name, IP) -> allow_carrier(Name, IP, 'false').
 
 -spec allow_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
 allow_carrier(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
     allow_carrier(Name, IP, kz_term:is_true(AsDefault));
-allow_carrier(Name, IP, 'true') ->
+allow_carrier(Name, IP0, 'true') ->
+    [IP | _] = kz_network_utils:resolve(kz_term:to_binary(IP0)),
     modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
+               ,IP
                ,get_acls(<<"default">>)
                ,fun carrier_acl/1
                ,fun ecallmgr_config:set_default/2
                );
-allow_carrier(Name, IP, 'false') ->
-    modify_acls(Name
+allow_carrier(Name, IP0, 'false') ->
+    [IP | _] = kz_network_utils:resolve(kz_term:to_binary(IP0)),
+    modify_acls(kz_term:to_binary(Name)
                ,IP
                ,get_acls()
                ,fun carrier_acl/1
                ,fun ecallmgr_config:set_node/2
                ).
 
+-spec deny_carrier(ne_binary()) -> 'no_return'.
+deny_carrier(Name) -> deny_carrier(Name, Name, 'false').
+
 -spec deny_carrier(ne_binary(), ne_binary()) -> 'no_return'.
-deny_carrier(Name, IP) ->
-    modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
-               ,get_acls()
-               ,fun(_) -> carrier_acl(IP, <<"deny">>) end
-               ,fun ecallmgr_config:set/2
-               ).
+deny_carrier(Name, IP) -> deny_carrier(Name, IP, 'false').
 
 -spec deny_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
 deny_carrier(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
     deny_carrier(Name, IP, kz_term:is_true(AsDefault));
-deny_carrier(Name, IP, 'true') ->
+deny_carrier(Name, IP0, 'true') ->
+    [IP | _] = kz_network_utils:resolve(kz_term:to_binary(IP0)),
     modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
+               ,IP
                ,get_acls(<<"default">>)
                ,fun(_) -> carrier_acl(IP, <<"deny">>) end
                ,fun ecallmgr_config:set_default/2
                );
-deny_carrier(Name, IP, 'false') ->
+deny_carrier(Name, IP0, 'false') ->
+    [IP | _] = kz_network_utils:resolve(kz_term:to_binary(IP0)),
     modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
+               ,IP
                ,get_acls()
                ,fun(_) -> carrier_acl(IP, <<"deny">>) end
                ,fun ecallmgr_config:set_node/2
@@ -242,55 +244,53 @@ test_sbc_ip(IP, [Node|Nodes]) ->
 test_sbc_ip(IP, Node) ->
     test_ip_against_acl(IP, Node, ?FS_SBC_ACL_LIST).
 
+-spec allow_sbc(ne_binary()) -> 'no_return'.
+allow_sbc(Name) -> allow_sbc(Name, Name, 'false').
+
 -spec allow_sbc(ne_binary(), ne_binary()) -> 'no_return'.
-allow_sbc(Name, IP) ->
-    modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
-               ,get_acls()
-               ,fun sbc_acl/1
-               ,fun ecallmgr_config:set/2
-               ).
+allow_sbc(Name, IP) -> allow_sbc(Name, IP, 'false').
 
 -spec allow_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
 allow_sbc(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
     allow_sbc(Name, IP, kz_term:is_true(AsDefault));
-allow_sbc(Name, IP, 'true') ->
+allow_sbc(Name, IP0, 'true') ->
+    [IP | _] = kz_network_utils:resolve(kz_term:to_binary(IP0)),
     modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
+               ,IP
                ,get_acls(<<"default">>)
                ,fun sbc_acl/1
                ,fun ecallmgr_config:set_default/2
                );
-allow_sbc(Name, IP, 'false') ->
+allow_sbc(Name, IP0, 'false') ->
+    [IP | _] = kz_network_utils:resolve(kz_term:to_binary(IP0)),
     modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
+               ,IP
                ,get_acls()
                ,fun sbc_acl/1
                ,fun ecallmgr_config:set_node/2
                ).
 
+-spec deny_sbc(ne_binary()) -> 'no_return'.
+deny_sbc(Name) -> deny_sbc(Name, Name, 'false').
+
 -spec deny_sbc(ne_binary(), ne_binary()) -> 'no_return'.
-deny_sbc(Name, IP) ->
-    modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
-               ,get_acls()
-               ,fun(_) -> sbc_acl(IP, <<"deny">>) end
-               ,fun ecallmgr_config:set/2
-               ).
+deny_sbc(Name, IP) -> deny_sbc(Name, IP, 'false').
 
 -spec deny_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
 deny_sbc(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
     deny_sbc(Name, IP, kz_term:is_true(AsDefault));
-deny_sbc(Name, IP, 'true') ->
+deny_sbc(Name, IP0, 'true') ->
+    [IP | _] = kz_network_utils:resolve(kz_term:to_binary(IP0)),
     modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
+               ,IP
                ,get_acls(<<"default">>)
                ,fun(_) -> sbc_acl(IP, <<"deny">>) end
                ,fun ecallmgr_config:set_default/2
                );
-deny_sbc(Name, IP, 'false') ->
+deny_sbc(Name, IP0, 'false') ->
+    [IP | _] = kz_network_utils:resolve(kz_term:to_binary(IP0)),
     modify_acls(kz_term:to_binary(Name)
-               ,kz_term:to_binary(IP)
+               ,IP
                ,get_acls()
                ,fun(_) -> sbc_acl(IP, <<"deny">>) end
                ,fun ecallmgr_config:set_node/2
