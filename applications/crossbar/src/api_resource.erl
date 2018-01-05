@@ -1085,6 +1085,7 @@ finish_chunked_response(#{chunk_response_type := <<"to_csv">>
                          ,context := Context
                          ,cowboy_req := Req
                          }) ->
+    'ok' = cowboy_req:stream_body(<<>>, 'fin', Req),
     {'stop', Req, Context};
 %% Chunk is already started closing JSON envelope,
 finish_chunked_response(#{total_queried := TotalQueried

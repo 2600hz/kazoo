@@ -1271,11 +1271,11 @@ create_json_chunk_response(Req, [], StartedChunk) ->
 create_json_chunk_response(Req, JObjs, StartedChunk) ->
     try do_encode_to_json(JObjs) of
         JSON when StartedChunk ->
-            'ok' = cowboy_req:stream_body(<<",", JSON/binary>>, nofin, Req),
+            'ok' = cowboy_req:stream_body(<<",", JSON/binary>>, 'nofin', Req),
             {StartedChunk, Req};
         JSON ->
             Req1 = init_chunk_stream(Req, <<"to_json">>),
-            'ok' = cowboy_req:stream_body(JSON, 'fin', Req1),
+            'ok' = cowboy_req:stream_body(JSON, 'nofin', Req1),
             {'true', Req1}
     catch
         'throw':{'json_encode', {'bad_term', _Term}} ->
@@ -1299,11 +1299,11 @@ create_csv_chunk_response(Req, Context) ->
     CSVs = cb_context:resp_data(Context),
     case cb_context:fetch(Context, 'chunking_started', 'false') of
         'true' ->
-            'ok' = cowboy_req:stream_body(CSVs, 'fin', Req),
+            'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req),
             {'true', Req};
         'false' ->
             Req1 = init_chunk_stream(Req, <<"to_csv">>),
-            'ok' = cowboy_req:stream_body(CSVs, 'fin', Req1),
+            'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req1),
             {'true', Req1}
     end.
 
@@ -1454,7 +1454,7 @@ close_chunk_json_envelope(Req, Context) ->
                    || {K, V} <- Trailer,
                       kz_term:is_not_empty(V)
               ],
-    'ok' = cowboy_req:stream_body(<<"], ", (kz_binary:join(Encoded))/binary, "}">>, fin, Req).
+    'ok' = cowboy_req:stream_body(<<"], ", (kz_binary:join(Encoded))/binary, "}">>, 'fin', Req).
 
 -spec encode_start_keys(kz_json:object(), boolean()) -> kz_json:object().
 encode_start_keys(Resp, 'false') ->
