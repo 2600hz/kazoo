@@ -1,0 +1,12 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.keys",
+    "description": "Schema for DTMF keys account_config",
+    "properties": {
+        "voicemail": {
+            "$ref": "voicemail_keys",
+            "description": "DTMF keys for voicemail callflow module"
+        }
+    },
+    "type": "object"
+}
