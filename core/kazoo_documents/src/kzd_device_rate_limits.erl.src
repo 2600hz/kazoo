@@ -25,11 +25,11 @@ new() ->
 per_minute(Doc) ->
     per_minute(Doc, 'undefined').
 per_minute(Doc, Default) ->
-    kz_json:get_json_value(<<"per_minute">>, Doc, Default).
+    kz_json:get_json_value([<<"per_minute">>], Doc, Default).
 
 -spec set_per_minute(doc(), kz_json:object()) -> doc().
 set_per_minute(Doc, PerMinute) ->
-    kz_json:set_value(<<"per_minute">>, PerMinute, Doc).
+    kz_json:set_value([<<"per_minute">>], PerMinute, Doc).
 
 -spec per_minute_invites(doc()) -> api_integer().
 -spec per_minute_invites(doc(), Default) -> integer() | Default.
@@ -69,11 +69,11 @@ set_per_minute_total_packets(Doc, PerMinuteTotalPackets) ->
 per_second(Doc) ->
     per_second(Doc, 'undefined').
 per_second(Doc, Default) ->
-    kz_json:get_json_value(<<"per_second">>, Doc, Default).
+    kz_json:get_json_value([<<"per_second">>], Doc, Default).
 
 -spec set_per_second(doc(), kz_json:object()) -> doc().
 set_per_second(Doc, PerSecond) ->
-    kz_json:set_value(<<"per_second">>, PerSecond, Doc).
+    kz_json:set_value([<<"per_second">>], PerSecond, Doc).
 
 -spec per_second_invites(doc()) -> api_integer().
 -spec per_second_invites(doc(), Default) -> integer() | Default.

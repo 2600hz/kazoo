@@ -26,11 +26,11 @@ new() ->
 emergency(Doc) ->
     emergency(Doc, 'undefined').
 emergency(Doc, Default) ->
-    kz_json:get_json_value(<<"emergency">>, Doc, Default).
+    kz_json:get_json_value([<<"emergency">>], Doc, Default).
 
 -spec set_emergency(doc(), kz_json:object()) -> doc().
 set_emergency(Doc, Emergency) ->
-    kz_json:set_value(<<"emergency">>, Emergency, Doc).
+    kz_json:set_value([<<"emergency">>], Emergency, Doc).
 
 -spec emergency_name(doc()) -> api_binary().
 -spec emergency_name(doc(), Default) -> binary() | Default.
@@ -59,11 +59,11 @@ set_emergency_number(Doc, EmergencyNumber) ->
 external(Doc) ->
     external(Doc, 'undefined').
 external(Doc, Default) ->
-    kz_json:get_json_value(<<"external">>, Doc, Default).
+    kz_json:get_json_value([<<"external">>], Doc, Default).
 
 -spec set_external(doc(), kz_json:object()) -> doc().
 set_external(Doc, External) ->
-    kz_json:set_value(<<"external">>, External, Doc).
+    kz_json:set_value([<<"external">>], External, Doc).
 
 -spec external_name(doc()) -> api_binary().
 -spec external_name(doc(), Default) -> binary() | Default.
@@ -92,11 +92,11 @@ set_external_number(Doc, ExternalNumber) ->
 internal(Doc) ->
     internal(Doc, 'undefined').
 internal(Doc, Default) ->
-    kz_json:get_json_value(<<"internal">>, Doc, Default).
+    kz_json:get_json_value([<<"internal">>], Doc, Default).
 
 -spec set_internal(doc(), kz_json:object()) -> doc().
 set_internal(Doc, Internal) ->
-    kz_json:set_value(<<"internal">>, Internal, Doc).
+    kz_json:set_value([<<"internal">>], Internal, Doc).
 
 -spec internal_name(doc()) -> api_binary().
 -spec internal_name(doc(), Default) -> binary() | Default.

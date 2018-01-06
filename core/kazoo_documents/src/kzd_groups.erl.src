@@ -21,22 +21,22 @@ new() ->
 endpoints(Doc) ->
     endpoints(Doc, kz_json:new()).
 endpoints(Doc, Default) ->
-    kz_json:get_json_value(<<"endpoints">>, Doc, Default).
+    kz_json:get_json_value([<<"endpoints">>], Doc, Default).
 
 -spec set_endpoints(doc(), kz_json:object()) -> doc().
 set_endpoints(Doc, Endpoints) ->
-    kz_json:set_value(<<"endpoints">>, Endpoints, Doc).
+    kz_json:set_value([<<"endpoints">>], Endpoints, Doc).
 
 -spec music_on_hold(doc()) -> kz_json:object().
 -spec music_on_hold(doc(), Default) -> kz_json:object() | Default.
 music_on_hold(Doc) ->
     music_on_hold(Doc, kz_json:new()).
 music_on_hold(Doc, Default) ->
-    kz_json:get_json_value(<<"music_on_hold">>, Doc, Default).
+    kz_json:get_json_value([<<"music_on_hold">>], Doc, Default).
 
 -spec set_music_on_hold(doc(), kz_json:object()) -> doc().
 set_music_on_hold(Doc, MusicOnHold) ->
-    kz_json:set_value(<<"music_on_hold">>, MusicOnHold, Doc).
+    kz_json:set_value([<<"music_on_hold">>], MusicOnHold, Doc).
 
 -spec music_on_hold_media_id(doc()) -> api_binary().
 -spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
@@ -54,8 +54,8 @@ set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"name">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(Doc, Name) ->
-    kz_json:set_value(<<"name">>, Name, Doc).
+    kz_json:set_value([<<"name">>], Name, Doc).

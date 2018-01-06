@@ -23,63 +23,63 @@ new() ->
 a(Doc) ->
     a(Doc, 'undefined').
 a(Doc, Default) ->
-    kz_json:get_json_value(<<"A">>, Doc, Default).
+    kz_json:get_json_value([<<"A">>], Doc, Default).
 
 -spec set_a(doc(), kz_json:object()) -> doc().
 set_a(Doc, A) ->
-    kz_json:set_value(<<"A">>, A, Doc).
+    kz_json:set_value([<<"A">>], A, Doc).
 
 -spec cname(doc()) -> api_object().
 -spec cname(doc(), Default) -> kz_json:object() | Default.
 cname(Doc) ->
     cname(Doc, 'undefined').
 cname(Doc, Default) ->
-    kz_json:get_json_value(<<"CNAME">>, Doc, Default).
+    kz_json:get_json_value([<<"CNAME">>], Doc, Default).
 
 -spec set_cname(doc(), kz_json:object()) -> doc().
 set_cname(Doc, Cname) ->
-    kz_json:set_value(<<"CNAME">>, Cname, Doc).
+    kz_json:set_value([<<"CNAME">>], Cname, Doc).
 
 -spec mx(doc()) -> api_object().
 -spec mx(doc(), Default) -> kz_json:object() | Default.
 mx(Doc) ->
     mx(Doc, 'undefined').
 mx(Doc, Default) ->
-    kz_json:get_json_value(<<"MX">>, Doc, Default).
+    kz_json:get_json_value([<<"MX">>], Doc, Default).
 
 -spec set_mx(doc(), kz_json:object()) -> doc().
 set_mx(Doc, Mx) ->
-    kz_json:set_value(<<"MX">>, Mx, Doc).
+    kz_json:set_value([<<"MX">>], Mx, Doc).
 
 -spec naptr(doc()) -> api_object().
 -spec naptr(doc(), Default) -> kz_json:object() | Default.
 naptr(Doc) ->
     naptr(Doc, 'undefined').
 naptr(Doc, Default) ->
-    kz_json:get_json_value(<<"NAPTR">>, Doc, Default).
+    kz_json:get_json_value([<<"NAPTR">>], Doc, Default).
 
 -spec set_naptr(doc(), kz_json:object()) -> doc().
 set_naptr(Doc, Naptr) ->
-    kz_json:set_value(<<"NAPTR">>, Naptr, Doc).
+    kz_json:set_value([<<"NAPTR">>], Naptr, Doc).
 
 -spec srv(doc()) -> api_object().
 -spec srv(doc(), Default) -> kz_json:object() | Default.
 srv(Doc) ->
     srv(Doc, 'undefined').
 srv(Doc, Default) ->
-    kz_json:get_json_value(<<"SRV">>, Doc, Default).
+    kz_json:get_json_value([<<"SRV">>], Doc, Default).
 
 -spec set_srv(doc(), kz_json:object()) -> doc().
 set_srv(Doc, Srv) ->
-    kz_json:set_value(<<"SRV">>, Srv, Doc).
+    kz_json:set_value([<<"SRV">>], Srv, Doc).
 
 -spec txt(doc()) -> api_object().
 -spec txt(doc(), Default) -> kz_json:object() | Default.
 txt(Doc) ->
     txt(Doc, 'undefined').
 txt(Doc, Default) ->
-    kz_json:get_json_value(<<"TXT">>, Doc, Default).
+    kz_json:get_json_value([<<"TXT">>], Doc, Default).
 
 -spec set_txt(doc(), kz_json:object()) -> doc().
 set_txt(Doc, Txt) ->
-    kz_json:set_value(<<"TXT">>, Txt, Doc).
+    kz_json:set_value([<<"TXT">>], Txt, Doc).

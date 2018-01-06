@@ -18,8 +18,8 @@ new() ->
 reset_id(Doc) ->
     reset_id(Doc, 'undefined').
 reset_id(Doc, Default) ->
-    kz_json:get_binary_value(<<"reset_id">>, Doc, Default).
+    kz_json:get_binary_value([<<"reset_id">>], Doc, Default).
 
 -spec set_reset_id(doc(), binary()) -> doc().
 set_reset_id(Doc, ResetId) ->
-    kz_json:set_value(<<"reset_id">>, ResetId, Doc).
+    kz_json:set_value([<<"reset_id">>], ResetId, Doc).

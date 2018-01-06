@@ -13,23 +13,23 @@
 -export([name/1, name/2, set_name/2]).
 -export([notifications/1, notifications/2, set_notifications/2]).
 -export([notifications_inbound/1, notifications_inbound/2, set_notifications_inbound/2]).
--export([notificationsinbound_callback/1, notificationsinbound_callback/2, set_notificationsinbound_callback/2]).
--export([notificationsinboundcallback_method/1, notificationsinboundcallback_method/2, set_notificationsinboundcallback_method/2]).
--export([notificationsinboundcallback_type/1, notificationsinboundcallback_type/2, set_notificationsinboundcallback_type/2]).
--export([notificationsinboundcallback_url/1, notificationsinboundcallback_url/2, set_notificationsinboundcallback_url/2]).
--export([notificationsinbound_email/1, notificationsinbound_email/2, set_notificationsinbound_email/2]).
--export([notificationsinboundemail_send_to/1, notificationsinboundemail_send_to/2, set_notificationsinboundemail_send_to/2]).
--export([notificationsinbound_sms/1, notificationsinbound_sms/2, set_notificationsinbound_sms/2]).
--export([notificationsinboundsms_send_to/1, notificationsinboundsms_send_to/2, set_notificationsinboundsms_send_to/2]).
+-export([notifications_inbound_callback/1, notifications_inbound_callback/2, set_notifications_inbound_callback/2]).
+-export([notifications_inbound_callback_method/1, notifications_inbound_callback_method/2, set_notifications_inbound_callback_method/2]).
+-export([notifications_inbound_callback_type/1, notifications_inbound_callback_type/2, set_notifications_inbound_callback_type/2]).
+-export([notifications_inbound_callback_url/1, notifications_inbound_callback_url/2, set_notifications_inbound_callback_url/2]).
+-export([notifications_inbound_email/1, notifications_inbound_email/2, set_notifications_inbound_email/2]).
+-export([notifications_inbound_email_send_to/1, notifications_inbound_email_send_to/2, set_notifications_inbound_email_send_to/2]).
+-export([notifications_inbound_sms/1, notifications_inbound_sms/2, set_notifications_inbound_sms/2]).
+-export([notifications_inbound_sms_send_to/1, notifications_inbound_sms_send_to/2, set_notifications_inbound_sms_send_to/2]).
 -export([notifications_outbound/1, notifications_outbound/2, set_notifications_outbound/2]).
--export([notificationsoutbound_callback/1, notificationsoutbound_callback/2, set_notificationsoutbound_callback/2]).
--export([notificationsoutboundcallback_method/1, notificationsoutboundcallback_method/2, set_notificationsoutboundcallback_method/2]).
--export([notificationsoutboundcallback_type/1, notificationsoutboundcallback_type/2, set_notificationsoutboundcallback_type/2]).
--export([notificationsoutboundcallback_url/1, notificationsoutboundcallback_url/2, set_notificationsoutboundcallback_url/2]).
--export([notificationsoutbound_email/1, notificationsoutbound_email/2, set_notificationsoutbound_email/2]).
--export([notificationsoutboundemail_send_to/1, notificationsoutboundemail_send_to/2, set_notificationsoutboundemail_send_to/2]).
--export([notificationsoutbound_sms/1, notificationsoutbound_sms/2, set_notificationsoutbound_sms/2]).
--export([notificationsoutboundsms_send_to/1, notificationsoutboundsms_send_to/2, set_notificationsoutboundsms_send_to/2]).
+-export([notifications_outbound_callback/1, notifications_outbound_callback/2, set_notifications_outbound_callback/2]).
+-export([notifications_outbound_callback_method/1, notifications_outbound_callback_method/2, set_notifications_outbound_callback_method/2]).
+-export([notifications_outbound_callback_type/1, notifications_outbound_callback_type/2, set_notifications_outbound_callback_type/2]).
+-export([notifications_outbound_callback_url/1, notifications_outbound_callback_url/2, set_notifications_outbound_callback_url/2]).
+-export([notifications_outbound_email/1, notifications_outbound_email/2, set_notifications_outbound_email/2]).
+-export([notifications_outbound_email_send_to/1, notifications_outbound_email_send_to/2, set_notifications_outbound_email_send_to/2]).
+-export([notifications_outbound_sms/1, notifications_outbound_sms/2, set_notifications_outbound_sms/2]).
+-export([notifications_outbound_sms_send_to/1, notifications_outbound_sms_send_to/2, set_notifications_outbound_sms_send_to/2]).
 -export([retries/1, retries/2, set_retries/2]).
 -export([smtp_permission_list/1, smtp_permission_list/2, set_smtp_permission_list/2]).
 
@@ -48,88 +48,88 @@ new() ->
 attempts(Doc) ->
     attempts(Doc, 0).
 attempts(Doc, Default) ->
-    kz_json:get_integer_value(<<"attempts">>, Doc, Default).
+    kz_json:get_integer_value([<<"attempts">>], Doc, Default).
 
 -spec set_attempts(doc(), integer()) -> doc().
 set_attempts(Doc, Attempts) ->
-    kz_json:set_value(<<"attempts">>, Attempts, Doc).
+    kz_json:set_value([<<"attempts">>], Attempts, Doc).
 
 -spec caller_id(doc()) -> api_binary().
 -spec caller_id(doc(), Default) -> binary() | Default.
 caller_id(Doc) ->
     caller_id(Doc, 'undefined').
 caller_id(Doc, Default) ->
-    kz_json:get_binary_value(<<"caller_id">>, Doc, Default).
+    kz_json:get_binary_value([<<"caller_id">>], Doc, Default).
 
 -spec set_caller_id(doc(), binary()) -> doc().
 set_caller_id(Doc, CallerId) ->
-    kz_json:set_value(<<"caller_id">>, CallerId, Doc).
+    kz_json:set_value([<<"caller_id">>], CallerId, Doc).
 
 -spec caller_name(doc()) -> binary().
 -spec caller_name(doc(), Default) -> binary() | Default.
 caller_name(Doc) ->
     caller_name(Doc, <<"Kazoo Fax Printer">>).
 caller_name(Doc, Default) ->
-    kz_json:get_binary_value(<<"caller_name">>, Doc, Default).
+    kz_json:get_binary_value([<<"caller_name">>], Doc, Default).
 
 -spec set_caller_name(doc(), binary()) -> doc().
 set_caller_name(Doc, CallerName) ->
-    kz_json:set_value(<<"caller_name">>, CallerName, Doc).
+    kz_json:set_value([<<"caller_name">>], CallerName, Doc).
 
 -spec custom_smtp_email_address(doc()) -> api_binary().
 -spec custom_smtp_email_address(doc(), Default) -> binary() | Default.
 custom_smtp_email_address(Doc) ->
     custom_smtp_email_address(Doc, 'undefined').
 custom_smtp_email_address(Doc, Default) ->
-    kz_json:get_binary_value(<<"custom_smtp_email_address">>, Doc, Default).
+    kz_json:get_binary_value([<<"custom_smtp_email_address">>], Doc, Default).
 
 -spec set_custom_smtp_email_address(doc(), binary()) -> doc().
 set_custom_smtp_email_address(Doc, CustomSmtpEmailAddress) ->
-    kz_json:set_value(<<"custom_smtp_email_address">>, CustomSmtpEmailAddress, Doc).
+    kz_json:set_value([<<"custom_smtp_email_address">>], CustomSmtpEmailAddress, Doc).
 
 -spec fax_header(doc()) -> binary().
 -spec fax_header(doc(), Default) -> binary() | Default.
 fax_header(Doc) ->
     fax_header(Doc, <<"Kazoo Fax Printer">>).
 fax_header(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_header">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_header">>], Doc, Default).
 
 -spec set_fax_header(doc(), binary()) -> doc().
 set_fax_header(Doc, FaxHeader) ->
-    kz_json:set_value(<<"fax_header">>, FaxHeader, Doc).
+    kz_json:set_value([<<"fax_header">>], FaxHeader, Doc).
 
 -spec fax_identity(doc()) -> api_binary().
 -spec fax_identity(doc(), Default) -> binary() | Default.
 fax_identity(Doc) ->
     fax_identity(Doc, 'undefined').
 fax_identity(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_identity">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_identity">>], Doc, Default).
 
 -spec set_fax_identity(doc(), binary()) -> doc().
 set_fax_identity(Doc, FaxIdentity) ->
-    kz_json:set_value(<<"fax_identity">>, FaxIdentity, Doc).
+    kz_json:set_value([<<"fax_identity">>], FaxIdentity, Doc).
 
 -spec fax_timezone(doc()) -> api_binary().
 -spec fax_timezone(doc(), Default) -> binary() | Default.
 fax_timezone(Doc) ->
     fax_timezone(Doc, 'undefined').
 fax_timezone(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_timezone">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_timezone">>], Doc, Default).
 
 -spec set_fax_timezone(doc(), binary()) -> doc().
 set_fax_timezone(Doc, FaxTimezone) ->
-    kz_json:set_value(<<"fax_timezone">>, FaxTimezone, Doc).
+    kz_json:set_value([<<"fax_timezone">>], FaxTimezone, Doc).
 
 -spec media(doc()) -> kz_json:object().
 -spec media(doc(), Default) -> kz_json:object() | Default.
 media(Doc) ->
     media(Doc, kz_json:new()).
 media(Doc, Default) ->
-    kz_json:get_json_value(<<"media">>, Doc, Default).
+    kz_json:get_json_value([<<"media">>], Doc, Default).
 
 -spec set_media(doc(), kz_json:object()) -> doc().
 set_media(Doc, Media) ->
-    kz_json:set_value(<<"media">>, Media, Doc).
+    kz_json:set_value([<<"media">>], Media, Doc).
 
 -spec media_fax_option(doc()) -> api_boolean().
 -spec media_fax_option(doc(), Default) -> boolean() | Default.
@@ -147,22 +147,22 @@ set_media_fax_option(Doc, MediaFaxOption) ->
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"name">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(Doc, Name) ->
-    kz_json:set_value(<<"name">>, Name, Doc).
+    kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec notifications(doc()) -> api_object().
 -spec notifications(doc(), Default) -> kz_json:object() | Default.
 notifications(Doc) ->
     notifications(Doc, 'undefined').
 notifications(Doc, Default) ->
-    kz_json:get_json_value(<<"notifications">>, Doc, Default).
+    kz_json:get_json_value([<<"notifications">>], Doc, Default).
 
 -spec set_notifications(doc(), kz_json:object()) -> doc().
 set_notifications(Doc, Notifications) ->
-    kz_json:set_value(<<"notifications">>, Notifications, Doc).
+    kz_json:set_value([<<"notifications">>], Notifications, Doc).
 
 -spec notifications_inbound(doc()) -> api_object().
 -spec notifications_inbound(doc(), Default) -> kz_json:object() | Default.
@@ -175,93 +175,93 @@ notifications_inbound(Doc, Default) ->
 set_notifications_inbound(Doc, NotificationsInbound) ->
     kz_json:set_value([<<"notifications">>, <<"inbound">>], NotificationsInbound, Doc).
 
--spec notificationsinbound_callback(doc()) -> api_object().
--spec notificationsinbound_callback(doc(), Default) -> kz_json:object() | Default.
-notificationsinbound_callback(Doc) ->
-    notificationsinbound_callback(Doc, 'undefined').
-notificationsinbound_callback(Doc, Default) ->
-    kz_json:get_json_value([[<<"notifications">>, <<"inbound">>], <<"callback">>], Doc, Default).
+-spec notifications_inbound_callback(doc()) -> api_object().
+-spec notifications_inbound_callback(doc(), Default) -> kz_json:object() | Default.
+notifications_inbound_callback(Doc) ->
+    notifications_inbound_callback(Doc, 'undefined').
+notifications_inbound_callback(Doc, Default) ->
+    kz_json:get_json_value([<<"notifications">>, <<"inbound">>, <<"callback">>], Doc, Default).
 
--spec set_notificationsinbound_callback(doc(), kz_json:object()) -> doc().
-set_notificationsinbound_callback(Doc, NotificationsinboundCallback) ->
-    kz_json:set_value([[<<"notifications">>, <<"inbound">>], <<"callback">>], NotificationsinboundCallback, Doc).
+-spec set_notifications_inbound_callback(doc(), kz_json:object()) -> doc().
+set_notifications_inbound_callback(Doc, NotificationsInboundCallback) ->
+    kz_json:set_value([<<"notifications">>, <<"inbound">>, <<"callback">>], NotificationsInboundCallback, Doc).
 
--spec notificationsinboundcallback_method(doc()) -> api_binary().
--spec notificationsinboundcallback_method(doc(), Default) -> binary() | Default.
-notificationsinboundcallback_method(Doc) ->
-    notificationsinboundcallback_method(Doc, 'undefined').
-notificationsinboundcallback_method(Doc, Default) ->
-    kz_json:get_binary_value([[[<<"notifications">>, <<"inbound">>], <<"callback">>], <<"method">>], Doc, Default).
+-spec notifications_inbound_callback_method(doc()) -> api_binary().
+-spec notifications_inbound_callback_method(doc(), Default) -> binary() | Default.
+notifications_inbound_callback_method(Doc) ->
+    notifications_inbound_callback_method(Doc, 'undefined').
+notifications_inbound_callback_method(Doc, Default) ->
+    kz_json:get_binary_value([<<"notifications">>, <<"inbound">>, <<"callback">>, <<"method">>], Doc, Default).
 
--spec set_notificationsinboundcallback_method(doc(), binary()) -> doc().
-set_notificationsinboundcallback_method(Doc, NotificationsinboundcallbackMethod) ->
-    kz_json:set_value([[[<<"notifications">>, <<"inbound">>], <<"callback">>], <<"method">>], NotificationsinboundcallbackMethod, Doc).
+-spec set_notifications_inbound_callback_method(doc(), binary()) -> doc().
+set_notifications_inbound_callback_method(Doc, NotificationsInboundCallbackMethod) ->
+    kz_json:set_value([<<"notifications">>, <<"inbound">>, <<"callback">>, <<"method">>], NotificationsInboundCallbackMethod, Doc).
 
--spec notificationsinboundcallback_type(doc()) -> api_binary().
--spec notificationsinboundcallback_type(doc(), Default) -> binary() | Default.
-notificationsinboundcallback_type(Doc) ->
-    notificationsinboundcallback_type(Doc, 'undefined').
-notificationsinboundcallback_type(Doc, Default) ->
-    kz_json:get_binary_value([[[<<"notifications">>, <<"inbound">>], <<"callback">>], <<"type">>], Doc, Default).
+-spec notifications_inbound_callback_type(doc()) -> api_binary().
+-spec notifications_inbound_callback_type(doc(), Default) -> binary() | Default.
+notifications_inbound_callback_type(Doc) ->
+    notifications_inbound_callback_type(Doc, 'undefined').
+notifications_inbound_callback_type(Doc, Default) ->
+    kz_json:get_binary_value([<<"notifications">>, <<"inbound">>, <<"callback">>, <<"type">>], Doc, Default).
 
--spec set_notificationsinboundcallback_type(doc(), binary()) -> doc().
-set_notificationsinboundcallback_type(Doc, NotificationsinboundcallbackType) ->
-    kz_json:set_value([[[<<"notifications">>, <<"inbound">>], <<"callback">>], <<"type">>], NotificationsinboundcallbackType, Doc).
+-spec set_notifications_inbound_callback_type(doc(), binary()) -> doc().
+set_notifications_inbound_callback_type(Doc, NotificationsInboundCallbackType) ->
+    kz_json:set_value([<<"notifications">>, <<"inbound">>, <<"callback">>, <<"type">>], NotificationsInboundCallbackType, Doc).
 
--spec notificationsinboundcallback_url(doc()) -> api_binary().
--spec notificationsinboundcallback_url(doc(), Default) -> binary() | Default.
-notificationsinboundcallback_url(Doc) ->
-    notificationsinboundcallback_url(Doc, 'undefined').
-notificationsinboundcallback_url(Doc, Default) ->
-    kz_json:get_binary_value([[[<<"notifications">>, <<"inbound">>], <<"callback">>], <<"url">>], Doc, Default).
+-spec notifications_inbound_callback_url(doc()) -> api_binary().
+-spec notifications_inbound_callback_url(doc(), Default) -> binary() | Default.
+notifications_inbound_callback_url(Doc) ->
+    notifications_inbound_callback_url(Doc, 'undefined').
+notifications_inbound_callback_url(Doc, Default) ->
+    kz_json:get_binary_value([<<"notifications">>, <<"inbound">>, <<"callback">>, <<"url">>], Doc, Default).
 
--spec set_notificationsinboundcallback_url(doc(), binary()) -> doc().
-set_notificationsinboundcallback_url(Doc, NotificationsinboundcallbackUrl) ->
-    kz_json:set_value([[[<<"notifications">>, <<"inbound">>], <<"callback">>], <<"url">>], NotificationsinboundcallbackUrl, Doc).
+-spec set_notifications_inbound_callback_url(doc(), binary()) -> doc().
+set_notifications_inbound_callback_url(Doc, NotificationsInboundCallbackUrl) ->
+    kz_json:set_value([<<"notifications">>, <<"inbound">>, <<"callback">>, <<"url">>], NotificationsInboundCallbackUrl, Doc).
 
--spec notificationsinbound_email(doc()) -> api_object().
--spec notificationsinbound_email(doc(), Default) -> kz_json:object() | Default.
-notificationsinbound_email(Doc) ->
-    notificationsinbound_email(Doc, 'undefined').
-notificationsinbound_email(Doc, Default) ->
-    kz_json:get_json_value([[<<"notifications">>, <<"inbound">>], <<"email">>], Doc, Default).
+-spec notifications_inbound_email(doc()) -> api_object().
+-spec notifications_inbound_email(doc(), Default) -> kz_json:object() | Default.
+notifications_inbound_email(Doc) ->
+    notifications_inbound_email(Doc, 'undefined').
+notifications_inbound_email(Doc, Default) ->
+    kz_json:get_json_value([<<"notifications">>, <<"inbound">>, <<"email">>], Doc, Default).
 
--spec set_notificationsinbound_email(doc(), kz_json:object()) -> doc().
-set_notificationsinbound_email(Doc, NotificationsinboundEmail) ->
-    kz_json:set_value([[<<"notifications">>, <<"inbound">>], <<"email">>], NotificationsinboundEmail, Doc).
+-spec set_notifications_inbound_email(doc(), kz_json:object()) -> doc().
+set_notifications_inbound_email(Doc, NotificationsInboundEmail) ->
+    kz_json:set_value([<<"notifications">>, <<"inbound">>, <<"email">>], NotificationsInboundEmail, Doc).
 
--spec notificationsinboundemail_send_to(doc()) -> any().
--spec notificationsinboundemail_send_to(doc(), Default) -> any() | Default.
-notificationsinboundemail_send_to(Doc) ->
-    notificationsinboundemail_send_to(Doc, 'undefined').
-notificationsinboundemail_send_to(Doc, Default) ->
-    kz_json:get_value([[[<<"notifications">>, <<"inbound">>], <<"email">>], <<"send_to">>], Doc, Default).
+-spec notifications_inbound_email_send_to(doc()) -> any().
+-spec notifications_inbound_email_send_to(doc(), Default) -> any() | Default.
+notifications_inbound_email_send_to(Doc) ->
+    notifications_inbound_email_send_to(Doc, 'undefined').
+notifications_inbound_email_send_to(Doc, Default) ->
+    kz_json:get_value([<<"notifications">>, <<"inbound">>, <<"email">>, <<"send_to">>], Doc, Default).
 
--spec set_notificationsinboundemail_send_to(doc(), any()) -> doc().
-set_notificationsinboundemail_send_to(Doc, NotificationsinboundemailSendTo) ->
-    kz_json:set_value([[[<<"notifications">>, <<"inbound">>], <<"email">>], <<"send_to">>], NotificationsinboundemailSendTo, Doc).
+-spec set_notifications_inbound_email_send_to(doc(), any()) -> doc().
+set_notifications_inbound_email_send_to(Doc, NotificationsInboundEmailSendTo) ->
+    kz_json:set_value([<<"notifications">>, <<"inbound">>, <<"email">>, <<"send_to">>], NotificationsInboundEmailSendTo, Doc).
 
--spec notificationsinbound_sms(doc()) -> api_object().
--spec notificationsinbound_sms(doc(), Default) -> kz_json:object() | Default.
-notificationsinbound_sms(Doc) ->
-    notificationsinbound_sms(Doc, 'undefined').
-notificationsinbound_sms(Doc, Default) ->
-    kz_json:get_json_value([[<<"notifications">>, <<"inbound">>], <<"sms">>], Doc, Default).
+-spec notifications_inbound_sms(doc()) -> api_object().
+-spec notifications_inbound_sms(doc(), Default) -> kz_json:object() | Default.
+notifications_inbound_sms(Doc) ->
+    notifications_inbound_sms(Doc, 'undefined').
+notifications_inbound_sms(Doc, Default) ->
+    kz_json:get_json_value([<<"notifications">>, <<"inbound">>, <<"sms">>], Doc, Default).
 
--spec set_notificationsinbound_sms(doc(), kz_json:object()) -> doc().
-set_notificationsinbound_sms(Doc, NotificationsinboundSms) ->
-    kz_json:set_value([[<<"notifications">>, <<"inbound">>], <<"sms">>], NotificationsinboundSms, Doc).
+-spec set_notifications_inbound_sms(doc(), kz_json:object()) -> doc().
+set_notifications_inbound_sms(Doc, NotificationsInboundSms) ->
+    kz_json:set_value([<<"notifications">>, <<"inbound">>, <<"sms">>], NotificationsInboundSms, Doc).
 
--spec notificationsinboundsms_send_to(doc()) -> any().
--spec notificationsinboundsms_send_to(doc(), Default) -> any() | Default.
-notificationsinboundsms_send_to(Doc) ->
-    notificationsinboundsms_send_to(Doc, 'undefined').
-notificationsinboundsms_send_to(Doc, Default) ->
-    kz_json:get_value([[[<<"notifications">>, <<"inbound">>], <<"sms">>], <<"send_to">>], Doc, Default).
+-spec notifications_inbound_sms_send_to(doc()) -> any().
+-spec notifications_inbound_sms_send_to(doc(), Default) -> any() | Default.
+notifications_inbound_sms_send_to(Doc) ->
+    notifications_inbound_sms_send_to(Doc, 'undefined').
+notifications_inbound_sms_send_to(Doc, Default) ->
+    kz_json:get_value([<<"notifications">>, <<"inbound">>, <<"sms">>, <<"send_to">>], Doc, Default).
 
--spec set_notificationsinboundsms_send_to(doc(), any()) -> doc().
-set_notificationsinboundsms_send_to(Doc, NotificationsinboundsmsSendTo) ->
-    kz_json:set_value([[[<<"notifications">>, <<"inbound">>], <<"sms">>], <<"send_to">>], NotificationsinboundsmsSendTo, Doc).
+-spec set_notifications_inbound_sms_send_to(doc(), any()) -> doc().
+set_notifications_inbound_sms_send_to(Doc, NotificationsInboundSmsSendTo) ->
+    kz_json:set_value([<<"notifications">>, <<"inbound">>, <<"sms">>, <<"send_to">>], NotificationsInboundSmsSendTo, Doc).
 
 -spec notifications_outbound(doc()) -> api_object().
 -spec notifications_outbound(doc(), Default) -> kz_json:object() | Default.
@@ -274,112 +274,112 @@ notifications_outbound(Doc, Default) ->
 set_notifications_outbound(Doc, NotificationsOutbound) ->
     kz_json:set_value([<<"notifications">>, <<"outbound">>], NotificationsOutbound, Doc).
 
--spec notificationsoutbound_callback(doc()) -> api_object().
--spec notificationsoutbound_callback(doc(), Default) -> kz_json:object() | Default.
-notificationsoutbound_callback(Doc) ->
-    notificationsoutbound_callback(Doc, 'undefined').
-notificationsoutbound_callback(Doc, Default) ->
-    kz_json:get_json_value([[<<"notifications">>, <<"outbound">>], <<"callback">>], Doc, Default).
+-spec notifications_outbound_callback(doc()) -> api_object().
+-spec notifications_outbound_callback(doc(), Default) -> kz_json:object() | Default.
+notifications_outbound_callback(Doc) ->
+    notifications_outbound_callback(Doc, 'undefined').
+notifications_outbound_callback(Doc, Default) ->
+    kz_json:get_json_value([<<"notifications">>, <<"outbound">>, <<"callback">>], Doc, Default).
 
--spec set_notificationsoutbound_callback(doc(), kz_json:object()) -> doc().
-set_notificationsoutbound_callback(Doc, NotificationsoutboundCallback) ->
-    kz_json:set_value([[<<"notifications">>, <<"outbound">>], <<"callback">>], NotificationsoutboundCallback, Doc).
+-spec set_notifications_outbound_callback(doc(), kz_json:object()) -> doc().
+set_notifications_outbound_callback(Doc, NotificationsOutboundCallback) ->
+    kz_json:set_value([<<"notifications">>, <<"outbound">>, <<"callback">>], NotificationsOutboundCallback, Doc).
 
--spec notificationsoutboundcallback_method(doc()) -> api_binary().
--spec notificationsoutboundcallback_method(doc(), Default) -> binary() | Default.
-notificationsoutboundcallback_method(Doc) ->
-    notificationsoutboundcallback_method(Doc, 'undefined').
-notificationsoutboundcallback_method(Doc, Default) ->
-    kz_json:get_binary_value([[[<<"notifications">>, <<"outbound">>], <<"callback">>], <<"method">>], Doc, Default).
+-spec notifications_outbound_callback_method(doc()) -> api_binary().
+-spec notifications_outbound_callback_method(doc(), Default) -> binary() | Default.
+notifications_outbound_callback_method(Doc) ->
+    notifications_outbound_callback_method(Doc, 'undefined').
+notifications_outbound_callback_method(Doc, Default) ->
+    kz_json:get_binary_value([<<"notifications">>, <<"outbound">>, <<"callback">>, <<"method">>], Doc, Default).
 
--spec set_notificationsoutboundcallback_method(doc(), binary()) -> doc().
-set_notificationsoutboundcallback_method(Doc, NotificationsoutboundcallbackMethod) ->
-    kz_json:set_value([[[<<"notifications">>, <<"outbound">>], <<"callback">>], <<"method">>], NotificationsoutboundcallbackMethod, Doc).
+-spec set_notifications_outbound_callback_method(doc(), binary()) -> doc().
+set_notifications_outbound_callback_method(Doc, NotificationsOutboundCallbackMethod) ->
+    kz_json:set_value([<<"notifications">>, <<"outbound">>, <<"callback">>, <<"method">>], NotificationsOutboundCallbackMethod, Doc).
 
--spec notificationsoutboundcallback_type(doc()) -> api_binary().
--spec notificationsoutboundcallback_type(doc(), Default) -> binary() | Default.
-notificationsoutboundcallback_type(Doc) ->
-    notificationsoutboundcallback_type(Doc, 'undefined').
-notificationsoutboundcallback_type(Doc, Default) ->
-    kz_json:get_binary_value([[[<<"notifications">>, <<"outbound">>], <<"callback">>], <<"type">>], Doc, Default).
+-spec notifications_outbound_callback_type(doc()) -> api_binary().
+-spec notifications_outbound_callback_type(doc(), Default) -> binary() | Default.
+notifications_outbound_callback_type(Doc) ->
+    notifications_outbound_callback_type(Doc, 'undefined').
+notifications_outbound_callback_type(Doc, Default) ->
+    kz_json:get_binary_value([<<"notifications">>, <<"outbound">>, <<"callback">>, <<"type">>], Doc, Default).
 
--spec set_notificationsoutboundcallback_type(doc(), binary()) -> doc().
-set_notificationsoutboundcallback_type(Doc, NotificationsoutboundcallbackType) ->
-    kz_json:set_value([[[<<"notifications">>, <<"outbound">>], <<"callback">>], <<"type">>], NotificationsoutboundcallbackType, Doc).
+-spec set_notifications_outbound_callback_type(doc(), binary()) -> doc().
+set_notifications_outbound_callback_type(Doc, NotificationsOutboundCallbackType) ->
+    kz_json:set_value([<<"notifications">>, <<"outbound">>, <<"callback">>, <<"type">>], NotificationsOutboundCallbackType, Doc).
 
--spec notificationsoutboundcallback_url(doc()) -> api_binary().
--spec notificationsoutboundcallback_url(doc(), Default) -> binary() | Default.
-notificationsoutboundcallback_url(Doc) ->
-    notificationsoutboundcallback_url(Doc, 'undefined').
-notificationsoutboundcallback_url(Doc, Default) ->
-    kz_json:get_binary_value([[[<<"notifications">>, <<"outbound">>], <<"callback">>], <<"url">>], Doc, Default).
+-spec notifications_outbound_callback_url(doc()) -> api_binary().
+-spec notifications_outbound_callback_url(doc(), Default) -> binary() | Default.
+notifications_outbound_callback_url(Doc) ->
+    notifications_outbound_callback_url(Doc, 'undefined').
+notifications_outbound_callback_url(Doc, Default) ->
+    kz_json:get_binary_value([<<"notifications">>, <<"outbound">>, <<"callback">>, <<"url">>], Doc, Default).
 
--spec set_notificationsoutboundcallback_url(doc(), binary()) -> doc().
-set_notificationsoutboundcallback_url(Doc, NotificationsoutboundcallbackUrl) ->
-    kz_json:set_value([[[<<"notifications">>, <<"outbound">>], <<"callback">>], <<"url">>], NotificationsoutboundcallbackUrl, Doc).
+-spec set_notifications_outbound_callback_url(doc(), binary()) -> doc().
+set_notifications_outbound_callback_url(Doc, NotificationsOutboundCallbackUrl) ->
+    kz_json:set_value([<<"notifications">>, <<"outbound">>, <<"callback">>, <<"url">>], NotificationsOutboundCallbackUrl, Doc).
 
--spec notificationsoutbound_email(doc()) -> api_object().
--spec notificationsoutbound_email(doc(), Default) -> kz_json:object() | Default.
-notificationsoutbound_email(Doc) ->
-    notificationsoutbound_email(Doc, 'undefined').
-notificationsoutbound_email(Doc, Default) ->
-    kz_json:get_json_value([[<<"notifications">>, <<"outbound">>], <<"email">>], Doc, Default).
+-spec notifications_outbound_email(doc()) -> api_object().
+-spec notifications_outbound_email(doc(), Default) -> kz_json:object() | Default.
+notifications_outbound_email(Doc) ->
+    notifications_outbound_email(Doc, 'undefined').
+notifications_outbound_email(Doc, Default) ->
+    kz_json:get_json_value([<<"notifications">>, <<"outbound">>, <<"email">>], Doc, Default).
 
--spec set_notificationsoutbound_email(doc(), kz_json:object()) -> doc().
-set_notificationsoutbound_email(Doc, NotificationsoutboundEmail) ->
-    kz_json:set_value([[<<"notifications">>, <<"outbound">>], <<"email">>], NotificationsoutboundEmail, Doc).
+-spec set_notifications_outbound_email(doc(), kz_json:object()) -> doc().
+set_notifications_outbound_email(Doc, NotificationsOutboundEmail) ->
+    kz_json:set_value([<<"notifications">>, <<"outbound">>, <<"email">>], NotificationsOutboundEmail, Doc).
 
--spec notificationsoutboundemail_send_to(doc()) -> any().
--spec notificationsoutboundemail_send_to(doc(), Default) -> any() | Default.
-notificationsoutboundemail_send_to(Doc) ->
-    notificationsoutboundemail_send_to(Doc, 'undefined').
-notificationsoutboundemail_send_to(Doc, Default) ->
-    kz_json:get_value([[[<<"notifications">>, <<"outbound">>], <<"email">>], <<"send_to">>], Doc, Default).
+-spec notifications_outbound_email_send_to(doc()) -> any().
+-spec notifications_outbound_email_send_to(doc(), Default) -> any() | Default.
+notifications_outbound_email_send_to(Doc) ->
+    notifications_outbound_email_send_to(Doc, 'undefined').
+notifications_outbound_email_send_to(Doc, Default) ->
+    kz_json:get_value([<<"notifications">>, <<"outbound">>, <<"email">>, <<"send_to">>], Doc, Default).
 
--spec set_notificationsoutboundemail_send_to(doc(), any()) -> doc().
-set_notificationsoutboundemail_send_to(Doc, NotificationsoutboundemailSendTo) ->
-    kz_json:set_value([[[<<"notifications">>, <<"outbound">>], <<"email">>], <<"send_to">>], NotificationsoutboundemailSendTo, Doc).
+-spec set_notifications_outbound_email_send_to(doc(), any()) -> doc().
+set_notifications_outbound_email_send_to(Doc, NotificationsOutboundEmailSendTo) ->
+    kz_json:set_value([<<"notifications">>, <<"outbound">>, <<"email">>, <<"send_to">>], NotificationsOutboundEmailSendTo, Doc).
 
--spec notificationsoutbound_sms(doc()) -> api_object().
--spec notificationsoutbound_sms(doc(), Default) -> kz_json:object() | Default.
-notificationsoutbound_sms(Doc) ->
-    notificationsoutbound_sms(Doc, 'undefined').
-notificationsoutbound_sms(Doc, Default) ->
-    kz_json:get_json_value([[<<"notifications">>, <<"outbound">>], <<"sms">>], Doc, Default).
+-spec notifications_outbound_sms(doc()) -> api_object().
+-spec notifications_outbound_sms(doc(), Default) -> kz_json:object() | Default.
+notifications_outbound_sms(Doc) ->
+    notifications_outbound_sms(Doc, 'undefined').
+notifications_outbound_sms(Doc, Default) ->
+    kz_json:get_json_value([<<"notifications">>, <<"outbound">>, <<"sms">>], Doc, Default).
 
--spec set_notificationsoutbound_sms(doc(), kz_json:object()) -> doc().
-set_notificationsoutbound_sms(Doc, NotificationsoutboundSms) ->
-    kz_json:set_value([[<<"notifications">>, <<"outbound">>], <<"sms">>], NotificationsoutboundSms, Doc).
+-spec set_notifications_outbound_sms(doc(), kz_json:object()) -> doc().
+set_notifications_outbound_sms(Doc, NotificationsOutboundSms) ->
+    kz_json:set_value([<<"notifications">>, <<"outbound">>, <<"sms">>], NotificationsOutboundSms, Doc).
 
--spec notificationsoutboundsms_send_to(doc()) -> any().
--spec notificationsoutboundsms_send_to(doc(), Default) -> any() | Default.
-notificationsoutboundsms_send_to(Doc) ->
-    notificationsoutboundsms_send_to(Doc, 'undefined').
-notificationsoutboundsms_send_to(Doc, Default) ->
-    kz_json:get_value([[[<<"notifications">>, <<"outbound">>], <<"sms">>], <<"send_to">>], Doc, Default).
+-spec notifications_outbound_sms_send_to(doc()) -> any().
+-spec notifications_outbound_sms_send_to(doc(), Default) -> any() | Default.
+notifications_outbound_sms_send_to(Doc) ->
+    notifications_outbound_sms_send_to(Doc, 'undefined').
+notifications_outbound_sms_send_to(Doc, Default) ->
+    kz_json:get_value([<<"notifications">>, <<"outbound">>, <<"sms">>, <<"send_to">>], Doc, Default).
 
--spec set_notificationsoutboundsms_send_to(doc(), any()) -> doc().
-set_notificationsoutboundsms_send_to(Doc, NotificationsoutboundsmsSendTo) ->
-    kz_json:set_value([[[<<"notifications">>, <<"outbound">>], <<"sms">>], <<"send_to">>], NotificationsoutboundsmsSendTo, Doc).
+-spec set_notifications_outbound_sms_send_to(doc(), any()) -> doc().
+set_notifications_outbound_sms_send_to(Doc, NotificationsOutboundSmsSendTo) ->
+    kz_json:set_value([<<"notifications">>, <<"outbound">>, <<"sms">>, <<"send_to">>], NotificationsOutboundSmsSendTo, Doc).
 
 -spec retries(doc()) -> integer().
 -spec retries(doc(), Default) -> integer() | Default.
 retries(Doc) ->
     retries(Doc, 1).
 retries(Doc, Default) ->
-    kz_json:get_integer_value(<<"retries">>, Doc, Default).
+    kz_json:get_integer_value([<<"retries">>], Doc, Default).
 
 -spec set_retries(doc(), integer()) -> doc().
 set_retries(Doc, Retries) ->
-    kz_json:set_value(<<"retries">>, Retries, Doc).
+    kz_json:set_value([<<"retries">>], Retries, Doc).
 
 -spec smtp_permission_list(doc()) -> ne_binaries().
 -spec smtp_permission_list(doc(), Default) -> ne_binaries() | Default.
 smtp_permission_list(Doc) ->
     smtp_permission_list(Doc, []).
 smtp_permission_list(Doc, Default) ->
-    kz_json:get_list_value(<<"smtp_permission_list">>, Doc, Default).
+    kz_json:get_list_value([<<"smtp_permission_list">>], Doc, Default).
 
 -spec set_smtp_permission_list(doc(), ne_binaries()) -> doc().
 set_smtp_permission_list(Doc, SmtpPermissionList) ->
-    kz_json:set_value(<<"smtp_permission_list">>, SmtpPermissionList, Doc).
+    kz_json:set_value([<<"smtp_permission_list">>], SmtpPermissionList, Doc).

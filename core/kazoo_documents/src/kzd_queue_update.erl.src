@@ -19,19 +19,19 @@ new() ->
 action(Doc) ->
     action(Doc, 'undefined').
 action(Doc, Default) ->
-    kz_json:get_binary_value(<<"action">>, Doc, Default).
+    kz_json:get_binary_value([<<"action">>], Doc, Default).
 
 -spec set_action(doc(), binary()) -> doc().
 set_action(Doc, Action) ->
-    kz_json:set_value(<<"action">>, Action, Doc).
+    kz_json:set_value([<<"action">>], Action, Doc).
 
 -spec queue_id(doc()) -> api_ne_binary().
 -spec queue_id(doc(), Default) -> ne_binary() | Default.
 queue_id(Doc) ->
     queue_id(Doc, 'undefined').
 queue_id(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"queue_id">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"queue_id">>], Doc, Default).
 
 -spec set_queue_id(doc(), ne_binary()) -> doc().
 set_queue_id(Doc, QueueId) ->
-    kz_json:set_value(<<"queue_id">>, QueueId, Doc).
+    kz_json:set_value([<<"queue_id">>], QueueId, Doc).

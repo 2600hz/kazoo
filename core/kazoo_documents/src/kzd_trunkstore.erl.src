@@ -4,13 +4,13 @@
 -export([account/1, account/2, set_account/2]).
 -export([account_auth_realm/1, account_auth_realm/2, set_account_auth_realm/2]).
 -export([account_caller_id/1, account_caller_id/2, set_account_caller_id/2]).
--export([accountcaller_id_cid_name/1, accountcaller_id_cid_name/2, set_accountcaller_id_cid_name/2]).
--export([accountcaller_id_cid_number/1, accountcaller_id_cid_number/2, set_accountcaller_id_cid_number/2]).
+-export([account_caller_id_cid_name/1, account_caller_id_cid_name/2, set_account_caller_id_cid_name/2]).
+-export([account_caller_id_cid_number/1, account_caller_id_cid_number/2, set_account_caller_id_cid_number/2]).
 -export([account_credits/1, account_credits/2, set_account_credits/2]).
--export([accountcredits_prepay/1, accountcredits_prepay/2, set_accountcredits_prepay/2]).
+-export([account_credits_prepay/1, account_credits_prepay/2, set_account_credits_prepay/2]).
 -export([account_emergency_caller_id/1, account_emergency_caller_id/2, set_account_emergency_caller_id/2]).
--export([accountemergency_caller_id_cid_name/1, accountemergency_caller_id_cid_name/2, set_accountemergency_caller_id_cid_name/2]).
--export([accountemergency_caller_id_cid_number/1, accountemergency_caller_id_cid_number/2, set_accountemergency_caller_id_cid_number/2]).
+-export([account_emergency_caller_id_cid_name/1, account_emergency_caller_id_cid_name/2, set_account_emergency_caller_id_cid_name/2]).
+-export([account_emergency_caller_id_cid_number/1, account_emergency_caller_id_cid_number/2, set_account_emergency_caller_id_cid_number/2]).
 -export([account_trunks/1, account_trunks/2, set_account_trunks/2]).
 -export([call_restriction/1, call_restriction/2, set_call_restriction/2]).
 -export([name/1, name/2, set_name/2]).
@@ -32,11 +32,11 @@ new() ->
 account(Doc) ->
     account(Doc, 'undefined').
 account(Doc, Default) ->
-    kz_json:get_json_value(<<"account">>, Doc, Default).
+    kz_json:get_json_value([<<"account">>], Doc, Default).
 
 -spec set_account(doc(), kz_json:object()) -> doc().
 set_account(Doc, Account) ->
-    kz_json:set_value(<<"account">>, Account, Doc).
+    kz_json:set_value([<<"account">>], Account, Doc).
 
 -spec account_auth_realm(doc()) -> api_ne_binary().
 -spec account_auth_realm(doc(), Default) -> ne_binary() | Default.
@@ -60,27 +60,27 @@ account_caller_id(Doc, Default) ->
 set_account_caller_id(Doc, AccountCallerId) ->
     kz_json:set_value([<<"account">>, <<"caller_id">>], AccountCallerId, Doc).
 
--spec accountcaller_id_cid_name(doc()) -> api_ne_binary().
--spec accountcaller_id_cid_name(doc(), Default) -> ne_binary() | Default.
-accountcaller_id_cid_name(Doc) ->
-    accountcaller_id_cid_name(Doc, 'undefined').
-accountcaller_id_cid_name(Doc, Default) ->
-    kz_json:get_ne_binary_value([[<<"account">>, <<"caller_id">>], <<"cid_name">>], Doc, Default).
+-spec account_caller_id_cid_name(doc()) -> api_ne_binary().
+-spec account_caller_id_cid_name(doc(), Default) -> ne_binary() | Default.
+account_caller_id_cid_name(Doc) ->
+    account_caller_id_cid_name(Doc, 'undefined').
+account_caller_id_cid_name(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"account">>, <<"caller_id">>, <<"cid_name">>], Doc, Default).
 
--spec set_accountcaller_id_cid_name(doc(), ne_binary()) -> doc().
-set_accountcaller_id_cid_name(Doc, AccountcallerIdCidName) ->
-    kz_json:set_value([[<<"account">>, <<"caller_id">>], <<"cid_name">>], AccountcallerIdCidName, Doc).
+-spec set_account_caller_id_cid_name(doc(), ne_binary()) -> doc().
+set_account_caller_id_cid_name(Doc, AccountCallerIdCidName) ->
+    kz_json:set_value([<<"account">>, <<"caller_id">>, <<"cid_name">>], AccountCallerIdCidName, Doc).
 
--spec accountcaller_id_cid_number(doc()) -> api_ne_binary().
--spec accountcaller_id_cid_number(doc(), Default) -> ne_binary() | Default.
-accountcaller_id_cid_number(Doc) ->
-    accountcaller_id_cid_number(Doc, 'undefined').
-accountcaller_id_cid_number(Doc, Default) ->
-    kz_json:get_ne_binary_value([[<<"account">>, <<"caller_id">>], <<"cid_number">>], Doc, Default).
+-spec account_caller_id_cid_number(doc()) -> api_ne_binary().
+-spec account_caller_id_cid_number(doc(), Default) -> ne_binary() | Default.
+account_caller_id_cid_number(Doc) ->
+    account_caller_id_cid_number(Doc, 'undefined').
+account_caller_id_cid_number(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"account">>, <<"caller_id">>, <<"cid_number">>], Doc, Default).
 
--spec set_accountcaller_id_cid_number(doc(), ne_binary()) -> doc().
-set_accountcaller_id_cid_number(Doc, AccountcallerIdCidNumber) ->
-    kz_json:set_value([[<<"account">>, <<"caller_id">>], <<"cid_number">>], AccountcallerIdCidNumber, Doc).
+-spec set_account_caller_id_cid_number(doc(), ne_binary()) -> doc().
+set_account_caller_id_cid_number(Doc, AccountCallerIdCidNumber) ->
+    kz_json:set_value([<<"account">>, <<"caller_id">>, <<"cid_number">>], AccountCallerIdCidNumber, Doc).
 
 -spec account_credits(doc()) -> api_object().
 -spec account_credits(doc(), Default) -> kz_json:object() | Default.
@@ -93,16 +93,16 @@ account_credits(Doc, Default) ->
 set_account_credits(Doc, AccountCredits) ->
     kz_json:set_value([<<"account">>, <<"credits">>], AccountCredits, Doc).
 
--spec accountcredits_prepay(doc()) -> any().
--spec accountcredits_prepay(doc(), Default) -> any() | Default.
-accountcredits_prepay(Doc) ->
-    accountcredits_prepay(Doc, 'undefined').
-accountcredits_prepay(Doc, Default) ->
-    kz_json:get_value([[<<"account">>, <<"credits">>], <<"prepay">>], Doc, Default).
+-spec account_credits_prepay(doc()) -> api_number().
+-spec account_credits_prepay(doc(), Default) -> number() | Default.
+account_credits_prepay(Doc) ->
+    account_credits_prepay(Doc, 'undefined').
+account_credits_prepay(Doc, Default) ->
+    kz_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], Doc, Default).
 
--spec set_accountcredits_prepay(doc(), any()) -> doc().
-set_accountcredits_prepay(Doc, AccountcreditsPrepay) ->
-    kz_json:set_value([[<<"account">>, <<"credits">>], <<"prepay">>], AccountcreditsPrepay, Doc).
+-spec set_account_credits_prepay(doc(), number()) -> doc().
+set_account_credits_prepay(Doc, AccountCreditsPrepay) ->
+    kz_json:set_value([<<"account">>, <<"credits">>, <<"prepay">>], AccountCreditsPrepay, Doc).
 
 -spec account_emergency_caller_id(doc()) -> api_object().
 -spec account_emergency_caller_id(doc(), Default) -> kz_json:object() | Default.
@@ -115,27 +115,27 @@ account_emergency_caller_id(Doc, Default) ->
 set_account_emergency_caller_id(Doc, AccountEmergencyCallerId) ->
     kz_json:set_value([<<"account">>, <<"emergency_caller_id">>], AccountEmergencyCallerId, Doc).
 
--spec accountemergency_caller_id_cid_name(doc()) -> api_ne_binary().
--spec accountemergency_caller_id_cid_name(doc(), Default) -> ne_binary() | Default.
-accountemergency_caller_id_cid_name(Doc) ->
-    accountemergency_caller_id_cid_name(Doc, 'undefined').
-accountemergency_caller_id_cid_name(Doc, Default) ->
-    kz_json:get_ne_binary_value([[<<"account">>, <<"emergency_caller_id">>], <<"cid_name">>], Doc, Default).
+-spec account_emergency_caller_id_cid_name(doc()) -> api_ne_binary().
+-spec account_emergency_caller_id_cid_name(doc(), Default) -> ne_binary() | Default.
+account_emergency_caller_id_cid_name(Doc) ->
+    account_emergency_caller_id_cid_name(Doc, 'undefined').
+account_emergency_caller_id_cid_name(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"account">>, <<"emergency_caller_id">>, <<"cid_name">>], Doc, Default).
 
--spec set_accountemergency_caller_id_cid_name(doc(), ne_binary()) -> doc().
-set_accountemergency_caller_id_cid_name(Doc, AccountemergencyCallerIdCidName) ->
-    kz_json:set_value([[<<"account">>, <<"emergency_caller_id">>], <<"cid_name">>], AccountemergencyCallerIdCidName, Doc).
+-spec set_account_emergency_caller_id_cid_name(doc(), ne_binary()) -> doc().
+set_account_emergency_caller_id_cid_name(Doc, AccountEmergencyCallerIdCidName) ->
+    kz_json:set_value([<<"account">>, <<"emergency_caller_id">>, <<"cid_name">>], AccountEmergencyCallerIdCidName, Doc).
 
--spec accountemergency_caller_id_cid_number(doc()) -> api_ne_binary().
--spec accountemergency_caller_id_cid_number(doc(), Default) -> ne_binary() | Default.
-accountemergency_caller_id_cid_number(Doc) ->
-    accountemergency_caller_id_cid_number(Doc, 'undefined').
-accountemergency_caller_id_cid_number(Doc, Default) ->
-    kz_json:get_ne_binary_value([[<<"account">>, <<"emergency_caller_id">>], <<"cid_number">>], Doc, Default).
+-spec account_emergency_caller_id_cid_number(doc()) -> api_ne_binary().
+-spec account_emergency_caller_id_cid_number(doc(), Default) -> ne_binary() | Default.
+account_emergency_caller_id_cid_number(Doc) ->
+    account_emergency_caller_id_cid_number(Doc, 'undefined').
+account_emergency_caller_id_cid_number(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"account">>, <<"emergency_caller_id">>, <<"cid_number">>], Doc, Default).
 
--spec set_accountemergency_caller_id_cid_number(doc(), ne_binary()) -> doc().
-set_accountemergency_caller_id_cid_number(Doc, AccountemergencyCallerIdCidNumber) ->
-    kz_json:set_value([[<<"account">>, <<"emergency_caller_id">>], <<"cid_number">>], AccountemergencyCallerIdCidNumber, Doc).
+-spec set_account_emergency_caller_id_cid_number(doc(), ne_binary()) -> doc().
+set_account_emergency_caller_id_cid_number(Doc, AccountEmergencyCallerIdCidNumber) ->
+    kz_json:set_value([<<"account">>, <<"emergency_caller_id">>, <<"cid_number">>], AccountEmergencyCallerIdCidNumber, Doc).
 
 -spec account_trunks(doc()) -> api_integer().
 -spec account_trunks(doc(), Default) -> integer() | Default.
@@ -153,41 +153,41 @@ set_account_trunks(Doc, AccountTrunks) ->
 call_restriction(Doc) ->
     call_restriction(Doc, kz_json:new()).
 call_restriction(Doc, Default) ->
-    kz_json:get_json_value(<<"call_restriction">>, Doc, Default).
+    kz_json:get_json_value([<<"call_restriction">>], Doc, Default).
 
 -spec set_call_restriction(doc(), kz_json:object()) -> doc().
 set_call_restriction(Doc, CallRestriction) ->
-    kz_json:set_value(<<"call_restriction">>, CallRestriction, Doc).
+    kz_json:set_value([<<"call_restriction">>], CallRestriction, Doc).
 
 -spec name(doc()) -> api_binary().
 -spec name(doc(), Default) -> binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
-    kz_json:get_binary_value(<<"name">>, Doc, Default).
+    kz_json:get_binary_value([<<"name">>], Doc, Default).
 
 -spec set_name(doc(), binary()) -> doc().
 set_name(Doc, Name) ->
-    kz_json:set_value(<<"name">>, Name, Doc).
+    kz_json:set_value([<<"name">>], Name, Doc).
 
--spec servers(doc()) -> list().
--spec servers(doc(), Default) -> list() | Default.
+-spec servers(doc()) -> kz_json:objects().
+-spec servers(doc(), Default) -> kz_json:objects() | Default.
 servers(Doc) ->
     servers(Doc, []).
 servers(Doc, Default) ->
-    kz_json:get_list_value(<<"servers">>, Doc, Default).
+    kz_json:get_list_value([<<"servers">>], Doc, Default).
 
--spec set_servers(doc(), list()) -> doc().
+-spec set_servers(doc(), kz_json:objects()) -> doc().
 set_servers(Doc, Servers) ->
-    kz_json:set_value(<<"servers">>, Servers, Doc).
+    kz_json:set_value([<<"servers">>], Servers, Doc).
 
 -spec type(doc()) -> api_binary().
 -spec type(doc(), Default) -> binary() | Default.
 type(Doc) ->
     type(Doc, 'undefined').
 type(Doc, Default) ->
-    kz_json:get_binary_value(<<"type">>, Doc, Default).
+    kz_json:get_binary_value([<<"type">>], Doc, Default).
 
 -spec set_type(doc(), binary()) -> doc().
 set_type(Doc, Type) ->
-    kz_json:set_value(<<"type">>, Type, Doc).
+    kz_json:set_value([<<"type">>], Type, Doc).

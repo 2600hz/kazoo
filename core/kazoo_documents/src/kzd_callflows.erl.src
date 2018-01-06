@@ -24,11 +24,11 @@ new() ->
 featurecode(Doc) ->
     featurecode(Doc, 'undefined').
 featurecode(Doc, Default) ->
-    kz_json:get_json_value(<<"featurecode">>, Doc, Default).
+    kz_json:get_json_value([<<"featurecode">>], Doc, Default).
 
 -spec set_featurecode(doc(), kz_json:object()) -> doc().
 set_featurecode(Doc, Featurecode) ->
-    kz_json:set_value(<<"featurecode">>, Featurecode, Doc).
+    kz_json:set_value([<<"featurecode">>], Featurecode, Doc).
 
 -spec featurecode_name(doc()) -> api_ne_binary().
 -spec featurecode_name(doc(), Default) -> ne_binary() | Default.
@@ -57,41 +57,41 @@ set_featurecode_number(Doc, FeaturecodeNumber) ->
 flow(Doc) ->
     flow(Doc, 'undefined').
 flow(Doc, Default) ->
-    kz_json:get_json_value(<<"flow">>, Doc, Default).
+    kz_json:get_json_value([<<"flow">>], Doc, Default).
 
 -spec set_flow(doc(), kz_json:object()) -> doc().
 set_flow(Doc, Flow) ->
-    kz_json:set_value(<<"flow">>, Flow, Doc).
+    kz_json:set_value([<<"flow">>], Flow, Doc).
 
 -spec metaflow(doc()) -> api_object().
 -spec metaflow(doc(), Default) -> kz_json:object() | Default.
 metaflow(Doc) ->
     metaflow(Doc, 'undefined').
 metaflow(Doc, Default) ->
-    kz_json:get_json_value(<<"metaflow">>, Doc, Default).
+    kz_json:get_json_value([<<"metaflow">>], Doc, Default).
 
 -spec set_metaflow(doc(), kz_json:object()) -> doc().
 set_metaflow(Doc, Metaflow) ->
-    kz_json:set_value(<<"metaflow">>, Metaflow, Doc).
+    kz_json:set_value([<<"metaflow">>], Metaflow, Doc).
 
 -spec numbers(doc()) -> ne_binaries().
 -spec numbers(doc(), Default) -> ne_binaries() | Default.
 numbers(Doc) ->
     numbers(Doc, []).
 numbers(Doc, Default) ->
-    kz_json:get_list_value(<<"numbers">>, Doc, Default).
+    kz_json:get_list_value([<<"numbers">>], Doc, Default).
 
 -spec set_numbers(doc(), ne_binaries()) -> doc().
 set_numbers(Doc, Numbers) ->
-    kz_json:set_value(<<"numbers">>, Numbers, Doc).
+    kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
 -spec patterns(doc()) -> ne_binaries().
 -spec patterns(doc(), Default) -> ne_binaries() | Default.
 patterns(Doc) ->
     patterns(Doc, []).
 patterns(Doc, Default) ->
-    kz_json:get_list_value(<<"patterns">>, Doc, Default).
+    kz_json:get_list_value([<<"patterns">>], Doc, Default).
 
 -spec set_patterns(doc(), ne_binaries()) -> doc().
 set_patterns(Doc, Patterns) ->
-    kz_json:set_value(<<"patterns">>, Patterns, Doc).
+    kz_json:set_value([<<"patterns">>], Patterns, Doc).

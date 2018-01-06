@@ -18,8 +18,8 @@ new() ->
 enabled(Doc) ->
     enabled(Doc, 'undefined').
 enabled(Doc, Default) ->
-    kz_json:get_boolean_value(<<"enabled">>, Doc, Default).
+    kz_json:get_boolean_value([<<"enabled">>], Doc, Default).
 
 -spec set_enabled(doc(), boolean()) -> doc().
 set_enabled(Doc, Enabled) ->
-    kz_json:set_value(<<"enabled">>, Enabled, Doc).
+    kz_json:set_value([<<"enabled">>], Enabled, Doc).

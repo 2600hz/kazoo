@@ -18,8 +18,8 @@ new() ->
 shared_auth(Doc) ->
     shared_auth(Doc, 'undefined').
 shared_auth(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"shared_auth">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"shared_auth">>], Doc, Default).
 
 -spec set_shared_auth(doc(), ne_binary()) -> doc().
 set_shared_auth(Doc, SharedAuthentication) ->
-    kz_json:set_value(<<"shared_auth">>, SharedAuthentication, Doc).
+    kz_json:set_value([<<"shared_auth">>], SharedAuthentication, Doc).

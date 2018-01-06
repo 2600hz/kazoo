@@ -35,88 +35,88 @@ new() ->
 company_name(Doc) ->
     company_name(Doc, 'undefined').
 company_name(Doc, Default) ->
-    kz_json:get_binary_value(<<"company_name">>, Doc, Default).
+    kz_json:get_binary_value([<<"company_name">>], Doc, Default).
 
 -spec set_company_name(doc(), binary()) -> doc().
 set_company_name(Doc, CompanyName) ->
-    kz_json:set_value(<<"company_name">>, CompanyName, Doc).
+    kz_json:set_value([<<"company_name">>], CompanyName, Doc).
 
 -spec domain(doc()) -> api_binary().
 -spec domain(doc(), Default) -> binary() | Default.
 domain(Doc) ->
     domain(Doc, 'undefined').
 domain(Doc, Default) ->
-    kz_json:get_binary_value(<<"domain">>, Doc, Default).
+    kz_json:get_binary_value([<<"domain">>], Doc, Default).
 
 -spec set_domain(doc(), binary()) -> doc().
 set_domain(Doc, Domain) ->
-    kz_json:set_value(<<"domain">>, Domain, Doc).
+    kz_json:set_value([<<"domain">>], Domain, Doc).
 
 -spec fake_api_url(doc()) -> api_binary().
 -spec fake_api_url(doc(), Default) -> binary() | Default.
 fake_api_url(Doc) ->
     fake_api_url(Doc, 'undefined').
 fake_api_url(Doc, Default) ->
-    kz_json:get_binary_value(<<"fake_api_url">>, Doc, Default).
+    kz_json:get_binary_value([<<"fake_api_url">>], Doc, Default).
 
 -spec set_fake_api_url(doc(), binary()) -> doc().
 set_fake_api_url(Doc, FakeAPIUrl) ->
-    kz_json:set_value(<<"fake_api_url">>, FakeAPIUrl, Doc).
+    kz_json:set_value([<<"fake_api_url">>], FakeAPIUrl, Doc).
 
 -spec hide_credits(doc()) -> boolean().
 -spec hide_credits(doc(), Default) -> boolean() | Default.
 hide_credits(Doc) ->
     hide_credits(Doc, false).
 hide_credits(Doc, Default) ->
-    kz_json:get_boolean_value(<<"hide_credits">>, Doc, Default).
+    kz_json:get_boolean_value([<<"hide_credits">>], Doc, Default).
 
 -spec set_hide_credits(doc(), boolean()) -> doc().
 set_hide_credits(Doc, HideCredits) ->
-    kz_json:set_value(<<"hide_credits">>, HideCredits, Doc).
+    kz_json:set_value([<<"hide_credits">>], HideCredits, Doc).
 
 -spec hide_powered(doc()) -> boolean().
 -spec hide_powered(doc(), Default) -> boolean() | Default.
 hide_powered(Doc) ->
     hide_powered(Doc, false).
 hide_powered(Doc, Default) ->
-    kz_json:get_boolean_value(<<"hide_powered">>, Doc, Default).
+    kz_json:get_boolean_value([<<"hide_powered">>], Doc, Default).
 
 -spec set_hide_powered(doc(), boolean()) -> doc().
 set_hide_powered(Doc, HidePowered) ->
-    kz_json:set_value(<<"hide_powered">>, HidePowered, Doc).
+    kz_json:set_value([<<"hide_powered">>], HidePowered, Doc).
 
 -spec hide_registration(doc()) -> boolean().
 -spec hide_registration(doc(), Default) -> boolean() | Default.
 hide_registration(Doc) ->
     hide_registration(Doc, false).
 hide_registration(Doc, Default) ->
-    kz_json:get_boolean_value(<<"hide_registration">>, Doc, Default).
+    kz_json:get_boolean_value([<<"hide_registration">>], Doc, Default).
 
 -spec set_hide_registration(doc(), boolean()) -> doc().
 set_hide_registration(Doc, HideRegistration) ->
-    kz_json:set_value(<<"hide_registration">>, HideRegistration, Doc).
+    kz_json:set_value([<<"hide_registration">>], HideRegistration, Doc).
 
 -spec inbound_trunks_price(doc()) -> api_binary().
 -spec inbound_trunks_price(doc(), Default) -> binary() | Default.
 inbound_trunks_price(Doc) ->
     inbound_trunks_price(Doc, 'undefined').
 inbound_trunks_price(Doc, Default) ->
-    kz_json:get_binary_value(<<"inbound_trunks_price">>, Doc, Default).
+    kz_json:get_binary_value([<<"inbound_trunks_price">>], Doc, Default).
 
 -spec set_inbound_trunks_price(doc(), binary()) -> doc().
 set_inbound_trunks_price(Doc, InboundTrunksPrice) ->
-    kz_json:set_value(<<"inbound_trunks_price">>, InboundTrunksPrice, Doc).
+    kz_json:set_value([<<"inbound_trunks_price">>], InboundTrunksPrice, Doc).
 
 -spec nav(doc()) -> api_object().
 -spec nav(doc(), Default) -> kz_json:object() | Default.
 nav(Doc) ->
     nav(Doc, 'undefined').
 nav(Doc, Default) ->
-    kz_json:get_json_value(<<"nav">>, Doc, Default).
+    kz_json:get_json_value([<<"nav">>], Doc, Default).
 
 -spec set_nav(doc(), kz_json:object()) -> doc().
 set_nav(Doc, Nav) ->
-    kz_json:set_value(<<"nav">>, Nav, Doc).
+    kz_json:set_value([<<"nav">>], Nav, Doc).
 
 -spec nav_help(doc()) -> api_binary().
 -spec nav_help(doc(), Default) -> binary() | Default.
@@ -145,22 +145,22 @@ set_nav_learn_more(Doc, NavLearnMore) ->
 outbound_trunks_price(Doc) ->
     outbound_trunks_price(Doc, 'undefined').
 outbound_trunks_price(Doc, Default) ->
-    kz_json:get_binary_value(<<"outbound_trunks_price">>, Doc, Default).
+    kz_json:get_binary_value([<<"outbound_trunks_price">>], Doc, Default).
 
 -spec set_outbound_trunks_price(doc(), binary()) -> doc().
 set_outbound_trunks_price(Doc, OutboundTrunksPrice) ->
-    kz_json:set_value(<<"outbound_trunks_price">>, OutboundTrunksPrice, Doc).
+    kz_json:set_value([<<"outbound_trunks_price">>], OutboundTrunksPrice, Doc).
 
 -spec port(doc()) -> api_object().
 -spec port(doc(), Default) -> kz_json:object() | Default.
 port(Doc) ->
     port(Doc, 'undefined').
 port(Doc, Default) ->
-    kz_json:get_json_value(<<"port">>, Doc, Default).
+    kz_json:get_json_value([<<"port">>], Doc, Default).
 
 -spec set_port(doc(), kz_json:object()) -> doc().
 set_port(Doc, Port) ->
-    kz_json:set_value(<<"port">>, Port, Doc).
+    kz_json:set_value([<<"port">>], Port, Doc).
 
 -spec port_features(doc()) -> api_binary().
 -spec port_features(doc(), Default) -> binary() | Default.
@@ -222,8 +222,8 @@ set_port_terms(Doc, PortTerms) ->
 twoway_trunks_price(Doc) ->
     twoway_trunks_price(Doc, 'undefined').
 twoway_trunks_price(Doc, Default) ->
-    kz_json:get_binary_value(<<"twoway_trunks_price">>, Doc, Default).
+    kz_json:get_binary_value([<<"twoway_trunks_price">>], Doc, Default).
 
 -spec set_twoway_trunks_price(doc(), binary()) -> doc().
 set_twoway_trunks_price(Doc, TwowayTrunksPrice) ->
-    kz_json:set_value(<<"twoway_trunks_price">>, TwowayTrunksPrice, Doc).
+    kz_json:set_value([<<"twoway_trunks_price">>], TwowayTrunksPrice, Doc).

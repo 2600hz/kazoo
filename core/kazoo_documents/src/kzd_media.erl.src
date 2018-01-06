@@ -30,121 +30,121 @@ new() ->
 content_length(Doc) ->
     content_length(Doc, 'undefined').
 content_length(Doc, Default) ->
-    kz_json:get_integer_value(<<"content_length">>, Doc, Default).
+    kz_json:get_integer_value([<<"content_length">>], Doc, Default).
 
 -spec set_content_length(doc(), integer()) -> doc().
 set_content_length(Doc, ContentLength) ->
-    kz_json:set_value(<<"content_length">>, ContentLength, Doc).
+    kz_json:set_value([<<"content_length">>], ContentLength, Doc).
 
 -spec content_type(doc()) -> api_binary().
 -spec content_type(doc(), Default) -> binary() | Default.
 content_type(Doc) ->
     content_type(Doc, 'undefined').
 content_type(Doc, Default) ->
-    kz_json:get_binary_value(<<"content_type">>, Doc, Default).
+    kz_json:get_binary_value([<<"content_type">>], Doc, Default).
 
 -spec set_content_type(doc(), binary()) -> doc().
 set_content_type(Doc, ContentType) ->
-    kz_json:set_value(<<"content_type">>, ContentType, Doc).
+    kz_json:set_value([<<"content_type">>], ContentType, Doc).
 
 -spec description(doc()) -> api_ne_binary().
 -spec description(doc(), Default) -> ne_binary() | Default.
 description(Doc) ->
     description(Doc, 'undefined').
 description(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"description">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"description">>], Doc, Default).
 
 -spec set_description(doc(), ne_binary()) -> doc().
 set_description(Doc, Description) ->
-    kz_json:set_value(<<"description">>, Description, Doc).
+    kz_json:set_value([<<"description">>], Description, Doc).
 
 -spec language(doc()) -> binary().
 -spec language(doc(), Default) -> binary() | Default.
 language(Doc) ->
     language(Doc, <<"en-us">>).
 language(Doc, Default) ->
-    kz_json:get_binary_value(<<"language">>, Doc, Default).
+    kz_json:get_binary_value([<<"language">>], Doc, Default).
 
 -spec set_language(doc(), binary()) -> doc().
 set_language(Doc, Language) ->
-    kz_json:set_value(<<"language">>, Language, Doc).
+    kz_json:set_value([<<"language">>], Language, Doc).
 
 -spec media_source(doc()) -> binary().
 -spec media_source(doc(), Default) -> binary() | Default.
 media_source(Doc) ->
     media_source(Doc, <<"upload">>).
 media_source(Doc, Default) ->
-    kz_json:get_binary_value(<<"media_source">>, Doc, Default).
+    kz_json:get_binary_value([<<"media_source">>], Doc, Default).
 
 -spec set_media_source(doc(), binary()) -> doc().
 set_media_source(Doc, MediaSource) ->
-    kz_json:set_value(<<"media_source">>, MediaSource, Doc).
+    kz_json:set_value([<<"media_source">>], MediaSource, Doc).
 
 -spec name(doc()) -> api_ne_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"name">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(Doc, Name) ->
-    kz_json:set_value(<<"name">>, Name, Doc).
+    kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec prompt_id(doc()) -> api_binary().
 -spec prompt_id(doc(), Default) -> binary() | Default.
 prompt_id(Doc) ->
     prompt_id(Doc, 'undefined').
 prompt_id(Doc, Default) ->
-    kz_json:get_binary_value(<<"prompt_id">>, Doc, Default).
+    kz_json:get_binary_value([<<"prompt_id">>], Doc, Default).
 
 -spec set_prompt_id(doc(), binary()) -> doc().
 set_prompt_id(Doc, PromptId) ->
-    kz_json:set_value(<<"prompt_id">>, PromptId, Doc).
+    kz_json:set_value([<<"prompt_id">>], PromptId, Doc).
 
 -spec source_id(doc()) -> api_ne_binary().
 -spec source_id(doc(), Default) -> ne_binary() | Default.
 source_id(Doc) ->
     source_id(Doc, 'undefined').
 source_id(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"source_id">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"source_id">>], Doc, Default).
 
 -spec set_source_id(doc(), ne_binary()) -> doc().
 set_source_id(Doc, SourceId) ->
-    kz_json:set_value(<<"source_id">>, SourceId, Doc).
+    kz_json:set_value([<<"source_id">>], SourceId, Doc).
 
 -spec source_type(doc()) -> api_binary().
 -spec source_type(doc(), Default) -> binary() | Default.
 source_type(Doc) ->
     source_type(Doc, 'undefined').
 source_type(Doc, Default) ->
-    kz_json:get_binary_value(<<"source_type">>, Doc, Default).
+    kz_json:get_binary_value([<<"source_type">>], Doc, Default).
 
 -spec set_source_type(doc(), binary()) -> doc().
 set_source_type(Doc, SourceType) ->
-    kz_json:set_value(<<"source_type">>, SourceType, Doc).
+    kz_json:set_value([<<"source_type">>], SourceType, Doc).
 
 -spec streamable(doc()) -> boolean().
 -spec streamable(doc(), Default) -> boolean() | Default.
 streamable(Doc) ->
     streamable(Doc, true).
 streamable(Doc, Default) ->
-    kz_json:get_boolean_value(<<"streamable">>, Doc, Default).
+    kz_json:get_boolean_value([<<"streamable">>], Doc, Default).
 
 -spec set_streamable(doc(), boolean()) -> doc().
 set_streamable(Doc, Streamable) ->
-    kz_json:set_value(<<"streamable">>, Streamable, Doc).
+    kz_json:set_value([<<"streamable">>], Streamable, Doc).
 
 -spec tts(doc()) -> kz_json:object().
 -spec tts(doc(), Default) -> kz_json:object() | Default.
 tts(Doc) ->
     tts(Doc, kz_json:new()).
 tts(Doc, Default) ->
-    kz_json:get_json_value(<<"tts">>, Doc, Default).
+    kz_json:get_json_value([<<"tts">>], Doc, Default).
 
 -spec set_tts(doc(), kz_json:object()) -> doc().
 set_tts(Doc, Tts) ->
-    kz_json:set_value(<<"tts">>, Tts, Doc).
+    kz_json:set_value([<<"tts">>], Tts, Doc).
 
 -spec tts_text(doc()) -> api_ne_binary().
 -spec tts_text(doc(), Default) -> ne_binary() | Default.

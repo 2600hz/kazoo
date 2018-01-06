@@ -18,8 +18,8 @@ new() ->
 ips(Doc) ->
     ips(Doc, 'undefined').
 ips(Doc, Default) ->
-    kz_json:get_list_value(<<"ips">>, Doc, Default).
+    kz_json:get_list_value([<<"ips">>], Doc, Default).
 
 -spec set_ips(doc(), ne_binaries()) -> doc().
 set_ips(Doc, Ips) ->
-    kz_json:set_value(<<"ips">>, Ips, Doc).
+    kz_json:set_value([<<"ips">>], Ips, Doc).
