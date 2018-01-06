@@ -29,7 +29,7 @@ set_children(Doc, Children) ->
 -spec data(doc()) -> kz_json:object().
 -spec data(doc(), Default) -> kz_json:object() | Default.
 data(Doc) ->
-    data(Doc, {}).
+    data(Doc, kz_json:new()).
 data(Doc, Default) ->
     kz_json:get_json_value(<<"data">>, Doc, Default).
 

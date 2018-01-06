@@ -18,7 +18,7 @@ new() ->
 -spec endpoints(doc()) -> kz_json:object().
 -spec endpoints(doc(), Default) -> kz_json:object() | Default.
 endpoints(Doc) ->
-    endpoints(Doc, {}).
+    endpoints(Doc, kz_json:new()).
 endpoints(Doc, Default) ->
     kz_json:get_json_value(<<"endpoints">>, Doc, Default).
 
@@ -29,7 +29,7 @@ set_endpoints(Doc, Endpoints) ->
 -spec music_on_hold(doc()) -> kz_json:object().
 -spec music_on_hold(doc(), Default) -> kz_json:object() | Default.
 music_on_hold(Doc) ->
-    music_on_hold(Doc, {}).
+    music_on_hold(Doc, kz_json:new()).
 music_on_hold(Doc, Default) ->
     kz_json:get_json_value(<<"music_on_hold">>, Doc, Default).
 

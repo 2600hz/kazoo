@@ -89,7 +89,7 @@ set_pattern(Doc, Pattern) ->
 -spec profile(doc()) -> kz_json:object().
 -spec profile(doc(), Default) -> kz_json:object() | Default.
 profile(Doc) ->
-    profile(Doc, {}).
+    profile(Doc, kz_json:new()).
 profile(Doc, Default) ->
     kz_json:get_json_value(<<"profile">>, Doc, Default).
 

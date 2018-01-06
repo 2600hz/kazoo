@@ -76,7 +76,7 @@ set_mailbox(Doc, Mailbox) ->
 -spec media(doc()) -> kz_json:object().
 -spec media(doc(), Default) -> kz_json:object() | Default.
 media(Doc) ->
-    media(Doc, {}).
+    media(Doc, kz_json:new()).
 media(Doc, Default) ->
     kz_json:get_json_value(<<"media">>, Doc, Default).
 

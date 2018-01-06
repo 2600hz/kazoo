@@ -136,7 +136,7 @@ set_streamable(Doc, Streamable) ->
 -spec tts(doc()) -> kz_json:object().
 -spec tts(doc(), Default) -> kz_json:object() | Default.
 tts(Doc) ->
-    tts(Doc, {}).
+    tts(Doc, kz_json:new()).
 tts(Doc, Default) ->
     kz_json:get_json_value(<<"tts">>, Doc, Default).
 

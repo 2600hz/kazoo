@@ -111,7 +111,7 @@ set_max_participants(Doc, MaxParticipants) ->
 -spec member(doc()) -> kz_json:object().
 -spec member(doc(), Default) -> kz_json:object() | Default.
 member(Doc) ->
-    member(Doc, {}).
+    member(Doc, kz_json:new()).
 member(Doc, Default) ->
     kz_json:get_json_value(<<"member">>, Doc, Default).
 
@@ -122,7 +122,7 @@ set_member(Doc, Member) ->
 -spec moderator(doc()) -> kz_json:object().
 -spec moderator(doc(), Default) -> kz_json:object() | Default.
 moderator(Doc) ->
-    moderator(Doc, {}).
+    moderator(Doc, kz_json:new()).
 moderator(Doc, Default) ->
     kz_json:get_json_value(<<"moderator">>, Doc, Default).
 

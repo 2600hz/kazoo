@@ -31,7 +31,7 @@ set_account(Doc, Account) ->
 -spec call_restriction(doc()) -> kz_json:object().
 -spec call_restriction(doc(), Default) -> kz_json:object() | Default.
 call_restriction(Doc) ->
-    call_restriction(Doc, {}).
+    call_restriction(Doc, kz_json:new()).
 call_restriction(Doc, Default) ->
     kz_json:get_json_value(<<"call_restriction">>, Doc, Default).
 
