@@ -27,7 +27,6 @@
 -export([timezone/1, timezone/2, set_timezone/2]).
 -export([voicemail/1, voicemail/2, set_voicemail/2]).
 -export([voicemail_notify/1, voicemail_notify/2, set_voicemail_notify/2]).
--export([voicemailnotify_callback/1, voicemailnotify_callback/2, set_voicemailnotify_callback/2]).
 
 
 -include("kz_documents.hrl").
@@ -324,14 +323,3 @@ voicemail_notify(Doc, Default) ->
 -spec set_voicemail_notify(doc(), kz_json:object()) -> doc().
 set_voicemail_notify(Doc, VoicemailNotify) ->
     kz_json:set_value([<<"voicemail">>, <<"notify">>], VoicemailNotify, Doc).
-
--spec voicemailnotify_callback(doc()) -> api_object().
--spec voicemailnotify_callback(doc(), Default) -> kz_json:object() | Default.
-voicemailnotify_callback(Doc) ->
-    voicemailnotify_callback(Doc, 'undefined').
-voicemailnotify_callback(Doc, Default) ->
-    kz_json:get_json_value([[<<"voicemail">>, <<"notify">>], <<"callback">>], Doc, Default).
-
--spec set_voicemailnotify_callback(doc(), kz_json:object()) -> doc().
-set_voicemailnotify_callback(Doc, VoicemailnotifyCallback) ->
-    kz_json:set_value([[<<"voicemail">>, <<"notify">>], <<"callback">>], VoicemailnotifyCallback, Doc).
