@@ -5,7 +5,7 @@
 %%%   starting when an agent logs in
 %%%   stopping when an agent logs out
 %%%   collecting stats from agents
-%%%   and more!!!
+%%%   and more!!!!
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
