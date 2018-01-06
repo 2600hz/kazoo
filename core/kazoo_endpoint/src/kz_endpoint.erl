@@ -901,23 +901,21 @@ maybe_start_metaflow(Call, Endpoint) ->
         'false' -> 'ok';
         'undefined' -> 'ok';
         ?EMPTY_JSON_OBJECT -> 'ok';
-        JObj ->
+        Metaflow ->
             Id = kz_json:get_first_defined([<<"_id">>, <<"Endpoint-ID">>], Endpoint),
             API = props:filter_undefined(
                     [{<<"Endpoint-ID">>, Id}
                     ,{<<"Account-ID">>, kapps_call:account_id(Call)}
                     ,{<<"Call">>, kapps_call:to_json(Call)}
-                    ,{<<"Numbers">>, kz_json:get_list_value(<<"numbers">>, JObj)}
-                    ,{<<"Patterns">>, kz_json:get_list_value(<<"patterns">>, JObj)}
-                    ,{<<"Binding-Digit">>, kz_json:get_ne_binary_value(<<"binding_digit">>, JObj)}
-                    ,{<<"Digit-Timeout">>, kz_json:get_integer_value(<<"digit_timeout">>, JObj)}
-                    ,{<<"Listen-On">>, kz_json:get_ne_binary_value(<<"listen_on">>, JObj, <<"self">>)}
+                    ,{<<"Numbers">>, kzd_metaflow:numbers(Metaflow)}
+                    ,{<<"Patterns">>, kzd_metaflow:patterns(Metaflow)}
+                    ,{<<"Binding-Digit">>, kzd_metaflow:binding_digit(Metaflow)}
+                    ,{<<"Digit-Timeout">>, kzd_metaflow:digit_timeout(Metaflow)}
+                    ,{<<"Listen-On">>, kzd_metaflow:listen_on(Metaflow, <<"self">>)}
                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             lager:debug("sending metaflow for endpoint: ~s: ~s"
-                       ,[Id
-                        ,kz_json:get_ne_binary_value(<<"listen_on">>, JObj)
-                        ]
+                       ,[Id, kzd_metaflow:listen_on(Metaflow, <<"self">>)]
                        ),
             kapps_util:amqp_pool_send(API, fun kapi_metaflow:publish_binding/1)
     end.
