@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz Inc
+%%% @copyright (C) 2012-2018, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -22,12 +22,12 @@
 
 -spec init() -> 'ok'.
 init() ->
-    blackhole_bindings:bind(<<"blackhole.authorize.subscribe">>, ?MODULE, 'authorize'),
-    blackhole_bindings:bind(<<"blackhole.validate.subscribe">>, ?MODULE, 'validate'),
-    blackhole_bindings:bind(<<"blackhole.validate.unsubscribe">>, ?MODULE, 'validate'),
-    blackhole_bindings:bind(<<"blackhole.command.subscribe">>, ?MODULE, 'subscribe'),
-    blackhole_bindings:bind(<<"blackhole.command.unsubscribe">>, ?MODULE, 'unsubscribe'),
-    blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'close'),
+    _ = blackhole_bindings:bind(<<"blackhole.authorize.subscribe">>, ?MODULE, 'authorize'),
+    _ = blackhole_bindings:bind(<<"blackhole.validate.subscribe">>, ?MODULE, 'validate'),
+    _ = blackhole_bindings:bind(<<"blackhole.validate.unsubscribe">>, ?MODULE, 'validate'),
+    _ = blackhole_bindings:bind(<<"blackhole.command.subscribe">>, ?MODULE, 'subscribe'),
+    _ = blackhole_bindings:bind(<<"blackhole.command.unsubscribe">>, ?MODULE, 'unsubscribe'),
+    _ = blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'close'),
     'ok'.
 
 -spec authorize(bh_context:context(), kz_json:object()) -> bh_context:context().

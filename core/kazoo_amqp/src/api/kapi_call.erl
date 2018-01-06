@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Call-related messages, like switch events, status requests, etc
 %%% @end
@@ -101,7 +101,7 @@ channel_status_req_v(Prop) when is_list(Prop) ->
 channel_status_req_v(JObj) -> channel_status_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Respond with status of a channel, either active or non-existant
+%% @doc Respond with status of a channel, either active or nonexistent
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

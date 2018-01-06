@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -326,8 +326,9 @@ handle_start_account(JObj, _Props) ->
     AccountId = kapi_fax:account_id(JObj),
     case is_running(AccountId) of
         'true' -> 'ok';
-        'false' -> fax_jobs_sup:start_account_jobs(AccountId),
-                   'ok'
+        'false' ->
+            _ = fax_jobs_sup:start_account_jobs(AccountId),
+            'ok'
     end.
 
 -spec is_running(ne_binary()) -> boolean().

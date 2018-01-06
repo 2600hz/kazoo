@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -114,7 +114,7 @@ get_cards(#bt_customer{credit_cards=Cards}) ->
 %% Get subscriptions
 %% @end
 %%--------------------------------------------------------------------
--spec get_subscriptions(customer()) -> braintree_subscription:subscriptions().
+-spec get_subscriptions(customer()) -> bt_subscriptions().
 get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
     Subscriptions.
 
@@ -124,8 +124,8 @@ get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
 %% Get a subscription
 %% @end
 %%--------------------------------------------------------------------
--spec get_subscription(ne_binary(), customer() | braintree_subscription:subscriptions()) ->
-                              braintree_subscription:subscription().
+-spec get_subscription(ne_binary(), customer() | bt_subscriptions()) ->
+                              bt_subscription().
 get_subscription(PlanId, #bt_customer{subscriptions=Subscriptions}) ->
     get_subscription(PlanId, Subscriptions);
 get_subscription(_, []) ->
@@ -213,7 +213,7 @@ maybe_add_card_nonce(Customer) ->
 
     NewPaymentTokens = braintree_card:payment_tokens(get_cards(UpdatedCustomer)),
     [NewPaymentToken] = lists:subtract(NewPaymentTokens, OldPaymentTokens),
-    updateSubsciption(NewPaymentToken, UpdatedCustomer).
+    update_subsciption(NewPaymentToken, UpdatedCustomer).
 
 -spec update_card(customer(), bt_card()) -> customer().
 update_card(Customer, Card) ->
@@ -224,30 +224,24 @@ update_card(Customer, Card) ->
     UpdatedCustomer = do_update(Customer#bt_customer{credit_cards = Cards}),
 
     NewPaymentToken = braintree_card:payment_token(Card),
-    updateSubsciption(NewPaymentToken, UpdatedCustomer).
+    update_subsciption(NewPaymentToken, UpdatedCustomer).
 
--spec updateSubsciption(ne_binary(), bt_customer()) -> bt_customer().
-updateSubsciption(NewPaymentToken, UpdatedCustomer) ->
+-spec update_subsciption(ne_binary(), bt_customer()) -> bt_customer().
+update_subsciption(NewPaymentToken, UpdatedCustomer) ->
     %% NewCard = Card with updated fields
     {[NewCard], OldCards} =
         lists:partition(fun(CC) -> braintree_card:payment_token(CC) =:= NewPaymentToken end
                        ,get_cards(UpdatedCustomer)
                        ),
 
-    _NewSubscriptions =
-        [braintree_subscription:update(
-           braintree_subscription:update_payment_token(Sub, NewPaymentToken)
-          )
-         || Sub <- get_subscriptions(UpdatedCustomer),
-            not braintree_subscription:is_cancelled(Sub)
-                andalso not braintree_subscription:is_expired(Sub)
-        ],
+    lists:foreach(fun(Sub) -> update_subsciption_with_token(Sub, NewPaymentToken) end
+                 ,get_subscriptions(UpdatedCustomer)
+                 ),
+
     %% Make card as default /after/ updating subscriptions: this way
     %%  subscriptions are not attached to a deleted card and thus do not
     %%  get cancelled before we can update their payment token.
-    NewCard1 = braintree_card:update(
-                 braintree_card:make_default(NewCard, 'true')
-                ),
+    NewCard1 = braintree_card:update(braintree_card:make_default(NewCard, 'true')),
 
     %% Delete previous cards and addresses /after/ changing subscriptions' payment token.
     delete_old_cards_and_addresses(OldCards, NewCard1),
@@ -255,19 +249,33 @@ updateSubsciption(NewPaymentToken, UpdatedCustomer) ->
     %%get all the new user info
     find(UpdatedCustomer).
 
--spec delete_old_cards_and_addresses(bt_cards(), bt_card()) -> ok.
+-spec update_subsciption_with_token(bt_subscription(), ne_binary()) -> 'ok'.
+-spec update_subsciption_with_token(bt_subscription(), ne_binary(), boolean()) -> 'ok'.
+update_subsciption_with_token(Sub, NewPaymentToken) ->
+    ShouldUpdate = not braintree_subscription:is_cancelled(Sub)
+        andalso not braintree_subscription:is_expired(Sub),
+    update_subsciption_with_token(Sub, NewPaymentToken, ShouldUpdate).
+
+update_subsciption_with_token(Sub, NewPaymentToken, 'true') ->
+    SubWithToken = braintree_subscription:update_payment_token(Sub, NewPaymentToken),
+    _ = braintree_subscription:update(SubWithToken),
+    'ok';
+update_subsciption_with_token(_Sub, _NewPaymentToken, 'false') -> 'ok'.
+
+-spec delete_old_cards_and_addresses(bt_cards(), bt_card()) -> 'ok'.
 delete_old_cards_and_addresses(OldCards, #bt_card{billing_address_id=NewAddressId}) ->
-    lists:foreach(
-      fun(#bt_card{billing_address_id='undefined'}=OldCard) ->
-              braintree_card:delete(OldCard);
-         (#bt_card{billing_address_id=OldAddressId}=OldCard) when OldAddressId =:= NewAddressId ->
-              braintree_card:delete(OldCard);
-         (#bt_card{billing_address=OldAddress}=OldCard) ->
-              braintree_card:delete(OldCard),
-              braintree_address:delete(OldAddress)
-      end
+    lists:foreach(fun(Card) -> delete_old_stuff(Card, NewAddressId) end
                  ,OldCards
-     ).
+                 ).
+
+-spec delete_old_stuff(bt_card(), ne_binary()) -> bt_card().
+delete_old_stuff(#bt_card{billing_address_id='undefined'}=OldCard, _NewAddressId) ->
+    braintree_card:delete(OldCard);
+delete_old_stuff(#bt_card{billing_address_id=NewAddressId}=OldCard, NewAddressId) ->
+    braintree_card:delete(OldCard);
+delete_old_stuff(#bt_card{billing_address=OldAddress}=OldCard, _NewAddressId) ->
+    _ = braintree_card:delete(OldCard),
+    braintree_address:delete(OldAddress).
 
 -spec do_update(bt_customer()) -> bt_customer().
 do_update(#bt_customer{id=CustomerId}=Customer) ->

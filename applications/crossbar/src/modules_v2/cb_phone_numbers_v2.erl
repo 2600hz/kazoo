@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -704,7 +704,7 @@ maybe_reseller_id_lookup(ReqResellerId) ->
         'true' -> {ok, ReqResellerId, ReqResellerId};
         'false' -> {error, <<"number search restricted">>}
     catch
-        _:_ -> {error, <<"non-existent reseller_id">>}
+        _:_ -> {error, <<"nonexistent reseller_id">>}
     end.
 
 %%--------------------------------------------------------------------

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% (Words * Bytes/Word) div (Prefixes) ~= Bytes per Prefix
 %%% (1127494 * 8) div 78009 = 115

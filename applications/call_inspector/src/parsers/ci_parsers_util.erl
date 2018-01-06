@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2015-2017, 2600Hz
+%%% @copyright (c) 2015-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -55,7 +55,7 @@ open_file_for_read(Filename) ->
               ,'raw', 'read_ahead' %% Faster access to file
               ],
     case file:open(Filename, Options) of
-        {'ok', IoDevice} -> IoDevice;
+        {'ok', _}=OK -> OK;
         {'error', _FileOpenError}=Error ->
             lager:debug("parser cannot open '~p': ~p", [Filename,_FileOpenError]),
             {'error', Error}

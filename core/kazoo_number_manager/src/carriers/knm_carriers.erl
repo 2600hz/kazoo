@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -289,7 +289,7 @@ disconnect(Number) ->
         Result -> Result
     catch
         'error':_ ->
-            lager:debug("non-existant carrier module ~p, allowing disconnect", [Module]),
+            lager:debug("nonexistent carrier module ~p, allowing disconnect", [Module]),
             Number
     end.
 

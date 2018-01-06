@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -38,8 +38,8 @@
 -include("bt.hrl").
 
 -type changes() :: [{atom(), kz_proplist(), [kz_proplist()]}].
--type subscription() :: #bt_subscription{}.
--type subscriptions() :: [subscription()].
+-type subscription() :: bt_subscription().
+-type subscriptions() :: bt_subscriptions().
 
 -export_type([subscription/0
              ,subscriptions/0
@@ -211,11 +211,8 @@ get_payment_token(#bt_subscription{payment_token = PT}) -> PT.
 %%--------------------------------------------------------------------
 -spec find(ne_binary()) -> subscription().
 find(SubscriptionId) ->
-    xml_to_record(
-      braintree_request:get(
-        url(SubscriptionId)
-       )
-     ).
+    XML = braintree_request:get(url(SubscriptionId)),
+    xml_to_record(XML).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -526,9 +523,11 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
             ,{'price', Subscription#bt_subscription.price}
             ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}
             ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
-            ,{'descriptor', braintree_descriptor:record_to_xml(Subscription#bt_subscription.descriptor)}
             ],
-    Conditionals = [fun(#bt_subscription{do_not_inherit=Value}, P) ->
+    Conditionals = [fun(#bt_subscription{descriptor=Descriptor}, P) when 'undefined' =/= Descriptor ->
+                            [{'descriptor', braintree_descriptor:record_to_xml(Descriptor)}|P]
+                    end
+                   ,fun(#bt_subscription{do_not_inherit=Value}, P) ->
                             update_options('do-not-inherit-add-ons-or-discounts', Value, P)
                     end
                    ,fun should_prorate/2
@@ -541,10 +540,10 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
                    ,fun(#bt_subscription{start_immediately=Value}, P) ->
                             update_options('start-immediately', Value, P)
                     end
-                   ,fun (S, P) ->
-                            case S#bt_subscription.trial_period of
-                                <<"false">> -> P;
-                                _ ->
+                   ,fun(S, P) ->
+                            case kz_term:is_false(S#bt_subscription.trial_period) of
+                                'true' -> P;
+                                'false' ->
                                     [{'trial-duration', S#bt_subscription.trial_duration}
                                     ,{'trial-duration-unit', S#bt_subscription.trial_duration_unit}
                                     ,{'trial-period', S#bt_subscription.trial_period}
@@ -600,7 +599,6 @@ record_to_json(Subscription) ->
       ,{<<"create">>, Subscription#bt_subscription.create}
       ]).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -640,29 +638,40 @@ update_options(Key, Value, Props) ->
 %%--------------------------------------------------------------------
 -spec create_addon_changes(bt_addons()) -> changes().
 create_addon_changes(AddOns) ->
-    lists:foldr(fun(#bt_addon{id=Id, quantity=0}, C) ->
-                        append_items('remove', Id, C);
-                   (#bt_addon{existing_id='undefined'
-                             ,inherited_from='undefined'
-                             }, C) ->
-                        C;
-                   (#bt_addon{existing_id='undefined'
-                             ,inherited_from=Id
-                             ,quantity=Q
-                             ,amount=A
-                             }, C) ->
-                        Item = [{'inherited_from_id', Id}
-                               ,{'quantity', Q}
-                               ,{'amount', A}
-                               ],
-                        append_items('add', props:filter_undefined(Item), C);
-                   (#bt_addon{existing_id=Id, quantity=Q, amount=A}, C) ->
-                        Item = [{'existing_id', Id}
-                               ,{'quantity', Q}
-                               ,{'amount', A}
-                               ],
-                        append_items('update', props:filter_undefined(Item), C)
-                end, [], AddOns).
+    lists:foldr(fun create_addon_fold/2, [], AddOns).
+
+-spec create_addon_fold(bt_addon(), changes()) -> changes().
+create_addon_fold(#bt_addon{id=Id, quantity=0}, Changes) ->
+    append_items('remove', Id, Changes);
+create_addon_fold(#bt_addon{existing_id='undefined'
+                           ,inherited_from='undefined'
+                           }
+                 ,Changes
+                 ) ->
+    Changes;
+create_addon_fold(#bt_addon{existing_id='undefined'
+                           ,inherited_from=Id
+                           ,quantity=Q
+                           ,amount=A
+                           }
+                 ,Changes
+                 ) ->
+    Item = [{'inherited_from_id', Id}
+           ,{'quantity', Q}
+           ,{'amount', A}
+           ],
+    append_items('add', props:filter_undefined(Item), Changes);
+create_addon_fold(#bt_addon{existing_id=Id
+                           ,quantity=Q
+                           ,amount=A
+                           }
+                 ,Changes
+                 ) ->
+    Item = [{'existing_id', Id}
+           ,{'quantity', Q}
+           ,{'amount', A}
+           ],
+    append_items('update', props:filter_undefined(Item), Changes).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -670,31 +679,42 @@ create_addon_changes(AddOns) ->
 %% Determine the necessary steps to change the discounts
 %% @end
 %%--------------------------------------------------------------------
--spec create_discount_changes([#bt_discount{}]) -> changes().
+-spec create_discount_changes(bt_discounts()) -> changes().
 create_discount_changes(Discounts) ->
-    lists:foldr(fun(#bt_discount{id=Id, quantity=0}, C) ->
-                        append_items('remove', Id, C);
-                   (#bt_discount{existing_id='undefined'
-                                ,inherited_from='undefined'
-                                }, C) ->
-                        C;
-                   (#bt_discount{existing_id='undefined'
-                                ,inherited_from=Id
-                                ,quantity=Q
-                                ,amount=A
-                                }, C) ->
-                        Item = [{'inherited_from_id', Id}
-                               ,{'quantity', Q}
-                               ,{'amount', A}
-                               ],
-                        append_items('add', props:filter_undefined(Item), C);
-                   (#bt_discount{existing_id=Id, quantity=Q, amount=A}, C) ->
-                        Item = [{'existing_id', Id}
-                               ,{'quantity', Q}
-                               ,{'amount', A}
-                               ],
-                        append_items('update', props:filter_undefined(Item), C)
-                end, [], Discounts).
+    lists:foldr(fun create_discount_fold/2, [], Discounts).
+
+-spec create_discount_fold(bt_discount(), changes()) -> changes().
+create_discount_fold(#bt_discount{id=Id, quantity=0}, Changes) ->
+    append_items('remove', Id, Changes);
+create_discount_fold(#bt_discount{existing_id='undefined'
+                                 ,inherited_from='undefined'
+                                 }
+                    ,Changes
+                    ) ->
+    Changes;
+create_discount_fold(#bt_discount{existing_id='undefined'
+                                 ,inherited_from=Id
+                                 ,quantity=Q
+                                 ,amount=A
+                                 }
+                    ,Changes
+                    ) ->
+    Item = [{'inherited_from_id', Id}
+           ,{'quantity', Q}
+           ,{'amount', A}
+           ],
+    append_items('add', props:filter_undefined(Item), Changes);
+create_discount_fold(#bt_discount{existing_id=Id
+                                 ,quantity=Q
+                                 ,amount=A
+                                 }
+                    ,Changes
+                    ) ->
+    Item = [{'existing_id', Id}
+           ,{'quantity', Q}
+           ,{'amount', A}
+           ],
+    append_items('update', props:filter_undefined(Item), Changes).
 
 %%--------------------------------------------------------------------
 %% @private

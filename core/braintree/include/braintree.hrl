@@ -147,7 +147,7 @@
 
 -type bt_descriptor() :: #bt_descriptor{}.
 
--record(bt_subscription, {id :: api_binary()
+-record(bt_subscription, {id :: api_ne_binary()
                          ,balance :: api_binary()
                          ,billing_dom :: api_binary()
                          ,billing_first_date :: api_binary()  %% Read only
@@ -163,13 +163,13 @@
                          ,next_cycle_amount :: api_binary()
                          ,next_bill_date :: api_binary()  %% Read only
                          ,paid_through_date :: api_binary()
-                         ,payment_token :: api_binary()
+                         ,payment_token :: api_ne_binary()
                          ,plan_id :: api_binary()
                          ,price :: api_binary()
                          ,status :: api_binary()
                          ,trial_duration :: api_binary()
                          ,trial_duration_unit :: api_binary()
-                         ,trial_period :: api_binary()
+                         ,trial_period :: api_ne_binary()
                          ,add_ons = [] :: bt_addons()
                          ,discounts = [] :: bt_discounts()
                          ,descriptor :: bt_descriptor() | 'undefined'

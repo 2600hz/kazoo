@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -76,7 +76,7 @@ get_value(Paths, Xml) ->
 
 
 %% @private
--spec extract_values(xml_els()) -> api_ne_binary().
+-spec extract_values(xml_els()) -> api_binary().
 extract_values([]) -> 'undefined';
 extract_values(Elements) ->
     Values = [case Element of

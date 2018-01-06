@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%%  Read `tries`, 'try_interval' and 'stop_after' from app's config
@@ -211,7 +211,7 @@ handle_cast(_Msg, State) ->
 add_request(JObj) ->
     Exten = kz_json:get_value(<<"Number">>, JObj),
     lager:info("adding offnet request to ~s", [Exten]),
-    camper_offnet_sup:new(JObj),
+    _ = camper_offnet_sup:new(JObj),
     'ok'.
 
 %%--------------------------------------------------------------------

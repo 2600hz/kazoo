@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Rater whapp; send me a DID, get a rate back
 %%%
@@ -216,7 +216,7 @@ process_db_update(?KZ_RATES_DB=RatedeckId, ?DB_EDITED) ->
     lager:info("ratedeck ~s changed, rebuilding trie in ~p", [Pid]);
 process_db_update(?KZ_RATES_DB=RatedeckId, ?DB_DELETED) ->
     Proc = trie_proc_name(RatedeckId),
-    hon_tries_sup:stop_trie(Proc),
+    _ = hon_tries_sup:stop_trie(Proc),
     lager:info("ratedeck ~s deleted, stopping the trie at ~p", [RatedeckId, Proc]);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_CREATED) ->
     maybe_start_trie_server(RatedeckDb);
@@ -225,7 +225,7 @@ process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_EDITED) ->
     lager:info("ratedeck ~s changed, rebuiding trie in ~p", [RatedeckDb, Pid]);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_DELETED) ->
     Pid = trie_proc_name(RatedeckDb),
-    hon_tries_sup:stop_trie(Pid),
+    _ = hon_tries_sup:stop_trie(Pid),
     lager:info("ratedeck ~s deleted, stopping the trie at ~p", [RatedeckDb, Pid]);
 process_db_update(_Db, _Action) ->
     lager:debug("ignoring ~s: ~s", [_Db, _Action]).

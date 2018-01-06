@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -41,7 +41,8 @@
 %%--------------------------------------------------------------------
 -spec make_doc_xml(kz_proplist(), atom()) -> char_to_bin_res().
 make_doc_xml(Props, Root) ->
-    Xml = xmerl:export_simple([doc_xml_simple(Props, Root)], 'xmerl_xml'
+    Xml = xmerl:export_simple([doc_xml_simple(Props, Root)]
+                             ,'xmerl_xml'
                              ,[{'prolog', ?BT_XML_PROLOG}]
                              ),
     unicode:characters_to_binary(Xml).

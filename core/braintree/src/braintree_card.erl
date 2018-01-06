@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -68,10 +68,10 @@ default_payment_card(Cards) ->
         Card -> Card
     end.
 
--spec payment_token(bt_card()) -> api_binary().
+-spec payment_token(bt_card()) -> api_ne_binary().
 payment_token(#bt_card{token = Value}) -> Value.
 
--spec payment_tokens(bt_cards()) -> api_binaries().
+-spec payment_tokens(bt_cards()) -> api_ne_binaries().
 payment_tokens(Cards) ->
     [payment_token(Card) || Card <- Cards].
 
