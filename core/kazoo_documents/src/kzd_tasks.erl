@@ -19,19 +19,19 @@ new() ->
 file_name(Doc) ->
     file_name(Doc, 'undefined').
 file_name(Doc, Default) ->
-    kz_json:get_binary_value(<<"file_name">>, Doc, Default).
+    kz_json:get_binary_value([<<"file_name">>], Doc, Default).
 
 -spec set_file_name(doc(), binary()) -> doc().
 set_file_name(Doc, FileName) ->
-    kz_json:set_value(<<"file_name">>, FileName, Doc).
+    kz_json:set_value([<<"file_name">>], FileName, Doc).
 
--spec records(doc()) -> api_list().
--spec records(doc(), Default) -> list() | Default.
+-spec records(doc()) -> api_objects().
+-spec records(doc(), Default) -> kz_json:objects() | Default.
 records(Doc) ->
     records(Doc, 'undefined').
 records(Doc, Default) ->
-    kz_json:get_list_value(<<"records">>, Doc, Default).
+    kz_json:get_list_value([<<"records">>], Doc, Default).
 
--spec set_records(doc(), list()) -> doc().
+-spec set_records(doc(), kz_json:objects()) -> doc().
 set_records(Doc, Records) ->
-    kz_json:set_value(<<"records">>, Records, Doc).
+    kz_json:set_value([<<"records">>], Records, Doc).

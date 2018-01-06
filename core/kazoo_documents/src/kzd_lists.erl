@@ -20,30 +20,30 @@ new() ->
 description(Doc) ->
     description(Doc, 'undefined').
 description(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"description">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"description">>], Doc, Default).
 
 -spec set_description(doc(), ne_binary()) -> doc().
 set_description(Doc, Description) ->
-    kz_json:set_value(<<"description">>, Description, Doc).
+    kz_json:set_value([<<"description">>], Description, Doc).
 
 -spec name(doc()) -> api_ne_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"name">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(Doc, Name) ->
-    kz_json:set_value(<<"name">>, Name, Doc).
+    kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec org(doc()) -> api_binary().
 -spec org(doc(), Default) -> binary() | Default.
 org(Doc) ->
     org(Doc, 'undefined').
 org(Doc, Default) ->
-    kz_json:get_binary_value(<<"org">>, Doc, Default).
+    kz_json:get_binary_value([<<"org">>], Doc, Default).
 
 -spec set_org(doc(), binary()) -> doc().
 set_org(Doc, Org) ->
-    kz_json:set_value(<<"org">>, Org, Doc).
+    kz_json:set_value([<<"org">>], Org, Doc).

@@ -15,34 +15,35 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec binding_digit(doc()) -> kz_term:ne_binary().
-binding_digit(Doc) ->
-    binding_digit(Doc, <<"*">>).
+-spec children(doc()) -> api_object().
+-spec children(doc(), Default) -> kz_json:object() | Default.
+children(Doc) ->
+    children(Doc, 'undefined').
+children(Doc, Default) ->
+    kz_json:get_json_value([<<"children">>], Doc, Default).
 
--spec binding_digit(doc(), Default) -> kz_term:ne_binary() | Default.
-binding_digit(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"binding_digit">>, Doc, Default).
+-spec set_children(doc(), kz_json:object()) -> doc().
+set_children(Doc, Children) ->
+    kz_json:set_value([<<"children">>], Children, Doc).
 
--spec digit_timeout(doc()) -> kz_term:api_integer().
-digit_timeout(Doc) ->
-    digit_timeout(Doc, 0).
+-spec data(doc()) -> kz_json:object().
+-spec data(doc(), Default) -> kz_json:object() | Default.
+data(Doc) ->
+    data(Doc, kz_json:new()).
+data(Doc, Default) ->
+    kz_json:get_json_value([<<"data">>], Doc, Default).
 
--spec digit_timeout(doc(), Default) -> non_neg_integer() | Default.
-digit_timeout(Doc, Default) ->
-    kz_json:get_integer_value(<<"digit_timeout">>, Doc, Default).
+-spec set_data(doc(), kz_json:object()) -> doc().
+set_data(Doc, Data) ->
+    kz_json:set_value([<<"data">>], Data, Doc).
 
--spec listen_on(doc()) -> kz_term:api_ne_binary().
-listen_on(Doc) ->
-    listen_on(Doc, 'undefined').
+-spec module(doc()) -> api_ne_binary().
+-spec module(doc(), Default) -> ne_binary() | Default.
+module(Doc) ->
+    module(Doc, 'undefined').
+module(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"module">>], Doc, Default).
 
--spec listen_on(doc(), Default) -> kz_term:ne_binary() | Default.
-listen_on(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"listen_on">>, Doc, Default).
-
--spec numbers(doc()) -> kz_term:api_object().
-numbers(Doc) ->
-    kz_json:get_json_value(<<"numbers">>, Doc).
-
--spec patterns(doc()) -> kz_term:api_object().
-patterns(Doc) ->
-    kz_json:get_json_value(<<"patterns">>, Doc).
+-spec set_module(doc(), ne_binary()) -> doc().
+set_module(Doc, Module) ->
+    kz_json:set_value([<<"module">>], Module, Doc).

@@ -18,8 +18,8 @@ new() ->
 api_key(Doc) ->
     api_key(Doc, 'undefined').
 api_key(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"api_key">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"api_key">>], Doc, Default).
 
 -spec set_api_key(doc(), ne_binary()) -> doc().
 set_api_key(Doc, ApiKey) ->
-    kz_json:set_value(<<"api_key">>, ApiKey, Doc).
+    kz_json:set_value([<<"api_key">>], ApiKey, Doc).

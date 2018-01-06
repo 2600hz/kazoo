@@ -21,41 +21,41 @@ new() ->
 body(Doc) ->
     body(Doc, 'undefined').
 body(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"body">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"body">>], Doc, Default).
 
 -spec set_body(doc(), ne_binary()) -> doc().
 set_body(Doc, Body) ->
-    kz_json:set_value(<<"body">>, Body, Doc).
+    kz_json:set_value([<<"body">>], Body, Doc).
 
 -spec from(doc()) -> api_binary().
 -spec from(doc(), Default) -> binary() | Default.
 from(Doc) ->
     from(Doc, 'undefined').
 from(Doc, Default) ->
-    kz_json:get_binary_value(<<"from">>, Doc, Default).
+    kz_json:get_binary_value([<<"from">>], Doc, Default).
 
 -spec set_from(doc(), binary()) -> doc().
 set_from(Doc, From) ->
-    kz_json:set_value(<<"from">>, From, Doc).
+    kz_json:set_value([<<"from">>], From, Doc).
 
 -spec scheduled(doc()) -> api_integer().
 -spec scheduled(doc(), Default) -> integer() | Default.
 scheduled(Doc) ->
     scheduled(Doc, 'undefined').
 scheduled(Doc, Default) ->
-    kz_json:get_integer_value(<<"scheduled">>, Doc, Default).
+    kz_json:get_integer_value([<<"scheduled">>], Doc, Default).
 
 -spec set_scheduled(doc(), integer()) -> doc().
 set_scheduled(Doc, Scheduled) ->
-    kz_json:set_value(<<"scheduled">>, Scheduled, Doc).
+    kz_json:set_value([<<"scheduled">>], Scheduled, Doc).
 
 -spec to(doc()) -> api_binary().
 -spec to(doc(), Default) -> binary() | Default.
 to(Doc) ->
     to(Doc, 'undefined').
 to(Doc, Default) ->
-    kz_json:get_binary_value(<<"to">>, Doc, Default).
+    kz_json:get_binary_value([<<"to">>], Doc, Default).
 
 -spec set_to(doc(), binary()) -> doc().
 set_to(Doc, To) ->
-    kz_json:set_value(<<"to">>, To, Doc).
+    kz_json:set_value([<<"to">>], To, Doc).

@@ -19,19 +19,19 @@ new() ->
 braintree(Doc) ->
     braintree(Doc, 'undefined').
 braintree(Doc, Default) ->
-    kz_json:get_json_value(<<"braintree">>, Doc, Default).
+    kz_json:get_json_value([<<"braintree">>], Doc, Default).
 
 -spec set_braintree(doc(), kz_json:object()) -> doc().
 set_braintree(Doc, Braintree) ->
-    kz_json:set_value(<<"braintree">>, Braintree, Doc).
+    kz_json:set_value([<<"braintree">>], Braintree, Doc).
 
 -spec local(doc()) -> api_object().
 -spec local(doc(), Default) -> kz_json:object() | Default.
 local(Doc) ->
     local(Doc, 'undefined').
 local(Doc, Default) ->
-    kz_json:get_json_value(<<"local">>, Doc, Default).
+    kz_json:get_json_value([<<"local">>], Doc, Default).
 
 -spec set_local(doc(), kz_json:object()) -> doc().
 set_local(Doc, Local) ->
-    kz_json:set_value(<<"local">>, Local, Doc).
+    kz_json:set_value([<<"local">>], Local, Doc).

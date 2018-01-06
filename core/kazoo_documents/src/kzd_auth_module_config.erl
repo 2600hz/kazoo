@@ -26,44 +26,44 @@ new() ->
 enabled(Doc) ->
     enabled(Doc, 'undefined').
 enabled(Doc, Default) ->
-    kz_json:get_boolean_value(<<"enabled">>, Doc, Default).
+    kz_json:get_boolean_value([<<"enabled">>], Doc, Default).
 
 -spec set_enabled(doc(), boolean()) -> doc().
 set_enabled(Doc, Enabled) ->
-    kz_json:set_value(<<"enabled">>, Enabled, Doc).
+    kz_json:set_value([<<"enabled">>], Enabled, Doc).
 
 -spec log_failed_attempts(doc()) -> api_boolean().
 -spec log_failed_attempts(doc(), Default) -> boolean() | Default.
 log_failed_attempts(Doc) ->
     log_failed_attempts(Doc, 'undefined').
 log_failed_attempts(Doc, Default) ->
-    kz_json:get_boolean_value(<<"log_failed_attempts">>, Doc, Default).
+    kz_json:get_boolean_value([<<"log_failed_attempts">>], Doc, Default).
 
 -spec set_log_failed_attempts(doc(), boolean()) -> doc().
 set_log_failed_attempts(Doc, LogFailedAttempts) ->
-    kz_json:set_value(<<"log_failed_attempts">>, LogFailedAttempts, Doc).
+    kz_json:set_value([<<"log_failed_attempts">>], LogFailedAttempts, Doc).
 
 -spec log_successful_attempts(doc()) -> api_boolean().
 -spec log_successful_attempts(doc(), Default) -> boolean() | Default.
 log_successful_attempts(Doc) ->
     log_successful_attempts(Doc, 'undefined').
 log_successful_attempts(Doc, Default) ->
-    kz_json:get_boolean_value(<<"log_successful_attempts">>, Doc, Default).
+    kz_json:get_boolean_value([<<"log_successful_attempts">>], Doc, Default).
 
 -spec set_log_successful_attempts(doc(), boolean()) -> doc().
 set_log_successful_attempts(Doc, LogSuccessfulAttempts) ->
-    kz_json:set_value(<<"log_successful_attempts">>, LogSuccessfulAttempts, Doc).
+    kz_json:set_value([<<"log_successful_attempts">>], LogSuccessfulAttempts, Doc).
 
 -spec multi_factor(doc()) -> api_object().
 -spec multi_factor(doc(), Default) -> kz_json:object() | Default.
 multi_factor(Doc) ->
     multi_factor(Doc, 'undefined').
 multi_factor(Doc, Default) ->
-    kz_json:get_json_value(<<"multi_factor">>, Doc, Default).
+    kz_json:get_json_value([<<"multi_factor">>], Doc, Default).
 
 -spec set_multi_factor(doc(), kz_json:object()) -> doc().
 set_multi_factor(Doc, MultiFactor) ->
-    kz_json:set_value(<<"multi_factor">>, MultiFactor, Doc).
+    kz_json:set_value([<<"multi_factor">>], MultiFactor, Doc).
 
 -spec multi_factor_account_id(doc()) -> api_binary().
 -spec multi_factor_account_id(doc(), Default) -> binary() | Default.
@@ -114,8 +114,8 @@ set_multi_factor_include_subaccounts(Doc, MultiFactorIncludeSubaccounts) ->
 token_auth_expiry_s(Doc) ->
     token_auth_expiry_s(Doc, 'undefined').
 token_auth_expiry_s(Doc, Default) ->
-    kz_json:get_integer_value(<<"token_auth_expiry_s">>, Doc, Default).
+    kz_json:get_integer_value([<<"token_auth_expiry_s">>], Doc, Default).
 
 -spec set_token_auth_expiry_s(doc(), integer()) -> doc().
 set_token_auth_expiry_s(Doc, TokenAuthenticationExpiryS) ->
-    kz_json:set_value(<<"token_auth_expiry_s">>, TokenAuthenticationExpiryS, Doc).
+    kz_json:set_value([<<"token_auth_expiry_s">>], TokenAuthenticationExpiryS, Doc).

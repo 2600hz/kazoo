@@ -59,459 +59,459 @@ new() ->
 app_name(Doc) ->
     app_name(Doc, 'undefined').
 app_name(Doc, Default) ->
-    kz_json:get_binary_value(<<"app_name">>, Doc, Default).
+    kz_json:get_binary_value([<<"app_name">>], Doc, Default).
 
 -spec set_app_name(doc(), binary()) -> doc().
 set_app_name(Doc, AppName) ->
-    kz_json:set_value(<<"app_name">>, AppName, Doc).
+    kz_json:set_value([<<"app_name">>], AppName, Doc).
 
 -spec app_version(doc()) -> api_binary().
 -spec app_version(doc(), Default) -> binary() | Default.
 app_version(Doc) ->
     app_version(Doc, 'undefined').
 app_version(Doc, Default) ->
-    kz_json:get_binary_value(<<"app_version">>, Doc, Default).
+    kz_json:get_binary_value([<<"app_version">>], Doc, Default).
 
 -spec set_app_version(doc(), binary()) -> doc().
 set_app_version(Doc, AppVersion) ->
-    kz_json:set_value(<<"app_version">>, AppVersion, Doc).
+    kz_json:set_value([<<"app_version">>], AppVersion, Doc).
 
 -spec billing_seconds(doc()) -> api_binary().
 -spec billing_seconds(doc(), Default) -> binary() | Default.
 billing_seconds(Doc) ->
     billing_seconds(Doc, 'undefined').
 billing_seconds(Doc, Default) ->
-    kz_json:get_binary_value(<<"billing_seconds">>, Doc, Default).
+    kz_json:get_binary_value([<<"billing_seconds">>], Doc, Default).
 
 -spec set_billing_seconds(doc(), binary()) -> doc().
 set_billing_seconds(Doc, BillingSeconds) ->
-    kz_json:set_value(<<"billing_seconds">>, BillingSeconds, Doc).
+    kz_json:set_value([<<"billing_seconds">>], BillingSeconds, Doc).
 
 -spec call_direction(doc()) -> api_binary().
 -spec call_direction(doc(), Default) -> binary() | Default.
 call_direction(Doc) ->
     call_direction(Doc, 'undefined').
 call_direction(Doc, Default) ->
-    kz_json:get_binary_value(<<"call_direction">>, Doc, Default).
+    kz_json:get_binary_value([<<"call_direction">>], Doc, Default).
 
 -spec set_call_direction(doc(), binary()) -> doc().
 set_call_direction(Doc, CallDirection) ->
-    kz_json:set_value(<<"call_direction">>, CallDirection, Doc).
+    kz_json:set_value([<<"call_direction">>], CallDirection, Doc).
 
 -spec call_id(doc()) -> api_binary().
 -spec call_id(doc(), Default) -> binary() | Default.
 call_id(Doc) ->
     call_id(Doc, 'undefined').
 call_id(Doc, Default) ->
-    kz_json:get_binary_value(<<"call_id">>, Doc, Default).
+    kz_json:get_binary_value([<<"call_id">>], Doc, Default).
 
 -spec set_call_id(doc(), binary()) -> doc().
 set_call_id(Doc, CallId) ->
-    kz_json:set_value(<<"call_id">>, CallId, Doc).
+    kz_json:set_value([<<"call_id">>], CallId, Doc).
 
 -spec callee_id_name(doc()) -> api_binary().
 -spec callee_id_name(doc(), Default) -> binary() | Default.
 callee_id_name(Doc) ->
     callee_id_name(Doc, 'undefined').
 callee_id_name(Doc, Default) ->
-    kz_json:get_binary_value(<<"callee_id_name">>, Doc, Default).
+    kz_json:get_binary_value([<<"callee_id_name">>], Doc, Default).
 
 -spec set_callee_id_name(doc(), binary()) -> doc().
 set_callee_id_name(Doc, CalleeIdName) ->
-    kz_json:set_value(<<"callee_id_name">>, CalleeIdName, Doc).
+    kz_json:set_value([<<"callee_id_name">>], CalleeIdName, Doc).
 
 -spec callee_id_number(doc()) -> api_binary().
 -spec callee_id_number(doc(), Default) -> binary() | Default.
 callee_id_number(Doc) ->
     callee_id_number(Doc, 'undefined').
 callee_id_number(Doc, Default) ->
-    kz_json:get_binary_value(<<"callee_id_number">>, Doc, Default).
+    kz_json:get_binary_value([<<"callee_id_number">>], Doc, Default).
 
 -spec set_callee_id_number(doc(), binary()) -> doc().
 set_callee_id_number(Doc, CalleeIdNumber) ->
-    kz_json:set_value(<<"callee_id_number">>, CalleeIdNumber, Doc).
+    kz_json:set_value([<<"callee_id_number">>], CalleeIdNumber, Doc).
 
 -spec caller_id_name(doc()) -> api_binary().
 -spec caller_id_name(doc(), Default) -> binary() | Default.
 caller_id_name(Doc) ->
     caller_id_name(Doc, 'undefined').
 caller_id_name(Doc, Default) ->
-    kz_json:get_binary_value(<<"caller_id_name">>, Doc, Default).
+    kz_json:get_binary_value([<<"caller_id_name">>], Doc, Default).
 
 -spec set_caller_id_name(doc(), binary()) -> doc().
 set_caller_id_name(Doc, CallerIdName) ->
-    kz_json:set_value(<<"caller_id_name">>, CallerIdName, Doc).
+    kz_json:set_value([<<"caller_id_name">>], CallerIdName, Doc).
 
 -spec caller_id_number(doc()) -> api_binary().
 -spec caller_id_number(doc(), Default) -> binary() | Default.
 caller_id_number(Doc) ->
     caller_id_number(Doc, 'undefined').
 caller_id_number(Doc, Default) ->
-    kz_json:get_binary_value(<<"caller_id_number">>, Doc, Default).
+    kz_json:get_binary_value([<<"caller_id_number">>], Doc, Default).
 
 -spec set_caller_id_number(doc(), binary()) -> doc().
 set_caller_id_number(Doc, CallerIdNumber) ->
-    kz_json:set_value(<<"caller_id_number">>, CallerIdNumber, Doc).
+    kz_json:set_value([<<"caller_id_number">>], CallerIdNumber, Doc).
 
 -spec custom_channel_vars(doc()) -> api_object().
 -spec custom_channel_vars(doc(), Default) -> kz_json:object() | Default.
 custom_channel_vars(Doc) ->
     custom_channel_vars(Doc, 'undefined').
 custom_channel_vars(Doc, Default) ->
-    kz_json:get_json_value(<<"custom_channel_vars">>, Doc, Default).
+    kz_json:get_json_value([<<"custom_channel_vars">>], Doc, Default).
 
 -spec set_custom_channel_vars(doc(), kz_json:object()) -> doc().
 set_custom_channel_vars(Doc, CustomChannelVars) ->
-    kz_json:set_value(<<"custom_channel_vars">>, CustomChannelVars, Doc).
+    kz_json:set_value([<<"custom_channel_vars">>], CustomChannelVars, Doc).
 
 -spec custom_sip_headers(doc()) -> api_object().
 -spec custom_sip_headers(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers(Doc) ->
     custom_sip_headers(Doc, 'undefined').
 custom_sip_headers(Doc, Default) ->
-    kz_json:get_json_value(<<"custom_sip_headers">>, Doc, Default).
+    kz_json:get_json_value([<<"custom_sip_headers">>], Doc, Default).
 
 -spec set_custom_sip_headers(doc(), kz_json:object()) -> doc().
 set_custom_sip_headers(Doc, CustomSipHeaders) ->
-    kz_json:set_value(<<"custom_sip_headers">>, CustomSipHeaders, Doc).
+    kz_json:set_value([<<"custom_sip_headers">>], CustomSipHeaders, Doc).
 
 -spec digits_dialed(doc()) -> api_binary().
 -spec digits_dialed(doc(), Default) -> binary() | Default.
 digits_dialed(Doc) ->
     digits_dialed(Doc, 'undefined').
 digits_dialed(Doc, Default) ->
-    kz_json:get_binary_value(<<"digits_dialed">>, Doc, Default).
+    kz_json:get_binary_value([<<"digits_dialed">>], Doc, Default).
 
 -spec set_digits_dialed(doc(), binary()) -> doc().
 set_digits_dialed(Doc, DigitsDialed) ->
-    kz_json:set_value(<<"digits_dialed">>, DigitsDialed, Doc).
+    kz_json:set_value([<<"digits_dialed">>], DigitsDialed, Doc).
 
 -spec disposition(doc()) -> api_binary().
 -spec disposition(doc(), Default) -> binary() | Default.
 disposition(Doc) ->
     disposition(Doc, 'undefined').
 disposition(Doc, Default) ->
-    kz_json:get_binary_value(<<"disposition">>, Doc, Default).
+    kz_json:get_binary_value([<<"disposition">>], Doc, Default).
 
 -spec set_disposition(doc(), binary()) -> doc().
 set_disposition(Doc, Disposition) ->
-    kz_json:set_value(<<"disposition">>, Disposition, Doc).
+    kz_json:set_value([<<"disposition">>], Disposition, Doc).
 
 -spec duration_seconds(doc()) -> api_binary().
 -spec duration_seconds(doc(), Default) -> binary() | Default.
 duration_seconds(Doc) ->
     duration_seconds(Doc, 'undefined').
 duration_seconds(Doc, Default) ->
-    kz_json:get_binary_value(<<"duration_seconds">>, Doc, Default).
+    kz_json:get_binary_value([<<"duration_seconds">>], Doc, Default).
 
 -spec set_duration_seconds(doc(), binary()) -> doc().
 set_duration_seconds(Doc, DurationSeconds) ->
-    kz_json:set_value(<<"duration_seconds">>, DurationSeconds, Doc).
+    kz_json:set_value([<<"duration_seconds">>], DurationSeconds, Doc).
 
 -spec fax_bad_rows(doc()) -> api_binary().
 -spec fax_bad_rows(doc(), Default) -> binary() | Default.
 fax_bad_rows(Doc) ->
     fax_bad_rows(Doc, 'undefined').
 fax_bad_rows(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_bad_rows">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_bad_rows">>], Doc, Default).
 
 -spec set_fax_bad_rows(doc(), binary()) -> doc().
 set_fax_bad_rows(Doc, FaxBadRows) ->
-    kz_json:set_value(<<"fax_bad_rows">>, FaxBadRows, Doc).
+    kz_json:set_value([<<"fax_bad_rows">>], FaxBadRows, Doc).
 
 -spec fax_ecm_used(doc()) -> api_binary().
 -spec fax_ecm_used(doc(), Default) -> binary() | Default.
 fax_ecm_used(Doc) ->
     fax_ecm_used(Doc, 'undefined').
 fax_ecm_used(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_ecm_used">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_ecm_used">>], Doc, Default).
 
 -spec set_fax_ecm_used(doc(), binary()) -> doc().
 set_fax_ecm_used(Doc, FaxEcmUsed) ->
-    kz_json:set_value(<<"fax_ecm_used">>, FaxEcmUsed, Doc).
+    kz_json:set_value([<<"fax_ecm_used">>], FaxEcmUsed, Doc).
 
 -spec fax_result_code(doc()) -> api_binary().
 -spec fax_result_code(doc(), Default) -> binary() | Default.
 fax_result_code(Doc) ->
     fax_result_code(Doc, 'undefined').
 fax_result_code(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_result_code">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_result_code">>], Doc, Default).
 
 -spec set_fax_result_code(doc(), binary()) -> doc().
 set_fax_result_code(Doc, FaxResultCode) ->
-    kz_json:set_value(<<"fax_result_code">>, FaxResultCode, Doc).
+    kz_json:set_value([<<"fax_result_code">>], FaxResultCode, Doc).
 
 -spec fax_result_text(doc()) -> api_binary().
 -spec fax_result_text(doc(), Default) -> binary() | Default.
 fax_result_text(Doc) ->
     fax_result_text(Doc, 'undefined').
 fax_result_text(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_result_text">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_result_text">>], Doc, Default).
 
 -spec set_fax_result_text(doc(), binary()) -> doc().
 set_fax_result_text(Doc, FaxResultText) ->
-    kz_json:set_value(<<"fax_result_text">>, FaxResultText, Doc).
+    kz_json:set_value([<<"fax_result_text">>], FaxResultText, Doc).
 
 -spec fax_success(doc()) -> api_binary().
 -spec fax_success(doc(), Default) -> binary() | Default.
 fax_success(Doc) ->
     fax_success(Doc, 'undefined').
 fax_success(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_success">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_success">>], Doc, Default).
 
 -spec set_fax_success(doc(), binary()) -> doc().
 set_fax_success(Doc, FaxSuccess) ->
-    kz_json:set_value(<<"fax_success">>, FaxSuccess, Doc).
+    kz_json:set_value([<<"fax_success">>], FaxSuccess, Doc).
 
 -spec fax_total_pages(doc()) -> api_binary().
 -spec fax_total_pages(doc(), Default) -> binary() | Default.
 fax_total_pages(Doc) ->
     fax_total_pages(Doc, 'undefined').
 fax_total_pages(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_total_pages">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_total_pages">>], Doc, Default).
 
 -spec set_fax_total_pages(doc(), binary()) -> doc().
 set_fax_total_pages(Doc, FaxTotalPages) ->
-    kz_json:set_value(<<"fax_total_pages">>, FaxTotalPages, Doc).
+    kz_json:set_value([<<"fax_total_pages">>], FaxTotalPages, Doc).
 
 -spec fax_transfer_rate(doc()) -> api_binary().
 -spec fax_transfer_rate(doc(), Default) -> binary() | Default.
 fax_transfer_rate(Doc) ->
     fax_transfer_rate(Doc, 'undefined').
 fax_transfer_rate(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_transfer_rate">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_transfer_rate">>], Doc, Default).
 
 -spec set_fax_transfer_rate(doc(), binary()) -> doc().
 set_fax_transfer_rate(Doc, FaxTransferRate) ->
-    kz_json:set_value(<<"fax_transfer_rate">>, FaxTransferRate, Doc).
+    kz_json:set_value([<<"fax_transfer_rate">>], FaxTransferRate, Doc).
 
 -spec fax_transferred_pages(doc()) -> api_binary().
 -spec fax_transferred_pages(doc(), Default) -> binary() | Default.
 fax_transferred_pages(Doc) ->
     fax_transferred_pages(Doc, 'undefined').
 fax_transferred_pages(Doc, Default) ->
-    kz_json:get_binary_value(<<"fax_transferred_pages">>, Doc, Default).
+    kz_json:get_binary_value([<<"fax_transferred_pages">>], Doc, Default).
 
 -spec set_fax_transferred_pages(doc(), binary()) -> doc().
 set_fax_transferred_pages(Doc, FaxTransferredPages) ->
-    kz_json:set_value(<<"fax_transferred_pages">>, FaxTransferredPages, Doc).
+    kz_json:set_value([<<"fax_transferred_pages">>], FaxTransferredPages, Doc).
 
 -spec from(doc()) -> api_binary().
 -spec from(doc(), Default) -> binary() | Default.
 from(Doc) ->
     from(Doc, 'undefined').
 from(Doc, Default) ->
-    kz_json:get_binary_value(<<"from">>, Doc, Default).
+    kz_json:get_binary_value([<<"from">>], Doc, Default).
 
 -spec set_from(doc(), binary()) -> doc().
 set_from(Doc, From) ->
-    kz_json:set_value(<<"from">>, From, Doc).
+    kz_json:set_value([<<"from">>], From, Doc).
 
 -spec from_uri(doc()) -> api_binary().
 -spec from_uri(doc(), Default) -> binary() | Default.
 from_uri(Doc) ->
     from_uri(Doc, 'undefined').
 from_uri(Doc, Default) ->
-    kz_json:get_binary_value(<<"from_uri">>, Doc, Default).
+    kz_json:get_binary_value([<<"from_uri">>], Doc, Default).
 
 -spec set_from_uri(doc(), binary()) -> doc().
 set_from_uri(Doc, FromUri) ->
-    kz_json:set_value(<<"from_uri">>, FromUri, Doc).
+    kz_json:set_value([<<"from_uri">>], FromUri, Doc).
 
 -spec hangup_cause(doc()) -> api_binary().
 -spec hangup_cause(doc(), Default) -> binary() | Default.
 hangup_cause(Doc) ->
     hangup_cause(Doc, 'undefined').
 hangup_cause(Doc, Default) ->
-    kz_json:get_binary_value(<<"hangup_cause">>, Doc, Default).
+    kz_json:get_binary_value([<<"hangup_cause">>], Doc, Default).
 
 -spec set_hangup_cause(doc(), binary()) -> doc().
 set_hangup_cause(Doc, HangupCause) ->
-    kz_json:set_value(<<"hangup_cause">>, HangupCause, Doc).
+    kz_json:set_value([<<"hangup_cause">>], HangupCause, Doc).
 
 -spec hangup_code(doc()) -> api_binary().
 -spec hangup_code(doc(), Default) -> binary() | Default.
 hangup_code(Doc) ->
     hangup_code(Doc, 'undefined').
 hangup_code(Doc, Default) ->
-    kz_json:get_binary_value(<<"hangup_code">>, Doc, Default).
+    kz_json:get_binary_value([<<"hangup_code">>], Doc, Default).
 
 -spec set_hangup_code(doc(), binary()) -> doc().
 set_hangup_code(Doc, HangupCode) ->
-    kz_json:set_value(<<"hangup_code">>, HangupCode, Doc).
+    kz_json:set_value([<<"hangup_code">>], HangupCode, Doc).
 
 -spec local_sdp(doc()) -> api_binary().
 -spec local_sdp(doc(), Default) -> binary() | Default.
 local_sdp(Doc) ->
     local_sdp(Doc, 'undefined').
 local_sdp(Doc, Default) ->
-    kz_json:get_binary_value(<<"local_sdp">>, Doc, Default).
+    kz_json:get_binary_value([<<"local_sdp">>], Doc, Default).
 
 -spec set_local_sdp(doc(), binary()) -> doc().
 set_local_sdp(Doc, LocalSdp) ->
-    kz_json:set_value(<<"local_sdp">>, LocalSdp, Doc).
+    kz_json:set_value([<<"local_sdp">>], LocalSdp, Doc).
 
 -spec media_server(doc()) -> api_binary().
 -spec media_server(doc(), Default) -> binary() | Default.
 media_server(Doc) ->
     media_server(Doc, 'undefined').
 media_server(Doc, Default) ->
-    kz_json:get_binary_value(<<"media_server">>, Doc, Default).
+    kz_json:get_binary_value([<<"media_server">>], Doc, Default).
 
 -spec set_media_server(doc(), binary()) -> doc().
 set_media_server(Doc, MediaServer) ->
-    kz_json:set_value(<<"media_server">>, MediaServer, Doc).
+    kz_json:set_value([<<"media_server">>], MediaServer, Doc).
 
 -spec node(doc()) -> api_binary().
 -spec node(doc(), Default) -> binary() | Default.
 node(Doc) ->
     node(Doc, 'undefined').
 node(Doc, Default) ->
-    kz_json:get_binary_value(<<"node">>, Doc, Default).
+    kz_json:get_binary_value([<<"node">>], Doc, Default).
 
 -spec set_node(doc(), binary()) -> doc().
 set_node(Doc, Node) ->
-    kz_json:set_value(<<"node">>, Node, Doc).
+    kz_json:set_value([<<"node">>], Node, Doc).
 
 -spec other_leg_call_id(doc()) -> api_binary().
 -spec other_leg_call_id(doc(), Default) -> binary() | Default.
 other_leg_call_id(Doc) ->
     other_leg_call_id(Doc, 'undefined').
 other_leg_call_id(Doc, Default) ->
-    kz_json:get_binary_value(<<"other_leg_call_id">>, Doc, Default).
+    kz_json:get_binary_value([<<"other_leg_call_id">>], Doc, Default).
 
 -spec set_other_leg_call_id(doc(), binary()) -> doc().
 set_other_leg_call_id(Doc, OtherLegCallId) ->
-    kz_json:set_value(<<"other_leg_call_id">>, OtherLegCallId, Doc).
+    kz_json:set_value([<<"other_leg_call_id">>], OtherLegCallId, Doc).
 
 -spec other_leg_caller_id_name(doc()) -> api_binary().
 -spec other_leg_caller_id_name(doc(), Default) -> binary() | Default.
 other_leg_caller_id_name(Doc) ->
     other_leg_caller_id_name(Doc, 'undefined').
 other_leg_caller_id_name(Doc, Default) ->
-    kz_json:get_binary_value(<<"other_leg_caller_id_name">>, Doc, Default).
+    kz_json:get_binary_value([<<"other_leg_caller_id_name">>], Doc, Default).
 
 -spec set_other_leg_caller_id_name(doc(), binary()) -> doc().
 set_other_leg_caller_id_name(Doc, OtherLegCallerIdName) ->
-    kz_json:set_value(<<"other_leg_caller_id_name">>, OtherLegCallerIdName, Doc).
+    kz_json:set_value([<<"other_leg_caller_id_name">>], OtherLegCallerIdName, Doc).
 
 -spec other_leg_caller_id_number(doc()) -> api_binary().
 -spec other_leg_caller_id_number(doc(), Default) -> binary() | Default.
 other_leg_caller_id_number(Doc) ->
     other_leg_caller_id_number(Doc, 'undefined').
 other_leg_caller_id_number(Doc, Default) ->
-    kz_json:get_binary_value(<<"other_leg_caller_id_number">>, Doc, Default).
+    kz_json:get_binary_value([<<"other_leg_caller_id_number">>], Doc, Default).
 
 -spec set_other_leg_caller_id_number(doc(), binary()) -> doc().
 set_other_leg_caller_id_number(Doc, OtherLegCallerIdNumber) ->
-    kz_json:set_value(<<"other_leg_caller_id_number">>, OtherLegCallerIdNumber, Doc).
+    kz_json:set_value([<<"other_leg_caller_id_number">>], OtherLegCallerIdNumber, Doc).
 
 -spec other_leg_destination_number(doc()) -> api_binary().
 -spec other_leg_destination_number(doc(), Default) -> binary() | Default.
 other_leg_destination_number(Doc) ->
     other_leg_destination_number(Doc, 'undefined').
 other_leg_destination_number(Doc, Default) ->
-    kz_json:get_binary_value(<<"other_leg_destination_number">>, Doc, Default).
+    kz_json:get_binary_value([<<"other_leg_destination_number">>], Doc, Default).
 
 -spec set_other_leg_destination_number(doc(), binary()) -> doc().
 set_other_leg_destination_number(Doc, OtherLegDestinationNumber) ->
-    kz_json:set_value(<<"other_leg_destination_number">>, OtherLegDestinationNumber, Doc).
+    kz_json:set_value([<<"other_leg_destination_number">>], OtherLegDestinationNumber, Doc).
 
 -spec other_leg_direction(doc()) -> api_binary().
 -spec other_leg_direction(doc(), Default) -> binary() | Default.
 other_leg_direction(Doc) ->
     other_leg_direction(Doc, 'undefined').
 other_leg_direction(Doc, Default) ->
-    kz_json:get_binary_value(<<"other_leg_direction">>, Doc, Default).
+    kz_json:get_binary_value([<<"other_leg_direction">>], Doc, Default).
 
 -spec set_other_leg_direction(doc(), binary()) -> doc().
 set_other_leg_direction(Doc, OtherLegDirection) ->
-    kz_json:set_value(<<"other_leg_direction">>, OtherLegDirection, Doc).
+    kz_json:set_value([<<"other_leg_direction">>], OtherLegDirection, Doc).
 
 -spec presence_id(doc()) -> api_binary().
 -spec presence_id(doc(), Default) -> binary() | Default.
 presence_id(Doc) ->
     presence_id(Doc, 'undefined').
 presence_id(Doc, Default) ->
-    kz_json:get_binary_value(<<"presence_id">>, Doc, Default).
+    kz_json:get_binary_value([<<"presence_id">>], Doc, Default).
 
 -spec set_presence_id(doc(), binary()) -> doc().
 set_presence_id(Doc, PresenceId) ->
-    kz_json:set_value(<<"presence_id">>, PresenceId, Doc).
+    kz_json:set_value([<<"presence_id">>], PresenceId, Doc).
 
 -spec remote_sdp(doc()) -> api_binary().
 -spec remote_sdp(doc(), Default) -> binary() | Default.
 remote_sdp(Doc) ->
     remote_sdp(Doc, 'undefined').
 remote_sdp(Doc, Default) ->
-    kz_json:get_binary_value(<<"remote_sdp">>, Doc, Default).
+    kz_json:get_binary_value([<<"remote_sdp">>], Doc, Default).
 
 -spec set_remote_sdp(doc(), binary()) -> doc().
 set_remote_sdp(Doc, RemoteSdp) ->
-    kz_json:set_value(<<"remote_sdp">>, RemoteSdp, Doc).
+    kz_json:set_value([<<"remote_sdp">>], RemoteSdp, Doc).
 
 -spec request(doc()) -> api_binary().
 -spec request(doc(), Default) -> binary() | Default.
 request(Doc) ->
     request(Doc, 'undefined').
 request(Doc, Default) ->
-    kz_json:get_binary_value(<<"request">>, Doc, Default).
+    kz_json:get_binary_value([<<"request">>], Doc, Default).
 
 -spec set_request(doc(), binary()) -> doc().
 set_request(Doc, Request) ->
-    kz_json:set_value(<<"request">>, Request, Doc).
+    kz_json:set_value([<<"request">>], Request, Doc).
 
 -spec ringing_seconds(doc()) -> api_binary().
 -spec ringing_seconds(doc(), Default) -> binary() | Default.
 ringing_seconds(Doc) ->
     ringing_seconds(Doc, 'undefined').
 ringing_seconds(Doc, Default) ->
-    kz_json:get_binary_value(<<"ringing_seconds">>, Doc, Default).
+    kz_json:get_binary_value([<<"ringing_seconds">>], Doc, Default).
 
 -spec set_ringing_seconds(doc(), binary()) -> doc().
 set_ringing_seconds(Doc, RingingSeconds) ->
-    kz_json:set_value(<<"ringing_seconds">>, RingingSeconds, Doc).
+    kz_json:set_value([<<"ringing_seconds">>], RingingSeconds, Doc).
 
 -spec timestamp(doc()) -> api_binary().
 -spec timestamp(doc(), Default) -> binary() | Default.
 timestamp(Doc) ->
     timestamp(Doc, 'undefined').
 timestamp(Doc, Default) ->
-    kz_json:get_binary_value(<<"timestamp">>, Doc, Default).
+    kz_json:get_binary_value([<<"timestamp">>], Doc, Default).
 
 -spec set_timestamp(doc(), binary()) -> doc().
 set_timestamp(Doc, Timestamp) ->
-    kz_json:set_value(<<"timestamp">>, Timestamp, Doc).
+    kz_json:set_value([<<"timestamp">>], Timestamp, Doc).
 
 -spec to(doc()) -> api_binary().
 -spec to(doc(), Default) -> binary() | Default.
 to(Doc) ->
     to(Doc, 'undefined').
 to(Doc, Default) ->
-    kz_json:get_binary_value(<<"to">>, Doc, Default).
+    kz_json:get_binary_value([<<"to">>], Doc, Default).
 
 -spec set_to(doc(), binary()) -> doc().
 set_to(Doc, To) ->
-    kz_json:set_value(<<"to">>, To, Doc).
+    kz_json:set_value([<<"to">>], To, Doc).
 
 -spec to_uri(doc()) -> api_binary().
 -spec to_uri(doc(), Default) -> binary() | Default.
 to_uri(Doc) ->
     to_uri(Doc, 'undefined').
 to_uri(Doc, Default) ->
-    kz_json:get_binary_value(<<"to_uri">>, Doc, Default).
+    kz_json:get_binary_value([<<"to_uri">>], Doc, Default).
 
 -spec set_to_uri(doc(), binary()) -> doc().
 set_to_uri(Doc, ToUri) ->
-    kz_json:set_value(<<"to_uri">>, ToUri, Doc).
+    kz_json:set_value([<<"to_uri">>], ToUri, Doc).
 
 -spec user_agent(doc()) -> api_binary().
 -spec user_agent(doc(), Default) -> binary() | Default.
 user_agent(Doc) ->
     user_agent(Doc, 'undefined').
 user_agent(Doc, Default) ->
-    kz_json:get_binary_value(<<"user_agent">>, Doc, Default).
+    kz_json:get_binary_value([<<"user_agent">>], Doc, Default).
 
 -spec set_user_agent(doc(), binary()) -> doc().
 set_user_agent(Doc, UserAgent) ->
-    kz_json:set_value(<<"user_agent">>, UserAgent, Doc).
+    kz_json:set_value([<<"user_agent">>], UserAgent, Doc).

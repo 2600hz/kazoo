@@ -31,75 +31,33 @@ new() ->
 a(Doc) ->
     a(Doc, 'undefined').
 a(Doc, Default) ->
-    kz_json:get_json_value(<<"A">>, Doc, Default).
+    kz_json:get_json_value([<<"A">>], Doc, Default).
 
 -spec set_a(doc(), kz_json:object()) -> doc().
 set_a(Doc, A) ->
-    kz_json:set_value(<<"A">>, A, Doc).
+    kz_json:set_value([<<"A">>], A, Doc).
 
 -spec cname(doc()) -> kz_term:api_object().
-cname(Domains) ->
-    cname(Domains, 'undefined').
-
 -spec cname(doc(), Default) -> kz_json:object() | Default.
-cname(Domains, Default) ->
-    kz_json:get_json_value(?KEY_CNAME, Domains, Default).
-
--spec cname_hosts(doc()) -> kz_term:ne_binaries().
-cname_hosts(Domains) ->
-    kz_json:get_keys(?KEY_CNAME, Domains).
-
--spec cname_host(doc(), kz_term:ne_binary()) -> kz_term:api_object().
-cname_host(Domains, Host) ->
-    cname_host(Domains, Host, 'undefined').
-
--spec cname_host(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
-cname_host(Domains, Host, Default) ->
-    kz_json:get_value([?KEY_CNAME, Host], Domains, Default).
-
--spec cname_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
-cname_host_mappings(Domains, Host) ->
-    cname_host_mappings(Domains, Host, []).
-
--spec cname_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
-cname_host_mappings(Domains, Host, Default) ->
-    kz_json:get_value([?KEY_CNAME, Host, ?KEY_MAPPINGS], Domains, Default).
+cname(Doc) ->
+    cname(Doc, 'undefined').
+cname(Doc, Default) ->
+    kz_json:get_json_value([<<"CNAME">>], Doc, Default).
 
 -spec set_cname(doc(), kz_json:object()) -> doc().
-set_cname(Domains, CNAME) ->
-    kz_json:set_value(?KEY_CNAME, CNAME, Domains).
+set_cname(Doc, Cname) ->
+    kz_json:set_value([<<"CNAME">>], Cname, Doc).
 
--spec add_cname_host(doc(), kz_term:ne_binary(), kz_json:object()) -> doc().
-add_cname_host(Domains, Host, Settings) ->
-    kz_json:set_value([?KEY_CNAME, Host], Settings, Domains).
+-spec mx(doc()) -> api_object().
+-spec mx(doc(), Default) -> kz_json:object() | Default.
+mx(Doc) ->
+    mx(Doc, 'undefined').
+mx(Doc, Default) ->
+    kz_json:get_json_value([<<"MX">>], Doc, Default).
 
--spec a_record(doc()) -> kz_term:api_object().
-a_record(Domains) ->
-    a_record(Domains, 'undefined').
-
--spec a_record(doc(), Default) -> kz_json:object() | Default.
-a_record(Domains, Default) ->
-    kz_json:get_json_value(?KEY_A_RECORD, Domains, Default).
-
--spec a_record_hosts(doc()) -> kz_term:ne_binaries().
-a_record_hosts(Domains) ->
-    kz_json:get_keys(?KEY_A_RECORD, Domains).
-
--spec a_record_host(doc(), kz_term:ne_binary()) -> kz_term:api_object().
-a_record_host(Domains, Host) ->
-    a_record_host(Domains, Host, 'undefined').
-
--spec a_record_host(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
-a_record_host(Domains, Host, Default) ->
-    kz_json:get_value([?KEY_A_RECORD, Host], Domains, Default).
-
--spec a_record_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
-a_record_host_mappings(Domains, Host) ->
-    a_record_host_mappings(Domains, Host, []).
-
--spec a_record_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
-a_record_host_mappings(Domains, Host, Default) ->
-    kz_json:get_value([?KEY_A_RECORD, Host, ?KEY_MAPPINGS], Domains, Default).
+-spec set_mx(doc(), kz_json:object()) -> doc().
+set_mx(Doc, Mx) ->
+    kz_json:set_value([<<"MX">>], Mx, Doc).
 
 -spec set_a_record(doc(), kz_json:object()) -> doc().
 set_a_record(Domains, A_RECORD) ->
@@ -110,174 +68,38 @@ add_a_record_host(Domains, Host, Settings) ->
     kz_json:set_value([?KEY_A_RECORD, Host], Settings, Domains).
 
 -spec naptr(doc()) -> kz_term:api_object().
-naptr(Domains) ->
-    naptr(Domains, 'undefined').
-
 -spec naptr(doc(), Default) -> kz_json:object() | Default.
-naptr(Domains, Default) ->
-    kz_json:get_json_value(?KEY_NAPTR, Domains, Default).
-
--spec naptr_hosts(doc()) -> kz_term:ne_binaries().
-naptr_hosts(Domains) ->
-    kz_json:get_keys(?KEY_NAPTR, Domains).
-
--spec naptr_host(doc(), kz_term:ne_binary()) -> kz_term:api_object().
-naptr_host(Domains, Host) ->
-    naptr_host(Domains, Host, 'undefined').
-
--spec naptr_host(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
-naptr_host(Domains, Host, Default) ->
-    kz_json:get_value([?KEY_NAPTR, Host], Domains, Default).
-
--spec naptr_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
-naptr_host_mappings(Domains, Host) ->
-    naptr_host_mappings(Domains, Host, []).
-
--spec naptr_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
-naptr_host_mappings(Domains, Host, Default) ->
-    kz_json:get_value([?KEY_NAPTR, Host, ?KEY_MAPPINGS], Domains, Default).
+naptr(Doc) ->
+    naptr(Doc, 'undefined').
+naptr(Doc, Default) ->
+    kz_json:get_json_value([<<"NAPTR">>], Doc, Default).
 
 -spec set_naptr(doc(), kz_json:object()) -> doc().
-set_naptr(Domains, NAPTR) ->
-    kz_json:set_value(?KEY_NAPTR, NAPTR, Domains).
+set_naptr(Doc, Naptr) ->
+    kz_json:set_value([<<"NAPTR">>], Naptr, Doc).
 
 -spec add_naptr_host(doc(), kz_term:ne_binary(), kz_json:object()) -> doc().
 add_naptr_host(Domains, Host, Settings) ->
     kz_json:set_value([?KEY_NAPTR, Host], Settings, Domains).
 
 -spec srv(doc()) -> kz_term:api_object().
-srv(Domains) ->
-    srv(Domains, 'undefined').
-
 -spec srv(doc(), Default) -> kz_json:object() | Default.
-srv(Domains, Default) ->
-    kz_json:get_json_value(?KEY_SRV, Domains, Default).
-
--spec srv_hosts(doc()) -> kz_term:ne_binaries().
-srv_hosts(Domains) ->
-    kz_json:get_keys(?KEY_SRV, Domains).
-
--spec srv_host(doc(), kz_term:ne_binary()) -> kz_term:api_object().
-srv_host(Domains, Host) ->
-    srv_host(Domains, Host, 'undefined').
-
--spec srv_host(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
-srv_host(Domains, Host, Default) ->
-    kz_json:get_value([?KEY_SRV, Host], Domains, Default).
-
--spec srv_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
-srv_host_mappings(Domains, Host) ->
-    srv_host_mappings(Domains, Host, []).
-
--spec srv_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
-srv_host_mappings(Domains, Host, Default) ->
-    kz_json:get_value([?KEY_SRV, Host, ?KEY_MAPPINGS], Domains, Default).
+srv(Doc) ->
+    srv(Doc, 'undefined').
+srv(Doc, Default) ->
+    kz_json:get_json_value([<<"SRV">>], Doc, Default).
 
 -spec set_srv(doc(), kz_json:object()) -> doc().
-set_srv(Domains, SRV) ->
-    kz_json:set_value(?KEY_SRV, SRV, Domains).
+set_srv(Doc, Srv) ->
+    kz_json:set_value([<<"SRV">>], Srv, Doc).
 
--spec add_srv_host(doc(), kz_term:ne_binary(), kz_json:object()) -> doc().
-add_srv_host(Domains, Host, Settings) ->
-    kz_json:set_value([?KEY_SRV, Host], Settings, Domains).
+-spec txt(doc()) -> api_object().
+-spec txt(doc(), Default) -> kz_json:object() | Default.
+txt(Doc) ->
+    txt(Doc, 'undefined').
+txt(Doc, Default) ->
+    kz_json:get_json_value([<<"TXT">>], Doc, Default).
 
--spec save(doc()) -> {'ok', doc()} |
-                     {'error', any()}.
-save(Domains) ->
-    save(Domains, 'undefined').
-
--spec save(doc(), kz_term:api_object()) -> {'ok', doc()} |
-                                           {'error', any()}.
-save(Domains, PvtFields) ->
-    case is_valid(Domains) of
-        'true' ->
-            try_save(Domains, PvtFields);
-        {'false', Errors} ->
-            {'error', Errors}
-    end.
-
--spec try_save(doc(), kz_term:api_object()) -> {'ok', doc()} |
-                                               {'error', any()}.
-try_save(Domains, PvtFields) ->
-    case kapps_config:update_default(<<"whitelabel">>
-                                    ,<<"domains">>
-                                    ,Domains
-                                    ,[{'pvt_fields', PvtFields}]
-                                    )
-    of
-        {'error', _E}=E -> E;
-        _ ->
-            {'ok', kapps_config:get_json(<<"whitelabel">>, <<"domains">>)}
-    end.
-
--spec is_valid(doc()) ->
-                      'true' | {'false', _}.
-is_valid(Domains) ->
-    is_valid(Domains, kz_json_schema:load(<<"domains">>)).
-
--spec is_valid(doc(), {'ok', kz_json:object()} | {'error', any()}) ->
-                      'true' | {'false', any()}.
-is_valid(_Domains, {'error', E}) ->
-    lager:warning("failed to find domains JSON schema"),
-    {'false', E};
-is_valid(Domains, {'ok', SchemaJObj}) ->
-    case kz_json_schema:validate(SchemaJObj
-                                ,Domains
-                                )
-    of
-        {'ok', _JObj} -> 'true';
-        {'error', Errors} ->
-            lager:debug("failed to validate the domains document"),
-            {'false', Errors}
-    end.
-
--spec format(doc(), kz_term:ne_binary()) -> doc().
-format(Domains, WhitelabelDomain) ->
-    kz_json:map(fun(DomainType, DomainConfig) ->
-                        format_domain_type(DomainType, DomainConfig, WhitelabelDomain)
-                end
-               ,Domains
-               ).
-
--spec format_domain_type(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
-                                {kz_term:ne_binary(), kz_json:object()}.
-format_domain_type(DomainType, DomainConfig, WhitelabelDomain) ->
-    {DomainType
-    ,kz_json:map(fun(Host, HostConfig) ->
-                         format_host_config(Host, HostConfig, WhitelabelDomain)
-                 end
-                ,DomainConfig
-                )
-    }.
-
--spec format_host_config(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
-                                {kz_term:ne_binary(), kz_json:object()}.
-format_host_config(Host, HostConfig, WhitelabelDomain) ->
-    {format_host(Host, WhitelabelDomain)
-    ,format_host_mappings(HostConfig, WhitelabelDomain)
-    }.
-
--spec format_host_mappings(kz_json:object(), kz_term:ne_binary()) ->
-                                  kz_json:object().
-format_host_mappings(HostConfig, WhitelabelDomain) ->
-    Mappings =
-        [format_mapping(Mapping, WhitelabelDomain)
-         || Mapping <- kz_json:get_value(?KEY_MAPPINGS, HostConfig, [])
-        ],
-    kz_json:set_value(?KEY_MAPPINGS, Mappings, HostConfig).
-
--spec format_host(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
-format_host(DomainHost, WhitelabelDomain) ->
-    binary:replace(DomainHost, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
-
--spec format_mapping(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
-format_mapping(Mapping, WhitelabelDomain) ->
-    binary:replace(Mapping, ?DOMAIN_PLACEHOLDER, WhitelabelDomain).
-
--spec mappings(kz_json:object()) -> kz_term:ne_binaries().
-mappings(JObj) ->
-    kz_json:get_value(?KEY_MAPPINGS, JObj).
-
--spec name(kz_json:object()) -> kz_term:api_binary().
-name(JObj) ->
-    kz_json:get_value(?KEY_NAME, JObj).
+-spec set_txt(doc(), kz_json:object()) -> doc().
+set_txt(Doc, Txt) ->
+    kz_json:set_value([<<"TXT">>], Txt, Doc).

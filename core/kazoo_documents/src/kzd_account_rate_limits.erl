@@ -19,19 +19,19 @@ new() ->
 account(Doc) ->
     account(Doc, 'undefined').
 account(Doc, Default) ->
-    kz_json:get_json_value(<<"account">>, Doc, Default).
+    kz_json:get_json_value([<<"account">>], Doc, Default).
 
 -spec set_account(doc(), kz_json:object()) -> doc().
 set_account(Doc, Account) ->
-    kz_json:set_value(<<"account">>, Account, Doc).
+    kz_json:set_value([<<"account">>], Account, Doc).
 
 -spec device(doc()) -> api_object().
 -spec device(doc(), Default) -> kz_json:object() | Default.
 device(Doc) ->
     device(Doc, 'undefined').
 device(Doc, Default) ->
-    kz_json:get_json_value(<<"device">>, Doc, Default).
+    kz_json:get_json_value([<<"device">>], Doc, Default).
 
 -spec set_device(doc(), kz_json:object()) -> doc().
 set_device(Doc, Device) ->
-    kz_json:set_value(<<"device">>, Device, Doc).
+    kz_json:set_value([<<"device">>], Device, Doc).

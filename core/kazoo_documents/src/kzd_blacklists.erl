@@ -20,30 +20,30 @@ new() ->
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"name">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
 -spec set_name(doc(), ne_binary()) -> doc().
 set_name(Doc, Name) ->
-    kz_json:set_value(<<"name">>, Name, Doc).
+    kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec numbers(doc()) -> kz_json:object().
 -spec numbers(doc(), Default) -> kz_json:object() | Default.
 numbers(Doc) ->
     numbers(Doc, kz_json:new()).
 numbers(Doc, Default) ->
-    kz_json:get_json_value(<<"numbers">>, Doc, Default).
+    kz_json:get_json_value([<<"numbers">>], Doc, Default).
 
 -spec set_numbers(doc(), kz_json:object()) -> doc().
 set_numbers(Doc, Numbers) ->
-    kz_json:set_value(<<"numbers">>, Numbers, Doc).
+    kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
 -spec should_block_anonymous(doc()) -> api_boolean().
 -spec should_block_anonymous(doc(), Default) -> boolean() | Default.
 should_block_anonymous(Doc) ->
     should_block_anonymous(Doc, 'undefined').
 should_block_anonymous(Doc, Default) ->
-    kz_json:get_boolean_value(<<"should_block_anonymous">>, Doc, Default).
+    kz_json:get_boolean_value([<<"should_block_anonymous">>], Doc, Default).
 
 -spec set_should_block_anonymous(doc(), boolean()) -> doc().
 set_should_block_anonymous(Doc, ShouldBlockAnonymous) ->
-    kz_json:set_value(<<"should_block_anonymous">>, ShouldBlockAnonymous, Doc).
+    kz_json:set_value([<<"should_block_anonymous">>], ShouldBlockAnonymous, Doc).

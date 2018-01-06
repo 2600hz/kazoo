@@ -12,10 +12,10 @@
 -export([e911_extended_address/1, e911_extended_address/2, set_e911_extended_address/2]).
 -export([e911_latitude/1, e911_latitude/2, set_e911_latitude/2]).
 -export([e911_legacy_data/1, e911_legacy_data/2, set_e911_legacy_data/2]).
--export([e911legacy_data_house_number/1, e911legacy_data_house_number/2, set_e911legacy_data_house_number/2]).
--export([e911legacy_data_predirectional/1, e911legacy_data_predirectional/2, set_e911legacy_data_predirectional/2]).
--export([e911legacy_data_streetname/1, e911legacy_data_streetname/2, set_e911legacy_data_streetname/2]).
--export([e911legacy_data_suite/1, e911legacy_data_suite/2, set_e911legacy_data_suite/2]).
+-export([e911_legacy_data_house_number/1, e911_legacy_data_house_number/2, set_e911_legacy_data_house_number/2]).
+-export([e911_legacy_data_predirectional/1, e911_legacy_data_predirectional/2, set_e911_legacy_data_predirectional/2]).
+-export([e911_legacy_data_streetname/1, e911_legacy_data_streetname/2, set_e911_legacy_data_streetname/2]).
+-export([e911_legacy_data_suite/1, e911_legacy_data_suite/2, set_e911_legacy_data_suite/2]).
 -export([e911_locality/1, e911_locality/2, set_e911_locality/2]).
 -export([e911_location_id/1, e911_location_id/2, set_e911_location_id/2]).
 -export([e911_longitude/1, e911_longitude/2, set_e911_longitude/2]).
@@ -54,22 +54,22 @@ new() ->
 carrier_name(Doc) ->
     carrier_name(Doc, 'undefined').
 carrier_name(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"carrier_name">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"carrier_name">>], Doc, Default).
 
 -spec set_carrier_name(doc(), ne_binary()) -> doc().
 set_carrier_name(Doc, CarrierName) ->
-    kz_json:set_value(<<"carrier_name">>, CarrierName, Doc).
+    kz_json:set_value([<<"carrier_name">>], CarrierName, Doc).
 
 -spec cnam(doc()) -> api_object().
 -spec cnam(doc(), Default) -> kz_json:object() | Default.
 cnam(Doc) ->
     cnam(Doc, 'undefined').
 cnam(Doc, Default) ->
-    kz_json:get_json_value(<<"cnam">>, Doc, Default).
+    kz_json:get_json_value([<<"cnam">>], Doc, Default).
 
 -spec set_cnam(doc(), kz_json:object()) -> doc().
 set_cnam(Doc, Cnam) ->
-    kz_json:set_value(<<"cnam">>, Cnam, Doc).
+    kz_json:set_value([<<"cnam">>], Cnam, Doc).
 
 -spec cnam_display_name(doc()) -> api_ne_binary().
 -spec cnam_display_name(doc(), Default) -> ne_binary() | Default.
@@ -98,22 +98,22 @@ set_cnam_inbound_lookup(Doc, CnamInboundLookup) ->
 create_with_state(Doc) ->
     create_with_state(Doc, 'undefined').
 create_with_state(Doc, Default) ->
-    kz_json:get_binary_value(<<"create_with_state">>, Doc, Default).
+    kz_json:get_binary_value([<<"create_with_state">>], Doc, Default).
 
 -spec set_create_with_state(doc(), binary()) -> doc().
 set_create_with_state(Doc, CreateWithState) ->
-    kz_json:set_value(<<"create_with_state">>, CreateWithState, Doc).
+    kz_json:set_value([<<"create_with_state">>], CreateWithState, Doc).
 
 -spec e911(doc()) -> api_object().
 -spec e911(doc(), Default) -> kz_json:object() | Default.
 e911(Doc) ->
     e911(Doc, 'undefined').
 e911(Doc, Default) ->
-    kz_json:get_json_value(<<"e911">>, Doc, Default).
+    kz_json:get_json_value([<<"e911">>], Doc, Default).
 
 -spec set_e911(doc(), kz_json:object()) -> doc().
 set_e911(Doc, E911) ->
-    kz_json:set_value(<<"e911">>, E911, Doc).
+    kz_json:set_value([<<"e911">>], E911, Doc).
 
 -spec e911_activated_time(doc()) -> api_binary().
 -spec e911_activated_time(doc(), Default) -> binary() | Default.
@@ -170,49 +170,49 @@ e911_legacy_data(Doc, Default) ->
 set_e911_legacy_data(Doc, E911LegacyData) ->
     kz_json:set_value([<<"e911">>, <<"legacy_data">>], E911LegacyData, Doc).
 
--spec e911legacy_data_house_number(doc()) -> api_binary().
--spec e911legacy_data_house_number(doc(), Default) -> binary() | Default.
-e911legacy_data_house_number(Doc) ->
-    e911legacy_data_house_number(Doc, 'undefined').
-e911legacy_data_house_number(Doc, Default) ->
-    kz_json:get_binary_value([[<<"e911">>, <<"legacy_data">>], <<"house_number">>], Doc, Default).
+-spec e911_legacy_data_house_number(doc()) -> api_binary().
+-spec e911_legacy_data_house_number(doc(), Default) -> binary() | Default.
+e911_legacy_data_house_number(Doc) ->
+    e911_legacy_data_house_number(Doc, 'undefined').
+e911_legacy_data_house_number(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"legacy_data">>, <<"house_number">>], Doc, Default).
 
--spec set_e911legacy_data_house_number(doc(), binary()) -> doc().
-set_e911legacy_data_house_number(Doc, E911legacyDataHouseNumber) ->
-    kz_json:set_value([[<<"e911">>, <<"legacy_data">>], <<"house_number">>], E911legacyDataHouseNumber, Doc).
+-spec set_e911_legacy_data_house_number(doc(), binary()) -> doc().
+set_e911_legacy_data_house_number(Doc, E911LegacyDataHouseNumber) ->
+    kz_json:set_value([<<"e911">>, <<"legacy_data">>, <<"house_number">>], E911LegacyDataHouseNumber, Doc).
 
--spec e911legacy_data_predirectional(doc()) -> api_binary().
--spec e911legacy_data_predirectional(doc(), Default) -> binary() | Default.
-e911legacy_data_predirectional(Doc) ->
-    e911legacy_data_predirectional(Doc, 'undefined').
-e911legacy_data_predirectional(Doc, Default) ->
-    kz_json:get_binary_value([[<<"e911">>, <<"legacy_data">>], <<"predirectional">>], Doc, Default).
+-spec e911_legacy_data_predirectional(doc()) -> api_binary().
+-spec e911_legacy_data_predirectional(doc(), Default) -> binary() | Default.
+e911_legacy_data_predirectional(Doc) ->
+    e911_legacy_data_predirectional(Doc, 'undefined').
+e911_legacy_data_predirectional(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"legacy_data">>, <<"predirectional">>], Doc, Default).
 
--spec set_e911legacy_data_predirectional(doc(), binary()) -> doc().
-set_e911legacy_data_predirectional(Doc, E911legacyDataPredirectional) ->
-    kz_json:set_value([[<<"e911">>, <<"legacy_data">>], <<"predirectional">>], E911legacyDataPredirectional, Doc).
+-spec set_e911_legacy_data_predirectional(doc(), binary()) -> doc().
+set_e911_legacy_data_predirectional(Doc, E911LegacyDataPredirectional) ->
+    kz_json:set_value([<<"e911">>, <<"legacy_data">>, <<"predirectional">>], E911LegacyDataPredirectional, Doc).
 
--spec e911legacy_data_streetname(doc()) -> api_binary().
--spec e911legacy_data_streetname(doc(), Default) -> binary() | Default.
-e911legacy_data_streetname(Doc) ->
-    e911legacy_data_streetname(Doc, 'undefined').
-e911legacy_data_streetname(Doc, Default) ->
-    kz_json:get_binary_value([[<<"e911">>, <<"legacy_data">>], <<"streetname">>], Doc, Default).
+-spec e911_legacy_data_streetname(doc()) -> api_binary().
+-spec e911_legacy_data_streetname(doc(), Default) -> binary() | Default.
+e911_legacy_data_streetname(Doc) ->
+    e911_legacy_data_streetname(Doc, 'undefined').
+e911_legacy_data_streetname(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"legacy_data">>, <<"streetname">>], Doc, Default).
 
--spec set_e911legacy_data_streetname(doc(), binary()) -> doc().
-set_e911legacy_data_streetname(Doc, E911legacyDataStreetname) ->
-    kz_json:set_value([[<<"e911">>, <<"legacy_data">>], <<"streetname">>], E911legacyDataStreetname, Doc).
+-spec set_e911_legacy_data_streetname(doc(), binary()) -> doc().
+set_e911_legacy_data_streetname(Doc, E911LegacyDataStreetname) ->
+    kz_json:set_value([<<"e911">>, <<"legacy_data">>, <<"streetname">>], E911LegacyDataStreetname, Doc).
 
--spec e911legacy_data_suite(doc()) -> api_binary().
--spec e911legacy_data_suite(doc(), Default) -> binary() | Default.
-e911legacy_data_suite(Doc) ->
-    e911legacy_data_suite(Doc, 'undefined').
-e911legacy_data_suite(Doc, Default) ->
-    kz_json:get_binary_value([[<<"e911">>, <<"legacy_data">>], <<"suite">>], Doc, Default).
+-spec e911_legacy_data_suite(doc()) -> api_binary().
+-spec e911_legacy_data_suite(doc(), Default) -> binary() | Default.
+e911_legacy_data_suite(Doc) ->
+    e911_legacy_data_suite(Doc, 'undefined').
+e911_legacy_data_suite(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"legacy_data">>, <<"suite">>], Doc, Default).
 
--spec set_e911legacy_data_suite(doc(), binary()) -> doc().
-set_e911legacy_data_suite(Doc, E911legacyDataSuite) ->
-    kz_json:set_value([[<<"e911">>, <<"legacy_data">>], <<"suite">>], E911legacyDataSuite, Doc).
+-spec set_e911_legacy_data_suite(doc(), binary()) -> doc().
+set_e911_legacy_data_suite(Doc, E911LegacyDataSuite) ->
+    kz_json:set_value([<<"e911">>, <<"legacy_data">>, <<"suite">>], E911LegacyDataSuite, Doc).
 
 -spec e911_locality(doc()) -> api_binary().
 -spec e911_locality(doc(), Default) -> binary() | Default.
@@ -307,11 +307,11 @@ set_e911_street_address(Doc, E911StreetAddress) ->
 porting(Doc) ->
     porting(Doc, 'undefined').
 porting(Doc, Default) ->
-    kz_json:get_json_value(<<"porting">>, Doc, Default).
+    kz_json:get_json_value([<<"porting">>], Doc, Default).
 
 -spec set_porting(doc(), kz_json:object()) -> doc().
 set_porting(Doc, Porting) ->
-    kz_json:set_value(<<"porting">>, Porting, Doc).
+    kz_json:set_value([<<"porting">>], Porting, Doc).
 
 -spec porting_billing_account_id(doc()) -> api_binary().
 -spec porting_billing_account_id(doc(), Default) -> binary() | Default.

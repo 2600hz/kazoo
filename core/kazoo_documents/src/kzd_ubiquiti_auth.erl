@@ -19,19 +19,19 @@ new() ->
 password(Doc) ->
     password(Doc, 'undefined').
 password(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"password">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"password">>], Doc, Default).
 
 -spec set_password(doc(), ne_binary()) -> doc().
 set_password(Doc, Password) ->
-    kz_json:set_value(<<"password">>, Password, Doc).
+    kz_json:set_value([<<"password">>], Password, Doc).
 
 -spec username(doc()) -> api_ne_binary().
 -spec username(doc(), Default) -> ne_binary() | Default.
 username(Doc) ->
     username(Doc, 'undefined').
 username(Doc, Default) ->
-    kz_json:get_ne_binary_value(<<"username">>, Doc, Default).
+    kz_json:get_ne_binary_value([<<"username">>], Doc, Default).
 
 -spec set_username(doc(), ne_binary()) -> doc().
 set_username(Doc, Username) ->
-    kz_json:set_value(<<"username">>, Username, Doc).
+    kz_json:set_value([<<"username">>], Username, Doc).

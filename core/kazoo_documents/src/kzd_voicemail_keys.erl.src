@@ -21,6 +21,7 @@
 -export([save/1, save/2, set_save/2]).
 -export([set_pin/1, set_pin/2, set_set_pin/2]).
 
+-compile({'no_auto_import', [exit/2]}).
 
 -include("kz_documents.hrl").
 

@@ -18,8 +18,8 @@ new() ->
 restrictions(Doc) ->
     restrictions(Doc, 'undefined').
 restrictions(Doc, Default) ->
-    kz_json:get_json_value(<<"restrictions">>, Doc, Default).
+    kz_json:get_json_value([<<"restrictions">>], Doc, Default).
 
 -spec set_restrictions(doc(), kz_json:object()) -> doc().
 set_restrictions(Doc, Restrictions) ->
-    kz_json:set_value(<<"restrictions">>, Restrictions, Doc).
+    kz_json:set_value([<<"restrictions">>], Restrictions, Doc).

@@ -25,22 +25,22 @@ new() ->
 audit(Doc) ->
     audit(Doc, 'undefined').
 audit(Doc, Default) ->
-    kz_json:get_json_value(<<"audit">>, Doc, Default).
+    kz_json:get_json_value([<<"audit">>], Doc, Default).
 
 -spec set_audit(doc(), kz_json:object()) -> doc().
 set_audit(Doc, Audit) ->
-    kz_json:set_value(<<"audit">>, Audit, Doc).
+    kz_json:set_value([<<"audit">>], Audit, Doc).
 
 -spec authenticating_user(doc()) -> api_object().
 -spec authenticating_user(doc(), Default) -> kz_json:object() | Default.
 authenticating_user(Doc) ->
     authenticating_user(Doc, 'undefined').
 authenticating_user(Doc, Default) ->
-    kz_json:get_json_value(<<"authenticating_user">>, Doc, Default).
+    kz_json:get_json_value([<<"authenticating_user">>], Doc, Default).
 
 -spec set_authenticating_user(doc(), kz_json:object()) -> doc().
 set_authenticating_user(Doc, AuthenticatingUser) ->
-    kz_json:set_value(<<"authenticating_user">>, AuthenticatingUser, Doc).
+    kz_json:set_value([<<"authenticating_user">>], AuthenticatingUser, Doc).
 
 -spec authenticating_user_account_id(doc()) -> api_binary().
 -spec authenticating_user_account_id(doc(), Default) -> binary() | Default.
@@ -102,8 +102,8 @@ set_authenticating_user_user_id(Doc, AuthenticatingUserUserId) ->
 tree(Doc) ->
     tree(Doc, 'undefined').
 tree(Doc, Default) ->
-    kz_json:get_list_value(<<"tree">>, Doc, Default).
+    kz_json:get_list_value([<<"tree">>], Doc, Default).
 
 -spec set_tree(doc(), ne_binaries()) -> doc().
 set_tree(Doc, Tree) ->
-    kz_json:set_value(<<"tree">>, Tree, Doc).
+    kz_json:set_value([<<"tree">>], Tree, Doc).
