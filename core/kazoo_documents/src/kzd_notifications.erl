@@ -92,7 +92,7 @@ set_from(Doc, From) ->
 -spec macros(doc()) -> kz_json:object().
 -spec macros(doc(), Default) -> kz_json:object() | Default.
 macros(Doc) ->
-    macros(Doc, {}).
+    macros(Doc, kz_json:new()).
 macros(Doc, Default) ->
     kz_json:get_json_value(<<"macros">>, Doc, Default).
 

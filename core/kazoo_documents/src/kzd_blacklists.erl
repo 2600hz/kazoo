@@ -29,7 +29,7 @@ set_name(Doc, Name) ->
 -spec numbers(doc()) -> kz_json:object().
 -spec numbers(doc(), Default) -> kz_json:object() | Default.
 numbers(Doc) ->
-    numbers(Doc, {}).
+    numbers(Doc, kz_json:new()).
 numbers(Doc, Default) ->
     kz_json:get_json_value(<<"numbers">>, Doc, Default).
 

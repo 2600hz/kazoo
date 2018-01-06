@@ -44,7 +44,7 @@ set_call_recording(Doc, CallRecording) ->
 -spec call_restriction(doc()) -> kz_json:object().
 -spec call_restriction(doc(), Default) -> kz_json:object() | Default.
 call_restriction(Doc) ->
-    call_restriction(Doc, {}).
+    call_restriction(Doc, kz_json:new()).
 call_restriction(Doc, Default) ->
     kz_json:get_json_value(<<"call_restriction">>, Doc, Default).
 
@@ -143,7 +143,7 @@ set_metaflows(Doc, Metaflows) ->
 -spec music_on_hold(doc()) -> kz_json:object().
 -spec music_on_hold(doc(), Default) -> kz_json:object() | Default.
 music_on_hold(Doc) ->
-    music_on_hold(Doc, {}).
+    music_on_hold(Doc, kz_json:new()).
 music_on_hold(Doc, Default) ->
     kz_json:get_json_value(<<"music_on_hold">>, Doc, Default).
 
@@ -176,7 +176,7 @@ set_org(Doc, Org) ->
 -spec preflow(doc()) -> kz_json:object().
 -spec preflow(doc(), Default) -> kz_json:object() | Default.
 preflow(Doc) ->
-    preflow(Doc, {}).
+    preflow(Doc, kz_json:new()).
 preflow(Doc, Default) ->
     kz_json:get_json_value(<<"preflow">>, Doc, Default).
 
@@ -198,7 +198,7 @@ set_realm(Doc, Realm) ->
 -spec ringtones(doc()) -> kz_json:object().
 -spec ringtones(doc(), Default) -> kz_json:object() | Default.
 ringtones(Doc) ->
-    ringtones(Doc, {}).
+    ringtones(Doc, kz_json:new()).
 ringtones(Doc, Default) ->
     kz_json:get_json_value(<<"ringtones">>, Doc, Default).
 
