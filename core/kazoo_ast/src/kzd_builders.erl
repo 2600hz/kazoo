@@ -5,6 +5,7 @@
         ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -spec build_accessors() -> 'ok'.
 build_accessors() ->
@@ -173,6 +174,8 @@ default_value(_Schema, "get_binary_value", Default) ->
     ["<<\"", Default, "\">>"];
 default_value(_Schema, "get_list_value", []) ->
     "\[\]";
+default_value(_Schema, _JSONGetterFun, ?EMPTY_JSON_OBJECT) ->
+    "kz_json:new()";
 default_value(_Schema, _JSONGetterFun, Default) ->
     kz_term:to_binary(Default).
 
