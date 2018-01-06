@@ -6,10 +6,12 @@
 -export([is_setup/1, is_setup/2, set_is_setup/2]).
 -export([mailbox/1, mailbox/2, set_mailbox/2]).
 -export([media/1, media/2, set_media/2]).
+-export([media_unavailable/1, media_unavailable/2, set_media_unavailable/2]).
 -export([media_extension/1, media_extension/2, set_media_extension/2]).
 -export([name/1, name/2, set_name/2]).
 -export([not_configurable/1, not_configurable/2, set_not_configurable/2]).
 -export([notify/1, notify/2, set_notify/2]).
+-export([notify_callback/1, notify_callback/2, set_notify_callback/2]).
 -export([notify_email_addresses/1, notify_email_addresses/2, set_notify_email_addresses/2]).
 -export([owner_id/1, owner_id/2, set_owner_id/2]).
 -export([pin/1, pin/2, set_pin/2]).
@@ -84,6 +86,17 @@ media(Doc, Default) ->
 set_media(Doc, Media) ->
     kz_json:set_value(<<"media">>, Media, Doc).
 
+-spec media_unavailable(doc()) -> api_ne_binary().
+-spec media_unavailable(doc(), Default) -> ne_binary() | Default.
+media_unavailable(Doc) ->
+    media_unavailable(Doc, 'undefined').
+media_unavailable(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"media">>, <<"unavailable">>], Doc, Default).
+
+-spec set_media_unavailable(doc(), ne_binary()) -> doc().
+set_media_unavailable(Doc, MediaUnavailable) ->
+    kz_json:set_value([<<"media">>, <<"unavailable">>], MediaUnavailable, Doc).
+
 -spec media_extension(doc()) -> binary().
 -spec media_extension(doc(), Default) -> binary() | Default.
 media_extension(Doc) ->
@@ -127,6 +140,17 @@ notify(Doc, Default) ->
 -spec set_notify(doc(), kz_json:object()) -> doc().
 set_notify(Doc, Notify) ->
     kz_json:set_value(<<"notify">>, Notify, Doc).
+
+-spec notify_callback(doc()) -> api_object().
+-spec notify_callback(doc(), Default) -> kz_json:object() | Default.
+notify_callback(Doc) ->
+    notify_callback(Doc, 'undefined').
+notify_callback(Doc, Default) ->
+    kz_json:get_json_value([<<"notify">>, <<"callback">>], Doc, Default).
+
+-spec set_notify_callback(doc(), kz_json:object()) -> doc().
+set_notify_callback(Doc, NotifyCallback) ->
+    kz_json:set_value([<<"notify">>, <<"callback">>], NotifyCallback, Doc).
 
 -spec notify_email_addresses(doc()) -> ne_binaries().
 -spec notify_email_addresses(doc(), Default) -> ne_binaries() | Default.

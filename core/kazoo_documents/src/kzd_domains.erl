@@ -8,69 +8,34 @@
 %%%-------------------------------------------------------------------
 -module(kzd_domains).
 
--export([new/0
-        ,default/0
-        ,save/1, save/2
+-export([new/0]).
+-export([a/1, a/2, set_a/2]).
+-export([cname/1, cname/2, set_cname/2]).
+-export([mx/1, mx/2, set_mx/2]).
+-export([naptr/1, naptr/2, set_naptr/2]).
+-export([srv/1, srv/2, set_srv/2]).
+-export([txt/1, txt/2, set_txt/2]).
 
-        ,cname/1, cname/2
-        ,cname_hosts/1, cname_host/2, cname_host/3
-        ,cname_host_mappings/2, cname_host_mappings/3
-        ,set_cname/2, add_cname_host/3
-
-        ,a_record/1, a_record/2
-        ,a_record_hosts/1, a_record_host/2, a_record_host/3
-        ,a_record_host_mappings/2, a_record_host_mappings/3
-        ,set_a_record/2, add_a_record_host/3
-
-        ,naptr/1, naptr/2
-        ,naptr_hosts/1, naptr_host/2, naptr_host/3
-        ,naptr_host_mappings/2, naptr_host_mappings/3
-        ,set_naptr/2, add_naptr_host/3
-
-        ,srv/1, srv/2
-        ,srv_hosts/1, srv_host/2, srv_host/3
-        ,srv_host_mappings/2, srv_host_mappings/3
-        ,set_srv/2, add_srv_host/3
-
-        ,format/2
-        ,format_host/2
-        ,format_mapping/2
-
-        ,mappings/1
-        ,name/1
-        ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
--define(KEY_CNAME, <<"CNAME">>).
--define(KEY_A_RECORD, <<"A">>).
--define(KEY_NAPTR, <<"NAPTR">>).
--define(KEY_SRV, <<"SRV">>).
--define(KEY_MX, <<"MX">>).
--define(KEY_TXT, <<"TXT">>).
-
--define(KEY_MAPPINGS, <<"mapping">>).
--define(KEY_NAME, <<"name">>).
-
--define(DOMAIN_PLACEHOLDER, <<"{{domain}}">>).
-
 -spec new() -> doc().
 new() ->
-    kz_json:from_list(
-      [{?KEY_CNAME, kz_json:new()}
-      ,{?KEY_A_RECORD, kz_json:new()}
-      ,{?KEY_NAPTR, kz_json:new()}
-      ,{?KEY_SRV, kz_json:new()}
-      ,{?KEY_MX, kz_json:new()}
-      ,{?KEY_TXT, kz_json:new()}
-      ]).
+    kz_json_schema:default_object(?MODULE_STRING).
 
--spec default() -> kz_json:object().
-default() ->
-    kz_json:load_fixture_from_file(?APP, "fixtures", "domains.json").
+-spec a(doc()) -> api_object().
+-spec a(doc(), Default) -> kz_json:object() | Default.
+a(Doc) ->
+    a(Doc, 'undefined').
+a(Doc, Default) ->
+    kz_json:get_json_value(<<"A">>, Doc, Default).
+
+-spec set_a(doc(), kz_json:object()) -> doc().
+set_a(Doc, A) ->
+    kz_json:set_value(<<"A">>, A, Doc).
 
 -spec cname(doc()) -> kz_term:api_object().
 cname(Domains) ->

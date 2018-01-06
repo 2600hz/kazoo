@@ -8,6 +8,10 @@
 -export([interdigit_timeout/1, interdigit_timeout/2, set_interdigit_timeout/2]).
 -export([max_extension_length/1, max_extension_length/2, set_max_extension_length/2]).
 -export([media/1, media/2, set_media/2]).
+-export([media_exit_media/1, media_exit_media/2, set_media_exit_media/2]).
+-export([media_greeting/1, media_greeting/2, set_media_greeting/2]).
+-export([media_invalid_media/1, media_invalid_media/2, set_media_invalid_media/2]).
+-export([media_transfer_media/1, media_transfer_media/2, set_media_transfer_media/2]).
 -export([name/1, name/2, set_name/2]).
 -export([record_pin/1, record_pin/2, set_record_pin/2]).
 -export([retries/1, retries/2, set_retries/2]).
@@ -99,6 +103,50 @@ media(Doc, Default) ->
 -spec set_media(doc(), kz_json:object()) -> doc().
 set_media(Doc, Media) ->
     kz_json:set_value(<<"media">>, Media, Doc).
+
+-spec media_exit_media(doc()) -> any().
+-spec media_exit_media(doc(), Default) -> any() | Default.
+media_exit_media(Doc) ->
+    media_exit_media(Doc, 'undefined').
+media_exit_media(Doc, Default) ->
+    kz_json:get_value([<<"media">>, <<"exit_media">>], Doc, Default).
+
+-spec set_media_exit_media(doc(), any()) -> doc().
+set_media_exit_media(Doc, MediaExitMedia) ->
+    kz_json:set_value([<<"media">>, <<"exit_media">>], MediaExitMedia, Doc).
+
+-spec media_greeting(doc()) -> api_ne_binary().
+-spec media_greeting(doc(), Default) -> ne_binary() | Default.
+media_greeting(Doc) ->
+    media_greeting(Doc, 'undefined').
+media_greeting(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"media">>, <<"greeting">>], Doc, Default).
+
+-spec set_media_greeting(doc(), ne_binary()) -> doc().
+set_media_greeting(Doc, MediaGreeting) ->
+    kz_json:set_value([<<"media">>, <<"greeting">>], MediaGreeting, Doc).
+
+-spec media_invalid_media(doc()) -> any().
+-spec media_invalid_media(doc(), Default) -> any() | Default.
+media_invalid_media(Doc) ->
+    media_invalid_media(Doc, 'undefined').
+media_invalid_media(Doc, Default) ->
+    kz_json:get_value([<<"media">>, <<"invalid_media">>], Doc, Default).
+
+-spec set_media_invalid_media(doc(), any()) -> doc().
+set_media_invalid_media(Doc, MediaInvalidMedia) ->
+    kz_json:set_value([<<"media">>, <<"invalid_media">>], MediaInvalidMedia, Doc).
+
+-spec media_transfer_media(doc()) -> any().
+-spec media_transfer_media(doc(), Default) -> any() | Default.
+media_transfer_media(Doc) ->
+    media_transfer_media(Doc, 'undefined').
+media_transfer_media(Doc, Default) ->
+    kz_json:get_value([<<"media">>, <<"transfer_media">>], Doc, Default).
+
+-spec set_media_transfer_media(doc(), any()) -> doc().
+set_media_transfer_media(Doc, MediaTransferMedia) ->
+    kz_json:set_value([<<"media">>, <<"transfer_media">>], MediaTransferMedia, Doc).
 
 -spec name(doc()) -> api_ne_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.

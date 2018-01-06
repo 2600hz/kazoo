@@ -3,6 +3,7 @@
 -export([new/0]).
 -export([endpoints/1, endpoints/2, set_endpoints/2]).
 -export([music_on_hold/1, music_on_hold/2, set_music_on_hold/2]).
+-export([music_on_hold_media_id/1, music_on_hold_media_id/2, set_music_on_hold_media_id/2]).
 -export([name/1, name/2, set_name/2]).
 
 
@@ -36,6 +37,17 @@ music_on_hold(Doc, Default) ->
 -spec set_music_on_hold(doc(), kz_json:object()) -> doc().
 set_music_on_hold(Doc, MusicOnHold) ->
     kz_json:set_value(<<"music_on_hold">>, MusicOnHold, Doc).
+
+-spec music_on_hold_media_id(doc()) -> api_binary().
+-spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
+music_on_hold_media_id(Doc) ->
+    music_on_hold_media_id(Doc, 'undefined').
+music_on_hold_media_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
+
+-spec set_music_on_hold_media_id(doc(), binary()) -> doc().
+set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
+    kz_json:set_value([<<"music_on_hold">>, <<"media_id">>], MusicOnHoldMediaId, Doc).
 
 -spec name(doc()) -> api_ne_binary().
 -spec name(doc(), Default) -> ne_binary() | Default.

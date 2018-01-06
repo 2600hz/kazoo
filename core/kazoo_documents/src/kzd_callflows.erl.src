@@ -2,6 +2,8 @@
 
 -export([new/0]).
 -export([featurecode/1, featurecode/2, set_featurecode/2]).
+-export([featurecode_name/1, featurecode_name/2, set_featurecode_name/2]).
+-export([featurecode_number/1, featurecode_number/2, set_featurecode_number/2]).
 -export([flow/1, flow/2, set_flow/2]).
 -export([metaflow/1, metaflow/2, set_metaflow/2]).
 -export([numbers/1, numbers/2, set_numbers/2]).
@@ -27,6 +29,28 @@ featurecode(Doc, Default) ->
 -spec set_featurecode(doc(), kz_json:object()) -> doc().
 set_featurecode(Doc, Featurecode) ->
     kz_json:set_value(<<"featurecode">>, Featurecode, Doc).
+
+-spec featurecode_name(doc()) -> api_ne_binary().
+-spec featurecode_name(doc(), Default) -> ne_binary() | Default.
+featurecode_name(Doc) ->
+    featurecode_name(Doc, 'undefined').
+featurecode_name(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"featurecode">>, <<"name">>], Doc, Default).
+
+-spec set_featurecode_name(doc(), ne_binary()) -> doc().
+set_featurecode_name(Doc, FeaturecodeName) ->
+    kz_json:set_value([<<"featurecode">>, <<"name">>], FeaturecodeName, Doc).
+
+-spec featurecode_number(doc()) -> api_ne_binary().
+-spec featurecode_number(doc(), Default) -> ne_binary() | Default.
+featurecode_number(Doc) ->
+    featurecode_number(Doc, 'undefined').
+featurecode_number(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"featurecode">>, <<"number">>], Doc, Default).
+
+-spec set_featurecode_number(doc(), ne_binary()) -> doc().
+set_featurecode_number(Doc, FeaturecodeNumber) ->
+    kz_json:set_value([<<"featurecode">>, <<"number">>], FeaturecodeNumber, Doc).
 
 -spec flow(doc()) -> api_object().
 -spec flow(doc(), Default) -> kz_json:object() | Default.

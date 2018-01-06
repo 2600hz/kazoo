@@ -2,8 +2,12 @@
 
 -export([new/0]).
 -export([bcc/1, bcc/2, set_bcc/2]).
+-export([bcc_email_addresses/1, bcc_email_addresses/2, set_bcc_email_addresses/2]).
+-export([bcc_type/1, bcc_type/2, set_bcc_type/2]).
 -export([category/1, category/2, set_category/2]).
 -export([cc/1, cc/2, set_cc/2]).
+-export([cc_email_addresses/1, cc_email_addresses/2, set_cc_email_addresses/2]).
+-export([cc_type/1, cc_type/2, set_cc_type/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([friendly_name/1, friendly_name/2, set_friendly_name/2]).
 -export([from/1, from/2, set_from/2]).
@@ -12,6 +16,8 @@
 -export([subject/1, subject/2, set_subject/2]).
 -export([template_charset/1, template_charset/2, set_template_charset/2]).
 -export([to/1, to/2, set_to/2]).
+-export([to_email_addresses/1, to_email_addresses/2, set_to_email_addresses/2]).
+-export([to_type/1, to_type/2, set_to_type/2]).
 
 
 -include("kz_documents.hrl").
@@ -34,6 +40,28 @@ bcc(Doc, Default) ->
 set_bcc(Doc, Bcc) ->
     kz_json:set_value(<<"bcc">>, Bcc, Doc).
 
+-spec bcc_email_addresses(doc()) -> api_ne_binaries().
+-spec bcc_email_addresses(doc(), Default) -> ne_binaries() | Default.
+bcc_email_addresses(Doc) ->
+    bcc_email_addresses(Doc, 'undefined').
+bcc_email_addresses(Doc, Default) ->
+    kz_json:get_list_value([<<"bcc">>, <<"email_addresses">>], Doc, Default).
+
+-spec set_bcc_email_addresses(doc(), ne_binaries()) -> doc().
+set_bcc_email_addresses(Doc, BccEmailAddresses) ->
+    kz_json:set_value([<<"bcc">>, <<"email_addresses">>], BccEmailAddresses, Doc).
+
+-spec bcc_type(doc()) -> api_ne_binary().
+-spec bcc_type(doc(), Default) -> ne_binary() | Default.
+bcc_type(Doc) ->
+    bcc_type(Doc, 'undefined').
+bcc_type(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"bcc">>, <<"type">>], Doc, Default).
+
+-spec set_bcc_type(doc(), ne_binary()) -> doc().
+set_bcc_type(Doc, BccType) ->
+    kz_json:set_value([<<"bcc">>, <<"type">>], BccType, Doc).
+
 -spec category(doc()) -> api_ne_binary().
 -spec category(doc(), Default) -> ne_binary() | Default.
 category(Doc) ->
@@ -55,6 +83,28 @@ cc(Doc, Default) ->
 -spec set_cc(doc(), kz_json:object()) -> doc().
 set_cc(Doc, Cc) ->
     kz_json:set_value(<<"cc">>, Cc, Doc).
+
+-spec cc_email_addresses(doc()) -> api_ne_binaries().
+-spec cc_email_addresses(doc(), Default) -> ne_binaries() | Default.
+cc_email_addresses(Doc) ->
+    cc_email_addresses(Doc, 'undefined').
+cc_email_addresses(Doc, Default) ->
+    kz_json:get_list_value([<<"cc">>, <<"email_addresses">>], Doc, Default).
+
+-spec set_cc_email_addresses(doc(), ne_binaries()) -> doc().
+set_cc_email_addresses(Doc, CcEmailAddresses) ->
+    kz_json:set_value([<<"cc">>, <<"email_addresses">>], CcEmailAddresses, Doc).
+
+-spec cc_type(doc()) -> api_binary().
+-spec cc_type(doc(), Default) -> binary() | Default.
+cc_type(Doc) ->
+    cc_type(Doc, 'undefined').
+cc_type(Doc, Default) ->
+    kz_json:get_binary_value([<<"cc">>, <<"type">>], Doc, Default).
+
+-spec set_cc_type(doc(), binary()) -> doc().
+set_cc_type(Doc, CcType) ->
+    kz_json:set_value([<<"cc">>, <<"type">>], CcType, Doc).
 
 -spec enabled(doc()) -> boolean().
 -spec enabled(doc(), Default) -> boolean() | Default.
@@ -143,3 +193,25 @@ to(Doc, Default) ->
 -spec set_to(doc(), kz_json:object()) -> doc().
 set_to(Doc, To) ->
     kz_json:set_value(<<"to">>, To, Doc).
+
+-spec to_email_addresses(doc()) -> api_ne_binaries().
+-spec to_email_addresses(doc(), Default) -> ne_binaries() | Default.
+to_email_addresses(Doc) ->
+    to_email_addresses(Doc, 'undefined').
+to_email_addresses(Doc, Default) ->
+    kz_json:get_list_value([<<"to">>, <<"email_addresses">>], Doc, Default).
+
+-spec set_to_email_addresses(doc(), ne_binaries()) -> doc().
+set_to_email_addresses(Doc, ToEmailAddresses) ->
+    kz_json:set_value([<<"to">>, <<"email_addresses">>], ToEmailAddresses, Doc).
+
+-spec to_type(doc()) -> api_ne_binary().
+-spec to_type(doc(), Default) -> ne_binary() | Default.
+to_type(Doc) ->
+    to_type(Doc, 'undefined').
+to_type(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"to">>, <<"type">>], Doc, Default).
+
+-spec set_to_type(doc(), ne_binary()) -> doc().
+set_to_type(Doc, ToType) ->
+    kz_json:set_value([<<"to">>, <<"type">>], ToType, Doc).

@@ -5,6 +5,14 @@
 -export([agent_wrapup_time/1, agent_wrapup_time/2, set_agent_wrapup_time/2]).
 -export([announce/1, announce/2, set_announce/2]).
 -export([announcements/1, announcements/2, set_announcements/2]).
+-export([announcements_interval/1, announcements_interval/2, set_announcements_interval/2]).
+-export([announcements_media/1, announcements_media/2, set_announcements_media/2]).
+-export([announcementsmedia_in_the_queue/1, announcementsmedia_in_the_queue/2, set_announcementsmedia_in_the_queue/2]).
+-export([announcementsmedia_increase_in_call_volume/1, announcementsmedia_increase_in_call_volume/2, set_announcementsmedia_increase_in_call_volume/2]).
+-export([announcementsmedia_the_estimated_wait_time_is/1, announcementsmedia_the_estimated_wait_time_is/2, set_announcementsmedia_the_estimated_wait_time_is/2]).
+-export([announcementsmedia_you_are_at_position/1, announcementsmedia_you_are_at_position/2, set_announcementsmedia_you_are_at_position/2]).
+-export([announcements_position_announcements_enabled/1, announcements_position_announcements_enabled/2, set_announcements_position_announcements_enabled/2]).
+-export([announcements_wait_time_announcements_enabled/1, announcements_wait_time_announcements_enabled/2, set_announcements_wait_time_announcements_enabled/2]).
 -export([caller_exit_key/1, caller_exit_key/2, set_caller_exit_key/2]).
 -export([cdr_url/1, cdr_url/2, set_cdr_url/2]).
 -export([connection_timeout/1, connection_timeout/2, set_connection_timeout/2]).
@@ -71,6 +79,94 @@ announcements(Doc, Default) ->
 -spec set_announcements(doc(), kz_json:object()) -> doc().
 set_announcements(Doc, Announcements) ->
     kz_json:set_value(<<"announcements">>, Announcements, Doc).
+
+-spec announcements_interval(doc()) -> integer().
+-spec announcements_interval(doc(), Default) -> integer() | Default.
+announcements_interval(Doc) ->
+    announcements_interval(Doc, 30).
+announcements_interval(Doc, Default) ->
+    kz_json:get_integer_value([<<"announcements">>, <<"interval">>], Doc, Default).
+
+-spec set_announcements_interval(doc(), integer()) -> doc().
+set_announcements_interval(Doc, AnnouncementsInterval) ->
+    kz_json:set_value([<<"announcements">>, <<"interval">>], AnnouncementsInterval, Doc).
+
+-spec announcements_media(doc()) -> api_object().
+-spec announcements_media(doc(), Default) -> kz_json:object() | Default.
+announcements_media(Doc) ->
+    announcements_media(Doc, 'undefined').
+announcements_media(Doc, Default) ->
+    kz_json:get_json_value([<<"announcements">>, <<"media">>], Doc, Default).
+
+-spec set_announcements_media(doc(), kz_json:object()) -> doc().
+set_announcements_media(Doc, AnnouncementsMedia) ->
+    kz_json:set_value([<<"announcements">>, <<"media">>], AnnouncementsMedia, Doc).
+
+-spec announcementsmedia_in_the_queue(doc()) -> api_binary().
+-spec announcementsmedia_in_the_queue(doc(), Default) -> binary() | Default.
+announcementsmedia_in_the_queue(Doc) ->
+    announcementsmedia_in_the_queue(Doc, 'undefined').
+announcementsmedia_in_the_queue(Doc, Default) ->
+    kz_json:get_binary_value([[<<"announcements">>, <<"media">>], <<"in_the_queue">>], Doc, Default).
+
+-spec set_announcementsmedia_in_the_queue(doc(), binary()) -> doc().
+set_announcementsmedia_in_the_queue(Doc, AnnouncementsmediaInTheQueue) ->
+    kz_json:set_value([[<<"announcements">>, <<"media">>], <<"in_the_queue">>], AnnouncementsmediaInTheQueue, Doc).
+
+-spec announcementsmedia_increase_in_call_volume(doc()) -> api_binary().
+-spec announcementsmedia_increase_in_call_volume(doc(), Default) -> binary() | Default.
+announcementsmedia_increase_in_call_volume(Doc) ->
+    announcementsmedia_increase_in_call_volume(Doc, 'undefined').
+announcementsmedia_increase_in_call_volume(Doc, Default) ->
+    kz_json:get_binary_value([[<<"announcements">>, <<"media">>], <<"increase_in_call_volume">>], Doc, Default).
+
+-spec set_announcementsmedia_increase_in_call_volume(doc(), binary()) -> doc().
+set_announcementsmedia_increase_in_call_volume(Doc, AnnouncementsmediaIncreaseInCallVolume) ->
+    kz_json:set_value([[<<"announcements">>, <<"media">>], <<"increase_in_call_volume">>], AnnouncementsmediaIncreaseInCallVolume, Doc).
+
+-spec announcementsmedia_the_estimated_wait_time_is(doc()) -> api_binary().
+-spec announcementsmedia_the_estimated_wait_time_is(doc(), Default) -> binary() | Default.
+announcementsmedia_the_estimated_wait_time_is(Doc) ->
+    announcementsmedia_the_estimated_wait_time_is(Doc, 'undefined').
+announcementsmedia_the_estimated_wait_time_is(Doc, Default) ->
+    kz_json:get_binary_value([[<<"announcements">>, <<"media">>], <<"the_estimated_wait_time_is">>], Doc, Default).
+
+-spec set_announcementsmedia_the_estimated_wait_time_is(doc(), binary()) -> doc().
+set_announcementsmedia_the_estimated_wait_time_is(Doc, AnnouncementsmediaTheEstimatedWaitTimeIs) ->
+    kz_json:set_value([[<<"announcements">>, <<"media">>], <<"the_estimated_wait_time_is">>], AnnouncementsmediaTheEstimatedWaitTimeIs, Doc).
+
+-spec announcementsmedia_you_are_at_position(doc()) -> api_binary().
+-spec announcementsmedia_you_are_at_position(doc(), Default) -> binary() | Default.
+announcementsmedia_you_are_at_position(Doc) ->
+    announcementsmedia_you_are_at_position(Doc, 'undefined').
+announcementsmedia_you_are_at_position(Doc, Default) ->
+    kz_json:get_binary_value([[<<"announcements">>, <<"media">>], <<"you_are_at_position">>], Doc, Default).
+
+-spec set_announcementsmedia_you_are_at_position(doc(), binary()) -> doc().
+set_announcementsmedia_you_are_at_position(Doc, AnnouncementsmediaYouAreAtPosition) ->
+    kz_json:set_value([[<<"announcements">>, <<"media">>], <<"you_are_at_position">>], AnnouncementsmediaYouAreAtPosition, Doc).
+
+-spec announcements_position_announcements_enabled(doc()) -> api_boolean().
+-spec announcements_position_announcements_enabled(doc(), Default) -> boolean() | Default.
+announcements_position_announcements_enabled(Doc) ->
+    announcements_position_announcements_enabled(Doc, 'undefined').
+announcements_position_announcements_enabled(Doc, Default) ->
+    kz_json:get_boolean_value([<<"announcements">>, <<"position_announcements_enabled">>], Doc, Default).
+
+-spec set_announcements_position_announcements_enabled(doc(), boolean()) -> doc().
+set_announcements_position_announcements_enabled(Doc, AnnouncementsPositionAnnouncementsEnabled) ->
+    kz_json:set_value([<<"announcements">>, <<"position_announcements_enabled">>], AnnouncementsPositionAnnouncementsEnabled, Doc).
+
+-spec announcements_wait_time_announcements_enabled(doc()) -> api_boolean().
+-spec announcements_wait_time_announcements_enabled(doc(), Default) -> boolean() | Default.
+announcements_wait_time_announcements_enabled(Doc) ->
+    announcements_wait_time_announcements_enabled(Doc, 'undefined').
+announcements_wait_time_announcements_enabled(Doc, Default) ->
+    kz_json:get_boolean_value([<<"announcements">>, <<"wait_time_announcements_enabled">>], Doc, Default).
+
+-spec set_announcements_wait_time_announcements_enabled(doc(), boolean()) -> doc().
+set_announcements_wait_time_announcements_enabled(Doc, AnnouncementsWaitTimeAnnouncementsEnabled) ->
+    kz_json:set_value([<<"announcements">>, <<"wait_time_announcements_enabled">>], AnnouncementsWaitTimeAnnouncementsEnabled, Doc).
 
 -spec caller_exit_key(doc()) -> binary().
 -spec caller_exit_key(doc(), Default) -> binary() | Default.

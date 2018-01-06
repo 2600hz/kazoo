@@ -9,8 +9,15 @@
 -export([hide_registration/1, hide_registration/2, set_hide_registration/2]).
 -export([inbound_trunks_price/1, inbound_trunks_price/2, set_inbound_trunks_price/2]).
 -export([nav/1, nav/2, set_nav/2]).
+-export([nav_help/1, nav_help/2, set_nav_help/2]).
+-export([nav_learn_more/1, nav_learn_more/2, set_nav_learn_more/2]).
 -export([outbound_trunks_price/1, outbound_trunks_price/2, set_outbound_trunks_price/2]).
 -export([port/1, port/2, set_port/2]).
+-export([port_features/1, port_features/2, set_port_features/2]).
+-export([port_loa/1, port_loa/2, set_port_loa/2]).
+-export([port_resporg/1, port_resporg/2, set_port_resporg/2]).
+-export([port_support_email/1, port_support_email/2, set_port_support_email/2]).
+-export([port_terms/1, port_terms/2, set_port_terms/2]).
 -export([twoway_trunks_price/1, twoway_trunks_price/2, set_twoway_trunks_price/2]).
 
 
@@ -111,6 +118,28 @@ nav(Doc, Default) ->
 set_nav(Doc, Nav) ->
     kz_json:set_value(<<"nav">>, Nav, Doc).
 
+-spec nav_help(doc()) -> api_binary().
+-spec nav_help(doc(), Default) -> binary() | Default.
+nav_help(Doc) ->
+    nav_help(Doc, 'undefined').
+nav_help(Doc, Default) ->
+    kz_json:get_binary_value([<<"nav">>, <<"help">>], Doc, Default).
+
+-spec set_nav_help(doc(), binary()) -> doc().
+set_nav_help(Doc, NavHelp) ->
+    kz_json:set_value([<<"nav">>, <<"help">>], NavHelp, Doc).
+
+-spec nav_learn_more(doc()) -> api_binary().
+-spec nav_learn_more(doc(), Default) -> binary() | Default.
+nav_learn_more(Doc) ->
+    nav_learn_more(Doc, 'undefined').
+nav_learn_more(Doc, Default) ->
+    kz_json:get_binary_value([<<"nav">>, <<"learn_more">>], Doc, Default).
+
+-spec set_nav_learn_more(doc(), binary()) -> doc().
+set_nav_learn_more(Doc, NavLearnMore) ->
+    kz_json:set_value([<<"nav">>, <<"learn_more">>], NavLearnMore, Doc).
+
 -spec outbound_trunks_price(doc()) -> api_binary().
 -spec outbound_trunks_price(doc(), Default) -> binary() | Default.
 outbound_trunks_price(Doc) ->
@@ -132,6 +161,61 @@ port(Doc, Default) ->
 -spec set_port(doc(), kz_json:object()) -> doc().
 set_port(Doc, Port) ->
     kz_json:set_value(<<"port">>, Port, Doc).
+
+-spec port_features(doc()) -> api_binary().
+-spec port_features(doc(), Default) -> binary() | Default.
+port_features(Doc) ->
+    port_features(Doc, 'undefined').
+port_features(Doc, Default) ->
+    kz_json:get_binary_value([<<"port">>, <<"features">>], Doc, Default).
+
+-spec set_port_features(doc(), binary()) -> doc().
+set_port_features(Doc, PortFeatures) ->
+    kz_json:set_value([<<"port">>, <<"features">>], PortFeatures, Doc).
+
+-spec port_loa(doc()) -> api_binary().
+-spec port_loa(doc(), Default) -> binary() | Default.
+port_loa(Doc) ->
+    port_loa(Doc, 'undefined').
+port_loa(Doc, Default) ->
+    kz_json:get_binary_value([<<"port">>, <<"loa">>], Doc, Default).
+
+-spec set_port_loa(doc(), binary()) -> doc().
+set_port_loa(Doc, PortLoa) ->
+    kz_json:set_value([<<"port">>, <<"loa">>], PortLoa, Doc).
+
+-spec port_resporg(doc()) -> api_binary().
+-spec port_resporg(doc(), Default) -> binary() | Default.
+port_resporg(Doc) ->
+    port_resporg(Doc, 'undefined').
+port_resporg(Doc, Default) ->
+    kz_json:get_binary_value([<<"port">>, <<"resporg">>], Doc, Default).
+
+-spec set_port_resporg(doc(), binary()) -> doc().
+set_port_resporg(Doc, PortResporg) ->
+    kz_json:set_value([<<"port">>, <<"resporg">>], PortResporg, Doc).
+
+-spec port_support_email(doc()) -> api_binary().
+-spec port_support_email(doc(), Default) -> binary() | Default.
+port_support_email(Doc) ->
+    port_support_email(Doc, 'undefined').
+port_support_email(Doc, Default) ->
+    kz_json:get_binary_value([<<"port">>, <<"support_email">>], Doc, Default).
+
+-spec set_port_support_email(doc(), binary()) -> doc().
+set_port_support_email(Doc, PortSupportEmail) ->
+    kz_json:set_value([<<"port">>, <<"support_email">>], PortSupportEmail, Doc).
+
+-spec port_terms(doc()) -> api_binary().
+-spec port_terms(doc(), Default) -> binary() | Default.
+port_terms(Doc) ->
+    port_terms(Doc, 'undefined').
+port_terms(Doc, Default) ->
+    kz_json:get_binary_value([<<"port">>, <<"terms">>], Doc, Default).
+
+-spec set_port_terms(doc(), binary()) -> doc().
+set_port_terms(Doc, PortTerms) ->
+    kz_json:set_value([<<"port">>, <<"terms">>], PortTerms, Doc).
 
 -spec twoway_trunks_price(doc()) -> api_binary().
 -spec twoway_trunks_price(doc(), Default) -> binary() | Default.

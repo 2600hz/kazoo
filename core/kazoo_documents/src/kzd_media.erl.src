@@ -12,6 +12,8 @@
 -export([source_type/1, source_type/2, set_source_type/2]).
 -export([streamable/1, streamable/2, set_streamable/2]).
 -export([tts/1, tts/2, set_tts/2]).
+-export([tts_text/1, tts_text/2, set_tts_text/2]).
+-export([tts_voice/1, tts_voice/2, set_tts_voice/2]).
 
 
 -include("kz_documents.hrl").
@@ -143,3 +145,25 @@ tts(Doc, Default) ->
 -spec set_tts(doc(), kz_json:object()) -> doc().
 set_tts(Doc, Tts) ->
     kz_json:set_value(<<"tts">>, Tts, Doc).
+
+-spec tts_text(doc()) -> api_ne_binary().
+-spec tts_text(doc(), Default) -> ne_binary() | Default.
+tts_text(Doc) ->
+    tts_text(Doc, 'undefined').
+tts_text(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"tts">>, <<"text">>], Doc, Default).
+
+-spec set_tts_text(doc(), ne_binary()) -> doc().
+set_tts_text(Doc, TtsText) ->
+    kz_json:set_value([<<"tts">>, <<"text">>], TtsText, Doc).
+
+-spec tts_voice(doc()) -> binary().
+-spec tts_voice(doc(), Default) -> binary() | Default.
+tts_voice(Doc) ->
+    tts_voice(Doc, <<"female/en-US">>).
+tts_voice(Doc, Default) ->
+    kz_json:get_binary_value([<<"tts">>, <<"voice">>], Doc, Default).
+
+-spec set_tts_voice(doc(), binary()) -> doc().
+set_tts_voice(Doc, TtsVoice) ->
+    kz_json:set_value([<<"tts">>, <<"voice">>], TtsVoice, Doc).

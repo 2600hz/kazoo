@@ -3,9 +3,41 @@
 -export([new/0]).
 -export([carrier_name/1, carrier_name/2, set_carrier_name/2]).
 -export([cnam/1, cnam/2, set_cnam/2]).
+-export([cnam_display_name/1, cnam_display_name/2, set_cnam_display_name/2]).
+-export([cnam_inbound_lookup/1, cnam_inbound_lookup/2, set_cnam_inbound_lookup/2]).
 -export([create_with_state/1, create_with_state/2, set_create_with_state/2]).
 -export([e911/1, e911/2, set_e911/2]).
+-export([e911_activated_time/1, e911_activated_time/2, set_e911_activated_time/2]).
+-export([e911_caller_name/1, e911_caller_name/2, set_e911_caller_name/2]).
+-export([e911_extended_address/1, e911_extended_address/2, set_e911_extended_address/2]).
+-export([e911_latitude/1, e911_latitude/2, set_e911_latitude/2]).
+-export([e911_legacy_data/1, e911_legacy_data/2, set_e911_legacy_data/2]).
+-export([e911legacy_data_house_number/1, e911legacy_data_house_number/2, set_e911legacy_data_house_number/2]).
+-export([e911legacy_data_predirectional/1, e911legacy_data_predirectional/2, set_e911legacy_data_predirectional/2]).
+-export([e911legacy_data_streetname/1, e911legacy_data_streetname/2, set_e911legacy_data_streetname/2]).
+-export([e911legacy_data_suite/1, e911legacy_data_suite/2, set_e911legacy_data_suite/2]).
+-export([e911_locality/1, e911_locality/2, set_e911_locality/2]).
+-export([e911_location_id/1, e911_location_id/2, set_e911_location_id/2]).
+-export([e911_longitude/1, e911_longitude/2, set_e911_longitude/2]).
+-export([e911_plus_four/1, e911_plus_four/2, set_e911_plus_four/2]).
+-export([e911_postal_code/1, e911_postal_code/2, set_e911_postal_code/2]).
+-export([e911_region/1, e911_region/2, set_e911_region/2]).
+-export([e911_status/1, e911_status/2, set_e911_status/2]).
+-export([e911_street_address/1, e911_street_address/2, set_e911_street_address/2]).
 -export([porting/1, porting/2, set_porting/2]).
+-export([porting_billing_account_id/1, porting_billing_account_id/2, set_porting_billing_account_id/2]).
+-export([porting_billing_extended_address/1, porting_billing_extended_address/2, set_porting_billing_extended_address/2]).
+-export([porting_billing_locality/1, porting_billing_locality/2, set_porting_billing_locality/2]).
+-export([porting_billing_name/1, porting_billing_name/2, set_porting_billing_name/2]).
+-export([porting_billing_postal_code/1, porting_billing_postal_code/2, set_porting_billing_postal_code/2]).
+-export([porting_billing_region/1, porting_billing_region/2, set_porting_billing_region/2]).
+-export([porting_billing_street_address/1, porting_billing_street_address/2, set_porting_billing_street_address/2]).
+-export([porting_billing_telephone_number/1, porting_billing_telephone_number/2, set_porting_billing_telephone_number/2]).
+-export([porting_comments/1, porting_comments/2, set_porting_comments/2]).
+-export([porting_customer_contact/1, porting_customer_contact/2, set_porting_customer_contact/2]).
+-export([porting_port_id/1, porting_port_id/2, set_porting_port_id/2]).
+-export([porting_requested_port_date/1, porting_requested_port_date/2, set_porting_requested_port_date/2]).
+-export([porting_service_provider/1, porting_service_provider/2, set_porting_service_provider/2]).
 
 
 -include("kz_documents.hrl").
@@ -39,6 +71,28 @@ cnam(Doc, Default) ->
 set_cnam(Doc, Cnam) ->
     kz_json:set_value(<<"cnam">>, Cnam, Doc).
 
+-spec cnam_display_name(doc()) -> api_ne_binary().
+-spec cnam_display_name(doc(), Default) -> ne_binary() | Default.
+cnam_display_name(Doc) ->
+    cnam_display_name(Doc, 'undefined').
+cnam_display_name(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"cnam">>, <<"display_name">>], Doc, Default).
+
+-spec set_cnam_display_name(doc(), ne_binary()) -> doc().
+set_cnam_display_name(Doc, CnamDisplayName) ->
+    kz_json:set_value([<<"cnam">>, <<"display_name">>], CnamDisplayName, Doc).
+
+-spec cnam_inbound_lookup(doc()) -> api_boolean().
+-spec cnam_inbound_lookup(doc(), Default) -> boolean() | Default.
+cnam_inbound_lookup(Doc) ->
+    cnam_inbound_lookup(Doc, 'undefined').
+cnam_inbound_lookup(Doc, Default) ->
+    kz_json:get_boolean_value([<<"cnam">>, <<"inbound_lookup">>], Doc, Default).
+
+-spec set_cnam_inbound_lookup(doc(), boolean()) -> doc().
+set_cnam_inbound_lookup(Doc, CnamInboundLookup) ->
+    kz_json:set_value([<<"cnam">>, <<"inbound_lookup">>], CnamInboundLookup, Doc).
+
 -spec create_with_state(doc()) -> api_binary().
 -spec create_with_state(doc(), Default) -> binary() | Default.
 create_with_state(Doc) ->
@@ -61,6 +115,193 @@ e911(Doc, Default) ->
 set_e911(Doc, E911) ->
     kz_json:set_value(<<"e911">>, E911, Doc).
 
+-spec e911_activated_time(doc()) -> api_binary().
+-spec e911_activated_time(doc(), Default) -> binary() | Default.
+e911_activated_time(Doc) ->
+    e911_activated_time(Doc, 'undefined').
+e911_activated_time(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"activated_time">>], Doc, Default).
+
+-spec set_e911_activated_time(doc(), binary()) -> doc().
+set_e911_activated_time(Doc, E911ActivatedTime) ->
+    kz_json:set_value([<<"e911">>, <<"activated_time">>], E911ActivatedTime, Doc).
+
+-spec e911_caller_name(doc()) -> api_ne_binary().
+-spec e911_caller_name(doc(), Default) -> ne_binary() | Default.
+e911_caller_name(Doc) ->
+    e911_caller_name(Doc, 'undefined').
+e911_caller_name(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"e911">>, <<"caller_name">>], Doc, Default).
+
+-spec set_e911_caller_name(doc(), ne_binary()) -> doc().
+set_e911_caller_name(Doc, E911CallerName) ->
+    kz_json:set_value([<<"e911">>, <<"caller_name">>], E911CallerName, Doc).
+
+-spec e911_extended_address(doc()) -> api_binary().
+-spec e911_extended_address(doc(), Default) -> binary() | Default.
+e911_extended_address(Doc) ->
+    e911_extended_address(Doc, 'undefined').
+e911_extended_address(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"extended_address">>], Doc, Default).
+
+-spec set_e911_extended_address(doc(), binary()) -> doc().
+set_e911_extended_address(Doc, E911ExtendedAddress) ->
+    kz_json:set_value([<<"e911">>, <<"extended_address">>], E911ExtendedAddress, Doc).
+
+-spec e911_latitude(doc()) -> api_binary().
+-spec e911_latitude(doc(), Default) -> binary() | Default.
+e911_latitude(Doc) ->
+    e911_latitude(Doc, 'undefined').
+e911_latitude(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"latitude">>], Doc, Default).
+
+-spec set_e911_latitude(doc(), binary()) -> doc().
+set_e911_latitude(Doc, E911Latitude) ->
+    kz_json:set_value([<<"e911">>, <<"latitude">>], E911Latitude, Doc).
+
+-spec e911_legacy_data(doc()) -> api_object().
+-spec e911_legacy_data(doc(), Default) -> kz_json:object() | Default.
+e911_legacy_data(Doc) ->
+    e911_legacy_data(Doc, 'undefined').
+e911_legacy_data(Doc, Default) ->
+    kz_json:get_json_value([<<"e911">>, <<"legacy_data">>], Doc, Default).
+
+-spec set_e911_legacy_data(doc(), kz_json:object()) -> doc().
+set_e911_legacy_data(Doc, E911LegacyData) ->
+    kz_json:set_value([<<"e911">>, <<"legacy_data">>], E911LegacyData, Doc).
+
+-spec e911legacy_data_house_number(doc()) -> api_binary().
+-spec e911legacy_data_house_number(doc(), Default) -> binary() | Default.
+e911legacy_data_house_number(Doc) ->
+    e911legacy_data_house_number(Doc, 'undefined').
+e911legacy_data_house_number(Doc, Default) ->
+    kz_json:get_binary_value([[<<"e911">>, <<"legacy_data">>], <<"house_number">>], Doc, Default).
+
+-spec set_e911legacy_data_house_number(doc(), binary()) -> doc().
+set_e911legacy_data_house_number(Doc, E911legacyDataHouseNumber) ->
+    kz_json:set_value([[<<"e911">>, <<"legacy_data">>], <<"house_number">>], E911legacyDataHouseNumber, Doc).
+
+-spec e911legacy_data_predirectional(doc()) -> api_binary().
+-spec e911legacy_data_predirectional(doc(), Default) -> binary() | Default.
+e911legacy_data_predirectional(Doc) ->
+    e911legacy_data_predirectional(Doc, 'undefined').
+e911legacy_data_predirectional(Doc, Default) ->
+    kz_json:get_binary_value([[<<"e911">>, <<"legacy_data">>], <<"predirectional">>], Doc, Default).
+
+-spec set_e911legacy_data_predirectional(doc(), binary()) -> doc().
+set_e911legacy_data_predirectional(Doc, E911legacyDataPredirectional) ->
+    kz_json:set_value([[<<"e911">>, <<"legacy_data">>], <<"predirectional">>], E911legacyDataPredirectional, Doc).
+
+-spec e911legacy_data_streetname(doc()) -> api_binary().
+-spec e911legacy_data_streetname(doc(), Default) -> binary() | Default.
+e911legacy_data_streetname(Doc) ->
+    e911legacy_data_streetname(Doc, 'undefined').
+e911legacy_data_streetname(Doc, Default) ->
+    kz_json:get_binary_value([[<<"e911">>, <<"legacy_data">>], <<"streetname">>], Doc, Default).
+
+-spec set_e911legacy_data_streetname(doc(), binary()) -> doc().
+set_e911legacy_data_streetname(Doc, E911legacyDataStreetname) ->
+    kz_json:set_value([[<<"e911">>, <<"legacy_data">>], <<"streetname">>], E911legacyDataStreetname, Doc).
+
+-spec e911legacy_data_suite(doc()) -> api_binary().
+-spec e911legacy_data_suite(doc(), Default) -> binary() | Default.
+e911legacy_data_suite(Doc) ->
+    e911legacy_data_suite(Doc, 'undefined').
+e911legacy_data_suite(Doc, Default) ->
+    kz_json:get_binary_value([[<<"e911">>, <<"legacy_data">>], <<"suite">>], Doc, Default).
+
+-spec set_e911legacy_data_suite(doc(), binary()) -> doc().
+set_e911legacy_data_suite(Doc, E911legacyDataSuite) ->
+    kz_json:set_value([[<<"e911">>, <<"legacy_data">>], <<"suite">>], E911legacyDataSuite, Doc).
+
+-spec e911_locality(doc()) -> api_binary().
+-spec e911_locality(doc(), Default) -> binary() | Default.
+e911_locality(Doc) ->
+    e911_locality(Doc, 'undefined').
+e911_locality(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"locality">>], Doc, Default).
+
+-spec set_e911_locality(doc(), binary()) -> doc().
+set_e911_locality(Doc, E911Locality) ->
+    kz_json:set_value([<<"e911">>, <<"locality">>], E911Locality, Doc).
+
+-spec e911_location_id(doc()) -> api_binary().
+-spec e911_location_id(doc(), Default) -> binary() | Default.
+e911_location_id(Doc) ->
+    e911_location_id(Doc, 'undefined').
+e911_location_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"location_id">>], Doc, Default).
+
+-spec set_e911_location_id(doc(), binary()) -> doc().
+set_e911_location_id(Doc, E911LocationId) ->
+    kz_json:set_value([<<"e911">>, <<"location_id">>], E911LocationId, Doc).
+
+-spec e911_longitude(doc()) -> api_binary().
+-spec e911_longitude(doc(), Default) -> binary() | Default.
+e911_longitude(Doc) ->
+    e911_longitude(Doc, 'undefined').
+e911_longitude(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"longitude">>], Doc, Default).
+
+-spec set_e911_longitude(doc(), binary()) -> doc().
+set_e911_longitude(Doc, E911Longitude) ->
+    kz_json:set_value([<<"e911">>, <<"longitude">>], E911Longitude, Doc).
+
+-spec e911_plus_four(doc()) -> api_binary().
+-spec e911_plus_four(doc(), Default) -> binary() | Default.
+e911_plus_four(Doc) ->
+    e911_plus_four(Doc, 'undefined').
+e911_plus_four(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"plus_four">>], Doc, Default).
+
+-spec set_e911_plus_four(doc(), binary()) -> doc().
+set_e911_plus_four(Doc, E911PlusFour) ->
+    kz_json:set_value([<<"e911">>, <<"plus_four">>], E911PlusFour, Doc).
+
+-spec e911_postal_code(doc()) -> api_binary().
+-spec e911_postal_code(doc(), Default) -> binary() | Default.
+e911_postal_code(Doc) ->
+    e911_postal_code(Doc, 'undefined').
+e911_postal_code(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"postal_code">>], Doc, Default).
+
+-spec set_e911_postal_code(doc(), binary()) -> doc().
+set_e911_postal_code(Doc, E911PostalCode) ->
+    kz_json:set_value([<<"e911">>, <<"postal_code">>], E911PostalCode, Doc).
+
+-spec e911_region(doc()) -> api_ne_binary().
+-spec e911_region(doc(), Default) -> ne_binary() | Default.
+e911_region(Doc) ->
+    e911_region(Doc, 'undefined').
+e911_region(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"e911">>, <<"region">>], Doc, Default).
+
+-spec set_e911_region(doc(), ne_binary()) -> doc().
+set_e911_region(Doc, E911Region) ->
+    kz_json:set_value([<<"e911">>, <<"region">>], E911Region, Doc).
+
+-spec e911_status(doc()) -> api_binary().
+-spec e911_status(doc(), Default) -> binary() | Default.
+e911_status(Doc) ->
+    e911_status(Doc, 'undefined').
+e911_status(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"status">>], Doc, Default).
+
+-spec set_e911_status(doc(), binary()) -> doc().
+set_e911_status(Doc, E911Status) ->
+    kz_json:set_value([<<"e911">>, <<"status">>], E911Status, Doc).
+
+-spec e911_street_address(doc()) -> api_binary().
+-spec e911_street_address(doc(), Default) -> binary() | Default.
+e911_street_address(Doc) ->
+    e911_street_address(Doc, 'undefined').
+e911_street_address(Doc, Default) ->
+    kz_json:get_binary_value([<<"e911">>, <<"street_address">>], Doc, Default).
+
+-spec set_e911_street_address(doc(), binary()) -> doc().
+set_e911_street_address(Doc, E911StreetAddress) ->
+    kz_json:set_value([<<"e911">>, <<"street_address">>], E911StreetAddress, Doc).
+
 -spec porting(doc()) -> api_object().
 -spec porting(doc(), Default) -> kz_json:object() | Default.
 porting(Doc) ->
@@ -71,3 +312,146 @@ porting(Doc, Default) ->
 -spec set_porting(doc(), kz_json:object()) -> doc().
 set_porting(Doc, Porting) ->
     kz_json:set_value(<<"porting">>, Porting, Doc).
+
+-spec porting_billing_account_id(doc()) -> api_binary().
+-spec porting_billing_account_id(doc(), Default) -> binary() | Default.
+porting_billing_account_id(Doc) ->
+    porting_billing_account_id(Doc, 'undefined').
+porting_billing_account_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"billing_account_id">>], Doc, Default).
+
+-spec set_porting_billing_account_id(doc(), binary()) -> doc().
+set_porting_billing_account_id(Doc, PortingBillingAccountId) ->
+    kz_json:set_value([<<"porting">>, <<"billing_account_id">>], PortingBillingAccountId, Doc).
+
+-spec porting_billing_extended_address(doc()) -> api_binary().
+-spec porting_billing_extended_address(doc(), Default) -> binary() | Default.
+porting_billing_extended_address(Doc) ->
+    porting_billing_extended_address(Doc, 'undefined').
+porting_billing_extended_address(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"billing_extended_address">>], Doc, Default).
+
+-spec set_porting_billing_extended_address(doc(), binary()) -> doc().
+set_porting_billing_extended_address(Doc, PortingBillingExtendedAddress) ->
+    kz_json:set_value([<<"porting">>, <<"billing_extended_address">>], PortingBillingExtendedAddress, Doc).
+
+-spec porting_billing_locality(doc()) -> api_binary().
+-spec porting_billing_locality(doc(), Default) -> binary() | Default.
+porting_billing_locality(Doc) ->
+    porting_billing_locality(Doc, 'undefined').
+porting_billing_locality(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"billing_locality">>], Doc, Default).
+
+-spec set_porting_billing_locality(doc(), binary()) -> doc().
+set_porting_billing_locality(Doc, PortingBillingLocality) ->
+    kz_json:set_value([<<"porting">>, <<"billing_locality">>], PortingBillingLocality, Doc).
+
+-spec porting_billing_name(doc()) -> api_binary().
+-spec porting_billing_name(doc(), Default) -> binary() | Default.
+porting_billing_name(Doc) ->
+    porting_billing_name(Doc, 'undefined').
+porting_billing_name(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"billing_name">>], Doc, Default).
+
+-spec set_porting_billing_name(doc(), binary()) -> doc().
+set_porting_billing_name(Doc, PortingBillingName) ->
+    kz_json:set_value([<<"porting">>, <<"billing_name">>], PortingBillingName, Doc).
+
+-spec porting_billing_postal_code(doc()) -> api_binary().
+-spec porting_billing_postal_code(doc(), Default) -> binary() | Default.
+porting_billing_postal_code(Doc) ->
+    porting_billing_postal_code(Doc, 'undefined').
+porting_billing_postal_code(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"billing_postal_code">>], Doc, Default).
+
+-spec set_porting_billing_postal_code(doc(), binary()) -> doc().
+set_porting_billing_postal_code(Doc, PortingBillingPostalCode) ->
+    kz_json:set_value([<<"porting">>, <<"billing_postal_code">>], PortingBillingPostalCode, Doc).
+
+-spec porting_billing_region(doc()) -> api_binary().
+-spec porting_billing_region(doc(), Default) -> binary() | Default.
+porting_billing_region(Doc) ->
+    porting_billing_region(Doc, 'undefined').
+porting_billing_region(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"billing_region">>], Doc, Default).
+
+-spec set_porting_billing_region(doc(), binary()) -> doc().
+set_porting_billing_region(Doc, PortingBillingRegion) ->
+    kz_json:set_value([<<"porting">>, <<"billing_region">>], PortingBillingRegion, Doc).
+
+-spec porting_billing_street_address(doc()) -> api_binary().
+-spec porting_billing_street_address(doc(), Default) -> binary() | Default.
+porting_billing_street_address(Doc) ->
+    porting_billing_street_address(Doc, 'undefined').
+porting_billing_street_address(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"billing_street_address">>], Doc, Default).
+
+-spec set_porting_billing_street_address(doc(), binary()) -> doc().
+set_porting_billing_street_address(Doc, PortingBillingStreetAddress) ->
+    kz_json:set_value([<<"porting">>, <<"billing_street_address">>], PortingBillingStreetAddress, Doc).
+
+-spec porting_billing_telephone_number(doc()) -> api_binary().
+-spec porting_billing_telephone_number(doc(), Default) -> binary() | Default.
+porting_billing_telephone_number(Doc) ->
+    porting_billing_telephone_number(Doc, 'undefined').
+porting_billing_telephone_number(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"billing_telephone_number">>], Doc, Default).
+
+-spec set_porting_billing_telephone_number(doc(), binary()) -> doc().
+set_porting_billing_telephone_number(Doc, PortingBillingTelephoneNumber) ->
+    kz_json:set_value([<<"porting">>, <<"billing_telephone_number">>], PortingBillingTelephoneNumber, Doc).
+
+-spec porting_comments(doc()) -> api_ne_binaries().
+-spec porting_comments(doc(), Default) -> ne_binaries() | Default.
+porting_comments(Doc) ->
+    porting_comments(Doc, 'undefined').
+porting_comments(Doc, Default) ->
+    kz_json:get_list_value([<<"porting">>, <<"comments">>], Doc, Default).
+
+-spec set_porting_comments(doc(), ne_binaries()) -> doc().
+set_porting_comments(Doc, PortingComments) ->
+    kz_json:set_value([<<"porting">>, <<"comments">>], PortingComments, Doc).
+
+-spec porting_customer_contact(doc()) -> api_binary().
+-spec porting_customer_contact(doc(), Default) -> binary() | Default.
+porting_customer_contact(Doc) ->
+    porting_customer_contact(Doc, 'undefined').
+porting_customer_contact(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"customer_contact">>], Doc, Default).
+
+-spec set_porting_customer_contact(doc(), binary()) -> doc().
+set_porting_customer_contact(Doc, PortingCustomerContact) ->
+    kz_json:set_value([<<"porting">>, <<"customer_contact">>], PortingCustomerContact, Doc).
+
+-spec porting_port_id(doc()) -> api_binary().
+-spec porting_port_id(doc(), Default) -> binary() | Default.
+porting_port_id(Doc) ->
+    porting_port_id(Doc, 'undefined').
+porting_port_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"port_id">>], Doc, Default).
+
+-spec set_porting_port_id(doc(), binary()) -> doc().
+set_porting_port_id(Doc, PortingPortId) ->
+    kz_json:set_value([<<"porting">>, <<"port_id">>], PortingPortId, Doc).
+
+-spec porting_requested_port_date(doc()) -> api_binary().
+-spec porting_requested_port_date(doc(), Default) -> binary() | Default.
+porting_requested_port_date(Doc) ->
+    porting_requested_port_date(Doc, 'undefined').
+porting_requested_port_date(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"requested_port_date">>], Doc, Default).
+
+-spec set_porting_requested_port_date(doc(), binary()) -> doc().
+set_porting_requested_port_date(Doc, PortingRequestedPortDate) ->
+    kz_json:set_value([<<"porting">>, <<"requested_port_date">>], PortingRequestedPortDate, Doc).
+
+-spec porting_service_provider(doc()) -> api_binary().
+-spec porting_service_provider(doc(), Default) -> binary() | Default.
+porting_service_provider(Doc) ->
+    porting_service_provider(Doc, 'undefined').
+porting_service_provider(Doc, Default) ->
+    kz_json:get_binary_value([<<"porting">>, <<"service_provider">>], Doc, Default).
+
+-spec set_porting_service_provider(doc(), binary()) -> doc().
+set_porting_service_provider(Doc, PortingServiceProvider) ->
+    kz_json:set_value([<<"porting">>, <<"service_provider">>], PortingServiceProvider, Doc).

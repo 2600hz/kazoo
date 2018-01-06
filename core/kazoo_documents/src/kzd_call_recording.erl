@@ -1,39 +1,12 @@
-%% Base document module to use when creating new document modules
 -module(kzd_call_recording).
 
--export([new/0
-        ,type/0, type/1
+-export([new/0]).
+-export([any/1, any/2, set_any/2]).
+-export([inbound/1, inbound/2, set_inbound/2]).
+-export([outbound/1, outbound/2, set_outbound/2]).
 
-        ,name/1
-        ,description/1
-        ,content_type/1
-        ,media_type/1
-        ,media_source/1
-        ,source_type/1
-        ,from/1
-        ,to/1
-        ,request/1
-        ,direction/1
-        ,start/1
-        ,duration/1
-        ,duration_ms/1
-        ,caller_id_number/1
-        ,caller_id_name/1
-        ,callee_id_number/1
-        ,callee_id_name/1
-        ,call_id/1
-        ,owner_id/1
-        ,url/1
-        ,cdr_id/1
-        ,interaction_id/1
-        ,origin/1
-        ,custom_channel_vars/1
-        ]).
 
 -include("kz_documents.hrl").
-
--define(PVT_TYPE, <<"call_recording">>).
--define(SCHEMA, <<"call_recordings">>).
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).

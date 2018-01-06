@@ -1,24 +1,19 @@
-%% Base document module to use when creating new document modules
 -module(kzd_metaflow).
 
--export([new/0
-        ,binding_digit/1, binding_digit/2
-        ,digit_timeout/1, digit_timeout/2
-        ,listen_on/1, listen_on/2
-        ,numbers/1
-        ,patterns/1
-        ]).
+-export([new/0]).
+-export([children/1, children/2, set_children/2]).
+-export([data/1, data/2, set_data/2]).
+-export([module/1, module/2, set_module/2]).
+
 
 -include("kz_documents.hrl").
-
--define(SCHEMA, <<"metaflows">>).
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_json_schema:default_object(?MODULE_STRING).
 
 -spec binding_digit(doc()) -> kz_term:ne_binary().
 binding_digit(Doc) ->
