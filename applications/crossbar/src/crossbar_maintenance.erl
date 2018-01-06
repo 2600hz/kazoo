@@ -1188,6 +1188,7 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
 -spec db_init() -> 'ok'.
 db_init() ->
     kz_datamgr:suppress_change_notice(),
+    _ = kz_util:spawn(fun() -> kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>) end),
     _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, ?APP, <<"views/system_configs.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, ?APP, <<"account/media.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),
@@ -1200,7 +1201,6 @@ db_init() ->
     _ = kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, ?APP, <<"views/pending_notify.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, ?APP, <<"views/webhooks.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, ?APP, <<"views/resources.json">>),
-    _ = kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
     _ = kz_datamgr:register_view('ratedeck', 'crossbar', <<"views/rates.json">>),
     kz_datamgr:enable_change_notice(),
     lager:debug("database views updated").
