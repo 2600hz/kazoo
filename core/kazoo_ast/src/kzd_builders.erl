@@ -53,26 +53,32 @@ accessors_from_properties(Properties) ->
                  ).
 
 base_module(SchemaName) ->
-    ["-module(kzd_", clean_name(SchemaName), ").\n\n"].
+    ["-module(kzd_", clean_name(SchemaName), ").\n"].
 
 clean_name(SchemaName) ->
     binary:replace(SchemaName, <<"-">>, <<"_">>, ['global']).
 
 base_exports() ->
-    ["-export([new/0]).\n\n"].
+    ["\n"
+     "-export([new/0]).\n"
+    ].
 
 base_includes() ->
-    ["-include(\"kz_documents.hrl\").\n\n"].
+    ["\n"
+     "-include(\"kz_documents.hrl\").\n"
+    ].
 
 base_types() ->
-    ["-type doc() :: kz_json:object().\n"
-     "-export_type([doc/0]).\n\n"
+    ["\n"
+     "-type doc() :: kz_json:object().\n"
+     "-export_type([doc/0]).\n"
     ].
 
 base_accessors() ->
-    ["-spec new() -> doc().\n"
+    ["\n"
+     "-spec new() -> doc().\n"
      "new() ->\n"
-     "    kz_json_schema:default_object(?MODULE_STRING).\n\n"
+     "    kz_json_schema:default_object(?MODULE_STRING).\n"
     ].
 
 accessor_from_properties(Property, Schema, {Exports, Accessors}) ->
@@ -122,8 +128,9 @@ json_getter_fun(Schema, 'undefined') ->
     case kz_json:get_value(<<"$ref">>, Schema) of
         'undefined' ->
             {"get_value", "any()"};
-        _Ref ->
-            {"get_json_value", "kz_json:object()"}
+        Ref ->
+            {'ok', RefSchema} = kz_json_schema:fload(Ref),
+            json_getter_fun(RefSchema, kz_json:get_value(<<"type">>, RefSchema))
     end;
 json_getter_fun(Schema, <<"string">>) ->
     case kz_json:get_integer_value(<<"minLength">>, Schema) of
@@ -145,7 +152,9 @@ list_return_subtype(Schema) ->
 list_return_subtype(Schema, 'undefined') ->
     case kz_json:get_value([<<"items">>, <<"$ref">>], Schema) of
         'undefined' -> "list()";
-        _Ref -> "kz_json:objects()"
+        Ref ->
+            {'ok', RefSchema} = kz_json_schema:fload(Ref),
+            list_return_subtype(RefSchema, kz_json:get_value(<<"type">>, RefSchema))
     end;
 list_return_subtype(_Schema, <<"string">>) -> "ne_binaries()";
 list_return_subtype(_Schema, <<"integer">>) -> "integers()";
